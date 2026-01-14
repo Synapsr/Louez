@@ -1,0 +1,517 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { useTranslations } from 'next-intl'
+import { Minus, Plus, ShoppingCart, ImageIcon, ChevronLeft, ChevronRight, TrendingDown, Play } from 'lucide-react'
+import { toast } from 'sonner'
+
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
+import { cn, formatCurrency } from '@/lib/utils'
+import { useCart } from '@/contexts/cart-context'
+import { useStoreCurrency } from '@/contexts/store-context'
+import { calculateDuration, getDetailedDuration, type PricingMode } from '@/lib/utils/duration'
+import {
+  calculateRentalPrice,
+  calculateEffectivePrice,
+  sortTiersByDuration,
+  type ProductPricing,
+} from '@/lib/pricing'
+
+interface PricingTier {
+  id: string
+  minDuration: number
+  discountPercent: number | string
+}
+
+// Helper function to extract YouTube video ID from URL
+function extractYouTubeVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/|youtube\.com\/shorts\/)([^&?/]+)/,
+  ]
+  for (const pattern of patterns) {
+    const match = url.match(pattern)
+    if (match) return match[1]
+  }
+  return null
+}
+
+interface ProductModalProps {
+  product: {
+    id: string
+    name: string
+    description: string | null
+    images: string[] | null
+    price: string
+    deposit: string | null
+    quantity: number
+    category?: { name: string } | null
+    pricingMode?: PricingMode | null
+    pricingTiers?: PricingTier[]
+    videoUrl?: string | null
+  }
+  isOpen: boolean
+  onClose: () => void
+  storeSlug: string
+  pricingMode: PricingMode
+  availableQuantity: number
+  startDate: string
+  endDate: string
+}
+
+export function ProductModal({
+  product,
+  isOpen,
+  onClose,
+  storeSlug,
+  pricingMode,
+  availableQuantity,
+  startDate,
+  endDate,
+}: ProductModalProps) {
+  const t = useTranslations('storefront.productModal')
+  const tProduct = useTranslations('storefront.product')
+  const currency = useStoreCurrency()
+  const { addItem, getCartItemByProductId, updateItemQuantity } = useCart()
+
+  const cartItem = getCartItemByProductId(product.id)
+  const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+
+  useEffect(() => {
+    if (isOpen) {
+      setQuantity(cartItem?.quantity || 1)
+      setSelectedImageIndex(0)
+    }
+  }, [isOpen, cartItem?.quantity])
+
+  const price = parseFloat(product.price)
+  const deposit = product.deposit ? parseFloat(product.deposit) : 0
+  const effectivePricingMode = product.pricingMode || pricingMode
+  const duration = calculateDuration(startDate, endDate, effectivePricingMode)
+  const { days, hours } = getDetailedDuration(startDate, endDate)
+
+  // Calculate with tiered pricing - normalize discountPercent to number
+  const tiers = product.pricingTiers?.map((tier, index) => ({
+    id: tier.id,
+    minDuration: tier.minDuration,
+    discountPercent: typeof tier.discountPercent === 'string'
+      ? parseFloat(tier.discountPercent)
+      : tier.discountPercent,
+    displayOrder: index,
+  })) || []
+
+  const pricing: ProductPricing = {
+    basePrice: price,
+    deposit,
+    pricingMode: effectivePricingMode,
+    tiers,
+  }
+  const priceResult = calculateRentalPrice(pricing, duration, quantity)
+  const totalPrice = priceResult.subtotal
+  const originalPrice = priceResult.originalSubtotal
+  const savings = priceResult.savings
+  const discountPercent = priceResult.discountPercent
+
+  const maxQuantity = Math.min(availableQuantity, product.quantity)
+  const isInCart = !!cartItem
+  const isUnavailable = availableQuantity === 0
+
+  const images = product.images && product.images.length > 0 ? product.images : []
+
+  // Video handling
+  const videoId = product.videoUrl ? extractYouTubeVideoId(product.videoUrl) : null
+  const hasVideo = !!videoId
+
+  // Total media items count (images + video)
+  const totalMediaItems = images.length + (hasVideo ? 1 : 0)
+  const isVideoSelected = hasVideo && selectedImageIndex === images.length
+
+  const handleQuantityChange = (delta: number) => {
+    const newQty = Math.max(1, Math.min(quantity + delta, maxQuantity))
+    setQuantity(newQty)
+  }
+
+  const handleAddToCart = () => {
+    // Re-check cart state to avoid race conditions
+    const currentCartItem = getCartItemByProductId(product.id)
+
+    if (currentCartItem) {
+      updateItemQuantity(product.id, quantity)
+      toast.success(tProduct('addedToCart', { name: product.name }))
+    } else {
+      addItem(
+        {
+          productId: product.id,
+          productName: product.name,
+          productImage: images[0] || null,
+          price,
+          deposit,
+          quantity,
+          maxQuantity,
+          pricingMode: effectivePricingMode,
+          pricingTiers: product.pricingTiers?.map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration,
+            discountPercent: typeof tier.discountPercent === 'string'
+              ? parseFloat(tier.discountPercent)
+              : tier.discountPercent,
+          })),
+          productPricingMode: product.pricingMode,
+        },
+        storeSlug
+      )
+      toast.success(tProduct('addedToCart', { name: product.name }))
+    }
+    onClose()
+  }
+
+  // Duration label
+  const durationLabel = (() => {
+    if (effectivePricingMode === 'hour') return `${days * 24 + hours}h`
+    if (days === 0) return `${hours}h`
+    if (hours === 0) return `${days}j`
+    return `${days}j ${hours}h`
+  })()
+
+  // Pricing unit labels
+  const pricingUnitLabel =
+    effectivePricingMode === 'hour'
+      ? tProduct('pricingUnit.hour.singular')
+      : effectivePricingMode === 'week'
+        ? tProduct('pricingUnit.week.singular')
+        : tProduct('pricingUnit.day.singular')
+
+  const pricingUnitLabelPlural =
+    effectivePricingMode === 'hour'
+      ? tProduct('pricingUnit.hour.plural')
+      : effectivePricingMode === 'week'
+        ? tProduct('pricingUnit.week.plural')
+        : tProduct('pricingUnit.day.plural')
+
+  const handlePrevImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedImageIndex((prev) => (prev === 0 ? totalMediaItems - 1 : prev - 1))
+  }
+
+  const handleNextImage = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedImageIndex((prev) => (prev === totalMediaItems - 1 ? 0 : prev + 1))
+  }
+
+  // Sort tiers for display
+  const sortedTiers = tiers.length > 0 ? sortTiersByDuration(tiers) : []
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{product.name}</DialogTitle>
+        </DialogHeader>
+
+        {/* Scrollable container for image + content */}
+        <div className="flex-1 overflow-y-auto min-h-0">
+
+          {/* ===== IMAGE SECTION (top) ===== */}
+          <div className="relative w-full bg-muted/30">
+            {/* Main image/video - 4:3 aspect ratio */}
+            <div className="relative aspect-[4/3] w-full">
+              {totalMediaItems > 0 ? (
+                <>
+                  {/* Show video if video is selected */}
+                  {isVideoSelected && videoId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`}
+                      title={product.name}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="absolute inset-0 w-full h-full"
+                    />
+                  ) : images.length > 0 ? (
+                    <Image
+                      src={images[selectedImageIndex]}
+                      alt={product.name}
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 95vw, 672px"
+                      priority
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <ImageIcon className="h-16 w-16 text-muted-foreground/30" />
+                    </div>
+                  )}
+
+                  {/* Navigation arrows */}
+                  {totalMediaItems > 1 && (
+                    <>
+                      <button
+                        onClick={handlePrevImage}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors shadow-md z-10"
+                        aria-label="Image précédente"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={handleNextImage}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors shadow-md z-10"
+                        aria-label="Image suivante"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                    </>
+                  )}
+
+                  {/* Media counter badge */}
+                  {totalMediaItems > 1 && (
+                    <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-full bg-background/90 backdrop-blur-sm text-sm font-medium shadow-md">
+                      {selectedImageIndex + 1} / {totalMediaItems}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <ImageIcon className="h-16 w-16 text-muted-foreground/30" />
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnails strip */}
+            {totalMediaItems > 1 && (
+              <div className="flex justify-center gap-2 p-3 bg-background/50 border-b">
+                {/* Image thumbnails */}
+                {images.slice(0, hasVideo ? 5 : 6).map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedImageIndex(idx)}
+                    className={cn(
+                      'relative h-14 w-14 rounded-lg overflow-hidden shrink-0 transition-all border-2',
+                      selectedImageIndex === idx
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-transparent opacity-70 hover:opacity-100'
+                    )}
+                  >
+                    <Image
+                      src={img}
+                      alt={`${product.name} - ${idx + 1}`}
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                  </button>
+                ))}
+
+                {/* More images indicator */}
+                {images.length > (hasVideo ? 5 : 6) && (
+                  <div className="flex items-center justify-center h-14 w-14 rounded-lg bg-muted text-muted-foreground text-sm font-medium">
+                    +{images.length - (hasVideo ? 5 : 6)}
+                  </div>
+                )}
+
+                {/* Video thumbnail */}
+                {hasVideo && videoId && (
+                  <button
+                    onClick={() => setSelectedImageIndex(images.length)}
+                    className={cn(
+                      'relative h-14 w-14 rounded-lg overflow-hidden shrink-0 transition-all border-2',
+                      isVideoSelected
+                        ? 'border-primary ring-2 ring-primary/20'
+                        : 'border-transparent opacity-70 hover:opacity-100'
+                    )}
+                  >
+                    {/* YouTube thumbnail */}
+                    <Image
+                      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                      alt="Vidéo"
+                      fill
+                      className="object-cover"
+                      sizes="56px"
+                    />
+                    {/* Play icon overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <Play className="h-5 w-5 text-white fill-white" />
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ===== CONTENT SECTION ===== */}
+          <div className="p-5 md:p-6">
+
+            {/* Header: Category + Name + Stock */}
+            <div className="mb-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="flex-1 min-w-0">
+                  {product.category && (
+                    <p className="text-sm text-muted-foreground mb-1">{product.category.name}</p>
+                  )}
+                  <h2 className="text-xl md:text-2xl font-semibold leading-tight">{product.name}</h2>
+                </div>
+                <Badge
+                  variant={isUnavailable ? 'destructive' : 'secondary'}
+                  className="shrink-0 text-xs"
+                >
+                  {availableQuantity} {t('stock', { count: availableQuantity }).replace(/^\d+\s*/, '')}
+                </Badge>
+              </div>
+
+              {/* Base price per unit - prominent display */}
+              <div className="flex items-baseline gap-2 mt-3">
+                <span className="text-2xl md:text-3xl font-bold text-primary">
+                  {formatCurrency(price, currency)}
+                </span>
+                <span className="text-muted-foreground text-base">/ {pricingUnitLabel}</span>
+              </div>
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div className="mb-5 pb-5 border-b">
+                <div
+                  className="text-sm text-muted-foreground prose prose-sm dark:prose-invert max-w-none
+                             [&>*]:break-words [&_p]:mb-2 [&_ul]:mb-2 [&_ol]:mb-2 [&_li]:mb-1
+                             [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm"
+                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
+              </div>
+            )}
+
+            {/* Pricing tiers section */}
+            {sortedTiers.length > 0 && (
+              <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 dark:from-green-950/20 dark:to-emerald-950/10 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="p-1.5 rounded-lg bg-green-100 dark:bg-green-900/40">
+                    <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <span className="font-semibold text-sm">{tProduct('tieredPricing.ratesTitle')}</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  {/* Base price row */}
+                  <div className="flex items-center justify-between text-sm py-1.5 px-3 rounded-lg bg-background/60">
+                    <span className="text-muted-foreground">1 {pricingUnitLabel}</span>
+                    <span className="font-medium">{formatCurrency(price, currency)}</span>
+                  </div>
+
+                  {/* Tier rows */}
+                  {sortedTiers.map((tier) => {
+                    const effectivePrice = calculateEffectivePrice(price, tier)
+                    const isCurrentTier = duration >= tier.minDuration &&
+                      !sortedTiers.some(t => t.minDuration > tier.minDuration && duration >= t.minDuration)
+
+                    return (
+                      <div
+                        key={tier.id}
+                        className={cn(
+                          'flex items-center justify-between text-sm py-2 px-3 rounded-lg transition-colors',
+                          isCurrentTier
+                            ? 'bg-green-100 dark:bg-green-900/40 ring-1 ring-green-300 dark:ring-green-700'
+                            : 'bg-background/60'
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={cn('font-medium', isCurrentTier && 'text-green-700 dark:text-green-300')}>
+                            {tier.minDuration}+ {pricingUnitLabelPlural}
+                          </span>
+                          <Badge
+                            className={cn(
+                              'text-xs font-semibold',
+                              isCurrentTier
+                                ? 'bg-green-600 text-white hover:bg-green-600'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300'
+                            )}
+                          >
+                            -{tier.discountPercent}%
+                          </Badge>
+                        </div>
+                        <span className={cn('font-semibold', isCurrentTier && 'text-green-700 dark:text-green-300')}>
+                          {formatCurrency(effectivePrice, currency)}/{pricingUnitLabel}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ===== FOOTER - Always visible at bottom ===== */}
+        <div className="shrink-0 border-t bg-background p-4 md:p-5">
+
+          {/* Price summary row */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                {tProduct('total')} ({durationLabel})
+              </span>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                {savings > 0 && (
+                  <span className="text-sm line-through text-muted-foreground">
+                    {formatCurrency(originalPrice, currency)}
+                  </span>
+                )}
+                <span className="text-2xl font-bold text-primary">
+                  {formatCurrency(totalPrice, currency)}
+                </span>
+              </div>
+            </div>
+
+            {savings > 0 && (
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-sm font-semibold px-3 py-1">
+                -{discountPercent}%
+              </Badge>
+            )}
+          </div>
+
+          {/* Quantity and CTA row */}
+          <div className="flex items-center gap-3">
+            {/* Quantity selector */}
+            <div className="flex items-center bg-muted rounded-xl p-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-lg hover:bg-background"
+                onClick={() => handleQuantityChange(-1)}
+                disabled={quantity <= 1 || isUnavailable}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="w-12 text-center font-semibold text-lg tabular-nums">{quantity}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 rounded-lg hover:bg-background"
+                onClick={() => handleQuantityChange(1)}
+                disabled={quantity >= maxQuantity || isUnavailable}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Add to cart button */}
+            <Button
+              onClick={handleAddToCart}
+              disabled={isUnavailable}
+              size="lg"
+              className="flex-1 h-12 text-base font-semibold rounded-xl"
+            >
+              <ShoppingCart className="h-5 w-5 mr-2" />
+              {isInCart ? t('updateCart') : t('addToCart')}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

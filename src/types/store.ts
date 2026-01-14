@@ -1,0 +1,119 @@
+export interface DaySchedule {
+  isOpen: boolean
+  openTime: string   // "09:00"
+  closeTime: string  // "18:00"
+}
+
+export interface ClosurePeriod {
+  id: string
+  name: string
+  startDate: string  // ISO date string
+  endDate: string    // ISO date string
+  reason?: string
+}
+
+export interface BusinessHours {
+  enabled: boolean
+  schedule: {
+    0: DaySchedule  // Sunday
+    1: DaySchedule  // Monday
+    2: DaySchedule  // Tuesday
+    3: DaySchedule  // Wednesday
+    4: DaySchedule  // Thursday
+    5: DaySchedule  // Friday
+    6: DaySchedule  // Saturday
+  }
+  closurePeriods: ClosurePeriod[]
+}
+
+export interface StoreSettings {
+  pricingMode: 'day' | 'hour' | 'week'
+  reservationMode: 'payment' | 'request'
+  minDuration: number
+  maxDuration: number | null
+  advanceNotice: number
+  requireCustomerAddress?: boolean
+  businessHours?: BusinessHours
+  country?: string    // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'CH')
+  timezone?: string   // IANA timezone (e.g., 'Europe/Paris')
+  currency?: string   // ISO 4217 currency code (e.g., 'EUR', 'USD', 'GBP')
+}
+
+export interface StoreTheme {
+  mode: 'light' | 'dark'
+  primaryColor: string
+  heroImages?: string[]
+}
+
+export interface EmailCustomContent {
+  subject?: string
+  greeting?: string
+  message?: string
+  signature?: string
+}
+
+export interface EmailSettings {
+  // Toggle settings
+  confirmationEnabled: boolean
+  reminderPickupEnabled: boolean
+  reminderReturnEnabled: boolean
+  replyToEmail: string | null
+
+  // Custom email content
+  defaultSignature?: string
+  confirmationContent?: EmailCustomContent
+  rejectionContent?: EmailCustomContent
+  pickupReminderContent?: EmailCustomContent
+  returnReminderContent?: EmailCustomContent
+  requestAcceptedContent?: EmailCustomContent
+}
+
+export interface ProductSnapshot {
+  name: string
+  description: string | null
+  images: string[]
+}
+
+// ============================================================================
+// Pricing Types
+// ============================================================================
+
+export type PricingMode = 'hour' | 'day' | 'week'
+
+export interface PricingTier {
+  id: string
+  minDuration: number      // Minimum units to trigger this tier
+  discountPercent: number  // Discount percentage (0-99)
+  displayOrder: number
+}
+
+export interface PricingBreakdown {
+  basePrice: number
+  effectivePrice: number
+  duration: number
+  pricingMode: PricingMode
+  discountPercent: number | null
+  discountAmount: number
+  tierApplied: string | null  // Human-readable tier label
+}
+
+export interface PlanFeatures {
+  // Limits
+  maxProducts: number | null // null = unlimited
+  maxReservationsPerMonth: number | null // null = unlimited
+  maxCustomers: number | null // null = unlimited
+  maxCollaborators: number | null // null = unlimited, 0 = none
+
+  // Features
+  customDomain: boolean
+  analytics: boolean
+  emailNotifications: boolean
+  prioritySupport: boolean
+  apiAccess: boolean
+  whiteLabel: boolean
+  onlinePayment: boolean
+  customerPortal: boolean
+  reviewBooster: boolean
+  phoneSupport: boolean
+  dedicatedManager: boolean
+}

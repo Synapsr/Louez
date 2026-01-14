@@ -1,0 +1,117 @@
+import { Heading, Section, Text } from '@react-email/components'
+import { format } from 'date-fns'
+import { BaseLayout } from './base-layout'
+import { getEmailTranslations, getDateLocale, getDateFormatPatterns, type EmailLocale } from '../i18n'
+
+interface RequestReceivedEmailProps {
+  storeName: string
+  logoUrl?: string | null
+  primaryColor?: string
+  storeEmail?: string | null
+  storePhone?: string | null
+  storeAddress?: string | null
+  customerFirstName: string
+  reservationNumber: string
+  startDate: Date
+  endDate: Date
+  locale?: EmailLocale
+}
+
+export function RequestReceivedEmail({
+  storeName,
+  logoUrl,
+  primaryColor = '#0066FF',
+  storeEmail,
+  storePhone,
+  storeAddress,
+  customerFirstName,
+  reservationNumber,
+  startDate,
+  endDate,
+  locale = 'fr',
+}: RequestReceivedEmailProps) {
+  const t = getEmailTranslations(locale)
+  const messages = t.requestReceived
+  const tc = t.common
+  const dateLocale = getDateLocale(locale)
+  const datePatterns = getDateFormatPatterns(locale)
+
+  return (
+    <BaseLayout
+      preview={messages.subject.replace('{number}', reservationNumber)}
+      storeName={storeName}
+      logoUrl={logoUrl}
+      primaryColor={primaryColor}
+      storeEmail={storeEmail}
+      storePhone={storePhone}
+      storeAddress={storeAddress}
+      locale={locale}
+    >
+      <Heading style={heading}>{messages.title}</Heading>
+
+      <Text style={paragraph}>{tc.greeting.replace('{name}', customerFirstName)}</Text>
+
+      <Text style={paragraph}>
+        {messages.body}
+      </Text>
+
+      <Section style={infoBox}>
+        <Text style={infoText}>
+          <strong>{tc.reservationNumber.replace('{number}', reservationNumber)}</strong>
+        </Text>
+        <Text style={infoText}>
+          {tc.periodFrom.replace('{startDate}', format(startDate, datePatterns.dateTime, { locale: dateLocale }))} {tc.periodTo.replace('{endDate}', format(endDate, datePatterns.dateTime, { locale: dateLocale })).toLowerCase()}
+        </Text>
+      </Section>
+
+      <Text style={paragraph}>
+        {messages.review}
+      </Text>
+
+      <Text style={paragraph}>
+        {messages.confirmation}
+      </Text>
+
+      <Text style={signature}>
+        {messages.seeYouSoon}
+        <br />
+        {tc.team.replace('{storeName}', storeName)}
+      </Text>
+    </BaseLayout>
+  )
+}
+
+const heading = {
+  fontSize: '24px',
+  fontWeight: 'bold' as const,
+  color: '#1a1a1a',
+  marginBottom: '24px',
+}
+
+const paragraph = {
+  fontSize: '14px',
+  lineHeight: '24px',
+  color: '#525f7f',
+  margin: '0 0 16px 0',
+}
+
+const infoBox = {
+  backgroundColor: '#f4f4f5',
+  borderRadius: '8px',
+  padding: '16px',
+  margin: '24px 0',
+}
+
+const infoText = {
+  fontSize: '14px',
+  color: '#1a1a1a',
+  margin: '0 0 4px 0',
+}
+
+const signature = {
+  fontSize: '14px',
+  color: '#525f7f',
+  marginTop: '32px',
+}
+
+export default RequestReceivedEmail

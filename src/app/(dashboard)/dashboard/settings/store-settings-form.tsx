@@ -1,0 +1,521 @@
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useTransition } from 'react'
+import { useTranslations } from 'next-intl'
+import { z } from 'zod'
+import { Loader2, ExternalLink, Pencil } from 'lucide-react'
+
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { AddressInput } from '@/components/ui/address-input'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { SlugChangeModal } from './slug-change-modal'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { updateStoreSettings } from './actions'
+import type { StoreSettings } from '@/types'
+import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
+import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry, getCurrencyByCode, type CurrencyCode } from '@/lib/utils/currency'
+
+const createStoreSettingsSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) => z.object({
+  name: z.string().min(2, t('minLength', { min: 2 })).max(255),
+  description: z.string().optional(),
+  email: z.string().email(t('email')).optional().or(z.literal('')),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  country: z.string().length(2),
+  currency: z.string().min(3).max(3),
+  latitude: z.number().nullable(),
+  longitude: z.number().nullable(),
+
+  // Settings
+  pricingMode: z.enum(['day', 'hour', 'week']),
+  reservationMode: z.enum(['payment', 'request']),
+  minDuration: z.number().min(1),
+  maxDuration: z.number().nullable(),
+  advanceNotice: z.number().min(0),
+  requireCustomerAddress: z.boolean(),
+})
+
+type StoreSettingsInput = z.infer<ReturnType<typeof createStoreSettingsSchema>>
+
+interface Store {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  latitude: string | null
+  longitude: string | null
+  settings: StoreSettings | null
+}
+
+interface StoreSettingsFormProps {
+  store: Store
+}
+
+export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
+  const [isSlugModalOpen, setIsSlugModalOpen] = useState(false)
+  const t = useTranslations('dashboard.settings')
+
+  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
+  const tCommon = useTranslations('common')
+  const tValidation = useTranslations('validation')
+
+  const storeSettingsSchema = createStoreSettingsSchema(tValidation)
+
+  const settings = store.settings || {
+    pricingMode: 'day',
+    reservationMode: 'payment',
+    minDuration: 1,
+    maxDuration: null,
+    advanceNotice: 24,
+  }
+
+  const defaultCountry = settings.country || 'FR'
+  const defaultCurrency = settings.currency || getDefaultCurrencyForCountry(defaultCountry)
+
+  const form = useForm<StoreSettingsInput>({
+    resolver: zodResolver(storeSettingsSchema),
+    defaultValues: {
+      name: store.name,
+      description: store.description || '',
+      email: store.email || '',
+      phone: store.phone || '',
+      address: store.address || '',
+      country: defaultCountry,
+      currency: defaultCurrency,
+      latitude: store.latitude ? parseFloat(store.latitude) : null,
+      longitude: store.longitude ? parseFloat(store.longitude) : null,
+      pricingMode: settings.pricingMode,
+      reservationMode: settings.reservationMode,
+      minDuration: settings.minDuration,
+      maxDuration: settings.maxDuration,
+      advanceNotice: settings.advanceNotice,
+      requireCustomerAddress: settings.requireCustomerAddress ?? false,
+    },
+  })
+
+  // Auto-update currency when country changes (only if user hasn't manually changed it)
+  const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
+    onChange(newCountry)
+    // Automatically set the default currency for this country
+    const newDefaultCurrency = getDefaultCurrencyForCountry(newCountry)
+    form.setValue('currency', newDefaultCurrency)
+  }
+
+  const onSubmit = (data: StoreSettingsInput) => {
+    startTransition(async () => {
+      const result = await updateStoreSettings(data)
+      if (result.error) {
+        form.setError('root', { message: result.error })
+        return
+      }
+      router.refresh()
+    })
+  }
+
+  return (
+    <div className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {form.formState.errors.root && (
+            <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+              {form.formState.errors.root.message}
+            </div>
+          )}
+
+          {/* Store Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('storeSettings.generalInfo')}</CardTitle>
+              <CardDescription>
+                {t('storeSettings.generalInfoDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('storeSettings.name')} *</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('storeSettings.descriptionLabel')}</FormLabel>
+                    <FormControl>
+                      <RichTextEditor
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        placeholder={t('storeSettings.descriptionPlaceholder')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('storeSettings.email')}</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="contact@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('storeSettings.phone')}</FormLabel>
+                      <FormControl>
+                        <Input placeholder="01 23 45 67 89" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="address"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('storeSettings.address')}</FormLabel>
+                    <FormControl>
+                      <AddressInput
+                        value={field.value || ''}
+                        latitude={form.watch('latitude')}
+                        longitude={form.watch('longitude')}
+                        onChange={(address, lat, lng, displayAddr) => {
+                          // Use displayAddress if provided, otherwise use the raw address
+                          field.onChange(displayAddr || address)
+                          form.setValue('latitude', lat)
+                          form.setValue('longitude', lng)
+                        }}
+                        placeholder={t('storeSettings.addressPlaceholder')}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('storeSettings.country')}</FormLabel>
+                      <Select
+                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue>
+                              {field.value && (
+                                <span className="flex items-center gap-2">
+                                  <span>{getCountryFlag(field.value)}</span>
+                                  <span>{getCountryName(field.value)}</span>
+                                </span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[300px]">
+                          {getCountriesSortedByName().map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                              <span className="flex items-center gap-2">
+                                <span>{country.flag}</span>
+                                <span>{getCountryName(country.code)}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('storeSettings.currency')}</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full">
+                            <SelectValue>
+                              {field.value && (
+                                <span className="flex items-center gap-2">
+                                  <span>{getCurrencyByCode(field.value as CurrencyCode)?.symbol || field.value}</span>
+                                  <span>{getCurrencyByCode(field.value as CurrencyCode)?.name || field.value}</span>
+                                </span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[300px]">
+                          {SUPPORTED_CURRENCIES.map((currency) => (
+                            <SelectItem key={currency.code} value={currency.code}>
+                              <span className="flex items-center gap-2">
+                                <span className="w-8 text-center">{currency.symbol}</span>
+                                <span>{currency.name} ({currency.code})</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm text-muted-foreground shrink-0">
+                    {t('storeSettings.storeUrl')}
+                  </span>
+                  <code className="font-mono text-sm truncate">
+                    {store.slug}.{domain}
+                  </code>
+                  <a
+                    href={`https://${store.slug}.${domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsSlugModalOpen(true)}
+                  className="shrink-0 ml-2"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reservation Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('reservationSettings.title')}</CardTitle>
+              <CardDescription>
+                {t('reservationSettings.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="reservationMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('reservationSettings.mode')}</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="payment">
+                            {t('reservationSettings.modePayment')}
+                          </SelectItem>
+                          <SelectItem value="request">
+                            {t('reservationSettings.modeRequest')}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {field.value === 'payment'
+                          ? t('reservationSettings.modePaymentDescription')
+                          : t('reservationSettings.modeRequestDescription')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="pricingMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('reservationSettings.pricingMode')}</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="day">{t('reservationSettings.pricingDay')}</SelectItem>
+                          <SelectItem value="hour">{t('reservationSettings.pricingHour')}</SelectItem>
+                          <SelectItem value="week">{t('reservationSettings.pricingWeek')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="minDuration"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('reservationSettings.minDuration')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(`reservationSettings.durationUnit.${form.watch('pricingMode')}`)}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="advanceNotice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('reservationSettings.leadTime')}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t('reservationSettings.leadTimeHelp')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="requireCustomerAddress"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        {t('reservationSettings.requireAddress')}
+                      </FormLabel>
+                      <FormDescription>
+                        {t('reservationSettings.requireAddressDescription')}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isPending}>
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('saveChanges')}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      <SlugChangeModal
+        open={isSlugModalOpen}
+        onOpenChange={setIsSlugModalOpen}
+        currentSlug={store.slug}
+        domain={domain}
+      />
+    </div>
+  )
+}
