@@ -1887,7 +1887,7 @@
       "namePlaceholder": "Ma boutique de location",
       "slug": "Adresse de la boutique",
       "slugPlaceholder": "ma-boutique",
-      "slugHelp": "Votre boutique sera accessible sur {slug}.louez.io",
+      "slugHelp": "Votre boutique sera accessible sur {slug}.{domain}",
       "slugDefault": "votre-boutique",
       "pricingMode": "Mode de tarification",
       "pricingDay": "Journée",
@@ -2156,7 +2156,7 @@
       "condition1": "Le matériel est loué en bon état de fonctionnement",
       "condition2": "Le locataire s'engage à restituer le matériel dans l'état où il l'a reçu",
       "condition3": "En cas de dommage ou de perte, la caution pourra être retenue en tout ou partie",
-      "termsLink": "Conditions générales : {slug}.louez.io/terms"
+      "termsLink": "Conditions générales : {slug}.{domain}/terms"
     },
     "legal": {
       "text1": "Ce document fait office de contrat de location et de facture. Il atteste de l'accord entre les parties pour la location du matériel décrit ci-dessus aux conditions mentionnées.",

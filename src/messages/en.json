@@ -1880,7 +1880,7 @@
       "namePlaceholder": "My rental store",
       "slug": "Store address",
       "slugPlaceholder": "my-store",
-      "slugHelp": "Your store will be accessible at {slug}.louez.io",
+      "slugHelp": "Your store will be accessible at {slug}.{domain}",
       "slugDefault": "your-store",
       "pricingMode": "Pricing mode",
       "pricingDay": "Daily",
@@ -2149,7 +2149,7 @@
       "condition1": "The equipment is rented in good working order",
       "condition2": "The tenant agrees to return the equipment in the condition in which it was received",
       "condition3": "In case of damage or loss, the deposit may be retained in whole or in part",
-      "termsLink": "Terms and conditions: {slug}.louez.io/terms"
+      "termsLink": "Terms and conditions: {slug}.{domain}/terms"
     },
     "legal": {
       "text1": "This document serves as a rental contract and invoice. It attests to the agreement between the parties for the rental of the equipment described above under the conditions mentioned.",

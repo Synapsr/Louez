@@ -597,10 +597,10 @@ export default async function DashboardHomePage() {
           <CardContent>
             <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3">
               <span className="text-sm font-medium truncate flex-1">
-                {store.slug}.{process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'}
+                {store.slug}.{process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}
               </span>
               <a
-                href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'}`}
+                href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="shrink-0 text-sm font-medium text-primary hover:underline"

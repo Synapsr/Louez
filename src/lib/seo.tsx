@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 import type { ReactElement } from 'react'
 
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
 
 // ============================================================================
 // URL Helpers

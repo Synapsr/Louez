@@ -462,7 +462,7 @@ export function ContractDocument({
             <View style={styles.conditionItem}>
               <View style={styles.conditionBullet} />
               <Text style={styles.conditionText}>
-                {t.conditions.termsLink.replace('{slug}', store.slug)}
+                {t.conditions.termsLink.replace('{slug}', store.slug).replace('{domain}', process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost')}
               </Text>
             </View>
           </View>

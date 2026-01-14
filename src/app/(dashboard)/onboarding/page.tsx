@@ -136,12 +136,12 @@ export default function OnboardingStorePage() {
                         {...field}
                       />
                       <span className="bg-muted text-muted-foreground flex h-9 items-center rounded-r-md border border-l-0 px-3 text-sm">
-                        .{process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'}
+                        .{process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}
                       </span>
                     </div>
                   </FormControl>
                   <FormDescription>
-                    {t('slugHelp', { slug: field.value || t('slugDefault') })}
+                    {t('slugHelp', { slug: field.value || t('slugDefault'), domain: process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost' })}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

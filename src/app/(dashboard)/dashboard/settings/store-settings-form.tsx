@@ -88,7 +88,7 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
   const [isSlugModalOpen, setIsSlugModalOpen] = useState(false)
   const t = useTranslations('dashboard.settings')
 
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
+  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
   const tCommon = useTranslations('common')
   const tValidation = useTranslations('validation')
 
