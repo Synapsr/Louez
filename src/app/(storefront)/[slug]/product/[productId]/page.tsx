@@ -285,6 +285,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 discountPercent: parseFloat(tier.discountPercent),
               }))}
               productPricingMode={product.pricingMode}
+              advanceNotice={storeSettings.advanceNotice || 0}
             />
           )}
 

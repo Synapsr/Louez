@@ -17,7 +17,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
-import type { PricingMode } from '@/lib/utils/duration'
+import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
   isDateAvailable,
@@ -29,6 +29,7 @@ interface HeroDatePickerProps {
   storeSlug: string
   pricingMode: PricingMode
   businessHours?: BusinessHours
+  advanceNotice?: number
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
@@ -39,6 +40,7 @@ export function HeroDatePicker({
   storeSlug,
   pricingMode,
   businessHours,
+  advanceNotice = 0,
 }: HeroDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -71,8 +73,8 @@ export function HeroDatePicker({
   const [endDateOpen, setEndDateOpen] = useState(false)
   const [endTimeOpen, setEndTimeOpen] = useState(false)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Calculate minimum start date based on advance notice setting
+  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
@@ -85,11 +87,11 @@ export function HeroDatePicker({
   }, [endDate, businessHours])
 
   const isDateDisabled = useCallback((date: Date): boolean => {
-    if (date < today) return true
+    if (date < minDate) return true
     if (!businessHours?.enabled) return false
     const availability = isDateAvailable(date, businessHours)
     return !availability.available
-  }, [businessHours, today])
+  }, [businessHours, minDate])
 
   useEffect(() => {
     setPricingMode(pricingMode)

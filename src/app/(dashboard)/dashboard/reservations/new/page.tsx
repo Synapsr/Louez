@@ -55,6 +55,7 @@ export default async function NewReservationPage() {
         products={productsList}
         pricingMode={store.settings?.pricingMode || 'day'}
         businessHours={store.settings?.businessHours}
+        advanceNotice={store.settings?.advanceNotice || 0}
       />
     </div>
   )

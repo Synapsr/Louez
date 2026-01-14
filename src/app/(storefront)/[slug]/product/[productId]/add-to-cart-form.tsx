@@ -16,6 +16,7 @@ import { useCart, type CartItem } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
 import { calculateRentalPrice, type ProductPricing, type PricingTier } from '@/lib/pricing'
+import { getMinStartDate } from '@/lib/utils/duration'
 import type { PricingMode } from '@/types'
 
 interface AddToCartFormProps {
@@ -30,6 +31,7 @@ interface AddToCartFormProps {
   storeSlug: string
   pricingTiers?: { id: string; minDuration: number; discountPercent: number }[]
   productPricingMode?: PricingMode | null
+  advanceNotice?: number
 }
 
 export function AddToCartForm({
@@ -44,6 +46,7 @@ export function AddToCartForm({
   storeSlug,
   pricingTiers,
   productPricingMode,
+  advanceNotice = 0,
 }: AddToCartFormProps) {
   const router = useRouter()
   const t = useTranslations('storefront.product')
@@ -148,6 +151,7 @@ export function AddToCartForm({
           }
         }}
         pricingMode={pricingMode}
+        minDate={getMinStartDate(advanceNotice)}
         translations={{
           startDate: t('startDate'),
           endDate: t('endDate'),

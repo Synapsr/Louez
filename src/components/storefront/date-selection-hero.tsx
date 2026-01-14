@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
-import type { PricingMode } from '@/lib/utils/duration'
+import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
   isDateAvailable,
@@ -37,6 +37,7 @@ interface DateSelectionHeroProps {
   pricingMode: PricingMode
   primaryColor?: string
   businessHours?: BusinessHours
+  advanceNotice?: number
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
@@ -49,6 +50,7 @@ export function DateSelectionHero({
   pricingMode,
   primaryColor = '#0066FF',
   businessHours,
+  advanceNotice = 0,
 }: DateSelectionHeroProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -84,8 +86,15 @@ export function DateSelectionHero({
   const [endDateOpen, setEndDateOpen] = useState(false)
   const [endTimeOpen, setEndTimeOpen] = useState(false)
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Today for relative calculations (quick selects)
+  const today = useMemo(() => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [])
+
+  // Calculate minimum start date based on advance notice setting
+  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
 
   // Business hours-aware time slots
   const startTimeSlots = useMemo(() => {
@@ -98,14 +107,14 @@ export function DateSelectionHero({
     return getAvailableTimeSlots(endDate, businessHours, 30)
   }, [endDate, businessHours])
 
-  // Check if a date is disabled due to business hours
+  // Check if a date is disabled due to business hours or advance notice
   const isDateDisabled = useCallback((date: Date): boolean => {
-    if (date < today) return true
+    if (date < minDate) return true
     if (!businessHours?.enabled) return false
 
     const availability = isDateAvailable(date, businessHours)
     return !availability.available
-  }, [businessHours, today])
+  }, [businessHours, minDate])
 
   // Get closure period info for a date
   const getClosurePeriodForDate = useCallback((date: Date) => {

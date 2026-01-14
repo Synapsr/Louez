@@ -130,6 +130,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const pricingMode = storeWithRelations.settings?.pricingMode || 'day'
   const primaryColor = storeWithRelations.theme?.primaryColor || '#0066FF'
   const businessHours = storeWithRelations.settings?.businessHours
+  const advanceNotice = storeWithRelations.settings?.advanceNotice || 0
   const heroImages = storeWithRelations.theme?.heroImages || []
   const hasHeroImages = heroImages.length > 0
 
@@ -241,6 +242,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       storeSlug={slug}
                       pricingMode={pricingMode}
                       businessHours={businessHours}
+                      advanceNotice={advanceNotice}
                     />
                   </Suspense>
                 </div>
@@ -299,6 +301,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       storeSlug={slug}
                       pricingMode={pricingMode}
                       businessHours={businessHours}
+                      advanceNotice={advanceNotice}
                     />
                   </Suspense>
                 </div>

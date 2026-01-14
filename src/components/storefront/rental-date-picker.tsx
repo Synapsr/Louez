@@ -190,8 +190,12 @@ export function RentalDatePicker({
     return format(date, 'd MMMM yyyy', { locale: dateLocale })
   }
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Use minDate prop for date validation (supports advance notice)
+  const effectiveMinDate = React.useMemo(() => {
+    const min = new Date(minDate)
+    min.setHours(0, 0, 0, 0)
+    return min
+  }, [minDate])
 
   return (
     <div className={cn('grid sm:grid-cols-2 gap-4', className)}>
@@ -216,7 +220,7 @@ export function RentalDatePicker({
               mode="single"
               selected={startDate}
               onSelect={handleStartDateSelect}
-              disabled={(date) => date < today}
+              disabled={(date) => date < effectiveMinDate}
               locale={fr}
             />
             {showTime && (
@@ -263,7 +267,7 @@ export function RentalDatePicker({
               selected={endDate}
               onSelect={handleEndDateSelect}
               disabled={(date) =>
-                date < today || (startDate ? date < startDate : false)
+                date < effectiveMinDate || (startDate ? date < startDate : false)
               }
               locale={fr}
             />

@@ -69,7 +69,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 
 import { cn, formatCurrency } from '@/lib/utils'
 import { isDateAvailable, getAvailableTimeSlots } from '@/lib/utils/business-hours'
-import { getDetailedDuration } from '@/lib/utils/duration'
+import { getDetailedDuration, getMinStartDate } from '@/lib/utils/duration'
 import { findApplicableTier, calculateRentalPrice } from '@/lib/pricing/calculate'
 import { createManualReservation } from '../actions'
 import type { BusinessHours } from '@/types/store'
@@ -118,6 +118,7 @@ interface NewReservationFormProps {
   products: Product[]
   pricingMode: 'day' | 'hour' | 'week'
   businessHours?: BusinessHours
+  advanceNotice?: number
 }
 
 interface FormData {
@@ -137,6 +138,7 @@ export function NewReservationForm({
   products,
   pricingMode,
   businessHours,
+  advanceNotice = 0,
 }: NewReservationFormProps) {
   const router = useRouter()
   const locale = useLocale()
@@ -146,11 +148,12 @@ export function NewReservationForm({
 
   const dateLocale = locale === 'fr' ? fr : enUS
 
-  // Helper to check if a date is disabled (not open)
+  // Calculate minimum start date based on advance notice setting
+  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
+
+  // Helper to check if a date is disabled (not open or before advance notice)
   const isDateDisabled = (date: Date): boolean => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    if (date < today) return true
+    if (date < minDate) return true
 
     // Check if store is open on this day
     if (businessHours?.enabled) {
