@@ -130,6 +130,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
   const t = await getTranslations('dashboard.reservations')
 
   const params = await searchParams
+  const currency = store.settings?.currency || 'EUR'
   const [reservationsList, reservationCounts] = await Promise.all([
     getReservations(store.id, params),
     getReservationCounts(store.id),
@@ -162,7 +163,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
 
       {/* Reservations Table */}
       <Suspense fallback={<ReservationsTableSkeleton />}>
-        <ReservationsTable reservations={reservationsList} />
+        <ReservationsTable reservations={reservationsList} currency={currency} />
       </Suspense>
     </div>
   )

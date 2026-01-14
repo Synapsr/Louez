@@ -17,6 +17,7 @@ import {
 } from '@/lib/email/send'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
+import { getCurrencySymbol } from '@/lib/utils'
 import {
   calculateRentalPrice,
   calculateDuration,
@@ -658,10 +659,11 @@ export async function recordPayment(
   })
 
   // Log activity
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `${data.type === 'rental' ? 'Location' : data.type === 'deposit' ? 'Caution' : data.type === 'deposit_return' ? 'Restitution caution' : 'Dommages'}: ${data.amount.toFixed(2)}€ (${data.method})`,
+    `${data.type === 'rental' ? 'Location' : data.type === 'deposit' ? 'Caution' : data.type === 'deposit_return' ? 'Restitution caution' : 'Dommages'}: ${data.amount.toFixed(2)}${currencySymbol} (${data.method})`,
     { paymentId, type: data.type, amount: data.amount, method: data.method }
   )
 
@@ -696,10 +698,11 @@ export async function deletePayment(paymentId: string) {
   await db.delete(payments).where(eq(payments.id, paymentId))
 
   // Log activity
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
   await logReservationActivity(
     payment.reservationId,
     'payment_updated',
-    `Paiement supprimé: ${parseFloat(payment.amount).toFixed(2)}€`,
+    `Paiement supprimé: ${parseFloat(payment.amount).toFixed(2)}${currencySymbol}`,
     { paymentId, type: payment.type, amount: payment.amount, action: 'deleted' }
   )
 
@@ -770,10 +773,11 @@ export async function returnDeposit(
   })
 
   // Log activity
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `Caution restituée: ${data.amount.toFixed(2)}€ (${data.method})`,
+    `Caution restituée: ${data.amount.toFixed(2)}${currencySymbol} (${data.method})`,
     { paymentId, type: 'deposit_return', amount: data.amount, method: data.method }
   )
 
@@ -819,10 +823,11 @@ export async function recordDamage(
   })
 
   // Log activity
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `Frais de dommages: ${data.amount.toFixed(2)}€ - ${data.notes}`,
+    `Frais de dommages: ${data.amount.toFixed(2)}${currencySymbol} - ${data.notes}`,
     { paymentId, type: 'damage', amount: data.amount, method: data.method }
   )
 
@@ -914,13 +919,14 @@ export async function sendReservationEmail(
       case 'payment_request': {
         // Send payment request email
         const amountDue = parseFloat(reservation.totalAmount) + parseFloat(reservation.depositAmount)
+        const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
         const subject = data.customSubject || `Demande de paiement - Réservation #${reservation.number}`
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Bonjour ${customerData.firstName},</h2>
             <p>Nous vous contactons concernant le paiement de votre réservation #${reservation.number}.</p>
             ${data.customMessage ? `<p>${data.customMessage}</p>` : ''}
-            <p><strong>Montant total : ${amountDue.toFixed(2)}€</strong></p>
+            <p><strong>Montant total : ${amountDue.toFixed(2)}${currencySymbol}</strong></p>
             <p>Merci de procéder au règlement dans les meilleurs délais.</p>
             <p><a href="${reservationUrl}" style="display: inline-block; background: ${primaryColor}; color: ${buttonTextColor}; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Voir ma réservation</a></p>
             <p>À bientôt,<br/>${store.name}</p>
