@@ -142,6 +142,7 @@ export default async function ReservationDetailPage({
         depositReturned={depositReturned}
         totalAmount={parseFloat(reservation.totalAmount)}
         hasContract={hasContract}
+        currency={currency}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -311,6 +312,7 @@ export default async function ReservationDetailPage({
             totalAmount={reservation.totalAmount}
             payments={reservation.payments}
             status={status}
+            currency={currency}
           />
 
           {/* Notes */}

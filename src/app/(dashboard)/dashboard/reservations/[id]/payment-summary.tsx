@@ -617,7 +617,7 @@ export function PaymentSummary({
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  €
+                  {currencySymbol}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
@@ -703,7 +703,7 @@ export function PaymentSummary({
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  €
+                  {currencySymbol}
                 </span>
               </div>
             </div>
@@ -777,7 +777,7 @@ export function PaymentSummary({
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                  €
+                  {currencySymbol}
                 </span>
               </div>
             </div>
