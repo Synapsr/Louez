@@ -211,7 +211,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
         {/* Notes */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>{t('notes')}</CardTitle>
+            <CardTitle>{t('notes.title')}</CardTitle>
           </CardHeader>
           <CardContent>
             <CustomerNotes customerId={customer.id} initialNotes={customer.notes || ''} />
