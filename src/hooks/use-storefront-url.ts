@@ -16,7 +16,6 @@ export function useStorefrontUrl(storeSlug: string) {
 
   useEffect(() => {
     const hostname = window.location.hostname
-    const baseDomain = process.env.NEXT_PUBLIC_APP_DOMAIN?.split(':')[0] || 'localhost'
 
     // On localhost, we're never on a true subdomain
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
@@ -24,22 +23,19 @@ export function useStorefrontUrl(storeSlug: string) {
       return
     }
 
-    // Check if hostname has more parts than base domain (indicating subdomain)
-    const hostParts = hostname.split('.')
-    const baseParts = baseDomain.split('.')
+    // Simple and reliable detection: if the hostname starts with the store slug,
+    // we're on the store's subdomain (e.g., 'ddm.louez.io' starts with 'ddm')
+    const hostnamePrefix = hostname.split('.')[0]
 
-    // Extract potential subdomain
-    const subdomain =
-      hostParts.length > baseParts.length
-        ? hostParts.slice(0, hostParts.length - baseParts.length).join('.')
-        : null
+    // We're on a subdomain if the first part of hostname matches the store slug
+    // and is not 'www', 'app', or 'app-dev' (dashboard subdomains)
+    const dashboardPrefixes = ['www', 'app', 'app-dev', 'localhost']
+    const isStoreSubdomain =
+      hostnamePrefix === storeSlug &&
+      !dashboardPrefixes.includes(hostnamePrefix)
 
-    // We're on a subdomain if there's one and it's not 'www' or the dashboard subdomain
-    const dashboardSubdomain = process.env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN || 'app'
-    setIsSubdomain(
-      subdomain !== null && subdomain !== 'www' && subdomain !== dashboardSubdomain
-    )
-  }, [])
+    setIsSubdomain(isStoreSubdomain)
+  }, [storeSlug])
 
   /**
    * Generate a storefront URL path.
