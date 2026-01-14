@@ -11,7 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2 } from 'lucide-react'
+import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const features = [
   { icon: Package, labelKey: 'featureProducts' },
@@ -24,9 +25,30 @@ function LoginForm() {
   const t = useTranslations('auth')
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const error = searchParams.get('error')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+
+  // Map OAuth errors to user-friendly messages
+  const getErrorMessage = (errorCode: string | null) => {
+    if (!errorCode) return null
+    switch (errorCode) {
+      case 'OAuthAccountNotLinked':
+        return t('errors.accountNotLinked')
+      case 'OAuthSignin':
+      case 'OAuthCallback':
+        return t('errors.oauthError')
+      case 'AccessDenied':
+        return t('errors.accessDenied')
+      case 'Verification':
+        return t('errors.verification')
+      default:
+        return t('errors.default')
+    }
+  }
+
+  const errorMessage = getErrorMessage(error)
 
   async function handleEmailSignIn(e: React.FormEvent) {
     e.preventDefault()
@@ -86,6 +108,13 @@ function LoginForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {errorMessage && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+            )}
+
             <Button
               variant="outline"
               className="w-full h-12 text-base font-medium"

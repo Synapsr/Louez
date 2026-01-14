@@ -147,7 +147,12 @@
     "errors": {
       "invalidCredentials": "Invalid credentials",
       "accountNotFound": "Account not found",
-      "emailAlreadyExists": "This email is already in use"
+      "emailAlreadyExists": "This email is already in use",
+      "accountNotLinked": "An account already exists with this email. Please sign in with your email.",
+      "oauthError": "An error occurred during sign in. Please try again.",
+      "accessDenied": "Access denied. You don't have permission to sign in.",
+      "verification": "The verification link is invalid or has expired.",
+      "default": "An error occurred. Please try again."
     }
   },
   "invitation": {

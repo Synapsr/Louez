@@ -147,7 +147,12 @@
     "errors": {
       "invalidCredentials": "Identifiants invalides",
       "accountNotFound": "Compte non trouvé",
-      "emailAlreadyExists": "Cet email est déjà utilisé"
+      "emailAlreadyExists": "Cet email est déjà utilisé",
+      "accountNotLinked": "Un compte existe déjà avec cet email. Veuillez vous connecter avec votre email.",
+      "oauthError": "Une erreur est survenue lors de la connexion. Veuillez réessayer.",
+      "accessDenied": "Accès refusé. Vous n'avez pas la permission de vous connecter.",
+      "verification": "Le lien de vérification est invalide ou a expiré.",
+      "default": "Une erreur est survenue. Veuillez réessayer."
     }
   },
   "invitation": {
