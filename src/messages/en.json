@@ -232,7 +232,8 @@
       "cannotRemoveSelf": "You cannot remove yourself",
       "cannotRemoveOwner": "Cannot remove the owner",
       "ownerBadge": "Owner",
-      "memberBadge": "Team member"
+      "memberBadge": "Team member",
+      "userNotFound": "User not found. This person must first create a Louez account."
     },
     "navigation": {
       "home": "Home",
