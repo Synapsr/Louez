@@ -206,8 +206,29 @@ function PlanCard({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col">
+        {/* Early Bird Badge */}
+        {plan.originalPrice && (
+          <div className="text-center mb-2">
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+              {t('earlyBird')}
+            </Badge>
+          </div>
+        )}
+
         <div className="text-center mb-6">
-          <span className="text-4xl font-bold">{plan.price}€</span>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-4xl font-bold">{plan.price}€</span>
+            {plan.originalPrice && (
+              <span className="text-lg text-muted-foreground line-through">
+                {plan.originalPrice}€
+              </span>
+            )}
+          </div>
+          {plan.originalPrice && (
+            <p className="text-sm font-medium text-green-600 dark:text-green-400">
+              -{Math.round((1 - plan.price / plan.originalPrice) * 100)}%
+            </p>
+          )}
           <span className="text-muted-foreground">{t('perMonth')}</span>
         </div>
 
