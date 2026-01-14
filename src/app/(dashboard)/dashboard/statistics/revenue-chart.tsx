@@ -55,7 +55,7 @@ export function RevenueChart({ data, currency = 'EUR' }: RevenueChartProps) {
               <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
           <XAxis
             dataKey="month"
             tick={{ fontSize: 12 }}

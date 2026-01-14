@@ -59,10 +59,10 @@ export function TopProductsTable({ products }: TopProductsTableProps) {
                   variant={index === 0 ? 'default' : 'secondary'}
                   className={
                     index === 0
-                      ? 'bg-yellow-500'
+                      ? 'bg-yellow-500 dark:bg-yellow-600 text-yellow-950'
                       : index === 1
-                        ? 'bg-gray-400'
-                        : 'bg-amber-600'
+                        ? 'bg-gray-300 dark:bg-gray-500 text-gray-800 dark:text-gray-100'
+                        : 'bg-amber-600 dark:bg-amber-700 text-amber-50'
                   }
                 >
                   {index + 1}
