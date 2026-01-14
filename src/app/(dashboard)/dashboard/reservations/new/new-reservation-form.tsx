@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   PenLine,
   X,
+  ImageIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
@@ -96,6 +97,7 @@ interface Product {
   price: string
   deposit: string | null
   quantity: number
+  images: string[] | null
   pricingTiers: ProductPricingTier[]
 }
 
@@ -926,8 +928,23 @@ export function NewReservationForm({
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{product.name}</p>
+                          <div className="flex items-start gap-3 min-w-0">
+                            {/* Product thumbnail */}
+                            <div className="relative h-12 w-12 rounded-md overflow-hidden bg-muted shrink-0">
+                              {product.images && product.images.length > 0 ? (
+                                <img
+                                  src={product.images[0]}
+                                  alt={product.name}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center">
+                                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{product.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
                               {hasDiscount ? (
                                 <>
@@ -966,8 +983,9 @@ export function NewReservationForm({
                                 </span>
                               )}
                             </div>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0">
                             {selectedQuantity > 0 ? (
                               <>
                                 <Button
