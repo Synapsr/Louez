@@ -2,6 +2,7 @@ import NextAuth from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Nodemailer from 'next-auth/providers/nodemailer'
 import { DrizzleAdapter } from '@auth/drizzle-adapter'
+import { render } from '@react-email/render'
 import { db } from '@/lib/db'
 import {
   users,
@@ -9,6 +10,22 @@ import {
   sessions,
   verificationTokens,
 } from '@/lib/db/schema'
+import { sendEmail } from '@/lib/email/client'
+import { MagicLinkEmail } from '@/lib/email/templates'
+import type { EmailLocale } from '@/lib/email/i18n'
+
+// Get locale from Accept-Language header
+function getLocaleFromRequest(request?: Request): EmailLocale {
+  if (!request) return 'fr'
+  const acceptLanguage = request.headers.get('accept-language') || ''
+  return acceptLanguage.toLowerCase().startsWith('en') ? 'en' : 'fr'
+}
+
+// Translations for email subject
+const subjectTranslations = {
+  fr: 'Connexion à votre compte Louez',
+  en: 'Sign in to your Louez account',
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(db, {
@@ -32,6 +49,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
       from: process.env.SMTP_FROM,
+      async sendVerificationRequest({ identifier: email, url, request }) {
+        const locale = getLocaleFromRequest(request)
+        const subject = subjectTranslations[locale]
+
+        const html = await render(
+          MagicLinkEmail({
+            url,
+            locale,
+          })
+        )
+
+        await sendEmail({
+          to: email,
+          subject,
+          html,
+        })
+      },
     }),
   ],
   pages: {
