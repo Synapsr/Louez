@@ -196,7 +196,8 @@
       "analytics": "Analyses",
       "manage": "Gestion",
       "dashboard": "Dashboard",
-      "viewStore": "Voir la boutique"
+      "viewStore": "Voir la boutique",
+      "newReservation": "Nouvelle réservation"
     },
     "storeSwitcher": {
       "selectStore": "Sélectionner une boutique",

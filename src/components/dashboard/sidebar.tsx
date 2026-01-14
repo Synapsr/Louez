@@ -19,6 +19,7 @@ import {
   ChevronRight,
   ExternalLink,
   CreditCard,
+  Plus,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -270,6 +271,11 @@ function StoreHeader({
   )
 }
 
+function NewReservationLabel() {
+  const t = useTranslations('dashboard.sidebar')
+  return <>{t('newReservation')}</>
+}
+
 export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImage }: SidebarProps) {
   const pathname = usePathname()
 
@@ -289,6 +295,16 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
           {/* Pending Reservations Alert */}
           <div className="p-3">
             <PendingReservationsAlert />
+          </div>
+          <Separator className="opacity-50" />
+          {/* New Reservation Button */}
+          <div className="p-3">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/reservations/new">
+                <Plus className="mr-2 h-4 w-4" />
+                <NewReservationLabel />
+              </Link>
+            </Button>
           </div>
           <Separator className="opacity-50" />
           <div className="p-3 space-y-2">
@@ -346,6 +362,16 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
                 {/* Pending Reservations Alert */}
                 <div className="p-3">
                   <PendingReservationsAlert onNavigate={() => setOpen(false)} />
+                </div>
+                <Separator className="opacity-50" />
+                {/* New Reservation Button */}
+                <div className="p-3">
+                  <Button asChild className="w-full" onClick={() => setOpen(false)}>
+                    <Link href="/dashboard/reservations/new">
+                      <Plus className="mr-2 h-4 w-4" />
+                      <NewReservationLabel />
+                    </Link>
+                  </Button>
                 </div>
                 <Separator className="opacity-50" />
                 <div className="p-4 space-y-3">

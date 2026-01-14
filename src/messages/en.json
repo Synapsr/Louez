@@ -196,7 +196,8 @@
       "analytics": "Analytics",
       "manage": "Manage",
       "dashboard": "Dashboard",
-      "viewStore": "View store"
+      "viewStore": "View store",
+      "newReservation": "New reservation"
     },
     "storeSwitcher": {
       "selectStore": "Select a store",
