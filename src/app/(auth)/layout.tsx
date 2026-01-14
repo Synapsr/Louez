@@ -19,7 +19,7 @@ export default async function AuthLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <div className="min-h-screen bg-background">
+      <div className="dashboard min-h-screen bg-background">
         {children}
       </div>
     </NextIntlClientProvider>
