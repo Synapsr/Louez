@@ -252,7 +252,7 @@ function StoreHeader({
         </Link>
         {storeSlug && (
           <Link
-            href={`/${storeSlug}`}
+            href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
             target="_blank"
             className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={t('viewStore')}
@@ -375,7 +375,7 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
 
       {storeSlug && (
         <Link
-          href={`/${storeSlug}`}
+          href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
           target="_blank"
           className="shrink-0 p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
