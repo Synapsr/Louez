@@ -45,10 +45,16 @@ async function getReservationsForPeriod(storeId: string, startDate: Date, endDat
 }
 
 async function getProducts(storeId: string) {
-  return db.query.products.findMany({
-    where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
-    orderBy: (products, { asc }) => [asc(products.name)],
-  })
+  // Only select columns needed for the calendar to avoid MySQL sort memory issues
+  return db
+    .select({
+      id: products.id,
+      name: products.name,
+      quantity: products.quantity,
+    })
+    .from(products)
+    .where(and(eq(products.storeId, storeId), eq(products.status, 'active')))
+    .orderBy(products.name)
 }
 
 export default async function CalendarPage() {
