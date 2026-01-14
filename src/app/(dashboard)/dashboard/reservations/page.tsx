@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { reservations } from '@/lib/db/schema'
-import { eq, desc, and, count, gte, lte, sql } from 'drizzle-orm'
+import { eq, desc, and, count, gte, lte } from 'drizzle-orm'
 import { Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -69,37 +69,29 @@ async function getReservations(
 }
 
 async function getReservationCounts(storeId: string) {
-  const allCount = await db
-    .select({ count: count() })
+  // Single optimized query with GROUP BY instead of 5 separate queries
+  const countsByStatus = await db
+    .select({
+      status: reservations.status,
+      count: count(),
+    })
     .from(reservations)
     .where(eq(reservations.storeId, storeId))
+    .groupBy(reservations.status)
 
-  const pendingCount = await db
-    .select({ count: count() })
-    .from(reservations)
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'pending')))
-
-  const confirmedCount = await db
-    .select({ count: count() })
-    .from(reservations)
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'confirmed')))
-
-  const ongoingCount = await db
-    .select({ count: count() })
-    .from(reservations)
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'ongoing')))
-
-  const completedCount = await db
-    .select({ count: count() })
-    .from(reservations)
-    .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'completed')))
+  const counts: Record<string, number> = {}
+  let total = 0
+  for (const row of countsByStatus) {
+    counts[row.status] = row.count
+    total += row.count
+  }
 
   return {
-    all: allCount[0]?.count || 0,
-    pending: pendingCount[0]?.count || 0,
-    confirmed: confirmedCount[0]?.count || 0,
-    ongoing: ongoingCount[0]?.count || 0,
-    completed: completedCount[0]?.count || 0,
+    all: total,
+    pending: counts['pending'] || 0,
+    confirmed: counts['confirmed'] || 0,
+    ongoing: counts['ongoing'] || 0,
+    completed: counts['completed'] || 0,
   }
 }
 
