@@ -80,12 +80,9 @@ USER nextjs
 EXPOSE 3000
 
 # Health check for container orchestrators (EasyPanel, Dokploy, Kubernetes)
-# - start-period: 60s to allow Next.js to fully initialize
-# - interval: 30s between checks
-# - timeout: 10s for each check
-# - retries: 3 failures before unhealthy
+# Uses $PORT env var (defaults to 3000) to support platforms that override the port
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+    CMD sh -c "wget --no-verbose --tries=1 --spider http://localhost:\${PORT:-3000}/api/health || exit 1"
 
 # Start Next.js server
 CMD ["node", "server.js"]
