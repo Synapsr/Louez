@@ -55,8 +55,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
+# Install wget for health checks and create non-root user
+RUN apk add --no-cache wget && \
+    addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Production environment
@@ -79,8 +80,12 @@ USER nextjs
 EXPOSE 3000
 
 # Health check for container orchestrators (EasyPanel, Dokploy, Kubernetes)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD node -e "fetch('http://localhost:3000/api/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"
+# - start-period: 60s to allow Next.js to fully initialize
+# - interval: 30s between checks
+# - timeout: 10s for each check
+# - retries: 3 failures before unhealthy
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 # Start Next.js server
 CMD ["node", "server.js"]
