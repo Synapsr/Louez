@@ -703,6 +703,8 @@
         "depositRemaining": "Reste à encaisser: {formattedAmount}",
         "depositCollected": "Caution encaissée",
         "alreadyReturned": "Déjà restitué",
+        "damagesDeducted": "Dommages déduits",
+        "suggestedReturn": "Montant suggéré",
         "maxReturnable": "Maximum restituable",
         "history": "Historique des paiements",
         "recorded": "Paiement enregistré",

@@ -703,6 +703,8 @@
         "depositRemaining": "Remaining to collect: {formattedAmount}",
         "depositCollected": "Deposit collected",
         "alreadyReturned": "Already returned",
+        "damagesDeducted": "Damages deducted",
+        "suggestedReturn": "Suggested return",
         "maxReturnable": "Maximum returnable",
         "history": "Payment history",
         "recorded": "Payment recorded",

@@ -303,8 +303,12 @@ export function PaymentSummary({
     setPaymentModalOpen(true)
   }
 
+  // Calculate suggested return amount (accounting for damages)
+  const suggestedReturnAmount = Math.max(0, depositToReturn - damagesPaid)
+
   const openDepositReturnModal = () => {
-    setPaymentAmount(depositToReturn.toFixed(2))
+    // Pre-fill with suggested amount (deposit minus damages if any)
+    setPaymentAmount(suggestedReturnAmount.toFixed(2))
     setDepositReturnModalOpen(true)
   }
 
@@ -683,10 +687,28 @@ export function PaymentSummary({
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="p-3 rounded-lg bg-muted text-sm">
-              <p>
-                {t('payment.maxReturnable')}: <strong>{depositToReturn.toFixed(2)}{currencySymbol}</strong>
-              </p>
+            {/* Deposit breakdown */}
+            <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>{t('payment.depositCollected')}</span>
+                <span className="font-medium">{depositCollected.toFixed(2)}{currencySymbol}</span>
+              </div>
+              {depositReturned > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>{t('payment.alreadyReturned')}</span>
+                  <span>-{depositReturned.toFixed(2)}{currencySymbol}</span>
+                </div>
+              )}
+              {damagesPaid > 0 && (
+                <div className="flex justify-between text-red-600 dark:text-red-400">
+                  <span>{t('payment.damagesDeducted')}</span>
+                  <span>-{damagesPaid.toFixed(2)}{currencySymbol}</span>
+                </div>
+              )}
+              <div className="border-t pt-2 flex justify-between font-medium">
+                <span>{t('payment.suggestedReturn')}</span>
+                <span className="text-emerald-600 dark:text-emerald-400">{suggestedReturnAmount.toFixed(2)}{currencySymbol}</span>
+              </div>
             </div>
 
             <div className="space-y-2">
