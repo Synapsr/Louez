@@ -8,6 +8,7 @@ import { useDebouncedCallback } from 'use-debounce'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 
 interface Category {
   id: string
@@ -30,6 +31,7 @@ export function CatalogFilters({
   const router = useRouter()
   const searchParams = useSearchParams()
   const t = useTranslations('storefront.catalog')
+  const { getUrl } = useStorefrontUrl(storeSlug)
 
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams)
@@ -38,7 +40,7 @@ export function CatalogFilters({
     } else {
       params.delete('search')
     }
-    router.push(`/${storeSlug}/catalog?${params.toString()}`)
+    router.push(`${getUrl('/catalog')}?${params.toString()}`)
   }, 300)
 
   const handleCategoryClick = (categoryId?: string) => {
@@ -49,11 +51,11 @@ export function CatalogFilters({
       params.delete('category')
     }
     params.delete('search')
-    router.push(`/${storeSlug}/catalog?${params.toString()}`)
+    router.push(`${getUrl('/catalog')}?${params.toString()}`)
   }
 
   const clearFilters = () => {
-    router.push(`/${storeSlug}/catalog`)
+    router.push(getUrl('/catalog'))
   }
 
   const hasFilters = activeCategoryId || searchTerm

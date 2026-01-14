@@ -32,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ProductCardAvailable } from '@/components/storefront/product-card-available'
 import { CartSidebar } from '@/components/storefront/cart-sidebar'
 import { useCart } from '@/contexts/cart-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import {
   calculateDuration,
   getDetailedDuration,
@@ -103,6 +104,7 @@ export function RentalContent({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setGlobalDates, setPricingMode } = useCart()
+  const { getUrl } = useStorefrontUrl(store.slug)
 
   const [availability, setAvailability] = useState<
     Map<string, ProductAvailability>
@@ -198,7 +200,7 @@ export function RentalContent({
   }, [filteredProducts, availability])
 
   const handleChangeDates = () => {
-    router.push(`/${store.slug}`)
+    router.push(getUrl('/'))
   }
 
   const handleCategoryChange = (value: string) => {
@@ -209,7 +211,7 @@ export function RentalContent({
     } else {
       params.set('category', value)
     }
-    router.push(`/${store.slug}/rental?${params.toString()}`, { scroll: false })
+    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false })
   }
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,7 +224,7 @@ export function RentalContent({
     const params = new URLSearchParams()
     params.set('startDate', startDate)
     params.set('endDate', endDate)
-    router.push(`/${store.slug}/rental?${params.toString()}`, { scroll: false })
+    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false })
   }
 
   const hasFilters =

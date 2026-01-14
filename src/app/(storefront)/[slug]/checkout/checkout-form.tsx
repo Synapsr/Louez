@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getDetailedDuration } from '@/lib/utils/duration'
 import { calculateRentalPrice, type ProductPricing } from '@/lib/pricing'
 import { createReservation } from './actions'
@@ -101,6 +102,7 @@ export function CheckoutForm({
   const tCart = useTranslations('storefront.cart')
   const tErrors = useTranslations('errors')
   const currency = useStoreCurrency()
+  const { getUrl } = useStorefrontUrl(storeSlug)
   const { items, clearCart, getSubtotal, getTotalDeposit, getTotal, globalStartDate, globalEndDate, getTotalSavings, getOriginalSubtotal } = useCart()
   const [currentStep, setCurrentStep] = useState<StepId>('contact')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -252,7 +254,7 @@ export function CheckoutForm({
         window.location.href = result.paymentUrl
       } else {
         toast.success(t('requestSent'))
-        router.push(`/${storeSlug}/confirmation/${result.reservationId}`)
+        router.push(getUrl(`/confirmation/${result.reservationId}`))
       }
     } catch {
       toast.error(tErrors('generic'))
@@ -278,7 +280,7 @@ export function CheckoutForm({
         <h2 className="text-xl font-semibold mb-2">{t('emptyCart')}</h2>
         <p className="text-muted-foreground mb-6">{t('emptyCartDescription')}</p>
         <Button asChild>
-          <Link href={`/${storeSlug}/catalog`}>{tCart('viewCatalog')}</Link>
+          <Link href={getUrl('/catalog')}>{tCart('viewCatalog')}</Link>
         </Button>
       </div>
     )

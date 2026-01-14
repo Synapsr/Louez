@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/input-otp'
 import { REGEXP_ONLY_DIGITS } from 'input-otp'
 import { Card, CardContent } from '@/components/ui/card'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { sendVerificationCode, verifyCode } from '../actions'
 
 interface LoginFormProps {
@@ -37,6 +38,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
   const router = useRouter()
   const t = useTranslations('storefront.account')
   const tErrors = useTranslations('errors')
+  const { getUrl } = useStorefrontUrl(storeSlug)
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [email, setEmail] = useState('')
   const [code, setCode] = useState('')
@@ -84,14 +86,14 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       }
 
       toast.success(t('loginSuccess'))
-      router.push(`/${storeSlug}/account`)
+      router.push(getUrl('/account'))
       router.refresh()
     } catch {
       toast.error(tErrors('generic'))
     } finally {
       setIsLoading(false)
     }
-  }, [storeId, email, storeSlug, router, t, tErrors])
+  }, [storeId, email, getUrl, router, t, tErrors])
 
   const handleCodeChange = useCallback((value: string) => {
     setCode(value)

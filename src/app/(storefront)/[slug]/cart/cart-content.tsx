@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 
 interface CartContentProps {
   storeSlug: string
@@ -30,6 +31,7 @@ export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
   const t = useTranslations('storefront.cart')
   const tProduct = useTranslations('storefront.product')
   const currency = useStoreCurrency()
+  const { getUrl } = useStorefrontUrl(storeSlug)
   const {
     items,
     globalStartDate,
@@ -54,7 +56,7 @@ export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
           {t('emptyDescription')}
         </p>
         <Button asChild>
-          <Link href={`/${storeSlug}/catalog`}>{t('viewCatalog')}</Link>
+          <Link href={getUrl('/catalog')}>{t('viewCatalog')}</Link>
         </Button>
       </div>
     )
@@ -175,7 +177,7 @@ export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
                       <div>
                         <h3 className="font-semibold truncate">
                           <Link
-                            href={`/${storeSlug}/product/${item.productId}`}
+                            href={getUrl(`/product/${item.productId}`)}
                             className="hover:underline"
                           >
                             {item.productName}
@@ -272,7 +274,7 @@ export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
           </CardContent>
           <CardFooter>
             <Button className="w-full" size="lg" asChild>
-              <Link href={`/${storeSlug}/checkout`}>{t('checkout')}</Link>
+              <Link href={getUrl('/checkout')}>{t('checkout')}</Link>
             </Button>
           </CardFooter>
         </Card>

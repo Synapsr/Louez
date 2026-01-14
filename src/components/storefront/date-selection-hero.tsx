@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
@@ -57,6 +58,7 @@ export function DateSelectionHero({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setGlobalDates, setPricingMode, globalStartDate, globalEndDate } = useCart()
+  const { getUrl } = useStorefrontUrl(storeSlug)
 
   // Transition lock to prevent popover conflicts
   const isTransitioningRef = useRef(false)
@@ -150,8 +152,8 @@ export function DateSelectionHero({
     const params = new URLSearchParams()
     params.set('startDate', start.toISOString())
     params.set('endDate', end.toISOString())
-    router.push(`/${storeSlug}/rental?${params.toString()}`)
-  }, [router, setGlobalDates, storeSlug])
+    router.push(`${getUrl('/rental')}?${params.toString()}`)
+  }, [router, setGlobalDates, getUrl])
 
   // Auto-progress handlers with transition lock
   const handleStartDateSelect = (date: Date | undefined) => {

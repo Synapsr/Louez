@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { formatCurrency } from '@/lib/utils'
 import { useCart, type CartItem } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
 import { calculateRentalPrice, type ProductPricing, type PricingTier } from '@/lib/pricing'
 import { getMinStartDate } from '@/lib/utils/duration'
@@ -52,6 +53,7 @@ export function AddToCartForm({
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
   const { addItem } = useCart()
+  const { getUrl } = useStorefrontUrl(storeSlug)
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [quantity, setQuantity] = useState(1)
@@ -117,7 +119,7 @@ export function AddToCartForm({
     toast.success(t('addedToCart', { name: productName }), {
       action: {
         label: t('viewCart'),
-        onClick: () => router.push(`/${storeSlug}/cart`),
+        onClick: () => router.push(getUrl('/cart')),
       },
     })
   }

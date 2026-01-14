@@ -17,6 +17,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
@@ -47,6 +48,7 @@ export function HeroDatePicker({
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setGlobalDates, setPricingMode, globalStartDate, globalEndDate } = useCart()
+  const { getUrl } = useStorefrontUrl(storeSlug)
 
   const isTransitioningRef = useRef(false)
 
@@ -114,8 +116,8 @@ export function HeroDatePicker({
     const params = new URLSearchParams()
     params.set('startDate', start.toISOString())
     params.set('endDate', end.toISOString())
-    router.push(`/${storeSlug}/rental?${params.toString()}`)
-  }, [router, setGlobalDates, storeSlug])
+    router.push(`${getUrl('/rental')}?${params.toString()}`)
+  }, [router, setGlobalDates, getUrl])
 
   const handleStartDateSelect = (date: Date | undefined) => {
     if (!date) return
