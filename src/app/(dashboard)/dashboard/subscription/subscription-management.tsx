@@ -68,6 +68,7 @@ interface Subscription {
   stripeCustomerId?: string | null
   plan: Plan | undefined
   billingInterval: 'monthly' | 'yearly' | null
+  billingCurrency: Currency | null
 }
 
 interface SubscriptionManagementProps {
@@ -379,10 +380,10 @@ export function SubscriptionManagement({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Pricing info */}
+          {/* Pricing info - use actual billing currency if available */}
           <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold">
-              {formatPrice(currentPlan?.price || 0, currency)}
+              {formatPrice(currentPlan?.price || 0, subscription?.billingCurrency || currency)}
             </span>
             {currentPlan?.price !== 0 && (
               <span className="text-muted-foreground">/ {t('month')}</span>

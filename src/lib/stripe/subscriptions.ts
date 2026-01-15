@@ -206,8 +206,9 @@ export async function getSubscriptionWithPlan(storeId: string) {
   // Get plan from code
   const plan = getPlan(subscription.planSlug)
 
-  // Get billing interval from Stripe if subscription exists
+  // Get billing interval and currency from Stripe if subscription exists
   let billingInterval: 'monthly' | 'yearly' | null = null
+  let billingCurrency: Currency | null = null
   if (subscription.stripeSubscriptionId) {
     try {
       const stripeSubscription = await stripe.subscriptions.retrieve(
@@ -220,6 +221,13 @@ export async function getSubscriptionWithPlan(storeId: string) {
       } else if (firstItem?.price?.recurring?.interval === 'month') {
         billingInterval = 'monthly'
       }
+      // Get the actual currency used for this subscription
+      if (firstItem?.price?.currency) {
+        const currency = firstItem.price.currency.toLowerCase()
+        if (currency === 'eur' || currency === 'usd') {
+          billingCurrency = currency as Currency
+        }
+      }
     } catch (error) {
       console.error('Error fetching Stripe subscription:', error)
     }
@@ -229,6 +237,7 @@ export async function getSubscriptionWithPlan(storeId: string) {
     ...subscription,
     plan,
     billingInterval,
+    billingCurrency,
   }
 }
 
