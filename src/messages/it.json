@@ -1509,9 +1509,18 @@
       "perHour": "ora",
       "perWeek": "settimana",
       "pricingUnit": {
-        "day": { "singular": "giorno", "plural": "giorni" },
-        "hour": { "singular": "ora", "plural": "ore" },
-        "week": { "singular": "settimana", "plural": "settimane" }
+        "day": {
+          "singular": "giorno",
+          "plural": "giorni"
+        },
+        "hour": {
+          "singular": "ora",
+          "plural": "ore"
+        },
+        "week": {
+          "singular": "settimana",
+          "plural": "settimane"
+        }
       },
       "tieredPricing": {
         "badge": "Fino a -{percent}%",
@@ -1595,7 +1604,9 @@
         "pickupOutsideHours": "Il ritiro deve essere durante gli orari di apertura ({openTime} - {closeTime})",
         "returnOutsideHours": "Il ritorno deve essere durante gli orari di apertura ({openTime} - {closeTime})",
         "openHours": "Aperto {openTime} - {closeTime}"
-      }
+      },
+      "modifyDates": "Cambia date",
+      "applyDates": "Applica date"
     },
     "availability": {
       "title": "Prodotti disponibili",

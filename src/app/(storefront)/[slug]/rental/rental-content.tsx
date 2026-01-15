@@ -31,6 +31,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProductCardAvailable } from '@/components/storefront/product-card-available'
 import { CartSidebar } from '@/components/storefront/cart-sidebar'
+import { DatePickerModal } from '@/components/storefront/date-picker-modal'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import {
@@ -75,6 +76,10 @@ interface Store {
   slug: string
   name: string
   theme?: { primaryColor?: string } | null
+  settings?: {
+    businessHours?: import('@/types/store').BusinessHours
+    advanceNotice?: number
+  } | null
 }
 
 interface RentalContentProps {
@@ -113,6 +118,7 @@ export function RentalContent({
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '')
   const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false)
 
   const duration = useMemo(
     () => calculateDuration(startDate, endDate, pricingMode),
@@ -200,7 +206,7 @@ export function RentalContent({
   }, [filteredProducts, availability])
 
   const handleChangeDates = () => {
-    router.push(getUrl('/'))
+    setIsDateModalOpen(true)
   }
 
   const handleCategoryChange = (value: string) => {
@@ -506,6 +512,18 @@ export function RentalContent({
         {/* Cart Sidebar */}
         <CartSidebar storeSlug={store.slug} showDates={false} />
       </div>
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        storeSlug={store.slug}
+        pricingMode={pricingMode}
+        businessHours={store.settings?.businessHours}
+        advanceNotice={store.settings?.advanceNotice}
+        isOpen={isDateModalOpen}
+        onClose={() => setIsDateModalOpen(false)}
+        initialStartDate={startDate}
+        initialEndDate={endDate}
+      />
     </div>
   )
 }

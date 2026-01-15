@@ -470,7 +470,7 @@
       "subtotal": "Sous-total",
       "source": "Source",
       "sourceOnline": "En ligne",
-      "sourceManual": "Manuelle",
+      "sourceManual": "Manuel",
       "internalNotes": "Notes internes",
       "internalNotesPlaceholder": "Ajoutez des notes sur cette réservation...",
       "internalNotesHelp": "Ces notes ne sont pas visibles par le client",
@@ -513,8 +513,6 @@
       "cancelReservation": "Annuler la réservation",
       "cancelConfirmTitle": "Annuler la réservation ?",
       "cancelConfirmDescription": "Cette action annulera la réservation. Le client sera notifié par email.",
-      "sourceManual": "Manuel",
-      "sourceOnline": "En ligne",
       "activityByCustomer": "Par le client",
       "status": {
         "pending": "En attente",
@@ -654,8 +652,10 @@
       },
       "rejectDialog": {
         "title": "Refuser la demande",
-        "description": "Veuillez indiquer la raison du refus (optionnel)",
-        "reasonPlaceholder": "Matériel non disponible, dates incompatibles..."
+        "description": "Le client sera notifié par email du refus de sa demande.",
+        "reasonLabel": "Motif du refus (optionnel)",
+        "reasonPlaceholder": "Matériel non disponible, dates incompatibles...",
+        "reasonHint": "Ce motif sera inclus dans l'email envoyé au client"
       },
       "awaitingResponse": "En attente de réponse",
       "itemsCount": "{count, plural, one {# article} other {# articles}}",
@@ -791,13 +791,6 @@
       "rejectedCard": {
         "title": "Demande refusée",
         "description": "Cette demande a été refusée"
-      },
-      "rejectDialog": {
-        "title": "Refuser la demande",
-        "description": "Le client sera notifié par email du refus de sa demande.",
-        "reasonLabel": "Motif du refus (optionnel)",
-        "reasonPlaceholder": "Matériel non disponible, dates incompatibles...",
-        "reasonHint": "Ce motif sera inclus dans l'email envoyé au client"
       },
       "emailModal": {
         "title": "Envoyer un email",
@@ -1515,9 +1508,18 @@
       "perHour": "heure",
       "perWeek": "semaine",
       "pricingUnit": {
-        "day": { "singular": "jour", "plural": "jours" },
-        "hour": { "singular": "heure", "plural": "heures" },
-        "week": { "singular": "semaine", "plural": "semaines" }
+        "day": {
+          "singular": "jour",
+          "plural": "jours"
+        },
+        "hour": {
+          "singular": "heure",
+          "plural": "heures"
+        },
+        "week": {
+          "singular": "semaine",
+          "plural": "semaines"
+        }
       },
       "tieredPricing": {
         "badge": "Jusqu'à -{percent}%",
@@ -1601,7 +1603,9 @@
         "pickupOutsideHours": "Le retrait doit être pendant les heures d'ouverture ({openTime} - {closeTime})",
         "returnOutsideHours": "Le retour doit être pendant les heures d'ouverture ({openTime} - {closeTime})",
         "openHours": "Ouvert {openTime} - {closeTime}"
-      }
+      },
+      "modifyDates": "Modifier les dates",
+      "applyDates": "Appliquer les dates"
     },
     "availability": {
       "title": "Produits disponibles",

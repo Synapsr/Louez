@@ -1509,9 +1509,18 @@
       "perHour": "uur",
       "perWeek": "week",
       "pricingUnit": {
-        "day": { "singular": "dag", "plural": "dagen" },
-        "hour": { "singular": "uur", "plural": "uren" },
-        "week": { "singular": "week", "plural": "weken" }
+        "day": {
+          "singular": "dag",
+          "plural": "dagen"
+        },
+        "hour": {
+          "singular": "uur",
+          "plural": "uren"
+        },
+        "week": {
+          "singular": "week",
+          "plural": "weken"
+        }
       },
       "tieredPricing": {
         "badge": "Tot -{percent}%",
@@ -1595,7 +1604,9 @@
         "pickupOutsideHours": "Ophalen moet tijdens openingstijden zijn ({openTime} - {closeTime})",
         "returnOutsideHours": "Retour moet tijdens openingstijden zijn ({openTime} - {closeTime})",
         "openHours": "Open {openTime} - {closeTime}"
-      }
+      },
+      "modifyDates": "Datum wijzigen",
+      "applyDates": "Datum toepassen"
     },
     "availability": {
       "title": "Beschikbare producten",
