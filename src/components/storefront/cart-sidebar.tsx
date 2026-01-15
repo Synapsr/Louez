@@ -49,7 +49,7 @@ interface CartSidebarProps {
   showDates?: boolean
 }
 
-export function CartSidebar({ storeSlug, className, showDates = true }: CartSidebarProps) {
+export function CartSidebar({ className, showDates = true }: CartSidebarProps) {
   const t = useTranslations('storefront.cart')
   const currency = useStoreCurrency()
   const {
@@ -216,7 +216,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
           {/* Actions */}
           <div className="mt-4 space-y-2">
             <Button asChild className="w-full" size="lg">
-              <Link href={`/${storeSlug}/checkout`}>
+              <Link href="/checkout">
                 {t('checkout')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

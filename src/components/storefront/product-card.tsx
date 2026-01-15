@@ -34,7 +34,7 @@ interface ProductCardProps {
   pricingMode: 'day' | 'hour' | 'week'
 }
 
-export function ProductCard({ product, storeSlug, pricingMode: storePricingMode }: ProductCardProps) {
+export function ProductCard({ product, pricingMode: storePricingMode }: ProductCardProps) {
   const t = useTranslations('storefront.product')
   const tCatalog = useTranslations('storefront.catalog')
   const currency = useStoreCurrency()
@@ -50,7 +50,7 @@ export function ProductCard({ product, storeSlug, pricingMode: storePricingMode 
     : 0
 
   return (
-    <Link href={`/${storeSlug}#date-picker`} className="group block">
+    <Link href="/#date-picker" className="group block">
       <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-border/50 hover:border-primary/20 bg-card p-0 gap-0">
         {/* Image container - square aspect ratio */}
         <div className="relative aspect-square overflow-hidden bg-muted">

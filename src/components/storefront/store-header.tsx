@@ -14,7 +14,6 @@ interface StoreHeaderProps {
 
 export function StoreHeader({
   storeName,
-  storeSlug,
   logoUrl,
 }: StoreHeaderProps) {
   const t = useTranslations('storefront.header')
@@ -24,7 +23,7 @@ export function StoreHeader({
       <div className="container mx-auto flex items-start justify-between px-4 py-4 md:py-6">
         {/* Logo - floating top left */}
         <Link
-          href={`/${storeSlug}`}
+          href="/"
           className="pointer-events-auto"
         >
           {logoUrl ? (
@@ -46,7 +45,7 @@ export function StoreHeader({
           asChild
           className="pointer-events-auto gap-2 shadow-lg"
         >
-          <Link href={`/${storeSlug}/account`}>
+          <Link href="/account">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t('myAccount')}</span>
           </Link>

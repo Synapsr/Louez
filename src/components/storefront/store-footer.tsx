@@ -15,7 +15,6 @@ interface StoreFooterProps {
 
 export function StoreFooter({
   storeName,
-  storeSlug,
   email,
   phone,
 }: StoreFooterProps) {
@@ -60,13 +59,13 @@ export function StoreFooter({
             {/* Legal links */}
             <div className="flex items-center gap-6 text-sm">
               <Link
-                href={`/${storeSlug}/terms`}
+                href="/terms"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {t('cgv')}
               </Link>
               <Link
-                href={`/${storeSlug}/legal`}
+                href="/legal"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 {t('legalNotice')}
