@@ -10,7 +10,7 @@ import { ArrowRight, Calendar, Shield, Truck, Sparkles, ChevronRight, MapPin, Ph
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ProductCard } from '@/components/storefront/product-card'
+import { ProductGridWithPreview } from '@/components/storefront/product-grid-with-preview'
 import { StoreMap } from '@/components/storefront/store-map'
 import { HeroDatePicker } from '@/components/storefront/hero-date-picker'
 import { HeroImageSlider } from '@/components/storefront/hero-image-slider'
@@ -104,13 +104,17 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
     .orderBy(desc(products.createdAt))
     .limit(8)
 
-  // Step 2: Fetch full product data with pricing tiers (no ORDER BY needed)
-  let storeProducts: (typeof products.$inferSelect & { pricingTiers?: { id: string; minDuration: number; discountPercent: string; displayOrder: number | null }[] })[] = []
+  // Step 2: Fetch full product data with pricing tiers and category (no ORDER BY needed)
+  let storeProducts: (typeof products.$inferSelect & {
+    pricingTiers?: { id: string; minDuration: number; discountPercent: string; displayOrder: number | null }[]
+    category?: { name: string } | null
+  })[] = []
   if (productIds.length > 0) {
     const productResults = await db.query.products.findMany({
       where: inArray(products.id, productIds.map(p => p.id)),
       with: {
         pricingTiers: true,
+        category: true,
       },
     })
     // Preserve order from first query
@@ -373,16 +377,13 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
           </div>
 
           {storeWithRelations.products.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-              {storeWithRelations.products.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  storeSlug={slug}
-                  pricingMode={pricingMode}
-                />
-              ))}
-            </div>
+            <ProductGridWithPreview
+              products={storeWithRelations.products}
+              storeSlug={slug}
+              storePricingMode={pricingMode}
+              businessHours={businessHours}
+              advanceNotice={advanceNotice}
+            />
           ) : (
             <Card className="py-16 text-center">
               <CardContent>
