@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "2cd4a41e-13ee-4cdf-8070-a4bba3315c28",
+  "id": "ecbcd0fa-7459-451a-a0c3-d1e73a7692d7",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "accounts": {
@@ -1731,120 +1731,6 @@
       },
       "checkConstraint": {}
     },
-    "subscription_plans": {
-      "name": "subscription_plans",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "varchar(21)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "slug": {
-          "name": "slug",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "price": {
-          "name": "price",
-          "type": "decimal(10,2)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "plan_interval": {
-          "name": "plan_interval",
-          "type": "enum('monthly','yearly')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'monthly'"
-        },
-        "features": {
-          "name": "features",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "is_popular": {
-          "name": "is_popular",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": false
-        },
-        "display_order": {
-          "name": "display_order",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 0
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "(now())"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "subscription_plans_id": {
-          "name": "subscription_plans_id",
-          "columns": [
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "subscription_plans_slug_unique": {
-          "name": "subscription_plans_slug_unique",
-          "columns": [
-            "slug"
-          ]
-        }
-      },
-      "checkConstraint": {}
-    },
     "subscriptions": {
       "name": "subscriptions",
       "columns": {
@@ -1862,12 +1748,13 @@
           "notNull": true,
           "autoincrement": false
         },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "varchar(21)",
+        "plan_slug": {
+          "name": "plan_slug",
+          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": false,
+          "default": "'start'"
         },
         "subscription_status": {
           "name": "subscription_status",
@@ -1877,18 +1764,25 @@
           "autoincrement": false,
           "default": "'active'"
         },
-        "current_period_start": {
-          "name": "current_period_start",
-          "type": "timestamp",
+        "stripe_subscription_id": {
+          "name": "stripe_subscription_id",
+          "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stripe_customer_id": {
+          "name": "stripe_customer_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "current_period_end": {
           "name": "current_period_end",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "cancel_at_period_end": {
@@ -1898,13 +1792,6 @@
           "notNull": false,
           "autoincrement": false,
           "default": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",
@@ -1931,10 +1818,17 @@
           ],
           "isUnique": false
         },
-        "subscriptions_plan_idx": {
-          "name": "subscriptions_plan_idx",
+        "subscriptions_stripe_subscription_idx": {
+          "name": "subscriptions_stripe_subscription_idx",
           "columns": [
-            "plan_id"
+            "stripe_subscription_id"
+          ],
+          "isUnique": false
+        },
+        "subscriptions_stripe_customer_idx": {
+          "name": "subscriptions_stripe_customer_idx",
+          "columns": [
+            "stripe_customer_id"
           ],
           "isUnique": false
         }
@@ -1953,6 +1847,12 @@
           "name": "subscriptions_store_id_unique",
           "columns": [
             "store_id"
+          ]
+        },
+        "subscriptions_stripe_subscription_id_unique": {
+          "name": "subscriptions_stripe_subscription_id_unique",
+          "columns": [
+            "stripe_subscription_id"
           ]
         }
       },

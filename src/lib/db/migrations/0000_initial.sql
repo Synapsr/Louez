@@ -237,36 +237,20 @@ CREATE TABLE `stores` (
 	CONSTRAINT `stores_slug_unique` UNIQUE(`slug`)
 );
 --> statement-breakpoint
-CREATE TABLE `subscription_plans` (
-	`id` varchar(21) NOT NULL,
-	`name` varchar(100) NOT NULL,
-	`slug` varchar(50) NOT NULL,
-	`description` text,
-	`price` decimal(10,2) NOT NULL,
-	`plan_interval` enum('monthly','yearly') NOT NULL DEFAULT 'monthly',
-	`features` json NOT NULL,
-	`is_popular` boolean DEFAULT false,
-	`display_order` int DEFAULT 0,
-	`is_active` boolean DEFAULT true,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()),
-	CONSTRAINT `subscription_plans_id` PRIMARY KEY(`id`),
-	CONSTRAINT `subscription_plans_slug_unique` UNIQUE(`slug`)
-);
---> statement-breakpoint
 CREATE TABLE `subscriptions` (
 	`id` varchar(21) NOT NULL,
 	`store_id` varchar(21) NOT NULL,
-	`plan_id` varchar(21) NOT NULL,
+	`plan_slug` varchar(50) NOT NULL DEFAULT 'start',
 	`subscription_status` enum('active','cancelled','past_due','trialing') NOT NULL DEFAULT 'active',
-	`current_period_start` timestamp NOT NULL,
-	`current_period_end` timestamp NOT NULL,
+	`stripe_subscription_id` varchar(255),
+	`stripe_customer_id` varchar(255),
+	`current_period_end` timestamp,
 	`cancel_at_period_end` boolean DEFAULT false,
-	`cancelled_at` timestamp,
 	`created_at` timestamp NOT NULL DEFAULT (now()),
 	`updated_at` timestamp NOT NULL DEFAULT (now()),
 	CONSTRAINT `subscriptions_id` PRIMARY KEY(`id`),
-	CONSTRAINT `subscriptions_store_id_unique` UNIQUE(`store_id`)
+	CONSTRAINT `subscriptions_store_id_unique` UNIQUE(`store_id`),
+	CONSTRAINT `subscriptions_stripe_subscription_id_unique` UNIQUE(`stripe_subscription_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `users` (
@@ -326,4 +310,5 @@ CREATE INDEX `store_members_user_idx` ON `store_members` (`user_id`);--> stateme
 CREATE INDEX `stores_slug_idx` ON `stores` (`slug`);--> statement-breakpoint
 CREATE INDEX `stores_user_idx` ON `stores` (`user_id`);--> statement-breakpoint
 CREATE INDEX `subscriptions_store_idx` ON `subscriptions` (`store_id`);--> statement-breakpoint
-CREATE INDEX `subscriptions_plan_idx` ON `subscriptions` (`plan_id`);
+CREATE INDEX `subscriptions_stripe_subscription_idx` ON `subscriptions` (`stripe_subscription_id`);--> statement-breakpoint
+CREATE INDEX `subscriptions_stripe_customer_idx` ON `subscriptions` (`stripe_customer_id`);
