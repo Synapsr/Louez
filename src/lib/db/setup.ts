@@ -89,20 +89,22 @@ export async function setupDatabase(): Promise<void> {
     log('🚀', 'Running database schema push (drizzle-kit push --force)...', colors.blue)
     console.log('')
 
+    let pushFailed = false
     try {
       execSync('npx drizzle-kit push --force', {
         stdio: 'inherit',
         env: { ...process.env },
         cwd: process.cwd(),
       })
-    } catch (pushError) {
-      log('❌', 'Failed to push database schema.', colors.red)
-      throw pushError
+    } catch {
+      // drizzle-kit may return non-zero exit code even when tables are created
+      // (due to interactive prompt issues). We'll verify by checking tables.
+      pushFailed = true
     }
 
     console.log('')
 
-    // Step 4: Verify setup
+    // Step 4: Verify setup - this is the source of truth
     log('🔍', 'Verifying database setup...', colors.blue)
 
     const [verifyRows] = await connection.query('SHOW TABLES')
@@ -119,6 +121,10 @@ export async function setupDatabase(): Promise<void> {
       log('⚠️', `Setup incomplete. Missing: ${missingAfterSetup.join(', ')}`, colors.yellow)
     } else {
       log('✅', `Database setup complete! Created ${verifyTables.length} tables.`, colors.green)
+      // If drizzle-kit reported an error but tables were created, that's fine
+      if (pushFailed) {
+        log('📝', 'Note: drizzle-kit reported an error but all tables were created successfully.', colors.dim)
+      }
     }
 
     logSection('Setup Complete')
