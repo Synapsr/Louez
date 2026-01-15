@@ -69,11 +69,10 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
 
   const form = useForm<BusinessHoursInput>({
     resolver: zodResolver(businessHoursSchema),
-    defaultValues: {
-      ...businessHours,
-      enabled: true, // Always enabled
-    },
+    defaultValues: businessHours,
   })
+
+  const isEnabled = form.watch('enabled')
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -84,8 +83,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
 
   const onSubmit = (data: BusinessHoursInput) => {
     startTransition(async () => {
-      // Always submit with enabled=true
-      const result = await updateBusinessHours({ ...data, enabled: true })
+      const result = await updateBusinessHours(data)
       if (result.error) {
         form.setError('root', { message: result.error })
         return
@@ -125,10 +123,23 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
             {/* Weekly Schedule - Left column */}
             <Card>
               <CardHeader>
-                <CardTitle>{t('weeklySchedule')}</CardTitle>
-                <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>{t('weeklySchedule')}</CardTitle>
+                    <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      {isEnabled ? t('enabled') : t('disabled')}
+                    </span>
+                    <Switch
+                      checked={isEnabled}
+                      onCheckedChange={(checked) => form.setValue('enabled', checked)}
+                    />
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className={`space-y-3 ${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
                 {DAY_KEYS.map((dayKey) => (
                   <DayScheduleRow
                     key={dayKey}

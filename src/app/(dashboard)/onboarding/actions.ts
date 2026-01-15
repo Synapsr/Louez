@@ -16,6 +16,7 @@ import {
   type FirstProductInput,
   type StripeSetupInput,
 } from '@/lib/validations/onboarding'
+import { defaultBusinessHours } from '@/lib/validations/business-hours'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -62,7 +63,11 @@ export async function createStore(data: StoreInfoInput) {
   }
 
   if (storeToUpdate) {
-    // Update existing incomplete store
+    // Update existing incomplete store, preserving businessHours if they exist
+    const existingSettings = storeToUpdate.settings as { businessHours?: typeof defaultBusinessHours } | null
+    const existingBusinessHours = existingSettings?.businessHours?.enabled !== undefined
+      ? existingSettings.businessHours
+      : defaultBusinessHours
     await db
       .update(stores)
       .set({
@@ -79,6 +84,7 @@ export async function createStore(data: StoreInfoInput) {
           minDuration: 1,
           maxDuration: null,
           advanceNotice: 24,
+          businessHours: existingBusinessHours,
         },
         updatedAt: new Date(),
       })
@@ -102,6 +108,7 @@ export async function createStore(data: StoreInfoInput) {
           minDuration: 1,
           maxDuration: null,
           advanceNotice: 24,
+          businessHours: defaultBusinessHours,
         },
       })
       .$returningId()
