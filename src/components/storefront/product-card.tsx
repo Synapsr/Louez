@@ -87,15 +87,6 @@ export function ProductCard({ product, pricingMode: storePricingMode }: ProductC
             </div>
           )}
 
-          {/* Stock indicator - only show when low */}
-          {isAvailable && product.quantity <= 2 && (
-            <Badge
-              variant="destructive"
-              className="absolute top-3 right-3 text-xs font-medium"
-            >
-              {product.quantity === 1 ? tCatalog('lastOne') : `${product.quantity} ${tCatalog('left')}`}
-            </Badge>
-          )}
 
           {/* Pricing tiers badge */}
           {isAvailable && maxDiscount > 0 && product.quantity > 2 && (

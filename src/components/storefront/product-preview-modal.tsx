@@ -98,7 +98,6 @@ export function ProductPreviewModal({
   businessHours,
   advanceNotice = 0,
 }: ProductPreviewModalProps) {
-  const t = useTranslations('storefront.productModal')
   const tProduct = useTranslations('storefront.product')
   const tDateSelection = useTranslations('storefront.dateSelection')
   const currency = useStoreCurrency()
@@ -457,16 +456,9 @@ export function ProductPreviewModal({
                     {product.name}
                   </h2>
                 </div>
-                {product.quantity <= 2 && (
-                  <Badge
-                    variant={product.quantity === 0 ? 'destructive' : 'secondary'}
-                    className="shrink-0 text-xs"
-                  >
-                    {product.quantity === 0
-                      ? tProduct('unavailable')
-                      : product.quantity === 1
-                        ? t('stock', { count: 1 }).replace(/^\d+\s*/, '')
-                        : `${product.quantity} ${t('stock', { count: product.quantity }).replace(/^\d+\s*/, '')}`}
+                {product.quantity === 0 && (
+                  <Badge variant="destructive" className="shrink-0 text-xs">
+                    {tProduct('unavailable')}
                   </Badge>
                 )}
               </div>
