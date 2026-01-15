@@ -84,12 +84,13 @@ export async function setupDatabase(): Promise<void> {
     log('📭', 'Database is empty. Starting initial setup...', colors.yellow)
     console.log('')
 
-    // Run drizzle-kit push
-    log('🚀', 'Running database schema push (drizzle-kit push)...', colors.blue)
+    // Run drizzle-kit push with --force to skip interactive confirmation
+    // This is safe because we've already verified the database is empty
+    log('🚀', 'Running database schema push (drizzle-kit push --force)...', colors.blue)
     console.log('')
 
     try {
-      execSync('npx drizzle-kit push', {
+      execSync('npx drizzle-kit push --force', {
         stdio: 'inherit',
         env: { ...process.env },
         cwd: process.cwd(),
