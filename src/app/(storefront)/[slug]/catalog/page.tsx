@@ -5,11 +5,11 @@ import { db } from '@/lib/db'
 import { stores, products, categories, productPricingTiers } from '@/lib/db/schema'
 import { eq, and, desc, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { Calendar, ArrowRight, Search } from 'lucide-react'
+import { Calendar, ArrowRight, Info } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { ProductCard } from '@/components/storefront/product-card'
+import { ProductGridWithPreview } from '@/components/storefront/product-grid-with-preview'
 import {
   generateStoreMetadata,
   generateItemListSchema,
@@ -227,6 +227,8 @@ export default async function CatalogPage({
   const pricingMode = store.settings?.pricingMode || 'day'
   const activeCategory = storeCategories.find((c) => c.id === categoryId)
   const settings = (store.settings as StoreSettings) || {}
+  const businessHours = settings.businessHours
+  const advanceNotice = settings.advanceNotice || 0
 
   // Prepare data for JSON-LD
   const storeForSchema = {
@@ -330,19 +332,31 @@ export default async function CatalogPage({
 
       {/* Products Grid Section */}
       <section className="container mx-auto px-4 py-8 md:py-10">
+        {/* Info banner */}
+        <div className="mb-6 p-4 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-3">
+          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm text-muted-foreground">
+              {t('selectDatesPrompt')}
+            </p>
+          </div>
+          <Button asChild size="sm" variant="outline" className="shrink-0">
+            <Link href="/#date-picker">
+              <Calendar className="mr-2 h-4 w-4" />
+              {t('selectDates')}
+            </Link>
+          </Button>
+        </div>
 
         {/* Products Grid */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {filteredProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                storeSlug={slug}
-                pricingMode={pricingMode}
-              />
-            ))}
-          </div>
+          <ProductGridWithPreview
+            products={filteredProducts}
+            storeSlug={slug}
+            storePricingMode={pricingMode}
+            businessHours={businessHours}
+            advanceNotice={advanceNotice}
+          />
         ) : (
           <Card className="py-16">
             <CardContent className="text-center">
