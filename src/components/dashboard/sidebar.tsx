@@ -26,6 +26,7 @@ import { useState } from 'react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Logo, LogoIcon } from '@/components/ui/logo'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'
@@ -245,11 +246,8 @@ function StoreHeader({
     <div className="space-y-3">
       {/* Louez Logo */}
       <div className="flex items-center justify-between px-3">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            L
-          </div>
-          <span className="font-semibold text-lg">Louez</span>
+        <Link href="/dashboard" className="flex items-center">
+          <Logo className="h-5 w-auto" />
         </Link>
         {storeSlug && (
           <Link
@@ -342,12 +340,9 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
             <div className="flex h-14 items-center justify-between border-b px-4">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-                  L
-                </div>
-                <span className="font-semibold">Louez</span>
-              </div>
+              <Link href="/dashboard" className="flex items-center" onClick={() => setOpen(false)}>
+                <Logo className="h-5 w-auto" />
+              </Link>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
@@ -392,9 +387,7 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
         </Sheet>
 
         <div className="flex items-center gap-2 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            L
-          </div>
+          <LogoIcon size={24} className="shrink-0" />
           <span className="font-semibold truncate">{currentStore?.name || 'Louez'}</span>
         </div>
       </div>

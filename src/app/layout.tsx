@@ -15,6 +15,11 @@ export const metadata: Metadata = {
     template: `%s | ${messages.app.name}`,
   },
   description: messages.app.description,
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 }
 
 export default function RootLayout({
