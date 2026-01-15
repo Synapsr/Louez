@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 
@@ -21,8 +22,46 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { switchStore } from '@/app/(dashboard)/dashboard/actions'
+
+function StoreLogo({
+  logoUrl,
+  name,
+  size = 'md',
+}: {
+  logoUrl: string | null
+  name: string
+  size?: 'sm' | 'md'
+}) {
+  const dimensions = size === 'sm' ? 'h-6 w-10' : 'h-8 w-12'
+  const textSize = size === 'sm' ? 'text-[10px]' : 'text-sm'
+
+  if (logoUrl) {
+    return (
+      <div className={cn('relative shrink-0', dimensions)}>
+        <Image
+          src={logoUrl}
+          alt={name}
+          fill
+          className="object-contain object-left"
+          sizes={size === 'sm' ? '40px' : '48px'}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex items-center justify-center shrink-0 rounded-md bg-primary/10 text-primary font-medium',
+        size === 'sm' ? 'h-6 w-6' : 'h-8 w-8',
+        textSize
+      )}
+    >
+      {name.charAt(0).toUpperCase()}
+    </div>
+  )
+}
 
 interface StoreWithRole {
   id: string
@@ -77,12 +116,11 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
           disabled={isPending}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <Avatar className="h-8 w-8 shrink-0">
-              <AvatarImage src={currentStore?.logoUrl || undefined} />
-              <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                {currentStore?.name?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+            <StoreLogo
+              logoUrl={currentStore?.logoUrl || null}
+              name={currentStore?.name || '?'}
+              size="md"
+            />
             <div className="flex flex-col items-start min-w-0">
               <span className="truncate font-medium text-sm">
                 {currentStore?.name || t('selectStore')}
@@ -110,12 +148,9 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                   onSelect={() => handleStoreSelect(store.id)}
                   className="cursor-pointer py-2"
                 >
-                  <Avatar className="h-6 w-6 mr-3 shrink-0">
-                    <AvatarImage src={store.logoUrl || undefined} />
-                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                      {store.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="mr-3">
+                    <StoreLogo logoUrl={store.logoUrl} name={store.name} size="sm" />
+                  </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="truncate text-sm">{store.name}</span>
                     <span className="text-xs text-muted-foreground capitalize">
