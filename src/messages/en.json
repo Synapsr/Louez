@@ -1065,6 +1065,11 @@
           "title": "Current plan",
           "nextBilling": "Next billing on {date}"
         },
+        "billingPortal": {
+          "title": "Billing",
+          "description": "Access your invoices and manage your payment methods.",
+          "openPortal": "View my invoices"
+        },
         "paymentHistory": {
           "title": "Payment history",
           "description": "Your last 12 payments",

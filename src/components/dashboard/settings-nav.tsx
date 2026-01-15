@@ -39,7 +39,7 @@ const settingsNavItems: SettingsNavItem[] = [
     labelKey: 'emails',
   },
   {
-    href: '/dashboard/settings/subscription',
+    href: '/dashboard/subscription',
     icon: CreditCard,
     labelKey: 'subscription.label',
   },

@@ -1065,6 +1065,11 @@
           "title": "Plan actuel",
           "nextBilling": "Prochaine facturation le {date}"
         },
+        "billingPortal": {
+          "title": "Facturation",
+          "description": "Accédez à vos factures et gérez vos moyens de paiement.",
+          "openPortal": "Voir mes factures"
+        },
         "paymentHistory": {
           "title": "Historique des paiements",
           "description": "Vos 12 derniers paiements",

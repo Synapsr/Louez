@@ -115,17 +115,24 @@ export async function createCustomerPortalSession(storeId: string) {
   })
 
   if (!subscription?.stripeCustomerId) {
-    throw new Error('No subscription found for this store')
+    throw new Error('No Stripe customer found for this store')
   }
 
   const session = await stripe.billingPortal.sessions.create({
     customer: subscription.stripeCustomerId,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription`,
+    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription`,
   })
 
   return {
     url: session.url,
   }
+}
+
+export async function hasStripeCustomer(storeId: string): Promise<boolean> {
+  const subscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+  })
+  return !!subscription?.stripeCustomerId
 }
 
 export async function cancelSubscription(storeId: string) {

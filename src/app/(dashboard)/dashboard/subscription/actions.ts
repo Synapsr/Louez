@@ -26,8 +26,8 @@ export async function createCheckoutSession({
       storeId: store.id,
       planSlug,
       interval,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?success=true`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings/subscription?canceled=true`,
+      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
+      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
     })
 
     return session
@@ -51,7 +51,7 @@ export async function cancelSubscription() {
   if (!store) throw new Error('Unauthorized')
 
   const result = await cancelSub(store.id)
-  revalidatePath('/dashboard/settings/subscription')
+  revalidatePath('/dashboard/subscription')
   return result
 }
 
@@ -60,6 +60,6 @@ export async function reactivateSubscription() {
   if (!store) throw new Error('Unauthorized')
 
   const result = await reactivateSub(store.id)
-  revalidatePath('/dashboard/settings/subscription')
+  revalidatePath('/dashboard/subscription')
   return result
 }

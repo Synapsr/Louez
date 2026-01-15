@@ -12,6 +12,8 @@ import {
   Crown,
   Check,
   Sparkles,
+  FileText,
+  ExternalLink,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,6 +50,7 @@ interface Subscription {
 interface SubscriptionManagementProps {
   subscription: Subscription | null
   plans: Plan[]
+  canAccessBillingPortal: boolean
   showSuccess?: boolean
   showCanceled?: boolean
 }
@@ -55,10 +58,12 @@ interface SubscriptionManagementProps {
 export function SubscriptionManagement({
   subscription,
   plans,
+  canAccessBillingPortal,
   showSuccess,
   showCanceled,
 }: SubscriptionManagementProps) {
   const [loading, setLoading] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isYearly, setIsYearly] = useState(false)
   const router = useRouter()
   const t = useTranslations('dashboard.settings.subscription')
@@ -66,7 +71,7 @@ export function SubscriptionManagement({
   useEffect(() => {
     if (showSuccess || showCanceled) {
       const timeout = setTimeout(() => {
-        router.replace('/dashboard/settings/subscription')
+        router.replace('/dashboard/subscription')
       }, 5000)
       return () => clearTimeout(timeout)
     }
@@ -74,6 +79,7 @@ export function SubscriptionManagement({
 
   const handleSubscribe = async (planSlug: string) => {
     setLoading(planSlug)
+    setError(null)
     try {
       const result = await createCheckoutSession({
         planSlug,
@@ -83,10 +89,10 @@ export function SubscriptionManagement({
       if (result.url) {
         window.location.href = result.url
       } else if ('error' in result) {
-        console.error('Checkout error:', result.error)
+        setError(result.error)
       }
-    } catch (error) {
-      console.error('Checkout error:', error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(null)
     }
@@ -94,13 +100,14 @@ export function SubscriptionManagement({
 
   const handleOpenPortal = async () => {
     setLoading('portal')
+    setError(null)
     try {
       const result = await openCustomerPortal()
       if (result.url) {
         window.location.href = result.url
       }
-    } catch (error) {
-      console.error('Error opening portal:', error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(null)
     }
@@ -110,11 +117,12 @@ export function SubscriptionManagement({
     if (!confirm(t('cancelConfirm'))) return
 
     setLoading('cancel')
+    setError(null)
     try {
       await cancelSubscription()
       router.refresh()
-    } catch (error) {
-      console.error('Error cancelling:', error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(null)
     }
@@ -122,11 +130,12 @@ export function SubscriptionManagement({
 
   const handleReactivate = async () => {
     setLoading('reactivate')
+    setError(null)
     try {
       await reactivateSubscription()
       router.refresh()
-    } catch (error) {
-      console.error('Error reactivating:', error)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue')
     } finally {
       setLoading(null)
     }
@@ -203,10 +212,20 @@ export function SubscriptionManagement({
     return list
   }
 
-  const hasActiveSubscription = subscription?.status === 'active' && subscription?.plan?.price !== 0
+  const hasActiveSubscription =
+    subscription?.status === 'active' && subscription?.plan?.price !== 0
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erreur</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Success Alert */}
       {showSuccess && (
         <Alert>
@@ -312,7 +331,30 @@ export function SubscriptionManagement({
         </Card>
       )}
 
-      {/* Plans Selection - Always show for upgrade/downgrade */}
+      {/* Billing Portal Card - Show when user has Stripe customer but no active subscription */}
+      {canAccessBillingPortal && !hasActiveSubscription && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {t('billingPortal.title')}
+            </CardTitle>
+            <CardDescription>{t('billingPortal.description')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={handleOpenPortal}
+              disabled={loading !== null}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" />
+              {t('billingPortal.openPortal')}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Plans Selection */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
