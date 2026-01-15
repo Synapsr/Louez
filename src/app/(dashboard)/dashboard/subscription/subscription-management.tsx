@@ -380,13 +380,22 @@ export function SubscriptionManagement({
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Pricing info - use actual billing currency if available */}
+          {/* Pricing info - use actual billing currency and interval */}
           <div className="flex items-baseline gap-1">
             <span className="text-4xl font-bold">
-              {formatPrice(currentPlan?.price || 0, subscription?.billingCurrency || currency)}
+              {formatPrice(
+                currentPlan?.price
+                  ? subscription?.billingInterval === 'yearly'
+                    ? getYearlyPrice(currentPlan)
+                    : currentPlan.price
+                  : 0,
+                subscription?.billingCurrency || currency
+              )}
             </span>
             {currentPlan?.price !== 0 && (
-              <span className="text-muted-foreground">/ {t('month')}</span>
+              <span className="text-muted-foreground">
+                / {subscription?.billingInterval === 'yearly' ? t('year') : t('month')}
+              </span>
             )}
             {currentPlan?.price === 0 && (
               <span className="text-muted-foreground ml-2">{t('freePlan')}</span>
