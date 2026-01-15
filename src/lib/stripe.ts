@@ -1,9 +1,6 @@
-import Stripe from 'stripe'
-
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-12-15.clover',
-  typescript: true,
-})
+// Import and re-export from the new stripe module
+import { stripe } from './stripe/client'
+export { stripe }
 
 export async function createConnectAccount(email: string) {
   const account = await stripe.accounts.create({

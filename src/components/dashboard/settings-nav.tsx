@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, Mail, FileText } from 'lucide-react'
+import { Store, Palette, Clock, Mail, FileText, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface SettingsNavItem {
@@ -37,6 +37,11 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/emails',
     icon: Mail,
     labelKey: 'emails',
+  },
+  {
+    href: '/dashboard/settings/subscription',
+    icon: CreditCard,
+    labelKey: 'subscription',
   },
 ]
 
