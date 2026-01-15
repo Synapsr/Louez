@@ -44,6 +44,57 @@ Louez supports multiple languages out of the box.
 
 ---
 
+### 💰 Tax Management
+
+**Status**: 📋 Planned
+
+Handle taxes flexibly to match your local regulations.
+
+| Feature | Description |
+|---------|-------------|
+| **Custom tax rates** | Define multiple tax rates (VAT, sales tax, etc.) |
+| **Tax per product** | Assign different tax rates to different products |
+| **Display mode** | Choose to show prices excluding tax (HT) or including tax (TTC) on storefront |
+| **Invoice compliance** | Tax breakdown displayed on contracts and invoices |
+
+> Useful for: Businesses operating in different tax jurisdictions, B2B vs B2C pricing display preferences.
+
+---
+
+### 🎯 Advanced Pricing Control
+
+**Status**: 📋 Planned
+
+Fine-tune rental prices for each reservation.
+
+| Feature | Description |
+|---------|-------------|
+| **Price override** | Adjust the rental price up or down from the calculated amount |
+| **Custom discounts** | Apply manual discounts for specific customers or situations |
+| **Price justification** | Add notes explaining price adjustments |
+| **Original vs final** | View both calculated and final prices in reservation details |
+
+> Useful for: Negotiated rates, loyal customer discounts, special circumstances, promotional pricing.
+
+---
+
+### 🏢 Billing Address Options
+
+**Status**: 📋 Planned
+
+Separate your billing address from your store location.
+
+| Feature | Description |
+|---------|-------------|
+| **Distinct billing address** | Set a different address for invoices and contracts |
+| **Store location** | Keep your physical pickup location visible to customers |
+| **Legal compliance** | Display registered business address on official documents |
+| **Per-document control** | Choose which address appears on each document type |
+
+> Useful for: Businesses with headquarters separate from rental locations, legal entity requirements.
+
+---
+
 ### 💳 Online Payments
 
 **Status**: 🔜 Coming Soon
