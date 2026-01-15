@@ -60,7 +60,6 @@ import { Stepper, StepContent, StepActions } from '@/components/ui/stepper'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Label } from '@/components/ui/label'
 import { formatCurrency, getCurrencySymbol } from '@/lib/utils'
 import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor'
 import type { PricingMode } from '@/types'
@@ -120,6 +119,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   const [currentStep, setCurrentStep] = useState(0)
   const [isLoading, setIsLoading] = useState(false)
   const [imagesPreviews, setImagesPreviews] = useState<string[]>(product?.images ?? [])
+  const [isDragging, setIsDragging] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
@@ -148,24 +148,27 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     },
   })
 
-  const handleImageUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files
-      if (!files) return
-
+  const processFiles = useCallback(
+    (files: FileList | File[]) => {
+      const fileArray = Array.from(files)
       const newPreviews: string[] = []
       let processed = 0
+      const filesToProcess = Math.min(fileArray.length, 5 - imagesPreviews.length)
 
-      for (let i = 0; i < Math.min(files.length, 5 - imagesPreviews.length); i++) {
-        const file = files[i]
+      if (filesToProcess === 0) return
+
+      for (let i = 0; i < filesToProcess; i++) {
+        const file = fileArray[i]
 
         if (!file.type.startsWith('image/')) {
           toast.error(t('imageError'))
+          processed++
           continue
         }
 
         if (file.size > 5 * 1024 * 1024) {
           toast.error(t('imageSizeError'))
+          processed++
           continue
         }
 
@@ -175,7 +178,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
           newPreviews.push(url)
           processed++
 
-          if (processed === Math.min(files.length, 5 - imagesPreviews.length)) {
+          if (processed === filesToProcess && newPreviews.length > 0) {
             const updatedPreviews = [...imagesPreviews, ...newPreviews]
             setImagesPreviews(updatedPreviews)
             form.setValue('images', updatedPreviews)
@@ -185,6 +188,46 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       }
     },
     [form, imagesPreviews, t]
+  )
+
+  const handleImageUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files
+      if (!files) return
+      processFiles(files)
+    },
+    [processFiles]
+  )
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }, [])
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragging(false)
+
+      const files = e.dataTransfer.files
+      if (files && files.length > 0) {
+        processFiles(files)
+      }
+    },
+    [processFiles]
   )
 
   const removeImage = (index: number) => {
@@ -306,8 +349,18 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             <div className="space-y-4">
               {/* Large upload zone when no images */}
               {imagesPreviews.length === 0 && (
-                <label className="flex h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors bg-muted/20">
-                  <Upload className="h-10 w-10 text-muted-foreground mb-3" />
+                <label
+                  className={`flex h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors bg-muted/20 ${
+                    isDragging
+                      ? 'border-primary bg-primary/10'
+                      : 'border-muted-foreground/25 hover:border-primary/50'
+                  }`}
+                  onDragOver={handleDragOver}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                >
+                  <Upload className={`h-10 w-10 mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                   <span className="text-sm font-medium">{t('addImage')}</span>
                   <span className="text-xs text-muted-foreground mt-1">
                     {t('dragImages')}
@@ -367,8 +420,18 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   ))}
 
                   {imagesPreviews.length < 5 && (
-                    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors">
-                      <Plus className="h-6 w-6 text-muted-foreground" />
+                    <label
+                      className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                        isDragging
+                          ? 'border-primary bg-primary/10'
+                          : 'border-muted-foreground/25 hover:border-primary/50'
+                      }`}
+                      onDragOver={handleDragOver}
+                      onDragEnter={handleDragEnter}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    >
+                      <Plus className={`h-6 w-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
                       <span className="mt-1 text-xs text-muted-foreground">
                         {t('addImage')}
                       </span>
