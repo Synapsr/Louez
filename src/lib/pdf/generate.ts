@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { documents, reservations, stores } from '@/lib/db/schema'
 import { eq, and, sql, desc } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { convertImageForPdf } from './image-utils'
 
 // Import translations
 import frMessages from '@/messages/fr.json'
@@ -73,6 +74,9 @@ export async function generateContract({
   // Get translations for the locale
   const translations = getTranslations(locale)
 
+  // Convert store logo to PDF-compatible format (handles SVG conversion)
+  const pdfLogoUrl = await convertImageForPdf(store.logoUrl)
+
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
     ContractDocument({
@@ -106,7 +110,7 @@ export async function generateContract({
       store: {
         name: store.name,
         slug: store.slug,
-        logoUrl: store.logoUrl,
+        logoUrl: pdfLogoUrl,
         address: store.address,
         phone: store.phone,
         email: store.email,

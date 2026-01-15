@@ -95,6 +95,7 @@
     "react-email": "^5.1.1",
     "react-hook-form": "^7.70.0",
     "recharts": "^3.6.0",
+    "sharp": "^0.34.5",
     "sonner": "^2.0.7",
     "stripe": "^20.1.1",
     "tailwind-merge": "^3.4.0",
