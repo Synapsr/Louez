@@ -1113,6 +1113,14 @@
             "customerPortal": "Portale clienti",
             "reviewBooster": "Booster recensioni"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Offerta di lancio",
+          "subtitle": "Fino al 1° marzo 2026",
+          "description": "Ottieni il 50% di sconto su tutti i piani. Prezzo garantito a vita per i primi iscritti.",
+          "guaranteedForLife": "Prezzo garantito a vita",
+          "endsOn": "Offerta valida fino al 1° marzo 2026"
         }
       },
       "team": "Team",

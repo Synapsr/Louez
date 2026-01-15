@@ -519,24 +519,24 @@ export function SubscriptionManagement({
 
         {/* Early Bird Banner */}
         {isEarlyBirdActive() && (
-          <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-500/20 p-4">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="relative flex items-center justify-between gap-4">
+          <div className="max-w-4xl mx-auto relative overflow-hidden rounded-xl bg-primary/5 border border-primary/20 p-6">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
-                  <Gift className="h-6 w-6 text-white" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg flex-shrink-0">
+                  <Gift className="h-7 w-7 text-primary-foreground" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-lg">{t('earlyBird.title')}</h3>
-                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-sm">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-xl">{t('earlyBird.title')}</h3>
+                    <Badge className="bg-primary text-primary-foreground border-0 shadow-sm text-sm px-3">
                       {t('earlyBird.badge')}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">{t('earlyBird.description')}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t('earlyBird.description')}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background/50 rounded-full px-3 py-1.5">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary bg-primary/10 rounded-full px-4 py-2">
                 <Clock className="h-4 w-4" />
                 <span>{t('earlyBird.subtitle')}</span>
               </div>

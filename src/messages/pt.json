@@ -1114,6 +1114,14 @@
             "customerPortal": "Portal do cliente",
             "reviewBooster": "Impulsionador de avaliações"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Oferta de lançamento",
+          "subtitle": "Até 1 de março de 2026",
+          "description": "Obtenha 50% de desconto em todos os planos. Preço garantido vitalício para os primeiros assinantes.",
+          "guaranteedForLife": "Preço garantido vitalício",
+          "endsOn": "Oferta válida até 1 de março de 2026"
         }
       },
       "team": "Equipe",

@@ -1114,6 +1114,14 @@
             "customerPortal": "Kundenportal",
             "reviewBooster": "Bewertungs-Booster"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Einführungsangebot",
+          "subtitle": "Bis zum 1. März 2026",
+          "description": "Erhalten Sie 50% Rabatt auf alle Pläne. Preis lebenslang garantiert für Frühbucher.",
+          "guaranteedForLife": "Preis lebenslang garantiert",
+          "endsOn": "Angebot gültig bis 1. März 2026"
         }
       },
       "team": "Team",

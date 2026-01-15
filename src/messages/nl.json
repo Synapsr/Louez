@@ -1113,6 +1113,14 @@
             "customerPortal": "Klantenportaal",
             "reviewBooster": "Recensie booster"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Lanceringsaanbieding",
+          "subtitle": "Tot 1 maart 2026",
+          "description": "Krijg 50% korting op alle plannen. Prijs levenslang gegarandeerd voor vroege inschrijvers.",
+          "guaranteedForLife": "Prijs levenslang gegarandeerd",
+          "endsOn": "Aanbieding geldig tot 1 maart 2026"
         }
       },
       "team": "Team",
