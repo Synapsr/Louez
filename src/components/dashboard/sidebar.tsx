@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { signOut } from 'next-auth/react'
 import {
   Home,
   Package,
@@ -217,13 +218,12 @@ function UserMenu({
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <form action="/api/auth/signout" method="POST" className="w-full">
-            <button type="submit" className="flex w-full items-center gap-2 text-destructive">
-              <LogOut className="h-4 w-4" />
-              {tAuth('logout')}
-            </button>
-          </form>
+        <DropdownMenuItem
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="text-destructive cursor-pointer"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          {tAuth('logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
