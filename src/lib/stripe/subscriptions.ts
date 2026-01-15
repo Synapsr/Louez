@@ -1,8 +1,9 @@
 import { stripe } from './client'
 import { db } from '@/lib/db'
-import { stores, subscriptions, subscriptionPlans, users, storeMembers } from '@/lib/db/schema'
+import { stores, subscriptions, users, storeMembers } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import { getPlan, getPlans, type Plan } from '@/lib/plans'
 
 interface CreateCheckoutSessionOptions {
   storeId: string
@@ -39,13 +40,19 @@ export async function createSubscriptionCheckoutSession({
     .limit(1)
     .then((res) => res[0])
 
-  // Get the plan
-  const plan = await db.query.subscriptionPlans.findFirst({
-    where: eq(subscriptionPlans.slug, planSlug),
-  })
+  // Get the plan from code
+  const plan = getPlan(planSlug)
 
   if (!plan) {
     throw new Error('Plan not found')
+  }
+
+  // Determine the price ID
+  const priceId =
+    interval === 'monthly' ? plan.stripePriceMonthly : plan.stripePriceYearly
+
+  if (!priceId) {
+    throw new Error('Price not configured for this plan')
   }
 
   // Get or create Stripe customer
@@ -67,14 +74,6 @@ export async function createSubscriptionCheckoutSession({
     stripeCustomerId = customer.id
   }
 
-  // Determine the price ID
-  const priceId =
-    interval === 'monthly' ? plan.stripePriceIdMonthly : plan.stripePriceIdYearly
-
-  if (!priceId) {
-    throw new Error('Price not configured for this plan')
-  }
-
   // Create the checkout session
   const session = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
@@ -90,13 +89,12 @@ export async function createSubscriptionCheckoutSession({
     subscription_data: {
       metadata: {
         storeId: store.id,
-        planId: plan.id,
         planSlug: plan.slug,
       },
     },
     metadata: {
       storeId: store.id,
-      planId: plan.id,
+      planSlug: plan.slug,
     },
     allow_promotion_codes: true,
     billing_address_collection: 'required',
@@ -182,28 +180,21 @@ export async function reactivateSubscription(storeId: string) {
   return { success: true }
 }
 
-export async function getSubscriptionStatus(storeId: string) {
+export async function getSubscriptionWithPlan(storeId: string) {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
-    with: {
-      plan: true,
-    },
   })
 
   if (!subscription) {
-    return {
-      status: 'none' as const,
-      plan: null,
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false,
-    }
+    return null
   }
 
+  // Get plan from code
+  const plan = getPlan(subscription.planSlug)
+
   return {
-    status: subscription.status,
-    plan: subscription.plan,
-    currentPeriodEnd: subscription.currentPeriodEnd,
-    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd ?? false,
+    ...subscription,
+    plan,
   }
 }
 
@@ -232,14 +223,12 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
 
   // In new Stripe API versions, period dates are on subscription items
   const firstItem = stripeSubscription.items.data[0]
-  const currentPeriodStart = new Date(firstItem.current_period_start * 1000)
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
 
   await db
     .update(subscriptions)
     .set({
       status,
-      currentPeriodStart,
       currentPeriodEnd,
       cancelAtPeriodEnd: stripeSubscription.cancel_at_period_end,
       updatedAt: new Date(),
@@ -248,3 +237,5 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
 
   return subscription
 }
+
+export { getPlans, getPlan, type Plan }

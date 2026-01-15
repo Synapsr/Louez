@@ -18,7 +18,6 @@ import type {
   StoreTheme,
   EmailSettings,
   ProductSnapshot,
-  PlanFeatures,
   PricingBreakdown,
 } from '@/types'
 
@@ -86,37 +85,8 @@ export const verificationTokens = mysqlTable(
 )
 
 // ============================================================================
-// Subscription Plans
+// Subscriptions (simplified - plans defined in code)
 // ============================================================================
-
-export const planInterval = mysqlEnum('plan_interval', ['monthly', 'yearly'])
-
-export const subscriptionPlans = mysqlTable('subscription_plans', {
-  id: id(),
-  name: varchar('name', { length: 100 }).notNull(),
-  slug: varchar('slug', { length: 50 }).notNull().unique(),
-  description: text('description'),
-
-  // Pricing
-  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
-  interval: planInterval.default('monthly').notNull(),
-
-  // Features and limits
-  features: json('features').$type<PlanFeatures>().notNull(),
-
-  // Stripe
-  stripeProductId: varchar('stripe_product_id', { length: 255 }),
-  stripePriceIdMonthly: varchar('stripe_price_id_monthly', { length: 255 }),
-  stripePriceIdYearly: varchar('stripe_price_id_yearly', { length: 255 }),
-
-  // Display
-  isPopular: boolean('is_popular').default(false),
-  displayOrder: int('display_order').default(0),
-  isActive: boolean('is_active').default(true),
-
-  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
-})
 
 export const subscriptionStatus = mysqlEnum('subscription_status', [
   'active',
@@ -130,22 +100,22 @@ export const subscriptions = mysqlTable(
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull().unique(),
-    planId: varchar('plan_id', { length: 21 }).notNull(),
+
+    // Plan slug (references plans defined in src/lib/plans.ts)
+    planSlug: varchar('plan_slug', { length: 50 }).notNull().default('start'),
 
     // Status
     status: subscriptionStatus.default('active').notNull(),
 
-    // Stripe
+    // Stripe (optional - only if Stripe is configured)
     stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).unique(),
     stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
 
     // Billing period
-    currentPeriodStart: timestamp('current_period_start', { mode: 'date' }).notNull(),
-    currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }).notNull(),
+    currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
 
     // Cancellation
     cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false),
-    cancelledAt: timestamp('cancelled_at', { mode: 'date' }),
 
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -153,55 +123,10 @@ export const subscriptions = mysqlTable(
   },
   (table) => ({
     storeIdx: index('subscriptions_store_idx').on(table.storeId),
-    planIdx: index('subscriptions_plan_idx').on(table.planId),
-    stripeSubscriptionIdx: index('subscriptions_stripe_subscription_idx').on(table.stripeSubscriptionId),
+    stripeSubscriptionIdx: index('subscriptions_stripe_subscription_idx').on(
+      table.stripeSubscriptionId
+    ),
     stripeCustomerIdx: index('subscriptions_stripe_customer_idx').on(table.stripeCustomerId),
-  })
-)
-
-// ============================================================================
-// Subscription Payments
-// ============================================================================
-
-export const subscriptionPaymentStatus = mysqlEnum('subscription_payment_status', [
-  'pending',
-  'completed',
-  'failed',
-  'refunded',
-])
-
-export const subscriptionPayments = mysqlTable(
-  'subscription_payments',
-  {
-    id: id(),
-    subscriptionId: varchar('subscription_id', { length: 21 }).notNull(),
-
-    // Stripe references
-    stripeInvoiceId: varchar('stripe_invoice_id', { length: 255 }),
-    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
-    stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
-
-    // Amount
-    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
-    currency: varchar('currency', { length: 3 }).default('EUR'),
-
-    // Status
-    status: subscriptionPaymentStatus.default('pending').notNull(),
-
-    // Dates
-    paidAt: timestamp('paid_at', { mode: 'date' }),
-    periodStart: timestamp('period_start', { mode: 'date' }),
-    periodEnd: timestamp('period_end', { mode: 'date' }),
-
-    // Metadata
-    invoicePdfUrl: text('invoice_pdf_url'),
-
-    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
-  },
-  (table) => ({
-    subscriptionIdx: index('subscription_payments_subscription_idx').on(table.subscriptionId),
-    stripeInvoiceIdx: index('subscription_payments_stripe_invoice_idx').on(table.stripeInvoiceId),
   })
 )
 
@@ -710,26 +635,10 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
   }),
 }))
 
-export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
-  subscriptions: many(subscriptions),
-}))
-
-export const subscriptionsRelations = relations(subscriptions, ({ one, many }) => ({
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   store: one(stores, {
     fields: [subscriptions.storeId],
     references: [stores.id],
-  }),
-  plan: one(subscriptionPlans, {
-    fields: [subscriptions.planId],
-    references: [subscriptionPlans.id],
-  }),
-  payments: many(subscriptionPayments),
-}))
-
-export const subscriptionPaymentsRelations = relations(subscriptionPayments, ({ one }) => ({
-  subscription: one(subscriptions, {
-    fields: [subscriptionPayments.subscriptionId],
-    references: [subscriptions.id],
   }),
 }))
 

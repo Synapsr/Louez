@@ -1018,7 +1018,88 @@
       "emails": "Correos",
       "legal": "Paginas legales",
       "account": "Cuenta",
-      "subscription": "Suscripcion",
+      "subscription": {
+        "label": "Suscripción",
+        "description": "Gestiona tu suscripción y facturación",
+        "month": "mes",
+        "year": "año",
+        "cancelConfirm": "¿Estás seguro de que quieres cancelar tu suscripción? Mantendrás el acceso hasta el final del período de facturación.",
+        "reactivate": "Reactivar suscripción",
+        "updatePayment": "Actualizar pago",
+        "manageBilling": "Gestionar facturación",
+        "changePlan": "Cambiar plan",
+        "changePlanDescription": "Compara las funciones y elige el plan que se adapte a tus necesidades.",
+        "cancelSubscription": "Cancelar suscripción",
+        "subscribe": "Suscribirse",
+        "selectPlan": "Elegir este plan",
+        "currentPlanBadge": "Plan actual",
+        "freePlan": "Plan gratuito",
+        "notAvailable": "No disponible",
+        "popular": "Popular",
+        "processing": "Procesando...",
+        "monthly": "Mensual",
+        "yearly": "Anual",
+        "yearlyDiscount": "2 meses gratis",
+        "status": {
+          "active": "Activo",
+          "trialing": "Prueba",
+          "pastDue": "Vencido",
+          "cancelled": "Cancelado"
+        },
+        "paymentStatus": {
+          "pending": "Pendiente",
+          "completed": "Pagado",
+          "failed": "Fallido",
+          "refunded": "Reembolsado"
+        },
+        "alerts": {
+          "successTitle": "Suscripción activada",
+          "successDescription": "Tu suscripción ha sido activada con éxito. ¡Gracias por tu confianza!",
+          "canceledTitle": "Pago cancelado",
+          "canceledDescription": "El pago fue cancelado. Puedes intentarlo de nuevo en cualquier momento.",
+          "cancellingAt": "Tu suscripción se cancelará el {date}.",
+          "pastDue": "Tu pago ha fallado. Por favor, actualiza tu información de pago."
+        },
+        "noSubscription": {
+          "title": "Lleva tu negocio al siguiente nivel",
+          "description": "Desbloquea todas las funciones de Louez con una suscripción de pago.",
+          "viewPlans": "Ver planes"
+        },
+        "currentPlan": {
+          "title": "Plan actual",
+          "nextBilling": "Próxima facturación el {date}"
+        },
+        "paymentHistory": {
+          "title": "Historial de pagos",
+          "description": "Tus últimos 12 pagos",
+          "empty": "Sin pagos todavía",
+          "date": "Fecha",
+          "period": "Período",
+          "amount": "Importe",
+          "status": "Estado",
+          "downloadInvoice": "Descargar factura"
+        },
+        "plans": {
+          "title": "Elige tu plan",
+          "features": {
+            "maxProducts": "{count} productos",
+            "unlimitedProducts": "Productos ilimitados",
+            "maxReservations": "{count} reservas / mes",
+            "unlimitedReservations": "Reservas ilimitadas",
+            "maxCustomers": "{count} clientes",
+            "unlimitedCustomers": "Clientes ilimitados",
+            "collaborators": "{count} colaboradores",
+            "onlinePayment": "Pago en línea",
+            "analytics": "Estadísticas avanzadas",
+            "emailNotifications": "Notificaciones por email",
+            "whiteLabel": "Marca blanca",
+            "customDomain": "Dominio personalizado",
+            "prioritySupport": "Soporte prioritario",
+            "customerPortal": "Portal de clientes",
+            "reviewBooster": "Impulsor de reseñas"
+          }
+        }
+      },
       "team": "Equipo",
       "saveChanges": "Guardar cambios",
       "nav": {

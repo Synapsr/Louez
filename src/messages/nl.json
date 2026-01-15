@@ -1015,7 +1015,88 @@
       "emails": "E-mails",
       "legal": "Juridische pagina's",
       "account": "Account",
-      "subscription": "Abonnement",
+      "subscription": {
+        "label": "Abonnement",
+        "description": "Beheer je abonnement en facturatie",
+        "month": "maand",
+        "year": "jaar",
+        "cancelConfirm": "Weet je zeker dat je je abonnement wilt opzeggen? Je behoudt toegang tot het einde van de facturatieperiode.",
+        "reactivate": "Abonnement heractiveren",
+        "updatePayment": "Betaling bijwerken",
+        "manageBilling": "Facturatie beheren",
+        "changePlan": "Plan wijzigen",
+        "changePlanDescription": "Vergelijk functies en kies het plan dat bij je past.",
+        "cancelSubscription": "Abonnement opzeggen",
+        "subscribe": "Abonneren",
+        "selectPlan": "Dit plan kiezen",
+        "currentPlanBadge": "Huidig plan",
+        "freePlan": "Gratis plan",
+        "notAvailable": "Niet beschikbaar",
+        "popular": "Populair",
+        "processing": "Verwerken...",
+        "monthly": "Maandelijks",
+        "yearly": "Jaarlijks",
+        "yearlyDiscount": "2 maanden gratis",
+        "status": {
+          "active": "Actief",
+          "trialing": "Proefperiode",
+          "pastDue": "Achterstallig",
+          "cancelled": "Opgezegd"
+        },
+        "paymentStatus": {
+          "pending": "In behandeling",
+          "completed": "Betaald",
+          "failed": "Mislukt",
+          "refunded": "Terugbetaald"
+        },
+        "alerts": {
+          "successTitle": "Abonnement geactiveerd",
+          "successDescription": "Je abonnement is succesvol geactiveerd. Bedankt voor je vertrouwen!",
+          "canceledTitle": "Betaling geannuleerd",
+          "canceledDescription": "De betaling is geannuleerd. Je kunt het op elk moment opnieuw proberen.",
+          "cancellingAt": "Je abonnement wordt opgezegd op {date}.",
+          "pastDue": "Je betaling is mislukt. Werk je betalingsgegevens bij."
+        },
+        "noSubscription": {
+          "title": "Til je bedrijf naar een hoger niveau",
+          "description": "Ontgrendel alle functies van Louez met een betaald abonnement.",
+          "viewPlans": "Plannen bekijken"
+        },
+        "currentPlan": {
+          "title": "Huidig plan",
+          "nextBilling": "Volgende facturatie op {date}"
+        },
+        "paymentHistory": {
+          "title": "Betalingsgeschiedenis",
+          "description": "Je laatste 12 betalingen",
+          "empty": "Nog geen betalingen",
+          "date": "Datum",
+          "period": "Periode",
+          "amount": "Bedrag",
+          "status": "Status",
+          "downloadInvoice": "Factuur downloaden"
+        },
+        "plans": {
+          "title": "Kies je plan",
+          "features": {
+            "maxProducts": "{count} producten",
+            "unlimitedProducts": "Onbeperkte producten",
+            "maxReservations": "{count} reserveringen / maand",
+            "unlimitedReservations": "Onbeperkte reserveringen",
+            "maxCustomers": "{count} klanten",
+            "unlimitedCustomers": "Onbeperkte klanten",
+            "collaborators": "{count} medewerkers",
+            "onlinePayment": "Online betaling",
+            "analytics": "Geavanceerde statistieken",
+            "emailNotifications": "E-mailnotificaties",
+            "whiteLabel": "White label",
+            "customDomain": "Eigen domein",
+            "prioritySupport": "Prioritaire ondersteuning",
+            "customerPortal": "Klantenportaal",
+            "reviewBooster": "Recensie booster"
+          }
+        }
+      },
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",
       "nav": {

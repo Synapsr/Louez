@@ -1016,7 +1016,88 @@
       "emails": "E-Mails",
       "legal": "Rechtliche Seiten",
       "account": "Konto",
-      "subscription": "Abonnement",
+      "subscription": {
+        "label": "Abonnement",
+        "description": "Verwalten Sie Ihr Abonnement und Ihre Rechnungen",
+        "month": "Monat",
+        "year": "Jahr",
+        "cancelConfirm": "Sind Sie sicher, dass Sie Ihr Abonnement kündigen möchten? Sie behalten den Zugang bis zum Ende des Abrechnungszeitraums.",
+        "reactivate": "Abonnement reaktivieren",
+        "updatePayment": "Zahlung aktualisieren",
+        "manageBilling": "Rechnungen verwalten",
+        "changePlan": "Plan ändern",
+        "changePlanDescription": "Vergleichen Sie die Funktionen und wählen Sie den Plan, der zu Ihnen passt.",
+        "cancelSubscription": "Abonnement kündigen",
+        "subscribe": "Abonnieren",
+        "selectPlan": "Diesen Plan wählen",
+        "currentPlanBadge": "Aktueller Plan",
+        "freePlan": "Kostenloser Plan",
+        "notAvailable": "Nicht verfügbar",
+        "popular": "Beliebt",
+        "processing": "Verarbeitung...",
+        "monthly": "Monatlich",
+        "yearly": "Jährlich",
+        "yearlyDiscount": "2 Monate gratis",
+        "status": {
+          "active": "Aktiv",
+          "trialing": "Testphase",
+          "pastDue": "Überfällig",
+          "cancelled": "Gekündigt"
+        },
+        "paymentStatus": {
+          "pending": "Ausstehend",
+          "completed": "Bezahlt",
+          "failed": "Fehlgeschlagen",
+          "refunded": "Erstattet"
+        },
+        "alerts": {
+          "successTitle": "Abonnement aktiviert",
+          "successDescription": "Ihr Abonnement wurde erfolgreich aktiviert. Vielen Dank für Ihr Vertrauen!",
+          "canceledTitle": "Zahlung abgebrochen",
+          "canceledDescription": "Die Zahlung wurde abgebrochen. Sie können es jederzeit erneut versuchen.",
+          "cancellingAt": "Ihr Abonnement wird am {date} gekündigt.",
+          "pastDue": "Ihre Zahlung ist fehlgeschlagen. Bitte aktualisieren Sie Ihre Zahlungsinformationen."
+        },
+        "noSubscription": {
+          "title": "Steigern Sie Ihr Geschäft",
+          "description": "Schalten Sie alle Funktionen von Louez mit einem kostenpflichtigen Abonnement frei.",
+          "viewPlans": "Pläne ansehen"
+        },
+        "currentPlan": {
+          "title": "Aktueller Plan",
+          "nextBilling": "Nächste Abrechnung am {date}"
+        },
+        "paymentHistory": {
+          "title": "Zahlungsverlauf",
+          "description": "Ihre letzten 12 Zahlungen",
+          "empty": "Noch keine Zahlungen",
+          "date": "Datum",
+          "period": "Zeitraum",
+          "amount": "Betrag",
+          "status": "Status",
+          "downloadInvoice": "Rechnung herunterladen"
+        },
+        "plans": {
+          "title": "Wählen Sie Ihren Plan",
+          "features": {
+            "maxProducts": "{count} Produkte",
+            "unlimitedProducts": "Unbegrenzte Produkte",
+            "maxReservations": "{count} Reservierungen / Monat",
+            "unlimitedReservations": "Unbegrenzte Reservierungen",
+            "maxCustomers": "{count} Kunden",
+            "unlimitedCustomers": "Unbegrenzte Kunden",
+            "collaborators": "{count} Mitarbeiter",
+            "onlinePayment": "Online-Zahlung",
+            "analytics": "Erweiterte Analysen",
+            "emailNotifications": "E-Mail-Benachrichtigungen",
+            "whiteLabel": "White Label",
+            "customDomain": "Eigene Domain",
+            "prioritySupport": "Prioritäts-Support",
+            "customerPortal": "Kundenportal",
+            "reviewBooster": "Bewertungs-Booster"
+          }
+        }
+      },
       "team": "Team",
       "saveChanges": "Änderungen speichern",
       "nav": {

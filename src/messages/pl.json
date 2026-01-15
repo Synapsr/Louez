@@ -1015,7 +1015,88 @@
       "emails": "Emaile",
       "legal": "Strony prawne",
       "account": "Konto",
-      "subscription": "Subskrypcja",
+      "subscription": {
+        "label": "Subskrypcja",
+        "description": "Zarządzaj subskrypcją i płatnościami",
+        "month": "miesiąc",
+        "year": "rok",
+        "cancelConfirm": "Czy na pewno chcesz anulować subskrypcję? Zachowasz dostęp do końca okresu rozliczeniowego.",
+        "reactivate": "Reaktywuj subskrypcję",
+        "updatePayment": "Zaktualizuj płatność",
+        "manageBilling": "Zarządzaj płatnościami",
+        "changePlan": "Zmień plan",
+        "changePlanDescription": "Porównaj funkcje i wybierz plan odpowiedni dla Twoich potrzeb.",
+        "cancelSubscription": "Anuluj subskrypcję",
+        "subscribe": "Subskrybuj",
+        "selectPlan": "Wybierz ten plan",
+        "currentPlanBadge": "Obecny plan",
+        "freePlan": "Darmowy plan",
+        "notAvailable": "Niedostępny",
+        "popular": "Popularny",
+        "processing": "Przetwarzanie...",
+        "monthly": "Miesięcznie",
+        "yearly": "Rocznie",
+        "yearlyDiscount": "2 miesiące gratis",
+        "status": {
+          "active": "Aktywna",
+          "trialing": "Okres próbny",
+          "pastDue": "Przeterminowana",
+          "cancelled": "Anulowana"
+        },
+        "paymentStatus": {
+          "pending": "Oczekująca",
+          "completed": "Opłacona",
+          "failed": "Nieudana",
+          "refunded": "Zwrócona"
+        },
+        "alerts": {
+          "successTitle": "Subskrypcja aktywowana",
+          "successDescription": "Twoja subskrypcja została pomyślnie aktywowana. Dziękujemy za zaufanie!",
+          "canceledTitle": "Płatność anulowana",
+          "canceledDescription": "Płatność została anulowana. Możesz spróbować ponownie w dowolnym momencie.",
+          "cancellingAt": "Twoja subskrypcja zostanie anulowana {date}.",
+          "pastDue": "Płatność nie powiodła się. Zaktualizuj dane płatności."
+        },
+        "noSubscription": {
+          "title": "Rozwiń swój biznes",
+          "description": "Odblokuj wszystkie funkcje Louez dzięki płatnej subskrypcji.",
+          "viewPlans": "Zobacz plany"
+        },
+        "currentPlan": {
+          "title": "Aktualny plan",
+          "nextBilling": "Następne rozliczenie {date}"
+        },
+        "paymentHistory": {
+          "title": "Historia płatności",
+          "description": "Ostatnie 12 płatności",
+          "empty": "Brak płatności",
+          "date": "Data",
+          "period": "Okres",
+          "amount": "Kwota",
+          "status": "Status",
+          "downloadInvoice": "Pobierz fakturę"
+        },
+        "plans": {
+          "title": "Wybierz plan",
+          "features": {
+            "maxProducts": "{count} produktów",
+            "unlimitedProducts": "Nieograniczone produkty",
+            "maxReservations": "{count} rezerwacji / miesiąc",
+            "unlimitedReservations": "Nieograniczone rezerwacje",
+            "maxCustomers": "{count} klientów",
+            "unlimitedCustomers": "Nieograniczeni klienci",
+            "collaborators": "{count} współpracowników",
+            "onlinePayment": "Płatność online",
+            "analytics": "Zaawansowane statystyki",
+            "emailNotifications": "Powiadomienia email",
+            "whiteLabel": "White label",
+            "customDomain": "Własna domena",
+            "prioritySupport": "Priorytetowe wsparcie",
+            "customerPortal": "Portal klienta",
+            "reviewBooster": "Booster opinii"
+          }
+        }
+      },
       "team": "Zespół",
       "saveChanges": "Zapisz zmiany",
       "nav": {

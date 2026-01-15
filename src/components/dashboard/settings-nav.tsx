@@ -41,7 +41,7 @@ const settingsNavItems: SettingsNavItem[] = [
   {
     href: '/dashboard/settings/subscription',
     icon: CreditCard,
-    labelKey: 'subscription',
+    labelKey: 'subscription.label',
   },
 ]
 

@@ -4,6 +4,8 @@ export {
   createCustomerPortalSession,
   cancelSubscription,
   reactivateSubscription,
-  getSubscriptionStatus,
+  getSubscriptionWithPlan,
   syncSubscriptionFromStripe,
+  getPlans,
+  getPlan,
 } from './subscriptions'

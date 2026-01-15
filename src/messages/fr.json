@@ -1014,7 +1014,88 @@
       "emails": "Emails",
       "legal": "Pages légales",
       "account": "Compte",
-      "subscription": "Abonnement",
+      "subscription": {
+        "label": "Abonnement",
+        "description": "Gérez votre abonnement et votre facturation",
+        "month": "mois",
+        "year": "an",
+        "cancelConfirm": "Êtes-vous sûr de vouloir annuler votre abonnement ? Vous conserverez l'accès jusqu'à la fin de la période de facturation.",
+        "reactivate": "Réactiver l'abonnement",
+        "updatePayment": "Mettre à jour le paiement",
+        "manageBilling": "Gérer la facturation",
+        "changePlan": "Changer de plan",
+        "changePlanDescription": "Comparez les fonctionnalités et choisissez le plan adapté à vos besoins.",
+        "cancelSubscription": "Annuler l'abonnement",
+        "subscribe": "S'abonner",
+        "selectPlan": "Choisir ce plan",
+        "currentPlanBadge": "Plan actuel",
+        "freePlan": "Plan gratuit",
+        "notAvailable": "Non disponible",
+        "popular": "Populaire",
+        "processing": "Traitement...",
+        "monthly": "Mensuel",
+        "yearly": "Annuel",
+        "yearlyDiscount": "2 mois offerts",
+        "status": {
+          "active": "Actif",
+          "trialing": "Période d'essai",
+          "pastDue": "Paiement en retard",
+          "cancelled": "Annulé"
+        },
+        "paymentStatus": {
+          "pending": "En attente",
+          "completed": "Payé",
+          "failed": "Échoué",
+          "refunded": "Remboursé"
+        },
+        "alerts": {
+          "successTitle": "Abonnement activé",
+          "successDescription": "Votre abonnement a été activé avec succès. Merci pour votre confiance !",
+          "canceledTitle": "Paiement annulé",
+          "canceledDescription": "Le paiement a été annulé. Vous pouvez réessayer à tout moment.",
+          "cancellingAt": "Votre abonnement sera annulé le {date}.",
+          "pastDue": "Votre paiement a échoué. Veuillez mettre à jour vos informations de paiement."
+        },
+        "noSubscription": {
+          "title": "Passez à la vitesse supérieure",
+          "description": "Débloquez toutes les fonctionnalités de Louez avec un abonnement payant.",
+          "viewPlans": "Voir les plans"
+        },
+        "currentPlan": {
+          "title": "Plan actuel",
+          "nextBilling": "Prochaine facturation le {date}"
+        },
+        "paymentHistory": {
+          "title": "Historique des paiements",
+          "description": "Vos 12 derniers paiements",
+          "empty": "Aucun paiement pour le moment",
+          "date": "Date",
+          "period": "Période",
+          "amount": "Montant",
+          "status": "Statut",
+          "downloadInvoice": "Télécharger la facture"
+        },
+        "plans": {
+          "title": "Choisissez votre plan",
+          "features": {
+            "maxProducts": "{count} produits",
+            "unlimitedProducts": "Produits illimités",
+            "maxReservations": "{count} réservations / mois",
+            "unlimitedReservations": "Réservations illimitées",
+            "maxCustomers": "{count} clients",
+            "unlimitedCustomers": "Clients illimités",
+            "collaborators": "{count} collaborateurs",
+            "onlinePayment": "Paiement en ligne",
+            "analytics": "Statistiques avancées",
+            "emailNotifications": "Notifications email",
+            "whiteLabel": "Sans marque Louez",
+            "customDomain": "Domaine personnalisé",
+            "prioritySupport": "Support prioritaire",
+            "customerPortal": "Espace client",
+            "reviewBooster": "Booster d'avis"
+          }
+        }
+      },
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",
       "nav": {

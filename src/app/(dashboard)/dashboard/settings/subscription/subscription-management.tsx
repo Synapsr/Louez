@@ -7,70 +7,46 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   CreditCard,
-  Download,
   AlertCircle,
   CheckCircle,
   Crown,
-  ArrowUpRight,
+  Check,
+  Sparkles,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label'
+import { formatCurrency, cn } from '@/lib/utils'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { formatCurrency } from '@/lib/utils'
-import {
+  createCheckoutSession,
   openCustomerPortal,
   cancelSubscription,
   reactivateSubscription,
 } from './actions'
-import type { PlanFeatures } from '@/types'
-import Link from 'next/link'
-
-interface Plan {
-  id: string
-  name: string
-  slug: string
-  price: string
-  features: PlanFeatures
-  isPopular: boolean | null
-}
+import type { Plan } from '@/lib/plans'
+import { isPlanAvailable, getYearlyPrice } from '@/lib/plans'
 
 interface Subscription {
   id: string
+  planSlug: string
   status: 'active' | 'cancelled' | 'past_due' | 'trialing'
-  currentPeriodStart: Date
-  currentPeriodEnd: Date
+  currentPeriodEnd: Date | null
   cancelAtPeriodEnd: boolean | null
-  plan: Plan
-}
-
-interface Payment {
-  id: string
-  amount: string
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
-  paidAt: Date | null
-  periodStart: Date | null
-  periodEnd: Date | null
-  invoicePdfUrl: string | null
+  plan: Plan | undefined
 }
 
 interface SubscriptionManagementProps {
   subscription: Subscription | null
-  payments: Payment[]
   plans: Plan[]
   showSuccess?: boolean
   showCanceled?: boolean
@@ -78,17 +54,16 @@ interface SubscriptionManagementProps {
 
 export function SubscriptionManagement({
   subscription,
-  payments,
   plans,
   showSuccess,
   showCanceled,
 }: SubscriptionManagementProps) {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<string | null>(null)
+  const [isYearly, setIsYearly] = useState(false)
   const router = useRouter()
   const t = useTranslations('dashboard.settings.subscription')
 
   useEffect(() => {
-    // Clear the success/canceled params from URL
     if (showSuccess || showCanceled) {
       const timeout = setTimeout(() => {
         router.replace('/dashboard/settings/subscription')
@@ -97,8 +72,28 @@ export function SubscriptionManagement({
     }
   }, [showSuccess, showCanceled, router])
 
+  const handleSubscribe = async (planSlug: string) => {
+    setLoading(planSlug)
+    try {
+      const result = await createCheckoutSession({
+        planSlug,
+        interval: isYearly ? 'yearly' : 'monthly',
+      })
+
+      if (result.url) {
+        window.location.href = result.url
+      } else if ('error' in result) {
+        console.error('Checkout error:', result.error)
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+    } finally {
+      setLoading(null)
+    }
+  }
+
   const handleOpenPortal = async () => {
-    setLoading(true)
+    setLoading('portal')
     try {
       const result = await openCustomerPortal()
       if (result.url) {
@@ -107,33 +102,33 @@ export function SubscriptionManagement({
     } catch (error) {
       console.error('Error opening portal:', error)
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
   const handleCancel = async () => {
     if (!confirm(t('cancelConfirm'))) return
 
-    setLoading(true)
+    setLoading('cancel')
     try {
       await cancelSubscription()
       router.refresh()
     } catch (error) {
       console.error('Error cancelling:', error)
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
   const handleReactivate = async () => {
-    setLoading(true)
+    setLoading('reactivate')
     try {
       await reactivateSubscription()
       router.refresh()
     } catch (error) {
       console.error('Error reactivating:', error)
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
@@ -152,18 +147,63 @@ export function SubscriptionManagement({
     }
   }
 
-  const getPaymentStatusBadge = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <Badge variant="default">{t('paymentStatus.completed')}</Badge>
-      case 'failed':
-        return <Badge variant="destructive">{t('paymentStatus.failed')}</Badge>
-      case 'refunded':
-        return <Badge variant="secondary">{t('paymentStatus.refunded')}</Badge>
-      default:
-        return <Badge variant="outline">{t('paymentStatus.pending')}</Badge>
+  const getPrice = (plan: Plan) => {
+    if (plan.price === 0) return 0
+    if (isYearly) {
+      return getYearlyPrice(plan)
     }
+    return plan.price
   }
+
+  const isCurrentPlan = (plan: Plan) => {
+    return subscription?.planSlug === plan.slug
+  }
+
+  const canUpgrade = (plan: Plan) => {
+    if (plan.price === 0) return false
+    return isPlanAvailable(plan, isYearly ? 'yearly' : 'monthly')
+  }
+
+  const getFeaturesList = (plan: Plan): string[] => {
+    const features = plan.features
+    const list: string[] = []
+
+    if (features.maxProducts === null) {
+      list.push(t('plans.features.unlimitedProducts'))
+    } else {
+      list.push(t('plans.features.maxProducts', { count: features.maxProducts }))
+    }
+
+    if (features.maxReservationsPerMonth === null) {
+      list.push(t('plans.features.unlimitedReservations'))
+    } else {
+      list.push(
+        t('plans.features.maxReservations', { count: features.maxReservationsPerMonth })
+      )
+    }
+
+    if (features.maxCustomers === null) {
+      list.push(t('plans.features.unlimitedCustomers'))
+    } else {
+      list.push(t('plans.features.maxCustomers', { count: features.maxCustomers }))
+    }
+
+    if (features.maxCollaborators !== null && features.maxCollaborators > 0) {
+      list.push(t('plans.features.collaborators', { count: features.maxCollaborators }))
+    }
+
+    if (features.onlinePayment) list.push(t('plans.features.onlinePayment'))
+    if (features.analytics) list.push(t('plans.features.analytics'))
+    if (features.customerPortal) list.push(t('plans.features.customerPortal'))
+    if (features.whiteLabel) list.push(t('plans.features.whiteLabel'))
+    if (features.customDomain) list.push(t('plans.features.customDomain'))
+    if (features.prioritySupport) list.push(t('plans.features.prioritySupport'))
+    if (features.reviewBooster) list.push(t('plans.features.reviewBooster'))
+
+    return list
+  }
+
+  const hasActiveSubscription = subscription?.status === 'active' && subscription?.plan?.price !== 0
 
   return (
     <div className="space-y-6">
@@ -186,7 +226,7 @@ export function SubscriptionManagement({
       )}
 
       {/* Cancellation Warning */}
-      {subscription?.cancelAtPeriodEnd && (
+      {subscription?.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
@@ -199,7 +239,7 @@ export function SubscriptionManagement({
               variant="link"
               className="p-0 h-auto ml-2"
               onClick={handleReactivate}
-              disabled={loading}
+              disabled={loading !== null}
             >
               {t('reactivate')}
             </Button>
@@ -217,7 +257,7 @@ export function SubscriptionManagement({
               variant="link"
               className="p-0 h-auto ml-2"
               onClick={handleOpenPortal}
-              disabled={loading}
+              disabled={loading !== null}
             >
               {t('updatePayment')}
             </Button>
@@ -225,29 +265,8 @@ export function SubscriptionManagement({
         </Alert>
       )}
 
-      {/* No Subscription */}
-      {!subscription && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="h-5 w-5" />
-              {t('noSubscription.title')}
-            </CardTitle>
-            <CardDescription>{t('noSubscription.description')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button asChild>
-              <Link href="/pricing">
-                {t('noSubscription.viewPlans')}
-                <ArrowUpRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Current Plan */}
-      {subscription && (
+      {/* Current Plan Card - Show when user has an active paid subscription */}
+      {hasActiveSubscription && subscription.plan && (
         <Card>
           <CardHeader>
             <CardTitle>{t('currentPlan.title')}</CardTitle>
@@ -257,37 +276,33 @@ export function SubscriptionManagement({
               <div>
                 <p className="text-2xl font-bold">{subscription.plan.name}</p>
                 <p className="text-muted-foreground">
-                  {formatCurrency(parseFloat(subscription.plan.price))} / {t('month')}
+                  {formatCurrency(subscription.plan.price)} / {t('month')}
                 </p>
               </div>
               {getStatusBadge(subscription.status)}
             </div>
 
-            <p className="text-sm text-muted-foreground">
-              {t('currentPlan.nextBilling', {
-                date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                  locale: fr,
-                }),
-              })}
-            </p>
+            {subscription.currentPeriodEnd && (
+              <p className="text-sm text-muted-foreground">
+                {t('currentPlan.nextBilling', {
+                  date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
+                    locale: fr,
+                  }),
+                })}
+              </p>
+            )}
 
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button onClick={handleOpenPortal} disabled={loading}>
+              <Button onClick={handleOpenPortal} disabled={loading !== null}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 {t('manageBilling')}
-              </Button>
-              <Button asChild variant="outline">
-                <Link href="/pricing">
-                  {t('changePlan')}
-                  <ArrowUpRight className="ml-2 h-4 w-4" />
-                </Link>
               </Button>
               {!subscription.cancelAtPeriodEnd && (
                 <Button
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={loading !== null}
                 >
                   {t('cancelSubscription')}
                 </Button>
@@ -297,68 +312,117 @@ export function SubscriptionManagement({
         </Card>
       )}
 
-      {/* Payment History */}
-      {subscription && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('paymentHistory.title')}</CardTitle>
-            <CardDescription>{t('paymentHistory.description')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {payments.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                {t('paymentHistory.empty')}
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('paymentHistory.date')}</TableHead>
-                    <TableHead>{t('paymentHistory.period')}</TableHead>
-                    <TableHead>{t('paymentHistory.amount')}</TableHead>
-                    <TableHead>{t('paymentHistory.status')}</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payments.map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        {payment.paidAt
-                          ? format(payment.paidAt, 'dd/MM/yyyy', { locale: fr })
-                          : '-'}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {payment.periodStart
-                          ? format(payment.periodStart, 'MMM yyyy', { locale: fr })
-                          : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {formatCurrency(parseFloat(payment.amount))}
-                      </TableCell>
-                      <TableCell>{getPaymentStatusBadge(payment.status)}</TableCell>
-                      <TableCell>
-                        {payment.invoicePdfUrl && (
-                          <Button variant="ghost" size="icon" asChild>
-                            <a
-                              href={payment.invoicePdfUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title={t('paymentHistory.downloadInvoice')}
-                            >
-                              <Download className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+      {/* Plans Selection - Always show for upgrade/downgrade */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Crown className="h-5 w-5" />
+            {hasActiveSubscription ? t('changePlan') : t('noSubscription.title')}
+          </CardTitle>
+          <CardDescription>
+            {hasActiveSubscription
+              ? t('changePlanDescription')
+              : t('noSubscription.description')}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {/* Billing Toggle */}
+      <div className="flex items-center justify-center gap-4">
+        <Label
+          htmlFor="billing-toggle"
+          className={cn('text-sm', !isYearly && 'font-semibold')}
+        >
+          {t('monthly')}
+        </Label>
+        <Switch id="billing-toggle" checked={isYearly} onCheckedChange={setIsYearly} />
+        <Label
+          htmlFor="billing-toggle"
+          className={cn('text-sm flex items-center gap-2', isYearly && 'font-semibold')}
+        >
+          {t('yearly')}
+          <Badge variant="secondary" className="text-xs">
+            {t('yearlyDiscount')}
+          </Badge>
+        </Label>
+      </div>
+
+      {/* Plan Cards */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {plans.map((plan) => {
+          const price = getPrice(plan)
+          const isFree = plan.price === 0
+          const isAvailable = canUpgrade(plan)
+          const isCurrent = isCurrentPlan(plan)
+
+          return (
+            <Card
+              key={plan.slug}
+              className={cn(
+                'relative flex flex-col',
+                plan.isPopular && 'border-primary shadow-lg',
+                isCurrent && 'ring-2 ring-primary'
+              )}
+            >
+              {plan.isPopular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="flex items-center gap-1 px-3 py-1">
+                    <Sparkles className="h-3 w-3" />
+                    {t('popular')}
+                  </Badge>
+                </div>
+              )}
+
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">{plan.name}</CardTitle>
+                <CardDescription className="min-h-[40px]">
+                  {plan.description}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="flex-1">
+                <div className="text-center mb-6">
+                  <span className="text-4xl font-bold">{formatCurrency(price)}</span>
+                  {!isFree && (
+                    <span className="text-muted-foreground ml-1">
+                      /{isYearly ? t('year') : t('month')}
+                    </span>
+                  )}
+                </div>
+
+                <ul className="space-y-3">
+                  {getFeaturesList(plan).map((feature, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
                   ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="pt-4">
+                <Button
+                  className="w-full"
+                  variant={plan.isPopular ? 'default' : 'outline'}
+                  size="lg"
+                  onClick={() => handleSubscribe(plan.slug)}
+                  disabled={loading !== null || !isAvailable || isFree || isCurrent}
+                >
+                  {loading === plan.slug
+                    ? t('processing')
+                    : isCurrent
+                      ? t('currentPlanBadge')
+                      : isFree
+                        ? t('freePlan')
+                        : isAvailable
+                          ? t('selectPlan')
+                          : t('notAvailable')}
+                </Button>
+              </CardFooter>
+            </Card>
+          )
+        })}
+      </div>
     </div>
   )
 }

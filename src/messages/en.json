@@ -1014,7 +1014,88 @@
       "emails": "Emails",
       "legal": "Legal pages",
       "account": "Account",
-      "subscription": "Subscription",
+      "subscription": {
+        "label": "Subscription",
+        "description": "Manage your subscription and billing",
+        "month": "month",
+        "year": "year",
+        "cancelConfirm": "Are you sure you want to cancel your subscription? You will retain access until the end of the billing period.",
+        "reactivate": "Reactivate subscription",
+        "updatePayment": "Update payment",
+        "manageBilling": "Manage billing",
+        "changePlan": "Change plan",
+        "changePlanDescription": "Compare features and choose the plan that fits your needs.",
+        "cancelSubscription": "Cancel subscription",
+        "subscribe": "Subscribe",
+        "selectPlan": "Select this plan",
+        "currentPlanBadge": "Current plan",
+        "freePlan": "Free plan",
+        "notAvailable": "Not available",
+        "popular": "Popular",
+        "processing": "Processing...",
+        "monthly": "Monthly",
+        "yearly": "Yearly",
+        "yearlyDiscount": "2 months free",
+        "status": {
+          "active": "Active",
+          "trialing": "Trial",
+          "pastDue": "Past due",
+          "cancelled": "Cancelled"
+        },
+        "paymentStatus": {
+          "pending": "Pending",
+          "completed": "Paid",
+          "failed": "Failed",
+          "refunded": "Refunded"
+        },
+        "alerts": {
+          "successTitle": "Subscription activated",
+          "successDescription": "Your subscription has been activated successfully. Thank you for your trust!",
+          "canceledTitle": "Payment cancelled",
+          "canceledDescription": "The payment was cancelled. You can try again anytime.",
+          "cancellingAt": "Your subscription will be cancelled on {date}.",
+          "pastDue": "Your payment has failed. Please update your payment information."
+        },
+        "noSubscription": {
+          "title": "Level up your business",
+          "description": "Unlock all features of Louez with a paid subscription.",
+          "viewPlans": "View plans"
+        },
+        "currentPlan": {
+          "title": "Current plan",
+          "nextBilling": "Next billing on {date}"
+        },
+        "paymentHistory": {
+          "title": "Payment history",
+          "description": "Your last 12 payments",
+          "empty": "No payments yet",
+          "date": "Date",
+          "period": "Period",
+          "amount": "Amount",
+          "status": "Status",
+          "downloadInvoice": "Download invoice"
+        },
+        "plans": {
+          "title": "Choose your plan",
+          "features": {
+            "maxProducts": "{count} products",
+            "unlimitedProducts": "Unlimited products",
+            "maxReservations": "{count} reservations / month",
+            "unlimitedReservations": "Unlimited reservations",
+            "maxCustomers": "{count} customers",
+            "unlimitedCustomers": "Unlimited customers",
+            "collaborators": "{count} collaborators",
+            "onlinePayment": "Online payment",
+            "analytics": "Advanced analytics",
+            "emailNotifications": "Email notifications",
+            "whiteLabel": "White label",
+            "customDomain": "Custom domain",
+            "prioritySupport": "Priority support",
+            "customerPortal": "Customer portal",
+            "reviewBooster": "Review booster"
+          }
+        }
+      },
       "team": "Team",
       "saveChanges": "Save changes",
       "nav": {
