@@ -204,6 +204,23 @@ Document equipment condition before and after rentals.
 
 ---
 
+### 🔗 Related Products
+
+**Status**: 📋 Planned
+
+Suggest complementary items to increase average order value.
+
+| Feature | Description |
+|---------|-------------|
+| **Product linking** | Associate related products (e.g., helmet with bike) |
+| **Storefront suggestions** | Display related items on product pages |
+| **Cart recommendations** | Suggest add-ons during checkout |
+| **Bidirectional links** | Optionally link products in both directions |
+
+> Useful for: Upselling accessories, safety equipment bundles, complete rental packages.
+
+---
+
 ## Design Principles
 
 As we build new features, we follow these principles:
