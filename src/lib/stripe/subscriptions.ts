@@ -96,6 +96,12 @@ export async function createSubscriptionCheckoutSession({
       storeId: store.id,
       planSlug: plan.slug,
     },
+    // Allow updating existing customer's info during checkout
+    // Required for tax_id_collection when customer already exists
+    customer_update: {
+      name: 'auto',
+      address: 'auto',
+    },
     allow_promotion_codes: true,
     billing_address_collection: 'required',
     tax_id_collection: {
