@@ -147,7 +147,8 @@ export async function updateReservationStatus(
     email: reservation.customer.email,
   }
 
-  const reservationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${store.slug}/account/reservations/${reservationId}`
+  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
   // Send appropriate email
   // TODO: Use customer's stored locale preference when available
@@ -528,7 +529,8 @@ export async function createManualReservation(data: CreateReservationData) {
       })),
     ]
 
-    const reservationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${store.slug}/account/reservations/${reservationId}`
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
     // TODO: Use customer's stored locale preference when available
     sendReservationConfirmationEmail({
@@ -891,7 +893,8 @@ export async function sendReservationEmail(
     email: reservation.customer.email,
   }
 
-  const reservationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/${store.slug}/account/reservations/${reservationId}`
+  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
   try {
     // Get button colors based on primary color contrast

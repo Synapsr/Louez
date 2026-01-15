@@ -59,7 +59,7 @@ export default async function ReservationDetailPage({
   const session = await getCustomerSession(slug)
 
   if (!session) {
-    redirect(`/${slug}/account/login`)
+    redirect('/account/login')
   }
 
   type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
@@ -163,7 +163,7 @@ export default async function ReservationDetailPage({
         {/* Back Button */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-            <Link href={`/${slug}/account`}>
+            <Link href="/account">
               <ArrowLeft className="h-4 w-4" />
               {t('backToAccount')}
             </Link>
@@ -184,7 +184,7 @@ export default async function ReservationDetailPage({
           </div>
           {canDownloadContract && (
             <DownloadContractButton
-              href={`/${slug}/account/reservations/${reservationId}/contract`}
+              href={`/account/reservations/${reservationId}/contract`}
               label={t('downloadContract')}
             />
           )}

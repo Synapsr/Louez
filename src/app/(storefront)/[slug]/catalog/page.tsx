@@ -290,7 +290,7 @@ export default async function CatalogPage({
 
             {/* CTA to select dates */}
             <Button asChild size="lg" className="self-start">
-              <Link href={`/${slug}#date-picker`}>
+              <Link href="/#date-picker">
                 <Calendar className="mr-2 h-4 w-4" />
                 {t('selectDates')}
               </Link>
@@ -301,7 +301,7 @@ export default async function CatalogPage({
           {storeCategories.length > 0 && (
             <div className="flex items-center gap-2 mt-6 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0">
               <Link
-                href={`/${slug}/catalog`}
+                href="/catalog"
                 className={`shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                   !categoryId
                     ? 'bg-primary text-primary-foreground'
@@ -313,7 +313,7 @@ export default async function CatalogPage({
               {storeCategories.map((cat) => (
                 <Link
                   key={cat.id}
-                  href={`/${slug}/catalog?category=${cat.id}`}
+                  href={`/catalog?category=${cat.id}`}
                   className={`shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-colors ${
                     categoryId === cat.id
                       ? 'bg-primary text-primary-foreground'
@@ -351,7 +351,7 @@ export default async function CatalogPage({
                 {search ? t('noProductsFor', { search }) : t('noProducts')}
               </p>
               <Button variant="outline" asChild>
-                <Link href={`/${slug}#date-picker`}>
+                <Link href="/#date-picker">
                   {t('backToHome')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

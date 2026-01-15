@@ -109,7 +109,8 @@ export function ReservationHeader({
   }
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/${storeSlug}/account/reservations/${reservationId}`
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const url = `https://${storeSlug}.${domain}/account/reservations/${reservationId}`
     navigator.clipboard.writeText(url)
     setCopiedLink(true)
     toast.success(t('linkCopied'))
@@ -247,13 +248,14 @@ export function ReservationHeader({
                   {t('actions.copyLink')}
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${storeSlug}/account/reservations/${reservationId}`}
+                  <a
+                    href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/account/reservations/${reservationId}`}
                     target="_blank"
+                    rel="noopener noreferrer"
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     {t('actions.viewAsCustomer')}
-                  </Link>
+                  </a>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

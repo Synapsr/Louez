@@ -64,7 +64,7 @@ export default async function CartPage({ params }: CartPageProps) {
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/${slug}/catalog`}>
+          <Link href="/catalog">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('continueShopping')}
           </Link>

@@ -62,7 +62,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
   // Check if already logged in
   const session = await getCustomerSession(slug)
   if (session) {
-    redirect(`/${slug}/account`)
+    redirect('/account')
   }
 
   return (
@@ -71,7 +71,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
         {/* Back Button */}
         <div className="mb-8">
           <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-            <Link href={`/${slug}`}>
+            <Link href="/">
               <ArrowLeft className="h-4 w-4" />
               {t('back')}
             </Link>

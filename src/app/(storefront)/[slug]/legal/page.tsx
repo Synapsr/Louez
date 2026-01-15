@@ -62,7 +62,7 @@ export default async function LegalNoticePage({ params }: LegalNoticePageProps) 
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/${slug}`}>
+          <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('back')}
           </Link>

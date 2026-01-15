@@ -187,13 +187,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <nav className="mb-6">
         <ol className="flex items-center gap-2 text-sm text-muted-foreground">
           <li>
-            <Link href={`/${slug}`} className="hover:text-foreground">
+            <Link href="/" className="hover:text-foreground">
               {t('breadcrumb.home')}
             </Link>
           </li>
           <li>/</li>
           <li>
-            <Link href={`/${slug}/catalog`} className="hover:text-foreground">
+            <Link href="/catalog" className="hover:text-foreground">
               {t('breadcrumb.catalog')}
             </Link>
           </li>
@@ -202,7 +202,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <li>/</li>
               <li>
                 <Link
-                  href={`/${slug}/catalog?category=${product.category.id}`}
+                  href={`/catalog?category=${product.category.id}`}
                   className="hover:text-foreground"
                 >
                   {product.category.name}

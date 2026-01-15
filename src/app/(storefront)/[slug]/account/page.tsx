@@ -80,7 +80,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
   const session = await getCustomerSession(slug)
 
   if (!session) {
-    redirect(`/${slug}/account/login`)
+    redirect('/account/login')
   }
 
   type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
@@ -159,7 +159,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
   async function handleLogout() {
     'use server'
     await logout()
-    redirect(`/${slug}`)
+    redirect('/')
   }
 
   // Get initials for avatar
@@ -229,7 +229,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/${slug}/account/reservations/${reservation.id}`}
+                    href={`/account/reservations/${reservation.id}`}
                     className="block"
                   >
                     <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-primary">
@@ -303,7 +303,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 <h3 className="font-semibold mb-1">{t('noReservations')}</h3>
                 <p className="text-muted-foreground mb-6">{t('noReservationsDescription')}</p>
                 <Button asChild>
-                  <Link href={`/${slug}/catalog`}>{t('viewCatalog')}</Link>
+                  <Link href="/catalog">{t('viewCatalog')}</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -318,7 +318,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/${slug}/account/reservations/${reservation.id}`}
+                    href={`/account/reservations/${reservation.id}`}
                     className="block"
                   >
                     <Card className={`group hover:shadow-sm transition-all duration-200 ${isActive ? 'opacity-60' : ''}`}>

@@ -137,14 +137,15 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               <div className="flex items-center justify-end">
                 {store.slug && (
                   <Button type="button" variant="ghost" size="sm" asChild>
-                    <Link
-                      href={`/${store.slug}/terms`}
+                    <a
+                      href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/terms`}
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1"
                     >
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
-                    </Link>
+                    </a>
                   </Button>
                 )}
               </div>
@@ -160,14 +161,15 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               <div className="flex items-center justify-end">
                 {store.slug && (
                   <Button type="button" variant="ghost" size="sm" asChild>
-                    <Link
-                      href={`/${store.slug}/legal`}
+                    <a
+                      href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/legal`}
                       target="_blank"
+                      rel="noopener noreferrer"
                       className="flex items-center gap-1"
                     >
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
-                    </Link>
+                    </a>
                   </Button>
                 )}
               </div>

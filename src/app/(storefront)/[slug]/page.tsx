@@ -365,7 +365,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
               </p>
             </div>
             <Button variant="outline" className="group self-start" asChild>
-              <Link href={`/${slug}/catalog`}>
+              <Link href="/catalog">
                 {t('home.viewAll')}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Link>
@@ -563,7 +563,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   </div>
                 </div>
                 <Button variant="outline" asChild className="shrink-0 gap-2">
-                  <Link href={`/${slug}/account`}>
+                  <Link href="/account">
                     <KeyRound className="h-4 w-4" />
                     {t('home.accessAccount')}
                   </Link>
@@ -598,7 +598,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
           </p>
 
           <Button size="lg" className="mt-8 text-base px-8 h-12 shadow-lg shadow-primary/25" asChild>
-            <Link href={`/${slug}/catalog`}>
+            <Link href="/catalog">
               {t('home.exploreCatalog')}
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

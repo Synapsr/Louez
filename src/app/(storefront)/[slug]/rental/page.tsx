@@ -82,14 +82,14 @@ export default async function RentalPage({
 
   // Redirect to homepage if no dates
   if (!startDate || !endDate) {
-    redirect(`/${slug}`)
+    redirect('/')
   }
 
   // Validate dates
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-    redirect(`/${slug}`)
+    redirect('/')
   }
 
   // Fetch store

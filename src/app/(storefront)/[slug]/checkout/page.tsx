@@ -65,7 +65,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
     <div className="container mx-auto px-4 py-6 md:py-8">
       {/* Back button */}
       <Button variant="ghost" size="sm" asChild className="mb-6">
-        <Link href={`/${slug}/cart`}>
+        <Link href="/cart">
           <ArrowLeft className="mr-2 h-4 w-4" />
           {t('backToCart')}
         </Link>
