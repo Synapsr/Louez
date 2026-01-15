@@ -246,9 +246,14 @@
       "ownerBadge": "Proprietario",
       "memberBadge": "Membro da equipe",
       "userNotFound": "Usuario nao encontrado. Esta pessoa deve primeiro criar uma conta Louez.",
-      "limitReached": "Voce atingiu o limite de membros da equipe do seu plano. Faca upgrade para adicionar mais.",
-      "limitWarning": "{current} / {limit} membros",
-      "upgradeToAdd": "Faca upgrade do seu plano para adicionar membros da equipe."
+      "limitReached": "Voce atingiu o limite de membros da equipe do seu plano.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Membros nao disponiveis",
+      "featureNotAvailableDescription": "Os membros da equipe nao estao incluidos no seu plano atual. Faca upgrade para Pro para convidar membros.",
+      "upgradeToPro": "Upgrade para Pro",
+      "limitReachedTitle": "Limite atingido",
+      "limitReachedDescription": "Voce esta usando {current} de {limit} membros. Faca upgrade para adicionar mais.",
+      "upgradeForMore": "Adicionar mais"
     },
     "navigation": {
       "home": "Inicio",

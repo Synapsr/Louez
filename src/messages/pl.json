@@ -246,9 +246,14 @@
       "ownerBadge": "Właściciel",
       "memberBadge": "Członek zespołu",
       "userNotFound": "Nie znaleziono użytkownika. Ta osoba musi najpierw utworzyć konto Louez.",
-      "limitReached": "Osiągnąłeś limit członków zespołu w swoim planie. Ulepsz, aby dodać więcej.",
-      "limitWarning": "{current} / {limit} członków",
-      "upgradeToAdd": "Ulepsz swój plan, aby dodać członków zespołu."
+      "limitReached": "Osiągnąłeś limit członków zespołu w swoim planie.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Członkowie niedostępni",
+      "featureNotAvailableDescription": "Członkowie zespołu nie są uwzględnieni w Twoim obecnym planie. Przejdź na Pro, aby zapraszać członków.",
+      "upgradeToPro": "Przejdź na Pro",
+      "limitReachedTitle": "Osiągnięto limit",
+      "limitReachedDescription": "Używasz {current} z {limit} członków. Ulepsz, aby dodać więcej.",
+      "upgradeForMore": "Dodaj więcej"
     },
     "navigation": {
       "home": "Strona główna",

@@ -246,9 +246,14 @@
       "ownerBadge": "Proprietario",
       "memberBadge": "Membro del team",
       "userNotFound": "Utente non trovato. Questa persona deve prima creare un account Louez.",
-      "limitReached": "Hai raggiunto il limite di membri del team per il tuo piano. Aggiorna per aggiungerne altri.",
-      "limitWarning": "{current} / {limit} membri",
-      "upgradeToAdd": "Aggiorna il tuo piano per aggiungere membri del team."
+      "limitReached": "Hai raggiunto il limite di membri del team per il tuo piano.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Membri non disponibili",
+      "featureNotAvailableDescription": "I membri del team non sono inclusi nel tuo piano attuale. Passa a Pro per invitare membri.",
+      "upgradeToPro": "Passa a Pro",
+      "limitReachedTitle": "Limite raggiunto",
+      "limitReachedDescription": "Stai usando {current} su {limit} membri. Aggiorna per aggiungerne altri.",
+      "upgradeForMore": "Aggiungi altri"
     },
     "navigation": {
       "home": "Home",

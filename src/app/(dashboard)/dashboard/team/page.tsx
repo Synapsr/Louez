@@ -2,8 +2,8 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
 import { getCurrentStore, currentUserHasPermission } from '@/lib/store-context'
-import { TeamContent } from '../settings/team/team-content'
-import { getTeamData } from '../settings/team/actions'
+import { TeamContent } from './team-content'
+import { getTeamData } from './actions'
 
 export default async function TeamPage() {
   const store = await getCurrentStore()

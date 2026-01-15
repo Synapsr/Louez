@@ -246,9 +246,14 @@
       "ownerBadge": "Inhaber",
       "memberBadge": "Teammitglied",
       "userNotFound": "Benutzer nicht gefunden. Diese Person muss zuerst ein Louez-Konto erstellen.",
-      "limitReached": "Sie haben das Teammitgliederlimit Ihres Plans erreicht. Upgraden Sie, um mehr hinzuzufügen.",
-      "limitWarning": "{current} / {limit} Teammitglieder",
-      "upgradeToAdd": "Upgraden Sie Ihren Plan, um Teammitglieder hinzuzufügen."
+      "limitReached": "Sie haben das Teammitgliederlimit Ihres Plans erreicht.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Teammitglieder nicht verfügbar",
+      "featureNotAvailableDescription": "Teammitglieder sind in Ihrem aktuellen Plan nicht enthalten. Upgraden Sie auf Pro, um Mitglieder einzuladen.",
+      "upgradeToPro": "Auf Pro upgraden",
+      "limitReachedTitle": "Limit erreicht",
+      "limitReachedDescription": "Sie nutzen {current} von {limit} Teammitgliedern. Upgraden Sie, um mehr hinzuzufügen.",
+      "upgradeForMore": "Mehr hinzufügen"
     },
     "navigation": {
       "home": "Startseite",

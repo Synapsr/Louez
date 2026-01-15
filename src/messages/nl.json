@@ -246,9 +246,14 @@
       "ownerBadge": "Eigenaar",
       "memberBadge": "Teamlid",
       "userNotFound": "Gebruiker niet gevonden. Deze persoon moet eerst een Louez-account aanmaken.",
-      "limitReached": "Je hebt de teamlidlimiet van je plan bereikt. Upgrade om meer toe te voegen.",
-      "limitWarning": "{current} / {limit} teamleden",
-      "upgradeToAdd": "Upgrade je plan om teamleden toe te voegen."
+      "limitReached": "Je hebt de teamlidlimiet van je plan bereikt.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Teamleden niet beschikbaar",
+      "featureNotAvailableDescription": "Teamleden zijn niet inbegrepen in je huidige plan. Upgrade naar Pro om leden uit te nodigen.",
+      "upgradeToPro": "Upgrade naar Pro",
+      "limitReachedTitle": "Limiet bereikt",
+      "limitReachedDescription": "Je gebruikt {current} van {limit} teamleden. Upgrade om meer toe te voegen.",
+      "upgradeForMore": "Meer toevoegen"
     },
     "navigation": {
       "home": "Home",

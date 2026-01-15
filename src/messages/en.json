@@ -246,9 +246,14 @@
       "ownerBadge": "Owner",
       "memberBadge": "Team member",
       "userNotFound": "User not found. This person must first create a Louez account.",
-      "limitReached": "You have reached the team member limit for your plan. Upgrade to add more members.",
-      "limitWarning": "{current} / {limit} team members",
-      "upgradeToAdd": "Upgrade your plan to add team members."
+      "limitReached": "You have reached the team member limit for your plan.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Team members unavailable",
+      "featureNotAvailableDescription": "Team members are not included in your current plan. Upgrade to Pro to invite members to join your team.",
+      "upgradeToPro": "Upgrade to Pro",
+      "limitReachedTitle": "Limit reached",
+      "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
+      "upgradeForMore": "Add more"
     },
     "navigation": {
       "home": "Home",

@@ -246,9 +246,14 @@
       "ownerBadge": "Propriétaire",
       "memberBadge": "Collaborateur",
       "userNotFound": "Utilisateur introuvable. Cette personne doit d'abord créer un compte Louez.",
-      "limitReached": "Vous avez atteint la limite de collaborateurs de votre plan. Passez à un plan supérieur pour en ajouter davantage.",
-      "limitWarning": "{current} / {limit} collaborateurs",
-      "upgradeToAdd": "Passez à un plan supérieur pour ajouter des collaborateurs."
+      "limitReached": "Vous avez atteint la limite de collaborateurs de votre plan.",
+      "limitBadge": "{current} / {limit}",
+      "featureNotAvailable": "Collaborateurs non disponibles",
+      "featureNotAvailableDescription": "Les collaborateurs ne sont pas inclus dans votre plan actuel. Passez à Pro pour inviter des membres à rejoindre votre équipe.",
+      "upgradeToPro": "Passer à Pro",
+      "limitReachedTitle": "Limite atteinte",
+      "limitReachedDescription": "Vous utilisez {current} collaborateurs sur {limit}. Passez à un plan supérieur pour en ajouter davantage.",
+      "upgradeForMore": "Ajouter plus"
     },
     "navigation": {
       "home": "Accueil",

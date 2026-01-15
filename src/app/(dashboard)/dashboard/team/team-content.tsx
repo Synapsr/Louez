@@ -4,12 +4,11 @@ import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Mail, MoreHorizontal, UserPlus, Users, Clock, Send, X, Crown, User as UserIcon, AlertCircle } from 'lucide-react'
+import { Mail, MoreHorizontal, UserPlus, Users, Clock, Send, X, Crown, User as UserIcon, Zap, Lock, ArrowRight } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import {
   Card,
@@ -142,6 +141,11 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
     return email.slice(0, 2).toUpperCase()
   }
 
+  // Determine limit state
+  const hasNoCollaboratorAccess = limits && limits.limit === 0
+  const isAtLimit = limits && !limits.allowed && limits.limit !== null && limits.limit > 0
+  const canAddMore = limits?.allowed ?? true
+
   return (
     <div className="space-y-6">
       {/* Add Member Form */}
@@ -156,25 +160,61 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                 </CardTitle>
                 <CardDescription>{t('addMemberDescription')}</CardDescription>
               </div>
-              {limits && limits.limit !== null && (
-                <Badge variant={limits.allowed ? 'secondary' : 'destructive'}>
-                  {t('limitWarning', { current: limits.current, limit: limits.limit })}
+              {/* Show usage badge only when there's a positive limit */}
+              {limits && limits.limit !== null && limits.limit > 0 && (
+                <Badge variant={canAddMore ? 'secondary' : 'outline'} className={!canAddMore ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400' : ''}>
+                  {t('limitBadge', { current: limits.current, limit: limits.limit })}
                 </Badge>
               )}
             </div>
           </CardHeader>
           <CardContent>
-            {limits && !limits.allowed ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription className="flex items-center justify-between">
-                  <span>{t('upgradeToAdd')}</span>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/subscription">Upgrade</Link>
+            {/* Case 1: Feature not available (limit = 0) */}
+            {hasNoCollaboratorAccess ? (
+              <div className="rounded-lg border border-muted bg-muted/30 p-6">
+                <div className="flex flex-col items-center text-center sm:flex-row sm:text-left sm:items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                    <Lock className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <h3 className="font-semibold">{t('featureNotAvailable')}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {t('featureNotAvailableDescription')}
+                    </p>
+                  </div>
+                  <Button asChild className="shrink-0 gap-2">
+                    <Link href="/dashboard/subscription">
+                      <Zap className="h-4 w-4" />
+                      {t('upgradeToPro')}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
                   </Button>
-                </AlertDescription>
-              </Alert>
+                </div>
+              </div>
+            ) : isAtLimit ? (
+              /* Case 2: At limit (limit > 0 but full) */
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-6">
+                <div className="flex flex-col items-center text-center sm:flex-row sm:text-left sm:items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-amber-500/10">
+                    <Users className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <h3 className="font-semibold text-amber-700 dark:text-amber-300">{t('limitReachedTitle')}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {t('limitReachedDescription', { current: limits?.current ?? 0, limit: limits?.limit ?? 0 })}
+                    </p>
+                  </div>
+                  <Button asChild className="shrink-0 gap-2">
+                    <Link href="/dashboard/subscription">
+                      <Zap className="h-4 w-4" />
+                      {t('upgradeForMore')}
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
             ) : (
+              /* Case 3: Can add members */
               <>
                 <form onSubmit={handleAddMember} className="flex gap-3">
                   <div className="flex-1">

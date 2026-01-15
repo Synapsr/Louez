@@ -74,7 +74,7 @@ export async function addTeamMember(formData: FormData) {
       addedBy: session.user.id,
     })
 
-    revalidatePath('/dashboard/settings/team')
+    revalidatePath('/dashboard/team')
     return { success: true, type: 'added' }
   }
 
@@ -124,7 +124,7 @@ export async function addTeamMember(formData: FormData) {
     // Don't fail the action if email fails
   }
 
-  revalidatePath('/dashboard/settings/team')
+  revalidatePath('/dashboard/team')
   return { success: true, type: 'invited' }
 }
 
@@ -168,7 +168,7 @@ export async function removeMember(memberId: string) {
 
   await db.delete(storeMembers).where(eq(storeMembers.id, memberId))
 
-  revalidatePath('/dashboard/settings/team')
+  revalidatePath('/dashboard/team')
   return { success: true }
 }
 
@@ -198,7 +198,7 @@ export async function cancelInvitation(invitationId: string) {
       )
     )
 
-  revalidatePath('/dashboard/settings/team')
+  revalidatePath('/dashboard/team')
   return { success: true }
 }
 
@@ -257,7 +257,7 @@ export async function resendInvitation(invitationId: string) {
     console.error('Failed to resend invitation email:', error)
   }
 
-  revalidatePath('/dashboard/settings/team')
+  revalidatePath('/dashboard/team')
   return { success: true }
 }
 
