@@ -1029,6 +1029,8 @@
         "subscribe": "S'abonner",
         "selectPlan": "Choisir ce plan",
         "currentPlanBadge": "Plan actuel",
+        "switchToYearly": "Passer à l'annuel",
+        "switchToMonthly": "Passer au mensuel",
         "freePlan": "Plan gratuit",
         "notAvailable": "Non disponible",
         "popular": "Populaire",
@@ -1069,6 +1071,17 @@
           "title": "Facturation",
           "description": "Accédez à vos factures et gérez vos moyens de paiement.",
           "openPortal": "Voir mes factures"
+        },
+        "cancelModal": {
+          "title": "Annuler votre abonnement ?",
+          "description": "En annulant votre abonnement, vous reviendrez au plan gratuit avec les limitations suivantes :",
+          "limit1": "5 produits maximum",
+          "limit2": "10 réservations par mois",
+          "limit3": "50 clients maximum",
+          "keepAccess": "Vous conserverez l'accès à votre plan actuel jusqu'au {date}.",
+          "confirm": "J'accepte et je confirme l'annulation",
+          "cancel": "Annuler",
+          "warning": "Cette action est irréversible."
         },
         "paymentHistory": {
           "title": "Historique des paiements",

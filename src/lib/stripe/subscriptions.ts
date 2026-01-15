@@ -3,12 +3,13 @@ import { db } from '@/lib/db'
 import { stores, subscriptions, users, storeMembers } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import { getPlan, getPlans, type Plan } from '@/lib/plans'
+import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
 
 interface CreateCheckoutSessionOptions {
   storeId: string
   planSlug: string
   interval: 'monthly' | 'yearly'
+  currency: Currency
   successUrl: string
   cancelUrl: string
 }
@@ -17,6 +18,7 @@ export async function createSubscriptionCheckoutSession({
   storeId,
   planSlug,
   interval,
+  currency,
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionOptions) {
@@ -47,12 +49,11 @@ export async function createSubscriptionCheckoutSession({
     throw new Error('Plan not found')
   }
 
-  // Determine the price ID
-  const priceId =
-    interval === 'monthly' ? plan.stripePriceMonthly : plan.stripePriceYearly
+  // Determine the price ID based on interval and currency
+  const priceId = getPlanPriceId(plan, interval, currency)
 
   if (!priceId) {
-    throw new Error('Price not configured for this plan')
+    throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
   }
 
   // Get or create Stripe customer
@@ -205,9 +206,29 @@ export async function getSubscriptionWithPlan(storeId: string) {
   // Get plan from code
   const plan = getPlan(subscription.planSlug)
 
+  // Get billing interval from Stripe if subscription exists
+  let billingInterval: 'monthly' | 'yearly' | null = null
+  if (subscription.stripeSubscriptionId) {
+    try {
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        subscription.stripeSubscriptionId,
+        { expand: ['items.data'] }
+      )
+      const firstItem = stripeSubscription.items.data[0]
+      if (firstItem?.price?.recurring?.interval === 'year') {
+        billingInterval = 'yearly'
+      } else if (firstItem?.price?.recurring?.interval === 'month') {
+        billingInterval = 'monthly'
+      }
+    } catch (error) {
+      console.error('Error fetching Stripe subscription:', error)
+    }
+  }
+
   return {
     ...subscription,
     plan,
+    billingInterval,
   }
 }
 
@@ -249,6 +270,17 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
     .where(eq(subscriptions.id, subscription.id))
 
   return subscription
+}
+
+/**
+ * Get the current plan slug for a store (lightweight version for sidebar)
+ */
+export async function getCurrentPlanSlug(storeId: string): Promise<string> {
+  const subscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+    columns: { planSlug: true },
+  })
+  return subscription?.planSlug || 'start'
 }
 
 export { getPlans, getPlan, type Plan }

@@ -1030,6 +1030,8 @@
         "subscribe": "Subskrybuj",
         "selectPlan": "Wybierz ten plan",
         "currentPlanBadge": "Obecny plan",
+        "switchToYearly": "Przejdź na roczny",
+        "switchToMonthly": "Przejdź na miesięczny",
         "freePlan": "Darmowy plan",
         "notAvailable": "Niedostępny",
         "popular": "Popularny",
@@ -1065,6 +1067,22 @@
         "currentPlan": {
           "title": "Aktualny plan",
           "nextBilling": "Następne rozliczenie {date}"
+        },
+        "billingPortal": {
+          "title": "Płatności",
+          "description": "Uzyskaj dostęp do faktur i zarządzaj metodami płatności.",
+          "openPortal": "Zobacz moje faktury"
+        },
+        "cancelModal": {
+          "title": "Anulować subskrypcję?",
+          "description": "Anulując subskrypcję, wrócisz do darmowego planu z następującymi ograniczeniami:",
+          "limit1": "Maksymalnie 5 produktów",
+          "limit2": "10 rezerwacji miesięcznie",
+          "limit3": "Maksymalnie 50 klientów",
+          "keepAccess": "Zachowasz dostęp do obecnego planu do {date}.",
+          "confirm": "Akceptuję i potwierdzam anulowanie",
+          "cancel": "Anuluj",
+          "warning": "Ta akcja jest nieodwracalna."
         },
         "paymentHistory": {
           "title": "Historia płatności",

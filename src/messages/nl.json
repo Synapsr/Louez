@@ -1030,6 +1030,8 @@
         "subscribe": "Abonneren",
         "selectPlan": "Dit plan kiezen",
         "currentPlanBadge": "Huidig plan",
+        "switchToYearly": "Overstappen naar jaarlijks",
+        "switchToMonthly": "Overstappen naar maandelijks",
         "freePlan": "Gratis plan",
         "notAvailable": "Niet beschikbaar",
         "popular": "Populair",
@@ -1065,6 +1067,22 @@
         "currentPlan": {
           "title": "Huidig plan",
           "nextBilling": "Volgende facturatie op {date}"
+        },
+        "billingPortal": {
+          "title": "Facturatie",
+          "description": "Bekijk je facturen en beheer je betaalmethoden.",
+          "openPortal": "Mijn facturen bekijken"
+        },
+        "cancelModal": {
+          "title": "Abonnement opzeggen?",
+          "description": "Door je abonnement op te zeggen, keer je terug naar het gratis plan met de volgende beperkingen:",
+          "limit1": "Maximaal 5 producten",
+          "limit2": "10 reserveringen per maand",
+          "limit3": "Maximaal 50 klanten",
+          "keepAccess": "Je behoudt toegang tot je huidige plan tot {date}.",
+          "confirm": "Ik accepteer en bevestig de opzegging",
+          "cancel": "Annuleren",
+          "warning": "Deze actie kan niet ongedaan worden gemaakt."
         },
         "paymentHistory": {
           "title": "Betalingsgeschiedenis",

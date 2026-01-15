@@ -21,6 +21,8 @@ import {
   ExternalLink,
   CreditCard,
   Plus,
+  Crown,
+  Sparkles,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -56,6 +58,7 @@ interface SidebarProps {
   storeSlug?: string
   userEmail: string
   userImage?: string | null
+  planSlug?: string
 }
 
 const mainNavigation = [
@@ -231,24 +234,66 @@ function UserMenu({
   )
 }
 
+function PlanBadge({ planSlug }: { planSlug?: string }) {
+  const plan = planSlug || 'start'
+
+  const planConfig: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+    start: {
+      label: 'Start',
+      className: 'bg-muted text-muted-foreground hover:bg-muted/80',
+      icon: null,
+    },
+    pro: {
+      label: 'Pro',
+      className: 'bg-primary/10 text-primary hover:bg-primary/20',
+      icon: <Sparkles className="h-3 w-3" />,
+    },
+    ultra: {
+      label: 'Ultra',
+      className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20',
+      icon: <Crown className="h-3 w-3" />,
+    },
+  }
+
+  const config = planConfig[plan] || planConfig.start
+
+  return (
+    <Link
+      href="/dashboard/subscription"
+      className={cn(
+        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors',
+        config.className
+      )}
+    >
+      {config.icon}
+      {config.label}
+    </Link>
+  )
+}
+
 function StoreHeader({
   stores,
   currentStoreId,
   storeSlug,
+  planSlug,
 }: {
   stores: StoreWithRole[]
   currentStoreId: string
   storeSlug?: string
+  planSlug?: string
 }) {
   const t = useTranslations('dashboard.sidebar')
 
   return (
     <div className="space-y-3">
-      {/* Louez Logo */}
+      {/* Louez Logo + Plan Badge */}
       <div className="flex items-center justify-between px-3">
-        <Link href="/dashboard" className="flex items-center">
-          <Logo className="h-5 w-auto" />
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center">
+            <Logo className="h-5 w-auto" />
+          </Link>
+          <PlanBadge planSlug={planSlug} />
+        </div>
         {storeSlug && (
           <Link
             href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
@@ -274,7 +319,7 @@ function NewReservationLabel() {
   return <>{t('newReservation')}</>
 }
 
-export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImage }: SidebarProps) {
+export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImage, planSlug }: SidebarProps) {
   const pathname = usePathname()
 
   return (
@@ -282,7 +327,7 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
       <div className="flex grow flex-col overflow-y-auto border-r bg-card/50 backdrop-blur-sm">
         {/* Store Header */}
         <div className="sticky top-0 z-10 bg-card/80 backdrop-blur-sm border-b px-1 py-3">
-          <StoreHeader stores={stores} currentStoreId={currentStoreId} storeSlug={storeSlug} />
+          <StoreHeader stores={stores} currentStoreId={currentStoreId} storeSlug={storeSlug} planSlug={planSlug} />
         </div>
 
         {/* Navigation */}
@@ -323,7 +368,7 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
   )
 }
 
-export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, userImage }: SidebarProps) {
+export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, userImage, planSlug }: SidebarProps) {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const currentStore = stores.find((s) => s.id === currentStoreId)
@@ -340,9 +385,12 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
             <div className="flex h-14 items-center justify-between border-b px-4">
-              <Link href="/dashboard" className="flex items-center" onClick={() => setOpen(false)}>
-                <Logo className="h-5 w-auto" />
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link href="/dashboard" className="flex items-center" onClick={() => setOpen(false)}>
+                  <Logo className="h-5 w-auto" />
+                </Link>
+                <PlanBadge planSlug={planSlug} />
+              </div>
               <Button variant="ghost" size="icon" onClick={() => setOpen(false)}>
                 <X className="h-5 w-5" />
               </Button>
@@ -389,6 +437,7 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
         <div className="flex items-center gap-2 min-w-0">
           <LogoIcon size={24} className="shrink-0" />
           <span className="font-semibold truncate">{currentStore?.name || 'Louez'}</span>
+          <PlanBadge planSlug={planSlug} />
         </div>
       </div>
 

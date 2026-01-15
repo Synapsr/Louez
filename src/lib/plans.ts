@@ -1,14 +1,31 @@
 import type { PlanFeatures } from '@/types'
 
+export type Currency = 'eur' | 'usd'
+
+export const SUPPORTED_CURRENCIES: Currency[] = ['eur', 'usd']
+
+export const CURRENCY_SYMBOLS: Record<Currency, string> = {
+  eur: '€',
+  usd: '$',
+}
+
+export interface PlanPrices {
+  monthly?: string
+  yearly?: string
+}
+
 export interface Plan {
   slug: string
   name: string
   description: string
-  price: number // Monthly price in EUR
+  price: number // Monthly price (same in EUR and USD)
   features: PlanFeatures
   isPopular?: boolean
+  // Legacy fields for backwards compatibility
   stripePriceMonthly?: string
   stripePriceYearly?: string
+  // Multi-currency support
+  stripePrices?: Record<Currency, PlanPrices>
 }
 
 /**
@@ -56,7 +73,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       customDomain: false,
       prioritySupport: false,
       customerPortal: true,
-      reviewBooster: false,
+      reviewBooster: true,
       apiAccess: false,
       phoneSupport: false,
       dedicatedManager: false,
@@ -98,13 +115,37 @@ export function getPlans(): Plan[] {
     },
     {
       ...BASE_PLANS.pro,
+      // Legacy EUR prices (backwards compatibility)
       stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
       stripePriceYearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+      // Multi-currency support
+      stripePrices: {
+        eur: {
+          monthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
+          yearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+        },
+        usd: {
+          monthly: process.env.STRIPE_PRICE_PRO_MONTHLY_USD,
+          yearly: process.env.STRIPE_PRICE_PRO_YEARLY_USD,
+        },
+      },
     },
     {
       ...BASE_PLANS.ultra,
+      // Legacy EUR prices (backwards compatibility)
       stripePriceMonthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
       stripePriceYearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
+      // Multi-currency support
+      stripePrices: {
+        eur: {
+          monthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
+          yearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
+        },
+        usd: {
+          monthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
+          yearly: process.env.STRIPE_PRICE_ULTRA_YEARLY_USD,
+        },
+      },
     },
   ]
 }
@@ -135,12 +176,37 @@ export function isStripeConfigured(): boolean {
 }
 
 /**
- * Check if a plan is available for purchase
+ * Check if a plan is available for purchase in a specific currency
  */
-export function isPlanAvailable(plan: Plan, interval: 'monthly' | 'yearly'): boolean {
+export function isPlanAvailable(
+  plan: Plan,
+  interval: 'monthly' | 'yearly',
+  currency: Currency = 'eur'
+): boolean {
   if (plan.price === 0) return false // Free plan - no purchase needed
-  const priceId = interval === 'monthly' ? plan.stripePriceMonthly : plan.stripePriceYearly
+  const priceId = getPlanPriceId(plan, interval, currency)
   return !!priceId
+}
+
+/**
+ * Get the Stripe price ID for a plan, interval, and currency
+ */
+export function getPlanPriceId(
+  plan: Plan,
+  interval: 'monthly' | 'yearly',
+  currency: Currency = 'eur'
+): string | undefined {
+  // Try multi-currency prices first
+  if (plan.stripePrices?.[currency]) {
+    return interval === 'monthly'
+      ? plan.stripePrices[currency].monthly
+      : plan.stripePrices[currency].yearly
+  }
+  // Fallback to legacy EUR prices
+  if (currency === 'eur') {
+    return interval === 'monthly' ? plan.stripePriceMonthly : plan.stripePriceYearly
+  }
+  return undefined
 }
 
 /**
@@ -148,4 +214,15 @@ export function isPlanAvailable(plan: Plan, interval: 'monthly' | 'yearly'): boo
  */
 export function getYearlyPrice(plan: Plan): number {
   return plan.price * 10
+}
+
+/**
+ * Format price with currency symbol
+ */
+export function formatPlanPrice(price: number, currency: Currency = 'eur'): string {
+  const symbol = CURRENCY_SYMBOLS[currency]
+  if (currency === 'eur') {
+    return `${price}${symbol}`
+  }
+  return `${symbol}${price}`
 }

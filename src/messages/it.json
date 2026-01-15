@@ -1030,6 +1030,8 @@
         "subscribe": "Abbonati",
         "selectPlan": "Scegli questo piano",
         "currentPlanBadge": "Piano attuale",
+        "switchToYearly": "Passa all'annuale",
+        "switchToMonthly": "Passa al mensile",
         "freePlan": "Piano gratuito",
         "notAvailable": "Non disponibile",
         "popular": "Popolare",
@@ -1065,6 +1067,22 @@
         "currentPlan": {
           "title": "Piano attuale",
           "nextBilling": "Prossima fatturazione il {date}"
+        },
+        "billingPortal": {
+          "title": "Fatturazione",
+          "description": "Accedi alle tue fatture e gestisci i metodi di pagamento.",
+          "openPortal": "Visualizza le mie fatture"
+        },
+        "cancelModal": {
+          "title": "Annullare l'abbonamento?",
+          "description": "Annullando l'abbonamento, tornerai al piano gratuito con le seguenti limitazioni:",
+          "limit1": "Massimo 5 prodotti",
+          "limit2": "10 prenotazioni al mese",
+          "limit3": "Massimo 50 clienti",
+          "keepAccess": "Manterrai l'accesso al tuo piano attuale fino al {date}.",
+          "confirm": "Accetto e confermo l'annullamento",
+          "cancel": "Annulla",
+          "warning": "Questa azione è irreversibile."
         },
         "paymentHistory": {
           "title": "Storico pagamenti",

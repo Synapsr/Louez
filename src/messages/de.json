@@ -1031,6 +1031,8 @@
         "subscribe": "Abonnieren",
         "selectPlan": "Diesen Plan wählen",
         "currentPlanBadge": "Aktueller Plan",
+        "switchToYearly": "Zu jährlich wechseln",
+        "switchToMonthly": "Zu monatlich wechseln",
         "freePlan": "Kostenloser Plan",
         "notAvailable": "Nicht verfügbar",
         "popular": "Beliebt",
@@ -1066,6 +1068,22 @@
         "currentPlan": {
           "title": "Aktueller Plan",
           "nextBilling": "Nächste Abrechnung am {date}"
+        },
+        "billingPortal": {
+          "title": "Abrechnung",
+          "description": "Greifen Sie auf Ihre Rechnungen zu und verwalten Sie Ihre Zahlungsmethoden.",
+          "openPortal": "Meine Rechnungen ansehen"
+        },
+        "cancelModal": {
+          "title": "Abonnement kündigen?",
+          "description": "Durch die Kündigung Ihres Abonnements kehren Sie zum kostenlosen Plan mit folgenden Einschränkungen zurück:",
+          "limit1": "Maximal 5 Produkte",
+          "limit2": "10 Reservierungen pro Monat",
+          "limit3": "Maximal 50 Kunden",
+          "keepAccess": "Sie behalten den Zugang zu Ihrem aktuellen Plan bis zum {date}.",
+          "confirm": "Ich akzeptiere und bestätige die Kündigung",
+          "cancel": "Abbrechen",
+          "warning": "Diese Aktion kann nicht rückgängig gemacht werden."
         },
         "paymentHistory": {
           "title": "Zahlungsverlauf",

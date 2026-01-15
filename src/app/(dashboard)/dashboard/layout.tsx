@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { getCurrentStore, getUserStores } from '@/lib/store-context'
 import { Sidebar, MobileHeader } from '@/components/dashboard/sidebar'
 import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider'
+import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions'
 
 export default async function DashboardMainLayout({
   children,
@@ -31,6 +32,9 @@ export default async function DashboardMainLayout({
     redirect('/onboarding')
   }
 
+  // Get current plan for the store
+  const planSlug = await getCurrentPlanSlug(store.id)
+
   return (
     <ReservationPollingProvider interval={30000}>
       <div className="dashboard min-h-screen bg-muted/30">
@@ -40,6 +44,7 @@ export default async function DashboardMainLayout({
           storeSlug={store.slug}
           userEmail={session.user.email || ''}
           userImage={session.user.image}
+          planSlug={planSlug}
         />
         <MobileHeader
           stores={userStores}
@@ -47,6 +52,7 @@ export default async function DashboardMainLayout({
           storeSlug={store.slug}
           userEmail={session.user.email || ''}
           userImage={session.user.image}
+          planSlug={planSlug}
         />
         <main className="lg:pl-64">
           <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>

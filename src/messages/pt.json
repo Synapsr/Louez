@@ -1031,6 +1031,8 @@
         "subscribe": "Assinar",
         "selectPlan": "Escolher este plano",
         "currentPlanBadge": "Plano atual",
+        "switchToYearly": "Mudar para anual",
+        "switchToMonthly": "Mudar para mensal",
         "freePlan": "Plano gratuito",
         "notAvailable": "Não disponível",
         "popular": "Popular",
@@ -1066,6 +1068,22 @@
         "currentPlan": {
           "title": "Plano atual",
           "nextBilling": "Próximo faturamento em {date}"
+        },
+        "billingPortal": {
+          "title": "Faturamento",
+          "description": "Acesse suas faturas e gerencie seus métodos de pagamento.",
+          "openPortal": "Ver minhas faturas"
+        },
+        "cancelModal": {
+          "title": "Cancelar sua assinatura?",
+          "description": "Ao cancelar sua assinatura, você voltará ao plano gratuito com as seguintes limitações:",
+          "limit1": "Máximo de 5 produtos",
+          "limit2": "10 reservas por mês",
+          "limit3": "Máximo de 50 clientes",
+          "keepAccess": "Você manterá o acesso ao seu plano atual até {date}.",
+          "confirm": "Aceito e confirmo o cancelamento",
+          "cancel": "Cancelar",
+          "warning": "Esta ação é irreversível."
         },
         "paymentHistory": {
           "title": "Histórico de pagamentos",

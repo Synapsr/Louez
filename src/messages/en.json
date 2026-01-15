@@ -1029,6 +1029,8 @@
         "subscribe": "Subscribe",
         "selectPlan": "Select this plan",
         "currentPlanBadge": "Current plan",
+        "switchToYearly": "Switch to yearly",
+        "switchToMonthly": "Switch to monthly",
         "freePlan": "Free plan",
         "notAvailable": "Not available",
         "popular": "Popular",
@@ -1069,6 +1071,17 @@
           "title": "Billing",
           "description": "Access your invoices and manage your payment methods.",
           "openPortal": "View my invoices"
+        },
+        "cancelModal": {
+          "title": "Cancel your subscription?",
+          "description": "By canceling your subscription, you will return to the free plan with the following limitations:",
+          "limit1": "5 products maximum",
+          "limit2": "10 reservations per month",
+          "limit3": "50 customers maximum",
+          "keepAccess": "You will keep access to your current plan until {date}.",
+          "confirm": "I accept and confirm the cancellation",
+          "cancel": "Cancel",
+          "warning": "This action is irreversible."
         },
         "paymentHistory": {
           "title": "Payment history",

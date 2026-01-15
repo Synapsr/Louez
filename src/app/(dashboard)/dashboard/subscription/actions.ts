@@ -8,13 +8,16 @@ import {
   reactivateSubscription as reactivateSub,
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
+import type { Currency } from '@/lib/plans'
 
 export async function createCheckoutSession({
   planSlug,
   interval,
+  currency,
 }: {
   planSlug: string
   interval: 'monthly' | 'yearly'
+  currency: Currency
 }) {
   const store = await getCurrentStore()
   if (!store) {
@@ -26,6 +29,7 @@ export async function createCheckoutSession({
       storeId: store.id,
       planSlug,
       interval,
+      currency,
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
       cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
     })
