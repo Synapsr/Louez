@@ -103,6 +103,14 @@ export function generateStoreMetadata(
     alternates: {
       canonical: canonicalUrl,
     },
+    // Use store logo as favicon if available
+    ...(store.logoUrl && {
+      icons: {
+        icon: store.logoUrl,
+        shortcut: store.logoUrl,
+        apple: store.logoUrl,
+      },
+    }),
     openGraph: {
       type: 'website',
       locale: 'fr_FR',
