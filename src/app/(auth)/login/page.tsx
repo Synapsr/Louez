@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Logo } from '@/components/ui/logo'
 
 const features = [
   { icon: Package, labelKey: 'featureProducts' },
@@ -67,11 +68,8 @@ function LoginForm() {
     <div className="w-full max-w-md space-y-8">
       {/* Mobile Logo */}
       <div className="lg:hidden text-center mb-8">
-        <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            L
-          </div>
-          Louez.io
+        <Link href="/">
+          <Logo className="h-7 w-auto mx-auto" />
         </Link>
       </div>
 
@@ -241,11 +239,8 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10">
-          <Link href="/" className="flex items-center gap-2 text-2xl font-bold">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              L
-            </div>
-            Louez.io
+          <Link href="/">
+            <Logo className="h-7 w-auto text-white" />
           </Link>
         </div>
 
