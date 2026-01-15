@@ -12,13 +12,9 @@ export interface Plan {
 }
 
 /**
- * Subscription plans configuration
- *
- * Plans are defined in code for simplicity and portability.
- * Stripe price IDs are loaded from environment variables.
- * If Stripe is not configured, paid plans are disabled.
+ * Base plan definitions (without Stripe IDs)
  */
-export const PLANS: Record<string, Plan> = {
+const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceYearly'>> = {
   start: {
     slug: 'start',
     name: 'Start',
@@ -48,8 +44,6 @@ export const PLANS: Record<string, Plan> = {
     description: 'Pour les loueurs professionnels',
     price: 29,
     isPopular: true,
-    stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
-    stripePriceYearly: process.env.STRIPE_PRICE_PRO_YEARLY,
     features: {
       maxProducts: 50,
       maxReservationsPerMonth: 100,
@@ -73,8 +67,6 @@ export const PLANS: Record<string, Plan> = {
     name: 'Ultra',
     description: 'Pour les entreprises exigeantes',
     price: 79,
-    stripePriceMonthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
-    stripePriceYearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
     features: {
       maxProducts: null, // unlimited
       maxReservationsPerMonth: null, // unlimited
@@ -96,24 +88,39 @@ export const PLANS: Record<string, Plan> = {
 }
 
 /**
- * Get all active plans
+ * Get all active plans with Stripe price IDs injected at runtime
+ * This ensures env vars are read at request time, not build time
  */
 export function getPlans(): Plan[] {
-  return Object.values(PLANS)
+  return [
+    {
+      ...BASE_PLANS.start,
+    },
+    {
+      ...BASE_PLANS.pro,
+      stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
+      stripePriceYearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+    },
+    {
+      ...BASE_PLANS.ultra,
+      stripePriceMonthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
+      stripePriceYearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
+    },
+  ]
 }
 
 /**
- * Get a plan by slug
+ * Get a plan by slug with Stripe price IDs
  */
 export function getPlan(slug: string): Plan | undefined {
-  return PLANS[slug]
+  return getPlans().find((p) => p.slug === slug)
 }
 
 /**
  * Get the default (free) plan
  */
 export function getDefaultPlan(): Plan {
-  return PLANS.start
+  return { ...BASE_PLANS.start }
 }
 
 /**
