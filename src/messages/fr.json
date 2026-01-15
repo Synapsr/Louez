@@ -1112,6 +1112,14 @@
             "customerPortal": "Espace client",
             "reviewBooster": "Booster d'avis"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Offre de lancement",
+          "subtitle": "Jusqu'au 1er mars 2026",
+          "description": "Profitez de 50% de réduction sur tous nos plans. Prix garanti à vie pour les premiers inscrits.",
+          "guaranteedForLife": "Prix garanti à vie",
+          "endsOn": "Offre valable jusqu'au 1er mars 2026"
         }
       },
       "team": "Équipe",

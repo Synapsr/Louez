@@ -1112,6 +1112,14 @@
             "customerPortal": "Customer portal",
             "reviewBooster": "Review booster"
           }
+        },
+        "earlyBird": {
+          "badge": "-50%",
+          "title": "Launch offer",
+          "subtitle": "Until March 1st, 2026",
+          "description": "Get 50% off all plans. Price guaranteed for life for early subscribers.",
+          "guaranteedForLife": "Price guaranteed for life",
+          "endsOn": "Offer valid until March 1st, 2026"
         }
       },
       "team": "Team",

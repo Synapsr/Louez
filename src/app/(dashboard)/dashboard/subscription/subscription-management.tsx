@@ -20,6 +20,8 @@ import {
   Package,
   CalendarDays,
   Users,
+  Gift,
+  Clock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -86,6 +88,18 @@ function formatPrice(amount: number, currency: Currency): string {
     return `${amount}${symbol}`
   }
   return `${symbol}${amount}`
+}
+
+// Early bird discount: current prices are 50% off until March 1st, 2026
+// Original prices are 2x the current prices
+const EARLY_BIRD_END_DATE = new Date('2026-03-01')
+
+function getOriginalPrice(discountedPrice: number): number {
+  return discountedPrice * 2
+}
+
+function isEarlyBirdActive(): boolean {
+  return new Date() < EARLY_BIRD_END_DATE
 }
 
 export function SubscriptionManagement({
@@ -503,11 +517,40 @@ export function SubscriptionManagement({
           </div>
         </div>
 
+        {/* Early Bird Banner */}
+        {isEarlyBirdActive() && (
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-500/20 p-4">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="relative flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg">
+                  <Gift className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-lg">{t('earlyBird.title')}</h3>
+                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 shadow-sm">
+                      {t('earlyBird.badge')}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{t('earlyBird.description')}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background/50 rounded-full px-3 py-1.5">
+                <Clock className="h-4 w-4" />
+                <span>{t('earlyBird.subtitle')}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Plan Cards */}
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan) => {
             const price = getPrice(plan)
+            const originalPrice = getOriginalPrice(price)
             const isFree = plan.price === 0
+            const showEarlyBird = isEarlyBirdActive() && !isFree
             const isAvailable = canChangePlan(plan)
             const isCurrent = isCurrentPlan(plan)
 
@@ -576,11 +619,27 @@ export function SubscriptionManagement({
 
                 <CardContent className="flex-1">
                   <div className="text-center mb-6">
+                    {/* Early bird pricing with original price crossed out */}
+                    {showEarlyBird && (
+                      <div className="mb-1">
+                        <span className="text-lg text-muted-foreground line-through">
+                          {formatPrice(originalPrice, currency)}
+                        </span>
+                      </div>
+                    )}
                     <span className="text-4xl font-bold">{formatPrice(price, currency)}</span>
                     {!isFree && (
                       <span className="text-muted-foreground ml-1">
                         /{isYearly ? t('year') : t('month')}
                       </span>
+                    )}
+                    {/* Price guaranteed for life badge */}
+                    {showEarlyBird && (
+                      <div className="mt-2">
+                        <Badge variant="outline" className="text-xs bg-green-500/5 text-green-600 border-green-500/20">
+                          {t('earlyBird.guaranteedForLife')}
+                        </Badge>
+                      </div>
                     )}
                   </div>
 
