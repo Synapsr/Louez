@@ -88,7 +88,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       maxProducts: null, // unlimited
       maxReservationsPerMonth: null, // unlimited
       maxCustomers: null, // unlimited
-      maxCollaborators: 10,
+      maxCollaborators: null, // unlimited
       onlinePayment: true,
       analytics: true,
       emailNotifications: true,

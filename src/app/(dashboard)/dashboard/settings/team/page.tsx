@@ -15,7 +15,7 @@ export default async function TeamPage() {
 
   const t = await getTranslations('dashboard.team')
   const canManageMembers = await currentUserHasPermission('manage_members')
-  const { members, invitations } = await getTeamData()
+  const { members, invitations, limits } = await getTeamData()
 
   return (
     <div className="space-y-8">
@@ -30,6 +30,7 @@ export default async function TeamPage() {
         members={members}
         invitations={invitations}
         canManageMembers={canManageMembers}
+        limits={limits}
       />
     </div>
   )

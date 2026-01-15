@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { products, reservations, customers, subscriptions } from '@/lib/db/schema'
+import { products, reservations, customers, subscriptions, storeMembers } from '@/lib/db/schema'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
 import { getPlan, getDefaultPlan, type Plan } from '@/lib/plans'
 import type { PlanFeatures } from '@/types'
@@ -197,6 +197,43 @@ export async function canCreateCustomer(storeId: string): Promise<{
     allowed: !limits.customers.isAtLimit,
     current: limits.customers.current,
     limit: limits.customers.limit,
+  }
+}
+
+/**
+ * Check if a store can add a new team member (collaborator)
+ * Note: Only counts members with role 'member', not 'owner'
+ */
+export async function canAddTeamMember(storeId: string): Promise<{
+  allowed: boolean
+  current: number
+  limit: number | null
+}> {
+  const [plan, collaboratorCount] = await Promise.all([
+    getStorePlan(storeId),
+    db
+      .select({ count: count() })
+      .from(storeMembers)
+      .where(
+        and(
+          eq(storeMembers.storeId, storeId),
+          eq(storeMembers.role, 'member')
+        )
+      )
+      .then((res) => res[0]?.count || 0),
+  ])
+
+  const limit = plan.features.maxCollaborators
+
+  // null means unlimited, 0 means no collaborators allowed
+  if (limit === null) {
+    return { allowed: true, current: collaboratorCount, limit: null }
+  }
+
+  return {
+    allowed: collaboratorCount < limit,
+    current: collaboratorCount,
+    limit,
   }
 }
 

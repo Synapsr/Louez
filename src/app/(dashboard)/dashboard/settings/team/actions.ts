@@ -9,6 +9,7 @@ import { getCurrentStore, currentUserHasPermission } from '@/lib/store-context'
 import { nanoid } from 'nanoid'
 import { sendTeamInvitationEmail } from '@/lib/email/send'
 import { z } from 'zod'
+import { canAddTeamMember } from '@/lib/plan-limits'
 
 const addMemberSchema = z.object({
   email: z.string().email(),
@@ -29,6 +30,12 @@ export async function addTeamMember(formData: FormData) {
   const canManage = await currentUserHasPermission('manage_members')
   if (!canManage) {
     return { error: 'errors.unauthorized' }
+  }
+
+  // Check plan limits
+  const teamLimits = await canAddTeamMember(store.id)
+  if (!teamLimits.allowed) {
+    return { error: 'dashboard.team.limitReached' }
   }
 
   const validated = addMemberSchema.safeParse({
@@ -257,26 +264,27 @@ export async function resendInvitation(invitationId: string) {
 export async function getTeamData() {
   const store = await getCurrentStore()
   if (!store) {
-    return { members: [], invitations: [] }
+    return { members: [], invitations: [], limits: null }
   }
 
-  // Get members with user info
-  const members = await db.query.storeMembers.findMany({
-    where: eq(storeMembers.storeId, store.id),
-    with: {
-      user: true,
-    },
-    orderBy: [desc(storeMembers.createdAt)],
-  })
+  // Get members, invitations, and limits in parallel
+  const [members, invitations, limits] = await Promise.all([
+    db.query.storeMembers.findMany({
+      where: eq(storeMembers.storeId, store.id),
+      with: {
+        user: true,
+      },
+      orderBy: [desc(storeMembers.createdAt)],
+    }),
+    db.query.storeInvitations.findMany({
+      where: and(
+        eq(storeInvitations.storeId, store.id),
+        eq(storeInvitations.status, 'pending')
+      ),
+      orderBy: [desc(storeInvitations.createdAt)],
+    }),
+    canAddTeamMember(store.id),
+  ])
 
-  // Get pending invitations
-  const invitations = await db.query.storeInvitations.findMany({
-    where: and(
-      eq(storeInvitations.storeId, store.id),
-      eq(storeInvitations.status, 'pending')
-    ),
-    orderBy: [desc(storeInvitations.createdAt)],
-  })
-
-  return { members, invitations }
+  return { members, invitations, limits }
 }

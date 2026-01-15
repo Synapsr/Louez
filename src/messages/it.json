@@ -245,7 +245,10 @@
       "cannotRemoveOwner": "Impossibile rimuovere il proprietario",
       "ownerBadge": "Proprietario",
       "memberBadge": "Membro del team",
-      "userNotFound": "Utente non trovato. Questa persona deve prima creare un account Louez."
+      "userNotFound": "Utente non trovato. Questa persona deve prima creare un account Louez.",
+      "limitReached": "Hai raggiunto il limite di membri del team per il tuo piano. Aggiorna per aggiungerne altri.",
+      "limitWarning": "{current} / {limit} membri",
+      "upgradeToAdd": "Aggiorna il tuo piano per aggiungere membri del team."
     },
     "navigation": {
       "home": "Home",

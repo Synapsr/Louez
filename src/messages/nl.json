@@ -245,7 +245,10 @@
       "cannotRemoveOwner": "De eigenaar kan niet worden verwijderd",
       "ownerBadge": "Eigenaar",
       "memberBadge": "Teamlid",
-      "userNotFound": "Gebruiker niet gevonden. Deze persoon moet eerst een Louez-account aanmaken."
+      "userNotFound": "Gebruiker niet gevonden. Deze persoon moet eerst een Louez-account aanmaken.",
+      "limitReached": "Je hebt de teamlidlimiet van je plan bereikt. Upgrade om meer toe te voegen.",
+      "limitWarning": "{current} / {limit} teamleden",
+      "upgradeToAdd": "Upgrade je plan om teamleden toe te voegen."
     },
     "navigation": {
       "home": "Home",

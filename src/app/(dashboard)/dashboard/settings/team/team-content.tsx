@@ -4,10 +4,12 @@ import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Mail, MoreHorizontal, UserPlus, Users, Clock, Send, X, Crown, User as UserIcon } from 'lucide-react'
+import { Mail, MoreHorizontal, UserPlus, Users, Clock, Send, X, Crown, User as UserIcon, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Input } from '@/components/ui/input'
 import {
   Card,
@@ -47,13 +49,20 @@ interface Invitation {
   expiresAt: Date
 }
 
+interface TeamLimits {
+  allowed: boolean
+  current: number
+  limit: number | null
+}
+
 interface TeamContentProps {
   members: Member[]
   invitations: Invitation[]
   canManageMembers: boolean
+  limits: TeamLimits | null
 }
 
-export function TeamContent({ members, invitations, canManageMembers }: TeamContentProps) {
+export function TeamContent({ members, invitations, canManageMembers, limits }: TeamContentProps) {
   const t = useTranslations('dashboard.team')
   const tErrors = useTranslations('errors')
   const [email, setEmail] = useState('')
@@ -139,31 +148,54 @@ export function TeamContent({ members, invitations, canManageMembers }: TeamCont
       {canManageMembers && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5" />
-              {t('addMember')}
-            </CardTitle>
-            <CardDescription>{t('addMemberDescription')}</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  {t('addMember')}
+                </CardTitle>
+                <CardDescription>{t('addMemberDescription')}</CardDescription>
+              </div>
+              {limits && limits.limit !== null && (
+                <Badge variant={limits.allowed ? 'secondary' : 'destructive'}>
+                  {t('limitWarning', { current: limits.current, limit: limits.limit })}
+                </Badge>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleAddMember} className="flex gap-3">
-              <div className="flex-1">
-                <Input
-                  type="email"
-                  placeholder={t('emailPlaceholder')}
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  disabled={isPending}
-                />
-              </div>
-              <Button type="submit" disabled={isPending || !email.trim()}>
-                <Mail className="mr-2 h-4 w-4" />
-                {t('invite')}
-              </Button>
-            </form>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {t('addMemberHint')}
-            </p>
+            {limits && !limits.allowed ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="flex items-center justify-between">
+                  <span>{t('upgradeToAdd')}</span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/subscription">Upgrade</Link>
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <>
+                <form onSubmit={handleAddMember} className="flex gap-3">
+                  <div className="flex-1">
+                    <Input
+                      type="email"
+                      placeholder={t('emailPlaceholder')}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={isPending}
+                    />
+                  </div>
+                  <Button type="submit" disabled={isPending || !email.trim()}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    {t('invite')}
+                  </Button>
+                </form>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {t('addMemberHint')}
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
