@@ -4,6 +4,32 @@ import { reservations, stores } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { generateContract, getContractPdfBuffer } from '@/lib/pdf/generate'
 import { getCustomerSession } from '../../../actions'
+import type { SupportedLocale } from '@/lib/pdf/contract'
+
+// Parse Accept-Language header to determine preferred locale
+function getPreferredLocale(acceptLanguage: string | null): SupportedLocale {
+  if (!acceptLanguage) {
+    return 'fr' // Default to French
+  }
+
+  // Parse Accept-Language header (e.g., "en-US,en;q=0.9,fr;q=0.8")
+  const languages = acceptLanguage
+    .split(',')
+    .map((lang) => {
+      const [code, quality = 'q=1'] = lang.trim().split(';')
+      const q = parseFloat(quality.replace('q=', '')) || 1
+      return { code: code.toLowerCase().split('-')[0], q }
+    })
+    .sort((a, b) => b.q - a.q)
+
+  // Find first supported language
+  for (const { code } of languages) {
+    if (code === 'en') return 'en'
+    if (code === 'fr') return 'fr'
+  }
+
+  return 'fr' // Default to French if no supported language found
+}
 
 export async function GET(
   request: Request,
@@ -48,14 +74,22 @@ export async function GET(
     return new NextResponse('Contract not available for this status', { status: 400 })
   }
 
-  // Check if contract exists, if not generate it
-  let contract = reservation.documents.find((d) => d.type === 'contract')
+  // Detect language from Accept-Language header or query parameter
+  const url = new URL(request.url)
+  const langParam = url.searchParams.get('lang')
 
+  let locale: SupportedLocale
+  if (langParam === 'en' || langParam === 'fr') {
+    locale = langParam
+  } else {
+    const acceptLanguage = request.headers.get('Accept-Language')
+    locale = getPreferredLocale(acceptLanguage)
+  }
+
+  // Always regenerate contract to ensure latest data with correct locale
+  const contract = await generateContract({ reservationId, regenerate: true, locale })
   if (!contract) {
-    contract = await generateContract({ reservationId })
-    if (!contract) {
-      return new NextResponse('Failed to generate contract', { status: 500 })
-    }
+    return new NextResponse('Failed to generate contract', { status: 500 })
   }
 
   // Get PDF buffer
@@ -70,6 +104,7 @@ export async function GET(
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${contract.fileName}"`,
+      'Content-Language': locale,
     },
   })
 }
