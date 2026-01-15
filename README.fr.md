@@ -13,7 +13,7 @@
 **Arrêtez de payer des abonnements SaaS coûteux. Possédez votre logiciel de location.**
 
 [![Docker](https://img.shields.io/badge/Docker-synapsr%2Flouez-2496ED?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
-[![GitHub Stars](https://img.shields.io/github/stars/synapsr/louez?style=for-the-badge&logo=github)](https://github.com/synapsr/louez)
+[![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
 [☁️ Cloud](https://louez.io) • [🚀 Auto-hébergé](#-déployer-en-30-secondes) • [✨ Fonctionnalités](#-fonctionnalités) • [🗺️ Roadmap](ROADMAP.md)
@@ -179,7 +179,7 @@ Fonctionne directement avec vos plateformes préférées :
 
 | Plateforme | Comment déployer |
 |----------|---------------|
-| **EasyPanel** | Ajouter une app Docker → `synapsr/louez` |
+| **EasyPanel** | Ajouter une app Docker → `Synapsr/Louez` |
 | **Dokploy** | Importer depuis Docker Hub |
 | **Coolify** | Un clic depuis l'image Docker |
 | **Portainer** | Créer un stack depuis compose |
@@ -193,7 +193,7 @@ Vous voulez personnaliser ou contribuer ? Voici comment lancer en local :
 
 ```bash
 # Cloner le repo
-git clone https://github.com/synapsr/louez.git
+git clone https://github.com/Synapsr/Louez.git
 cd louez
 
 # Installer les dépendances
@@ -354,12 +354,12 @@ Voir [SECURITY.md](SECURITY.md) pour notre politique de sécurité complète.
 
 Si Louez aide votre entreprise, montrez votre soutien avec une étoile.
 
-[![Star on GitHub](https://img.shields.io/github/stars/synapsr/louez?style=social)](https://github.com/synapsr/louez)
+[![Star on GitHub](https://img.shields.io/github/stars/Synapsr/Louez?style=social)](https://github.com/Synapsr/Louez)
 
 ---
 
 **Créé avec ❤️ par [Synapsr](https://github.com/synapsr)**
 
-[Signaler un bug](https://github.com/synapsr/louez/issues) • [Proposer une fonctionnalité](https://github.com/synapsr/louez/discussions) • [Documentation](#-documentation)
+[Signaler un bug](https://github.com/Synapsr/Louez/issues) • [Proposer une fonctionnalité](https://github.com/Synapsr/Louez/discussions) • [Documentation](#-documentation)
 
 </div>

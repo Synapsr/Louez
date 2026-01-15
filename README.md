@@ -13,7 +13,7 @@
 **Stop paying for expensive SaaS. Own your rental business software.**
 
 [![Docker](https://img.shields.io/badge/Docker-synapsr%2Flouez-2496ED?style=for-the-badge&logo=docker)](https://hub.docker.com/r/synapsr/louez)
-[![GitHub Stars](https://img.shields.io/github/stars/synapsr/louez?style=for-the-badge&logo=github)](https://github.com/synapsr/louez)
+[![GitHub Stars](https://img.shields.io/github/stars/Synapsr/Louez?style=for-the-badge&logo=github)](https://github.com/Synapsr/Louez)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue?style=for-the-badge)](LICENSE)
 
 [☁️ Cloud](https://louez.io) • [🚀 Self-Host](#-deploy-in-30-seconds) • [✨ Features](#-features) • [🗺️ Roadmap](ROADMAP.md)
@@ -195,7 +195,7 @@ Want to customize or contribute? Here's how to run locally:
 
 ```bash
 # Clone the repo
-git clone https://github.com/synapsr/louez.git
+git clone https://github.com/Synapsr/Louez.git
 cd louez
 
 # Install dependencies
@@ -356,12 +356,12 @@ See [SECURITY.md](SECURITY.md) for our full security policy.
 
 If Louez helps your business, show some love with a star.
 
-[![Star on GitHub](https://img.shields.io/github/stars/synapsr/louez?style=social)](https://github.com/synapsr/louez)
+[![Star on GitHub](https://img.shields.io/github/stars/Synapsr/Louez?style=social)](https://github.com/Synapsr/Louez)
 
 ---
 
 **Built with ❤️ by [Synapsr](https://github.com/synapsr)**
 
-[Report Bug](https://github.com/synapsr/louez/issues) • [Request Feature](https://github.com/synapsr/louez/discussions) • [Documentation](#-documentation)
+[Report Bug](https://github.com/Synapsr/Louez/issues) • [Request Feature](https://github.com/Synapsr/Louez/discussions) • [Documentation](#-documentation)
 
 </div>
