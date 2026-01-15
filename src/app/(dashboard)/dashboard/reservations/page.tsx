@@ -1,16 +1,12 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { reservations } from '@/lib/db/schema'
 import { eq, desc, and, count, gte, lte } from 'drizzle-orm'
-import { Plus } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
+import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ReservationsTable } from './reservations-table'
-import { ReservationsFilters } from './reservations-filters'
+import { ReservationsPageContent } from './reservations-page-content'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -62,7 +58,7 @@ async function getReservations(
       payments: true,
     },
     orderBy: [desc(reservations.createdAt)],
-    limit: 50,
+    limit: 100, // Increased to show more for blurring
   })
 
   return reservationsList
@@ -127,44 +123,26 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
   const store = await getCurrentStore()
   if (!store) return null
 
-  const t = await getTranslations('dashboard.reservations')
-
   const params = await searchParams
   const currency = store.settings?.currency || 'EUR'
-  const [reservationsList, reservationCounts] = await Promise.all([
+  const [reservationsList, reservationCounts, limits, plan] = await Promise.all([
     getReservations(store.id, params),
     getReservationCounts(store.id),
+    getStoreLimits(store.id),
+    getStorePlan(store.id),
   ])
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">
-            {t('description')}
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dashboard/reservations/new">
-            <Plus className="mr-2 h-4 w-4" />
-            {t('addReservation')}
-          </Link>
-        </Button>
-      </div>
-
-      {/* Filters */}
-      <ReservationsFilters
+    <Suspense fallback={<ReservationsTableSkeleton />}>
+      <ReservationsPageContent
+        reservations={reservationsList}
         counts={reservationCounts}
         currentStatus={params.status}
         currentPeriod={params.period}
+        limits={limits.reservationsThisMonth}
+        planSlug={plan.slug}
+        currency={currency}
       />
-
-      {/* Reservations Table */}
-      <Suspense fallback={<ReservationsTableSkeleton />}>
-        <ReservationsTable reservations={reservationsList} currency={currency} />
-      </Suspense>
-    </div>
+    </Suspense>
   )
 }

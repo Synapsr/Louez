@@ -1,12 +1,11 @@
-import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { customers, reservations } from '@/lib/db/schema'
 import { eq, count, sql, desc } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 
-import { CustomersFilters } from './customers-filters'
-import { CustomersTable } from './customers-table'
+import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
+import { CustomersPageContent } from './customers-page-content'
 
 interface CustomersPageProps {
   searchParams: Promise<{
@@ -75,28 +74,19 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
   }
 
   const params = await searchParams
-  const customersList = await getCustomersWithStats(store.id, params.search, params.sort)
-
-  // Get total customer count
-  const totalCount = await db
-    .select({ count: count() })
-    .from(customers)
-    .where(eq(customers.storeId, store.id))
-
-  const t = await getTranslations('dashboard.customers')
+  const [customersList, totalCountResult, limits, plan] = await Promise.all([
+    getCustomersWithStats(store.id, params.search, params.sort),
+    db.select({ count: count() }).from(customers).where(eq(customers.storeId, store.id)),
+    getStoreLimits(store.id),
+    getStorePlan(store.id),
+  ])
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="text-muted-foreground">
-          {t('description')}
-        </p>
-      </div>
-
-      <CustomersFilters totalCount={totalCount[0]?.count || 0} />
-
-      <CustomersTable customers={customersList} />
-    </div>
+    <CustomersPageContent
+      customers={customersList}
+      totalCount={totalCountResult[0]?.count || 0}
+      limits={limits.customers}
+      planSlug={plan.slug}
+    />
   )
 }

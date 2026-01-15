@@ -1,16 +1,12 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
-import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { products, categories } from '@/lib/db/schema'
-import { eq, desc, and, count, inArray } from 'drizzle-orm'
-import { Plus, FolderOpen } from 'lucide-react'
+import { eq, desc, and, count, inArray, sql } from 'drizzle-orm'
 
 import { getCurrentStore } from '@/lib/store-context'
-import { Button } from '@/components/ui/button'
+import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ProductsTable } from './products-table'
-import { ProductsFilters } from './products-filters'
+import { ProductsPageContent } from './products-page-content'
 
 async function getProducts(storeId: string, searchParams: { status?: string; category?: string }) {
   const conditions = [eq(products.storeId, storeId)]
@@ -21,6 +17,11 @@ async function getProducts(storeId: string, searchParams: { status?: string; cat
 
   if (searchParams.category && searchParams.category !== 'all') {
     conditions.push(eq(products.categoryId, searchParams.category))
+  }
+
+  // Exclude archived from limit calculations
+  if (!searchParams.status || searchParams.status === 'all') {
+    // Don't filter by status for display, but we'll handle archived separately
   }
 
   // Step 1: Get product IDs with lightweight columns (excludes images to avoid sort buffer overflow)
@@ -145,53 +146,27 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const store = await getCurrentStore()
   if (!store) return null
 
-  const t = await getTranslations('dashboard.products')
-
   const params = await searchParams
-  const [productsList, categoriesList, productCounts] = await Promise.all([
+  const [productsList, categoriesList, productCounts, limits, plan] = await Promise.all([
     getProducts(store.id, params),
     getCategories(store.id),
     getProductCounts(store.id),
+    getStoreLimits(store.id),
+    getStorePlan(store.id),
   ])
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">
-            {t('description')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/categories">
-              <FolderOpen className="mr-2 h-4 w-4" />
-              {t('manageCategories')}
-            </Link>
-          </Button>
-          <Button asChild>
-            <Link href="/dashboard/products/new">
-              <Plus className="mr-2 h-4 w-4" />
-              {t('addProduct')}
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <ProductsFilters
+    <Suspense fallback={<ProductsTableSkeleton />}>
+      <ProductsPageContent
+        products={productsList}
         categories={categoriesList}
         counts={productCounts}
         currentStatus={params.status}
         currentCategory={params.category}
+        limits={limits.products}
+        planSlug={plan.slug}
+        currency={store.settings?.currency}
       />
-
-      {/* Products Table */}
-      <Suspense fallback={<ProductsTableSkeleton />}>
-        <ProductsTable products={productsList} />
-      </Suspense>
-    </div>
+    </Suspense>
   )
 }
