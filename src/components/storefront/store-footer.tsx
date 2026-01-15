@@ -78,7 +78,7 @@ export function StoreFooter({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-muted-foreground">
             <p>&copy; {currentYear} {storeName}</p>
             <div className="flex items-center gap-4">
-              <LanguageSwitcher variant="minimal" />
+              <LanguageSwitcher variant="compact" />
               <p>
                 {t('poweredBy')}{' '}
                 <a

@@ -81,7 +81,13 @@
     "language": {
       "label": "Language",
       "fr": "French",
-      "en": "English"
+      "en": "English",
+      "it": "Italian",
+      "nl": "Dutch",
+      "pt": "Portuguese",
+      "de": "German",
+      "es": "Spanish",
+      "pl": "Polish"
     },
     "richTextEditor": {
       "placeholder": "Write your text...",

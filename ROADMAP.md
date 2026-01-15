@@ -15,30 +15,32 @@ Louez is production-ready with core rental management features:
 - ✅ Customizable storefronts
 - ✅ Team management with roles
 - ✅ Statistics & reporting
-- ✅ i18n (French & English)
+- ✅ i18n (French, English, Italian, Dutch, Portuguese, German, Spanish, Polish)
 
 ---
 
 ## Planned Features
 
-### 🌍 More Languages
+### 🌍 Languages
 
-**Status**: 🔜 Coming Soon
+**Status**: ✅ Available
 
-Louez currently supports French and English. We're expanding to support more languages.
+Louez supports multiple languages out of the box.
 
 | Language | Status |
 |----------|--------|
 | 🇫🇷 French | ✅ Available |
 | 🇬🇧 English | ✅ Available |
-| 🇪🇸 Spanish | 📋 Planned |
-| 🇩🇪 German | 📋 Planned |
-| 🇮🇹 Italian | 📋 Planned |
-| 🇵🇹 Portuguese | 📋 Planned |
-| 🇳🇱 Dutch | 📋 Planned |
-| 🇵🇱 Polish | 📋 Planned |
+| 🇮🇹 Italian | ✅ Available |
+| 🇳🇱 Dutch | ✅ Available |
+| 🇵🇹 Portuguese | ✅ Available |
+| 🇩🇪 German | ✅ Available |
+| 🇪🇸 Spanish | ✅ Available |
+| 🇵🇱 Polish | ✅ Available |
 
 > **Want to contribute a translation?** We welcome community translations! Check our [contributing guide](README.md#-contributing) to help translate Louez into your language.
+>
+> **Need another language?** Feel free to [open a discussion](https://github.com/synapsr/louez/discussions) or send us a message — we're happy to add more languages based on community interest!
 
 ---
 
