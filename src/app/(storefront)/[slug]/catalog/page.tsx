@@ -10,6 +10,7 @@ import { Calendar, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ProductGridWithPreview } from '@/components/storefront/product-grid-with-preview'
+import { CatalogDatePicker } from '@/components/storefront/catalog-date-picker'
 import {
   generateStoreMetadata,
   generateItemListSchema,
@@ -279,9 +280,9 @@ export default async function CatalogPage({
       <div className="min-h-screen">
         {/* Header Section */}
       <section className="bg-muted/30 border-b">
-        <div className="container mx-auto px-4 py-8 md:py-10">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
+        <div className="container mx-auto px-4 py-6 md:py-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="shrink-0">
               <h1 className="text-2xl md:text-3xl font-bold">
                 {activeCategory ? activeCategory.name : t('title')}
               </h1>
@@ -290,13 +291,13 @@ export default async function CatalogPage({
               </p>
             </div>
 
-            {/* CTA to select dates */}
-            <Button asChild size="lg" className="self-start">
-              <Link href="/#date-picker">
-                <Calendar className="mr-2 h-4 w-4" />
-                {t('selectDates')}
-              </Link>
-            </Button>
+            {/* Date picker */}
+            <CatalogDatePicker
+              storeSlug={slug}
+              pricingMode={pricingMode}
+              businessHours={businessHours}
+              advanceNotice={advanceNotice}
+            />
           </div>
 
           {/* Category Pills */}
