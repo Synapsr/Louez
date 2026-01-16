@@ -52,6 +52,17 @@ interface PricingTier {
   displayOrder: number | null
 }
 
+interface Accessory {
+  id: string
+  name: string
+  price: string
+  deposit: string
+  images: string[] | null
+  quantity: number
+  pricingMode: 'day' | 'hour' | 'week' | null
+  pricingTiers?: PricingTier[]
+}
+
 interface Product {
   id: string
   name: string
@@ -64,6 +75,7 @@ interface Product {
   pricingMode?: PricingMode | null
   pricingTiers?: PricingTier[]
   videoUrl?: string | null
+  accessories?: Accessory[]
 }
 
 interface Category {

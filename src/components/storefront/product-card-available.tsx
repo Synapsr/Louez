@@ -14,6 +14,7 @@ import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { AvailabilityBadge, type AvailabilityStatus } from './availability-badge'
 import { ProductModal } from './product-modal'
+import { AccessoriesModal } from './accessories-modal'
 import { calculateRentalPrice, getEffectivePricingMode, type ProductPricing } from '@/lib/pricing'
 import type { PricingMode } from '@/lib/utils/duration'
 
@@ -21,6 +22,17 @@ interface PricingTier {
   id: string
   minDuration: number
   discountPercent: string | number
+}
+
+interface Accessory {
+  id: string
+  name: string
+  price: string
+  deposit: string
+  images: string[] | null
+  quantity: number
+  pricingMode: PricingMode | null
+  pricingTiers?: PricingTier[]
 }
 
 interface ProductCardAvailableProps {
@@ -36,6 +48,7 @@ interface ProductCardAvailableProps {
     pricingMode?: PricingMode | null
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
+    accessories?: Accessory[]
   }
   storeSlug: string
   pricingMode: PricingMode
@@ -69,6 +82,7 @@ export function ProductCardAvailable({
   const currency = useStoreCurrency()
   const { addItem, getCartItemByProductId, updateItemQuantity, isProductInCart } = useCart()
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
 
   const cartItem = getCartItemByProductId(product.id)
   const inCart = isProductInCart(product.id)
@@ -106,6 +120,9 @@ export function ProductCardAvailable({
   const maxQuantity = Math.min(availableQuantity, product.quantity)
   const canAddMore = cartQuantity < maxQuantity
 
+  // Filter available accessories (active with stock)
+  const availableAccessories = (product.accessories || []).filter((acc) => acc.quantity > 0)
+
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (status === 'unavailable') return
@@ -137,7 +154,13 @@ export function ProductCardAvailable({
         },
         storeSlug
       )
-      toast.success(t('addedToCart', { name: product.name }))
+
+      // Show accessories modal if there are available accessories, otherwise show toast
+      if (availableAccessories.length > 0) {
+        setAccessoriesModalOpen(true)
+      } else {
+        toast.success(t('addedToCart', { name: product.name }))
+      }
     }
   }
 
@@ -332,6 +355,26 @@ export function ProductCardAvailable({
         availableQuantity={availableQuantity}
         startDate={startDate}
         endDate={endDate}
+      />
+
+      {/* Accessories Modal */}
+      <AccessoriesModal
+        open={accessoriesModalOpen}
+        onOpenChange={setAccessoriesModalOpen}
+        productName={product.name}
+        accessories={availableAccessories.map((acc) => ({
+          ...acc,
+          pricingTiers: acc.pricingTiers?.map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration,
+            discountPercent: typeof tier.discountPercent === 'string'
+              ? tier.discountPercent
+              : tier.discountPercent.toString(),
+          })),
+        }))}
+        storeSlug={storeSlug}
+        storePricingMode={pricingMode}
+        currency={currency}
       />
     </>
   )

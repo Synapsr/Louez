@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
-import { stores, products, categories, productPricingTiers } from '@/lib/db/schema'
-import { eq, and, inArray, desc } from 'drizzle-orm'
+import { stores, products, categories, productPricingTiers, productAccessories } from '@/lib/db/schema'
+import { eq, and, inArray, desc, asc } from 'drizzle-orm'
 import { notFound, redirect } from 'next/navigation'
 
 import { RentalContent } from './rental-content'
@@ -130,7 +130,17 @@ export default async function RentalPage({
     discountPercent: string
     displayOrder: number | null
   }
-  let productsList: (typeof products.$inferSelect & { category: typeof categories.$inferSelect | null; pricingTiers?: PricingTier[] })[] = []
+  interface Accessory {
+    id: string
+    name: string
+    price: string
+    deposit: string
+    images: string[] | null
+    quantity: number
+    pricingMode: 'day' | 'hour' | 'week' | null
+    pricingTiers?: PricingTier[]
+  }
+  let productsList: (typeof products.$inferSelect & { category: typeof categories.$inferSelect | null; pricingTiers?: PricingTier[]; accessories?: Accessory[] })[] = []
   if (productIds.length > 0) {
     const productIdsArray = productIds.map(p => p.id)
 
@@ -183,6 +193,102 @@ export default async function RentalPage({
       pricingTiersByProductId.set(tier.productId, tiers)
     }
 
+    // Fetch accessories for all products
+    const accessoriesResults = await db
+      .select({
+        productId: productAccessories.productId,
+        accessoryId: productAccessories.accessoryId,
+        displayOrder: productAccessories.displayOrder,
+      })
+      .from(productAccessories)
+      .where(inArray(productAccessories.productId, productIdsArray))
+      .orderBy(asc(productAccessories.displayOrder))
+
+    // Get unique accessory IDs
+    const accessoryIds = [...new Set(accessoriesResults.map((a) => a.accessoryId))]
+
+    // Fetch accessory product details
+    let accessoryProductsRaw: {
+      id: string
+      name: string
+      price: string
+      deposit: string | null
+      images: string[] | null
+      quantity: number
+      status: 'active' | 'draft' | 'archived' | null
+      pricingMode: 'day' | 'hour' | 'week' | null
+    }[] = []
+    if (accessoryIds.length > 0) {
+      accessoryProductsRaw = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          price: products.price,
+          deposit: products.deposit,
+          images: products.images,
+          quantity: products.quantity,
+          status: products.status,
+          pricingMode: products.pricingMode,
+        })
+        .from(products)
+        .where(inArray(products.id, accessoryIds))
+    }
+
+    // Fetch pricing tiers for accessories
+    const accessoryPricingTiers = accessoryIds.length > 0
+      ? await db
+          .select()
+          .from(productPricingTiers)
+          .where(inArray(productPricingTiers.productId, accessoryIds))
+      : []
+
+    // Group accessory pricing tiers
+    const accessoryTiersByProductId = new Map<string, PricingTier[]>()
+    for (const tier of accessoryPricingTiers) {
+      const tiers = accessoryTiersByProductId.get(tier.productId) || []
+      tiers.push({
+        id: tier.id,
+        minDuration: tier.minDuration,
+        discountPercent: tier.discountPercent,
+        displayOrder: tier.displayOrder,
+      })
+      accessoryTiersByProductId.set(tier.productId, tiers)
+    }
+
+    // Create map of accessory products
+    const accessoryProductMap = new Map(accessoryProductsRaw.map((p) => [p.id, p]))
+
+    // Group accessories by product ID with full details
+    interface ProductAccessory {
+      id: string
+      name: string
+      price: string
+      deposit: string
+      images: string[] | null
+      quantity: number
+      pricingMode: 'day' | 'hour' | 'week' | null
+      pricingTiers?: PricingTier[]
+    }
+    const accessoriesByProductId = new Map<string, ProductAccessory[]>()
+    for (const acc of accessoriesResults) {
+      const accessoryProduct = accessoryProductMap.get(acc.accessoryId)
+      // Only include active accessories with stock
+      if (accessoryProduct && accessoryProduct.status === 'active' && accessoryProduct.quantity > 0) {
+        const accessories = accessoriesByProductId.get(acc.productId) || []
+        accessories.push({
+          id: accessoryProduct.id,
+          name: accessoryProduct.name,
+          price: accessoryProduct.price,
+          deposit: accessoryProduct.deposit || '0',
+          images: accessoryProduct.images,
+          quantity: accessoryProduct.quantity,
+          pricingMode: accessoryProduct.pricingMode,
+          pricingTiers: accessoryTiersByProductId.get(accessoryProduct.id),
+        })
+        accessoriesByProductId.set(acc.productId, accessories)
+      }
+    }
+
     const productMap = new Map(productResults.map(p => [p.id, p]))
     productsList = productIds
       .map(({ id }) => productMap.get(id))
@@ -216,6 +322,7 @@ export default async function RentalPage({
             }
           : null,
         pricingTiers: pricingTiersByProductId.get(row.id) || [],
+        accessories: accessoriesByProductId.get(row.id) || [],
       }))
   }
 

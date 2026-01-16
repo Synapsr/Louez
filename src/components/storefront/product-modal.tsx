@@ -24,11 +24,23 @@ import {
   sortTiersByDuration,
   type ProductPricing,
 } from '@/lib/pricing'
+import { AccessoriesModal } from './accessories-modal'
 
 interface PricingTier {
   id: string
   minDuration: number
   discountPercent: number | string
+}
+
+interface Accessory {
+  id: string
+  name: string
+  price: string
+  deposit: string
+  images: string[] | null
+  quantity: number
+  pricingMode: PricingMode | null
+  pricingTiers?: PricingTier[]
 }
 
 // Helper function to extract YouTube video ID from URL
@@ -56,6 +68,7 @@ interface ProductModalProps {
     pricingMode?: PricingMode | null
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
+    accessories?: Accessory[]
   }
   isOpen: boolean
   onClose: () => void
@@ -84,6 +97,10 @@ export function ProductModal({
   const cartItem = getCartItemByProductId(product.id)
   const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
+
+  // Filter available accessories (active with stock)
+  const availableAccessories = (product.accessories || []).filter((acc) => acc.quantity > 0)
 
   useEffect(() => {
     if (isOpen) {
@@ -146,6 +163,7 @@ export function ProductModal({
     if (currentCartItem) {
       updateItemQuantity(product.id, quantity)
       toast.success(tProduct('addedToCart', { name: product.name }))
+      onClose()
     } else {
       addItem(
         {
@@ -168,9 +186,16 @@ export function ProductModal({
         },
         storeSlug
       )
-      toast.success(tProduct('addedToCart', { name: product.name }))
+
+      // Show accessories modal if there are available accessories, otherwise show toast
+      if (availableAccessories.length > 0) {
+        onClose()
+        setAccessoriesModalOpen(true)
+      } else {
+        toast.success(tProduct('addedToCart', { name: product.name }))
+        onClose()
+      }
     }
-    onClose()
   }
 
   // Duration label
@@ -210,6 +235,7 @@ export function ProductModal({
   const sortedTiers = tiers.length > 0 ? sortTiersByDuration(tiers) : []
 
   return (
+  <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogHeader className="sr-only">
@@ -513,5 +539,26 @@ export function ProductModal({
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* Accessories Modal */}
+    <AccessoriesModal
+      open={accessoriesModalOpen}
+      onOpenChange={setAccessoriesModalOpen}
+      productName={product.name}
+      accessories={availableAccessories.map((acc) => ({
+        ...acc,
+        pricingTiers: acc.pricingTiers?.map((tier) => ({
+          id: tier.id,
+          minDuration: tier.minDuration,
+          discountPercent: typeof tier.discountPercent === 'string'
+            ? tier.discountPercent
+            : tier.discountPercent.toString(),
+        })),
+      }))}
+      storeSlug={storeSlug}
+      storePricingMode={pricingMode}
+      currency={currency}
+    />
+  </>
   )
 }
