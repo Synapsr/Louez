@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { products, categories } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
@@ -26,6 +26,19 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     with: {
       category: true,
       pricingTiers: true,
+      accessories: {
+        orderBy: (acc, { asc }) => [asc(acc.displayOrder)],
+        with: {
+          accessory: {
+            columns: {
+              id: true,
+              name: true,
+              price: true,
+              images: true,
+            },
+          },
+        },
+      },
     },
   })
 
@@ -38,6 +51,25 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
     orderBy: [categories.order],
   })
 
+  // Get all active products for the accessories selector (excluding current product)
+  const availableAccessories = await db.query.products.findMany({
+    where: and(
+      eq(products.storeId, store.id),
+      eq(products.status, 'active'),
+      ne(products.id, id)
+    ),
+    columns: {
+      id: true,
+      name: true,
+      price: true,
+      images: true,
+    },
+    orderBy: (p, { asc }) => [asc(p.name)],
+  })
+
+  // Extract accessory IDs for the form
+  const accessoryIds = product.accessories.map((a) => a.accessoryId)
+
   return (
     <div className="space-y-6">
       <div>
@@ -48,10 +80,11 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       </div>
 
       <ProductForm
-        product={product}
+        product={{ ...product, accessoryIds }}
         categories={categoriesList}
         pricingMode={store.settings?.pricingMode || 'day'}
         storeTaxSettings={store.settings?.tax}
+        availableAccessories={availableAccessories}
       />
     </div>
   )

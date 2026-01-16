@@ -455,7 +455,16 @@
         "inheritTax": "Use store tax rate",
         "inheritTaxDescription": "The {rate}% rate will be applied",
         "customTaxRate": "Custom tax rate",
-        "customTaxRateDescription": "Set a different rate for this product"
+        "customTaxRateDescription": "Set a different rate for this product",
+        "accessories": "Accessories",
+        "accessoriesDescription": "Suggest complementary products to your customers",
+        "addAccessory": "Add an accessory",
+        "selectAccessories": "Select accessories",
+        "selectAccessoriesDescription": "Choose products to suggest with this product",
+        "searchProducts": "Search for a product...",
+        "noProductsFound": "No products found",
+        "noProductsAvailable": "No products available",
+        "accessoriesHelp": "Accessories will be suggested when adding to cart"
       },
       "deleteConfirm": {
         "title": "Delete this product?",
@@ -663,6 +672,19 @@
           "nameRequired": "Please enter a name for the item",
           "priceRequired": "Please enter a valid price",
           "added": "Custom item added"
+        },
+        "priceOverride": {
+          "dialogTitle": "Edit price",
+          "dialogDescription": "Adjust the unit price for this reservation",
+          "calculatedPrice": "Calculated price",
+          "newPrice": "New price",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Total for period",
+          "reset": "Reset",
+          "apply": "Apply",
+          "modified": "Price modified",
+          "priceUpdated": "Price updated",
+          "priceReset": "Price reset"
         },
         "addItemError": "Please add at least one product or custom item"
       },
@@ -1716,6 +1738,20 @@
         "home": "Home",
         "catalog": "Catalog"
       }
+    },
+    "accessories": {
+      "productAdded": "Added to cart",
+      "youMightAlsoLike": "You might also like",
+      "selectAccessories": "Select accessories to add",
+      "available": "{count, plural, one {# available} other {# available}}",
+      "pricingUnit": {
+        "day": "day",
+        "hour": "hour",
+        "week": "week"
+      },
+      "continueWithout": "Continue without accessories",
+      "addAndCheckout": "{count, plural, one {Add # accessory and view cart} other {Add # accessories and view cart}}",
+      "viewCart": "View cart"
     },
     "dateSelection": {
       "title": "When would you like to rent?",

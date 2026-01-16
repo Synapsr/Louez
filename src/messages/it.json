@@ -455,7 +455,16 @@
         "inheritTax": "Usa aliquota del negozio",
         "inheritTaxDescription": "Verra applicata l'aliquota del {rate}%",
         "customTaxRate": "Aliquota personalizzata",
-        "customTaxRateDescription": "Imposta un'aliquota diversa per questo prodotto"
+        "customTaxRateDescription": "Imposta un'aliquota diversa per questo prodotto",
+        "accessories": "Accessori",
+        "accessoriesDescription": "Suggerisci prodotti complementari ai tuoi clienti",
+        "addAccessory": "Aggiungi accessorio",
+        "selectAccessories": "Seleziona accessori",
+        "selectAccessoriesDescription": "Scegli i prodotti da suggerire con questo prodotto",
+        "searchProducts": "Cerca un prodotto...",
+        "noProductsFound": "Nessun prodotto trovato",
+        "noProductsAvailable": "Nessun prodotto disponibile",
+        "accessoriesHelp": "Gli accessori verranno suggeriti quando si aggiunge al carrello"
       },
       "deleteConfirm": {
         "title": "Eliminare questo prodotto?",
@@ -1716,6 +1725,20 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogo"
+      },
+      "accessories": {
+        "productAdded": "Aggiunto al carrello",
+        "youMightAlsoLike": "Potrebbe piacerti anche",
+        "selectAccessories": "Seleziona gli accessori da aggiungere",
+        "available": "{count, plural, one {# disponibile} other {# disponibili}}",
+        "pricingUnit": {
+          "day": "giorno",
+          "hour": "ora",
+          "week": "settimana"
+        },
+        "continueWithout": "Continua senza accessori",
+        "addAndCheckout": "{count, plural, one {Aggiungi # accessorio e vedi carrello} other {Aggiungi # accessori e vedi carrello}}",
+        "viewCart": "Vedi carrello"
       }
     },
     "dateSelection": {

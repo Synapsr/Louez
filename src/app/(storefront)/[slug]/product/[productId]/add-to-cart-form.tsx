@@ -16,9 +16,25 @@ import { useCart, type CartItem } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
+import { AccessoriesModal } from '@/components/storefront/accessories-modal'
 import { calculateRentalPrice, type ProductPricing, type PricingTier } from '@/lib/pricing'
 import { getMinStartDate } from '@/lib/utils/duration'
 import type { PricingMode } from '@/types'
+
+interface Accessory {
+  id: string
+  name: string
+  price: string
+  deposit: string
+  images: string[] | null
+  quantity: number
+  pricingMode: PricingMode | null
+  pricingTiers?: {
+    id: string
+    minDuration: number
+    discountPercent: string
+  }[]
+}
 
 interface AddToCartFormProps {
   productId: string
@@ -33,6 +49,7 @@ interface AddToCartFormProps {
   pricingTiers?: { id: string; minDuration: number; discountPercent: number }[]
   productPricingMode?: PricingMode | null
   advanceNotice?: number
+  accessories?: Accessory[]
 }
 
 export function AddToCartForm({
@@ -48,6 +65,7 @@ export function AddToCartForm({
   pricingTiers,
   productPricingMode,
   advanceNotice = 0,
+  accessories = [],
 }: AddToCartFormProps) {
   const router = useRouter()
   const t = useTranslations('storefront.product')
@@ -57,6 +75,7 @@ export function AddToCartForm({
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [quantity, setQuantity] = useState(1)
+  const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
 
   const calculateDuration = () => {
     if (!startDate || !endDate) return 0
@@ -90,6 +109,9 @@ export function AddToCartForm({
   const discountPercent = priceResult.discountPercent
   const totalDeposit = deposit * quantity
 
+  // Filter accessories to only show available ones (in stock and active status is already filtered server-side)
+  const availableAccessories = accessories.filter((acc) => acc.quantity > 0)
+
   const handleAddToCart = () => {
     if (!startDate || !endDate) {
       toast.error(t('selectDates'))
@@ -116,12 +138,18 @@ export function AddToCartForm({
       storeSlug
     )
 
-    toast.success(t('addedToCart', { name: productName }), {
-      action: {
-        label: t('goToCheckout'),
-        onClick: () => router.push(getUrl('/checkout')),
-      },
-    })
+    // If there are available accessories, show the modal
+    if (availableAccessories.length > 0) {
+      setAccessoriesModalOpen(true)
+    } else {
+      // Otherwise show the classic toast
+      toast.success(t('addedToCart', { name: productName }), {
+        action: {
+          label: t('goToCheckout'),
+          onClick: () => router.push(getUrl('/checkout')),
+        },
+      })
+    }
   }
 
   const handleQuickDateSelect = (start: Date, end: Date) => {
@@ -245,6 +273,17 @@ export function AddToCartForm({
         <ShoppingCart className="mr-2 h-5 w-5" />
         {t('addToCart')}
       </Button>
+
+      {/* Accessories Modal */}
+      <AccessoriesModal
+        open={accessoriesModalOpen}
+        onOpenChange={setAccessoriesModalOpen}
+        productName={productName}
+        accessories={availableAccessories}
+        storeSlug={storeSlug}
+        storePricingMode={storePricingMode}
+        currency={currency}
+      />
     </div>
   )
 }

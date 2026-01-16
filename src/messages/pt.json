@@ -455,7 +455,16 @@
         "inheritTax": "Usar taxa de imposto da loja",
         "inheritTaxDescription": "A taxa de {rate}% sera aplicada",
         "customTaxRate": "Taxa de imposto personalizada",
-        "customTaxRateDescription": "Definir uma taxa diferente para este produto"
+        "customTaxRateDescription": "Definir uma taxa diferente para este produto",
+        "accessories": "Acessórios",
+        "accessoriesDescription": "Sugira produtos complementares aos seus clientes",
+        "addAccessory": "Adicionar acessório",
+        "selectAccessories": "Selecionar acessórios",
+        "selectAccessoriesDescription": "Escolha os produtos a sugerir com este produto",
+        "searchProducts": "Procurar um produto...",
+        "noProductsFound": "Nenhum produto encontrado",
+        "noProductsAvailable": "Nenhum produto disponível",
+        "accessoriesHelp": "Os acessórios serão sugeridos ao adicionar ao carrinho"
       },
       "deleteConfirm": {
         "title": "Excluir este produto?",
@@ -1717,6 +1726,20 @@
       "breadcrumb": {
         "home": "Inicio",
         "catalog": "Catalogo"
+      },
+      "accessories": {
+        "productAdded": "Adicionado ao carrinho",
+        "youMightAlsoLike": "Também pode gostar",
+        "selectAccessories": "Selecione os acessórios a adicionar",
+        "available": "{count, plural, one {# disponível} other {# disponíveis}}",
+        "pricingUnit": {
+          "day": "dia",
+          "hour": "hora",
+          "week": "semana"
+        },
+        "continueWithout": "Continuar sem acessórios",
+        "addAndCheckout": "{count, plural, one {Adicionar # acessório e ver carrinho} other {Adicionar # acessórios e ver carrinho}}",
+        "viewCart": "Ver carrinho"
       }
     },
     "dateSelection": {

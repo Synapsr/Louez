@@ -729,12 +729,49 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   reservationItems: many(reservationItems),
   pricingTiers: many(productPricingTiers),
+  accessories: many(productAccessories, { relationName: 'productAccessories' }),
+  accessoryOf: many(productAccessories, { relationName: 'accessoryOf' }),
 }))
 
 export const productPricingTiersRelations = relations(productPricingTiers, ({ one }) => ({
   product: one(products, {
     fields: [productPricingTiers.productId],
     references: [products.id],
+  }),
+}))
+
+// ============================================================================
+// Product Accessories (Upsell/Cross-sell)
+// ============================================================================
+
+export const productAccessories = mysqlTable(
+  'product_accessories',
+  {
+    id: id(),
+    productId: varchar('product_id', { length: 21 }).notNull(),
+    accessoryId: varchar('accessory_id', { length: 21 }).notNull(),
+    displayOrder: int('display_order').default(0),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    productIdx: index('product_accessories_product_idx').on(table.productId),
+    uniqueProductAccessory: unique('product_accessories_unique').on(
+      table.productId,
+      table.accessoryId
+    ),
+  })
+)
+
+export const productAccessoriesRelations = relations(productAccessories, ({ one }) => ({
+  product: one(products, {
+    fields: [productAccessories.productId],
+    references: [products.id],
+    relationName: 'productAccessories',
+  }),
+  accessory: one(products, {
+    fields: [productAccessories.accessoryId],
+    references: [products.id],
+    relationName: 'accessoryOf',
   }),
 }))
 

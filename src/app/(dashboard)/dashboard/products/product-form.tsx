@@ -68,6 +68,8 @@ import { productSchema, type ProductInput, type PricingTierInput } from '@/lib/v
 import { createProduct, updateProduct, createCategory } from './actions'
 import type { TaxSettings, ProductTaxSettings } from '@/types/store'
 import { Switch } from '@/components/ui/switch'
+import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
+import { Link2 } from 'lucide-react'
 
 interface Category {
   id: string
@@ -95,6 +97,14 @@ interface Product {
   images: string[] | null
   videoUrl: string | null
   taxSettings?: ProductTaxSettings | null
+  accessoryIds?: string[]
+}
+
+interface AvailableAccessory {
+  id: string
+  name: string
+  price: string
+  images: string[] | null
 }
 
 interface ProductFormProps {
@@ -103,9 +113,10 @@ interface ProductFormProps {
   pricingMode: 'day' | 'hour' | 'week'
   currency?: string
   storeTaxSettings?: TaxSettings
+  availableAccessories?: AvailableAccessory[]
 }
 
-export function ProductForm({ product, categories, pricingMode, currency = 'EUR', storeTaxSettings }: ProductFormProps) {
+export function ProductForm({ product, categories, pricingMode, currency = 'EUR', storeTaxSettings, availableAccessories = [] }: ProductFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
@@ -150,6 +161,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       pricingTiers: initialPricingTiers,
       taxSettings: product?.taxSettings || { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
+      accessoryIds: product?.accessoryIds || [],
     },
   })
 
@@ -817,6 +829,39 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               />
             </CardContent>
           </Card>
+
+          {/* Accessories */}
+          {availableAccessories.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5" />
+                  {t('accessories')}
+                </CardTitle>
+                <CardDescription>{t('accessoriesDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormField
+                  control={form.control}
+                  name="accessoryIds"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <AccessoriesSelector
+                          availableProducts={availableAccessories}
+                          selectedIds={field.value || []}
+                          onChange={field.onChange}
+                          currency={currency}
+                          disabled={isLoading}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Status */}
           <Card>

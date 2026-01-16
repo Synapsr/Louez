@@ -454,7 +454,16 @@
         "inheritTax": "Winkel-belastingtarief gebruiken",
         "inheritTaxDescription": "Het tarief van {rate}% wordt toegepast",
         "customTaxRate": "Aangepast belastingtarief",
-        "customTaxRateDescription": "Een ander tarief instellen voor dit product"
+        "customTaxRateDescription": "Een ander tarief instellen voor dit product",
+        "accessories": "Accessoires",
+        "accessoriesDescription": "Stel complementaire producten voor aan uw klanten",
+        "addAccessory": "Accessoire toevoegen",
+        "selectAccessories": "Accessoires selecteren",
+        "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",
+        "searchProducts": "Zoek een product...",
+        "noProductsFound": "Geen producten gevonden",
+        "noProductsAvailable": "Geen producten beschikbaar",
+        "accessoriesHelp": "Accessoires worden voorgesteld bij het toevoegen aan winkelwagen"
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
@@ -1715,6 +1724,20 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogus"
+      },
+      "accessories": {
+        "productAdded": "Toegevoegd aan winkelwagen",
+        "youMightAlsoLike": "Misschien vind je dit ook leuk",
+        "selectAccessories": "Selecteer accessoires om toe te voegen",
+        "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
+        "pricingUnit": {
+          "day": "dag",
+          "hour": "uur",
+          "week": "week"
+        },
+        "continueWithout": "Doorgaan zonder accessoires",
+        "addAndCheckout": "{count, plural, one {# accessoire toevoegen en winkelwagen bekijken} other {# accessoires toevoegen en winkelwagen bekijken}}",
+        "viewCart": "Winkelwagen bekijken"
       }
     },
     "dateSelection": {

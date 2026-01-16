@@ -111,12 +111,40 @@ export default async function ProductPage({ params }: ProductPageProps) {
     with: {
       category: true,
       pricingTiers: true,
+      accessories: {
+        orderBy: (acc, { asc }) => [asc(acc.displayOrder)],
+        with: {
+          accessory: {
+            with: {
+              pricingTiers: true,
+            },
+          },
+        },
+      },
     },
   })
 
   if (!product) {
     notFound()
   }
+
+  // Filter accessories to only include active ones with stock
+  const availableAccessories = product.accessories
+    .filter((acc) => acc.accessory.status === 'active' && acc.accessory.quantity > 0)
+    .map((acc) => ({
+      id: acc.accessory.id,
+      name: acc.accessory.name,
+      price: acc.accessory.price,
+      deposit: acc.accessory.deposit || '0',
+      images: acc.accessory.images,
+      quantity: acc.accessory.quantity,
+      pricingMode: acc.accessory.pricingMode,
+      pricingTiers: acc.accessory.pricingTiers?.map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration,
+        discountPercent: tier.discountPercent,
+      })),
+    }))
 
   // Get related products from same category
   const relatedProducts = product.categoryId
@@ -286,6 +314,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               }))}
               productPricingMode={product.pricingMode}
               advanceNotice={storeSettings.advanceNotice || 0}
+              accessories={availableAccessories}
             />
           )}
 

@@ -455,7 +455,16 @@
         "inheritTax": "Utiliser le taux de la boutique",
         "inheritTaxDescription": "Le taux de {rate}% sera appliqué",
         "customTaxRate": "Taux personnalisé",
-        "customTaxRateDescription": "Définir un taux différent pour ce produit"
+        "customTaxRateDescription": "Définir un taux différent pour ce produit",
+        "accessories": "Accessoires",
+        "accessoriesDescription": "Suggérez des produits complémentaires à vos clients",
+        "addAccessory": "Ajouter un accessoire",
+        "selectAccessories": "Sélectionner des accessoires",
+        "selectAccessoriesDescription": "Choisissez les produits à suggérer avec ce produit",
+        "searchProducts": "Rechercher un produit...",
+        "noProductsFound": "Aucun produit trouvé",
+        "noProductsAvailable": "Aucun produit disponible",
+        "accessoriesHelp": "Les accessoires seront proposés lors de l'ajout au panier"
       },
       "deleteConfirm": {
         "title": "Supprimer ce produit ?",
@@ -663,6 +672,19 @@
           "nameRequired": "Veuillez saisir un nom pour l'article",
           "priceRequired": "Veuillez saisir un prix valide",
           "added": "Article personnalisé ajouté"
+        },
+        "priceOverride": {
+          "dialogTitle": "Modifier le prix",
+          "dialogDescription": "Ajustez le prix unitaire pour cette réservation",
+          "calculatedPrice": "Prix calculé",
+          "newPrice": "Nouveau prix",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Total pour la période",
+          "reset": "Réinitialiser",
+          "apply": "Appliquer",
+          "modified": "Prix modifié",
+          "priceUpdated": "Prix mis à jour",
+          "priceReset": "Prix réinitialisé"
         },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé"
       },
@@ -1716,6 +1738,20 @@
         "home": "Accueil",
         "catalog": "Catalogue"
       }
+    },
+    "accessories": {
+      "productAdded": "Ajouté au panier",
+      "youMightAlsoLike": "Vous pourriez aussi aimer",
+      "selectAccessories": "Sélectionnez les accessoires à ajouter",
+      "available": "{count, plural, one {# disponible} other {# disponibles}}",
+      "pricingUnit": {
+        "day": "jour",
+        "hour": "heure",
+        "week": "semaine"
+      },
+      "continueWithout": "Continuer sans accessoire",
+      "addAndCheckout": "{count, plural, one {Ajouter # accessoire et voir le panier} other {Ajouter # accessoires et voir le panier}}",
+      "viewCart": "Voir le panier"
     },
     "dateSelection": {
       "title": "Quand souhaitez-vous louer ?",

@@ -83,6 +83,7 @@ export const productSchema = z.object({
     .regex(youtubeUrlRegex, 'validation.invalidYoutubeUrl')
     .optional()
     .or(z.literal('')),
+  accessoryIds: z.array(z.string()).optional(),
 })
 
 export const categorySchema = z.object({

@@ -1,0 +1,276 @@
+'use client'
+
+import { useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Check, ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react'
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { useCart } from '@/contexts/cart-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
+import type { PricingMode } from '@/types'
+
+interface Accessory {
+  id: string
+  name: string
+  price: string
+  deposit: string
+  images: string[] | null
+  quantity: number
+  pricingMode: PricingMode | null
+  pricingTiers?: {
+    id: string
+    minDuration: number
+    discountPercent: string
+  }[]
+}
+
+interface AccessoriesModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  productName: string
+  accessories: Accessory[]
+  storeSlug: string
+  storePricingMode: PricingMode
+  currency?: string
+}
+
+export function AccessoriesModal({
+  open,
+  onOpenChange,
+  productName,
+  accessories,
+  storeSlug,
+  storePricingMode,
+  currency = 'EUR',
+}: AccessoriesModalProps) {
+  const t = useTranslations('storefront.accessories')
+  const router = useRouter()
+  const { addItem } = useCart()
+  const { getUrl } = useStorefrontUrl(storeSlug)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [isAdding, setIsAdding] = useState(false)
+  const carouselRef = useRef<HTMLDivElement>(null)
+
+  const toggleAccessory = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  const scroll = useCallback((direction: 'left' | 'right') => {
+    if (!carouselRef.current) return
+    const scrollAmount = 280 // card width + gap
+    carouselRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth',
+    })
+  }, [])
+
+  const handleContinue = () => {
+    onOpenChange(false)
+    setSelectedIds(new Set())
+  }
+
+  const handleAddAndCheckout = async () => {
+    setIsAdding(true)
+
+    // Add selected accessories to cart
+    for (const accessory of accessories) {
+      if (selectedIds.has(accessory.id)) {
+        const effectivePricingMode = accessory.pricingMode || storePricingMode
+        addItem(
+          {
+            productId: accessory.id,
+            productName: accessory.name,
+            productImage: accessory.images?.[0] || null,
+            price: parseFloat(accessory.price),
+            deposit: parseFloat(accessory.deposit),
+            quantity: 1,
+            maxQuantity: accessory.quantity,
+            pricingMode: effectivePricingMode,
+            pricingTiers: accessory.pricingTiers?.map((tier) => ({
+              id: tier.id,
+              minDuration: tier.minDuration,
+              discountPercent: parseFloat(tier.discountPercent),
+            })),
+            productPricingMode: accessory.pricingMode,
+          },
+          storeSlug
+        )
+      }
+    }
+
+    setIsAdding(false)
+    onOpenChange(false)
+    setSelectedIds(new Set())
+    router.push(getUrl('/checkout'))
+  }
+
+  const selectedCount = selectedIds.size
+
+  // Don't render if no accessories
+  if (accessories.length === 0) return null
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden p-0">
+        <DialogHeader className="p-6 pb-2">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+              <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <DialogTitle className="text-lg">{t('productAdded')}</DialogTitle>
+              <DialogDescription className="text-sm">
+                {productName}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <div className="px-6 pb-2">
+          <h3 className="font-semibold text-base">{t('youMightAlsoLike')}</h3>
+          <p className="text-sm text-muted-foreground">{t('selectAccessories')}</p>
+        </div>
+
+        {/* Carousel */}
+        <div className="relative px-6">
+          {/* Navigation buttons */}
+          {accessories.length > 2 && (
+            <>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+                onClick={() => scroll('left')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+                onClick={() => scroll('right')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+
+          {/* Carousel container */}
+          <div
+            ref={carouselRef}
+            className="flex gap-4 overflow-x-auto pb-4 pt-2 snap-x snap-mandatory scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {accessories.map((accessory) => {
+              const isSelected = selectedIds.has(accessory.id)
+              const effectivePricingMode = accessory.pricingMode || storePricingMode
+
+              return (
+                <button
+                  key={accessory.id}
+                  type="button"
+                  onClick={() => toggleAccessory(accessory.id)}
+                  className={cn(
+                    'flex-shrink-0 w-64 snap-start rounded-xl border-2 overflow-hidden transition-all duration-200',
+                    'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                    isSelected
+                      ? 'border-primary bg-primary/5 shadow-md'
+                      : 'border-border hover:border-primary/50 hover:shadow-sm'
+                  )}
+                >
+                  {/* Image */}
+                  <div className="relative aspect-[4/3] bg-muted">
+                    {accessory.images && accessory.images[0] ? (
+                      <img
+                        src={accessory.images[0]}
+                        alt={accessory.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                        <ShoppingCart className="h-8 w-8" />
+                      </div>
+                    )}
+
+                    {/* Selection indicator */}
+                    <div
+                      className={cn(
+                        'absolute top-2 right-2 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all',
+                        isSelected
+                          ? 'bg-primary border-primary text-primary-foreground'
+                          : 'bg-background/80 border-muted-foreground/30'
+                      )}
+                    >
+                      {isSelected && <Check className="h-3.5 w-3.5" />}
+                    </div>
+
+                    {/* Stock badge */}
+                    <Badge
+                      variant="secondary"
+                      className="absolute bottom-2 left-2 text-xs"
+                    >
+                      {t('available', { count: accessory.quantity })}
+                    </Badge>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-3 text-left">
+                    <h4 className="font-medium text-sm line-clamp-1">{accessory.name}</h4>
+                    <div className="mt-1 flex items-baseline gap-1">
+                      <span className="text-base font-bold">
+                        {formatCurrency(parseFloat(accessory.price), currency)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        /{t(`pricingUnit.${effectivePricingMode}`)}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col-reverse sm:flex-row gap-3 p-6 pt-2 border-t bg-muted/30">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={handleContinue}
+          >
+            {t('continueWithout')}
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={handleAddAndCheckout}
+            disabled={selectedCount === 0 || isAdding}
+          >
+            <ShoppingCart className="mr-2 h-4 w-4" />
+            {selectedCount > 0
+              ? t('addAndCheckout', { count: selectedCount })
+              : t('viewCart')}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

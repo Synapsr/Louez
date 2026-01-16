@@ -2,8 +2,8 @@
 
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { products, categories, productPricingTiers } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { products, categories, productPricingTiers, productAccessories } from '@/lib/db/schema'
+import { eq, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { productSchema, categorySchema, type ProductInput, type CategoryInput } from '@/lib/validations/product'
 import { nanoid } from 'nanoid'
@@ -142,6 +142,35 @@ export async function updateProduct(productId: string, data: ProductInput) {
     )
   }
 
+  // Update accessories: delete all existing and insert new ones
+  const accessoryIds = validated.data.accessoryIds || []
+  await db.delete(productAccessories).where(eq(productAccessories.productId, productId))
+
+  if (accessoryIds.length > 0) {
+    // Verify all accessories belong to the same store and are not the product itself
+    const validAccessories = await db.query.products.findMany({
+      where: and(
+        eq(products.storeId, store.id),
+        inArray(products.id, accessoryIds),
+        ne(products.id, productId)
+      ),
+      columns: { id: true },
+    })
+
+    const validAccessoryIds = validAccessories.map((a) => a.id)
+
+    if (validAccessoryIds.length > 0) {
+      await db.insert(productAccessories).values(
+        validAccessoryIds.map((accessoryId, index) => ({
+          id: nanoid(),
+          productId: productId,
+          accessoryId: accessoryId,
+          displayOrder: index,
+        }))
+      )
+    }
+  }
+
   revalidatePath('/dashboard/products')
   revalidatePath(`/dashboard/products/${productId}`)
   return { success: true }
@@ -189,6 +218,14 @@ export async function deleteProduct(productId: string) {
   if (!product) {
     return { error: 'errors.productNotFound' }
   }
+
+  // Delete accessory relations (both as product and as accessory)
+  await db.delete(productAccessories).where(
+    or(
+      eq(productAccessories.productId, productId),
+      eq(productAccessories.accessoryId, productId)
+    )
+  )
 
   await db.delete(products).where(eq(products.id, productId))
 
@@ -262,10 +299,53 @@ export async function getProduct(productId: string) {
       pricingTiers: {
         orderBy: (tiers, { asc }) => [asc(tiers.displayOrder)],
       },
+      accessories: {
+        orderBy: (acc, { asc }) => [asc(acc.displayOrder)],
+        with: {
+          accessory: {
+            columns: {
+              id: true,
+              name: true,
+              price: true,
+              images: true,
+              status: true,
+            },
+          },
+        },
+      },
     },
   })
 
   return product
+}
+
+// Get all products available as accessories (excluding the current product)
+export async function getAvailableAccessories(excludeProductId?: string) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return []
+  }
+
+  const allProducts = await db.query.products.findMany({
+    where: and(
+      eq(products.storeId, store.id),
+      eq(products.status, 'active')
+    ),
+    columns: {
+      id: true,
+      name: true,
+      price: true,
+      images: true,
+    },
+    orderBy: (p, { asc }) => [asc(p.name)],
+  })
+
+  // Filter out the current product if provided
+  if (excludeProductId) {
+    return allProducts.filter((p) => p.id !== excludeProductId)
+  }
+
+  return allProducts
 }
 
 // Categories
