@@ -35,6 +35,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "start:prod": "pnpm db:push --force && next start",
     "lint": "eslint",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
