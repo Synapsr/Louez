@@ -280,7 +280,6 @@ export function ProductCardAvailable({
                   </div>
                 ) : (
                   <Button
-                    variant="secondary"
                     className="w-full h-9"
                     onClick={handleQuickAdd}
                   >

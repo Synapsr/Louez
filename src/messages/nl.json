@@ -1765,8 +1765,8 @@
           "week": "week"
         },
         "continueWithout": "Doorgaan zonder accessoires",
-        "addAndCheckout": "{count, plural, one {# accessoire toevoegen en winkelwagen bekijken} other {# accessoires toevoegen en winkelwagen bekijken}}",
-        "viewCart": "Winkelwagen bekijken"
+        "addToCart": "{count, plural, one {# accessoire toevoegen} other {# accessoires toevoegen}}",
+        "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
       }
     },
     "dateSelection": {

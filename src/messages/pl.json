@@ -1766,8 +1766,8 @@
           "week": "tydzień"
         },
         "continueWithout": "Kontynuuj bez akcesoriów",
-        "addAndCheckout": "{count, plural, one {Dodaj # akcesorium i zobacz koszyk} few {Dodaj # akcesoria i zobacz koszyk} other {Dodaj # akcesoriów i zobacz koszyk}}",
-        "viewCart": "Zobacz koszyk"
+        "addToCart": "{count, plural, one {Dodaj # akcesorium} few {Dodaj # akcesoria} other {Dodaj # akcesoriów}}",
+        "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} other {# akcesoriów dodanych do koszyka}}"
       }
     },
     "dateSelection": {

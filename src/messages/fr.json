@@ -1766,8 +1766,8 @@
         "week": "semaine"
       },
       "continueWithout": "Continuer sans accessoire",
-      "addAndCheckout": "{count, plural, one {Ajouter # accessoire et voir le panier} other {Ajouter # accessoires et voir le panier}}",
-      "viewCart": "Voir le panier"
+      "addToCart": "{count, plural, one {Ajouter # accessoire} other {Ajouter # accessoires}}",
+      "accessoriesAdded": "{count, plural, one {# accessoire ajouté au panier} other {# accessoires ajoutés au panier}}"
     },
     "dateSelection": {
       "title": "Quand souhaitez-vous louer ?",

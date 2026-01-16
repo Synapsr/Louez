@@ -1766,8 +1766,8 @@
         "week": "week"
       },
       "continueWithout": "Continue without accessories",
-      "addAndCheckout": "{count, plural, one {Add # accessory and view cart} other {Add # accessories and view cart}}",
-      "viewCart": "View cart"
+      "addToCart": "{count, plural, one {Add # accessory} other {Add # accessories}}",
+      "accessoriesAdded": "{count, plural, one {# accessory added to cart} other {# accessories added to cart}}"
     },
     "dateSelection": {
       "title": "When would you like to rent?",

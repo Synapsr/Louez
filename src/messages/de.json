@@ -1767,8 +1767,8 @@
           "week": "Woche"
         },
         "continueWithout": "Ohne Zubehör fortfahren",
-        "addAndCheckout": "{count, plural, one {# Zubehör hinzufügen und Warenkorb ansehen} other {# Zubehör hinzufügen und Warenkorb ansehen}}",
-        "viewCart": "Warenkorb ansehen"
+        "addToCart": "{count, plural, one {# Zubehör hinzufügen} other {# Zubehör hinzufügen}}",
+        "accessoriesAdded": "{count, plural, one {# Zubehör zum Warenkorb hinzugefügt} other {# Zubehör zum Warenkorb hinzugefügt}}"
       }
     },
     "dateSelection": {

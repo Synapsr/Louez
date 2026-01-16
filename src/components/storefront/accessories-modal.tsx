@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Check, ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
+import { toast } from 'sonner'
 
 import {
   Dialog,
@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import type { PricingMode } from '@/types'
 
 interface Accessory {
@@ -55,9 +54,7 @@ export function AccessoriesModal({
   currency = 'EUR',
 }: AccessoriesModalProps) {
   const t = useTranslations('storefront.accessories')
-  const router = useRouter()
   const { addItem } = useCart()
-  const { getUrl } = useStorefrontUrl(storeSlug)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isAdding, setIsAdding] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
@@ -88,10 +85,11 @@ export function AccessoriesModal({
     setSelectedIds(new Set())
   }
 
-  const handleAddAndCheckout = async () => {
+  const handleAddToCart = async () => {
     setIsAdding(true)
 
     // Add selected accessories to cart
+    const addedNames: string[] = []
     for (const accessory of accessories) {
       if (selectedIds.has(accessory.id)) {
         const effectivePricingMode = accessory.pricingMode || storePricingMode
@@ -114,13 +112,18 @@ export function AccessoriesModal({
           },
           storeSlug
         )
+        addedNames.push(accessory.name)
       }
     }
 
     setIsAdding(false)
     onOpenChange(false)
     setSelectedIds(new Set())
-    router.push(getUrl('/checkout'))
+
+    // Show success toast
+    if (addedNames.length > 0) {
+      toast.success(t('accessoriesAdded', { count: addedNames.length }))
+    }
   }
 
   const selectedCount = selectedIds.size
@@ -265,13 +268,11 @@ export function AccessoriesModal({
           </Button>
           <Button
             className="flex-1"
-            onClick={handleAddAndCheckout}
+            onClick={handleAddToCart}
             disabled={selectedCount === 0 || isAdding}
           >
             <ShoppingCart className="mr-2 h-4 w-4" />
-            {selectedCount > 0
-              ? t('addAndCheckout', { count: selectedCount })
-              : t('viewCart')}
+            {t('addToCart', { count: selectedCount })}
           </Button>
         </div>
       </DialogContent>
