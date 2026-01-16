@@ -1209,6 +1209,22 @@
         "descriptionPlaceholder": "Descreva seu negocio...",
         "sector": "Setor de atividade"
       },
+      "billingAddress": {
+        "title": "Endereco de faturacao",
+        "description": "Este endereco sera usado nos contratos de aluguel",
+        "sameAsStore": "Usar endereco da loja",
+        "sameAsStoreDescription": "O endereco de faturacao sera o mesmo que o endereco da loja",
+        "address": "Endereco",
+        "addressPlaceholder": "Rua Principal 123",
+        "city": "Cidade",
+        "cityPlaceholder": "Lisboa",
+        "postalCode": "Codigo postal",
+        "postalCodePlaceholder": "1000-001",
+        "country": "Pais",
+        "preview": "Pre-visualizacao do endereco de faturacao:",
+        "infoSameAddress": "O endereco da sua loja sera exibido nos contratos de aluguel e na loja.",
+        "infoDifferentAddress": "O endereco de faturacao acima sera usado nos contratos de aluguel. O endereco da loja permanecera visivel na loja."
+      },
       "appearanceSettings": {
         "title": "Aparencia",
         "description": "Personalize a aparencia da sua loja",

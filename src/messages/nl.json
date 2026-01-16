@@ -1207,6 +1207,22 @@
         "descriptionPlaceholder": "Beschrijf uw bedrijf...",
         "sector": "Bedrijfssector"
       },
+      "billingAddress": {
+        "title": "Factuuradres",
+        "description": "Dit adres wordt gebruikt op huurcontracten",
+        "sameAsStore": "Winkeladres gebruiken",
+        "sameAsStoreDescription": "Het factuuradres is hetzelfde als het winkeladres",
+        "address": "Adres",
+        "addressPlaceholder": "Hoofdstraat 123",
+        "city": "Stad",
+        "cityPlaceholder": "Amsterdam",
+        "postalCode": "Postcode",
+        "postalCodePlaceholder": "1011",
+        "country": "Land",
+        "preview": "Voorbeeld factuuradres:",
+        "infoSameAddress": "Uw winkeladres wordt weergegeven op huurcontracten en de winkelsite.",
+        "infoDifferentAddress": "Het bovenstaande factuuradres wordt gebruikt op huurcontracten. Het winkeladres blijft zichtbaar op de winkelsite."
+      },
       "appearanceSettings": {
         "title": "Uiterlijk",
         "description": "Pas het uiterlijk van uw winkel aan",

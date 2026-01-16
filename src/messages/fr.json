@@ -1207,6 +1207,22 @@
         "descriptionPlaceholder": "Décrivez votre activité...",
         "sector": "Secteur d'activité"
       },
+      "billingAddress": {
+        "title": "Adresse de facturation",
+        "description": "Cette adresse sera utilisée sur les contrats de location",
+        "sameAsStore": "Utiliser l'adresse de la boutique",
+        "sameAsStoreDescription": "L'adresse de facturation sera identique à l'adresse de la boutique",
+        "address": "Adresse",
+        "addressPlaceholder": "123 rue de la Paix",
+        "city": "Ville",
+        "cityPlaceholder": "Paris",
+        "postalCode": "Code postal",
+        "postalCodePlaceholder": "75001",
+        "country": "Pays",
+        "preview": "Aperçu de l'adresse de facturation :",
+        "infoSameAddress": "L'adresse de votre boutique sera affichée sur les contrats de location et le storefront.",
+        "infoDifferentAddress": "L'adresse de facturation ci-dessus sera utilisée sur les contrats de location. L'adresse de la boutique restera visible sur le storefront."
+      },
       "appearanceSettings": {
         "title": "Apparence",
         "description": "Personnalisez l'apparence de votre boutique",

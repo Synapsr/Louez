@@ -1207,6 +1207,22 @@
         "descriptionPlaceholder": "Describe your business...",
         "sector": "Industry sector"
       },
+      "billingAddress": {
+        "title": "Billing address",
+        "description": "This address will be used on rental contracts",
+        "sameAsStore": "Use store address",
+        "sameAsStoreDescription": "The billing address will be the same as the store address",
+        "address": "Address",
+        "addressPlaceholder": "123 Main Street",
+        "city": "City",
+        "cityPlaceholder": "New York",
+        "postalCode": "Postal code",
+        "postalCodePlaceholder": "10001",
+        "country": "Country",
+        "preview": "Billing address preview:",
+        "infoSameAddress": "Your store address will be displayed on rental contracts and the storefront.",
+        "infoDifferentAddress": "The billing address above will be used on rental contracts. The store address will remain visible on the storefront."
+      },
       "appearanceSettings": {
         "title": "Appearance",
         "description": "Customize your store's appearance",

@@ -26,6 +26,13 @@ interface StoreSettingsInput {
   currency: string
   latitude?: number | null
   longitude?: number | null
+  // Billing address
+  billingAddressSameAsStore: boolean
+  billingAddress?: string
+  billingCity?: string
+  billingPostalCode?: string
+  billingCountry?: string
+  // Settings
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
   minDuration: number
@@ -63,6 +70,14 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           country: data.country,
           timezone: getTimezoneForCountry(data.country),
           currency: data.currency,
+          tax: store.settings?.tax,
+          billingAddress: {
+            useSameAsStore: data.billingAddressSameAsStore,
+            address: data.billingAddressSameAsStore ? undefined : data.billingAddress,
+            city: data.billingAddressSameAsStore ? undefined : data.billingCity,
+            postalCode: data.billingAddressSameAsStore ? undefined : data.billingPostalCode,
+            country: data.billingAddressSameAsStore ? undefined : data.billingCountry,
+          },
         },
         updatedAt: new Date(),
       })

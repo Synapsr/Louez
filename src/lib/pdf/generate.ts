@@ -120,6 +120,7 @@ export async function generateContract({
         siret: null, // SIRET can be added to store settings in future
         tvaNumber: store.settings?.tax?.taxNumber || null,
         primaryColor: store.theme?.primaryColor || '#0066FF',
+        billingAddress: store.settings?.billingAddress || null,
       },
       document: documentData,
       locale,

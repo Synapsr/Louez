@@ -1211,6 +1211,22 @@
         "descriptionPlaceholder": "Describa su negocio...",
         "sector": "Sector de actividad"
       },
+      "billingAddress": {
+        "title": "Direccion de facturacion",
+        "description": "Esta direccion se utilizara en los contratos de alquiler",
+        "sameAsStore": "Usar direccion de la tienda",
+        "sameAsStoreDescription": "La direccion de facturacion sera la misma que la direccion de la tienda",
+        "address": "Direccion",
+        "addressPlaceholder": "Calle Principal 123",
+        "city": "Ciudad",
+        "cityPlaceholder": "Madrid",
+        "postalCode": "Codigo postal",
+        "postalCodePlaceholder": "28001",
+        "country": "Pais",
+        "preview": "Vista previa de la direccion de facturacion:",
+        "infoSameAddress": "La direccion de su tienda se mostrara en los contratos de alquiler y en la tienda.",
+        "infoDifferentAddress": "La direccion de facturacion anterior se utilizara en los contratos de alquiler. La direccion de la tienda permanecera visible en la tienda."
+      },
       "appearanceSettings": {
         "title": "Apariencia",
         "description": "Personalice la apariencia de su tienda",

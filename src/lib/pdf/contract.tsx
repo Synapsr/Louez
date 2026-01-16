@@ -91,6 +91,14 @@ export interface ContractTranslations {
 
 export type SupportedLocale = 'fr' | 'en'
 
+interface BillingAddress {
+  useSameAsStore: boolean
+  address?: string
+  city?: string
+  postalCode?: string
+  country?: string
+}
+
 interface Store {
   name: string
   slug: string
@@ -101,6 +109,7 @@ interface Store {
   siret?: string | null
   tvaNumber?: string | null
   primaryColor?: string
+  billingAddress?: BillingAddress | null
 }
 
 interface Customer {
@@ -277,7 +286,21 @@ export function ContractDocument({
           <View style={styles.partyCard}>
             <Text style={styles.partyLabel}>{t.parties.landlord}</Text>
             <Text style={styles.partyName}>{store.name}</Text>
-            {store.address && <Text style={styles.partyInfo}>{store.address}</Text>}
+            {/* Use billing address if different, otherwise use store address */}
+            {store.billingAddress && !store.billingAddress.useSameAsStore ? (
+              <>
+                {store.billingAddress.address && (
+                  <Text style={styles.partyInfo}>{store.billingAddress.address}</Text>
+                )}
+                {(store.billingAddress.postalCode || store.billingAddress.city) && (
+                  <Text style={styles.partyInfo}>
+                    {store.billingAddress.postalCode} {store.billingAddress.city}
+                  </Text>
+                )}
+              </>
+            ) : (
+              store.address && <Text style={styles.partyInfo}>{store.address}</Text>
+            )}
             {store.phone && <Text style={styles.partyInfo}>{store.phone}</Text>}
             {store.email && <Text style={styles.partyInfo}>{store.email}</Text>}
             {store.siret && <Text style={styles.partyLegal}>SIRET : {store.siret}</Text>}

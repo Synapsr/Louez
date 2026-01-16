@@ -1209,6 +1209,22 @@
         "descriptionPlaceholder": "Beschreiben Sie Ihr Geschäft...",
         "sector": "Branche"
       },
+      "billingAddress": {
+        "title": "Rechnungsadresse",
+        "description": "Diese Adresse wird auf Mietverträgen verwendet",
+        "sameAsStore": "Shop-Adresse verwenden",
+        "sameAsStoreDescription": "Die Rechnungsadresse entspricht der Shop-Adresse",
+        "address": "Adresse",
+        "addressPlaceholder": "Musterstraße 123",
+        "city": "Stadt",
+        "cityPlaceholder": "Berlin",
+        "postalCode": "Postleitzahl",
+        "postalCodePlaceholder": "10115",
+        "country": "Land",
+        "preview": "Vorschau der Rechnungsadresse:",
+        "infoSameAddress": "Ihre Shop-Adresse wird auf Mietverträgen und im Storefront angezeigt.",
+        "infoDifferentAddress": "Die obige Rechnungsadresse wird auf Mietverträgen verwendet. Die Shop-Adresse bleibt im Storefront sichtbar."
+      },
       "appearanceSettings": {
         "title": "Erscheinungsbild",
         "description": "Passen Sie das Erscheinungsbild Ihres Shops an",

@@ -44,6 +44,18 @@ export interface ProductTaxSettings {
 }
 
 // ============================================================================
+// Billing Address
+// ============================================================================
+
+export interface BillingAddress {
+  useSameAsStore: boolean  // true = use store address, false = use custom billing address
+  address?: string
+  city?: string
+  postalCode?: string
+  country?: string
+}
+
+// ============================================================================
 // Store Settings
 // ============================================================================
 
@@ -59,6 +71,7 @@ export interface StoreSettings {
   timezone?: string   // IANA timezone (e.g., 'Europe/Paris')
   currency?: string   // ISO 4217 currency code (e.g., 'EUR', 'USD', 'GBP')
   tax?: TaxSettings   // Configuration des taxes
+  billingAddress?: BillingAddress  // Separate billing address for contracts
 }
 
 export interface StoreTheme {

@@ -12,6 +12,7 @@ import { Loader2, ExternalLink, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AddressInput } from '@/components/ui/address-input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { SlugChangeModal } from './slug-change-modal'
@@ -53,6 +54,13 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   currency: z.string().min(3).max(3),
   latitude: z.number().nullable(),
   longitude: z.number().nullable(),
+
+  // Billing address
+  billingAddressSameAsStore: z.boolean(),
+  billingAddress: z.string().optional(),
+  billingCity: z.string().optional(),
+  billingPostalCode: z.string().optional(),
+  billingCountry: z.string().optional(),
 
   // Settings
   pricingMode: z.enum(['day', 'hour', 'week']),
@@ -105,6 +113,8 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
   const defaultCountry = settings.country || 'FR'
   const defaultCurrency = settings.currency || getDefaultCurrencyForCountry(defaultCountry)
 
+  const billingAddress = settings.billingAddress || { useSameAsStore: true }
+
   const form = useForm<StoreSettingsInput>({
     resolver: zodResolver(storeSettingsSchema),
     defaultValues: {
@@ -117,6 +127,11 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
       currency: defaultCurrency,
       latitude: store.latitude ? parseFloat(store.latitude) : null,
       longitude: store.longitude ? parseFloat(store.longitude) : null,
+      billingAddressSameAsStore: billingAddress.useSameAsStore,
+      billingAddress: billingAddress.address || '',
+      billingCity: billingAddress.city || '',
+      billingPostalCode: billingAddress.postalCode || '',
+      billingCountry: billingAddress.country || defaultCountry,
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
       minDuration: settings.minDuration,
@@ -355,6 +370,163 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Billing Address */}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('billingAddress.title')}</CardTitle>
+              <CardDescription>
+                {t('billingAddress.description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <FormField
+                control={form.control}
+                name="billingAddressSameAsStore"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="text-base cursor-pointer">
+                        {t('billingAddress.sameAsStore')}
+                      </FormLabel>
+                      <FormDescription>
+                        {t('billingAddress.sameAsStoreDescription')}
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Conditional billing address fields */}
+              {!form.watch('billingAddressSameAsStore') && (
+                <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+                  <FormField
+                    control={form.control}
+                    name="billingAddress"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('billingAddress.address')}</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder={t('billingAddress.addressPlaceholder')}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="billingPostalCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('billingAddress.postalCode')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder={t('billingAddress.postalCodePlaceholder')}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="billingCity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('billingAddress.city')}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder={t('billingAddress.cityPlaceholder')}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="billingCountry"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('billingAddress.country')}</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue>
+                                {field.value && (
+                                  <span className="flex items-center gap-2">
+                                    <span>{getCountryFlag(field.value)}</span>
+                                    <span>{getCountryName(field.value)}</span>
+                                  </span>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="max-h-[300px]">
+                            {getCountriesSortedByName().map((country) => (
+                              <SelectItem key={country.code} value={country.code}>
+                                <span className="flex items-center gap-2">
+                                  <span>{country.flag}</span>
+                                  <span>{getCountryName(country.code)}</span>
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Preview of billing address */}
+                  {(form.watch('billingAddress') || form.watch('billingCity')) && (
+                    <div className="rounded-lg bg-muted/50 p-4 text-sm">
+                      <p className="font-medium text-muted-foreground mb-1">
+                        {t('billingAddress.preview')}
+                      </p>
+                      <p>{form.watch('billingAddress')}</p>
+                      {(form.watch('billingPostalCode') || form.watch('billingCity')) && (
+                        <p>
+                          {form.watch('billingPostalCode')} {form.watch('billingCity')}
+                        </p>
+                      )}
+                      {form.watch('billingCountry') && (
+                        <p>{getCountryName(form.watch('billingCountry') || '')}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Info about what address will be shown on contracts */}
+              <div className="rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/50 p-4 text-sm">
+                <p className="text-blue-800 dark:text-blue-200">
+                  {form.watch('billingAddressSameAsStore')
+                    ? t('billingAddress.infoSameAddress')
+                    : t('billingAddress.infoDifferentAddress')}
+                </p>
               </div>
             </CardContent>
           </Card>

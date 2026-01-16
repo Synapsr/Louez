@@ -1208,6 +1208,22 @@
         "descriptionPlaceholder": "Opisz swoją działalność...",
         "sector": "Branża"
       },
+      "billingAddress": {
+        "title": "Adres rozliczeniowy",
+        "description": "Ten adres bedzie uzywany na umowach najmu",
+        "sameAsStore": "Uzyj adresu sklepu",
+        "sameAsStoreDescription": "Adres rozliczeniowy bedzie taki sam jak adres sklepu",
+        "address": "Adres",
+        "addressPlaceholder": "ul. Glowna 123",
+        "city": "Miasto",
+        "cityPlaceholder": "Warszawa",
+        "postalCode": "Kod pocztowy",
+        "postalCodePlaceholder": "00-001",
+        "country": "Kraj",
+        "preview": "Podglad adresu rozliczeniowego:",
+        "infoSameAddress": "Adres Twojego sklepu bedzie wyswietlany na umowach najmu i w sklepie.",
+        "infoDifferentAddress": "Powyzszy adres rozliczeniowy bedzie uzywany na umowach najmu. Adres sklepu pozostanie widoczny w sklepie."
+      },
       "appearanceSettings": {
         "title": "Wygląd",
         "description": "Dostosuj wygląd swojego sklepu",

@@ -1208,6 +1208,22 @@
         "descriptionPlaceholder": "Descrivi la tua attivita...",
         "sector": "Settore"
       },
+      "billingAddress": {
+        "title": "Indirizzo di fatturazione",
+        "description": "Questo indirizzo verra utilizzato sui contratti di noleggio",
+        "sameAsStore": "Usa indirizzo del negozio",
+        "sameAsStoreDescription": "L'indirizzo di fatturazione sara lo stesso dell'indirizzo del negozio",
+        "address": "Indirizzo",
+        "addressPlaceholder": "Via Roma 123",
+        "city": "Citta",
+        "cityPlaceholder": "Roma",
+        "postalCode": "CAP",
+        "postalCodePlaceholder": "00100",
+        "country": "Paese",
+        "preview": "Anteprima indirizzo di fatturazione:",
+        "infoSameAddress": "L'indirizzo del tuo negozio verra mostrato sui contratti di noleggio e sullo storefront.",
+        "infoDifferentAddress": "L'indirizzo di fatturazione sopra verra utilizzato sui contratti di noleggio. L'indirizzo del negozio rimarra visibile sullo storefront."
+      },
       "appearanceSettings": {
         "title": "Aspetto",
         "description": "Personalizza l'aspetto del tuo negozio",
