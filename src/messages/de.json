@@ -673,6 +673,19 @@
           "priceRequired": "Bitte geben Sie einen gültigen Preis ein",
           "added": "Benutzerdefinierter Artikel hinzugefügt"
         },
+        "priceOverride": {
+          "dialogTitle": "Preis bearbeiten",
+          "dialogDescription": "Passen Sie den Stückpreis für diese Reservierung an",
+          "calculatedPrice": "Berechneter Preis",
+          "newPrice": "Neuer Preis",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Gesamtbetrag für den Zeitraum",
+          "reset": "Zurücksetzen",
+          "apply": "Anwenden",
+          "modified": "Preis geändert",
+          "priceUpdated": "Preis aktualisiert",
+          "priceReset": "Preis zurückgesetzt"
+        },
         "addItemError": "Bitte fügen Sie mindestens ein Produkt oder benutzerdefinierten Artikel hinzu"
       },
       "rejectDialog": {

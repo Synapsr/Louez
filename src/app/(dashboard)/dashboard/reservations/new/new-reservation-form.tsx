@@ -104,6 +104,9 @@ interface Product {
 interface SelectedProduct {
   productId: string
   quantity: number
+  priceOverride?: {
+    unitPrice: number // Prix unitaire personnalisé par période
+  }
 }
 
 interface CustomItem {
@@ -205,6 +208,19 @@ export function NewReservationForm({
   const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
 
+  // Price override dialog state
+  const [priceOverrideDialog, setPriceOverrideDialog] = useState<{
+    isOpen: boolean
+    productId: string | null
+    currentPrice: number
+    newPrice: string
+  }>({
+    isOpen: false,
+    productId: null,
+    currentPrice: 0,
+    newPrice: '',
+  })
+
   const form = useForm<FormData>({
     defaultValues: {
       customerType: customers.length > 0 ? 'existing' : 'new',
@@ -290,9 +306,14 @@ export function NewReservationForm({
 
         // Find applicable tier
         const applicableTier = findApplicableTier(productTiers, duration)
-        const effectivePrice = applicableTier
+        const calculatedPrice = applicableTier
           ? basePrice * (1 - applicableTier.discountPercent / 100)
           : basePrice
+
+        // Use price override if set, otherwise use calculated price
+        const effectivePrice = item.priceOverride
+          ? item.priceOverride.unitPrice
+          : calculatedPrice
 
         originalAmount += basePrice * duration * item.quantity
         subtotalAmount += effectivePrice * duration * item.quantity
@@ -476,6 +497,66 @@ export function NewReservationForm({
 
   const removeCustomItem = (id: string) => {
     setCustomItems(customItems.filter((item) => item.id !== id))
+  }
+
+  // Price override functions
+  const openPriceOverrideDialog = (productId: string, calculatedPrice: number) => {
+    const existingOverride = selectedProducts.find((p) => p.productId === productId)?.priceOverride
+    setPriceOverrideDialog({
+      isOpen: true,
+      productId,
+      currentPrice: calculatedPrice,
+      newPrice: existingOverride ? existingOverride.unitPrice.toString() : calculatedPrice.toString(),
+    })
+  }
+
+  const closePriceOverrideDialog = () => {
+    setPriceOverrideDialog({
+      isOpen: false,
+      productId: null,
+      currentPrice: 0,
+      newPrice: '',
+    })
+  }
+
+  const applyPriceOverride = () => {
+    if (!priceOverrideDialog.productId) return
+
+    const newPrice = parseFloat(priceOverrideDialog.newPrice)
+    if (isNaN(newPrice)) {
+      toast.error(t('customItem.priceRequired'))
+      return
+    }
+
+    setSelectedProducts(
+      selectedProducts.map((p) => {
+        if (p.productId === priceOverrideDialog.productId) {
+          // Si le nouveau prix est égal au prix calculé, on supprime l'override
+          if (Math.abs(newPrice - priceOverrideDialog.currentPrice) < 0.01) {
+            const { priceOverride, ...rest } = p
+            return rest
+          }
+          return { ...p, priceOverride: { unitPrice: newPrice } }
+        }
+        return p
+      })
+    )
+
+    toast.success(t('priceOverride.priceUpdated'))
+    closePriceOverrideDialog()
+  }
+
+  const resetPriceOverride = (productId: string) => {
+    setSelectedProducts(
+      selectedProducts.map((p) => {
+        if (p.productId === productId) {
+          const { priceOverride, ...rest } = p
+          return rest
+        }
+        return p
+      })
+    )
+    toast.success(t('priceOverride.priceReset'))
   }
 
   const validateCurrentStep = (): boolean => {
@@ -913,10 +994,16 @@ export function NewReservationForm({
                     const basePrice = parseFloat(product.price)
                     const hasDiscount = applicableTier && applicableTier.discountPercent > 0
 
-                    // Calculate effective price per unit
-                    const effectivePrice = hasDiscount
+                    // Calculate price per unit (with tier discount if applicable)
+                    const calculatedPrice = hasDiscount
                       ? basePrice * (1 - applicableTier.discountPercent / 100)
                       : basePrice
+
+                    // Check for price override
+                    const hasPriceOverride = !!selectedItem?.priceOverride
+                    const effectivePrice = hasPriceOverride
+                      ? selectedItem.priceOverride!.unitPrice
+                      : calculatedPrice
 
                     return (
                       <div
@@ -945,8 +1032,28 @@ export function NewReservationForm({
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="font-medium truncate">{product.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {hasDiscount ? (
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              {hasPriceOverride ? (
+                                <>
+                                  <span className="text-sm text-muted-foreground line-through">
+                                    {formatCurrency(calculatedPrice)}/{pricingUnit}
+                                  </span>
+                                  <span className={cn(
+                                    'text-sm font-medium',
+                                    effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600'
+                                  )}>
+                                    {formatCurrency(effectivePrice)}/{pricingUnit}
+                                  </span>
+                                  <Badge variant="secondary" className={cn(
+                                    'text-xs',
+                                    effectivePrice < calculatedPrice
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-orange-100 text-orange-700'
+                                  )}>
+                                    {t('priceOverride.modified')}
+                                  </Badge>
+                                </>
+                              ) : hasDiscount ? (
                                 <>
                                   <span className="text-sm text-muted-foreground line-through">
                                     {formatCurrency(basePrice)}/{pricingUnit}
@@ -1028,11 +1135,34 @@ export function NewReservationForm({
                         {selectedQuantity > 0 && duration > 0 && (
                           <div className="mt-3 pt-3 border-t">
                             <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">
-                                {selectedQuantity} × {duration} {durationUnit === 'hours' ? 'h' : durationUnit === 'weeks' ? 'sem' : 'j'}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-muted-foreground">
+                                  {selectedQuantity} × {duration} {durationUnit === 'hours' ? 'h' : durationUnit === 'weeks' ? 'sem' : 'j'}
+                                </span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                  onClick={() => openPriceOverrideDialog(product.id, calculatedPrice)}
+                                >
+                                  <PenLine className="h-3 w-3" />
+                                </Button>
+                              </div>
                               <div className="text-right">
-                                {hasDiscount ? (
+                                {hasPriceOverride ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground line-through text-xs">
+                                      {formatCurrency(calculatedPrice * selectedQuantity * duration)}
+                                    </span>
+                                    <span className={cn(
+                                      'font-medium',
+                                      effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600'
+                                    )}>
+                                      {formatCurrency(effectivePrice * selectedQuantity * duration)}
+                                    </span>
+                                  </div>
+                                ) : hasDiscount ? (
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground line-through text-xs">
                                       {formatCurrency(basePrice * selectedQuantity * duration)}
@@ -1048,10 +1178,18 @@ export function NewReservationForm({
                                 )}
                               </div>
                             </div>
-                            {hasDiscount && (
+                            {(hasDiscount || hasPriceOverride) && (
                               <div className="flex justify-end mt-1">
-                                <span className="text-xs text-green-600">
-                                  {t('savings')}: {formatCurrency((basePrice - effectivePrice) * selectedQuantity * duration)}
+                                <span className={cn(
+                                  'text-xs',
+                                  effectivePrice < calculatedPrice || effectivePrice < basePrice
+                                    ? 'text-green-600'
+                                    : 'text-orange-600'
+                                )}>
+                                  {effectivePrice < (hasPriceOverride ? calculatedPrice : basePrice)
+                                    ? `${t('savings')}: ${formatCurrency(((hasPriceOverride ? calculatedPrice : basePrice) - effectivePrice) * selectedQuantity * duration)}`
+                                    : `+${formatCurrency((effectivePrice - calculatedPrice) * selectedQuantity * duration)}`
+                                  }
                                 </span>
                               </div>
                             )}
@@ -1301,13 +1439,44 @@ export function NewReservationForm({
                       {selectedProducts.map((item) => {
                         const product = products.find((p) => p.id === item.productId)
                         if (!product) return null
+
+                        // Calculate price with tier discount
+                        const basePrice = parseFloat(product.price)
+                        const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
+                          id: tier.id,
+                          minDuration: tier.minDuration,
+                          discountPercent: parseFloat(tier.discountPercent),
+                          displayOrder: tier.displayOrder || 0,
+                        }))
+                        const applicableTier = duration > 0 ? findApplicableTier(productTiers, duration) : null
+                        const calculatedPrice = applicableTier
+                          ? basePrice * (1 - applicableTier.discountPercent / 100)
+                          : basePrice
+
+                        const hasPriceOverride = !!item.priceOverride
+                        const effectivePrice = hasPriceOverride
+                          ? item.priceOverride!.unitPrice
+                          : calculatedPrice
+
                         return (
                           <div key={item.productId} className="p-3 flex justify-between text-sm">
-                            <div>
+                            <div className="flex items-center gap-2">
                               <span className="font-medium">{product.name}</span>
-                              <span className="text-muted-foreground ml-2">× {item.quantity}</span>
+                              {hasPriceOverride && (
+                                <Badge variant="secondary" className={cn(
+                                  'text-xs',
+                                  effectivePrice < calculatedPrice
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-orange-100 text-orange-700'
+                                )}>
+                                  {t('priceOverride.modified')}
+                                </Badge>
+                              )}
+                              <span className="text-muted-foreground">× {item.quantity}</span>
                             </div>
-                            <span>{formatCurrency(parseFloat(product.price) * item.quantity * days)}</span>
+                            <span className={hasPriceOverride ? (effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600') : ''}>
+                              {formatCurrency(effectivePrice * item.quantity * duration)}
+                            </span>
                           </div>
                         )
                       })}
@@ -1565,6 +1734,104 @@ export function NewReservationForm({
             <Button type="button" onClick={handleAddCustomItem}>
               <Plus className="h-4 w-4 mr-1" />
               {t('customItem.addButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Price Override Dialog */}
+      <Dialog open={priceOverrideDialog.isOpen} onOpenChange={(open) => !open && closePriceOverrideDialog()}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5" />
+              {t('priceOverride.dialogTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('priceOverride.dialogDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Display calculated price for reference */}
+            <div className="rounded-lg bg-muted/50 p-3">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">{t('priceOverride.calculatedPrice')}</span>
+                <span className="font-medium">
+                  {formatCurrency(priceOverrideDialog.currentPrice)}/{pricingUnit}
+                </span>
+              </div>
+            </div>
+
+            {/* New price input */}
+            <div className="space-y-2">
+              <Label htmlFor="override-price">{t('priceOverride.newPrice')} *</Label>
+              <div className="relative">
+                <Input
+                  id="override-price"
+                  type="number"
+                  step="0.01"
+                  placeholder={t('priceOverride.newPricePlaceholder')}
+                  value={priceOverrideDialog.newPrice}
+                  onChange={(e) => setPriceOverrideDialog({ ...priceOverrideDialog, newPrice: e.target.value })}
+                  className="pr-12"
+                  autoFocus
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  €/{pricingUnit}
+                </span>
+              </div>
+            </div>
+
+            {/* Total preview */}
+            {duration > 0 && priceOverrideDialog.newPrice && (
+              <div className="rounded-lg border p-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">{t('priceOverride.totalForPeriod')}</span>
+                  <span className="font-medium">
+                    {formatCurrency(parseFloat(priceOverrideDialog.newPrice || '0') * duration)}
+                  </span>
+                </div>
+                {priceOverrideDialog.currentPrice !== parseFloat(priceOverrideDialog.newPrice || '0') && (
+                  <div className="flex justify-between items-center text-xs mt-1">
+                    <span className="text-muted-foreground">vs. {formatCurrency(priceOverrideDialog.currentPrice * duration)}</span>
+                    <span className={cn(
+                      parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
+                        ? 'text-green-600'
+                        : 'text-orange-600'
+                    )}>
+                      {parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
+                        ? `-${formatCurrency((priceOverrideDialog.currentPrice - parseFloat(priceOverrideDialog.newPrice || '0')) * duration)}`
+                        : `+${formatCurrency((parseFloat(priceOverrideDialog.newPrice || '0') - priceOverrideDialog.currentPrice) * duration)}`
+                      }
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setPriceOverrideDialog({
+                  ...priceOverrideDialog,
+                  newPrice: priceOverrideDialog.currentPrice.toString(),
+                })
+              }}
+              className="sm:mr-auto"
+            >
+              {t('priceOverride.reset')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closePriceOverrideDialog}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button type="button" onClick={applyPriceOverride}>
+              {t('priceOverride.apply')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -672,6 +672,19 @@
           "priceRequired": "Voer een geldige prijs in",
           "added": "Aangepast artikel toegevoegd"
         },
+        "priceOverride": {
+          "dialogTitle": "Prijs bewerken",
+          "dialogDescription": "Pas de eenheidsprijs aan voor deze reservering",
+          "calculatedPrice": "Berekende prijs",
+          "newPrice": "Nieuwe prijs",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Totaal voor de periode",
+          "reset": "Herstellen",
+          "apply": "Toepassen",
+          "modified": "Prijs gewijzigd",
+          "priceUpdated": "Prijs bijgewerkt",
+          "priceReset": "Prijs hersteld"
+        },
         "addItemError": "Voeg minimaal één product of aangepast artikel toe"
       },
       "rejectDialog": {

@@ -291,6 +291,9 @@ interface CreateReservationData {
   items: Array<{
     productId: string
     quantity: number
+    priceOverride?: {
+      unitPrice: number
+    }
   }>
   customItems?: Array<{
     name: string
@@ -388,17 +391,35 @@ export async function createManualReservation(data: CreateReservationData) {
       }
 
       const priceResult = calculateRentalPrice(pricing, duration, item.quantity)
-      const pricingBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
+      let pricingBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
 
-      subtotalAmount += priceResult.subtotal
+      // Check for price override
+      const hasPriceOverride = !!item.priceOverride
+      let effectiveUnitPrice = priceResult.effectivePricePerUnit
+      let effectiveSubtotal = priceResult.subtotal
+
+      if (hasPriceOverride) {
+        effectiveUnitPrice = item.priceOverride!.unitPrice
+        effectiveSubtotal = effectiveUnitPrice * duration * item.quantity
+
+        // Update pricing breakdown to reflect the override
+        pricingBreakdown = {
+          ...pricingBreakdown,
+          effectivePrice: effectiveUnitPrice,
+          isManualOverride: true,
+          originalPrice: priceResult.effectivePricePerUnit,
+        }
+      }
+
+      subtotalAmount += effectiveSubtotal
       depositAmount += priceResult.deposit
 
       return {
         product,
         quantity: item.quantity,
-        unitPrice: priceResult.effectivePricePerUnit.toFixed(2),
+        unitPrice: effectiveUnitPrice.toFixed(2),
         depositPerUnit: product.deposit || '0',
-        totalPrice: priceResult.subtotal.toFixed(2),
+        totalPrice: effectiveSubtotal.toFixed(2),
         pricingBreakdown,
         isCustomItem: false,
       }

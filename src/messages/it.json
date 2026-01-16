@@ -673,6 +673,19 @@
           "priceRequired": "Inserisci un prezzo valido",
           "added": "Articolo personalizzato aggiunto"
         },
+        "priceOverride": {
+          "dialogTitle": "Modifica prezzo",
+          "dialogDescription": "Modifica il prezzo unitario per questa prenotazione",
+          "calculatedPrice": "Prezzo calcolato",
+          "newPrice": "Nuovo prezzo",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Totale per il periodo",
+          "reset": "Reimposta",
+          "apply": "Applica",
+          "modified": "Prezzo modificato",
+          "priceUpdated": "Prezzo aggiornato",
+          "priceReset": "Prezzo reimpostato"
+        },
         "addItemError": "Aggiungi almeno un prodotto o articolo personalizzato"
       },
       "rejectDialog": {

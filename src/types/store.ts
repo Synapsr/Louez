@@ -122,6 +122,9 @@ export interface PricingBreakdown {
   taxAmount: number | null
   subtotalExclTax: number | null
   subtotalInclTax: number | null
+  // Manual price override fields
+  isManualOverride?: boolean
+  originalPrice?: number  // Price before manual override
 }
 
 export interface PlanFeatures {

@@ -673,6 +673,19 @@
           "priceRequired": "Proszę wprowadzić prawidłową cenę",
           "added": "Dodano niestandardowy przedmiot"
         },
+        "priceOverride": {
+          "dialogTitle": "Edytuj cenę",
+          "dialogDescription": "Dostosuj cenę jednostkową dla tej rezerwacji",
+          "calculatedPrice": "Obliczona cena",
+          "newPrice": "Nowa cena",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Suma za okres",
+          "reset": "Resetuj",
+          "apply": "Zastosuj",
+          "modified": "Cena zmieniona",
+          "priceUpdated": "Cena zaktualizowana",
+          "priceReset": "Cena zresetowana"
+        },
         "addItemError": "Proszę dodać co najmniej jeden produkt lub niestandardowy przedmiot"
       },
       "rejectDialog": {

@@ -673,6 +673,19 @@
           "priceRequired": "Por favor ingrese un precio valido",
           "added": "Articulo personalizado agregado"
         },
+        "priceOverride": {
+          "dialogTitle": "Modificar precio",
+          "dialogDescription": "Ajuste el precio unitario para esta reserva",
+          "calculatedPrice": "Precio calculado",
+          "newPrice": "Nuevo precio",
+          "newPricePlaceholder": "0.00",
+          "totalForPeriod": "Total para el periodo",
+          "reset": "Restablecer",
+          "apply": "Aplicar",
+          "modified": "Precio modificado",
+          "priceUpdated": "Precio actualizado",
+          "priceReset": "Precio restablecido"
+        },
         "addItemError": "Por favor agregue al menos un producto o articulo personalizado"
       },
       "rejectDialog": {
