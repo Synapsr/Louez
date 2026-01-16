@@ -97,17 +97,20 @@ Separate your billing address from your store location.
 
 ### 💳 Online Payments
 
-**Status**: 🔜 Coming Soon
+**Status**: ✅ Available (January 16, 2025)
 
 Accept payments directly through your storefront.
 
 | Feature | Description |
 |---------|-------------|
-| **Stripe Connect** | First payment provider, with platform fees support |
-| **Payment links** | Send payment requests via email |
-| **Deposits & balances** | Collect deposits, manage remaining payments |
-| **Refunds** | Process refunds directly from dashboard |
+| **Stripe Connect** | Seamless onboarding for cloud and self-hosted users |
+| **Deposit holds** | Authorize deposits without charging, release or capture later |
+| **Card on file** | Securely save customer payment methods |
+| **Refunds** | Process full or partial refunds directly from dashboard |
+| **Self-hosted support** | Connect your own Stripe account on self-hosted instances |
 
+> Works on both Louez Cloud (managed onboarding) and self-hosted installations (bring your own Stripe account).
+>
 > *Future*: Additional payment providers (PayPal, Mollie, etc.) via a connector system.
 
 ---
@@ -141,20 +144,38 @@ Reach customers directly on their phones.
 
 ---
 
-### 📅 Calendar Sync
+### 📅 Calendar Export
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 16, 2025)
 
-Sync reservations with external calendars.
+Share your reservations with external calendars.
 
 | Feature | Description |
 |---------|-------------|
-| **Google Calendar** | Two-way sync with Google Calendar |
-| **iCal export** | Export reservations to any calendar app |
-| **Block time slots** | Block availability from external calendar events |
-| **Outlook sync** | Microsoft 365 calendar integration |
+| **ICS link** | Generate a shareable ICS link for your calendar |
+| **Google Calendar** | Subscribe to reservations in Google Calendar |
+| **Apple Calendar** | Add reservations to iCal/Apple Calendar |
+| **Outlook sync** | Subscribe from Microsoft Outlook |
+| **Secure token** | Regenerate link anytime to revoke access |
 
-> Useful for: Viewing reservations alongside personal appointments, blocking vacation days automatically.
+> Useful for: Viewing reservations alongside personal appointments, sharing availability with team members.
+
+---
+
+### 📅 Calendar Import (Blocked Slots)
+
+**Status**: 📋 Planned
+
+Import external calendars to automatically block availability.
+
+| Feature | Description |
+|---------|-------------|
+| **ICS import** | Subscribe to external calendars (Google, Outlook, iCal) |
+| **Auto-block slots** | Automatically block rental availability during external events |
+| **Vacation sync** | Block dates from your personal calendar |
+| **Multiple sources** | Connect several external calendars |
+
+> Useful for: Blocking vacation days automatically, syncing with other booking platforms, preventing double-bookings.
 
 ---
 

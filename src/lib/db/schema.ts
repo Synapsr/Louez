@@ -222,9 +222,10 @@ export const stores = mysqlTable(
     cgv: text('cgv'),
     legalNotice: text('legal_notice'),
 
-    // Stripe
+    // Stripe Connect
     stripeAccountId: varchar('stripe_account_id', { length: 255 }),
     stripeOnboardingComplete: boolean('stripe_onboarding_complete').default(false),
+    stripeChargesEnabled: boolean('stripe_charges_enabled').default(false),
 
     // Email settings
     emailSettings: json('email_settings').$type<EmailSettings>().default({
@@ -233,6 +234,9 @@ export const stores = mysqlTable(
       reminderReturnEnabled: true,
       replyToEmail: null,
     }),
+
+    // Calendar export
+    icsToken: varchar('ics_token', { length: 32 }),
 
     // Metadata
     onboardingCompleted: boolean('onboarding_completed').default(false),
@@ -415,6 +419,16 @@ export const reservationStatus = mysqlEnum('reservation_status', [
   'rejected',
 ])
 
+export const depositStatus = mysqlEnum('deposit_status', [
+  'none', // No deposit required
+  'pending', // Awaiting card to be saved
+  'card_saved', // Card saved, hold not yet created
+  'authorized', // Authorization hold active
+  'captured', // Deposit captured (damage/loss)
+  'released', // Authorization released
+  'failed', // Authorization failed
+])
+
 export const reservations = mysqlTable(
   'reservations',
   {
@@ -445,6 +459,13 @@ export const reservations = mysqlTable(
     // Signature
     signedAt: timestamp('signed_at', { mode: 'date' }),
     signatureIp: varchar('signature_ip', { length: 50 }),
+
+    // Deposit (caution) management
+    depositStatus: depositStatus.default('pending'),
+    depositPaymentIntentId: varchar('deposit_payment_intent_id', { length: 255 }),
+    depositAuthorizationExpiresAt: timestamp('deposit_authorization_expires_at', { mode: 'date' }),
+    stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+    stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
 
     // Tracking
     pickedUpAt: timestamp('picked_up_at', { mode: 'date' }),
@@ -509,6 +530,8 @@ export const reservationItems = mysqlTable(
 export const paymentType = mysqlEnum('payment_type', [
   'rental',
   'deposit',
+  'deposit_hold', // Authorization hold (empreinte)
+  'deposit_capture', // Partial/full capture from hold
   'deposit_return',
   'damage',
 ])
@@ -524,8 +547,10 @@ export const paymentMethod = mysqlEnum('payment_method', [
 
 export const paymentStatus = mysqlEnum('payment_status', [
   'pending',
+  'authorized', // For deposit holds (requires_capture)
   'completed',
   'failed',
+  'cancelled', // Authorization cancelled (released)
   'refunded',
 ])
 
@@ -546,6 +571,16 @@ export const payments = mysqlTable(
     // Stripe (if online payment)
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
     stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
+    stripeCheckoutSessionId: varchar('stripe_checkout_session_id', { length: 255 }),
+    stripeRefundId: varchar('stripe_refund_id', { length: 255 }),
+    stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
+
+    // Authorization hold (empreinte)
+    authorizationExpiresAt: timestamp('authorization_expires_at', { mode: 'date' }),
+    capturedAmount: decimal('captured_amount', { precision: 10, scale: 2 }),
+
+    // Currency (for multi-currency support)
+    currency: varchar('currency', { length: 3 }).default('EUR'),
 
     // Notes
     notes: text('notes'),
@@ -576,6 +611,10 @@ export const activityType = mysqlEnum('activity_type', [
   'note_updated',
   'payment_added',
   'payment_updated',
+  'deposit_authorized', // Authorization hold created
+  'deposit_captured', // Deposit captured (damage/loss)
+  'deposit_released', // Authorization released
+  'deposit_failed', // Authorization failed
 ])
 
 export const reservationActivity = mysqlTable(

@@ -708,7 +708,11 @@
         "returned": "Artikel zurückgegeben",
         "note_updated": "Notizen aktualisiert",
         "payment_added": "Zahlung hinzugefügt",
-        "payment_updated": "Zahlung aktualisiert"
+        "payment_updated": "Zahlung aktualisiert",
+        "deposit_authorized": "Kautionsautorisierung erstellt",
+        "deposit_captured": "Kaution eingezogen",
+        "deposit_released": "Kaution freigegeben",
+        "deposit_failed": "Autorisierung fehlgeschlagen"
       },
       "activityBy": "von",
       "activitySystem": "Automatische Aktion",
@@ -771,7 +775,9 @@
           "rental": "Miete",
           "deposit": "Kaution",
           "depositReturn": "Kautionsrückgabe",
-          "damage": "Schäden"
+          "damage": "Schäden",
+          "depositHold": "Autorisierung",
+          "depositCapture": "Kaution eingezogen"
         },
         "methods": {
           "cash": "Bargeld",
@@ -785,8 +791,48 @@
           "pending": "Ausstehend",
           "completed": "Abgeschlossen",
           "failed": "Fehlgeschlagen",
-          "refunded": "Erstattet"
+          "refunded": "Erstattet",
+          "authorized": "Autorisiert",
+          "cancelled": "Storniert"
         }
+      },
+      "deposit": {
+        "title": "Kaution (Autorisierung)",
+        "description": "Verwalten Sie die Kautionsautorisierung für diese Reservierung",
+        "amount": "Kautionsbetrag",
+        "status": {
+          "pending": "Ausstehend",
+          "cardSaved": "Karte gespeichert",
+          "authorized": "Autorisierung aktiv",
+          "captured": "Kaution eingezogen",
+          "released": "Kaution freigegeben",
+          "failed": "Fehlgeschlagen"
+        },
+        "cardSavedDescription": "Die Karte des Kunden wurde gespeichert. Sie können die Autorisierung bei der Abholung erstellen.",
+        "releasedDescription": "Die Autorisierung wurde freigegeben, es wurden keine Gebühren erhoben.",
+        "failedDescription": "Die Autorisierung ist fehlgeschlagen. Der Kunde muss möglicherweise eine andere Karte verwenden.",
+        "expiresIn": "Läuft ab {time}",
+        "expired": "Autorisierung abgelaufen",
+        "createHold": "Autorisierung erstellen",
+        "release": "Kaution freigeben",
+        "capture": "Einziehen",
+        "holdCreated": "Autorisierung erfolgreich erstellt",
+        "released": "Kaution erfolgreich freigegeben",
+        "captured": "Kaution erfolgreich eingezogen",
+        "captureTitle": "Kaution einziehen",
+        "captureDescription": "Ziehen Sie die Kaution ganz oder teilweise ein, um Schäden oder Verluste zu decken.",
+        "maxCapturable": "Maximalbetrag",
+        "captureAmount": "Einzuziehender Betrag",
+        "captureReason": "Grund für den Einzug",
+        "captureReasonPlaceholder": "Beschreiben Sie die Schäden oder den Grund für den Einzug...",
+        "captureReasonHint": "Dieser Grund wird im Verlauf gespeichert und ist für den Kunden sichtbar.",
+        "confirmCapture": "Einzug bestätigen",
+        "releaseTitle": "Kaution freigeben",
+        "releaseDescription": "Möchten Sie die Kaution von {amount} wirklich freigeben? Die Autorisierung wird storniert und es werden keine Gebühren erhoben.",
+        "confirmRelease": "Kaution freigeben",
+        "invalidCaptureAmount": "Ungültiger Betrag",
+        "captureExceedsDeposit": "Betrag übersteigt Kaution",
+        "reasonRequired": "Bitte geben Sie einen Grund an"
       },
       "paymentStatus": {
         "paid": "Bezahlt",
@@ -1014,6 +1060,34 @@
         "completed": "Abgeschlossen",
         "cancelled": "Storniert",
         "rejected": "Abgelehnt"
+      },
+      "export": {
+        "button": "Kalender exportieren",
+        "title": "In Kalender exportieren",
+        "description": "Synchronisieren Sie Ihre Reservierungen mit Ihrem Lieblingskalender, indem Sie den Link unten kopieren.",
+        "urlLabel": "ICS-Kalender-Link",
+        "loading": "Laden...",
+        "instructions": {
+          "title": "Wie fuege ich diesen Kalender hinzu?",
+          "google": {
+            "step1": "Oeffnen Sie Google Kalender",
+            "step2": "Klicken Sie auf das + neben \"Weitere Kalender\" und dann auf \"Per URL\"",
+            "step3": "Fuegen Sie den Link ein und klicken Sie auf \"Kalender hinzufuegen\"",
+            "openLink": "Google Kalender oeffnen"
+          },
+          "apple": {
+            "step1": "Oeffnen Sie die Kalender-App auf Mac oder iPhone",
+            "step2": "Ablage > Neues Kalenderabonnement (Mac) oder Konto hinzufuegen > Andere > Kalenderabonnement hinzufuegen (iOS)",
+            "step3": "Fuegen Sie den Link ein und bestaetigen Sie"
+          },
+          "outlook": {
+            "step1": "Oeffnen Sie Outlook Kalender",
+            "step2": "Klicken Sie auf \"Kalender hinzufuegen\" und dann auf \"Aus dem Web abonnieren\"",
+            "step3": "Fuegen Sie den Link ein und geben Sie dem Kalender einen Namen"
+          }
+        },
+        "regenerate": "Link neu generieren",
+        "regenerateHint": "Das Neugenerieren des Links macht zuvor geteilte Links ungueltig."
       }
     },
     "statistics": {
@@ -1518,6 +1592,41 @@
         "taxNumberDescription": "Ihre Umsatzsteuer-Identifikationsnummer (auf Verträgen angezeigt)",
         "depositNoTaxInfo": "Kautionen unterliegen nicht der MwSt, da sie an den Kunden zurückgegeben werden."
       },
+      "payments": {
+        "title": "Zahlungen",
+        "description": "Konfigurieren Sie Online-Zahlungen für Ihren Shop",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Akzeptieren Sie Kartenzahlungen direkt in Ihrem Shop",
+        "notConnectedDescription": "Verbinden Sie Ihr Stripe-Konto, um Online-Zahlungen zu akzeptieren. Sie werden zu Stripe weitergeleitet, um die Konfiguration abzuschließen.",
+        "activeDescription": "Ihr Stripe-Konto ist verbunden und betriebsbereit. Sie können Online-Zahlungen akzeptieren.",
+        "incompleteDescription": "Ihre Stripe-Konfiguration ist unvollständig. Bitte schließen Sie die Konfiguration ab, um Zahlungen zu akzeptieren.",
+        "connectStripe": "Stripe verbinden",
+        "completeSetup": "Konfiguration abschließen",
+        "openDashboard": "Stripe-Dashboard",
+        "sync": "Synchronisieren",
+        "synced": "Status synchronisiert",
+        "disconnect": "Trennen",
+        "disconnected": "Stripe-Konto getrennt",
+        "disconnectTitle": "Stripe trennen?",
+        "disconnectDescription": "Sie können keine Online-Zahlungen mehr akzeptieren. Bestehende Zahlungen sind nicht betroffen.",
+        "cancel": "Abbrechen",
+        "status": {
+          "active": "Aktiv",
+          "incomplete": "Unvollständig"
+        },
+        "callback": {
+          "successTitle": "Stripe verbunden!",
+          "successDescription": "Ihr Stripe-Konto ist jetzt verbunden. Sie können Online-Zahlungen akzeptieren.",
+          "incompleteTitle": "Unvollständige Konfiguration",
+          "incompleteDescription": "Einige Informationen fehlen. Sie können die Konfiguration später abschließen.",
+          "backToSettings": "Zurück zu Einstellungen"
+        },
+        "refresh": {
+          "title": "Link abgelaufen",
+          "description": "Der Konfigurationslink ist abgelaufen. Bitte versuchen Sie es erneut über die Einstellungen.",
+          "backToSettings": "Zurück zu Einstellungen"
+        }
+      },
       "subscriptionSettings": {
         "title": "Abonnement",
         "description": "Verwalten Sie Ihr Abonnement und Ihre Abrechnung",
@@ -1970,7 +2079,22 @@
         "total": "Zu zahlender Betrag",
         "savingsBanner": "Sie sparen {amount} mit dem Langzeitrabatt"
       },
-      "depositInfo": "Eine Reservierung von {amount} wird als Kaution auf Ihrer Karte hinterlegt. Dieser Betrag wird nicht belastet und bei Rückgabe der Ausrüstung freigegeben."
+      "depositInfo": "Eine Reservierung von {amount} wird als Kaution auf Ihrer Karte hinterlegt. Dieser Betrag wird nicht belastet und bei Rückgabe der Ausrüstung freigegeben.",
+      "success": {
+        "confirmedTitle": "Zahlung bestätigt!",
+        "confirmedDescription": "Ihre Zahlung wurde akzeptiert. Sie erhalten eine Bestätigungs-E-Mail.",
+        "pendingTitle": "Zahlung ausstehend",
+        "pendingDescription": "Ihre Reservierung wurde erstellt und wartet auf Zahlungsbestätigung.",
+        "reservationNumber": "Reservierung",
+        "dates": "Daten",
+        "total": "Gesamt",
+        "depositSaved": "Karte für Kaution gespeichert",
+        "depositSavedDescription": "Ihre Karte wurde gespeichert. Bei Abholung wird eine Autorisierung von {amount} erstellt. Es wird kein Betrag eingezogen, wenn alles in gutem Zustand zurückgegeben wird.",
+        "deposit": "Kaution",
+        "items": "Reservierte Produkte",
+        "emailSent": "Eine Bestätigungs-E-Mail wurde an {email} gesendet",
+        "backToStore": "Zurück zum Shop"
+      }
     },
     "confirmation": {
       "title": "Reservierung bestätigt!",
@@ -1986,7 +2110,8 @@
       "emailConfirmation": "Bestätigungs-E-Mail",
       "confirmationSentTo": "Bestätigung gesendet an",
       "subtotalLabel": "Zwischensumme",
-      "depositLabel": "Kaution",
+      "depositLabel": "Kaution (Autorisierung)",
+      "depositAuthorizationInfo": "Ihre Karte wird gespeichert. Bei Abholung wird eine Autorisierung erstellt. Es wird kein Betrag eingezogen, wenn alles in gutem Zustand zurückgegeben wird.",
       "totalLabel": "Gesamt",
       "whatNext": "Nächste Schritte",
       "stepRequest1": "Wir prüfen Ihre Reservierungsanfrage",
@@ -2543,6 +2668,18 @@
     "tryAgain": "Erneut versuchen",
     "goBack": "Zurück",
     "goHome": "Zur Startseite",
-    "loading": "Wird geladen..."
+    "loading": "Wird geladen...",
+    "noStripeAccount": "Kein Stripe-Konto verbunden",
+    "stripe": {
+      "onboardingFailed": "Fehler bei der Stripe-Konfiguration",
+      "verificationFailed": "Fehler bei der Stripe-Kontoverifizierung",
+      "syncFailed": "Fehler bei der Synchronisierung",
+      "dashboardLinkFailed": "Fehler beim Öffnen des Stripe-Dashboards",
+      "alreadyConnected": "Stripe-Konto bereits verbunden",
+      "noChargeToRefund": "Keine Stripe-Zahlung zum Erstatten",
+      "alreadyRefunded": "Diese Zahlung wurde bereits erstattet",
+      "refundExceedsCharge": "Der Erstattungsbetrag übersteigt den Zahlungsbetrag",
+      "refundFailed": "Fehler bei der Erstattung"
+    }
   }
 }

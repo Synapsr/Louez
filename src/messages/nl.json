@@ -707,7 +707,11 @@
         "returned": "Artikelen geretourneerd",
         "note_updated": "Notities bijgewerkt",
         "payment_added": "Betaling toegevoegd",
-        "payment_updated": "Betaling bijgewerkt"
+        "payment_updated": "Betaling bijgewerkt",
+        "deposit_authorized": "Borgautorisatie aangemaakt",
+        "deposit_captured": "Borg geïnd",
+        "deposit_released": "Borg vrijgegeven",
+        "deposit_failed": "Autorisatie mislukt"
       },
       "activityBy": "door",
       "activitySystem": "Automatische actie",
@@ -770,7 +774,9 @@
           "rental": "Verhuur",
           "deposit": "Borg",
           "depositReturn": "Borgterugbetaling",
-          "damage": "Schade"
+          "damage": "Schade",
+          "depositHold": "Autorisatie",
+          "depositCapture": "Borg geïnd"
         },
         "methods": {
           "cash": "Contant",
@@ -784,8 +790,48 @@
           "pending": "In behandeling",
           "completed": "Voltooid",
           "failed": "Mislukt",
-          "refunded": "Terugbetaald"
+          "refunded": "Terugbetaald",
+          "authorized": "Geautoriseerd",
+          "cancelled": "Geannuleerd"
         }
+      },
+      "deposit": {
+        "title": "Borg (Autorisatie)",
+        "description": "Beheer de borgautorisatie voor deze reservering",
+        "amount": "Borgbedrag",
+        "status": {
+          "pending": "In behandeling",
+          "cardSaved": "Kaart opgeslagen",
+          "authorized": "Autorisatie actief",
+          "captured": "Borg geïnd",
+          "released": "Borg vrijgegeven",
+          "failed": "Mislukt"
+        },
+        "cardSavedDescription": "De kaart van de klant is opgeslagen. U kunt de autorisatie aanmaken bij ophalen.",
+        "releasedDescription": "De autorisatie is vrijgegeven, er zijn geen kosten in rekening gebracht.",
+        "failedDescription": "De autorisatie is mislukt. De klant moet mogelijk een andere kaart gebruiken.",
+        "expiresIn": "Verloopt {time}",
+        "expired": "Autorisatie verlopen",
+        "createHold": "Autorisatie aanmaken",
+        "release": "Borg vrijgeven",
+        "capture": "Innen",
+        "holdCreated": "Autorisatie succesvol aangemaakt",
+        "released": "Borg succesvol vrijgegeven",
+        "captured": "Borg succesvol geïnd",
+        "captureTitle": "Borg innen",
+        "captureDescription": "In de borg geheel of gedeeltelijk om schade of verlies te dekken.",
+        "maxCapturable": "Maximumbedrag",
+        "captureAmount": "Te innen bedrag",
+        "captureReason": "Reden voor inning",
+        "captureReasonPlaceholder": "Beschrijf de schade of reden voor inning...",
+        "captureReasonHint": "Deze reden wordt vastgelegd in de geschiedenis en is zichtbaar voor de klant.",
+        "confirmCapture": "Inning bevestigen",
+        "releaseTitle": "Borg vrijgeven",
+        "releaseDescription": "Weet u zeker dat u de borg van {amount} wilt vrijgeven? De autorisatie wordt geannuleerd en er worden geen kosten in rekening gebracht.",
+        "confirmRelease": "Borg vrijgeven",
+        "invalidCaptureAmount": "Ongeldig bedrag",
+        "captureExceedsDeposit": "Bedrag overschrijdt borg",
+        "reasonRequired": "Geef een reden op"
       },
       "paymentStatus": {
         "paid": "Betaald",
@@ -1012,6 +1058,34 @@
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
         "rejected": "Afgewezen"
+      },
+      "export": {
+        "button": "Kalender exporteren",
+        "title": "Exporteren naar kalender",
+        "description": "Synchroniseer uw reserveringen met uw favoriete kalender door de link hieronder te kopieren.",
+        "urlLabel": "ICS-kalenderlink",
+        "loading": "Laden...",
+        "instructions": {
+          "title": "Hoe voeg ik deze kalender toe?",
+          "google": {
+            "step1": "Open Google Agenda",
+            "step2": "Klik op het + naast \"Andere agenda's\" en dan op \"Via URL\"",
+            "step3": "Plak de link en klik op \"Agenda toevoegen\"",
+            "openLink": "Google Agenda openen"
+          },
+          "apple": {
+            "step1": "Open de Agenda-app op Mac of iPhone",
+            "step2": "Archief > Nieuw agenda-abonnement (Mac) of Voeg account toe > Overige > Agenda-abonnement toevoegen (iOS)",
+            "step3": "Plak de link en bevestig"
+          },
+          "outlook": {
+            "step1": "Open Outlook Agenda",
+            "step2": "Klik op \"Agenda toevoegen\" en dan op \"Abonneren vanaf web\"",
+            "step3": "Plak de link en geef de kalender een naam"
+          }
+        },
+        "regenerate": "Link opnieuw genereren",
+        "regenerateHint": "Het opnieuw genereren van de link maakt eerder gedeelde links ongeldig."
       }
     },
     "statistics": {
@@ -1516,6 +1590,41 @@
         "taxNumberDescription": "Uw BTW-nummer (weergegeven op contracten)",
         "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald."
       },
+      "payments": {
+        "title": "Betalingen",
+        "description": "Configureer online betalingen voor uw winkel",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accepteer kaartbetalingen rechtstreeks in uw winkel",
+        "notConnectedDescription": "Verbind uw Stripe-account om online betalingen te accepteren. U wordt doorgestuurd naar Stripe om de configuratie te voltooien.",
+        "activeDescription": "Uw Stripe-account is verbonden en operationeel. U kunt online betalingen accepteren.",
+        "incompleteDescription": "Uw Stripe-configuratie is onvolledig. Voltooi de configuratie om betalingen te accepteren.",
+        "connectStripe": "Stripe verbinden",
+        "completeSetup": "Configuratie voltooien",
+        "openDashboard": "Stripe Dashboard",
+        "sync": "Synchroniseren",
+        "synced": "Status gesynchroniseerd",
+        "disconnect": "Ontkoppelen",
+        "disconnected": "Stripe-account ontkoppeld",
+        "disconnectTitle": "Stripe ontkoppelen?",
+        "disconnectDescription": "U kunt geen online betalingen meer accepteren. Bestaande betalingen worden niet beinvloed.",
+        "cancel": "Annuleren",
+        "status": {
+          "active": "Actief",
+          "incomplete": "Onvolledig"
+        },
+        "callback": {
+          "successTitle": "Stripe verbonden!",
+          "successDescription": "Uw Stripe-account is nu verbonden. U kunt online betalingen accepteren.",
+          "incompleteTitle": "Onvolledige configuratie",
+          "incompleteDescription": "Sommige informatie ontbreekt. U kunt de configuratie later voltooien.",
+          "backToSettings": "Terug naar instellingen"
+        },
+        "refresh": {
+          "title": "Link verlopen",
+          "description": "De configuratielink is verlopen. Probeer opnieuw via de instellingen.",
+          "backToSettings": "Terug naar instellingen"
+        }
+      },
       "subscriptionSettings": {
         "title": "Abonnement",
         "description": "Beheer uw abonnement en facturering",
@@ -1968,7 +2077,22 @@
         "total": "Te betalen totaal",
         "savingsBanner": "U bespaart {amount} met de langdurige korting"
       },
-      "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal."
+      "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
+      "success": {
+        "confirmedTitle": "Betaling bevestigd!",
+        "confirmedDescription": "Uw betaling is geaccepteerd. U ontvangt een bevestigingsmail.",
+        "pendingTitle": "In afwachting van betaling",
+        "pendingDescription": "Uw reservering is aangemaakt en wacht op betalingsbevestiging.",
+        "reservationNumber": "Reservering",
+        "dates": "Data",
+        "total": "Totaal",
+        "depositSaved": "Kaart opgeslagen voor borg",
+        "depositSavedDescription": "Uw kaart is opgeslagen. Bij ophalen wordt een autorisatie van {amount} aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
+        "deposit": "Borg",
+        "items": "Gereserveerde producten",
+        "emailSent": "Een bevestigingsmail is verzonden naar {email}",
+        "backToStore": "Terug naar winkel"
+      }
     },
     "confirmation": {
       "title": "Reservering bevestigd!",
@@ -1984,7 +2108,8 @@
       "emailConfirmation": "Bevestigingsmail",
       "confirmationSentTo": "Bevestiging verzonden naar",
       "subtotalLabel": "Subtotaal",
-      "depositLabel": "Borg",
+      "depositLabel": "Borg (autorisatie)",
+      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij ophalen wordt een autorisatie aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
       "totalLabel": "Totaal",
       "whatNext": "Volgende stappen",
       "stepRequest1": "We beoordelen uw reserveringsaanvraag",
@@ -2541,6 +2666,18 @@
     "tryAgain": "Opnieuw proberen",
     "goBack": "Terug",
     "goHome": "Terug naar home",
-    "loading": "Laden..."
+    "loading": "Laden...",
+    "noStripeAccount": "Geen Stripe-account verbonden",
+    "stripe": {
+      "onboardingFailed": "Fout bij Stripe-configuratie",
+      "verificationFailed": "Fout bij Stripe-accountverificatie",
+      "syncFailed": "Fout bij synchronisatie",
+      "dashboardLinkFailed": "Fout bij openen van Stripe-dashboard",
+      "alreadyConnected": "Stripe-account al verbonden",
+      "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
+      "alreadyRefunded": "Deze betaling is al terugbetaald",
+      "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
+      "refundFailed": "Fout bij terugbetaling"
+    }
   }
 }

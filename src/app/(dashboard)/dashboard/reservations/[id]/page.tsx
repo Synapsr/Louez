@@ -41,6 +41,7 @@ import { ReservationActions } from './reservation-actions'
 import { ReservationNotes } from './reservation-notes'
 import { ActivityTimeline } from './activity-timeline'
 import { PaymentSummary } from './payment-summary'
+import { DepositSection } from './deposit-section'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -342,6 +343,16 @@ export default async function ReservationDetailPage({
             totalAmount={reservation.totalAmount}
             payments={reservation.payments}
             status={status}
+            currency={currency}
+          />
+
+          {/* Deposit Authorization Hold */}
+          <DepositSection
+            reservationId={reservation.id}
+            depositAmount={reservation.depositAmount}
+            depositStatus={reservation.depositStatus as 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed' | null}
+            depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
+            stripePaymentMethodId={reservation.stripePaymentMethodId}
             currency={currency}
           />
 

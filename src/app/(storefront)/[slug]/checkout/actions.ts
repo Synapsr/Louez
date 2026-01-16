@@ -10,6 +10,7 @@ import {
   sendRequestReceivedEmail,
   sendNewRequestLandlordEmail,
 } from '@/lib/email/send'
+import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
@@ -372,13 +373,56 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    // For now, we don't have Stripe integration complete, so we just return success
-    // In the future, if reservationMode is 'payment', we would create a Stripe checkout session
+    // Check if we should process payment via Stripe
+    const shouldProcessPayment =
+      store.settings?.reservationMode === 'payment' &&
+      store.stripeAccountId &&
+      store.stripeChargesEnabled
+
+    let paymentUrl: string | null = null
+
+    if (shouldProcessPayment) {
+      try {
+        const currency = store.settings?.currency || 'EUR'
+        const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        const baseUrl = storefrontUrl.includes('{slug}')
+          ? storefrontUrl.replace('{slug}', store.slug)
+          : `${storefrontUrl}/${store.slug}`
+
+        // Build line items for Stripe
+        const lineItems = input.items.map((item) => ({
+          name: item.productSnapshot.name,
+          description: item.productSnapshot.description || undefined,
+          quantity: item.quantity,
+          unitAmount: toStripeCents(item.unitPrice * calculateDuration(item.startDate, item.endDate), currency),
+        }))
+
+        // Create checkout session
+        const { url } = await createCheckoutSession({
+          stripeAccountId: store.stripeAccountId!,
+          reservationId,
+          reservationNumber,
+          customerEmail: customer.email,
+          lineItems,
+          depositAmount: toStripeCents(input.depositAmount, currency),
+          currency,
+          successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
+          cancelUrl: `${baseUrl}/checkout?cancelled=true`,
+          locale: input.locale,
+        })
+
+        paymentUrl = url
+      } catch (error) {
+        console.error('Failed to create Stripe checkout session:', error)
+        // Don't fail the reservation, store owner can send payment link manually
+      }
+    }
+
     return {
       success: true,
       reservationId,
       reservationNumber,
-      paymentUrl: null as string | null,
+      paymentUrl,
     }
   } catch (error) {
     console.error('Error creating reservation:', error)

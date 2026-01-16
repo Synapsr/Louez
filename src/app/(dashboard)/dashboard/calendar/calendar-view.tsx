@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Plus,
   Calendar as CalendarIcon,
+  Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +20,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { cn, formatCurrency, formatDateShort } from '@/lib/utils'
+import { cn, formatDateShort } from '@/lib/utils'
+import { CalendarExportModal } from './calendar-export-modal'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -74,12 +76,14 @@ type ViewMode = 'week' | 'month'
 export function CalendarView({
   initialReservations,
   products,
+  storeId,
 }: CalendarViewProps) {
   const t = useTranslations('dashboard.calendar')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [selectedProductId, setSelectedProductId] = useState<string>('all')
   const [reservations] = useState(initialReservations)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
 
   const statusLabels: Record<ReservationStatus, string> = {
     pending: t('status.pending'),
@@ -261,6 +265,15 @@ export function CalendarView({
                 </SelectContent>
               </Select>
 
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setExportModalOpen(true)}
+                title={t('export.button')}
+              >
+                <Download className="h-4 w-4" />
+              </Button>
+
               <Button asChild>
                 <Link href="/dashboard/reservations/new">
                   <Plus className="mr-2 h-4 w-4" />
@@ -391,6 +404,13 @@ export function CalendarView({
           </div>
         </CardContent>
       </Card>
+
+      {/* Export Modal */}
+      <CalendarExportModal
+        open={exportModalOpen}
+        onOpenChange={setExportModalOpen}
+        storeId={storeId}
+      />
     </div>
   )
 }

@@ -708,7 +708,11 @@
         "returned": "Przedmioty zwrócone",
         "note_updated": "Notatki zaktualizowane",
         "payment_added": "Płatność dodana",
-        "payment_updated": "Płatność zaktualizowana"
+        "payment_updated": "Płatność zaktualizowana",
+        "deposit_authorized": "Autoryzacja kaucji utworzona",
+        "deposit_captured": "Kaucja pobrana",
+        "deposit_released": "Kaucja zwolniona",
+        "deposit_failed": "Autoryzacja nieudana"
       },
       "activityBy": "przez",
       "activitySystem": "Akcja automatyczna",
@@ -771,7 +775,9 @@
           "rental": "Wynajem",
           "deposit": "Kaucja",
           "depositReturn": "Zwrot kaucji",
-          "damage": "Uszkodzenia"
+          "damage": "Uszkodzenia",
+          "depositHold": "Autoryzacja",
+          "depositCapture": "Kaucja pobrana"
         },
         "methods": {
           "cash": "Gotówka",
@@ -785,8 +791,48 @@
           "pending": "Oczekująca",
           "completed": "Zakończona",
           "failed": "Nieudana",
-          "refunded": "Zwrócona"
+          "refunded": "Zwrócona",
+          "authorized": "Autoryzowana",
+          "cancelled": "Anulowana"
         }
+      },
+      "deposit": {
+        "title": "Kaucja (Autoryzacja)",
+        "description": "Zarządzaj autoryzacją kaucji dla tej rezerwacji",
+        "amount": "Kwota kaucji",
+        "status": {
+          "pending": "Oczekująca",
+          "cardSaved": "Karta zapisana",
+          "authorized": "Autoryzacja aktywna",
+          "captured": "Kaucja pobrana",
+          "released": "Kaucja zwolniona",
+          "failed": "Nieudana"
+        },
+        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć autoryzację przy odbiorze.",
+        "releasedDescription": "Autoryzacja została zwolniona, nie pobrano żadnych opłat.",
+        "failedDescription": "Autoryzacja nie powiodła się. Klient może potrzebować użyć innej karty.",
+        "expiresIn": "Wygasa {time}",
+        "expired": "Autoryzacja wygasła",
+        "createHold": "Utwórz autoryzację",
+        "release": "Zwolnij kaucję",
+        "capture": "Pobierz",
+        "holdCreated": "Autoryzacja utworzona pomyślnie",
+        "released": "Kaucja zwolniona pomyślnie",
+        "captured": "Kaucja pobrana pomyślnie",
+        "captureTitle": "Pobierz kaucję",
+        "captureDescription": "Pobierz całość lub część kaucji, aby pokryć szkody lub straty.",
+        "maxCapturable": "Maksymalna kwota",
+        "captureAmount": "Kwota do pobrania",
+        "captureReason": "Powód pobrania",
+        "captureReasonPlaceholder": "Opisz szkody lub powód pobrania...",
+        "captureReasonHint": "Ten powód zostanie zapisany w historii i będzie widoczny dla klienta.",
+        "confirmCapture": "Potwierdź pobranie",
+        "releaseTitle": "Zwolnij kaucję",
+        "releaseDescription": "Czy na pewno chcesz zwolnić kaucję w wysokości {amount}? Autoryzacja zostanie anulowana i nie zostaną pobrane żadne opłaty.",
+        "confirmRelease": "Zwolnij kaucję",
+        "invalidCaptureAmount": "Nieprawidłowa kwota",
+        "captureExceedsDeposit": "Kwota przekracza kaucję",
+        "reasonRequired": "Proszę podać powód"
       },
       "paymentStatus": {
         "paid": "Opłacone",
@@ -1013,6 +1059,34 @@
         "completed": "Zakończona",
         "cancelled": "Anulowana",
         "rejected": "Odrzucona"
+      },
+      "export": {
+        "button": "Eksportuj kalendarz",
+        "title": "Eksportuj do kalendarza",
+        "description": "Zsynchronizuj swoje rezerwacje z ulubionym kalendarzem, kopiujac ponizszy link.",
+        "urlLabel": "Link do kalendarza ICS",
+        "loading": "Ladowanie...",
+        "instructions": {
+          "title": "Jak dodac ten kalendarz?",
+          "google": {
+            "step1": "Otworz Kalendarz Google",
+            "step2": "Kliknij + obok \"Inne kalendarze\" i nastepnie \"Z adresu URL\"",
+            "step3": "Wklej link i kliknij \"Dodaj kalendarz\"",
+            "openLink": "Otworz Kalendarz Google"
+          },
+          "apple": {
+            "step1": "Otworz aplikacje Kalendarz na Macu lub iPhonie",
+            "step2": "Plik > Nowa subskrypcja kalendarza (Mac) lub Dodaj konto > Inne > Dodaj subskrybowany kalendarz (iOS)",
+            "step3": "Wklej link i potwierdz"
+          },
+          "outlook": {
+            "step1": "Otworz Kalendarz Outlook",
+            "step2": "Kliknij \"Dodaj kalendarz\" i nastepnie \"Subskrybuj z sieci\"",
+            "step3": "Wklej link i nadaj kalendarzowi nazwe"
+          }
+        },
+        "regenerate": "Wygeneruj nowy link",
+        "regenerateHint": "Wygenerowanie nowego linku uniewazni poprzednio udostepnione linki."
       }
     },
     "statistics": {
@@ -1517,6 +1591,41 @@
         "taxNumberDescription": "Twój numer NIP (wyświetlany na umowach)",
         "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi."
       },
+      "payments": {
+        "title": "Płatności",
+        "description": "Skonfiguruj płatności online dla swojego sklepu",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Akceptuj płatności kartą bezpośrednio w swoim sklepie",
+        "notConnectedDescription": "Połącz swoje konto Stripe, aby akceptować płatności online. Zostaniesz przekierowany do Stripe w celu dokończenia konfiguracji.",
+        "activeDescription": "Twoje konto Stripe jest połączone i działa. Możesz akceptować płatności online.",
+        "incompleteDescription": "Konfiguracja Stripe jest niekompletna. Dokończ konfigurację, aby akceptować płatności.",
+        "connectStripe": "Połącz Stripe",
+        "completeSetup": "Dokończ konfigurację",
+        "openDashboard": "Panel Stripe",
+        "sync": "Synchronizuj",
+        "synced": "Status zsynchronizowany",
+        "disconnect": "Rozłącz",
+        "disconnected": "Konto Stripe rozłączone",
+        "disconnectTitle": "Rozłączyć Stripe?",
+        "disconnectDescription": "Nie będziesz mógł akceptować płatności online. Istniejące płatności nie zostaną naruszone.",
+        "cancel": "Anuluj",
+        "status": {
+          "active": "Aktywne",
+          "incomplete": "Niekompletne"
+        },
+        "callback": {
+          "successTitle": "Stripe połączony!",
+          "successDescription": "Twoje konto Stripe jest teraz połączone. Możesz akceptować płatności online.",
+          "incompleteTitle": "Niekompletna konfiguracja",
+          "incompleteDescription": "Brakuje niektórych informacji. Możesz dokończyć konfigurację później.",
+          "backToSettings": "Powrót do ustawień"
+        },
+        "refresh": {
+          "title": "Link wygasł",
+          "description": "Link konfiguracyjny wygasł. Spróbuj ponownie z ustawień.",
+          "backToSettings": "Powrót do ustawień"
+        }
+      },
       "subscriptionSettings": {
         "title": "Subskrypcja",
         "description": "Zarządzaj subskrypcją i rozliczeniami",
@@ -1969,7 +2078,22 @@
         "total": "Do zapłaty",
         "savingsBanner": "Oszczędzasz {amount} dzięki zniżce długoterminowej"
       },
-      "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu."
+      "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu.",
+      "success": {
+        "confirmedTitle": "Płatność potwierdzona!",
+        "confirmedDescription": "Twoja płatność została zaakceptowana. Otrzymasz email z potwierdzeniem.",
+        "pendingTitle": "Oczekiwanie na płatność",
+        "pendingDescription": "Twoja rezerwacja została utworzona i oczekuje na potwierdzenie płatności.",
+        "reservationNumber": "Rezerwacja",
+        "dates": "Daty",
+        "total": "Suma",
+        "depositSaved": "Karta zapisana dla kaucji",
+        "depositSavedDescription": "Twoja karta została zapisana. Autoryzacja na {amount} zostanie utworzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
+        "deposit": "Kaucja",
+        "items": "Zarezerwowane produkty",
+        "emailSent": "Email z potwierdzeniem został wysłany na adres {email}",
+        "backToStore": "Powrót do sklepu"
+      }
     },
     "confirmation": {
       "title": "Rezerwacja potwierdzona!",
@@ -1985,7 +2109,8 @@
       "emailConfirmation": "Email z potwierdzeniem",
       "confirmationSentTo": "Potwierdzenie wysłane do",
       "subtotalLabel": "Suma częściowa",
-      "depositLabel": "Kaucja",
+      "depositLabel": "Kaucja (autoryzacja)",
+      "depositAuthorizationInfo": "Twoja karta zostanie zapisana. Autoryzacja zostanie utworzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
       "totalLabel": "Suma",
       "whatNext": "Następne kroki",
       "stepRequest1": "Przeglądamy Twoje żądanie rezerwacji",
@@ -2542,6 +2667,18 @@
     "tryAgain": "Spróbuj ponownie",
     "goBack": "Wstecz",
     "goHome": "Powrót do strony głównej",
-    "loading": "Ładowanie..."
+    "loading": "Ładowanie...",
+    "noStripeAccount": "Brak połączonego konta Stripe",
+    "stripe": {
+      "onboardingFailed": "Błąd podczas konfiguracji Stripe",
+      "verificationFailed": "Błąd podczas weryfikacji konta Stripe",
+      "syncFailed": "Błąd podczas synchronizacji",
+      "dashboardLinkFailed": "Błąd podczas otwierania panelu Stripe",
+      "alreadyConnected": "Konto Stripe już połączone",
+      "noChargeToRefund": "Brak płatności Stripe do zwrotu",
+      "alreadyRefunded": "Ta płatność została już zwrócona",
+      "refundExceedsCharge": "Kwota zwrotu przekracza kwotę płatności",
+      "refundFailed": "Błąd podczas zwrotu"
+    }
   }
 }

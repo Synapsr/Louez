@@ -35,7 +35,9 @@ export type StoreWithFullData = {
   legalNotice: string | null
   stripeAccountId: string | null
   stripeOnboardingComplete: boolean | null
+  stripeChargesEnabled: boolean | null
   emailSettings: EmailSettings | null
+  icsToken: string | null
   onboardingCompleted: boolean | null
   createdAt: Date
   updatedAt: Date

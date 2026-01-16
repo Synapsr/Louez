@@ -708,7 +708,11 @@
         "returned": "Items returned",
         "note_updated": "Notes updated",
         "payment_added": "Payment added",
-        "payment_updated": "Payment updated"
+        "payment_updated": "Payment updated",
+        "deposit_authorized": "Deposit authorization created",
+        "deposit_captured": "Deposit captured",
+        "deposit_released": "Deposit released",
+        "deposit_failed": "Authorization failed"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -771,7 +775,9 @@
           "rental": "Rental",
           "deposit": "Deposit",
           "depositReturn": "Deposit return",
-          "damage": "Damages"
+          "damage": "Damages",
+          "depositHold": "Authorization hold",
+          "depositCapture": "Deposit captured"
         },
         "methods": {
           "cash": "Cash",
@@ -785,8 +791,48 @@
           "pending": "Pending",
           "completed": "Completed",
           "failed": "Failed",
-          "refunded": "Refunded"
+          "refunded": "Refunded",
+          "authorized": "Authorized",
+          "cancelled": "Cancelled"
         }
+      },
+      "deposit": {
+        "title": "Deposit (Authorization Hold)",
+        "description": "Manage the deposit authorization hold for this reservation",
+        "amount": "Deposit amount",
+        "status": {
+          "pending": "Pending",
+          "cardSaved": "Card saved",
+          "authorized": "Authorization active",
+          "captured": "Deposit captured",
+          "released": "Deposit released",
+          "failed": "Failed"
+        },
+        "cardSavedDescription": "Customer's card is saved. You can create the authorization hold when they pick up.",
+        "releasedDescription": "The authorization has been released, no charges were made.",
+        "failedDescription": "The authorization failed. The customer may need to use a different card.",
+        "expiresIn": "Expires {time}",
+        "expired": "Authorization expired",
+        "createHold": "Create authorization",
+        "release": "Release deposit",
+        "capture": "Capture",
+        "holdCreated": "Authorization created successfully",
+        "released": "Deposit released successfully",
+        "captured": "Deposit captured successfully",
+        "captureTitle": "Capture deposit",
+        "captureDescription": "Capture all or part of the deposit to cover damages or losses.",
+        "maxCapturable": "Maximum amount",
+        "captureAmount": "Amount to capture",
+        "captureReason": "Reason for capture",
+        "captureReasonPlaceholder": "Describe the damages or reason for capture...",
+        "captureReasonHint": "This reason will be recorded in the history and visible to the customer.",
+        "confirmCapture": "Confirm capture",
+        "releaseTitle": "Release deposit",
+        "releaseDescription": "Are you sure you want to release the {amount} deposit? The authorization will be cancelled and no charges will be made.",
+        "confirmRelease": "Release deposit",
+        "invalidCaptureAmount": "Invalid amount",
+        "captureExceedsDeposit": "Amount exceeds deposit",
+        "reasonRequired": "Please provide a reason"
       },
       "paymentStatus": {
         "paid": "Paid",
@@ -1012,6 +1058,34 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "rejected": "Rejected"
+      },
+      "export": {
+        "button": "Export calendar",
+        "title": "Export to calendar",
+        "description": "Sync your reservations with your favorite calendar by copying the link below.",
+        "urlLabel": "ICS calendar link",
+        "loading": "Loading...",
+        "instructions": {
+          "title": "How to add this calendar?",
+          "google": {
+            "step1": "Open Google Calendar",
+            "step2": "Click the + next to \"Other calendars\" then \"From URL\"",
+            "step3": "Paste the link and click \"Add calendar\"",
+            "openLink": "Open Google Calendar"
+          },
+          "apple": {
+            "step1": "Open the Calendar app on Mac or iPhone",
+            "step2": "File > New Calendar Subscription (Mac) or Add Account > Other > Add Subscribed Calendar (iOS)",
+            "step3": "Paste the link and confirm"
+          },
+          "outlook": {
+            "step1": "Open Outlook Calendar",
+            "step2": "Click \"Add calendar\" then \"Subscribe from web\"",
+            "step3": "Paste the link and give the calendar a name"
+          }
+        },
+        "regenerate": "Regenerate link",
+        "regenerateHint": "Regenerating the link will invalidate previously shared links."
       }
     },
     "statistics": {
@@ -1516,6 +1590,41 @@
         "taxNumberDescription": "Your VAT number (displayed on contracts)",
         "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer."
       },
+      "payments": {
+        "title": "Payments",
+        "description": "Configure online payments for your store",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accept credit card payments directly on your store",
+        "notConnectedDescription": "Connect your Stripe account to accept online payments. You will be redirected to Stripe to complete the setup.",
+        "activeDescription": "Your Stripe account is connected and operational. You can accept online payments.",
+        "incompleteDescription": "Your Stripe setup is incomplete. Please complete the setup to accept payments.",
+        "connectStripe": "Connect Stripe",
+        "completeSetup": "Complete Setup",
+        "openDashboard": "Stripe Dashboard",
+        "sync": "Sync",
+        "synced": "Status synced",
+        "disconnect": "Disconnect",
+        "disconnected": "Stripe account disconnected",
+        "disconnectTitle": "Disconnect Stripe?",
+        "disconnectDescription": "You will no longer be able to accept online payments. Existing payments will not be affected.",
+        "cancel": "Cancel",
+        "status": {
+          "active": "Active",
+          "incomplete": "Incomplete"
+        },
+        "callback": {
+          "successTitle": "Stripe Connected!",
+          "successDescription": "Your Stripe account is now connected. You can accept online payments.",
+          "incompleteTitle": "Setup Incomplete",
+          "incompleteDescription": "Some information is missing. You can complete the setup later.",
+          "backToSettings": "Back to Settings"
+        },
+        "refresh": {
+          "title": "Link Expired",
+          "description": "The setup link has expired. Please try again from settings.",
+          "backToSettings": "Back to Settings"
+        }
+      },
       "subscriptionSettings": {
         "title": "Subscription",
         "description": "Manage your subscription and billing",
@@ -1968,7 +2077,24 @@
         "total": "Total to pay",
         "savingsBanner": "You save {amount} with the long-term discount"
       },
-      "depositInfo": "A hold of {amount} will be placed on your card as a security deposit. This amount will not be charged and will be released upon return of the equipment."
+      "depositInfo": "A security deposit of {amount} is required.",
+      "depositLabel": "Deposit (authorization)",
+      "depositAuthorizationInfo": "Your card will be saved. An authorization hold will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
+      "success": {
+        "confirmedTitle": "Payment Confirmed!",
+        "confirmedDescription": "Your payment has been accepted. You will receive a confirmation email.",
+        "pendingTitle": "Awaiting Payment",
+        "pendingDescription": "Your reservation has been created and is awaiting payment confirmation.",
+        "reservationNumber": "Reservation",
+        "dates": "Dates",
+        "total": "Total",
+        "depositSaved": "Card saved for deposit",
+        "depositSavedDescription": "Your card has been saved. An authorization hold of {amount} will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
+        "deposit": "Deposit",
+        "items": "Reserved Items",
+        "emailSent": "A confirmation email has been sent to {email}",
+        "backToStore": "Back to Store"
+      }
     },
     "confirmation": {
       "title": "Reservation confirmed!",
@@ -2541,6 +2667,27 @@
     "tryAgain": "Try again",
     "goBack": "Back",
     "goHome": "Back to home",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "noStripeAccount": "No Stripe account connected",
+    "stripe": {
+      "onboardingFailed": "Error during Stripe setup",
+      "verificationFailed": "Error verifying Stripe account",
+      "syncFailed": "Error syncing status",
+      "dashboardLinkFailed": "Error opening Stripe dashboard",
+      "alreadyConnected": "Stripe account already connected",
+      "noChargeToRefund": "No Stripe payment to refund",
+      "alreadyRefunded": "This payment has already been refunded",
+      "refundExceedsCharge": "Refund amount exceeds payment amount",
+      "refundFailed": "Error processing refund",
+      "noSavedCard": "No card saved for this customer",
+      "invalidDepositStatus": "The deposit status does not allow this operation",
+      "noDepositRequired": "No deposit required for this reservation",
+      "authorizationFailed": "Unable to create authorization hold",
+      "noActiveAuthorization": "No active authorization for this reservation",
+      "captureFailed": "Unable to capture deposit",
+      "releaseFailed": "Unable to release deposit"
+    },
+    "reasonRequired": "Please provide a reason",
+    "invalidAmount": "Invalid amount"
   }
 }

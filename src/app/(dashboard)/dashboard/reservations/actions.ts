@@ -860,6 +860,473 @@ export async function recordDamage(
 }
 
 // ============================================================================
+// Deposit Authorization Hold (Empreinte Bancaire)
+// ============================================================================
+
+import {
+  createRefund,
+  getChargeRefundableAmount,
+  toStripeCents,
+  createDepositAuthorization,
+  captureDeposit,
+  releaseDeposit,
+  getPaymentMethodDetails,
+} from '@/lib/stripe'
+
+type DepositActivityType = 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
+
+async function logDepositActivity(
+  reservationId: string,
+  activityType: DepositActivityType,
+  description?: string,
+  metadata?: Record<string, unknown>
+) {
+  const session = await auth()
+  const userId = session?.user?.id || null
+
+  await db.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId,
+    userId,
+    activityType,
+    description,
+    metadata,
+  })
+}
+
+/**
+ * Create a deposit authorization hold (empreinte bancaire)
+ */
+export async function createDepositHold(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  // Check prerequisites
+  if (!reservation.stripeCustomerId || !reservation.stripePaymentMethodId) {
+    return { error: 'errors.stripe.noSavedCard' }
+  }
+
+  if (reservation.depositStatus !== 'card_saved') {
+    return { error: 'errors.stripe.invalidDepositStatus' }
+  }
+
+  const depositAmount = parseFloat(reservation.depositAmount)
+  if (depositAmount <= 0) {
+    return { error: 'errors.stripe.noDepositRequired' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    const result = await createDepositAuthorization({
+      stripeAccountId: store.stripeAccountId,
+      customerId: reservation.stripeCustomerId,
+      paymentMethodId: reservation.stripePaymentMethodId,
+      amount: toStripeCents(depositAmount, currency),
+      currency,
+      reservationId,
+      reservationNumber: reservation.number,
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'authorized',
+        depositPaymentIntentId: result.paymentIntentId,
+        depositAuthorizationExpiresAt: result.expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Create payment record
+    await db.insert(payments).values({
+      id: nanoid(),
+      reservationId,
+      amount: depositAmount.toFixed(2),
+      type: 'deposit_hold',
+      method: 'stripe',
+      status: 'authorized',
+      stripePaymentIntentId: result.paymentIntentId,
+      stripePaymentMethodId: reservation.stripePaymentMethodId,
+      authorizationExpiresAt: result.expiresAt,
+      currency,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logDepositActivity(
+      reservationId,
+      'deposit_authorized',
+      `Empreinte de ${depositAmount.toFixed(2)}${currencySymbol} créée`,
+      { paymentIntentId: result.paymentIntentId, amount: depositAmount, expiresAt: result.expiresAt.toISOString() }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, paymentIntentId: result.paymentIntentId }
+  } catch (error) {
+    console.error('Failed to create deposit hold:', error)
+
+    // Update status to failed
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    await logDepositActivity(
+      reservationId,
+      'deposit_failed',
+      `Échec de l'empreinte: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error: error instanceof Error ? error.message : 'Unknown error' }
+    )
+
+    return { error: 'errors.stripe.authorizationFailed' }
+  }
+}
+
+/**
+ * Capture deposit from authorization hold (for damage/loss)
+ */
+export async function captureDepositHold(
+  reservationId: string,
+  data: { amount: number; reason: string }
+) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
+    return { error: 'errors.stripe.noActiveAuthorization' }
+  }
+
+  const depositAmount = parseFloat(reservation.depositAmount)
+  if (data.amount <= 0 || data.amount > depositAmount) {
+    return { error: 'errors.invalidAmount' }
+  }
+
+  if (!data.reason.trim()) {
+    return { error: 'errors.reasonRequired' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    const result = await captureDeposit({
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: reservation.depositPaymentIntentId,
+      amountToCapture: toStripeCents(data.amount, currency),
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'captured',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Update the deposit_hold payment
+    const depositPayment = await db.query.payments.findFirst({
+      where: and(
+        eq(payments.reservationId, reservationId),
+        eq(payments.type, 'deposit_hold'),
+        eq(payments.status, 'authorized')
+      ),
+    })
+
+    if (depositPayment) {
+      await db
+        .update(payments)
+        .set({
+          status: 'completed',
+          capturedAmount: data.amount.toFixed(2),
+          notes: data.reason,
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, depositPayment.id))
+    }
+
+    // Create deposit_capture payment record
+    await db.insert(payments).values({
+      id: nanoid(),
+      reservationId,
+      amount: data.amount.toFixed(2),
+      type: 'deposit_capture',
+      method: 'stripe',
+      status: 'completed',
+      stripePaymentIntentId: reservation.depositPaymentIntentId,
+      currency,
+      notes: data.reason,
+      paidAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logDepositActivity(
+      reservationId,
+      'deposit_captured',
+      `Caution capturée: ${data.amount.toFixed(2)}${currencySymbol} - ${data.reason}`,
+      { paymentIntentId: reservation.depositPaymentIntentId, amount: data.amount, reason: data.reason }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, amountCaptured: result.amountCaptured }
+  } catch (error) {
+    console.error('Failed to capture deposit:', error)
+    return { error: 'errors.stripe.captureFailed' }
+  }
+}
+
+/**
+ * Release deposit authorization (no damage)
+ */
+export async function releaseDepositHold(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
+    return { error: 'errors.stripe.noActiveAuthorization' }
+  }
+
+  try {
+    await releaseDeposit({
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: reservation.depositPaymentIntentId,
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'released',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Update the deposit_hold payment
+    const depositPayment = await db.query.payments.findFirst({
+      where: and(
+        eq(payments.reservationId, reservationId),
+        eq(payments.type, 'deposit_hold'),
+        eq(payments.status, 'authorized')
+      ),
+    })
+
+    if (depositPayment) {
+      await db
+        .update(payments)
+        .set({
+          status: 'cancelled',
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, depositPayment.id))
+    }
+
+    // Log activity
+    const currency = store.settings?.currency || 'EUR'
+    const currencySymbol = getCurrencySymbol(currency)
+    const depositAmount = parseFloat(reservation.depositAmount)
+    await logDepositActivity(
+      reservationId,
+      'deposit_released',
+      `Caution de ${depositAmount.toFixed(2)}${currencySymbol} libérée`,
+      { paymentIntentId: reservation.depositPaymentIntentId, amount: depositAmount }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to release deposit:', error)
+    return { error: 'errors.stripe.releaseFailed' }
+  }
+}
+
+/**
+ * Get saved payment method details for a reservation
+ */
+export async function getReservationPaymentMethod(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return null
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation?.stripePaymentMethodId) {
+    return null
+  }
+
+  try {
+    return await getPaymentMethodDetails(
+      store.stripeAccountId,
+      reservation.stripePaymentMethodId
+    )
+  } catch (error) {
+    console.error('Failed to get payment method details:', error)
+    return null
+  }
+}
+
+// ============================================================================
+// Stripe Refunds
+// ============================================================================
+
+interface ProcessStripeRefundData {
+  type: 'deposit_return' | 'rental_refund'
+  amount: number
+  notes?: string
+}
+
+export async function processStripeRefund(
+  reservationId: string,
+  data: ProcessStripeRefundData
+) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      payments: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  // Find the original Stripe payment with a charge
+  const stripePayment = reservation.payments.find(
+    (p) => p.method === 'stripe' && p.status === 'completed' && p.stripeChargeId
+  )
+
+  if (!stripePayment || !stripePayment.stripeChargeId) {
+    return { error: 'errors.stripe.noChargeToRefund' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    // Check refundable amount
+    const { refundable, amount: maxRefundable } = await getChargeRefundableAmount(
+      store.stripeAccountId,
+      stripePayment.stripeChargeId
+    )
+
+    if (!refundable) {
+      return { error: 'errors.stripe.alreadyRefunded' }
+    }
+
+    const refundAmountCents = toStripeCents(data.amount, currency)
+
+    if (refundAmountCents > maxRefundable) {
+      return { error: 'errors.stripe.refundExceedsCharge' }
+    }
+
+    // Process refund
+    const refund = await createRefund({
+      stripeAccountId: store.stripeAccountId,
+      chargeId: stripePayment.stripeChargeId,
+      amount: refundAmountCents,
+    })
+
+    // Create payment record for the refund (negative amount for display)
+    const paymentId = nanoid()
+    await db.insert(payments).values({
+      id: paymentId,
+      reservationId,
+      amount: data.amount.toFixed(2),
+      type: data.type === 'deposit_return' ? 'deposit_return' : 'rental',
+      method: 'stripe',
+      status: 'completed',
+      stripeRefundId: refund.refundId,
+      stripeChargeId: stripePayment.stripeChargeId,
+      currency: refund.currency,
+      notes: data.notes,
+      paidAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logReservationActivity(
+      reservationId,
+      'payment_updated',
+      `Remboursement Stripe: ${data.amount.toFixed(2)}${currencySymbol}`,
+      { paymentId, refundId: refund.refundId, amount: data.amount, type: data.type }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, refundId: refund.refundId }
+  } catch (error) {
+    console.error('Stripe refund error:', error)
+    return { error: 'errors.stripe.refundFailed' }
+  }
+}
+
+// ============================================================================
 // Email Actions
 // ============================================================================
 

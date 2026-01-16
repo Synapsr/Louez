@@ -83,9 +83,9 @@ import {
 interface Payment {
   id: string
   amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage'
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture'
   method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
   paidAt: Date | null
   notes: string | null
 }
@@ -330,6 +330,8 @@ export function PaymentSummary({
       deposit: t('payment.types.deposit'),
       deposit_return: t('payment.types.depositReturn'),
       damage: t('payment.types.damage'),
+      deposit_hold: t('payment.types.depositHold'),
+      deposit_capture: t('payment.types.depositCapture'),
     }
     return labels[type] || type
   }

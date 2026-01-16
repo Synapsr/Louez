@@ -708,7 +708,11 @@
         "returned": "Articles rendus",
         "note_updated": "Notes modifiées",
         "payment_added": "Paiement ajouté",
-        "payment_updated": "Paiement mis à jour"
+        "payment_updated": "Paiement mis à jour",
+        "deposit_authorized": "Empreinte de caution créée",
+        "deposit_captured": "Caution prélevée",
+        "deposit_released": "Caution libérée",
+        "deposit_failed": "Échec de l'empreinte"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -771,7 +775,9 @@
           "rental": "Location",
           "deposit": "Caution",
           "depositReturn": "Restitution caution",
-          "damage": "Dommages"
+          "damage": "Dommages",
+          "depositHold": "Empreinte bancaire",
+          "depositCapture": "Caution prélevée"
         },
         "methods": {
           "cash": "Espèces",
@@ -785,8 +791,48 @@
           "pending": "En attente",
           "completed": "Complété",
           "failed": "Échoué",
-          "refunded": "Remboursé"
+          "refunded": "Remboursé",
+          "authorized": "Autorisé",
+          "cancelled": "Annulé"
         }
+      },
+      "deposit": {
+        "title": "Caution (Empreinte)",
+        "description": "Gérez l'empreinte bancaire pour la caution de cette réservation",
+        "amount": "Montant de la caution",
+        "status": {
+          "pending": "En attente",
+          "cardSaved": "Carte enregistrée",
+          "authorized": "Empreinte active",
+          "captured": "Caution prélevée",
+          "released": "Caution libérée",
+          "failed": "Échec"
+        },
+        "cardSavedDescription": "La carte du client est enregistrée. Vous pouvez créer l'empreinte au moment du retrait.",
+        "releasedDescription": "L'empreinte a été libérée, aucune retenue n'a été effectuée.",
+        "failedDescription": "L'autorisation a échoué. Le client devra peut-être utiliser une autre carte.",
+        "expiresIn": "Expire {time}",
+        "expired": "L'autorisation a expiré",
+        "createHold": "Créer l'empreinte",
+        "release": "Libérer la caution",
+        "capture": "Prélever",
+        "holdCreated": "Empreinte créée avec succès",
+        "released": "Caution libérée avec succès",
+        "captured": "Caution prélevée avec succès",
+        "captureTitle": "Prélever la caution",
+        "captureDescription": "Prélevez tout ou partie de la caution pour couvrir des dommages ou pertes.",
+        "maxCapturable": "Montant maximum",
+        "captureAmount": "Montant à prélever",
+        "captureReason": "Motif du prélèvement",
+        "captureReasonPlaceholder": "Décrivez les dommages ou la raison du prélèvement...",
+        "captureReasonHint": "Ce motif sera enregistré dans l'historique et visible par le client.",
+        "confirmCapture": "Confirmer le prélèvement",
+        "releaseTitle": "Libérer la caution",
+        "releaseDescription": "Confirmez-vous vouloir libérer la caution de {amount} ? L'empreinte sera annulée et le montant ne sera pas prélevé.",
+        "confirmRelease": "Libérer la caution",
+        "invalidCaptureAmount": "Montant invalide",
+        "captureExceedsDeposit": "Le montant dépasse la caution",
+        "reasonRequired": "Veuillez indiquer un motif"
       },
       "paymentStatus": {
         "paid": "Payé",
@@ -1012,6 +1058,34 @@
         "completed": "Terminée",
         "cancelled": "Annulée",
         "rejected": "Refusée"
+      },
+      "export": {
+        "button": "Exporter le calendrier",
+        "title": "Exporter vers un calendrier",
+        "description": "Synchronisez vos reservations avec votre calendrier favori en copiant le lien ci-dessous.",
+        "urlLabel": "Lien du calendrier ICS",
+        "loading": "Chargement...",
+        "instructions": {
+          "title": "Comment ajouter ce calendrier ?",
+          "google": {
+            "step1": "Ouvrez Google Agenda",
+            "step2": "Cliquez sur le + a cote de \"Autres agendas\" puis \"A partir de l'URL\"",
+            "step3": "Collez le lien et cliquez sur \"Ajouter un agenda\"",
+            "openLink": "Ouvrir Google Agenda"
+          },
+          "apple": {
+            "step1": "Ouvrez l'app Calendrier sur Mac ou iPhone",
+            "step2": "Fichier > Nouvel abonnement a un calendrier (Mac) ou Ajouter un compte > Autre > Ajouter un cal. avec abonnement (iOS)",
+            "step3": "Collez le lien et validez"
+          },
+          "outlook": {
+            "step1": "Ouvrez Outlook Calendar",
+            "step2": "Cliquez sur \"Ajouter un calendrier\" puis \"S'abonner a partir du web\"",
+            "step3": "Collez le lien et donnez un nom au calendrier"
+          }
+        },
+        "regenerate": "Regenerer le lien",
+        "regenerateHint": "Regenerer le lien invalidera les anciens liens partages."
       }
     },
     "statistics": {
@@ -1516,6 +1590,41 @@
         "taxNumberDescription": "Votre numéro de TVA intracommunautaire (affiché sur les contrats)",
         "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client."
       },
+      "payments": {
+        "title": "Paiements",
+        "description": "Configurez les paiements en ligne pour votre boutique",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Acceptez les paiements par carte bancaire directement sur votre boutique",
+        "notConnectedDescription": "Connectez votre compte Stripe pour accepter les paiements en ligne. Vous serez redirigé vers Stripe pour compléter la configuration.",
+        "activeDescription": "Votre compte Stripe est connecté et opérationnel. Vous pouvez accepter les paiements en ligne.",
+        "incompleteDescription": "Votre configuration Stripe est incomplète. Veuillez terminer la configuration pour accepter les paiements.",
+        "connectStripe": "Connecter Stripe",
+        "completeSetup": "Terminer la configuration",
+        "openDashboard": "Tableau de bord Stripe",
+        "sync": "Synchroniser",
+        "synced": "Statut synchronisé",
+        "disconnect": "Déconnecter",
+        "disconnected": "Compte Stripe déconnecté",
+        "disconnectTitle": "Déconnecter Stripe ?",
+        "disconnectDescription": "Vous ne pourrez plus accepter de paiements en ligne. Les paiements existants ne seront pas affectés.",
+        "cancel": "Annuler",
+        "status": {
+          "active": "Actif",
+          "incomplete": "Incomplet"
+        },
+        "callback": {
+          "successTitle": "Stripe connecté !",
+          "successDescription": "Votre compte Stripe est maintenant connecté. Vous pouvez accepter les paiements en ligne.",
+          "incompleteTitle": "Configuration incomplète",
+          "incompleteDescription": "Certaines informations sont manquantes. Vous pourrez terminer la configuration plus tard.",
+          "backToSettings": "Retour aux paramètres"
+        },
+        "refresh": {
+          "title": "Lien expiré",
+          "description": "Le lien de configuration a expiré. Veuillez réessayer depuis les paramètres.",
+          "backToSettings": "Retour aux paramètres"
+        }
+      },
       "subscriptionSettings": {
         "title": "Abonnement",
         "description": "Gérez votre abonnement et votre facturation",
@@ -1968,7 +2077,24 @@
         "total": "Total à payer",
         "savingsBanner": "Vous économisez {amount} grâce à la réduction longue durée"
       },
-      "depositInfo": "Une empreinte bancaire de {amount} sera réalisée à titre de caution. Cette somme ne sera pas débitée et sera libérée au retour du matériel."
+      "depositInfo": "Une caution de {amount} est demandée.",
+      "depositLabel": "Caution (empreinte)",
+      "depositAuthorizationInfo": "Votre carte sera enregistrée. Une empreinte bancaire sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
+      "success": {
+        "confirmedTitle": "Paiement confirmé !",
+        "confirmedDescription": "Votre paiement a été accepté. Vous recevrez un email de confirmation.",
+        "pendingTitle": "En attente de paiement",
+        "pendingDescription": "Votre réservation a été créée et est en attente de confirmation du paiement.",
+        "reservationNumber": "Réservation",
+        "dates": "Dates",
+        "total": "Total",
+        "depositSaved": "Carte enregistrée pour la caution",
+        "depositSavedDescription": "Votre carte a été enregistrée. Une empreinte bancaire de {amount} sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
+        "deposit": "Caution",
+        "items": "Produits réservés",
+        "emailSent": "Un email de confirmation a été envoyé à {email}",
+        "backToStore": "Retour à la boutique"
+      }
     },
     "confirmation": {
       "title": "Réservation confirmée !",
@@ -2541,6 +2667,27 @@
     "tryAgain": "Réessayer",
     "goBack": "Retour",
     "goHome": "Retour à l'accueil",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "noStripeAccount": "Aucun compte Stripe connecté",
+    "stripe": {
+      "onboardingFailed": "Erreur lors de la configuration Stripe",
+      "verificationFailed": "Erreur lors de la vérification du compte Stripe",
+      "syncFailed": "Erreur lors de la synchronisation",
+      "dashboardLinkFailed": "Erreur lors de l'ouverture du tableau de bord Stripe",
+      "alreadyConnected": "Compte Stripe déjà connecté",
+      "noChargeToRefund": "Aucun paiement Stripe à rembourser",
+      "alreadyRefunded": "Ce paiement a déjà été remboursé",
+      "refundExceedsCharge": "Le montant du remboursement dépasse le montant du paiement",
+      "refundFailed": "Erreur lors du remboursement",
+      "noSavedCard": "Aucune carte enregistrée pour ce client",
+      "invalidDepositStatus": "Le statut de la caution ne permet pas cette opération",
+      "noDepositRequired": "Aucune caution n'est requise pour cette réservation",
+      "authorizationFailed": "Impossible de créer l'empreinte bancaire",
+      "noActiveAuthorization": "Aucune empreinte active pour cette réservation",
+      "captureFailed": "Impossible de prélever la caution",
+      "releaseFailed": "Impossible de libérer la caution"
+    },
+    "reasonRequired": "Veuillez indiquer un motif",
+    "invalidAmount": "Montant invalide"
   }
 }

@@ -708,7 +708,11 @@
         "returned": "Articoli restituiti",
         "note_updated": "Note aggiornate",
         "payment_added": "Pagamento aggiunto",
-        "payment_updated": "Pagamento aggiornato"
+        "payment_updated": "Pagamento aggiornato",
+        "deposit_authorized": "Autorizzazione deposito creata",
+        "deposit_captured": "Deposito addebitato",
+        "deposit_released": "Deposito rilasciato",
+        "deposit_failed": "Autorizzazione fallita"
       },
       "activityBy": "da",
       "activitySystem": "Azione automatica",
@@ -771,7 +775,9 @@
           "rental": "Noleggio",
           "deposit": "Deposito",
           "depositReturn": "Restituzione deposito",
-          "damage": "Danni"
+          "damage": "Danni",
+          "depositHold": "Autorizzazione",
+          "depositCapture": "Deposito addebitato"
         },
         "methods": {
           "cash": "Contanti",
@@ -785,8 +791,48 @@
           "pending": "In attesa",
           "completed": "Completato",
           "failed": "Fallito",
-          "refunded": "Rimborsato"
+          "refunded": "Rimborsato",
+          "authorized": "Autorizzato",
+          "cancelled": "Annullato"
         }
+      },
+      "deposit": {
+        "title": "Deposito (Autorizzazione)",
+        "description": "Gestisci l'autorizzazione del deposito per questa prenotazione",
+        "amount": "Importo deposito",
+        "status": {
+          "pending": "In attesa",
+          "cardSaved": "Carta salvata",
+          "authorized": "Autorizzazione attiva",
+          "captured": "Deposito addebitato",
+          "released": "Deposito rilasciato",
+          "failed": "Fallito"
+        },
+        "cardSavedDescription": "La carta del cliente e salvata. Puoi creare l'autorizzazione al ritiro.",
+        "releasedDescription": "L'autorizzazione e stata rilasciata, nessun addebito effettuato.",
+        "failedDescription": "L'autorizzazione e fallita. Il cliente potrebbe dover usare un'altra carta.",
+        "expiresIn": "Scade {time}",
+        "expired": "Autorizzazione scaduta",
+        "createHold": "Crea autorizzazione",
+        "release": "Rilascia deposito",
+        "capture": "Addebita",
+        "holdCreated": "Autorizzazione creata con successo",
+        "released": "Deposito rilasciato con successo",
+        "captured": "Deposito addebitato con successo",
+        "captureTitle": "Addebita deposito",
+        "captureDescription": "Addebita tutto o parte del deposito per coprire danni o perdite.",
+        "maxCapturable": "Importo massimo",
+        "captureAmount": "Importo da addebitare",
+        "captureReason": "Motivo dell'addebito",
+        "captureReasonPlaceholder": "Descrivi i danni o il motivo dell'addebito...",
+        "captureReasonHint": "Questo motivo sara registrato nella cronologia e visibile al cliente.",
+        "confirmCapture": "Conferma addebito",
+        "releaseTitle": "Rilascia deposito",
+        "releaseDescription": "Sei sicuro di voler rilasciare il deposito di {amount}? L'autorizzazione sara annullata e non verranno effettuati addebiti.",
+        "confirmRelease": "Rilascia deposito",
+        "invalidCaptureAmount": "Importo non valido",
+        "captureExceedsDeposit": "L'importo supera il deposito",
+        "reasonRequired": "Fornisci un motivo"
       },
       "paymentStatus": {
         "paid": "Pagato",
@@ -1013,6 +1059,34 @@
         "completed": "Completata",
         "cancelled": "Annullata",
         "rejected": "Rifiutata"
+      },
+      "export": {
+        "button": "Esporta calendario",
+        "title": "Esporta in calendario",
+        "description": "Sincronizza le tue prenotazioni con il tuo calendario preferito copiando il link qui sotto.",
+        "urlLabel": "Link calendario ICS",
+        "loading": "Caricamento...",
+        "instructions": {
+          "title": "Come aggiungere questo calendario?",
+          "google": {
+            "step1": "Apri Google Calendar",
+            "step2": "Clicca sul + accanto a \"Altri calendari\" e poi su \"Da URL\"",
+            "step3": "Incolla il link e clicca su \"Aggiungi calendario\"",
+            "openLink": "Apri Google Calendar"
+          },
+          "apple": {
+            "step1": "Apri l'app Calendario su Mac o iPhone",
+            "step2": "File > Nuovo abbonamento calendario (Mac) o Aggiungi account > Altro > Aggiungi calendario sottoscritto (iOS)",
+            "step3": "Incolla il link e conferma"
+          },
+          "outlook": {
+            "step1": "Apri Outlook Calendar",
+            "step2": "Clicca su \"Aggiungi calendario\" e poi su \"Iscriviti dal web\"",
+            "step3": "Incolla il link e dai un nome al calendario"
+          }
+        },
+        "regenerate": "Rigenera link",
+        "regenerateHint": "Rigenerare il link invalidera i link condivisi precedentemente."
       }
     },
     "statistics": {
@@ -1517,6 +1591,41 @@
         "taxNumberDescription": "La tua partita IVA (mostrata sui contratti)",
         "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente."
       },
+      "payments": {
+        "title": "Pagamenti",
+        "description": "Configura i pagamenti online per il tuo negozio",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accetta pagamenti con carta direttamente nel tuo negozio",
+        "notConnectedDescription": "Collega il tuo account Stripe per accettare pagamenti online. Sarai reindirizzato a Stripe per completare la configurazione.",
+        "activeDescription": "Il tuo account Stripe e connesso e operativo. Puoi accettare pagamenti online.",
+        "incompleteDescription": "La configurazione di Stripe e incompleta. Completa la configurazione per accettare pagamenti.",
+        "connectStripe": "Collega Stripe",
+        "completeSetup": "Completa configurazione",
+        "openDashboard": "Dashboard Stripe",
+        "sync": "Sincronizza",
+        "synced": "Stato sincronizzato",
+        "disconnect": "Disconnetti",
+        "disconnected": "Account Stripe disconnesso",
+        "disconnectTitle": "Disconnettere Stripe?",
+        "disconnectDescription": "Non potrai piu accettare pagamenti online. I pagamenti esistenti non saranno interessati.",
+        "cancel": "Annulla",
+        "status": {
+          "active": "Attivo",
+          "incomplete": "Incompleto"
+        },
+        "callback": {
+          "successTitle": "Stripe collegato!",
+          "successDescription": "Il tuo account Stripe e ora collegato. Puoi accettare pagamenti online.",
+          "incompleteTitle": "Configurazione incompleta",
+          "incompleteDescription": "Alcune informazioni sono mancanti. Potrai completare la configurazione in seguito.",
+          "backToSettings": "Torna alle impostazioni"
+        },
+        "refresh": {
+          "title": "Link scaduto",
+          "description": "Il link di configurazione e scaduto. Riprova dalle impostazioni.",
+          "backToSettings": "Torna alle impostazioni"
+        }
+      },
       "subscriptionSettings": {
         "title": "Abbonamento",
         "description": "Gestisci il tuo abbonamento e la fatturazione",
@@ -1969,7 +2078,22 @@
         "total": "Totale da pagare",
         "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
       },
-      "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura."
+      "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
+      "success": {
+        "confirmedTitle": "Pagamento confermato!",
+        "confirmedDescription": "Il tuo pagamento e stato accettato. Riceverai un'email di conferma.",
+        "pendingTitle": "In attesa di pagamento",
+        "pendingDescription": "La tua prenotazione e stata creata ed e in attesa di conferma del pagamento.",
+        "reservationNumber": "Prenotazione",
+        "dates": "Date",
+        "total": "Totale",
+        "depositSaved": "Carta salvata per il deposito",
+        "depositSavedDescription": "La tua carta e stata salvata. Un'autorizzazione di {amount} sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
+        "deposit": "Deposito",
+        "items": "Prodotti prenotati",
+        "emailSent": "Un'email di conferma e stata inviata a {email}",
+        "backToStore": "Torna al negozio"
+      }
     },
     "confirmation": {
       "title": "Prenotazione confermata!",
@@ -1985,7 +2109,8 @@
       "emailConfirmation": "Email di conferma",
       "confirmationSentTo": "Conferma inviata a",
       "subtotalLabel": "Subtotale",
-      "depositLabel": "Deposito",
+      "depositLabel": "Deposito (autorizzazione)",
+      "depositAuthorizationInfo": "La tua carta sara salvata. Un'autorizzazione sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
       "totalLabel": "Totale",
       "whatNext": "Prossimi passi",
       "stepRequest1": "Stiamo esaminando la tua richiesta di prenotazione",
@@ -2542,6 +2667,18 @@
     "tryAgain": "Riprova",
     "goBack": "Indietro",
     "goHome": "Torna alla home",
-    "loading": "Caricamento..."
+    "loading": "Caricamento...",
+    "noStripeAccount": "Nessun account Stripe collegato",
+    "stripe": {
+      "onboardingFailed": "Errore nella configurazione di Stripe",
+      "verificationFailed": "Errore nella verifica dell'account Stripe",
+      "syncFailed": "Errore nella sincronizzazione",
+      "dashboardLinkFailed": "Errore nell'apertura del dashboard Stripe",
+      "alreadyConnected": "Account Stripe gia collegato",
+      "noChargeToRefund": "Nessun pagamento Stripe da rimborsare",
+      "alreadyRefunded": "Questo pagamento e gia stato rimborsato",
+      "refundExceedsCharge": "L'importo del rimborso supera l'importo del pagamento",
+      "refundFailed": "Errore nel rimborso"
+    }
   }
 }

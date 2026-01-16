@@ -66,8 +66,8 @@ interface ReservationItem {
 interface Payment {
   id: string
   amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage'
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture'
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
 }
 
 interface Reservation {

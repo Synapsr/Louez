@@ -708,7 +708,11 @@
         "returned": "Itens devolvidos",
         "note_updated": "Notas atualizadas",
         "payment_added": "Pagamento adicionado",
-        "payment_updated": "Pagamento atualizado"
+        "payment_updated": "Pagamento atualizado",
+        "deposit_authorized": "Autorizacao de caucao criada",
+        "deposit_captured": "Caucao capturada",
+        "deposit_released": "Caucao liberada",
+        "deposit_failed": "Autorizacao falhou"
       },
       "activityBy": "por",
       "activitySystem": "Acao automatica",
@@ -771,7 +775,9 @@
           "rental": "Aluguel",
           "deposit": "Caucao",
           "depositReturn": "Devolucao de caucao",
-          "damage": "Danos"
+          "damage": "Danos",
+          "depositHold": "Autorizacao",
+          "depositCapture": "Caucao capturada"
         },
         "methods": {
           "cash": "Dinheiro",
@@ -785,8 +791,48 @@
           "pending": "Pendente",
           "completed": "Concluido",
           "failed": "Falhou",
-          "refunded": "Reembolsado"
+          "refunded": "Reembolsado",
+          "authorized": "Autorizado",
+          "cancelled": "Cancelado"
         }
+      },
+      "deposit": {
+        "title": "Caucao (Autorizacao)",
+        "description": "Gerencie a autorizacao de caucao para esta reserva",
+        "amount": "Valor da caucao",
+        "status": {
+          "pending": "Pendente",
+          "cardSaved": "Cartao salvo",
+          "authorized": "Autorizacao ativa",
+          "captured": "Caucao capturada",
+          "released": "Caucao liberada",
+          "failed": "Falhou"
+        },
+        "cardSavedDescription": "O cartao do cliente esta salvo. Voce pode criar a autorizacao na retirada.",
+        "releasedDescription": "A autorizacao foi liberada, nenhuma cobranca foi feita.",
+        "failedDescription": "A autorizacao falhou. O cliente pode precisar usar outro cartao.",
+        "expiresIn": "Expira {time}",
+        "expired": "Autorizacao expirada",
+        "createHold": "Criar autorizacao",
+        "release": "Liberar caucao",
+        "capture": "Capturar",
+        "holdCreated": "Autorizacao criada com sucesso",
+        "released": "Caucao liberada com sucesso",
+        "captured": "Caucao capturada com sucesso",
+        "captureTitle": "Capturar caucao",
+        "captureDescription": "Capture toda ou parte da caucao para cobrir danos ou perdas.",
+        "maxCapturable": "Valor maximo",
+        "captureAmount": "Valor a capturar",
+        "captureReason": "Motivo da captura",
+        "captureReasonPlaceholder": "Descreva os danos ou motivo da captura...",
+        "captureReasonHint": "Este motivo sera registrado no historico e visivel para o cliente.",
+        "confirmCapture": "Confirmar captura",
+        "releaseTitle": "Liberar caucao",
+        "releaseDescription": "Tem certeza que deseja liberar a caucao de {amount}? A autorizacao sera cancelada e nenhuma cobranca sera feita.",
+        "confirmRelease": "Liberar caucao",
+        "invalidCaptureAmount": "Valor invalido",
+        "captureExceedsDeposit": "O valor excede a caucao",
+        "reasonRequired": "Por favor, forneca um motivo"
       },
       "paymentStatus": {
         "paid": "Pago",
@@ -1014,6 +1060,34 @@
         "completed": "Concluida",
         "cancelled": "Cancelada",
         "rejected": "Rejeitada"
+      },
+      "export": {
+        "button": "Exportar calendario",
+        "title": "Exportar para calendario",
+        "description": "Sincronize suas reservas com seu calendario favorito copiando o link abaixo.",
+        "urlLabel": "Link do calendario ICS",
+        "loading": "Carregando...",
+        "instructions": {
+          "title": "Como adicionar este calendario?",
+          "google": {
+            "step1": "Abra o Google Agenda",
+            "step2": "Clique no + ao lado de \"Outras agendas\" e depois em \"A partir do URL\"",
+            "step3": "Cole o link e clique em \"Adicionar agenda\"",
+            "openLink": "Abrir Google Agenda"
+          },
+          "apple": {
+            "step1": "Abra o app Calendario no Mac ou iPhone",
+            "step2": "Arquivo > Nova Assinatura de Calendario (Mac) ou Adicionar Conta > Outra > Adicionar Calendario Assinado (iOS)",
+            "step3": "Cole o link e confirme"
+          },
+          "outlook": {
+            "step1": "Abra o Outlook Calendar",
+            "step2": "Clique em \"Adicionar calendario\" e depois em \"Assinar da web\"",
+            "step3": "Cole o link e de um nome ao calendario"
+          }
+        },
+        "regenerate": "Regenerar link",
+        "regenerateHint": "Regenerar o link invalidara links compartilhados anteriormente."
       }
     },
     "statistics": {
@@ -1518,6 +1592,41 @@
         "taxNumberDescription": "Seu numero de contribuinte (exibido nos contratos)",
         "depositNoTaxInfo": "As caucoes nao estao sujeitas ao IVA pois sao devolvidas ao cliente."
       },
+      "payments": {
+        "title": "Pagamentos",
+        "description": "Configure pagamentos online para sua loja",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Aceite pagamentos com cartao diretamente na sua loja",
+        "notConnectedDescription": "Conecte sua conta Stripe para aceitar pagamentos online. Voce sera redirecionado para o Stripe para concluir a configuracao.",
+        "activeDescription": "Sua conta Stripe esta conectada e operacional. Voce pode aceitar pagamentos online.",
+        "incompleteDescription": "Sua configuracao Stripe esta incompleta. Por favor, conclua a configuracao para aceitar pagamentos.",
+        "connectStripe": "Conectar Stripe",
+        "completeSetup": "Concluir configuracao",
+        "openDashboard": "Painel Stripe",
+        "sync": "Sincronizar",
+        "synced": "Status sincronizado",
+        "disconnect": "Desconectar",
+        "disconnected": "Conta Stripe desconectada",
+        "disconnectTitle": "Desconectar Stripe?",
+        "disconnectDescription": "Voce nao podera mais aceitar pagamentos online. Pagamentos existentes nao serao afetados.",
+        "cancel": "Cancelar",
+        "status": {
+          "active": "Ativo",
+          "incomplete": "Incompleto"
+        },
+        "callback": {
+          "successTitle": "Stripe conectado!",
+          "successDescription": "Sua conta Stripe esta agora conectada. Voce pode aceitar pagamentos online.",
+          "incompleteTitle": "Configuracao incompleta",
+          "incompleteDescription": "Algumas informacoes estao faltando. Voce pode concluir a configuracao mais tarde.",
+          "backToSettings": "Voltar para configuracoes"
+        },
+        "refresh": {
+          "title": "Link expirado",
+          "description": "O link de configuracao expirou. Por favor, tente novamente pelas configuracoes.",
+          "backToSettings": "Voltar para configuracoes"
+        }
+      },
       "subscriptionSettings": {
         "title": "Assinatura",
         "description": "Gerencie sua assinatura e faturamento",
@@ -1970,7 +2079,22 @@
         "total": "Total a pagar",
         "savingsBanner": "Voce economiza {amount} com o desconto de longa duracao"
       },
-      "depositInfo": "Uma retencao de {amount} sera feita no seu cartao como deposito de seguranca. Este valor nao sera cobrado e sera liberado na devolucao do equipamento."
+      "depositInfo": "Uma retencao de {amount} sera feita no seu cartao como deposito de seguranca. Este valor nao sera cobrado e sera liberado na devolucao do equipamento.",
+      "success": {
+        "confirmedTitle": "Pagamento confirmado!",
+        "confirmedDescription": "Seu pagamento foi aceito. Voce recebera um email de confirmacao.",
+        "pendingTitle": "Aguardando pagamento",
+        "pendingDescription": "Sua reserva foi criada e aguarda confirmacao de pagamento.",
+        "reservationNumber": "Reserva",
+        "dates": "Datas",
+        "total": "Total",
+        "depositSaved": "Cartao salvo para a caucao",
+        "depositSavedDescription": "Seu cartao foi salvo. Uma autorizacao de {amount} sera criada na retirada. Nenhum valor sera cobrado se tudo for devolvido em boas condicoes.",
+        "deposit": "Caucao",
+        "items": "Produtos reservados",
+        "emailSent": "Um email de confirmacao foi enviado para {email}",
+        "backToStore": "Voltar para a loja"
+      }
     },
     "confirmation": {
       "title": "Reserva confirmada!",
@@ -1986,7 +2110,8 @@
       "emailConfirmation": "Email de confirmacao",
       "confirmationSentTo": "Confirmacao enviada para",
       "subtotalLabel": "Subtotal",
-      "depositLabel": "Caucao",
+      "depositLabel": "Caucao (autorizacao)",
+      "depositAuthorizationInfo": "Seu cartao sera salvo. Uma autorizacao sera criada na retirada. Nenhum valor sera cobrado se tudo for devolvido em boas condicoes.",
       "totalLabel": "Total",
       "whatNext": "Proximos passos",
       "stepRequest1": "Estamos analisando sua solicitacao de reserva",
@@ -2543,6 +2668,18 @@
     "tryAgain": "Tentar novamente",
     "goBack": "Voltar",
     "goHome": "Voltar ao inicio",
-    "loading": "Carregando..."
+    "loading": "Carregando...",
+    "noStripeAccount": "Nenhuma conta Stripe conectada",
+    "stripe": {
+      "onboardingFailed": "Erro na configuracao do Stripe",
+      "verificationFailed": "Erro na verificacao da conta Stripe",
+      "syncFailed": "Erro na sincronizacao",
+      "dashboardLinkFailed": "Erro ao abrir o painel do Stripe",
+      "alreadyConnected": "Conta Stripe ja conectada",
+      "noChargeToRefund": "Nenhum pagamento Stripe para reembolsar",
+      "alreadyRefunded": "Este pagamento ja foi reembolsado",
+      "refundExceedsCharge": "O valor do reembolso excede o valor do pagamento",
+      "refundFailed": "Erro no reembolso"
+    }
   }
 }

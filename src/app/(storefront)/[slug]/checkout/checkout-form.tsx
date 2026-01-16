@@ -785,8 +785,19 @@ export function CheckoutForm({
                 </div>
               )}
 
-              {/* Deposit info - discrete, just informational */}
-              {getTotalDeposit() > 0 && (
+              {/* Deposit info - explains authorization hold */}
+              {getTotalDeposit() > 0 && reservationMode === 'payment' && (
+                <div className="border-t pt-3 mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{t('depositLabel')}</span>
+                    <span className="font-medium">{formatCurrency(getTotalDeposit(), currency)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('depositAuthorizationInfo')}
+                  </p>
+                </div>
+              )}
+              {getTotalDeposit() > 0 && reservationMode !== 'payment' && (
                 <div className="text-xs text-muted-foreground border-t pt-3 mt-2">
                   <p>{t('depositInfo', { amount: formatCurrency(getTotalDeposit(), currency) })}</p>
                 </div>
