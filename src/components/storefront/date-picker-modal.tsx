@@ -24,7 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
+import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
   isDateAvailable,

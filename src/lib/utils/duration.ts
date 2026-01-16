@@ -107,13 +107,41 @@ export function isDateInPast(date: Date | string): boolean {
 }
 
 /**
- * Get the minimum start date (today or tomorrow based on advance notice)
+ * Get the minimum start date (day only, for calendar date selection)
+ * This returns the first day that MAY have available time slots.
+ * Use getMinStartDateTime for the exact minimum time.
  */
-export function getMinStartDate(advanceNoticeHours: number = 24): Date {
-  const now = new Date()
-  const minDate = new Date(now.getTime() + advanceNoticeHours * 60 * 60 * 1000)
+export function getMinStartDate(advanceNoticeHours: number = 0): Date {
+  const minDateTime = getMinStartDateTime(advanceNoticeHours)
+  const minDate = new Date(minDateTime)
   minDate.setHours(0, 0, 0, 0)
   return minDate
+}
+
+/**
+ * Get the exact minimum start date/time based on advance notice
+ * This returns the precise moment when a reservation can start.
+ */
+export function getMinStartDateTime(advanceNoticeHours: number = 0): Date {
+  const now = new Date()
+  return new Date(now.getTime() + advanceNoticeHours * 60 * 60 * 1000)
+}
+
+/**
+ * Check if a specific time slot is available based on advance notice
+ * Returns true if the time slot is AFTER the minimum required time
+ */
+export function isTimeSlotAvailable(
+  date: Date,
+  timeSlot: string,
+  advanceNoticeHours: number = 0
+): boolean {
+  const [hours, minutes] = timeSlot.split(':').map(Number)
+  const slotDateTime = new Date(date)
+  slotDateTime.setHours(hours, minutes, 0, 0)
+
+  const minDateTime = getMinStartDateTime(advanceNoticeHours)
+  return slotDateTime >= minDateTime
 }
 
 /**

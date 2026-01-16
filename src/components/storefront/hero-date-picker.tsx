@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { getMinStartDate, type PricingMode } from '@/lib/utils/duration'
+import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@/types/store'
 import {
   isDateAvailable,
@@ -80,8 +80,10 @@ export function HeroDatePicker({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    return getAvailableTimeSlots(startDate, businessHours, 30)
-  }, [startDate, businessHours])
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    // Filter out time slots that are within the advance notice period
+    return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
+  }, [startDate, businessHours, advanceNotice])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
