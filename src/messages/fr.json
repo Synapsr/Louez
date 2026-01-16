@@ -1248,6 +1248,7 @@
       },
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",
+      "settingsSaved": "Paramètres enregistrés",
       "nav": {
         "storeDescription": "Informations et configuration",
         "appearanceDescription": "Logo, couleurs et thème",
@@ -1498,6 +1499,7 @@
           "deleteDescription": "Cette action est irréversible."
         },
         "updated": "Horaires mis à jour",
+        "saved": "Horaires enregistrés",
         "closureAdded": "Période de fermeture ajoutée",
         "closureUpdated": "Période de fermeture mise à jour",
         "closureDeleted": "Période de fermeture supprimée",
@@ -1588,7 +1590,8 @@
         "taxNumber": "Numéro de TVA",
         "taxNumberPlaceholder": "FR12345678901",
         "taxNumberDescription": "Votre numéro de TVA intracommunautaire (affiché sur les contrats)",
-        "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client."
+        "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client.",
+        "saved": "Paramètres de taxes enregistrés"
       },
       "payments": {
         "title": "Paiements",

@@ -1249,6 +1249,7 @@
       },
       "team": "Team",
       "saveChanges": "Salva modifiche",
+      "settingsSaved": "Impostazioni salvate",
       "nav": {
         "storeDescription": "Informazioni e configurazione",
         "appearanceDescription": "Logo, colori e tema",
@@ -1499,6 +1500,7 @@
           "deleteDescription": "Questa azione e irreversibile."
         },
         "updated": "Orari aggiornati",
+        "saved": "Orari salvati",
         "closureAdded": "Periodo di chiusura aggiunto",
         "closureUpdated": "Periodo di chiusura aggiornato",
         "closureDeleted": "Periodo di chiusura eliminato",
@@ -1589,7 +1591,8 @@
         "taxNumber": "Partita IVA",
         "taxNumberPlaceholder": "IT12345678901",
         "taxNumberDescription": "La tua partita IVA (mostrata sui contratti)",
-        "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente."
+        "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente.",
+        "saved": "Impostazioni imposte salvate"
       },
       "payments": {
         "title": "Pagamenti",

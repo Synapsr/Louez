@@ -8,6 +8,7 @@ import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Loader2, ExternalLink, Pencil } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -156,6 +157,7 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
         form.setError('root', { message: result.error })
         return
       }
+      toast.success(t('settingsSaved'))
       router.refresh()
     })
   }

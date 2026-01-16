@@ -1248,6 +1248,7 @@
       },
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",
+      "settingsSaved": "Instellingen opgeslagen",
       "nav": {
         "storeDescription": "Informatie en configuratie",
         "appearanceDescription": "Logo, kleuren en thema",
@@ -1498,6 +1499,7 @@
           "deleteDescription": "Deze actie is onomkeerbaar."
         },
         "updated": "Tijden bijgewerkt",
+        "saved": "Openingstijden opgeslagen",
         "closureAdded": "Sluitingsperiode toegevoegd",
         "closureUpdated": "Sluitingsperiode bijgewerkt",
         "closureDeleted": "Sluitingsperiode verwijderd",
@@ -1588,7 +1590,8 @@
         "taxNumber": "BTW-nummer",
         "taxNumberPlaceholder": "NL123456789B01",
         "taxNumberDescription": "Uw BTW-nummer (weergegeven op contracten)",
-        "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald."
+        "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald.",
+        "saved": "Belastinginstellingen opgeslagen"
       },
       "payments": {
         "title": "Betalingen",

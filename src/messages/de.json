@@ -1250,6 +1250,7 @@
       },
       "team": "Team",
       "saveChanges": "Änderungen speichern",
+      "settingsSaved": "Einstellungen gespeichert",
       "nav": {
         "storeDescription": "Informationen und Konfiguration",
         "appearanceDescription": "Logo, Farben und Design",
@@ -1500,6 +1501,7 @@
           "deleteDescription": "Diese Aktion ist unwiderruflich."
         },
         "updated": "Öffnungszeiten aktualisiert",
+        "saved": "Öffnungszeiten gespeichert",
         "closureAdded": "Schließungszeitraum hinzugefügt",
         "closureUpdated": "Schließungszeitraum aktualisiert",
         "closureDeleted": "Schließungszeitraum gelöscht",
@@ -1590,7 +1592,8 @@
         "taxNumber": "USt-IdNr.",
         "taxNumberPlaceholder": "DE123456789",
         "taxNumberDescription": "Ihre Umsatzsteuer-Identifikationsnummer (auf Verträgen angezeigt)",
-        "depositNoTaxInfo": "Kautionen unterliegen nicht der MwSt, da sie an den Kunden zurückgegeben werden."
+        "depositNoTaxInfo": "Kautionen unterliegen nicht der MwSt, da sie an den Kunden zurückgegeben werden.",
+        "saved": "Steuereinstellungen gespeichert"
       },
       "payments": {
         "title": "Zahlungen",

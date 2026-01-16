@@ -1252,6 +1252,7 @@
       },
       "team": "Equipo",
       "saveChanges": "Guardar cambios",
+      "settingsSaved": "Configuración guardada",
       "nav": {
         "storeDescription": "Informacion y configuracion",
         "appearanceDescription": "Logo, colores y tema",
@@ -1502,6 +1503,7 @@
           "deleteDescription": "Esta accion es irreversible."
         },
         "updated": "Horarios actualizados",
+        "saved": "Horarios guardados",
         "closureAdded": "Periodo de cierre agregado",
         "closureUpdated": "Periodo de cierre actualizado",
         "closureDeleted": "Periodo de cierre eliminado",
@@ -1592,7 +1594,8 @@
         "taxNumber": "Numero de IVA",
         "taxNumberPlaceholder": "ES12345678A",
         "taxNumberDescription": "Su numero de identificacion fiscal (mostrado en los contratos)",
-        "depositNoTaxInfo": "Los depositos no estan sujetos al IVA ya que se devuelven al cliente."
+        "depositNoTaxInfo": "Los depositos no estan sujetos al IVA ya que se devuelven al cliente.",
+        "saved": "Configuración de impuestos guardada"
       },
       "payments": {
         "title": "Pagos",

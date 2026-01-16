@@ -1248,6 +1248,7 @@
       },
       "team": "Team",
       "saveChanges": "Save changes",
+      "settingsSaved": "Settings saved",
       "nav": {
         "storeDescription": "Information and configuration",
         "appearanceDescription": "Logo, colors and theme",
@@ -1498,6 +1499,7 @@
           "deleteDescription": "This action is irreversible."
         },
         "updated": "Hours updated",
+        "saved": "Hours saved",
         "closureAdded": "Closure period added",
         "closureUpdated": "Closure period updated",
         "closureDeleted": "Closure period deleted",
@@ -1588,7 +1590,8 @@
         "taxNumber": "VAT number",
         "taxNumberPlaceholder": "GB123456789",
         "taxNumberDescription": "Your VAT number (displayed on contracts)",
-        "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer."
+        "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer.",
+        "saved": "Tax settings saved"
       },
       "payments": {
         "title": "Payments",

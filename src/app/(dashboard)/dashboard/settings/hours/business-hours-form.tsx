@@ -8,6 +8,7 @@ import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Loader2, Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -88,6 +89,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
         form.setError('root', { message: result.error })
         return
       }
+      toast.success(t('saved'))
       router.refresh()
     })
   }

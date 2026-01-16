@@ -7,6 +7,7 @@ import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Loader2, Info, Receipt } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -92,6 +93,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
         form.setError('root', { message: result.error })
         return
       }
+      toast.success(t('saved'))
       router.refresh()
     })
   }

@@ -1249,6 +1249,7 @@
       },
       "team": "Zespół",
       "saveChanges": "Zapisz zmiany",
+      "settingsSaved": "Ustawienia zapisane",
       "nav": {
         "storeDescription": "Informacje i konfiguracja",
         "appearanceDescription": "Logo, kolory i motyw",
@@ -1499,6 +1500,7 @@
           "deleteDescription": "Ta akcja jest nieodwracalna."
         },
         "updated": "Godziny zaktualizowane",
+        "saved": "Godziny zapisane",
         "closureAdded": "Okres zamknięcia dodany",
         "closureUpdated": "Okres zamknięcia zaktualizowany",
         "closureDeleted": "Okres zamknięcia usunięty",
@@ -1589,7 +1591,8 @@
         "taxNumber": "Numer VAT",
         "taxNumberPlaceholder": "PL1234567890",
         "taxNumberDescription": "Twój numer NIP (wyświetlany na umowach)",
-        "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi."
+        "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi.",
+        "saved": "Ustawienia podatków zapisane"
       },
       "payments": {
         "title": "Płatności",
