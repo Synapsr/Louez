@@ -60,3 +60,6 @@ tasks/
 specs/
 SPECIFICATIONS*.md
 CLAUDE.md
+
+# Internal scripts
+scripts/

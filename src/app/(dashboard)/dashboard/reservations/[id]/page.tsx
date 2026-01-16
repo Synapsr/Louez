@@ -252,14 +252,44 @@ export default async function ReservationDetailPage({
                     ))}
                   </TableBody>
                   <TableFooter>
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-right">
-                        {t('subtotalRental')}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
-                      </TableCell>
-                    </TableRow>
+                    {/* Tax display - if taxes are present */}
+                    {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
+                      <>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right text-muted-foreground">
+                            {t('subtotalExclTax')}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right text-muted-foreground">
+                            {t('taxLine', { rate: reservation.taxRate || '0' })}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">
+                            {parseFloat(reservation.taxAmount).toFixed(2)}{currencySymbol}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-right">
+                            {t('subtotalInclTax')}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={3} className="text-right">
+                          {t('subtotalRental')}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                        </TableCell>
+                      </TableRow>
+                    )}
                     {parseFloat(reservation.depositAmount) > 0 && (
                       <TableRow>
                         <TableCell colSpan={3} className="text-right text-muted-foreground">

@@ -19,6 +19,7 @@ import type {
   EmailSettings,
   ProductSnapshot,
   PricingBreakdown,
+  ProductTaxSettings,
 } from '@/types'
 
 // Helper for generating IDs
@@ -288,6 +289,9 @@ export const products = mysqlTable(
     // Video URL (YouTube)
     videoUrl: text('video_url'),
 
+    // Tax settings (product-specific)
+    taxSettings: json('tax_settings').$type<ProductTaxSettings>(),
+
     // Stock
     quantity: int('quantity').notNull().default(1),
 
@@ -425,6 +429,11 @@ export const reservations = mysqlTable(
     depositAmount: decimal('deposit_amount', { precision: 10, scale: 2 }).notNull(),
     totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
 
+    // Tax amounts
+    subtotalExclTax: decimal('subtotal_excl_tax', { precision: 10, scale: 2 }),
+    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }),
+    taxRate: decimal('tax_rate', { precision: 5, scale: 2 }),
+
     // Signature
     signedAt: timestamp('signed_at', { mode: 'date' }),
     signatureIp: varchar('signature_ip', { length: 50 }),
@@ -467,6 +476,12 @@ export const reservationItems = mysqlTable(
     unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
     depositPerUnit: decimal('deposit_per_unit', { precision: 10, scale: 2 }).notNull(),
     totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
+
+    // Tax fields per item
+    taxRate: decimal('tax_rate', { precision: 5, scale: 2 }),
+    taxAmount: decimal('tax_amount', { precision: 10, scale: 2 }),
+    priceExclTax: decimal('price_excl_tax', { precision: 10, scale: 2 }),
+    totalExclTax: decimal('total_excl_tax', { precision: 10, scale: 2 }),
 
     // Pricing breakdown for audit trail (tiered pricing details)
     pricingBreakdown: json('pricing_breakdown').$type<PricingBreakdown>(),

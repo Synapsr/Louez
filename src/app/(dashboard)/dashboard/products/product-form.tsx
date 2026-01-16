@@ -66,6 +66,8 @@ import type { PricingMode } from '@/types'
 
 import { productSchema, type ProductInput, type PricingTierInput } from '@/lib/validations/product'
 import { createProduct, updateProduct, createCategory } from './actions'
+import type { TaxSettings, ProductTaxSettings } from '@/types/store'
+import { Switch } from '@/components/ui/switch'
 
 interface Category {
   id: string
@@ -92,6 +94,7 @@ interface Product {
   status: 'draft' | 'active' | 'archived' | null
   images: string[] | null
   videoUrl: string | null
+  taxSettings?: ProductTaxSettings | null
 }
 
 interface ProductFormProps {
@@ -99,9 +102,10 @@ interface ProductFormProps {
   categories: Category[]
   pricingMode: 'day' | 'hour' | 'week'
   currency?: string
+  storeTaxSettings?: TaxSettings
 }
 
-export function ProductForm({ product, categories, pricingMode, currency = 'EUR' }: ProductFormProps) {
+export function ProductForm({ product, categories, pricingMode, currency = 'EUR', storeTaxSettings }: ProductFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
@@ -144,6 +148,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       images: product?.images ?? [],
       pricingMode: product?.pricingMode || null,
       pricingTiers: initialPricingTiers,
+      taxSettings: product?.taxSettings || { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
     },
   })
@@ -701,6 +706,67 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     )}
                   />
                 </div>
+
+                {/* Tax Settings - only show if taxes are enabled at store level */}
+                {storeTaxSettings?.enabled && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="taxSettings.inheritFromStore"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base">{t('inheritTax')}</FormLabel>
+                              <FormDescription>
+                                {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      {!watchedValues.taxSettings?.inheritFromStore && (
+                        <FormField
+                          control={form.control}
+                          name="taxSettings.customRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>{t('customTaxRate')}</FormLabel>
+                              <FormControl>
+                                <div className="relative w-32">
+                                  <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    placeholder="20"
+                                    className="pr-8"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                  />
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                    %
+                                  </span>
+                                </div>
+                              </FormControl>
+                              <FormDescription>{t('customTaxRateDescription')}</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
 
@@ -1101,6 +1167,67 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         )}
                       />
                     </div>
+
+                    {/* Tax Settings - only show if taxes are enabled at store level */}
+                    {storeTaxSettings?.enabled && (
+                      <>
+                        <Separator />
+                        <div className="space-y-4">
+                          <FormField
+                            control={form.control}
+                            name="taxSettings.inheritFromStore"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">{t('inheritTax')}</FormLabel>
+                                  <FormDescription>
+                                    {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
+                                  </FormDescription>
+                                </div>
+                                <FormControl>
+                                  <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+
+                          {!watchedValues.taxSettings?.inheritFromStore && (
+                            <FormField
+                              control={form.control}
+                              name="taxSettings.customRate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>{t('customTaxRate')}</FormLabel>
+                                  <FormControl>
+                                    <div className="relative w-32">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        step="0.01"
+                                        placeholder="20"
+                                        className="pr-8"
+                                        {...field}
+                                        value={field.value ?? ''}
+                                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                      />
+                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                        %
+                                      </span>
+                                    </div>
+                                  </FormControl>
+                                  <FormDescription>{t('customTaxRateDescription')}</FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 

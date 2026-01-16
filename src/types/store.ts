@@ -26,6 +26,27 @@ export interface BusinessHours {
   closurePeriods: ClosurePeriod[]
 }
 
+// ============================================================================
+// Tax Settings
+// ============================================================================
+
+export interface TaxSettings {
+  enabled: boolean                         // Activer les taxes
+  defaultRate: number                      // Taux par défaut (ex: 20 pour 20%)
+  displayMode: 'inclusive' | 'exclusive'   // TTC (inclusive) ou HT (exclusive)
+  taxLabel?: string                        // Label personnalisé (défaut: "TVA")
+  taxNumber?: string                       // N° TVA de la boutique
+}
+
+export interface ProductTaxSettings {
+  inheritFromStore: boolean                // true = utiliser taux boutique
+  customRate?: number                      // Taux personnalisé si false
+}
+
+// ============================================================================
+// Store Settings
+// ============================================================================
+
 export interface StoreSettings {
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
@@ -37,6 +58,7 @@ export interface StoreSettings {
   country?: string    // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'CH')
   timezone?: string   // IANA timezone (e.g., 'Europe/Paris')
   currency?: string   // ISO 4217 currency code (e.g., 'EUR', 'USD', 'GBP')
+  tax?: TaxSettings   // Configuration des taxes
 }
 
 export interface StoreTheme {
@@ -95,6 +117,11 @@ export interface PricingBreakdown {
   discountPercent: number | null
   discountAmount: number
   tierApplied: string | null  // Human-readable tier label
+  // Tax fields
+  taxRate: number | null
+  taxAmount: number | null
+  subtotalExclTax: number | null
+  subtotalInclTax: number | null
 }
 
 export interface PlanFeatures {

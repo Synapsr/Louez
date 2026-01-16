@@ -124,7 +124,8 @@ export function calculateUnitPrice(
  */
 export function generatePricingBreakdown(
   result: PriceCalculationResult,
-  pricingMode: PricingMode
+  pricingMode: PricingMode,
+  taxInfo?: { taxRate: number | null; taxAmount: number | null; subtotalExclTax: number | null; subtotalInclTax: number | null }
 ): PricingBreakdown {
   return {
     basePrice: result.basePrice,
@@ -136,6 +137,11 @@ export function generatePricingBreakdown(
     tierApplied: result.tierApplied
       ? `${result.tierApplied.minDuration}+ ${getPricingModeLabel(pricingMode, result.tierApplied.minDuration > 1)}`
       : null,
+    // Tax fields
+    taxRate: taxInfo?.taxRate ?? null,
+    taxAmount: taxInfo?.taxAmount ?? null,
+    subtotalExclTax: taxInfo?.subtotalExclTax ?? null,
+    subtotalInclTax: taxInfo?.subtotalInclTax ?? null,
   }
 }
 

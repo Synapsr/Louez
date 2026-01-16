@@ -10,6 +10,12 @@ export const pricingTierSchema = z.object({
     .max(99, 'La réduction ne peut pas dépasser 99%'),
 })
 
+// Tax settings schema for product
+export const productTaxSettingsSchema = z.object({
+  inheritFromStore: z.boolean(),
+  customRate: z.number().min(0).max(100).optional(),
+})
+
 export type PricingTierInput = z.infer<typeof pricingTierSchema>
 
 // Schema factory that accepts translation function
@@ -35,6 +41,7 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
     images: z.array(z.string()).optional(),
     pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
     pricingTiers: z.array(pricingTierSchema).optional(),
+    taxSettings: productTaxSettingsSchema.optional(),
     videoUrl: z
       .string()
       .regex(youtubeUrlRegex, t('invalidYoutubeUrl'))
@@ -70,6 +77,7 @@ export const productSchema = z.object({
   images: z.array(z.string()).optional(),
   pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
   pricingTiers: z.array(pricingTierSchema).optional(),
+  taxSettings: productTaxSettingsSchema.optional(),
   videoUrl: z
     .string()
     .regex(youtubeUrlRegex, 'validation.invalidYoutubeUrl')

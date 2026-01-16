@@ -54,6 +54,7 @@ export async function createProduct(data: ProductInput) {
     status: validated.data.status,
     images: validated.data.images || [],
     videoUrl: validated.data.videoUrl || null,
+    taxSettings: validated.data.taxSettings || null,
   })
 
   // Create pricing tiers if provided
@@ -121,6 +122,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       status: validated.data.status,
       images: validated.data.images || [],
       videoUrl: validated.data.videoUrl || null,
+      taxSettings: validated.data.taxSettings || null,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))
@@ -227,6 +229,7 @@ export async function duplicateProduct(productId: string) {
     status: 'draft',
     images: product.images,
     videoUrl: product.videoUrl,
+    taxSettings: product.taxSettings,
   })
 
   // Duplicate pricing tiers if any

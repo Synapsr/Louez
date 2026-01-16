@@ -39,6 +39,7 @@ export interface ContractTranslations {
   }
   totals: {
     subtotalHT: string
+    tax: string
     totalTTC: string
     deposit: string
   }
@@ -138,6 +139,10 @@ interface Reservation {
   subtotalAmount: string
   depositAmount: string
   totalAmount: string
+  // Tax fields
+  subtotalExclTax?: string | null
+  taxAmount?: string | null
+  taxRate?: string | null
   signedAt?: Date | null
   signatureIp?: string | null
   createdAt: Date
@@ -373,9 +378,20 @@ export function ContractDocument({
               <View style={styles.totalRow}>
                 <Text style={styles.totalLabel}>{t.totals.subtotalHT}</Text>
                 <Text style={styles.totalValue}>
-                  {formatCurrency(reservation.subtotalAmount)}
+                  {formatCurrency(reservation.subtotalExclTax || reservation.subtotalAmount)}
                 </Text>
               </View>
+              {/* Tax line - only show if tax amount is present and > 0 */}
+              {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>
+                    {t.totals.tax.replace('{rate}', reservation.taxRate || '0')}
+                  </Text>
+                  <Text style={styles.totalValue}>
+                    {formatCurrency(reservation.taxAmount)}
+                  </Text>
+                </View>
+              )}
               <View style={[styles.totalRow, styles.totalRowMain]}>
                 <Text style={styles.totalLabelMain}>{t.totals.totalTTC}</Text>
                 <Text style={styles.totalValueMain}>

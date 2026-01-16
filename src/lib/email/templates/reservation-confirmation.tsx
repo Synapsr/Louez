@@ -39,6 +39,11 @@ interface ReservationConfirmationEmailProps {
   customContent?: EmailCustomContent
   locale?: EmailLocale
   currency?: string
+  // Tax info
+  taxEnabled?: boolean
+  taxRate?: number | null
+  subtotalExclTax?: number | null
+  taxAmount?: number | null
 }
 
 export function ReservationConfirmationEmail({
@@ -60,6 +65,10 @@ export function ReservationConfirmationEmail({
   customContent,
   locale = 'fr',
   currency = 'EUR',
+  taxEnabled = false,
+  taxRate,
+  subtotalExclTax,
+  taxAmount,
 }: ReservationConfirmationEmailProps) {
   const t = getEmailTranslations(locale)
   const messages = t.confirmReservation
@@ -149,14 +158,44 @@ export function ReservationConfirmationEmail({
           </Row>
         ))}
         <Hr style={hr} />
-        <Row style={tableRow}>
-          <Column>
-            <Text style={paragraph}>{tc.subtotal}</Text>
-          </Column>
-          <Column align="right">
-            <Text style={paragraph}>{formatCurrency(subtotal)}</Text>
-          </Column>
-        </Row>
+        {/* Tax display */}
+        {taxEnabled && taxAmount != null && taxAmount > 0 && subtotalExclTax != null ? (
+          <>
+            <Row style={tableRow}>
+              <Column>
+                <Text style={paragraph}>{tc.subtotalExclTax}</Text>
+              </Column>
+              <Column align="right">
+                <Text style={paragraph}>{formatCurrency(subtotalExclTax)}</Text>
+              </Column>
+            </Row>
+            <Row style={tableRow}>
+              <Column>
+                <Text style={paragraph}>{tc.taxAmount.replace('{rate}', String(taxRate ?? 0))}</Text>
+              </Column>
+              <Column align="right">
+                <Text style={paragraph}>{formatCurrency(taxAmount)}</Text>
+              </Column>
+            </Row>
+            <Row style={tableRow}>
+              <Column>
+                <Text style={paragraph}>{tc.subtotalInclTax}</Text>
+              </Column>
+              <Column align="right">
+                <Text style={paragraph}>{formatCurrency(subtotal)}</Text>
+              </Column>
+            </Row>
+          </>
+        ) : (
+          <Row style={tableRow}>
+            <Column>
+              <Text style={paragraph}>{tc.subtotal}</Text>
+            </Column>
+            <Column align="right">
+              <Text style={paragraph}>{formatCurrency(subtotal)}</Text>
+            </Column>
+          </Row>
+        )}
         {deposit > 0 && (
           <Row style={tableRow}>
             <Column>

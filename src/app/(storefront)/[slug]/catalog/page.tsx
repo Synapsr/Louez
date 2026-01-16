@@ -148,6 +148,7 @@ export default async function CatalogPage({
         status: products.status,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
+        taxSettings: products.taxSettings,
         categoryName: categories.name,
         categoryStoreId: categories.storeId,
         categoryDescription: categories.description,
@@ -200,6 +201,7 @@ export default async function CatalogPage({
         status: row.status,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        taxSettings: row.taxSettings,
         category: row.categoryId && row.categoryName
           ? {
               id: row.categoryId,

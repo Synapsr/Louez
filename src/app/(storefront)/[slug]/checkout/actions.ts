@@ -5,11 +5,13 @@ import { customers, reservations, reservationItems, products, stores, storeMembe
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
+import type { TaxSettings, ProductTaxSettings } from '@/types/store'
 import {
   sendRequestReceivedEmail,
   sendNewRequestLandlordEmail,
 } from '@/lib/email/send'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
+import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
 
 interface ReservationItem {
   productId: string
@@ -177,6 +179,30 @@ export async function createReservation(input: CreateReservationInput) {
     const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())))
     const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())))
 
+    // Get tax settings from store
+    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined
+    const taxEnabled = storeTaxSettings?.enabled ?? false
+    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0
+    const displayMode = storeTaxSettings?.displayMode ?? 'inclusive'
+
+    // Calculate tax amounts for the reservation
+    let subtotalExclTax: number | null = null
+    let taxAmount: number | null = null
+    let taxRate: number | null = null
+
+    if (taxEnabled && storeTaxRate > 0) {
+      taxRate = storeTaxRate
+      if (displayMode === 'inclusive') {
+        // Prices are TTC, extract HT
+        subtotalExclTax = extractExclusiveFromInclusive(input.subtotalAmount, storeTaxRate)
+        taxAmount = input.subtotalAmount - subtotalExclTax
+      } else {
+        // Prices are HT, calculate TVA
+        subtotalExclTax = input.subtotalAmount
+        taxAmount = calculateTaxFromExclusive(input.subtotalAmount, storeTaxRate)
+      }
+    }
+
     // Create reservation
     const reservationId = nanoid()
     const reservationNumber = await generateUniqueReservationNumber(input.storeId)
@@ -192,14 +218,52 @@ export async function createReservation(input: CreateReservationInput) {
       subtotalAmount: input.subtotalAmount.toFixed(2),
       depositAmount: input.depositAmount.toFixed(2),
       totalAmount: input.totalAmount.toFixed(2),
+      subtotalExclTax: subtotalExclTax?.toFixed(2) ?? null,
+      taxAmount: taxAmount?.toFixed(2) ?? null,
+      taxRate: taxRate?.toFixed(2) ?? null,
       customerNotes: input.customerNotes || null,
       source: 'online',
     })
 
-    // Create reservation items
+    // Create reservation items with tax calculations
     for (const item of input.items) {
       const duration = calculateDuration(item.startDate, item.endDate)
       const totalPrice = item.unitPrice * item.quantity * duration
+
+      // Get product tax settings
+      const product = await db.query.products.findFirst({
+        where: eq(products.id, item.productId),
+      })
+      const productTaxSettings = product?.taxSettings as ProductTaxSettings | undefined
+
+      // Calculate item-level tax
+      let itemTaxRate: number | null = null
+      let itemTaxAmount: number | null = null
+      let itemPriceExclTax: number | null = null
+      let itemTotalExclTax: number | null = null
+
+      if (taxEnabled) {
+        // Get effective tax rate for this product
+        const effectiveRate = getEffectiveTaxRate(
+          { enabled: true, rate: storeTaxRate, displayMode },
+          productTaxSettings
+        )
+
+        if (effectiveRate !== null && effectiveRate > 0) {
+          itemTaxRate = effectiveRate
+          if (displayMode === 'inclusive') {
+            // Prices are TTC, extract HT
+            itemPriceExclTax = extractExclusiveFromInclusive(item.unitPrice, effectiveRate)
+            itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate)
+            itemTaxAmount = totalPrice - itemTotalExclTax
+          } else {
+            // Prices are HT, calculate TVA
+            itemPriceExclTax = item.unitPrice
+            itemTotalExclTax = totalPrice
+            itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate)
+          }
+        }
+      }
 
       await db.insert(reservationItems).values({
         reservationId,
@@ -209,6 +273,10 @@ export async function createReservation(input: CreateReservationInput) {
         depositPerUnit: item.depositPerUnit.toFixed(2),
         totalPrice: totalPrice.toFixed(2),
         productSnapshot: item.productSnapshot,
+        taxRate: itemTaxRate?.toFixed(2) ?? null,
+        taxAmount: itemTaxAmount?.toFixed(2) ?? null,
+        priceExclTax: itemPriceExclTax?.toFixed(2) ?? null,
+        totalExclTax: itemTotalExclTax?.toFixed(2) ?? null,
       })
     }
 
@@ -248,6 +316,11 @@ export async function createReservation(input: CreateReservationInput) {
         startDate,
         endDate,
         totalAmount: input.totalAmount,
+        // Tax info for emails
+        taxEnabled,
+        taxRate,
+        subtotalExclTax,
+        taxAmount,
       }
 
       // Send email to customer (request received) - use customer's locale

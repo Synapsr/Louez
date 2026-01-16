@@ -51,6 +51,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
         product={product}
         categories={categoriesList}
         pricingMode={store.settings?.pricingMode || 'day'}
+        storeTaxSettings={store.settings?.tax}
       />
     </div>
   )

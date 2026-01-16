@@ -29,7 +29,11 @@ export default async function NewProductPage() {
         </p>
       </div>
 
-      <ProductForm categories={categoriesList} pricingMode={store.settings?.pricingMode || 'day'} />
+      <ProductForm
+        categories={categoriesList}
+        pricingMode={store.settings?.pricingMode || 'day'}
+        storeTaxSettings={store.settings?.tax}
+      />
     </div>
   )
 }

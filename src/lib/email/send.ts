@@ -165,6 +165,11 @@ export async function sendReservationConfirmationEmail({
     subtotalAmount: number
     depositAmount: number
     totalAmount: number
+    // Tax info
+    taxEnabled?: boolean
+    taxRate?: number | null
+    subtotalExclTax?: number | null
+    taxAmount?: number | null
   }
   items: ReservationItem[]
   reservationUrl: string
@@ -196,6 +201,10 @@ export async function sendReservationConfirmationEmail({
       customContent,
       locale,
       currency: store.settings?.currency || 'EUR',
+      taxEnabled: reservation.taxEnabled,
+      taxRate: reservation.taxRate,
+      subtotalExclTax: reservation.subtotalExclTax,
+      taxAmount: reservation.taxAmount,
     })
   )
 
