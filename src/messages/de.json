@@ -1650,7 +1650,7 @@
       "viewDetails": "Produkt ansehen",
       "addToCart": "In den Warenkorb",
       "addedToCart": "{name} zum Warenkorb hinzugefügt",
-      "viewCart": "Warenkorb ansehen",
+      "goToCheckout": "Zur Kasse",
       "selectDates": "Buchen",
       "selectQuantity": "Menge",
       "quantity": "Menge",
@@ -1841,7 +1841,6 @@
     },
     "checkout": {
       "title": "Reservierung abschließen",
-      "backToCart": "Zurück zum Warenkorb",
       "paymentMode": "Vervollständigen Sie Ihre Informationen, um mit der Zahlung fortzufahren",
       "requestMode": "Vervollständigen Sie Ihre Informationen, um Ihre Reservierungsanfrage einzureichen",
       "customerInfo": "Ihre Informationen",

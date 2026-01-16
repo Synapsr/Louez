@@ -118,8 +118,8 @@ export function AddToCartForm({
 
     toast.success(t('addedToCart', { name: productName }), {
       action: {
-        label: t('viewCart'),
-        onClick: () => router.push(getUrl('/cart')),
+        label: t('goToCheckout'),
+        onClick: () => router.push(getUrl('/checkout')),
       },
     })
   }

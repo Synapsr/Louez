@@ -1649,7 +1649,7 @@
       "viewDetails": "Zobacz produkt",
       "addToCart": "Dodaj do koszyka",
       "addedToCart": "{name} dodano do koszyka",
-      "viewCart": "Zobacz koszyk",
+      "goToCheckout": "Do kasy",
       "selectDates": "Zarezerwuj",
       "selectQuantity": "Ilość",
       "quantity": "Ilość",
@@ -1840,8 +1840,7 @@
     },
     "checkout": {
       "title": "Dokończ rezerwację",
-      "backToCart": "Powrót do koszyka",
-      "paymentMode": "Uzupełnij dane, aby przejść do płatności",
+            "paymentMode": "Uzupełnij dane, aby przejść do płatności",
       "requestMode": "Uzupełnij dane, aby wysłać żądanie rezerwacji",
       "customerInfo": "Twoje dane",
       "summary": "Twoje zamówienie",

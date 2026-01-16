@@ -1648,7 +1648,7 @@
       "viewDetails": "Product bekijken",
       "addToCart": "Toevoegen aan winkelwagen",
       "addedToCart": "{name} toegevoegd aan winkelwagen",
-      "viewCart": "Winkelwagen bekijken",
+      "goToCheckout": "Afrekenen",
       "selectDates": "Boeken",
       "selectQuantity": "Aantal",
       "quantity": "Aantal",
@@ -1839,8 +1839,7 @@
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
-      "backToCart": "Terug naar winkelwagen",
-      "paymentMode": "Vul uw gegevens in om door te gaan naar betaling",
+            "paymentMode": "Vul uw gegevens in om door te gaan naar betaling",
       "requestMode": "Vul uw gegevens in om uw reserveringsaanvraag in te dienen",
       "customerInfo": "Uw gegevens",
       "summary": "Uw bestelling",

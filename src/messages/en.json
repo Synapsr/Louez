@@ -1648,7 +1648,7 @@
       "viewDetails": "View product",
       "addToCart": "Add to cart",
       "addedToCart": "{name} added to cart",
-      "viewCart": "View cart",
+      "goToCheckout": "Checkout",
       "selectDates": "Book",
       "selectQuantity": "Quantity",
       "quantity": "Quantity",
@@ -1839,7 +1839,6 @@
     },
     "checkout": {
       "title": "Complete my reservation",
-      "backToCart": "Back to cart",
       "paymentMode": "Complete your information to proceed with payment",
       "requestMode": "Complete your information to submit your reservation request",
       "customerInfo": "Your information",

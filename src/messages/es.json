@@ -1652,7 +1652,7 @@
       "viewDetails": "Ver producto",
       "addToCart": "Agregar al carrito",
       "addedToCart": "{name} agregado al carrito",
-      "viewCart": "Ver carrito",
+      "goToCheckout": "Finalizar",
       "selectDates": "Reservar",
       "selectQuantity": "Cantidad",
       "quantity": "Cantidad",
@@ -1843,7 +1843,6 @@
     },
     "checkout": {
       "title": "Completar mi reserva",
-      "backToCart": "Volver al carrito",
       "paymentMode": "Complete su informacion para proceder al pago",
       "requestMode": "Complete su informacion para enviar su solicitud de reserva",
       "customerInfo": "Su informacion",

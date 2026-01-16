@@ -1649,7 +1649,7 @@
       "viewDetails": "Vedi prodotto",
       "addToCart": "Aggiungi al carrello",
       "addedToCart": "{name} aggiunto al carrello",
-      "viewCart": "Vedi carrello",
+      "goToCheckout": "Finalizza",
       "selectDates": "Prenota",
       "selectQuantity": "Quantita",
       "quantity": "Quantita",
@@ -1840,8 +1840,7 @@
     },
     "checkout": {
       "title": "Completa la mia prenotazione",
-      "backToCart": "Torna al carrello",
-      "paymentMode": "Completa le tue informazioni per procedere al pagamento",
+            "paymentMode": "Completa le tue informazioni per procedere al pagamento",
       "requestMode": "Completa le tue informazioni per inviare la tua richiesta di prenotazione",
       "customerInfo": "Le tue informazioni",
       "summary": "Il tuo ordine",

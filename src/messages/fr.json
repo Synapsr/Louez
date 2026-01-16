@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Informations personnelles",
         "personalInfoDescription": "Les informations de base du client",
+        "businessCustomer": "Client professionnel",
+        "businessCustomerDescription": "Cochez si ce client représente une entreprise",
+        "companyName": "Nom de l'entreprise",
+        "companyNamePlaceholder": "ACME SAS",
         "firstName": "Prénom *",
         "firstNamePlaceholder": "Jean",
         "lastName": "Nom *",
@@ -1839,7 +1843,6 @@
     },
     "checkout": {
       "title": "Finaliser ma réservation",
-      "backToCart": "Retour au panier",
       "paymentMode": "Complétez vos informations pour procéder au paiement",
       "requestMode": "Complétez vos informations pour soumettre votre demande de réservation",
       "customerInfo": "Vos informations",

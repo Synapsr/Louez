@@ -1,14 +1,12 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { CheckoutForm } from './checkout-form'
+import { BackButton } from './back-button'
 import { generateStoreMetadata } from '@/lib/seo'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 
@@ -65,12 +63,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   return (
     <div className="container mx-auto px-4 py-6 md:py-8">
       {/* Back button */}
-      <Button variant="ghost" size="sm" asChild className="mb-6">
-        <Link href="/cart">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          {t('backToCart')}
-        </Link>
-      </Button>
+      <BackButton />
 
       {/* Title */}
       <div className="text-center mb-8">
