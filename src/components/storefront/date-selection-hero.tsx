@@ -31,6 +31,7 @@ import {
   isDateAvailable,
   getAvailableTimeSlots,
   generateTimeSlots,
+  getNextAvailableDate,
 } from '@/lib/utils/business-hours'
 
 interface DateSelectionHeroProps {
@@ -165,7 +166,9 @@ export function DateSelectionHero({
 
     // Auto-set end date if not set or before start
     if (!endDate || date >= endDate) {
-      setEndDate(addDays(date, 1))
+      const nextDay = addDays(date, 1)
+      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+      setEndDate(nextAvailable ?? nextDay)
     }
 
     // Auto-progress to start time with lock

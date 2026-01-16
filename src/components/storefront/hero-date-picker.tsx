@@ -24,6 +24,7 @@ import {
   isDateAvailable,
   getAvailableTimeSlots,
   generateTimeSlots,
+  getNextAvailableDate,
 } from '@/lib/utils/business-hours'
 
 interface HeroDatePickerProps {
@@ -127,7 +128,9 @@ export function HeroDatePicker({
     setStartDateOpen(false)
 
     if (!endDate || date >= endDate) {
-      setEndDate(addDays(date, 1))
+      const nextDay = addDays(date, 1)
+      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+      setEndDate(nextAvailable ?? nextDay)
     }
 
     isTransitioningRef.current = true

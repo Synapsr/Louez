@@ -30,6 +30,7 @@ import {
   isDateAvailable,
   getAvailableTimeSlots,
   generateTimeSlots,
+  getNextAvailableDate,
 } from '@/lib/utils/business-hours'
 
 interface DatePickerModalProps {
@@ -143,7 +144,9 @@ export function DatePickerModal({
     setStartDate(date)
 
     if (!endDate || date >= endDate) {
-      setEndDate(addDays(date, 1))
+      const nextDay = addDays(date, 1)
+      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+      setEndDate(nextAvailable ?? nextDay)
     }
   }
 
