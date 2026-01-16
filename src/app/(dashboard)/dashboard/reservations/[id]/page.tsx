@@ -42,6 +42,7 @@ import { ReservationNotes } from './reservation-notes'
 import { ActivityTimeline } from './activity-timeline'
 import { PaymentSummary } from './payment-summary'
 import { DepositSection } from './deposit-section'
+import { OnlinePaymentStatus } from './online-payment-status'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -333,6 +334,15 @@ export default async function ReservationDetailPage({
             endDate={endDate}
             isDepositCollected={isDepositFullyCollected}
             isRentalPaid={isRentalFullyPaid}
+          />
+
+          {/* Online Payment Status - Shows Stripe payment details */}
+          <OnlinePaymentStatus
+            reservationId={reservation.id}
+            payments={reservation.payments}
+            stripePaymentMethodId={reservation.stripePaymentMethodId}
+            depositStatus={reservation.depositStatus}
+            currency={currency}
           />
 
           {/* Payment Summary */}

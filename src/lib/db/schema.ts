@@ -611,6 +611,7 @@ export const activityType = mysqlEnum('activity_type', [
   'note_updated',
   'payment_added',
   'payment_updated',
+  'payment_received', // Online payment received via Stripe
   'deposit_authorized', // Authorization hold created
   'deposit_captured', // Deposit captured (damage/loss)
   'deposit_released', // Authorization released

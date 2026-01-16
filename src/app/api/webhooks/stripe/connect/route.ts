@@ -209,16 +209,32 @@ async function handleCheckoutCompleted(
     })
     .where(eq(reservations.id, reservationId))
 
-  // Log activity
+  // Log payment received activity (distinct from confirmation)
+  await db.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId,
+    activityType: 'payment_received',
+    description: null, // Will be displayed via i18n
+    metadata: {
+      paymentIntentId,
+      chargeId,
+      checkoutSessionId: session.id,
+      amount: totalAmount,
+      currency,
+      method: 'stripe',
+      type: 'rental',
+    },
+    createdAt: new Date(),
+  })
+
+  // Log confirmation activity
   await db.insert(reservationActivity).values({
     id: nanoid(),
     reservationId,
     activityType: 'confirmed',
-    description: `Rental payment of ${totalAmount.toFixed(2)} ${currency} received via Stripe`,
+    description: null, // Will be displayed via i18n
     metadata: {
-      paymentIntentId,
-      checkoutSessionId: session.id,
-      amount: totalAmount,
+      source: 'online_payment',
       depositAmount,
       depositStatus: newDepositStatus,
       cardSaved: !!stripePaymentMethodId,

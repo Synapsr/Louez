@@ -105,7 +105,7 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   card: <CreditCard className="h-3.5 w-3.5" />,
   transfer: <Building2 className="h-3.5 w-3.5" />,
   check: <Receipt className="h-3.5 w-3.5" />,
-  stripe: <CreditCard className="h-3.5 w-3.5" />,
+  stripe: <CreditCard className="h-3.5 w-3.5 text-[#635BFF]" />,
   other: <Wallet className="h-3.5 w-3.5" />,
 }
 
@@ -546,17 +546,57 @@ export function PaymentSummary({
                 {payments.map((payment) => (
                   <div
                     key={payment.id}
-                    className="flex items-center justify-between p-2 rounded-lg border bg-card text-xs"
+                    className={cn(
+                      'flex items-center justify-between p-2 rounded-lg border bg-card text-xs',
+                      payment.method === 'stripe' && 'border-l-2 border-l-[#635BFF]'
+                    )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted">
+                      <div className={cn(
+                        'flex items-center justify-center w-6 h-6 rounded-full',
+                        payment.method === 'stripe' ? 'bg-[#635BFF]/10' : 'bg-muted'
+                      )}>
                         {METHOD_ICONS[payment.method]}
                       </div>
                       <div>
-                        <span className="font-medium">{getTypeLabel(payment.type)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{getTypeLabel(payment.type)}</span>
+                          {payment.method === 'stripe' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-[#635BFF]/10 text-[#635BFF] border-0"
+                            >
+                              Stripe
+                            </Badge>
+                          )}
+                          {payment.status === 'authorized' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0"
+                            >
+                              {t('payment.statusAuthorized')}
+                            </Badge>
+                          )}
+                          {payment.status === 'refunded' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
+                            >
+                              {t('payment.statusRefunded')}
+                            </Badge>
+                          )}
+                          {payment.status === 'cancelled' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
+                            >
+                              {t('payment.statusCancelled')}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-[10px] text-muted-foreground">
                           {payment.paidAt
-                            ? format(new Date(payment.paidAt), 'dd/MM/yy', { locale: fr })
+                            ? format(new Date(payment.paidAt), 'dd/MM/yy HH:mm', { locale: fr })
                             : '-'}
                         </p>
                       </div>
@@ -565,7 +605,9 @@ export function PaymentSummary({
                       <span className={cn(
                         'font-mono font-medium',
                         payment.type === 'deposit_return' && 'text-emerald-600 dark:text-emerald-400',
-                        payment.type === 'damage' && 'text-red-600 dark:text-red-400'
+                        payment.type === 'damage' && 'text-red-600 dark:text-red-400',
+                        payment.type === 'deposit_capture' && 'text-red-600 dark:text-red-400',
+                        payment.status === 'cancelled' && 'text-muted-foreground line-through'
                       )}>
                         {payment.type === 'deposit_return' ? '-' : '+'}
                         {parseFloat(payment.amount).toFixed(2)}{currencySymbol}

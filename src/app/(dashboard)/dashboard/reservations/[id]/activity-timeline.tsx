@@ -19,13 +19,14 @@ import {
   ShieldCheck,
   ShieldX,
   Banknote,
+  Wifi,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
 
 interface Activity {
   id: string
@@ -102,6 +103,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
     icon: <CreditCard className="h-4 w-4" />,
     bgColor: 'bg-amber-100 dark:bg-amber-950/50',
     iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  payment_received: {
+    icon: <Wifi className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
   },
   deposit_authorized: {
     icon: <ShieldCheck className="h-4 w-4" />,
@@ -205,6 +211,7 @@ export async function ActivityTimeline({
                     user={activity.user}
                     metadata={activity.metadata}
                     source={isCreationEvent ? activitySource : undefined}
+                    activityType={activity.activityType}
                   />
                 )
               })
@@ -236,9 +243,16 @@ async function ActivityItem({
   subtitle,
   timestamp,
   user,
+  metadata,
   source,
-}: ActivityItemProps) {
+  activityType,
+}: ActivityItemProps & { activityType?: ActivityType }) {
   const t = await getTranslations('dashboard.reservations')
+
+  // Extract payment amount from metadata for payment-related activities
+  const paymentAmount = metadata?.amount as number | undefined
+  const paymentCurrency = (metadata?.currency as string) || 'EUR'
+  const isStripePayment = metadata?.method === 'stripe'
 
   return (
     <div className="relative flex gap-3 pl-1">
@@ -277,6 +291,24 @@ async function ActivityItem({
                 )}
               </Badge>
             )}
+            {/* Stripe badge for payment_received */}
+            {activityType === 'payment_received' && isStripePayment && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-[#635BFF]/10 text-[#635BFF] border-0"
+              >
+                Stripe
+              </Badge>
+            )}
+            {/* Payment amount badge */}
+            {paymentAmount && activityType === 'payment_received' && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 font-mono"
+              >
+                +{paymentAmount.toFixed(2)} {paymentCurrency}
+              </Badge>
+            )}
           </div>
           <time className="text-xs text-muted-foreground">
             {format(timestamp, 'dd MMM yyyy HH:mm', { locale: fr })}
@@ -298,8 +330,8 @@ async function ActivityItem({
           </div>
         )}
 
-        {/* Show "by customer" for online reservations without user */}
-        {!user && source === 'online' && (
+        {/* Show "by customer" for online reservations/payments */}
+        {!user && (source === 'online' || activityType === 'payment_received') && (
           <div className="flex items-center gap-2 mt-1">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
               <User className="h-2.5 w-2.5 text-muted-foreground" />
@@ -311,7 +343,7 @@ async function ActivityItem({
         )}
 
         {/* Show "system" for other cases without user */}
-        {!user && source !== 'online' && !source && (
+        {!user && source !== 'online' && !source && activityType !== 'payment_received' && (
           <div className="flex items-center gap-2 mt-1">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
               <User className="h-2.5 w-2.5 text-muted-foreground" />

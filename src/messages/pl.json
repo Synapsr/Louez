@@ -709,6 +709,7 @@
         "note_updated": "Notatki zaktualizowane",
         "payment_added": "Płatność dodana",
         "payment_updated": "Płatność zaktualizowana",
+        "payment_received": "Otrzymano płatność online",
         "deposit_authorized": "Autoryzacja kaucji utworzona",
         "deposit_captured": "Kaucja pobrana",
         "deposit_released": "Kaucja zwolniona",
@@ -794,21 +795,40 @@
           "refunded": "Zwrócona",
           "authorized": "Autoryzowana",
           "cancelled": "Anulowana"
-        }
+        },
+        "statusAuthorized": "Autoryzowana",
+        "statusRefunded": "Zwrócona",
+        "statusCancelled": "Anulowana"
+      },
+      "onlinePayment": {
+        "title": "Płatność online",
+        "received": "Otrzymana",
+        "rentalPayment": "Płatność za wynajem",
+        "paidOn": "Zapłacono",
+        "cardSavedForDeposit": "Karta zapisana dla kaucji",
+        "cardNotSaved": "Nie udało się zapisać karty. Klient będzie musiał podać inną metodę płatności dla kaucji.",
+        "transactionId": "Transakcja"
       },
       "deposit": {
         "title": "Kaucja (Autoryzacja)",
         "description": "Zarządzaj autoryzacją kaucji dla tej rezerwacji",
         "amount": "Kwota kaucji",
         "status": {
-          "pending": "Oczekująca",
-          "cardSaved": "Karta zapisana",
-          "authorized": "Autoryzacja aktywna",
-          "captured": "Kaucja pobrana",
-          "released": "Kaucja zwolniona",
-          "failed": "Nieudana"
+          "none": "Niewymagana",
+          "pending": "Karta niezapisana",
+          "cardSaved": "Gotowa",
+          "authorized": "Blokada aktywna",
+          "captured": "Pobrana",
+          "released": "Zwolniona",
+          "failed": "Niepowodzenie"
         },
-        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć autoryzację przy odbiorze.",
+        "pendingTitle": "Karta niezapisana",
+        "pendingDescription": "Płatność została otrzymana, ale karta nie mogła zostać zapisana dla kaucji. Będziesz musiał pobrać kaucję ręcznie lub poprosić klienta o podanie karty.",
+        "cardSavedTitle": "Karta zapisana",
+        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć blokadę, aby zablokować kwotę kaucji.",
+        "authorizedTitle": "Blokada aktywna",
+        "authorizedDescription": "Kwota kaucji jest zablokowana na karcie klienta. Możesz ją pobrać za szkody lub zwolnić na koniec wynajmu.",
+        "capturedDescription": "Kwota kaucji została pobrana z karty klienta.",
         "releasedDescription": "Autoryzacja została zwolniona, nie pobrano żadnych opłat.",
         "failedDescription": "Autoryzacja nie powiodła się. Klient może potrzebować użyć innej karty.",
         "expiresIn": "Wygasa {time}",

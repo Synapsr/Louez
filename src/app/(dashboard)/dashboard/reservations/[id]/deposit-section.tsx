@@ -228,12 +228,19 @@ export function DepositSection({
   const getStatusConfig = () => {
     switch (status) {
       case 'none':
-      case 'pending':
         return {
           icon: Shield,
           iconClass: 'text-muted-foreground',
           badgeVariant: 'secondary' as const,
           badgeClass: '',
+          label: t('status.none'),
+        }
+      case 'pending':
+        return {
+          icon: AlertTriangle,
+          iconClass: 'text-amber-500',
+          badgeVariant: 'secondary' as const,
+          badgeClass: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
           label: t('status.pending'),
         }
       case 'card_saved':
@@ -364,11 +371,51 @@ export function DepositSection({
           )}
 
           {/* Status-specific messages */}
+          {status === 'pending' && (
+            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    {t('pendingTitle')}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500">
+                    {t('pendingDescription')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {status === 'card_saved' && (
             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
-              <p className="text-sm text-blue-700 dark:text-blue-400">
-                {t('cardSavedDescription')}
-              </p>
+              <div className="flex items-start gap-2">
+                <CreditCard className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                    {t('cardSavedTitle')}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-500">
+                    {t('cardSavedDescription')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {status === 'authorized' && !authorizationExpired && (
+            <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                    {t('authorizedTitle')}
+                  </p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-500">
+                    {t('authorizedDescription')}
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -378,6 +425,17 @@ export function DepositSection({
                 <Check className="h-4 w-4 text-emerald-500" />
                 <p className="text-sm text-emerald-700 dark:text-emerald-400">
                   {t('releasedDescription')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {status === 'captured' && (
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
+              <div className="flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-red-500" />
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  {t('capturedDescription')}
                 </p>
               </div>
             </div>
