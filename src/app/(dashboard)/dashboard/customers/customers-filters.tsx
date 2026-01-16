@@ -46,6 +46,16 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     router.push(`?${params.toString()}`)
   }
 
+  const handleTypeChange = (value: string) => {
+    const params = new URLSearchParams(searchParams)
+    if (value && value !== 'all') {
+      params.set('type', value)
+    } else {
+      params.delete('type')
+    }
+    router.push(`?${params.toString()}`)
+  }
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -63,6 +73,20 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
+
+        <Select
+          defaultValue={searchParams.get('type') || 'all'}
+          onValueChange={handleTypeChange}
+        >
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder={t('filter.type')} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('filter.all')}</SelectItem>
+            <SelectItem value="individual">{t('customerType.individual')}</SelectItem>
+            <SelectItem value="business">{t('customerType.business')}</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select
           defaultValue={searchParams.get('sort') || 'recent'}

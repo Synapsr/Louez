@@ -855,6 +855,10 @@
       "description": "Gestisci i tuoi clienti e visualizza la loro cronologia",
       "customer": "Cliente",
       "contact": "Contatto",
+      "customerType": {
+        "individual": "Privato",
+        "business": "Azienda"
+      },
       "addCustomer": "Aggiungi un cliente",
       "newCustomer": "Nuovo cliente",
       "newCustomerDescription": "Aggiungi un nuovo cliente al tuo database",
@@ -902,6 +906,10 @@
         "name": "Nome",
         "reservations": "Numero prenotazioni",
         "spent": "Totale speso"
+      },
+      "filter": {
+        "type": "Tipo di cliente",
+        "all": "Tutti i clienti"
       },
       "deleteConfirm": {
         "title": "Eliminare questo cliente?",

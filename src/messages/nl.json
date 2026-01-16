@@ -854,6 +854,10 @@
       "description": "Beheer uw klanten en bekijk hun geschiedenis",
       "customer": "Klant",
       "contact": "Contact",
+      "customerType": {
+        "individual": "Particulier",
+        "business": "Zakelijk"
+      },
       "addCustomer": "Klant toevoegen",
       "newCustomer": "Nieuwe klant",
       "newCustomerDescription": "Voeg een nieuwe klant toe aan uw database",
@@ -901,6 +905,10 @@
         "name": "Naam",
         "reservations": "Aantal reserveringen",
         "spent": "Totaal uitgegeven"
+      },
+      "filter": {
+        "type": "Klanttype",
+        "all": "Alle klanten"
       },
       "deleteConfirm": {
         "title": "Deze klant verwijderen?",

@@ -855,6 +855,10 @@
       "description": "Verwalten Sie Ihre Kunden und sehen Sie deren Verlauf",
       "customer": "Kunde",
       "contact": "Kontakt",
+      "customerType": {
+        "individual": "Privatkunde",
+        "business": "Geschäftskunde"
+      },
       "addCustomer": "Kunde hinzufügen",
       "newCustomer": "Neuer Kunde",
       "newCustomerDescription": "Neuen Kunden zu Ihrer Datenbank hinzufügen",
@@ -902,6 +906,10 @@
         "name": "Name",
         "reservations": "Anzahl Reservierungen",
         "spent": "Gesamtausgaben"
+      },
+      "filter": {
+        "type": "Kundentyp",
+        "all": "Alle Kunden"
       },
       "deleteConfirm": {
         "title": "Diesen Kunden löschen?",

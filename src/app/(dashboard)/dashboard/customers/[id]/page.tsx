@@ -15,6 +15,8 @@ import {
   Calendar,
   Pencil,
   CreditCard,
+  Building2,
+  User,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -102,13 +104,37 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
               <ArrowLeft className="h-4 w-4" />
             </Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {customer.firstName} {customer.lastName}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
-            </p>
+          <div className="space-y-1">
+            {customer.customerType === 'business' && customer.companyName ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-muted-foreground" />
+                    {customer.companyName}
+                  </h1>
+                  <Badge variant="secondary" className="font-normal">
+                    {t('customerType.business')}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('contact')}: {customer.firstName} {customer.lastName} · {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold tracking-tight">
+                    {customer.firstName} {customer.lastName}
+                  </h1>
+                  <Badge variant="outline" className="font-normal">
+                    {t('customerType.individual')}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('customerSince')} {format(customer.createdAt, 'dd MMMM yyyy', { locale: fr })}
+                </p>
+              </>
+            )}
           </div>
         </div>
         <Button asChild>

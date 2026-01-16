@@ -855,6 +855,10 @@
       "description": "Manage your customers and view their history",
       "customer": "Customer",
       "contact": "Contact",
+      "customerType": {
+        "individual": "Individual",
+        "business": "Business"
+      },
       "addCustomer": "Add a customer",
       "newCustomer": "New customer",
       "newCustomerDescription": "Add a new customer to your database",
@@ -902,6 +906,10 @@
         "name": "Name",
         "reservations": "Number of reservations",
         "spent": "Total spent"
+      },
+      "filter": {
+        "type": "Customer type",
+        "all": "All customers"
       },
       "deleteConfirm": {
         "title": "Delete this customer?",

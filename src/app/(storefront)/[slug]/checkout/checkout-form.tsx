@@ -407,52 +407,6 @@ export function CheckoutForm({
                       />
                     </div>
 
-                    {/* Business customer checkbox */}
-                    <FormField
-                      control={form.control}
-                      name="isBusinessCustomer"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={(checked) => {
-                                field.onChange(checked)
-                                if (!checked) {
-                                  form.setValue('companyName', '')
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="cursor-pointer">
-                              {t('isBusinessCustomer')}
-                            </FormLabel>
-                            <p className="text-sm text-muted-foreground">
-                              {t('isBusinessCustomerDescription')}
-                            </p>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Company name - only shown for business customers */}
-                    {isBusinessCustomer && (
-                      <FormField
-                        control={form.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('companyName')} *</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('companyNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
                     <FormField
                       control={form.control}
                       name="email"
@@ -480,6 +434,47 @@ export function CheckoutForm({
                         </FormItem>
                       )}
                     />
+
+                    {/* Business customer checkbox - simple inline style */}
+                    <FormField
+                      control={form.control}
+                      name="isBusinessCustomer"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked)
+                                if (!checked) {
+                                  form.setValue('companyName', '')
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal cursor-pointer">
+                            {t('isBusinessCustomer')}
+                          </FormLabel>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Company name - only shown for business customers */}
+                    {isBusinessCustomer && (
+                      <FormField
+                        control={form.control}
+                        name="companyName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('companyName')} *</FormLabel>
+                            <FormControl>
+                              <Input placeholder={t('companyNamePlaceholder')} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
 
                     <div className="pt-4">
                       <Button type="button" onClick={goToNextStep} className="w-full" size="lg">

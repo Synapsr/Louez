@@ -855,6 +855,10 @@
       "description": "Gerencie seus clientes e veja seu historico",
       "customer": "Cliente",
       "contact": "Contato",
+      "customerType": {
+        "individual": "Particular",
+        "business": "Empresa"
+      },
       "addCustomer": "Adicionar um cliente",
       "newCustomer": "Novo cliente",
       "newCustomerDescription": "Adicione um novo cliente ao seu banco de dados",
@@ -902,6 +906,10 @@
         "name": "Nome",
         "reservations": "Numero de reservas",
         "spent": "Total gasto"
+      },
+      "filter": {
+        "type": "Tipo de cliente",
+        "all": "Todos os clientes"
       },
       "deleteConfirm": {
         "title": "Excluir este cliente?",

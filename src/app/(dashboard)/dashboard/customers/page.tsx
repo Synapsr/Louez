@@ -11,10 +11,11 @@ interface CustomersPageProps {
   searchParams: Promise<{
     search?: string
     sort?: string
+    type?: string
   }>
 }
 
-async function getCustomersWithStats(storeId: string, search?: string, sort?: string) {
+async function getCustomersWithStats(storeId: string, search?: string, sort?: string, type?: string) {
   // Build the query
   let query = db
     .select({
@@ -51,6 +52,11 @@ async function getCustomersWithStats(storeId: string, search?: string, sort?: st
     )
   }
 
+  // Apply customer type filter
+  if (type === 'individual' || type === 'business') {
+    query = query.where(eq(customers.customerType, type))
+  }
+
   // Apply sorting
   switch (sort) {
     case 'name':
@@ -78,7 +84,7 @@ export default async function CustomersPage({ searchParams }: CustomersPageProps
 
   const params = await searchParams
   const [customersList, totalCountResult, limits, plan] = await Promise.all([
-    getCustomersWithStats(store.id, params.search, params.sort),
+    getCustomersWithStats(store.id, params.search, params.sort, params.type),
     db.select({ count: count() }).from(customers).where(eq(customers.storeId, store.id)),
     getStoreLimits(store.id),
     getStorePlan(store.id),
