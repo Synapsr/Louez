@@ -60,6 +60,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const pricingMode = store.settings?.pricingMode || 'day'
   const reservationMode = store.settings?.reservationMode || 'payment'
   const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
+  const taxSettings = store.settings?.tax
 
   return (
     <div className="container mx-auto px-4 py-6 md:py-8">
@@ -86,6 +87,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
         reservationMode={reservationMode}
         requireCustomerAddress={requireCustomerAddress}
         cgv={store.cgv}
+        taxSettings={taxSettings}
       />
     </div>
   )

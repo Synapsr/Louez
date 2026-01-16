@@ -21,13 +21,15 @@ import { formatCurrency } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
+import type { TaxSettings } from '@/types/store'
 
 interface CartContentProps {
   storeSlug: string
   pricingMode: 'day' | 'hour' | 'week'
+  taxSettings?: TaxSettings
 }
 
-export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
+export function CartContent({ storeSlug, pricingMode, taxSettings }: CartContentProps) {
   const t = useTranslations('storefront.cart')
   const tProduct = useTranslations('storefront.product')
   const currency = useStoreCurrency()
@@ -271,6 +273,11 @@ export function CartContent({ storeSlug, pricingMode }: CartContentProps) {
               <span>{t('total')}</span>
               <span>{formatCurrency(getTotal(), currency)}</span>
             </div>
+            {taxSettings?.enabled && (
+              <p className="text-xs text-muted-foreground text-center">
+                {taxSettings.displayMode === 'inclusive' ? t('pricesIncludeTax') : t('pricesExcludeTax')}
+              </p>
+            )}
           </CardContent>
           <CardFooter>
             <Button className="w-full" size="lg" asChild>

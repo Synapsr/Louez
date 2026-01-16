@@ -47,6 +47,7 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getDetailedDuration } from '@/lib/utils/duration'
 import { calculateRentalPrice, type ProductPricing } from '@/lib/pricing'
 import { createReservation } from './actions'
+import type { TaxSettings } from '@/types/store'
 
 interface CheckoutFormProps {
   storeSlug: string
@@ -55,6 +56,7 @@ interface CheckoutFormProps {
   reservationMode: 'payment' | 'request'
   requireCustomerAddress: boolean
   cgv: string | null
+  taxSettings?: TaxSettings
 }
 
 /**
@@ -94,6 +96,7 @@ export function CheckoutForm({
   reservationMode,
   requireCustomerAddress,
   cgv,
+  taxSettings,
 }: CheckoutFormProps) {
   const router = useRouter()
   const locale = useLocale() as 'fr' | 'en'
@@ -694,6 +697,11 @@ export function CheckoutForm({
                   <span>{tCart('total')}</span>
                   <span className="text-primary">{formatCurrency(getTotal(), currency)}</span>
                 </div>
+                {taxSettings?.enabled && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    {taxSettings.displayMode === 'inclusive' ? tCart('pricesIncludeTax') : tCart('pricesExcludeTax')}
+                  </p>
+                )}
               </div>
 
               {/* Savings banner */}

@@ -1830,6 +1830,8 @@
       "clearCart": "Limpar carrinho",
       "clear": "Limpar carrinho",
       "summary": "Resumo",
+      "pricesIncludeTax": "Precos com IVA incluido",
+      "pricesExcludeTax": "Precos sem IVA",
       "clearConfirm": {
         "title": "Limpar carrinho?",
         "description": "Todos os itens serao removidos do seu carrinho.",

@@ -1828,6 +1828,8 @@
       "clearCart": "Clear cart",
       "clear": "Clear cart",
       "summary": "Summary",
+      "pricesIncludeTax": "Prices include tax",
+      "pricesExcludeTax": "Prices exclude tax",
       "clearConfirm": {
         "title": "Clear cart?",
         "description": "All items will be removed from your cart.",

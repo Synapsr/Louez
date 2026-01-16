@@ -1832,6 +1832,8 @@
       "clearCart": "Vaciar carrito",
       "clear": "Vaciar carrito",
       "summary": "Resumen",
+      "pricesIncludeTax": "Precios con IVA incluido",
+      "pricesExcludeTax": "Precios sin IVA",
       "clearConfirm": {
         "title": "Vaciar carrito?",
         "description": "Todos los articulos seran eliminados de su carrito.",

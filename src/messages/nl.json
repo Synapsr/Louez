@@ -1828,6 +1828,8 @@
       "clearCart": "Winkelwagen legen",
       "clear": "Winkelwagen legen",
       "summary": "Samenvatting",
+      "pricesIncludeTax": "Prijzen incl. BTW",
+      "pricesExcludeTax": "Prijzen excl. BTW",
       "clearConfirm": {
         "title": "Winkelwagen legen?",
         "description": "Alle artikelen worden uit uw winkelwagen verwijderd.",

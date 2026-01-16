@@ -1828,6 +1828,8 @@
       "clearCart": "Vider le panier",
       "clear": "Vider le panier",
       "summary": "Récapitulatif",
+      "pricesIncludeTax": "Tarifs TTC (toutes taxes comprises)",
+      "pricesExcludeTax": "Tarifs HT (hors taxes)",
       "clearConfirm": {
         "title": "Vider le panier ?",
         "description": "Tous les articles seront retirés de votre panier.",

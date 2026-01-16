@@ -1830,6 +1830,8 @@
       "clearCart": "Warenkorb leeren",
       "clear": "Warenkorb leeren",
       "summary": "Zusammenfassung",
+      "pricesIncludeTax": "Preise inkl. MwSt.",
+      "pricesExcludeTax": "Preise zzgl. MwSt.",
       "clearConfirm": {
         "title": "Warenkorb leeren?",
         "description": "Alle Artikel werden aus Ihrem Warenkorb entfernt.",

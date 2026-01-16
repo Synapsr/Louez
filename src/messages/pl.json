@@ -1829,6 +1829,8 @@
       "clearCart": "Opróżnij koszyk",
       "clear": "Opróżnij koszyk",
       "summary": "Podsumowanie",
+      "pricesIncludeTax": "Ceny brutto (z VAT)",
+      "pricesExcludeTax": "Ceny netto (bez VAT)",
       "clearConfirm": {
         "title": "Opróżnić koszyk?",
         "description": "Wszystkie przedmioty zostaną usunięte z koszyka.",

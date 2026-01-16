@@ -1829,6 +1829,8 @@
       "clearCart": "Svuota carrello",
       "clear": "Svuota carrello",
       "summary": "Riepilogo",
+      "pricesIncludeTax": "Prezzi IVA inclusa",
+      "pricesExcludeTax": "Prezzi IVA esclusa",
       "clearConfirm": {
         "title": "Svuotare il carrello?",
         "description": "Tutti gli articoli saranno rimossi dal tuo carrello.",

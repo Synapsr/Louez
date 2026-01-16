@@ -58,6 +58,7 @@ export default async function CartPage({ params }: CartPageProps) {
   }
 
   const pricingMode = store.settings?.pricingMode || 'day'
+  const taxSettings = store.settings?.tax
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -76,7 +77,7 @@ export default async function CartPage({ params }: CartPageProps) {
         <h1 className="text-3xl font-bold">{t('title')}</h1>
       </div>
 
-      <CartContent storeSlug={slug} pricingMode={pricingMode} />
+      <CartContent storeSlug={slug} pricingMode={pricingMode} taxSettings={taxSettings} />
     </div>
   )
 }
