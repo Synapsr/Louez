@@ -2450,6 +2450,7 @@
     "updateSettingsError": "Fout bij bijwerken instellingen",
     "createReservationError": "Fout bij aanmaken reservering",
     "businessHoursViolation": "Geselecteerde tijden vallen buiten de openingstijden van de winkel",
+    "advanceNoticeViolation": "Reserveringen moeten minimaal {hours} uur van tevoren worden gemaakt",
     "noReservationsWithEmail": "Geen reserveringen gevonden met dit e-mailadres",
     "noReservationForEmail": "Geen reserveringen gevonden met dit e-mailadres",
     "sendCodeError": "Fout bij verzenden code",

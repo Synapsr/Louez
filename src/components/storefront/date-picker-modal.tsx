@@ -102,8 +102,10 @@ export function DatePickerModal({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    return getAvailableTimeSlots(startDate, businessHours, 30)
-  }, [startDate, businessHours])
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    // Filter out time slots that are within the advance notice period
+    return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
+  }, [startDate, businessHours, advanceNotice])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots

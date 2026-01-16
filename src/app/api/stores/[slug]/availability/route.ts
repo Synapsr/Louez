@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { stores, products, reservations, reservationItems } from '@/lib/db/schema'
 import { eq, and, inArray, lt, gt } from 'drizzle-orm'
 import { z } from 'zod'
-import { dateRangesOverlap } from '@/lib/utils/duration'
+import { dateRangesOverlap, getMinStartDateTime } from '@/lib/utils/duration'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 
 const querySchema = z.object({
@@ -25,6 +25,12 @@ export interface BusinessHoursValidation {
   errors: string[]
 }
 
+export interface AdvanceNoticeValidation {
+  valid: boolean
+  minimumStartTime?: string
+  advanceNoticeHours?: number
+}
+
 export interface AvailabilityResponse {
   products: ProductAvailability[]
   period: {
@@ -32,6 +38,7 @@ export interface AvailabilityResponse {
     endDate: string
   }
   businessHoursValidation?: BusinessHoursValidation
+  advanceNoticeValidation?: AdvanceNoticeValidation
 }
 
 export async function GET(
@@ -86,6 +93,15 @@ export async function GET(
       store.settings?.businessHours
     )
 
+    // Validate advance notice
+    const advanceNoticeHours = store.settings?.advanceNotice || 0
+    const minimumStartTime = getMinStartDateTime(advanceNoticeHours)
+    const advanceNoticeValidation: AdvanceNoticeValidation = {
+      valid: startDate >= minimumStartTime,
+      minimumStartTime: minimumStartTime.toISOString(),
+      advanceNoticeHours,
+    }
+
     // Parse product IDs if provided
     const requestedProductIds = productIdsStr ? productIdsStr.split(',').filter(Boolean) : null
 
@@ -107,6 +123,7 @@ export async function GET(
         products: [],
         period: { startDate: startDateStr, endDate: endDateStr },
         businessHoursValidation,
+        advanceNoticeValidation,
       } as AvailabilityResponse)
     }
 
@@ -177,6 +194,7 @@ export async function GET(
       products: productAvailability,
       period: { startDate: startDateStr, endDate: endDateStr },
       businessHoursValidation,
+      advanceNoticeValidation,
     } as AvailabilityResponse)
 
     response.headers.set('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=60')

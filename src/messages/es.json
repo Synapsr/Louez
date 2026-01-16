@@ -2454,6 +2454,7 @@
     "updateSettingsError": "Error al actualizar configuracion",
     "createReservationError": "Error al crear reserva",
     "businessHoursViolation": "Los horarios seleccionados estan fuera del horario comercial de la tienda",
+    "advanceNoticeViolation": "Las reservas deben realizarse con al menos {hours} horas de antelacion",
     "noReservationsWithEmail": "No se encontraron reservas con este correo",
     "noReservationForEmail": "No se encontraron reservas con este correo",
     "sendCodeError": "Error al enviar codigo",

@@ -2451,6 +2451,7 @@
     "updateSettingsError": "Errore nell'aggiornamento delle impostazioni",
     "createReservationError": "Errore nella creazione della prenotazione",
     "businessHoursViolation": "Gli orari selezionati sono al di fuori degli orari di apertura del negozio",
+    "advanceNoticeViolation": "Le prenotazioni devono essere effettuate con almeno {hours} ore di anticipo",
     "noReservationsWithEmail": "Nessuna prenotazione trovata con questa email",
     "noReservationForEmail": "Nessuna prenotazione trovata con questa email",
     "sendCodeError": "Errore nell'invio del codice",

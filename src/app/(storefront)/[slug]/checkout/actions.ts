@@ -11,6 +11,7 @@ import {
   sendNewRequestLandlordEmail,
 } from '@/lib/email/send'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
+import { getMinStartDateTime } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
 
 interface ReservationItem {
@@ -101,6 +102,18 @@ export async function createReservation(input: CreateReservationInput) {
       return {
         error: 'errors.businessHoursViolation',
         errorParams: { reasons: businessHoursValidation.errors.join(', ') },
+      }
+    }
+
+    // Validate advance notice
+    const advanceNoticeHours = store.settings?.advanceNotice || 0
+    if (advanceNoticeHours > 0) {
+      const minimumStartTime = getMinStartDateTime(advanceNoticeHours)
+      if (rentalStartDate < minimumStartTime) {
+        return {
+          error: 'errors.advanceNoticeViolation',
+          errorParams: { hours: advanceNoticeHours },
+        }
       }
     }
 

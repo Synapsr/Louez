@@ -2452,6 +2452,7 @@
     "updateSettingsError": "Fehler beim Aktualisieren der Einstellungen",
     "createReservationError": "Fehler beim Erstellen der Reservierung",
     "businessHoursViolation": "Ausgewählte Zeiten liegen außerhalb der Öffnungszeiten des Shops",
+    "advanceNoticeViolation": "Reservierungen müssen mindestens {hours} Stunden im Voraus erfolgen",
     "noReservationsWithEmail": "Keine Reservierungen mit dieser E-Mail gefunden",
     "noReservationForEmail": "Keine Reservierungen mit dieser E-Mail gefunden",
     "sendCodeError": "Fehler beim Senden des Codes",

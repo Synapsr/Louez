@@ -2450,6 +2450,7 @@
     "updateSettingsError": "Erreur lors de la mise à jour des paramètres",
     "createReservationError": "Erreur lors de la création de la réservation",
     "businessHoursViolation": "Les horaires sélectionnés sont en dehors des heures d'ouverture de la boutique",
+    "advanceNoticeViolation": "La réservation doit être effectuée au moins {hours} heures à l'avance",
     "noReservationsWithEmail": "Aucune réservation trouvée avec cet email",
     "noReservationForEmail": "Aucune réservation trouvée avec cet email",
     "sendCodeError": "Erreur lors de l'envoi du code",

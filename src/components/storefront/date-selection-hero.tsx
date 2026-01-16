@@ -98,11 +98,13 @@ export function DateSelectionHero({
   // Calculate minimum start date based on advance notice setting
   const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
 
-  // Business hours-aware time slots
+  // Business hours-aware time slots with advance notice filtering
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    return getAvailableTimeSlots(startDate, businessHours, 30)
-  }, [startDate, businessHours])
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    // Filter out time slots that are within the advance notice period
+    return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
+  }, [startDate, businessHours, advanceNotice])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots

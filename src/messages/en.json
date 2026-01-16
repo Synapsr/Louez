@@ -2450,6 +2450,7 @@
     "updateSettingsError": "Error updating settings",
     "createReservationError": "Error creating reservation",
     "businessHoursViolation": "Selected times are outside the store's business hours",
+    "advanceNoticeViolation": "Reservations must be made at least {hours} hours in advance",
     "noReservationsWithEmail": "No reservations found with this email",
     "noReservationForEmail": "No reservations found with this email",
     "sendCodeError": "Error sending code",
