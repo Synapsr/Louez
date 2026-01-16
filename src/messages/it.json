@@ -1221,8 +1221,8 @@
         "postalCodePlaceholder": "00100",
         "country": "Paese",
         "preview": "Anteprima indirizzo di fatturazione:",
-        "infoSameAddress": "L'indirizzo del tuo negozio verra mostrato sui contratti di noleggio e sullo storefront.",
-        "infoDifferentAddress": "L'indirizzo di fatturazione sopra verra utilizzato sui contratti di noleggio. L'indirizzo del negozio rimarra visibile sullo storefront."
+        "infoSameAddress": "L'indirizzo del tuo negozio verra utilizzato sui contratti di noleggio.",
+        "infoDifferentAddress": "L'indirizzo di fatturazione apparira sui contratti. L'indirizzo del negozio resta quello che i clienti vedono per trovarti."
       },
       "appearanceSettings": {
         "title": "Aspetto",

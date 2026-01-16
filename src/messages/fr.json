@@ -1220,8 +1220,8 @@
         "postalCodePlaceholder": "75001",
         "country": "Pays",
         "preview": "Aperçu de l'adresse de facturation :",
-        "infoSameAddress": "L'adresse de votre boutique sera affichée sur les contrats de location et le storefront.",
-        "infoDifferentAddress": "L'adresse de facturation ci-dessus sera utilisée sur les contrats de location. L'adresse de la boutique restera visible sur le storefront."
+        "infoSameAddress": "L'adresse de votre boutique sera utilisée sur les contrats de location.",
+        "infoDifferentAddress": "L'adresse de facturation sera affichée sur les contrats. L'adresse de la boutique reste celle que vos clients verront pour vous localiser."
       },
       "appearanceSettings": {
         "title": "Apparence",

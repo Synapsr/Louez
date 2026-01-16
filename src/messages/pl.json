@@ -1221,8 +1221,8 @@
         "postalCodePlaceholder": "00-001",
         "country": "Kraj",
         "preview": "Podglad adresu rozliczeniowego:",
-        "infoSameAddress": "Adres Twojego sklepu bedzie wyswietlany na umowach najmu i w sklepie.",
-        "infoDifferentAddress": "Powyzszy adres rozliczeniowy bedzie uzywany na umowach najmu. Adres sklepu pozostanie widoczny w sklepie."
+        "infoSameAddress": "Adres Twojego sklepu bedzie uzywany na umowach najmu.",
+        "infoDifferentAddress": "Adres rozliczeniowy pojawi sie na umowach. Adres sklepu pozostaje widoczny dla klientow, aby mogli Cie znalezc."
       },
       "appearanceSettings": {
         "title": "Wygląd",

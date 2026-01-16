@@ -1220,8 +1220,8 @@
         "postalCodePlaceholder": "10001",
         "country": "Country",
         "preview": "Billing address preview:",
-        "infoSameAddress": "Your store address will be displayed on rental contracts and the storefront.",
-        "infoDifferentAddress": "The billing address above will be used on rental contracts. The store address will remain visible on the storefront."
+        "infoSameAddress": "Your store address will be used on rental contracts.",
+        "infoDifferentAddress": "The billing address will appear on contracts. Your store address remains the one customers see to find you."
       },
       "appearanceSettings": {
         "title": "Appearance",

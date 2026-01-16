@@ -1222,8 +1222,8 @@
         "postalCodePlaceholder": "1000-001",
         "country": "Pais",
         "preview": "Pre-visualizacao do endereco de faturacao:",
-        "infoSameAddress": "O endereco da sua loja sera exibido nos contratos de aluguel e na loja.",
-        "infoDifferentAddress": "O endereco de faturacao acima sera usado nos contratos de aluguel. O endereco da loja permanecera visivel na loja."
+        "infoSameAddress": "O endereco da sua loja sera usado nos contratos de aluguel.",
+        "infoDifferentAddress": "O endereco de faturacao aparecera nos contratos. O endereco da loja continua sendo o que os clientes veem para encontra-lo."
       },
       "appearanceSettings": {
         "title": "Aparencia",

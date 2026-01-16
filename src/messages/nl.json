@@ -1220,8 +1220,8 @@
         "postalCodePlaceholder": "1011",
         "country": "Land",
         "preview": "Voorbeeld factuuradres:",
-        "infoSameAddress": "Uw winkeladres wordt weergegeven op huurcontracten en de winkelsite.",
-        "infoDifferentAddress": "Het bovenstaande factuuradres wordt gebruikt op huurcontracten. Het winkeladres blijft zichtbaar op de winkelsite."
+        "infoSameAddress": "Uw winkeladres wordt gebruikt op huurcontracten.",
+        "infoDifferentAddress": "Het factuuradres verschijnt op de contracten. Uw winkeladres blijft zichtbaar voor klanten om u te vinden."
       },
       "appearanceSettings": {
         "title": "Uiterlijk",

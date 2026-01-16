@@ -1222,8 +1222,8 @@
         "postalCodePlaceholder": "10115",
         "country": "Land",
         "preview": "Vorschau der Rechnungsadresse:",
-        "infoSameAddress": "Ihre Shop-Adresse wird auf Mietverträgen und im Storefront angezeigt.",
-        "infoDifferentAddress": "Die obige Rechnungsadresse wird auf Mietverträgen verwendet. Die Shop-Adresse bleibt im Storefront sichtbar."
+        "infoSameAddress": "Ihre Shop-Adresse wird auf Mietverträgen verwendet.",
+        "infoDifferentAddress": "Die Rechnungsadresse erscheint auf den Verträgen. Ihre Shop-Adresse bleibt für Kunden sichtbar, um Sie zu finden."
       },
       "appearanceSettings": {
         "title": "Erscheinungsbild",
