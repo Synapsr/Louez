@@ -129,8 +129,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   // Filter accessories to only include active ones with stock
-  const availableAccessories = product.accessories
-    .filter((acc) => acc.accessory.status === 'active' && acc.accessory.quantity > 0)
+  const availableAccessories = (product.accessories || [])
+    .filter((acc) => acc.accessory && acc.accessory.status === 'active' && acc.accessory.quantity > 0)
     .map((acc) => ({
       id: acc.accessory.id,
       name: acc.accessory.name,

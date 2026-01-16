@@ -130,8 +130,9 @@ export function AccessoriesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden p-0">
-        <DialogHeader className="p-6 pb-2">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+        {/* Header - fixed */}
+        <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
               <Check className="h-5 w-5 text-green-600 dark:text-green-400" />
@@ -145,113 +146,116 @@ export function AccessoriesModal({
           </div>
         </DialogHeader>
 
-        <div className="px-6 pb-2">
-          <h3 className="font-semibold text-base">{t('youMightAlsoLike')}</h3>
-          <p className="text-sm text-muted-foreground">{t('selectAccessories')}</p>
-        </div>
+        {/* Content - scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          <div className="pb-2">
+            <h3 className="font-semibold text-base">{t('youMightAlsoLike')}</h3>
+            <p className="text-sm text-muted-foreground">{t('selectAccessories')}</p>
+          </div>
 
-        {/* Carousel */}
-        <div className="relative px-6">
-          {/* Navigation buttons */}
-          {accessories.length > 2 && (
-            <>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute left-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
-                onClick={() => scroll('left')}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
-                onClick={() => scroll('right')}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-
-          {/* Carousel container */}
-          <div
-            ref={carouselRef}
-            className="flex gap-4 overflow-x-auto pb-4 pt-2 snap-x snap-mandatory scrollbar-hide"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {accessories.map((accessory) => {
-              const isSelected = selectedIds.has(accessory.id)
-              const effectivePricingMode = accessory.pricingMode || storePricingMode
-
-              return (
-                <button
-                  key={accessory.id}
-                  type="button"
-                  onClick={() => toggleAccessory(accessory.id)}
-                  className={cn(
-                    'flex-shrink-0 w-64 snap-start rounded-xl border-2 overflow-hidden transition-all duration-200',
-                    'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
-                    isSelected
-                      ? 'border-primary bg-primary/5 shadow-md'
-                      : 'border-border hover:border-primary/50 hover:shadow-sm'
-                  )}
+          {/* Carousel */}
+          <div className="relative">
+            {/* Navigation buttons */}
+            {accessories.length > 2 && (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+                  onClick={() => scroll('left')}
                 >
-                  {/* Image */}
-                  <div className="relative aspect-[4/3] bg-muted">
-                    {accessory.images && accessory.images[0] ? (
-                      <img
-                        src={accessory.images[0]}
-                        alt={accessory.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                        <ShoppingCart className="h-8 w-8" />
-                      </div>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-2 z-10 h-8 w-8 rounded-full bg-background/80 backdrop-blur-sm shadow-md"
+                  onClick={() => scroll('right')}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            {/* Carousel container */}
+            <div
+              ref={carouselRef}
+              className="flex gap-3 overflow-x-auto py-4 snap-x snap-mandatory scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {accessories.map((accessory) => {
+                const isSelected = selectedIds.has(accessory.id)
+                const effectivePricingMode = accessory.pricingMode || storePricingMode
+
+                return (
+                  <button
+                    key={accessory.id}
+                    type="button"
+                    onClick={() => toggleAccessory(accessory.id)}
+                    className={cn(
+                      'flex-shrink-0 w-48 snap-start rounded-xl border-2 overflow-hidden transition-all duration-200',
+                      'focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2',
+                      isSelected
+                        ? 'border-primary bg-primary/5 shadow-md'
+                        : 'border-border hover:border-primary/50 hover:shadow-sm'
                     )}
-
-                    {/* Selection indicator */}
-                    <div
-                      className={cn(
-                        'absolute top-2 right-2 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all',
-                        isSelected
-                          ? 'bg-primary border-primary text-primary-foreground'
-                          : 'bg-background/80 border-muted-foreground/30'
+                  >
+                    {/* Image */}
+                    <div className="relative aspect-square bg-muted">
+                      {accessory.images && accessory.images[0] ? (
+                        <img
+                          src={accessory.images[0]}
+                          alt={accessory.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <ShoppingCart className="h-6 w-6" />
+                        </div>
                       )}
-                    >
-                      {isSelected && <Check className="h-3.5 w-3.5" />}
+
+                      {/* Selection indicator */}
+                      <div
+                        className={cn(
+                          'absolute top-2 right-2 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all',
+                          isSelected
+                            ? 'bg-primary border-primary text-primary-foreground'
+                            : 'bg-background/80 border-muted-foreground/30'
+                        )}
+                      >
+                        {isSelected && <Check className="h-3.5 w-3.5" />}
+                      </div>
+
+                      {/* Stock badge */}
+                      <Badge
+                        variant="secondary"
+                        className="absolute bottom-2 left-2 text-[10px] px-1.5 py-0.5"
+                      >
+                        {t('available', { count: accessory.quantity })}
+                      </Badge>
                     </div>
 
-                    {/* Stock badge */}
-                    <Badge
-                      variant="secondary"
-                      className="absolute bottom-2 left-2 text-xs"
-                    >
-                      {t('available', { count: accessory.quantity })}
-                    </Badge>
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-3 text-left">
-                    <h4 className="font-medium text-sm line-clamp-1">{accessory.name}</h4>
-                    <div className="mt-1 flex items-baseline gap-1">
-                      <span className="text-base font-bold">
-                        {formatCurrency(parseFloat(accessory.price), currency)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        /{t(`pricingUnit.${effectivePricingMode}`)}
-                      </span>
+                    {/* Content */}
+                    <div className="p-2.5 text-left">
+                      <h4 className="font-medium text-sm line-clamp-1">{accessory.name}</h4>
+                      <div className="mt-0.5 flex items-baseline gap-1">
+                        <span className="text-sm font-bold">
+                          {formatCurrency(parseFloat(accessory.price), currency)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          /{t(`pricingUnit.${effectivePricingMode}`)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              )
-            })}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row gap-3 p-6 pt-2 border-t bg-muted/30">
+        {/* Actions - fixed footer */}
+        <div className="flex-shrink-0 flex flex-col-reverse sm:flex-row gap-3 p-6 pt-4 border-t bg-muted/30">
           <Button
             variant="outline"
             className="flex-1"

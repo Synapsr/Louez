@@ -60,7 +60,7 @@ import { Stepper, StepContent, StepActions } from '@/components/ui/stepper'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { formatCurrency, getCurrencySymbol } from '@/lib/utils'
+import { cn, formatCurrency, getCurrencySymbol } from '@/lib/utils'
 import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor'
 import type { PricingMode } from '@/types'
 
@@ -806,52 +806,25 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             </Card>
           </div>
 
-          {/* Progressive Discounts - Full width */}
-          <Card>
-            <CardContent className="pt-6">
-              <FormField
-                control={form.control}
-                name="pricingTiers"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <PricingTiersEditor
-                        basePrice={basePrice}
-                        pricingMode={effectivePricingMode}
-                        tiers={field.value || []}
-                        onChange={field.onChange}
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Accessories */}
-          {availableAccessories.length > 0 && (
+          {/* Progressive Discounts & Accessories - Side by side on large screens */}
+          <div className={cn(
+            "grid gap-6",
+            availableAccessories.length > 0 ? "xl:grid-cols-2" : "grid-cols-1"
+          )}>
+            {/* Progressive Discounts */}
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Link2 className="h-5 w-5" />
-                  {t('accessories')}
-                </CardTitle>
-                <CardDescription>{t('accessoriesDescription')}</CardDescription>
-              </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <FormField
                   control={form.control}
-                  name="accessoryIds"
+                  name="pricingTiers"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <AccessoriesSelector
-                          availableProducts={availableAccessories}
-                          selectedIds={field.value || []}
+                        <PricingTiersEditor
+                          basePrice={basePrice}
+                          pricingMode={effectivePricingMode}
+                          tiers={field.value || []}
                           onChange={field.onChange}
-                          currency={currency}
                           disabled={isLoading}
                         />
                       </FormControl>
@@ -861,7 +834,40 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                 />
               </CardContent>
             </Card>
-          )}
+
+            {/* Accessories */}
+            {availableAccessories.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Link2 className="h-5 w-5" />
+                    {t('accessories')}
+                  </CardTitle>
+                  <CardDescription>{t('accessoriesDescription')}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="accessoryIds"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <AccessoriesSelector
+                            availableProducts={availableAccessories}
+                            selectedIds={field.value || []}
+                            onChange={field.onChange}
+                            currency={currency}
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
           {/* Status */}
           <Card>

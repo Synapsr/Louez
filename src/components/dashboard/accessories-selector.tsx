@@ -41,6 +41,7 @@ export function AccessoriesSelector({
   disabled = false,
 }: AccessoriesSelectorProps) {
   const t = useTranslations('dashboard.products.form')
+  const tCommon = useTranslations('common')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -171,15 +172,15 @@ export function AccessoriesSelector({
             {t('addAccessory')}
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md flex flex-col max-h-[80vh]">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('selectAccessories')}</DialogTitle>
             <DialogDescription>{t('selectAccessoriesDescription')}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="flex-1 min-h-0 flex flex-col gap-4 py-4">
             {/* Search */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder={t('searchProducts')}
@@ -189,9 +190,9 @@ export function AccessoriesSelector({
               />
             </div>
 
-            {/* Products list */}
-            <ScrollArea className="h-[300px]">
-              <div className="space-y-2 pr-4">
+            {/* Products list - scrollable */}
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-2">
                 {filteredProducts.length === 0 ? (
                   <p className="py-8 text-center text-sm text-muted-foreground">
                     {search ? t('noProductsFound') : t('noProductsAvailable')}
@@ -237,6 +238,20 @@ export function AccessoriesSelector({
                 )}
               </div>
             </ScrollArea>
+          </div>
+
+          {/* Footer with close button */}
+          <div className="flex-shrink-0 flex justify-end pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDialogOpen(false)
+                setSearch('')
+              }}
+            >
+              {tCommon('close')}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
