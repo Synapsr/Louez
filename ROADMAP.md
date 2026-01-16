@@ -46,7 +46,7 @@ Louez supports multiple languages out of the box.
 
 ### 💰 Tax Management
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 16, 2025)
 
 Handle taxes flexibly to match your local regulations.
 
@@ -63,7 +63,7 @@ Handle taxes flexibly to match your local regulations.
 
 ### 🎯 Advanced Pricing Control
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 16, 2025)
 
 Fine-tune rental prices for each reservation.
 
@@ -80,7 +80,7 @@ Fine-tune rental prices for each reservation.
 
 ### 🏢 Billing Address Options
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 16, 2025)
 
 Separate your billing address from your store location.
 
@@ -266,6 +266,6 @@ Have an idea that's not on this list?
 
 *This roadmap is a living document. Priorities may shift based on community feedback.*
 
-**Last updated**: January 2025
+**Last updated**: January 16, 2025
 
 </div>
