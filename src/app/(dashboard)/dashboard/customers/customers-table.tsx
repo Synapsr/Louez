@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
-import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users } from 'lucide-react'
+import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users, Building2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -39,9 +39,11 @@ import { deleteCustomer } from './actions'
 
 interface Customer {
   id: string
+  customerType: 'individual' | 'business'
   email: string
   firstName: string
   lastName: string
+  companyName: string | null
   phone: string | null
   city: string | null
   createdAt: Date
@@ -105,18 +107,35 @@ export function CustomersTable({ customers }: CustomersTableProps) {
             {customers.map((customer) => (
               <TableRow key={customer.id}>
                 <TableCell>
-                  <Link
-                    href={`/dashboard/customers/${customer.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {customer.firstName} {customer.lastName}
-                  </Link>
-                  {customer.city && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      {customer.city}
-                    </div>
-                  )}
+                  <div className="space-y-1">
+                    {customer.customerType === 'business' && customer.companyName ? (
+                      <>
+                        <Link
+                          href={`/dashboard/customers/${customer.id}`}
+                          className="font-medium hover:underline flex items-center gap-1.5"
+                        >
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                          {customer.companyName}
+                        </Link>
+                        <div className="text-sm text-muted-foreground">
+                          {customer.firstName} {customer.lastName}
+                        </div>
+                      </>
+                    ) : (
+                      <Link
+                        href={`/dashboard/customers/${customer.id}`}
+                        className="font-medium hover:underline"
+                      >
+                        {customer.firstName} {customer.lastName}
+                      </Link>
+                    )}
+                    {customer.city && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        {customer.city}
+                      </div>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="space-y-1">

@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Personal information",
         "personalInfoDescription": "Customer's basic information",
+        "businessCustomer": "Business customer",
+        "businessCustomerDescription": "Check if this customer represents a company",
+        "companyName": "Company name",
+        "companyNamePlaceholder": "ACME Ltd",
         "firstName": "First name *",
         "firstNamePlaceholder": "John",
         "lastName": "Last name *",
@@ -1862,6 +1866,11 @@
       "emailPlaceholder": "john.doe@email.com",
       "phone": "Phone",
       "phonePlaceholder": "+1 234 567 8900",
+      "isBusinessCustomer": "I'm ordering for a company",
+      "isBusinessCustomerDescription": "Check this box if you are renting on behalf of a company",
+      "companyName": "Company name",
+      "companyNamePlaceholder": "ACME Ltd",
+      "contact": "Contact",
       "address": "Address",
       "addressPlaceholder": "123 Rental Street",
       "city": "City",
@@ -1887,6 +1896,7 @@
         "firstNameRequired": "First name required",
         "lastNameRequired": "Last name required",
         "phoneRequired": "Phone required",
+        "companyNameRequired": "Please enter the company name",
         "acceptCgv": "You must accept the terms and conditions"
       },
       "pricing": {
@@ -2285,7 +2295,8 @@
     },
     "parties": {
       "landlord": "Landlord",
-      "customer": "Customer"
+      "customer": "Customer",
+      "contact": "Contact"
     },
     "period": {
       "start": "Start",
@@ -2351,6 +2362,7 @@
   "validation": {
     "required": "This field is required",
     "requiredFields": "Please fill in all required fields",
+    "companyNameRequired": "Company name is required for business customers",
     "email": "Invalid email",
     "phone": "Invalid phone number",
     "minLength": "Minimum {min} characters",

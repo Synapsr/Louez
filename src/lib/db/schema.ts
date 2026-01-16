@@ -343,16 +343,24 @@ export const productPricingTiers = mysqlTable(
   })
 )
 
+export const customerType = mysqlEnum('customer_type', ['individual', 'business'])
+
 export const customers = mysqlTable(
   'customers',
   {
     id: id(),
     storeId: varchar('store_id', { length: 21 }).notNull(),
 
+    // Customer type (individual or business)
+    customerType: customerType.default('individual').notNull(),
+
     // Identity
     email: varchar('email', { length: 255 }).notNull(),
     firstName: varchar('first_name', { length: 255 }).notNull(),
     lastName: varchar('last_name', { length: 255 }).notNull(),
+
+    // Business info (only for business customers)
+    companyName: varchar('company_name', { length: 255 }),
 
     // Contact
     phone: varchar('phone', { length: 50 }),

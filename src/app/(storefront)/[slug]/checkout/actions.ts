@@ -31,6 +31,8 @@ interface CreateReservationInput {
     firstName: string
     lastName: string
     phone?: string
+    customerType?: 'individual' | 'business'
+    companyName?: string
     address?: string
     city?: string
     postalCode?: string
@@ -155,6 +157,8 @@ export async function createReservation(input: CreateReservationInput) {
           email: input.customer.email,
           firstName: input.customer.firstName,
           lastName: input.customer.lastName,
+          customerType: input.customer.customerType || 'individual',
+          companyName: input.customer.companyName || null,
           phone: input.customer.phone || null,
           address: input.customer.address || null,
           city: input.customer.city || null,
@@ -173,6 +177,8 @@ export async function createReservation(input: CreateReservationInput) {
         .set({
           firstName: input.customer.firstName,
           lastName: input.customer.lastName,
+          customerType: input.customer.customerType || customer.customerType,
+          companyName: input.customer.companyName ?? customer.companyName,
           phone: input.customer.phone || customer.phone,
           address: input.customer.address || customer.address,
           city: input.customer.city || customer.city,
@@ -321,6 +327,8 @@ export async function createReservation(input: CreateReservationInput) {
         firstName: input.customer.firstName,
         lastName: input.customer.lastName,
         email: input.customer.email,
+        customerType: input.customer.customerType || 'individual',
+        companyName: input.customer.companyName || null,
       }
 
       const reservationData = {

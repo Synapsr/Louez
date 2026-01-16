@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Persönliche Informationen",
         "personalInfoDescription": "Grundlegende Kundeninformationen",
+        "businessCustomer": "Geschäftskunde",
+        "businessCustomerDescription": "Aktivieren, wenn dieser Kunde ein Unternehmen vertritt",
+        "companyName": "Firmenname",
+        "companyNamePlaceholder": "ACME GmbH",
         "firstName": "Vorname *",
         "firstNamePlaceholder": "Max",
         "lastName": "Nachname *",
@@ -1864,6 +1868,11 @@
       "emailPlaceholder": "max.mustermann@email.de",
       "phone": "Telefon",
       "phonePlaceholder": "+49 123 456 7890",
+      "isBusinessCustomer": "Ich bestelle für ein Unternehmen",
+      "isBusinessCustomerDescription": "Aktivieren Sie dieses Kästchen, wenn Sie im Namen eines Unternehmens mieten",
+      "companyName": "Firmenname",
+      "companyNamePlaceholder": "ACME GmbH",
+      "contact": "Kontakt",
       "address": "Adresse",
       "addressPlaceholder": "Mietstraße 123",
       "city": "Stadt",
@@ -1889,6 +1898,7 @@
         "firstNameRequired": "Vorname erforderlich",
         "lastNameRequired": "Nachname erforderlich",
         "phoneRequired": "Telefon erforderlich",
+        "companyNameRequired": "Bitte geben Sie den Firmennamen ein",
         "acceptCgv": "Sie müssen die AGB akzeptieren"
       },
       "pricing": {
@@ -2287,7 +2297,8 @@
     },
     "parties": {
       "landlord": "Vermieter",
-      "customer": "Kunde"
+      "customer": "Kunde",
+      "contact": "Kontakt"
     },
     "period": {
       "start": "Beginn",
@@ -2353,6 +2364,7 @@
   "validation": {
     "required": "Dieses Feld ist erforderlich",
     "requiredFields": "Bitte füllen Sie alle erforderlichen Felder aus",
+    "companyNameRequired": "Firmenname ist für Geschäftskunden erforderlich",
     "email": "Ungültige E-Mail",
     "phone": "Ungültige Telefonnummer",
     "minLength": "Mindestens {min} Zeichen",

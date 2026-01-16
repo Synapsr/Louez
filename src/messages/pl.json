@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Dane osobowe",
         "personalInfoDescription": "Podstawowe informacje o kliencie",
+        "businessCustomer": "Klient firmowy",
+        "businessCustomerDescription": "Zaznacz, jeśli ten klient reprezentuje firmę",
+        "companyName": "Nazwa firmy",
+        "companyNamePlaceholder": "ACME Sp. z o.o.",
         "firstName": "Imię *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Nazwisko *",
@@ -1863,6 +1867,11 @@
       "emailPlaceholder": "jan.kowalski@email.pl",
       "phone": "Telefon",
       "phonePlaceholder": "+48 123 456 789",
+      "isBusinessCustomer": "Zamawiam dla firmy",
+      "isBusinessCustomerDescription": "Zaznacz to pole, jeśli wynajmujesz w imieniu firmy",
+      "companyName": "Nazwa firmy",
+      "companyNamePlaceholder": "ACME Sp. z o.o.",
+      "contact": "Kontakt",
       "address": "Adres",
       "addressPlaceholder": "ul. Wynajmu 123",
       "city": "Miasto",
@@ -1888,6 +1897,7 @@
         "firstNameRequired": "Imię wymagane",
         "lastNameRequired": "Nazwisko wymagane",
         "phoneRequired": "Telefon wymagany",
+        "companyNameRequired": "Proszę podać nazwę firmy",
         "acceptCgv": "Musisz zaakceptować regulamin"
       },
       "pricing": {
@@ -2286,7 +2296,8 @@
     },
     "parties": {
       "landlord": "Wynajmujący",
-      "customer": "Klient"
+      "customer": "Klient",
+      "contact": "Kontakt"
     },
     "period": {
       "start": "Początek",
@@ -2352,6 +2363,7 @@
   "validation": {
     "required": "To pole jest wymagane",
     "requiredFields": "Proszę wypełnić wszystkie wymagane pola",
+    "companyNameRequired": "Nazwa firmy jest wymagana dla klientów firmowych",
     "email": "Nieprawidłowy email",
     "phone": "Nieprawidłowy numer telefonu",
     "minLength": "Minimum {min} znaków",

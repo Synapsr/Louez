@@ -19,9 +19,11 @@ async function getCustomersWithStats(storeId: string, search?: string, sort?: st
   let query = db
     .select({
       id: customers.id,
+      customerType: customers.customerType,
       email: customers.email,
       firstName: customers.firstName,
       lastName: customers.lastName,
+      companyName: customers.companyName,
       phone: customers.phone,
       city: customers.city,
       createdAt: customers.createdAt,
@@ -43,7 +45,8 @@ async function getCustomersWithStats(storeId: string, search?: string, sort?: st
         LOWER(${customers.firstName}) LIKE ${searchLower} OR
         LOWER(${customers.lastName}) LIKE ${searchLower} OR
         LOWER(${customers.email}) LIKE ${searchLower} OR
-        LOWER(${customers.phone}) LIKE ${searchLower}
+        LOWER(${customers.phone}) LIKE ${searchLower} OR
+        LOWER(${customers.companyName}) LIKE ${searchLower}
       )`
     )
   }

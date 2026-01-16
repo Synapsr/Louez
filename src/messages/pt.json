@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Informacoes pessoais",
         "personalInfoDescription": "Informacoes basicas do cliente",
+        "businessCustomer": "Cliente empresarial",
+        "businessCustomerDescription": "Marque se este cliente representa uma empresa",
+        "companyName": "Nome da empresa",
+        "companyNamePlaceholder": "ACME Ltda",
         "firstName": "Nome *",
         "firstNamePlaceholder": "Joao",
         "lastName": "Sobrenome *",
@@ -1864,6 +1868,11 @@
       "emailPlaceholder": "joao.silva@email.com",
       "phone": "Telefone",
       "phonePlaceholder": "+351 912 345 678",
+      "isBusinessCustomer": "Estou a encomendar para uma empresa",
+      "isBusinessCustomerDescription": "Marque esta caixa se está a alugar em nome de uma empresa",
+      "companyName": "Nome da empresa",
+      "companyNamePlaceholder": "ACME Ltda",
+      "contact": "Contacto",
       "address": "Endereco",
       "addressPlaceholder": "Rua do Aluguel, 123",
       "city": "Cidade",
@@ -1889,6 +1898,7 @@
         "firstNameRequired": "Nome obrigatorio",
         "lastNameRequired": "Sobrenome obrigatorio",
         "phoneRequired": "Telefone obrigatorio",
+        "companyNameRequired": "Por favor introduza o nome da empresa",
         "acceptCgv": "Voce deve aceitar os termos e condicoes"
       },
       "pricing": {
@@ -2287,7 +2297,8 @@
     },
     "parties": {
       "landlord": "Locador",
-      "customer": "Cliente"
+      "customer": "Cliente",
+      "contact": "Contacto"
     },
     "period": {
       "start": "Inicio",
@@ -2353,6 +2364,7 @@
   "validation": {
     "required": "Este campo e obrigatorio",
     "requiredFields": "Por favor, preencha todos os campos obrigatorios",
+    "companyNameRequired": "O nome da empresa é obrigatório para clientes empresariais",
     "email": "Email invalido",
     "phone": "Numero de telefone invalido",
     "minLength": "Minimo {min} caracteres",

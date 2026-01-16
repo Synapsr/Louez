@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
 import {
   Card,
   CardContent,
@@ -20,6 +21,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -37,9 +39,11 @@ import { createCustomer, updateCustomer } from './actions'
 
 interface Customer {
   id: string
+  customerType: 'individual' | 'business'
   email: string
   firstName: string
   lastName: string
+  companyName: string | null
   phone: string | null
   address: string | null
   city: string | null
@@ -65,9 +69,11 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   const form = useForm<CustomerInput>({
     resolver: zodResolver(customerSchema),
     defaultValues: {
+      customerType: customer?.customerType || 'individual',
       email: customer?.email || '',
       firstName: customer?.firstName || '',
       lastName: customer?.lastName || '',
+      companyName: customer?.companyName || '',
       phone: customer?.phone || '',
       address: customer?.address || '',
       city: customer?.city || '',
@@ -76,6 +82,8 @@ export function CustomerForm({ customer }: CustomerFormProps) {
       notes: customer?.notes || '',
     },
   })
+
+  const customerType = form.watch('customerType')
 
   const onSubmit = (data: CustomerInput) => {
     startTransition(async () => {
@@ -112,66 +120,114 @@ export function CustomerForm({ customer }: CustomerFormProps) {
               {t('personalInfoDescription')}
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
+          <CardContent className="grid gap-4">
+            {/* Business customer toggle */}
             <FormField
               control={form.control}
-              name="firstName"
+              name="customerType"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('firstName')}</FormLabel>
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">{t('businessCustomer')}</FormLabel>
+                    <FormDescription>
+                      {t('businessCustomerDescription')}
+                    </FormDescription>
+                  </div>
                   <FormControl>
-                    <Input placeholder={t('firstNamePlaceholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('lastName')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('lastNamePlaceholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('email')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      {...field}
+                    <Switch
+                      checked={field.value === 'business'}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked ? 'business' : 'individual')
+                        if (!checked) {
+                          form.setValue('companyName', '')
+                        }
+                      }}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('phone')}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t('phonePlaceholder')} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Company name - only shown for business customers */}
+            {customerType === 'business' && (
+              <FormField
+                control={form.control}
+                name="companyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('companyName')} *</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('companyNamePlaceholder')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('firstName')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('firstNamePlaceholder')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('lastName')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('lastNamePlaceholder')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('email')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder={t('emailPlaceholder')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('phone')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('phonePlaceholder')} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </CardContent>
         </Card>
 

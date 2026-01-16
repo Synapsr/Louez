@@ -909,6 +909,10 @@
       "form": {
         "personalInfo": "Persoonlijke gegevens",
         "personalInfoDescription": "Basisinformatie van de klant",
+        "businessCustomer": "Zakelijke klant",
+        "businessCustomerDescription": "Vink aan als deze klant een bedrijf vertegenwoordigt",
+        "companyName": "Bedrijfsnaam",
+        "companyNamePlaceholder": "ACME B.V.",
         "firstName": "Voornaam *",
         "firstNamePlaceholder": "Jan",
         "lastName": "Achternaam *",
@@ -1862,6 +1866,11 @@
       "emailPlaceholder": "jan.jansen@email.nl",
       "phone": "Telefoon",
       "phonePlaceholder": "06 12 34 56 78",
+      "isBusinessCustomer": "Ik bestel voor een bedrijf",
+      "isBusinessCustomerDescription": "Vink dit vakje aan als u huurt namens een bedrijf",
+      "companyName": "Bedrijfsnaam",
+      "companyNamePlaceholder": "ACME B.V.",
+      "contact": "Contact",
       "address": "Adres",
       "addressPlaceholder": "Keizersgracht 123",
       "city": "Stad",
@@ -1887,6 +1896,7 @@
         "firstNameRequired": "Voornaam vereist",
         "lastNameRequired": "Achternaam vereist",
         "phoneRequired": "Telefoon vereist",
+        "companyNameRequired": "Vul de bedrijfsnaam in",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
       "pricing": {
@@ -2285,7 +2295,8 @@
     },
     "parties": {
       "landlord": "Verhuurder",
-      "customer": "Klant"
+      "customer": "Klant",
+      "contact": "Contact"
     },
     "period": {
       "start": "Start",
@@ -2351,6 +2362,7 @@
   "validation": {
     "required": "Dit veld is vereist",
     "requiredFields": "Vul alle verplichte velden in",
+    "companyNameRequired": "Bedrijfsnaam is verplicht voor zakelijke klanten",
     "email": "Ongeldige e-mail",
     "phone": "Ongeldig telefoonnummer",
     "minLength": "Minimaal {min} tekens",

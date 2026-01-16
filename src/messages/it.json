@@ -910,6 +910,10 @@
       "form": {
         "personalInfo": "Informazioni personali",
         "personalInfoDescription": "Informazioni di base del cliente",
+        "businessCustomer": "Cliente aziendale",
+        "businessCustomerDescription": "Seleziona se questo cliente rappresenta un'azienda",
+        "companyName": "Nome azienda",
+        "companyNamePlaceholder": "ACME S.r.l.",
         "firstName": "Nome *",
         "firstNamePlaceholder": "Mario",
         "lastName": "Cognome *",
@@ -1863,6 +1867,11 @@
       "emailPlaceholder": "mario.rossi@email.com",
       "phone": "Telefono",
       "phonePlaceholder": "+39 02 1234567",
+      "isBusinessCustomer": "Ordino per un'azienda",
+      "isBusinessCustomerDescription": "Seleziona questa casella se noleggi per conto di un'azienda",
+      "companyName": "Nome azienda",
+      "companyNamePlaceholder": "ACME S.r.l.",
+      "contact": "Contatto",
       "address": "Indirizzo",
       "addressPlaceholder": "Via del Noleggio 123",
       "city": "Citta",
@@ -1888,6 +1897,7 @@
         "firstNameRequired": "Nome obbligatorio",
         "lastNameRequired": "Cognome obbligatorio",
         "phoneRequired": "Telefono obbligatorio",
+        "companyNameRequired": "Inserisci il nome dell'azienda",
         "acceptCgv": "Devi accettare i termini e le condizioni"
       },
       "pricing": {
@@ -2286,7 +2296,8 @@
     },
     "parties": {
       "landlord": "Locatore",
-      "customer": "Cliente"
+      "customer": "Cliente",
+      "contact": "Contatto"
     },
     "period": {
       "start": "Inizio",
@@ -2352,6 +2363,7 @@
   "validation": {
     "required": "Questo campo e obbligatorio",
     "requiredFields": "Compila tutti i campi obbligatori",
+    "companyNameRequired": "Il nome dell'azienda è obbligatorio per i clienti aziendali",
     "email": "Email non valida",
     "phone": "Numero di telefono non valido",
     "minLength": "Minimo {min} caratteri",

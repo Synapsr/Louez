@@ -14,9 +14,11 @@ import type { LimitStatus } from '@/lib/plan-limits'
 
 interface Customer {
   id: string
+  customerType: 'individual' | 'business'
   email: string
   firstName: string
   lastName: string
+  companyName: string | null
   phone: string | null
   city: string | null
   createdAt: Date

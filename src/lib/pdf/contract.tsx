@@ -25,6 +25,7 @@ export interface ContractTranslations {
   parties: {
     landlord: string
     customer: string
+    contact: string
   }
   period: {
     start: string
@@ -106,6 +107,8 @@ interface Customer {
   firstName: string
   lastName: string
   email: string
+  customerType?: 'individual' | 'business' | null
+  companyName?: string | null
   phone?: string | null
   address?: string | null
   city?: string | null
@@ -284,9 +287,18 @@ export function ContractDocument({
           {/* Customer */}
           <View style={styles.partyCard}>
             <Text style={styles.partyLabel}>{t.parties.customer}</Text>
-            <Text style={styles.partyName}>
-              {reservation.customer.firstName} {reservation.customer.lastName}
-            </Text>
+            {reservation.customer.customerType === 'business' && reservation.customer.companyName ? (
+              <>
+                <Text style={styles.partyName}>{reservation.customer.companyName}</Text>
+                <Text style={styles.partyInfo}>
+                  {t.parties.contact}: {reservation.customer.firstName} {reservation.customer.lastName}
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.partyName}>
+                {reservation.customer.firstName} {reservation.customer.lastName}
+              </Text>
+            )}
             <Text style={styles.partyInfo}>{reservation.customer.email}</Text>
             {reservation.customer.phone && (
               <Text style={styles.partyInfo}>{reservation.customer.phone}</Text>

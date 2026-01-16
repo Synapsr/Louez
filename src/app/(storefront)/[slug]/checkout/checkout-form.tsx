@@ -127,13 +127,30 @@ export function CheckoutForm({
     firstName: z.string().min(1, t('errors.firstNameRequired')),
     lastName: z.string().min(1, t('errors.lastNameRequired')),
     phone: z.string().min(1, t('errors.phoneRequired')),
+    isBusinessCustomer: z.boolean(),
+    companyName: z.string().optional(),
     address: z.string().optional(),
     city: z.string().optional(),
     postalCode: z.string().optional(),
     notes: z.string().optional(),
-    acceptCgv: z.boolean().refine((val) => val === true, {
-      message: t('errors.acceptCgv'),
-    }),
+    acceptCgv: z.boolean(),
+  }).superRefine((data, ctx) => {
+    // If business customer, company name is required
+    if (data.isBusinessCustomer && (!data.companyName || data.companyName.trim().length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('errors.companyNameRequired'),
+        path: ['companyName'],
+      })
+    }
+    // CGV must be accepted
+    if (!data.acceptCgv) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('errors.acceptCgv'),
+        path: ['acceptCgv'],
+      })
+    }
   })
 
   type CheckoutFormData = z.infer<typeof checkoutSchema>
@@ -145,6 +162,8 @@ export function CheckoutForm({
       firstName: '',
       lastName: '',
       phone: '',
+      isBusinessCustomer: false,
+      companyName: '',
       address: '',
       city: '',
       postalCode: '',
@@ -153,11 +172,17 @@ export function CheckoutForm({
     },
   })
 
+  const isBusinessCustomer = form.watch('isBusinessCustomer')
+
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
 
   const validateCurrentStep = async (): Promise<boolean> => {
     if (currentStep === 'contact') {
-      return form.trigger(['firstName', 'lastName', 'email', 'phone'])
+      const fieldsToValidate: (keyof CheckoutFormData)[] = ['firstName', 'lastName', 'email', 'phone']
+      if (form.getValues('isBusinessCustomer')) {
+        fieldsToValidate.push('companyName')
+      }
+      return form.trigger(fieldsToValidate)
     }
     if (currentStep === 'address') {
       return true // All optional
@@ -201,6 +226,8 @@ export function CheckoutForm({
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
+          customerType: data.isBusinessCustomer ? 'business' : 'individual',
+          companyName: data.isBusinessCustomer ? data.companyName : undefined,
           address: data.address,
           city: data.city,
           postalCode: data.postalCode,
@@ -380,6 +407,52 @@ export function CheckoutForm({
                       />
                     </div>
 
+                    {/* Business customer checkbox */}
+                    <FormField
+                      control={form.control}
+                      name="isBusinessCustomer"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={(checked) => {
+                                field.onChange(checked)
+                                if (!checked) {
+                                  form.setValue('companyName', '')
+                                }
+                              }}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel className="cursor-pointer">
+                              {t('isBusinessCustomer')}
+                            </FormLabel>
+                            <p className="text-sm text-muted-foreground">
+                              {t('isBusinessCustomerDescription')}
+                            </p>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Company name - only shown for business customers */}
+                    {isBusinessCustomer && (
+                      <FormField
+                        control={form.control}
+                        name="companyName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('companyName')} *</FormLabel>
+                            <FormControl>
+                              <Input placeholder={t('companyNamePlaceholder')} {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <FormField
                       control={form.control}
                       name="email"
@@ -520,8 +593,14 @@ export function CheckoutForm({
                           {t('modify')}
                         </Button>
                       </div>
+                      {form.getValues('isBusinessCustomer') && form.getValues('companyName') && (
+                        <p className="text-sm font-medium">{form.getValues('companyName')}</p>
+                      )}
                       <p className="text-sm">
                         {form.getValues('firstName')} {form.getValues('lastName')}
+                        {form.getValues('isBusinessCustomer') && (
+                          <span className="text-muted-foreground"> ({t('contact')})</span>
+                        )}
                       </p>
                       <p className="text-sm text-muted-foreground">{form.getValues('email')}</p>
                       <p className="text-sm text-muted-foreground">{form.getValues('phone')}</p>

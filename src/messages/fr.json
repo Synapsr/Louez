@@ -1652,7 +1652,7 @@
       "viewDetails": "Voir le produit",
       "addToCart": "Ajouter au panier",
       "addedToCart": "{name} ajouté au panier",
-      "viewCart": "Voir le panier",
+      "goToCheckout": "Finaliser",
       "selectDates": "Réserver",
       "selectQuantity": "Quantité",
       "quantity": "Quantité",
@@ -1866,6 +1866,11 @@
       "emailPlaceholder": "jean.dupont@email.com",
       "phone": "Téléphone",
       "phonePlaceholder": "06 12 34 56 78",
+      "isBusinessCustomer": "Je commande pour une entreprise",
+      "isBusinessCustomerDescription": "Cochez cette case si vous louez au nom d'une société",
+      "companyName": "Nom de l'entreprise",
+      "companyNamePlaceholder": "ACME SAS",
+      "contact": "Contact",
       "address": "Adresse",
       "addressPlaceholder": "123 rue de la Location",
       "city": "Ville",
@@ -1891,6 +1896,7 @@
         "firstNameRequired": "Prénom requis",
         "lastNameRequired": "Nom requis",
         "phoneRequired": "Téléphone requis",
+        "companyNameRequired": "Veuillez saisir le nom de l'entreprise",
         "acceptCgv": "Vous devez accepter les conditions générales"
       },
       "pricing": {
@@ -2289,7 +2295,8 @@
     },
     "parties": {
       "landlord": "Loueur",
-      "customer": "Client"
+      "customer": "Client",
+      "contact": "Contact"
     },
     "period": {
       "start": "Début",
@@ -2355,6 +2362,7 @@
   "validation": {
     "required": "Ce champ est requis",
     "requiredFields": "Veuillez remplir tous les champs obligatoires",
+    "companyNameRequired": "Le nom de l'entreprise est requis pour les clients professionnels",
     "email": "Email invalide",
     "phone": "Numéro de téléphone invalide",
     "minLength": "Minimum {min} caractères",
