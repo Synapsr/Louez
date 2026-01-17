@@ -9,7 +9,7 @@ import { validateRentalPeriod } from '@/lib/utils/business-hours'
 const querySchema = z.object({
   startDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   endDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
-  productIds: z.string().optional(),
+  productIds: z.string().nullish(),
 })
 
 export interface ProductAvailability {

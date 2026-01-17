@@ -2049,6 +2049,17 @@
         "limited": "{count} rimanente/i",
         "unavailable": "Non disponibile",
         "inCart": "Nel carrello"
+      },
+      "businessHoursWarning": {
+        "title": "Conflitto di orario",
+        "pickup": "Ritiro",
+        "return": "Restituzione",
+        "reasons": {
+          "outside_hours": "fuori dall'orario di apertura",
+          "day_closed": "giorno di chiusura",
+          "closure_period": "periodo di chiusura eccezionale"
+        },
+        "suggestion": "Modifica le date per rispettare gli orari di apertura, altrimenti la prenotazione sarà rifiutata."
       }
     },
     "productModal": {

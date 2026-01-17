@@ -2048,6 +2048,17 @@
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
         "inCart": "In winkelwagen"
+      },
+      "businessHoursWarning": {
+        "title": "Tijdconflict",
+        "pickup": "Ophalen",
+        "return": "Terugbrengen",
+        "reasons": {
+          "outside_hours": "buiten openingstijden",
+          "day_closed": "gesloten dag",
+          "closure_period": "uitzonderlijke sluitingsperiode"
+        },
+        "suggestion": "Pas uw data aan om aan de openingstijden te voldoen, anders wordt de reservering geweigerd."
       }
     },
     "productModal": {

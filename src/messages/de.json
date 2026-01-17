@@ -2050,6 +2050,17 @@
         "limited": "{count} übrig",
         "unavailable": "Nicht verfügbar",
         "inCart": "Im Warenkorb"
+      },
+      "businessHoursWarning": {
+        "title": "Zeitplankonflikt",
+        "pickup": "Abholung",
+        "return": "Rückgabe",
+        "reasons": {
+          "outside_hours": "außerhalb der Öffnungszeiten",
+          "day_closed": "Ruhetag",
+          "closure_period": "außergewöhnliche Schließzeit"
+        },
+        "suggestion": "Passen Sie Ihre Daten an unsere Öffnungszeiten an, sonst wird die Reservierung abgelehnt."
       }
     },
     "productModal": {

@@ -736,7 +736,8 @@
           "canContinue": "En tant que gérant, vous pouvez créer cette réservation malgré les avertissements.",
           "productConflict": "{name} : conflit de disponibilité",
           "productConflictDetails": "Quantité demandée : {requested}, disponible sur cette période : {available}",
-          "conflictCanContinue": "Ces produits sont déjà réservés sur cette période. Vous pouvez continuer si vous gérez manuellement la disponibilité."
+          "conflictCanContinue": "Ces produits sont déjà réservés sur cette période. Vous pouvez continuer si vous gérez manuellement la disponibilité.",
+          "insufficientStock": "Stock insuffisant"
         },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé"
       },
@@ -2054,6 +2055,17 @@
         "limited": "{count} restant(s)",
         "unavailable": "Non disponible",
         "inCart": "Dans le panier"
+      },
+      "businessHoursWarning": {
+        "title": "Horaires non compatibles",
+        "pickup": "Retrait",
+        "return": "Retour",
+        "reasons": {
+          "outside_hours": "en dehors des heures d'ouverture",
+          "day_closed": "jour de fermeture",
+          "closure_period": "période de fermeture exceptionnelle"
+        },
+        "suggestion": "Modifiez vos dates pour respecter les horaires d'ouverture, sinon la réservation sera refusée."
       }
     },
     "productModal": {

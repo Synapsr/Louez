@@ -567,21 +567,21 @@ export function EditReservationForm({
         <div className="container max-w-5xl mx-auto px-4 py-6">
           {/* Warnings */}
           {availabilityWarnings.length > 0 && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <div className="space-y-1">
+            <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+              <AlertDescription className="ml-2">
+                <div className="flex flex-col gap-1">
                   {availabilityWarnings.map((warning) => (
-                    <p key={warning.productId}>
+                    <span key={warning.productId} className="font-medium text-amber-800 dark:text-amber-200">
                       <strong>{warning.productName}</strong>: {tForm('warnings.productConflictDetails', {
                         requested: warning.requestedQuantity,
                         available: warning.availableQuantity,
                       })}
-                    </p>
+                    </span>
                   ))}
-                  <p className="text-sm opacity-80 mt-2">
+                  <span className="text-sm text-amber-700 dark:text-amber-300 mt-1">
                     {tForm('warnings.conflictCanContinue')}
-                  </p>
+                  </span>
                 </div>
               </AlertDescription>
             </Alert>
@@ -683,7 +683,7 @@ export function EditReservationForm({
                           key={item.id}
                           className={cn(
                             'p-4 rounded-lg border bg-background transition-colors',
-                            hasWarning && 'border-destructive/50 bg-destructive/5'
+                            hasWarning && 'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20'
                           )}
                         >
                           <div className="flex items-start gap-4">
@@ -710,9 +710,9 @@ export function EditReservationForm({
                                 </p>
                               )}
                               {hasWarning && (
-                                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3" />
-                                  Stock insuffisant
+                                  {tForm('warnings.insufficientStock')}
                                 </p>
                               )}
                             </div>

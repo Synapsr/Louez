@@ -81,10 +81,21 @@ export function CatalogDatePicker({
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
   }, [startDate, businessHours, advanceNotice])
 
+  // Check if start and end are on the same day
+  const isSameDay = useMemo(() => {
+    if (!startDate || !endDate) return false
+    return startDate.toDateString() === endDate.toDateString()
+  }, [startDate, endDate])
+
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30)
-  }, [endDate, businessHours])
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30)
+    // When same day, filter out times that are <= start time
+    if (isSameDay && startTime) {
+      return slots.filter(slot => slot > startTime)
+    }
+    return slots
+  }, [endDate, businessHours, isSameDay, startTime])
 
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
@@ -129,9 +140,15 @@ export function CatalogDatePicker({
     setStartDateOpen(false)
 
     if (!endDate || date >= endDate) {
-      const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
-      setEndDate(nextAvailable ?? nextDay)
+      // For hourly pricing: default to same day (allows same-day rentals)
+      // For day/week pricing: default to next day
+      if (pricingMode === 'hour') {
+        setEndDate(date)
+      } else {
+        const nextDay = addDays(date, 1)
+        const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+        setEndDate(nextAvailable ?? nextDay)
+      }
       // Mark that end date was auto-set (so we can clear selection when opening picker)
       endDateAutoSetRef.current = true
     }
@@ -212,7 +229,12 @@ export function CatalogDatePicker({
     setEndTimeOpen(open)
   }
 
-  const canSubmit = startDate && endDate && startTime && endTime
+  const canSubmit = useMemo(() => {
+    if (!startDate || !endDate || !startTime || !endTime) return false
+    // For same day, ensure end time is after start time
+    if (isSameDay && endTime <= startTime) return false
+    return true
+  }, [startDate, endDate, startTime, endTime, isSameDay])
 
   const handleSubmit = () => {
     if (!canSubmit) return

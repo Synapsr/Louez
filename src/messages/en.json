@@ -731,7 +731,8 @@
           "canContinue": "As a manager, you can create this reservation despite the warnings.",
           "productConflict": "{name}: availability conflict",
           "productConflictDetails": "Requested quantity: {requested}, available for this period: {available}",
-          "conflictCanContinue": "These products are already reserved during this period. You can proceed if you manage availability manually."
+          "conflictCanContinue": "These products are already reserved during this period. You can proceed if you manage availability manually.",
+          "insufficientStock": "Insufficient stock"
         },
         "addItemError": "Please add at least one product or custom item"
       },
@@ -2054,6 +2055,17 @@
         "limited": "{count} left",
         "unavailable": "Unavailable",
         "inCart": "In cart"
+      },
+      "businessHoursWarning": {
+        "title": "Schedule conflict",
+        "pickup": "Pickup",
+        "return": "Return",
+        "reasons": {
+          "outside_hours": "outside business hours",
+          "day_closed": "day closed",
+          "closure_period": "exceptional closure period"
+        },
+        "suggestion": "Adjust your dates to match our opening hours, otherwise the reservation will be declined."
       }
     },
     "productModal": {
