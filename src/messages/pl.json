@@ -1380,6 +1380,7 @@
         "hoursDescription": "Godziny otwarcia i zamknięcia",
         "legalDescription": "Regulamin i informacje prawne",
         "emailsDescription": "Personalizacja powiadomień",
+        "reviewBoosterDescription": "Opinie Google i automatyzacja",
         "accountDescription": "Profil i bezpieczeństwo",
         "subscriptionDescription": "Plan i rozliczenia",
         "teamDescription": "Członkowie zespołu i role",
@@ -1576,6 +1577,43 @@
         "messageHint": "Ta wiadomość pojawi się w treści emaila. Użyj {number} dla numeru rezerwacji.",
         "signature": "Podpis",
         "signaturePlaceholder": "Pozostaw puste, aby użyć domyślnego podpisu"
+      },
+      "reviewBooster": {
+        "title": "Wzmacniacz opinii",
+        "description": "Zbieraj więcej opinii Google i wyświetlaj je w swoim sklepie",
+        "searchPlace": "Znajdź swoją firmę w Google",
+        "searchPlaceDescription": "Wyszukaj swoją firmę, aby włączyć funkcje opinii",
+        "searchPlaceholder": "Szukaj swojej firmy...",
+        "noResults": "Nie znaleziono wyników",
+        "selectedPlace": "Wybrana firma",
+        "changePlace": "Zmień",
+        "reviews": "opinie",
+        "displaySettings": "Wyświetlanie",
+        "displaySettingsDescription": "Kontroluj, gdzie wyświetlane są Twoje opinie Google",
+        "displayOnStorefront": "Wyświetlaj opinie w sklepie",
+        "displayOnStorefrontDesc": "Pokaż odwiedzającym swoją ocenę i opinie",
+        "showPromptInPortal": "Poproś o opinie",
+        "showPromptInPortalDesc": "Wyświetl prośbę o opinię po zakończonych wypożyczeniach",
+        "previewOnStorefront": "Podgląd w sklepie",
+        "automationSettings": "Automatyzacja",
+        "automationSettingsDescription": "Automatycznie wysyłaj prośby o opinie po wypożyczeniach",
+        "autoEmail": "Automatycznie wyślij email z podziękowaniem",
+        "autoEmailDesc": "Wyślij email z linkiem do pozostawienia opinii",
+        "autoSms": "Automatycznie wyślij SMS z podziękowaniem",
+        "autoSmsDesc": "Wyślij SMS z linkiem do pozostawienia opinii",
+        "delayHours": "Wyślij po",
+        "afterReturn": "po zwrocie",
+        "hours": "godzinach",
+        "smsLimitNote": "SMS-y podlegają limitom Twojego planu",
+        "saved": "Zapisano ustawienia wzmacniacza opinii",
+        "error": "Błąd podczas zapisywania",
+        "locked": {
+          "title": "Odblokuj Wzmacniacz opinii",
+          "description": "Zbieraj więcej opinii i wyświetlaj je w swoim sklepie",
+          "upgrade": "Przejdź na Pro",
+          "featureLocked": "Funkcja zablokowana",
+          "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
+        }
       },
       "businessHours": {
         "title": "Godziny otwarcia",
@@ -1940,7 +1978,8 @@
       "simpleReservation": "Prosta rezerwacja",
       "simpleReservationDesc": "Zarezerwuj w kilka kliknięć",
       "securePaymentDesc": "100% bezpieczne transakcje",
-      "localPickupDesc": "Łatwy odbiór sprzętu"
+      "localPickupDesc": "Łatwy odbiór sprzętu",
+        "reviewsBadge": "opinie"
     },
     "home": {
       "ourCategories": "Nasze kategorie",
@@ -1966,6 +2005,15 @@
       "alreadyReserved": "Masz już rezerwację?",
       "alreadyReservedDesc": "Wejdź na swoje konto, aby śledzić rezerwacje i pobrać umowy.",
       "accessAccount": "Wejdź na moje konto"
+    },
+    "reviews": {
+      "title": "Opinie klientów",
+      "subtitle": "Zobacz, co mówią o nas nasi klienci",
+      "viewOnGoogle": "Zobacz na Google",
+      "basedOn": "na podstawie {count} opinii",
+      "noReviewText": "Ta opinia nie ma komentarza.",
+      "seeAllOnGoogle": "Zobacz wszystkie opinie",
+      "verifiedByGoogle": "Opinie zweryfikowane przez Google"
     },
     "catalog": {
       "title": "Katalog",
@@ -2421,6 +2469,11 @@
           "failed": "Nieudane",
           "refunded": "Zwrócone"
         }
+      },
+      "reviewPrompt": {
+        "title": "Jak przebiegło Twoje wypożyczenie?",
+        "description": "Twoja opinia pomaga {name} się rozwijać",
+        "leaveReview": "Zostaw opinię"
       }
     },
     "footer": {
@@ -2669,6 +2722,13 @@
       "scheduledReturn": "Zaplanowany zwrot",
       "returnInfo": "Prosimy o zwrot sprzętu w dobrym stanie. Kaucja zostanie zwrócona po weryfikacji.",
       "thanks": "Dziękujemy za zaufanie!"
+    },
+    "thankYouReview": {
+      "subject": "Dziękujemy za wynajem!",
+      "title": "Dziękujemy za zaufanie!",
+      "body": "Mamy nadzieję, że wynajem przebiegł pomyślnie. Twoja opinia pomaga nam się rozwijać i pomaga innym klientom w wyborze.",
+      "cta": "Zostaw opinię",
+      "disclaimer": "Zajmie to tylko minutę i będzie dla nas wielką pomocą!"
     },
     "newRequestLandlord": {
       "subject": "Nowe żądanie rezerwacji #{number}",

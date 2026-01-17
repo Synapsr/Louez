@@ -1379,6 +1379,7 @@
         "hoursDescription": "Horaires et fermetures",
         "legalDescription": "CGV et mentions légales",
         "emailsDescription": "Personnalisation des notifications",
+        "reviewBoosterDescription": "Avis Google et automatisation",
         "accountDescription": "Profil et sécurité",
         "subscriptionDescription": "Plan et facturation",
         "teamDescription": "Collaborateurs et rôles",
@@ -1575,6 +1576,43 @@
         "messageHint": "Ce message s'affichera dans le corps de l'email. Utilisez {number} pour le numéro de réservation.",
         "signature": "Signature",
         "signaturePlaceholder": "Laissez vide pour utiliser la signature par défaut"
+      },
+      "reviewBooster": {
+        "title": "Booster d'avis",
+        "description": "Collectez plus d'avis Google et affichez-les sur votre boutique",
+        "searchPlace": "Trouvez votre établissement sur Google",
+        "searchPlaceDescription": "Recherchez votre établissement pour activer les fonctionnalités d'avis",
+        "searchPlaceholder": "Rechercher votre établissement...",
+        "noResults": "Aucun résultat",
+        "selectedPlace": "Établissement sélectionné",
+        "changePlace": "Modifier",
+        "reviews": "avis",
+        "displaySettings": "Affichage",
+        "displaySettingsDescription": "Contrôlez où vos avis Google sont affichés",
+        "displayOnStorefront": "Afficher les avis sur la boutique",
+        "displayOnStorefrontDesc": "Montrez votre note et vos avis aux visiteurs",
+        "showPromptInPortal": "Inviter à laisser un avis",
+        "showPromptInPortalDesc": "Affichez une invitation après une location terminée",
+        "previewOnStorefront": "Voir sur la boutique",
+        "automationSettings": "Automatisation",
+        "automationSettingsDescription": "Envoyez automatiquement des demandes d'avis après les locations",
+        "autoEmail": "Email de remerciement automatique",
+        "autoEmailDesc": "Envoyez un email avec un lien pour laisser un avis",
+        "autoSms": "SMS de remerciement automatique",
+        "autoSmsDesc": "Envoyez un SMS avec un lien pour laisser un avis",
+        "delayHours": "Envoyer après",
+        "afterReturn": "après le retour",
+        "hours": "heures",
+        "smsLimitNote": "Les SMS sont soumis aux limites de votre plan",
+        "saved": "Paramètres du booster d'avis enregistrés",
+        "error": "Erreur lors de l'enregistrement",
+        "locked": {
+          "title": "Débloquez le Booster d'avis",
+          "description": "Collectez plus d'avis et affichez-les sur votre boutique",
+          "upgrade": "Passer au plan Pro",
+          "featureLocked": "Fonctionnalité verrouillée",
+          "upgradeToUnlock": "Passez au plan Pro pour activer cette fonctionnalité"
+        }
       },
       "businessHours": {
         "title": "Horaires d'ouverture",
@@ -1939,7 +1977,8 @@
       "simpleReservation": "Réservation simple",
       "simpleReservationDesc": "Réservez en quelques clics",
       "securePaymentDesc": "Transactions 100% sécurisées",
-      "localPickupDesc": "Récupérez votre matériel facilement"
+      "localPickupDesc": "Récupérez votre matériel facilement",
+        "reviewsBadge": "avis"
     },
     "home": {
       "ourCategories": "Nos catégories",
@@ -1965,6 +2004,15 @@
       "alreadyReserved": "Déjà une réservation ?",
       "alreadyReservedDesc": "Accédez à votre compte pour suivre vos réservations et télécharger vos contrats.",
       "accessAccount": "Accéder à mon compte"
+    },
+    "reviews": {
+      "title": "Avis clients",
+      "subtitle": "Découvrez ce que nos clients disent de nous",
+      "viewOnGoogle": "Voir sur Google",
+      "basedOn": "sur {count} avis",
+      "noReviewText": "Cet avis n'a pas de commentaire.",
+      "seeAllOnGoogle": "Voir tous les avis",
+      "verifiedByGoogle": "Avis vérifiés par Google"
     },
     "catalog": {
       "title": "Catalogue",
@@ -2421,6 +2469,11 @@
           "failed": "Échoué",
           "refunded": "Remboursé"
         }
+      },
+      "reviewPrompt": {
+        "title": "Comment s'est passée votre location ?",
+        "description": "Votre avis aide {name} à s'améliorer",
+        "leaveReview": "Laisser un avis"
       }
     },
     "footer": {
@@ -2669,6 +2722,13 @@
       "scheduledReturn": "Retour prévu",
       "returnInfo": "Merci de rapporter le matériel en bon état. La caution vous sera restituée après vérification.",
       "thanks": "Merci de votre confiance !"
+    },
+    "thankYouReview": {
+      "subject": "Merci pour votre location !",
+      "title": "Merci pour votre confiance !",
+      "body": "Nous espérons que votre location s'est bien passée. Votre avis nous aide à nous améliorer et à aider d'autres clients à faire leur choix.",
+      "cta": "Laisser un avis",
+      "disclaimer": "Cela ne prend qu'une minute et nous serait d'une grande aide !"
     },
     "newRequestLandlord": {
       "subject": "Nouvelle demande de réservation #{number}",

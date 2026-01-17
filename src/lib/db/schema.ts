@@ -20,6 +20,8 @@ import type {
   ProductSnapshot,
   PricingBreakdown,
   ProductTaxSettings,
+  ReviewBoosterSettings,
+  GoogleReview,
 } from '@/types'
 
 // Helper for generating IDs
@@ -234,6 +236,9 @@ export const stores = mysqlTable(
       reminderReturnEnabled: true,
       replyToEmail: null,
     }),
+
+    // Review Booster settings
+    reviewBoosterSettings: json('review_booster_settings').$type<ReviewBoosterSettings>(),
 
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),
@@ -700,6 +705,48 @@ export const smsLogs = mysqlTable('sms_logs', {
 })
 
 // ============================================================================
+// Review Booster Tables
+// ============================================================================
+
+export const reviewRequestChannel = mysqlEnum('review_request_channel', ['email', 'sms'])
+
+export const reviewRequestLogs = mysqlTable(
+  'review_request_logs',
+  {
+    id: id(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    customerId: varchar('customer_id', { length: 21 }).notNull(),
+    channel: reviewRequestChannel.notNull(),
+    sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationIdx: index('review_request_logs_reservation_idx').on(table.reservationId),
+    storeIdx: index('review_request_logs_store_idx').on(table.storeId),
+  })
+)
+
+export const googlePlacesCache = mysqlTable(
+  'google_places_cache',
+  {
+    id: id(),
+    placeId: varchar('place_id', { length: 255 }).notNull().unique(),
+    name: varchar('name', { length: 255 }).notNull(),
+    address: text('address'),
+    rating: decimal('rating', { precision: 2, scale: 1 }),
+    reviewCount: int('review_count'),
+    reviews: json('reviews').$type<GoogleReview[]>(),
+    mapsUrl: text('maps_url'),
+    fetchedAt: timestamp('fetched_at', { mode: 'date' }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  },
+  (table) => ({
+    placeIdIdx: index('google_places_cache_place_id_idx').on(table.placeId),
+    expiresAtIdx: index('google_places_cache_expires_at_idx').on(table.expiresAt),
+  })
+)
+
+// ============================================================================
 // Relations
 // ============================================================================
 
@@ -935,6 +982,21 @@ export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
   }),
   customer: one(customers, {
     fields: [smsLogs.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const reviewRequestLogsRelations = relations(reviewRequestLogs, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [reviewRequestLogs.reservationId],
+    references: [reservations.id],
+  }),
+  store: one(stores, {
+    fields: [reviewRequestLogs.storeId],
+    references: [stores.id],
+  }),
+  customer: one(customers, {
+    fields: [reviewRequestLogs.customerId],
     references: [customers.id],
   }),
 }))

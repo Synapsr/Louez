@@ -33,10 +33,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { formatCurrency } from '@/lib/utils'
-import type { StoreSettings } from '@/types/store'
+import type { StoreSettings, ReviewBoosterSettings } from '@/types/store'
 import { getCustomerSession } from '../../actions'
 import { DownloadContractButton } from './download-contract-button'
 import { PayNowButton } from './pay-now-button'
+import { ReviewPromptCard } from '@/components/storefront/review-prompt-card'
+import { buildReviewUrl } from '@/lib/google-places'
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -59,6 +61,7 @@ export default async function ReservationDetailPage({
 
   const storeSettings = (store.settings as StoreSettings) || {}
   const currency = storeSettings.currency || 'EUR'
+  const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
 
   const session = await getCustomerSession(slug)
 
@@ -250,6 +253,19 @@ export default async function ReservationDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Review Prompt - show for completed reservations */}
+        {reservation.status === 'completed' &&
+          reservation.returnedAt &&
+          reviewBoosterSettings?.showReviewPromptInPortal &&
+          reviewBoosterSettings?.googlePlaceId && (
+            <div className="mb-6">
+              <ReviewPromptCard
+                storeName={store.name}
+                reviewUrl={buildReviewUrl(reviewBoosterSettings.googlePlaceId)}
+              />
+            </div>
+          )}
 
         {/* Rental Period */}
         <Card className="mb-6">

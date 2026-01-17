@@ -1379,6 +1379,7 @@
         "hoursDescription": "Business hours and closures",
         "legalDescription": "Terms and legal notices",
         "emailsDescription": "Notification customization",
+        "reviewBoosterDescription": "Google reviews and automation",
         "accountDescription": "Profile and security",
         "subscriptionDescription": "Plan and billing",
         "teamDescription": "Team members and roles",
@@ -1575,6 +1576,43 @@
         "messageHint": "This message will appear in the email body. Use {number} for reservation number.",
         "signature": "Signature",
         "signaturePlaceholder": "Leave empty to use default signature"
+      },
+      "reviewBooster": {
+        "title": "Review Booster",
+        "description": "Collect more Google reviews and display them on your storefront",
+        "searchPlace": "Find your business on Google",
+        "searchPlaceDescription": "Search for your business to enable review features",
+        "searchPlaceholder": "Search for your business...",
+        "noResults": "No results found",
+        "selectedPlace": "Selected Business",
+        "changePlace": "Change",
+        "reviews": "reviews",
+        "displaySettings": "Display",
+        "displaySettingsDescription": "Control where your Google reviews are displayed",
+        "displayOnStorefront": "Display reviews on storefront",
+        "displayOnStorefrontDesc": "Show your rating and reviews to visitors",
+        "showPromptInPortal": "Prompt for reviews",
+        "showPromptInPortalDesc": "Show a review prompt after completed rentals",
+        "previewOnStorefront": "Preview on storefront",
+        "automationSettings": "Automation",
+        "automationSettingsDescription": "Automatically send review requests after rentals",
+        "autoEmail": "Auto-send thank you email",
+        "autoEmailDesc": "Send an email with a link to leave a review",
+        "autoSms": "Auto-send thank you SMS",
+        "autoSmsDesc": "Send an SMS with a link to leave a review",
+        "delayHours": "Send after",
+        "afterReturn": "after return",
+        "hours": "hours",
+        "smsLimitNote": "SMS are subject to your plan limits",
+        "saved": "Review Booster settings saved",
+        "error": "Error saving settings",
+        "locked": {
+          "title": "Unlock Review Booster",
+          "description": "Collect more reviews and display them on your storefront",
+          "upgrade": "Upgrade to Pro",
+          "featureLocked": "Feature locked",
+          "upgradeToUnlock": "Upgrade to Pro to enable this feature"
+        }
       },
       "businessHours": {
         "title": "Business hours",
@@ -1939,7 +1977,8 @@
       "simpleReservation": "Simple reservation",
       "simpleReservationDesc": "Book in a few clicks",
       "securePaymentDesc": "100% secure transactions",
-      "localPickupDesc": "Easily pick up your equipment"
+      "localPickupDesc": "Easily pick up your equipment",
+        "reviewsBadge": "reviews"
     },
     "home": {
       "ourCategories": "Our categories",
@@ -1965,6 +2004,15 @@
       "alreadyReserved": "Already have a reservation?",
       "alreadyReservedDesc": "Access your account to track your reservations and download your contracts.",
       "accessAccount": "Access my account"
+    },
+    "reviews": {
+      "title": "Customer Reviews",
+      "subtitle": "See what our customers say about us",
+      "viewOnGoogle": "View on Google",
+      "basedOn": "based on {count} reviews",
+      "noReviewText": "This review has no comment.",
+      "seeAllOnGoogle": "See all reviews",
+      "verifiedByGoogle": "Reviews verified by Google"
     },
     "catalog": {
       "title": "Catalog",
@@ -2421,6 +2469,11 @@
           "failed": "Failed",
           "refunded": "Refunded"
         }
+      },
+      "reviewPrompt": {
+        "title": "How was your rental?",
+        "description": "Your feedback helps {name} improve",
+        "leaveReview": "Leave a Review"
       }
     },
     "footer": {
@@ -2669,6 +2722,13 @@
       "scheduledReturn": "Scheduled return",
       "returnInfo": "Please return the equipment in good condition. The deposit will be returned after verification.",
       "thanks": "Thank you for your trust!"
+    },
+    "thankYouReview": {
+      "subject": "Thank you for your rental!",
+      "title": "Thank you for your trust!",
+      "body": "We hope your rental went well. Your review helps us improve and helps other customers make their choice.",
+      "cta": "Leave a Review",
+      "disclaimer": "It only takes a minute and would be a great help!"
     },
     "newRequestLandlord": {
       "subject": "New reservation request #{number}",

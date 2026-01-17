@@ -19,6 +19,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
+      // Google Maps Places API (photos)
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+      },
       // YouTube thumbnails
       {
         protocol: 'https',

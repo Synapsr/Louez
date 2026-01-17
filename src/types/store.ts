@@ -168,3 +168,35 @@ export interface PlanFeatures {
   phoneSupport: boolean
   dedicatedManager: boolean
 }
+
+// ============================================================================
+// Review Booster Types
+// ============================================================================
+
+export interface GoogleReview {
+  authorName: string
+  authorPhotoUrl?: string
+  authorPhotoBase64?: string // Cached base64 encoded photo
+  rating: number
+  text: string
+  relativeTimeDescription: string
+  time: number // Unix timestamp
+}
+
+export interface ReviewBoosterSettings {
+  enabled: boolean
+  // Google Place info
+  googlePlaceId: string | null
+  googlePlaceName: string | null
+  googlePlaceAddress: string | null
+  googleRating: number | null
+  googleReviewCount: number | null
+  // Feature toggles
+  displayReviewsOnStorefront: boolean
+  showReviewPromptInPortal: boolean
+  // Automation settings
+  autoSendThankYouEmail: boolean
+  autoSendThankYouSms: boolean
+  emailDelayHours: number
+  smsDelayHours: number
+}

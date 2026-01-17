@@ -579,5 +579,101 @@ export async function sendCustomSms({
   }
 }
 
+/**
+ * Send thank you review SMS with Google review link
+ */
+export async function sendThankYouReviewSms({
+  store,
+  customer,
+  reservation,
+  reviewUrl,
+}: {
+  store: Store
+  customer: Customer & { id: string }
+  reservation: {
+    id: string
+    number: string
+  }
+  reviewUrl: string
+}): Promise<SmsSendResult> {
+  if (!customer.phone) {
+    return { success: false, error: 'Customer has no phone number' }
+  }
+
+  if (!isSmsConfigured()) {
+    return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
+  }
+
+  // Validate and normalize phone number
+  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  if (!phoneValidation.valid || !phoneValidation.normalized) {
+    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+  }
+  const normalizedPhone = phoneValidation.normalized
+
+  // Keep message short - SMS are limited to 160 chars
+  const message = buildSmsMessage([
+    `${store.name}`,
+    `Merci pour votre location!`,
+    `Votre avis compte: ${reviewUrl}`,
+  ])
+
+  try {
+    const result = await sendSms({
+      to: normalizedPhone,
+      message,
+      sender: 'Louez',
+    })
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'thank_you_review',
+      status: result.success ? 'sent' : 'failed',
+      messageId: result.messageId,
+      error: result.error,
+    })
+
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'thank_you_review',
+      status: 'failed',
+      error: errorMessage,
+    })
+
+    return { success: false, error: errorMessage }
+  }
+}
+
 // Re-export client functions for convenience
 export { isSmsConfigured, getSmsConfigStatus } from './client'

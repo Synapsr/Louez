@@ -1383,6 +1383,7 @@
         "hoursDescription": "Horarios y cierres",
         "legalDescription": "Terminos y avisos legales",
         "emailsDescription": "Personalizacion de notificaciones",
+        "reviewBoosterDescription": "Resenas de Google y automatizacion",
         "accountDescription": "Perfil y seguridad",
         "subscriptionDescription": "Plan y facturacion",
         "teamDescription": "Miembros del equipo y roles",
@@ -1579,6 +1580,43 @@
         "messageHint": "Este mensaje aparecera en el cuerpo del correo. Use {number} para el numero de reserva.",
         "signature": "Firma",
         "signaturePlaceholder": "Deje vacio para usar la firma predeterminada"
+      },
+      "reviewBooster": {
+        "title": "Impulsor de resenas",
+        "description": "Recopile mas resenas de Google y muestrelas en su tienda",
+        "searchPlace": "Encuentre su negocio en Google",
+        "searchPlaceDescription": "Busque su negocio para habilitar las funciones de resenas",
+        "searchPlaceholder": "Buscar su negocio...",
+        "noResults": "No se encontraron resultados",
+        "selectedPlace": "Negocio seleccionado",
+        "changePlace": "Cambiar",
+        "reviews": "reseñas",
+        "displaySettings": "Visualizacion",
+        "displaySettingsDescription": "Controle donde se muestran sus resenas de Google",
+        "displayOnStorefront": "Mostrar resenas en la tienda",
+        "displayOnStorefrontDesc": "Muestre su calificacion y resenas a los visitantes",
+        "showPromptInPortal": "Solicitar resenas",
+        "showPromptInPortalDesc": "Mostrar una solicitud de resena despues de alquileres completados",
+        "previewOnStorefront": "Ver en la tienda",
+        "automationSettings": "Automatizacion",
+        "automationSettingsDescription": "Envie automaticamente solicitudes de resena despues de los alquileres",
+        "autoEmail": "Enviar email de agradecimiento automaticamente",
+        "autoEmailDesc": "Envie un email con un enlace para dejar una resena",
+        "autoSms": "Enviar SMS de agradecimiento automaticamente",
+        "autoSmsDesc": "Envie un SMS con un enlace para dejar una resena",
+        "delayHours": "Enviar despues de",
+        "afterReturn": "despues de la devolucion",
+        "hours": "horas",
+        "smsLimitNote": "Los SMS estan sujetos a los limites de su plan",
+        "saved": "Configuracion del impulsor de resenas guardada",
+        "error": "Error al guardar",
+        "locked": {
+          "title": "Desbloquear impulsor de resenas",
+          "description": "Recopile mas resenas y muestrelas en su tienda",
+          "upgrade": "Actualizar a Pro",
+          "featureLocked": "Funcion bloqueada",
+          "upgradeToUnlock": "Actualice a Pro para habilitar esta funcion"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -1943,7 +1981,8 @@
       "simpleReservation": "Reserva simple",
       "simpleReservationDesc": "Reserve en unos clics",
       "securePaymentDesc": "Transacciones 100% seguras",
-      "localPickupDesc": "Recoja su equipo facilmente"
+      "localPickupDesc": "Recoja su equipo facilmente",
+        "reviewsBadge": "reseñas"
     },
     "home": {
       "ourCategories": "Nuestras categorias",
@@ -1969,6 +2008,15 @@
       "alreadyReserved": "Ya tiene una reserva?",
       "alreadyReservedDesc": "Acceda a su cuenta para seguir sus reservas y descargar sus contratos.",
       "accessAccount": "Acceder a mi cuenta"
+    },
+    "reviews": {
+      "title": "Resenas de clientes",
+      "subtitle": "Vea lo que nuestros clientes dicen de nosotros",
+      "viewOnGoogle": "Ver en Google",
+      "basedOn": "basado en {count} resenas",
+      "noReviewText": "Esta reseña no tiene comentario.",
+      "seeAllOnGoogle": "Ver todas las reseñas",
+      "verifiedByGoogle": "Reseñas verificadas por Google"
     },
     "catalog": {
       "title": "Catalogo",
@@ -2424,6 +2472,11 @@
           "failed": "Fallido",
           "refunded": "Reembolsado"
         }
+      },
+      "reviewPrompt": {
+        "title": "Como fue su alquiler?",
+        "description": "Sus comentarios ayudan a {name} a mejorar",
+        "leaveReview": "Dejar una resena"
       }
     },
     "footer": {
@@ -2672,6 +2725,13 @@
       "scheduledReturn": "Devolucion programada",
       "returnInfo": "Por favor devuelva el equipo en buenas condiciones. El deposito sera devuelto despues de la verificacion.",
       "thanks": "Gracias por su confianza!"
+    },
+    "thankYouReview": {
+      "subject": "Gracias por su alquiler!",
+      "title": "Gracias por su confianza!",
+      "body": "Esperamos que su alquiler haya ido bien. Su resena nos ayuda a mejorar y ayuda a otros clientes a tomar su decision.",
+      "cta": "Dejar una resena",
+      "disclaimer": "Solo toma un minuto y seria de gran ayuda!"
     },
     "newRequestLandlord": {
       "subject": "Nueva solicitud de reserva #{number}",

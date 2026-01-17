@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, Mail, FileText, CreditCard, Percent, Wallet } from 'lucide-react'
+import { Store, Palette, Clock, Mail, FileText, CreditCard, Percent, Wallet, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface SettingsNavItem {
@@ -47,6 +47,11 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/payments',
     icon: Wallet,
     labelKey: 'payments.title',
+  },
+  {
+    href: '/dashboard/settings/review-booster',
+    icon: Star,
+    labelKey: 'reviewBooster.title',
   },
   {
     href: '/dashboard/subscription',

@@ -1381,6 +1381,7 @@
         "hoursDescription": "Horario comercial e fechamentos",
         "legalDescription": "Termos e avisos legais",
         "emailsDescription": "Personalizacao de notificacoes",
+        "reviewBoosterDescription": "Avaliacoes Google e automatizacao",
         "accountDescription": "Perfil e seguranca",
         "subscriptionDescription": "Plano e faturamento",
         "teamDescription": "Membros da equipe e funcoes",
@@ -1577,6 +1578,43 @@
         "messageHint": "Esta mensagem aparecera no corpo do email. Use {number} para o numero da reserva.",
         "signature": "Assinatura",
         "signaturePlaceholder": "Deixe vazio para usar a assinatura padrao"
+      },
+      "reviewBooster": {
+        "title": "Impulsionador de avaliacoes",
+        "description": "Colete mais avaliacoes do Google e exiba-as na sua loja",
+        "searchPlace": "Encontre seu negocio no Google",
+        "searchPlaceDescription": "Pesquise seu negocio para ativar recursos de avaliacao",
+        "searchPlaceholder": "Pesquisar seu negocio...",
+        "noResults": "Nenhum resultado encontrado",
+        "selectedPlace": "Negocio selecionado",
+        "changePlace": "Alterar",
+        "reviews": "avaliações",
+        "displaySettings": "Exibicao",
+        "displaySettingsDescription": "Controle onde suas avaliacoes do Google sao exibidas",
+        "displayOnStorefront": "Exibir avaliacoes na loja",
+        "displayOnStorefrontDesc": "Mostre sua classificacao e avaliacoes aos visitantes",
+        "showPromptInPortal": "Solicitar avaliacoes",
+        "showPromptInPortalDesc": "Mostrar uma solicitacao de avaliacao apos alugueis concluidos",
+        "previewOnStorefront": "Ver na loja",
+        "automationSettings": "Automatizacao",
+        "automationSettingsDescription": "Envie automaticamente solicitacoes de avaliacao apos os alugueis",
+        "autoEmail": "Enviar email de agradecimento automaticamente",
+        "autoEmailDesc": "Envie um email com um link para deixar uma avaliacao",
+        "autoSms": "Enviar SMS de agradecimento automaticamente",
+        "autoSmsDesc": "Envie um SMS com um link para deixar uma avaliacao",
+        "delayHours": "Enviar apos",
+        "afterReturn": "apos a devolucao",
+        "hours": "horas",
+        "smsLimitNote": "SMS estao sujeitos aos limites do seu plano",
+        "saved": "Configuracoes do impulsionador de avaliacoes salvas",
+        "error": "Erro ao salvar",
+        "locked": {
+          "title": "Desbloquear impulsionador de avaliacoes",
+          "description": "Colete mais avaliacoes e exiba-as na sua loja",
+          "upgrade": "Atualizar para Pro",
+          "featureLocked": "Recurso bloqueado",
+          "upgradeToUnlock": "Atualize para Pro para ativar este recurso"
+        }
       },
       "businessHours": {
         "title": "Horario comercial",
@@ -1941,7 +1979,8 @@
       "simpleReservation": "Reserva simples",
       "simpleReservationDesc": "Reserve em poucos cliques",
       "securePaymentDesc": "Transacoes 100% seguras",
-      "localPickupDesc": "Retire seu equipamento facilmente"
+      "localPickupDesc": "Retire seu equipamento facilmente",
+        "reviewsBadge": "avaliações"
     },
     "home": {
       "ourCategories": "Nossas categorias",
@@ -1967,6 +2006,15 @@
       "alreadyReserved": "Ja tem uma reserva?",
       "alreadyReservedDesc": "Acesse sua conta para acompanhar suas reservas e baixar seus contratos.",
       "accessAccount": "Acessar minha conta"
+    },
+    "reviews": {
+      "title": "Avaliacoes de clientes",
+      "subtitle": "Veja o que nossos clientes dizem sobre nos",
+      "viewOnGoogle": "Ver no Google",
+      "basedOn": "baseado em {count} avaliacoes",
+      "noReviewText": "Esta avaliação não tem comentário.",
+      "seeAllOnGoogle": "Ver todas as avaliações",
+      "verifiedByGoogle": "Avaliações verificadas pelo Google"
     },
     "catalog": {
       "title": "Catalogo",
@@ -2422,6 +2470,11 @@
           "failed": "Falhou",
           "refunded": "Reembolsado"
         }
+      },
+      "reviewPrompt": {
+        "title": "Como foi seu aluguel?",
+        "description": "Seu feedback ajuda {name} a melhorar",
+        "leaveReview": "Deixar uma avaliacao"
       }
     },
     "footer": {
@@ -2670,6 +2723,13 @@
       "scheduledReturn": "Devolucao agendada",
       "returnInfo": "Por favor, devolva o equipamento em boas condicoes. A caucao sera devolvida apos verificacao.",
       "thanks": "Obrigado pela sua confianca!"
+    },
+    "thankYouReview": {
+      "subject": "Obrigado pelo seu aluguel!",
+      "title": "Obrigado pela sua confianca!",
+      "body": "Esperamos que seu aluguel tenha corrido bem. Sua avaliacao nos ajuda a melhorar e ajuda outros clientes na escolha.",
+      "cta": "Deixar uma avaliacao",
+      "disclaimer": "Leva apenas um minuto e seria de grande ajuda!"
     },
     "newRequestLandlord": {
       "subject": "Nova solicitacao de reserva #{number}",
