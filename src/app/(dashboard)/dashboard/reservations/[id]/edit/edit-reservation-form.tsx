@@ -1,35 +1,31 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
-  Calendar,
   Loader2,
   Trash2,
   Plus,
   Lock,
   Unlock,
   PenLine,
+  AlertTriangle,
+  Package,
+  Check,
+  ChevronRight,
+  Minus,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableFooter,
-} from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -51,11 +47,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Separator } from '@/components/ui/separator'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { cn, getCurrencySymbol } from '@/lib/utils'
+import { dateRangesOverlap } from '@/lib/utils/duration'
 import { updateReservation } from '../../actions'
 import type { PricingBreakdown, ProductSnapshot } from '@/types'
 
+// Types
 interface PricingTier {
   id: string
   minDuration: number
@@ -67,6 +67,7 @@ interface Product {
   name: string
   price: string
   deposit: string
+  quantity: number
   pricingMode: string | null
   pricingTiers: PricingTier[]
 }
@@ -82,6 +83,14 @@ interface ReservationItem {
   pricingBreakdown: PricingBreakdown | null
   productSnapshot: ProductSnapshot
   product: Product | null
+}
+
+interface ExistingReservation {
+  id: string
+  startDate: Date
+  endDate: Date
+  status: string
+  items: { productId: string | null; quantity: number }[]
 }
 
 interface Reservation {
@@ -110,12 +119,11 @@ interface EditableItem {
   product: Product | null
 }
 
-interface ExistingReservation {
-  id: string
-  startDate: Date
-  endDate: Date
-  status: string
-  items: Array<{ productId: string | null; quantity: number }>
+interface AvailabilityWarning {
+  productId: string
+  productName: string
+  requestedQuantity: number
+  availableQuantity: number
 }
 
 interface EditReservationFormProps {
@@ -126,24 +134,18 @@ interface EditReservationFormProps {
   currency: string
 }
 
-function calculateDuration(
-  startDate: Date,
-  endDate: Date,
-  pricingMode: string
-): number {
+// Helper functions
+function calculateDuration(startDate: Date, endDate: Date, pricingMode: string): number {
   const diffMs = endDate.getTime() - startDate.getTime()
   if (pricingMode === 'hour') {
-    return Math.ceil(diffMs / (1000 * 60 * 60))
+    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
   } else if (pricingMode === 'week') {
-    return Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7))
+    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
   }
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24))
+  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
 
-function findApplicableTier(
-  tiers: PricingTier[],
-  duration: number
-): PricingTier | null {
+function findApplicableTier(tiers: PricingTier[], duration: number): PricingTier | null {
   if (!tiers.length) return null
   const sorted = [...tiers].sort((a, b) => b.minDuration - a.minDuration)
   return sorted.find((tier) => duration >= tier.minDuration) || null
@@ -153,12 +155,13 @@ function calculateItemPrice(
   item: EditableItem,
   duration: number,
   pricingMode: string
-): { unitPrice: number; totalPrice: number; tierLabel: string | null } {
+): { unitPrice: number; totalPrice: number; tierLabel: string | null; discount: number } {
   if (item.isManualPrice || !item.product) {
     return {
       unitPrice: item.unitPrice,
       totalPrice: item.unitPrice * duration * item.quantity,
-      tierLabel: item.isManualPrice ? 'Manuel' : null,
+      tierLabel: null,
+      discount: 0,
     }
   }
 
@@ -169,10 +172,12 @@ function calculateItemPrice(
   if (tier) {
     const discount = parseFloat(tier.discountPercent)
     const effectivePrice = basePrice * (1 - discount / 100)
+    const unit = pricingMode === 'day' ? 'j' : pricingMode === 'hour' ? 'h' : 'sem'
     return {
       unitPrice: effectivePrice,
       totalPrice: effectivePrice * duration * item.quantity,
-      tierLabel: `-${discount}% (${tier.minDuration}+ ${pricingMode === 'day' ? 'j' : pricingMode === 'hour' ? 'h' : 'sem'})`,
+      tierLabel: `-${discount}% (${tier.minDuration}+ ${unit})`,
+      discount,
     }
   }
 
@@ -180,22 +185,26 @@ function calculateItemPrice(
     unitPrice: basePrice,
     totalPrice: basePrice * duration * item.quantity,
     tierLabel: null,
+    discount: 0,
   }
 }
 
 export function EditReservationForm({
   reservation,
   availableProducts,
-  existingReservations: _existingReservations,
+  existingReservations,
   pricingMode,
   currency,
 }: EditReservationFormProps) {
   const router = useRouter()
+  // Use separate translators for different namespaces
   const t = useTranslations('dashboard.reservations')
+  const tForm = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const currencySymbol = getCurrencySymbol(currency)
 
+  // State
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
@@ -211,6 +220,7 @@ export function EditReservationForm({
       product: item.product,
     }))
   )
+  const [availabilityWarnings, setAvailabilityWarnings] = useState<AvailabilityWarning[]>([])
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -222,7 +232,6 @@ export function EditReservationForm({
     deposit: '',
     quantity: '1',
   })
-  const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
 
   // Original values for comparison
   const originalSubtotal = parseFloat(reservation.subtotalAmount)
@@ -233,15 +242,64 @@ export function EditReservationForm({
     pricingMode
   )
 
-  // Calculate new values
+  // Calculate new duration
   const newDuration = useMemo(
-    () => startDate && endDate ? calculateDuration(startDate, endDate, pricingMode) : 0,
+    () => (startDate && endDate ? calculateDuration(startDate, endDate, pricingMode) : 0),
     [startDate, endDate, pricingMode]
   )
 
-  // Pricing unit label
-  const pricingUnit = pricingMode === 'hour' ? 'h' : pricingMode === 'week' ? 'sem' : 'j'
+  // Duration unit label
+  const durationUnit = pricingMode === 'hour' ? 'h' : pricingMode === 'week' ? 'sem' : 'j'
 
+  // Check availability warnings
+  const checkAvailabilityWarnings = useCallback(() => {
+    if (!startDate || !endDate || items.length === 0) {
+      setAvailabilityWarnings([])
+      return
+    }
+
+    const warnings: AvailabilityWarning[] = []
+
+    // Calculate reserved quantities from other reservations
+    const reservedByProduct = new Map<string, number>()
+
+    for (const res of existingReservations) {
+      if (!['pending', 'confirmed', 'ongoing'].includes(res.status)) continue
+      if (dateRangesOverlap(res.startDate, res.endDate, startDate, endDate)) {
+        for (const item of res.items) {
+          if (!item.productId) continue
+          const current = reservedByProduct.get(item.productId) || 0
+          reservedByProduct.set(item.productId, current + item.quantity)
+        }
+      }
+    }
+
+    // Check each item
+    for (const item of items) {
+      if (!item.productId || !item.product) continue
+
+      const reserved = reservedByProduct.get(item.productId) || 0
+      const available = Math.max(0, item.product.quantity - reserved)
+
+      if (item.quantity > available) {
+        warnings.push({
+          productId: item.productId,
+          productName: item.productSnapshot.name,
+          requestedQuantity: item.quantity,
+          availableQuantity: available,
+        })
+      }
+    }
+
+    setAvailabilityWarnings(warnings)
+  }, [startDate, endDate, items, existingReservations])
+
+  // Effect: check warnings when dates or items change
+  useEffect(() => {
+    checkAvailabilityWarnings()
+  }, [checkAvailabilityWarnings])
+
+  // Calculate totals
   const calculations = useMemo(() => {
     let subtotal = 0
     let deposit = 0
@@ -261,6 +319,7 @@ export function EditReservationForm({
     }
   }, [items, newDuration, pricingMode, originalSubtotal])
 
+  // Handlers
   const handleQuantityChange = (itemId: string, quantity: number) => {
     setItems((prev) =>
       prev.map((item) =>
@@ -282,7 +341,6 @@ export function EditReservationForm({
       prev.map((item) => {
         if (item.id !== itemId) return item
         if (item.isManualPrice && item.product) {
-          // Reset to automatic pricing
           return { ...item, isManualPrice: false, unitPrice: parseFloat(item.product.price) }
         }
         return { ...item, isManualPrice: true }
@@ -302,7 +360,6 @@ export function EditReservationForm({
     const product = availableProducts.find((p) => p.id === productId)
     if (!product) return
 
-    // Check if product already exists
     const existing = items.find((item) => item.productId === productId)
     if (existing) {
       handleQuantityChange(existing.id, existing.quantity + 1)
@@ -337,55 +394,45 @@ export function EditReservationForm({
       deposit: '',
       quantity: '1',
     })
-    setPriceInputMode('total')
   }
 
   const handleTotalPriceChange = (value: string) => {
-    setCustomItemForm((prev) => {
-      const total = parseFloat(value) || 0
-      const qty = parseInt(prev.quantity) || 1
-      const unit = newDuration > 0 && qty > 0 ? total / (newDuration * qty) : 0
-      return {
-        ...prev,
-        totalPrice: value,
-        unitPrice: priceInputMode === 'total' ? unit.toFixed(2) : prev.unitPrice,
-      }
-    })
+    const total = parseFloat(value) || 0
+    const qty = parseInt(customItemForm.quantity) || 1
+    const unit = newDuration > 0 && qty > 0 ? total / (newDuration * qty) : 0
+    setCustomItemForm((prev) => ({
+      ...prev,
+      totalPrice: value,
+      unitPrice: unit > 0 ? unit.toFixed(2) : '',
+    }))
   }
 
   const handleUnitPriceChange = (value: string) => {
-    setCustomItemForm((prev) => {
-      const unit = parseFloat(value) || 0
-      const qty = parseInt(prev.quantity) || 1
-      const total = unit * newDuration * qty
-      return {
-        ...prev,
-        unitPrice: value,
-        totalPrice: priceInputMode === 'unit' ? total.toFixed(2) : prev.totalPrice,
-      }
-    })
+    const unit = parseFloat(value) || 0
+    const qty = parseInt(customItemForm.quantity) || 1
+    const total = unit * newDuration * qty
+    setCustomItemForm((prev) => ({
+      ...prev,
+      unitPrice: value,
+      totalPrice: total > 0 ? total.toFixed(2) : '',
+    }))
   }
 
   const handleCustomItemQuantityChange = (value: string) => {
-    setCustomItemForm((prev) => {
-      const qty = parseInt(value) || 1
-      if (priceInputMode === 'total' && prev.totalPrice) {
-        const total = parseFloat(prev.totalPrice) || 0
-        const unit = newDuration > 0 && qty > 0 ? total / (newDuration * qty) : 0
-        return { ...prev, quantity: value, unitPrice: unit.toFixed(2) }
-      } else if (priceInputMode === 'unit' && prev.unitPrice) {
-        const unit = parseFloat(prev.unitPrice) || 0
-        const total = unit * newDuration * qty
-        return { ...prev, quantity: value, totalPrice: total.toFixed(2) }
-      }
-      return { ...prev, quantity: value }
-    })
+    const qty = parseInt(value) || 1
+    const unit = parseFloat(customItemForm.unitPrice) || 0
+    const total = unit * newDuration * qty
+    setCustomItemForm((prev) => ({
+      ...prev,
+      quantity: value,
+      totalPrice: unit > 0 ? total.toFixed(2) : prev.totalPrice,
+    }))
   }
 
   const handleAddCustomItem = () => {
     const name = customItemForm.name.trim()
     if (!name) {
-      toast.error(t('manualForm.customItem.nameRequired'))
+      toast.error(tForm('customItem.nameRequired'))
       return
     }
 
@@ -395,11 +442,11 @@ export function EditReservationForm({
     const deposit = parseFloat(customItemForm.deposit) || 0
 
     if (totalPrice <= 0 && unitPrice <= 0) {
-      toast.error(t('manualForm.customItem.priceRequired'))
+      toast.error(tForm('customItem.priceRequired'))
       return
     }
 
-    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : (totalPrice / (newDuration * quantity))
+    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : totalPrice / (newDuration * quantity)
 
     const newItem: EditableItem = {
       id: `custom-${Date.now()}`,
@@ -419,7 +466,7 @@ export function EditReservationForm({
     setItems((prev) => [...prev, newItem])
     resetCustomItemForm()
     setShowCustomItemDialog(false)
-    toast.success(t('manualForm.customItem.added'))
+    toast.success(tForm('customItem.added'))
   }
 
   const handleSave = async () => {
@@ -468,190 +515,258 @@ export function EditReservationForm({
     calculations.subtotal !== originalSubtotal ||
     items.length !== reservation.items.length
 
-  const durationLabel =
-    pricingMode === 'hour'
-      ? tCommon('hours', { count: newDuration })
-      : pricingMode === 'week'
-        ? tCommon('weeks', { count: newDuration })
-        : tCommon('days', { count: newDuration })
+  // Products not in the reservation
+  const availableToAdd = availableProducts.filter(
+    (p) => !items.some((item) => item.productId === p.id)
+  )
 
   return (
     <TooltipProvider>
-      <div className="space-y-6">
+      <div className="min-h-screen bg-muted/30">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href={`/dashboard/reservations/${reservation.id}`}>
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-xl font-semibold">{t('edit.title')}</h1>
-              <p className="text-sm text-muted-foreground">
-                #{reservation.number} • {reservation.customer.firstName}{' '}
-                {reservation.customer.lastName}
-              </p>
+        <div className="sticky top-0 z-10 bg-background border-b">
+          <div className="container max-w-5xl mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" className="shrink-0" asChild>
+                  <Link href={`/dashboard/reservations/${reservation.id}`}>
+                    <ArrowLeft className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-semibold">{t('edit.title')}</h1>
+                    <Badge variant="outline" className="font-mono">
+                      #{reservation.number}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {reservation.customer.firstName} {reservation.customer.lastName}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/dashboard/reservations/${reservation.id}`}>
+                    {tCommon('cancel')}
+                  </Link>
+                </Button>
+                <Button size="sm" onClick={handleSave} disabled={isLoading || !hasChanges}>
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 h-4 w-4" />
+                  )}
+                  {t('edit.save')}
+                </Button>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/dashboard/reservations/${reservation.id}`}>
-                {tCommon('cancel')}
-              </Link>
-            </Button>
-            <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('edit.save')}
-            </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Dates */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  {t('edit.dates')}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div className="space-y-1.5 flex-1">
-                    <Label className="text-xs text-muted-foreground">
-                      {t('edit.startDate')}
-                    </Label>
-                    <DateTimePicker
-                      date={startDate}
-                      setDate={setStartDate}
-                      showTime={true}
-                      minTime="00:00"
-                      maxTime="23:59"
-                      timeStep={30}
-                    />
+        <div className="container max-w-5xl mx-auto px-4 py-6">
+          {/* Warnings */}
+          {availabilityWarnings.length > 0 && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <div className="space-y-1">
+                  {availabilityWarnings.map((warning) => (
+                    <p key={warning.productId}>
+                      <strong>{warning.productName}</strong>: {tForm('warnings.productConflictDetails', {
+                        requested: warning.requestedQuantity,
+                        available: warning.availableQuantity,
+                      })}
+                    </p>
+                  ))}
+                  <p className="text-sm opacity-80 mt-2">
+                    {tForm('warnings.conflictCanContinue')}
+                  </p>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Dates Card */}
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-sm font-medium text-muted-foreground mb-4">
+                    {t('edit.dates')}
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs">{t('edit.startDate')}</Label>
+                      <DateTimePicker
+                        date={startDate}
+                        setDate={setStartDate}
+                        showTime={true}
+                        minTime="00:00"
+                        maxTime="23:59"
+                        timeStep={30}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">{t('edit.endDate')}</Label>
+                      <DateTimePicker
+                        date={endDate}
+                        setDate={setEndDate}
+                        showTime={true}
+                        minTime="00:00"
+                        maxTime="23:59"
+                        timeStep={30}
+                        disabledDates={(date) => (startDate ? date < startDate : false)}
+                      />
+                    </div>
                   </div>
-
-                  <span className="text-muted-foreground hidden sm:block pt-5">→</span>
-
-                  <div className="space-y-1.5 flex-1">
-                    <Label className="text-xs text-muted-foreground">
-                      {t('edit.endDate')}
-                    </Label>
-                    <DateTimePicker
-                      date={endDate}
-                      setDate={setEndDate}
-                      showTime={true}
-                      minTime="00:00"
-                      maxTime="23:59"
-                      timeStep={30}
-                      disabledDates={(date) => startDate ? date < startDate : false}
-                    />
-                  </div>
-
-                  <div className="sm:pt-5">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-sm">
-                      {durationLabel}
+                  {newDuration > 0 && (
+                    <div className="mt-4 flex items-center gap-2">
+                      <Badge variant="secondary" className="font-mono">
+                        {newDuration} {durationUnit}
+                      </Badge>
                       {newDuration !== originalDuration && (
-                        <span className="ml-1.5 text-xs text-muted-foreground">
-                          ({originalDuration} →)
+                        <span className="text-xs text-muted-foreground">
+                          (avant: {originalDuration} {durationUnit})
                         </span>
                       )}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-            {/* Items */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{t('edit.items')}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-sm"
-                      onClick={() => setShowCustomItemDialog(true)}
-                    >
-                      <PenLine className="h-3.5 w-3.5 mr-1.5" />
-                      {t('manualForm.customItem.button')}
-                    </Button>
-                    <Select onValueChange={handleAddProduct}>
-                      <SelectTrigger className="w-[180px] h-8 text-sm">
-                        <Plus className="h-3.5 w-3.5 mr-1.5" />
-                        <SelectValue placeholder={t('edit.addItem')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableProducts.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              {/* Items Card */}
+              <Card>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-medium text-muted-foreground">
+                      {t('edit.items')}
+                    </h2>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCustomItemDialog(true)}
+                      >
+                        <PenLine className="h-4 w-4 mr-2" />
+                        {tForm('customItem.button')}
+                      </Button>
+                      {availableToAdd.length > 0 && (
+                        <Select onValueChange={handleAddProduct}>
+                          <SelectTrigger className="w-[160px] h-9">
+                            <Plus className="h-4 w-4 mr-2" />
+                            <SelectValue placeholder={t('edit.addItem')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableToAdd.map((product) => (
+                              <SelectItem key={product.id} value={product.id}>
+                                <span className="flex items-center gap-2">
+                                  <Package className="h-3 w-3" />
+                                  {product.name}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/30">
-                        <TableHead>{t('edit.product')}</TableHead>
-                        <TableHead className="text-center w-24">{t('edit.qty')}</TableHead>
-                        <TableHead className="text-right w-36">{t('edit.unitPrice')}</TableHead>
-                        <TableHead className="text-right w-28">{t('edit.total')}</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {calculations.items.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-sm">
-                                {item.productSnapshot.name}
-                              </p>
-                              {item.tierLabel && (
-                                <p className="text-xs text-emerald-600">
+
+                  <div className="space-y-3">
+                    {calculations.items.map((item) => {
+                      const hasWarning = availabilityWarnings.some(
+                        (w) => w.productId === item.productId
+                      )
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            'p-4 rounded-lg border bg-background transition-colors',
+                            hasWarning && 'border-destructive/50 bg-destructive/5'
+                          )}
+                        >
+                          <div className="flex items-start gap-4">
+                            {/* Product info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium truncate">
+                                  {item.productSnapshot.name}
+                                </p>
+                                {!item.product && (
+                                  <Badge variant="outline" className="text-[10px] shrink-0">
+                                    {tForm('customItem.badge')}
+                                  </Badge>
+                                )}
+                                {item.isManualPrice && item.product && (
+                                  <Badge variant="outline" className="text-[10px] shrink-0 border-amber-300 text-amber-600">
+                                    Manuel
+                                  </Badge>
+                                )}
+                              </div>
+                              {item.tierLabel && !item.isManualPrice && (
+                                <p className="text-xs text-emerald-600 mt-0.5">
                                   {item.tierLabel}
                                 </p>
                               )}
+                              {hasWarning && (
+                                <p className="text-xs text-destructive mt-1 flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" />
+                                  Stock insuffisant
+                                </p>
+                              )}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) =>
-                                handleQuantityChange(item.id, parseInt(e.target.value) || 1)
-                              }
-                              className="w-16 h-8 text-center mx-auto"
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
+
+                            {/* Quantity */}
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
                               <Input
                                 type="number"
-                                step="0.01"
-                                min="0"
-                                value={item.unitPrice.toFixed(2)}
+                                min="1"
+                                value={item.quantity}
                                 onChange={(e) =>
-                                  handlePriceChange(item.id, parseFloat(e.target.value) || 0)
+                                  handleQuantityChange(item.id, parseInt(e.target.value) || 1)
                                 }
-                                className={cn(
-                                  'w-24 h-8 text-right',
-                                  item.isManualPrice && 'border-amber-300 bg-amber-50 dark:bg-amber-950/20'
-                                )}
+                                className="w-14 h-8 text-center"
                               />
-                              <span className="text-sm text-muted-foreground">
-                                {currencySymbol}
-                              </span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+
+                            {/* Unit price */}
+                            <div className="flex items-center gap-1">
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={item.unitPrice.toFixed(2)}
+                                  onChange={(e) =>
+                                    handlePriceChange(item.id, parseFloat(e.target.value) || 0)
+                                  }
+                                  className={cn(
+                                    'w-24 h-8 text-right pr-10',
+                                    item.isManualPrice && 'border-amber-300 bg-amber-50 dark:bg-amber-950/20'
+                                  )}
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                  {currencySymbol}/{durationUnit}
+                                </span>
+                              </div>
                               {item.product && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
@@ -676,68 +791,64 @@ export function EditReservationForm({
                                 </Tooltip>
                               )}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {item.totalPrice.toFixed(2)}{currencySymbol}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveItem(item.id)}
-                              disabled={items.length <= 1}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right font-medium">
-                          {t('edit.subtotal')}
-                        </TableCell>
-                        <TableCell className="text-right font-bold">
-                          {calculations.subtotal.toFixed(2)}{currencySymbol}
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
-          {/* Summary Sidebar */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">{t('edit.summary')}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Before/After comparison */}
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('edit.before')}</span>
-                    <span className="font-medium">
-                      {originalSubtotal.toFixed(2)}{currencySymbol}
-                    </span>
+                            {/* Total */}
+                            <div className="w-24 text-right">
+                              <p className="font-semibold">
+                                {item.totalPrice.toFixed(2)}{currencySymbol}
+                              </p>
+                            </div>
+
+                            {/* Remove */}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  disabled={items.length <= 1}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Supprimer</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('edit.after')}</span>
-                    <span className="font-medium">
-                      {calculations.subtotal.toFixed(2)}{currencySymbol}
-                    </span>
-                  </div>
-                  <div className="border-t pt-3">
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Summary Card */}
+              <Card className="sticky top-24">
+                <CardContent className="p-6">
+                  <h2 className="text-sm font-medium text-muted-foreground mb-4">
+                    {t('edit.summary')}
+                  </h2>
+
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('edit.before')}</span>
+                      <span>{originalSubtotal.toFixed(2)}{currencySymbol}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('edit.after')}</span>
+                      <span className="font-medium">{calculations.subtotal.toFixed(2)}{currencySymbol}</span>
+                    </div>
+
+                    <Separator />
+
                     <div className="flex justify-between">
                       <span className="font-medium">{t('edit.difference')}</span>
                       <span
                         className={cn(
-                          'font-bold',
+                          'font-bold text-lg',
                           calculations.difference > 0 && 'text-emerald-600',
                           calculations.difference < 0 && 'text-red-600'
                         )}
@@ -746,34 +857,54 @@ export function EditReservationForm({
                         {calculations.difference.toFixed(2)}{currencySymbol}
                       </span>
                     </div>
-                  </div>
-                </div>
 
-                {/* Info message */}
-                {calculations.difference !== 0 && (
-                  <div className="p-3 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-                    {calculations.difference > 0
-                      ? t('edit.adjustmentPositive', {
-                          amount: `${calculations.difference.toFixed(2)}${currencySymbol}`,
-                        })
-                      : t('edit.adjustmentNegative', {
-                          amount: `${Math.abs(calculations.difference).toFixed(2)}${currencySymbol}`,
-                        })}
-                  </div>
-                )}
+                    {calculations.difference !== 0 && (
+                      <p className="text-xs text-muted-foreground bg-muted rounded-lg p-3">
+                        {calculations.difference > 0
+                          ? t('edit.adjustmentPositive', {
+                              amount: `${calculations.difference.toFixed(2)}${currencySymbol}`,
+                            })
+                          : t('edit.adjustmentNegative', {
+                              amount: `${Math.abs(calculations.difference).toFixed(2)}${currencySymbol}`,
+                            })}
+                      </p>
+                    )}
 
-                {/* Deposit info */}
-                <div className="pt-3 border-t">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">{t('edit.deposit')}</span>
-                    <span>
-                      {originalDeposit.toFixed(2)} → {calculations.deposit.toFixed(2)}
-                      {currencySymbol}
-                    </span>
+                    <Separator />
+
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">{t('edit.deposit')}</span>
+                      <span>
+                        {originalDeposit !== calculations.deposit ? (
+                          <>
+                            <span className="text-muted-foreground line-through mr-2">
+                              {originalDeposit.toFixed(2)}
+                            </span>
+                            {calculations.deposit.toFixed(2)}{currencySymbol}
+                          </>
+                        ) : (
+                          <>{calculations.deposit.toFixed(2)}{currencySymbol}</>
+                        )}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                  <Button
+                    className="w-full mt-6"
+                    size="lg"
+                    onClick={handleSave}
+                    disabled={isLoading || !hasChanges}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ChevronRight className="mr-2 h-4 w-4" />
+                    )}
+                    {t('edit.save')}
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
@@ -784,47 +915,51 @@ export function EditReservationForm({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
-              {t('manualForm.customItem.dialogTitle')}
+              {tForm('customItem.dialogTitle')}
             </DialogTitle>
             <DialogDescription>
-              {t('manualForm.customItem.dialogDescription')}
+              {tForm('customItem.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="custom-name">{t('manualForm.customItem.name')} *</Label>
+              <Label htmlFor="custom-name">{tForm('customItem.name')} *</Label>
               <Input
                 id="custom-name"
-                placeholder={t('manualForm.customItem.namePlaceholder')}
+                placeholder={tForm('customItem.namePlaceholder')}
                 value={customItemForm.name}
                 onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
               />
             </div>
+
             <div className="space-y-2">
-              <Label htmlFor="custom-description">{t('manualForm.customItem.description')}</Label>
+              <Label htmlFor="custom-description">{tForm('customItem.description')}</Label>
               <Textarea
                 id="custom-description"
-                placeholder={t('manualForm.customItem.descriptionPlaceholder')}
+                placeholder={tForm('customItem.descriptionPlaceholder')}
                 value={customItemForm.description}
-                onChange={(e) => setCustomItemForm({ ...customItemForm, description: e.target.value })}
+                onChange={(e) =>
+                  setCustomItemForm({ ...customItemForm, description: e.target.value })
+                }
                 className="resize-none"
                 rows={2}
               />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="custom-quantity">{t('manualForm.customItem.quantity')}</Label>
+                <Label htmlFor="custom-quantity">{tForm('customItem.quantity')}</Label>
                 <Input
                   id="custom-quantity"
                   type="number"
                   min="1"
                   value={customItemForm.quantity}
                   onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
-                  className="w-full"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="custom-deposit">{t('manualForm.customItem.deposit')}</Label>
+                <Label htmlFor="custom-deposit">{tForm('customItem.deposit')}</Label>
                 <div className="relative">
                   <Input
                     id="custom-deposit"
@@ -833,7 +968,9 @@ export function EditReservationForm({
                     min="0"
                     placeholder="0.00"
                     value={customItemForm.deposit}
-                    onChange={(e) => setCustomItemForm({ ...customItemForm, deposit: e.target.value })}
+                    onChange={(e) =>
+                      setCustomItemForm({ ...customItemForm, deposit: e.target.value })
+                    }
                     className="pr-8"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -842,17 +979,22 @@ export function EditReservationForm({
                 </div>
               </div>
             </div>
-            {newDuration > 0 && (
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{t('manualForm.customItem.pricingPeriod')}</span>
-                  <span className="font-medium text-foreground">
-                    {newDuration} {pricingUnit} × {customItemForm.quantity || 1} {t('manualForm.customItem.units')}
+
+            {newDuration > 0 ? (
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{tForm('customItem.pricingPeriod')}</span>
+                  <span className="font-medium">
+                    {newDuration} {durationUnit} × {customItemForm.quantity || 1}{' '}
+                    {tForm('customItem.units')}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-total" className="text-xs">{t('manualForm.customItem.totalPrice')} *</Label>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-total" className="text-xs">
+                      {tForm('customItem.totalPrice')} *
+                    </Label>
                     <div className="relative">
                       <Input
                         id="custom-total"
@@ -862,7 +1004,6 @@ export function EditReservationForm({
                         placeholder="0.00"
                         value={customItemForm.totalPrice}
                         onChange={(e) => handleTotalPriceChange(e.target.value)}
-                        onFocus={() => setPriceInputMode('total')}
                         className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
@@ -870,8 +1011,10 @@ export function EditReservationForm({
                       </span>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-unit" className="text-xs">{t('manualForm.customItem.unitPrice')}</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="custom-unit" className="text-xs">
+                      {tForm('customItem.unitPrice')}
+                    </Label>
                     <div className="relative">
                       <Input
                         id="custom-unit"
@@ -881,23 +1024,23 @@ export function EditReservationForm({
                         placeholder="0.00"
                         value={customItemForm.unitPrice}
                         onChange={(e) => handleUnitPriceChange(e.target.value)}
-                        onFocus={() => setPriceInputMode('unit')}
                         className="pr-12"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        {currencySymbol}/{pricingUnit}
+                        {currencySymbol}/{durationUnit}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
-            )}
-            {newDuration === 0 && (
-              <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                {t('manualForm.customItem.selectPeriodFirst')}
-              </p>
+            ) : (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{tForm('customItem.selectPeriodFirst')}</AlertDescription>
+              </Alert>
             )}
           </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -910,8 +1053,8 @@ export function EditReservationForm({
               {tCommon('cancel')}
             </Button>
             <Button type="button" onClick={handleAddCustomItem} disabled={newDuration === 0}>
-              <Plus className="h-4 w-4 mr-1" />
-              {t('manualForm.customItem.addButton')}
+              <Plus className="h-4 w-4 mr-2" />
+              {tForm('customItem.addButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
