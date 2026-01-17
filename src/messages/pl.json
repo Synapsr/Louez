@@ -2728,7 +2728,9 @@
       "title": "Dziękujemy za zaufanie!",
       "body": "Mamy nadzieję, że wynajem przebiegł pomyślnie. Twoja opinia pomaga nam się rozwijać i pomaga innym klientom w wyborze.",
       "cta": "Zostaw opinię",
-      "disclaimer": "Zajmie to tylko minutę i będzie dla nas wielką pomocą!"
+      "disclaimer": "Zajmie to tylko minutę i będzie dla nas wielką pomocą!",
+      "smsThankYou": "Dziekujemy za wynajem!",
+      "smsReview": "Twoja opinia sie liczy:"
     },
     "newRequestLandlord": {
       "subject": "Nowe żądanie rezerwacji #{number}",

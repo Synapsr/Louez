@@ -2731,7 +2731,9 @@
       "title": "Gracias por su confianza!",
       "body": "Esperamos que su alquiler haya ido bien. Su resena nos ayuda a mejorar y ayuda a otros clientes a tomar su decision.",
       "cta": "Dejar una resena",
-      "disclaimer": "Solo toma un minuto y seria de gran ayuda!"
+      "disclaimer": "Solo toma un minuto y seria de gran ayuda!",
+      "smsThankYou": "Gracias por su alquiler!",
+      "smsReview": "Su opinion cuenta:"
     },
     "newRequestLandlord": {
       "subject": "Nueva solicitud de reserva #{number}",
