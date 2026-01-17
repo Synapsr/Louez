@@ -25,15 +25,15 @@ export default async function PaymentsSettingsPage() {
 
       <SettingsNav />
 
-      <PaymentFlowExplanation
-        reservationMode={reservationMode}
-        stripeChargesEnabled={store.stripeChargesEnabled ?? false}
-      />
-
       <StripeConnectCard
         stripeAccountId={store.stripeAccountId}
         stripeChargesEnabled={store.stripeChargesEnabled ?? false}
         stripeOnboardingComplete={store.stripeOnboardingComplete ?? false}
+      />
+
+      <PaymentFlowExplanation
+        reservationMode={reservationMode}
+        stripeChargesEnabled={store.stripeChargesEnabled ?? false}
       />
     </div>
   )
