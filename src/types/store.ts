@@ -66,6 +66,13 @@ export interface StoreSettings {
   maxDuration: number | null
   advanceNotice: number
   requireCustomerAddress?: boolean
+  /**
+   * Controls whether pending (unanswered) reservation requests block availability.
+   * Only applies when reservationMode is 'request'.
+   * - true (default): Pending requests immediately block product availability
+   * - false: Only confirmed reservations block availability
+   */
+  pendingBlocksAvailability?: boolean
   businessHours?: BusinessHours
   country?: string    // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'CH')
   timezone?: string   // IANA timezone (e.g., 'Europe/Paris')

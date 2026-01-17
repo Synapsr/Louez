@@ -127,6 +127,14 @@ export async function GET(
       } as AvailabilityResponse)
     }
 
+    // Determine which statuses block availability based on store settings
+    // If pendingBlocksAvailability is false (and mode is 'request'), pending reservations don't block
+    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+      pendingBlocksAvailability
+        ? ['pending', 'confirmed', 'ongoing']
+        : ['confirmed', 'ongoing']
+
     // Get overlapping reservations
     // A reservation overlaps if:
     // - It starts before our end date AND
@@ -135,7 +143,7 @@ export async function GET(
     const overlappingReservations = await db.query.reservations.findMany({
       where: and(
         eq(reservations.storeId, store.id),
-        inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+        inArray(reservations.status, blockingStatuses),
         lt(reservations.startDate, endDate),
         gt(reservations.endDate, startDate)
       ),

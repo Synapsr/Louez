@@ -2,7 +2,7 @@
 
 import { db } from '@/lib/db'
 import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments, reservationActivity } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray, lt, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
 import type { TaxSettings, ProductTaxSettings } from '@/types/store'
@@ -12,7 +12,7 @@ import {
 } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
-import { getMinStartDateTime } from '@/lib/utils/duration'
+import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
 
 interface ReservationItem {
@@ -120,7 +120,7 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    // Validate products exist and are available
+    // Validate products exist and check stock
     for (const item of input.items) {
       const product = await db.query.products.findFirst({
         where: and(
@@ -138,6 +138,56 @@ export async function createReservation(input: CreateReservationInput) {
         return {
           error: 'errors.insufficientStock',
           errorParams: { name: item.productSnapshot.name, count: product.quantity },
+        }
+      }
+    }
+
+    // Check for date conflicts with existing reservations
+    // This prevents race conditions where availability was checked earlier but changed since
+    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+      pendingBlocksAvailability
+        ? ['pending', 'confirmed', 'ongoing']
+        : ['confirmed', 'ongoing']
+
+    const overlappingReservations = await db.query.reservations.findMany({
+      where: and(
+        eq(reservations.storeId, input.storeId),
+        inArray(reservations.status, blockingStatuses),
+        lt(reservations.startDate, rentalEndDate),
+        gt(reservations.endDate, rentalStartDate)
+      ),
+      with: {
+        items: true,
+      },
+    })
+
+    // Calculate reserved quantity per product for the requested period
+    const reservedByProduct = new Map<string, number>()
+    for (const reservation of overlappingReservations) {
+      if (dateRangesOverlap(reservation.startDate, reservation.endDate, rentalStartDate, rentalEndDate)) {
+        for (const resItem of reservation.items) {
+          if (!resItem.productId) continue
+          const current = reservedByProduct.get(resItem.productId) || 0
+          reservedByProduct.set(resItem.productId, current + resItem.quantity)
+        }
+      }
+    }
+
+    // Check if requested quantities are still available
+    for (const item of input.items) {
+      const product = await db.query.products.findFirst({
+        where: eq(products.id, item.productId),
+      })
+      if (!product) continue
+
+      const reserved = reservedByProduct.get(item.productId) || 0
+      const available = Math.max(0, product.quantity - reserved)
+
+      if (item.quantity > available) {
+        return {
+          error: 'errors.productNoLongerAvailable',
+          errorParams: { name: item.productSnapshot.name },
         }
       }
     }

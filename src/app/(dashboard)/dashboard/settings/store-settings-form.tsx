@@ -66,6 +66,7 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   // Settings
   pricingMode: z.enum(['day', 'hour', 'week']),
   reservationMode: z.enum(['payment', 'request']),
+  pendingBlocksAvailability: z.boolean(),
   minDuration: z.number().min(1),
   maxDuration: z.number().nullable(),
   advanceNotice: z.number().min(0),
@@ -135,6 +136,7 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
       billingCountry: billingAddress.country || defaultCountry,
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
+      pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
       minDuration: settings.minDuration,
       maxDuration: settings.maxDuration,
       advanceNotice: settings.advanceNotice,
@@ -603,6 +605,32 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
                   )}
                 />
               </div>
+
+              {/* Pending blocks availability - only shown in request mode */}
+              {form.watch('reservationMode') === 'request' && (
+                <FormField
+                  control={form.control}
+                  name="pendingBlocksAvailability"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          {t('reservationSettings.pendingBlocksAvailability')}
+                        </FormLabel>
+                        <FormDescription>
+                          {t('reservationSettings.pendingBlocksAvailabilityDescription')}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField

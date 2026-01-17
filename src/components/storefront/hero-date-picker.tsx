@@ -52,6 +52,8 @@ export function HeroDatePicker({
   const { getUrl } = useStorefrontUrl(storeSlug)
 
   const isTransitioningRef = useRef(false)
+  // Track if end date was auto-set (to allow re-clicking same date in calendar)
+  const endDateAutoSetRef = useRef(false)
 
   const [startDate, setStartDate] = useState<Date | undefined>(() => {
     const urlStart = searchParams.get('startDate')
@@ -75,6 +77,8 @@ export function HeroDatePicker({
   const [startTimeOpen, setStartTimeOpen] = useState(false)
   const [endDateOpen, setEndDateOpen] = useState(false)
   const [endTimeOpen, setEndTimeOpen] = useState(false)
+  // When true, don't show end date as selected (allows clicking auto-set date)
+  const [hideEndDateSelection, setHideEndDateSelection] = useState(false)
 
   // Calculate minimum start date based on advance notice setting
   const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
@@ -131,6 +135,8 @@ export function HeroDatePicker({
       const nextDay = addDays(date, 1)
       const nextAvailable = getNextAvailableDate(nextDay, businessHours)
       setEndDate(nextAvailable ?? nextDay)
+      // Mark that end date was auto-set (so we can clear selection when opening picker)
+      endDateAutoSetRef.current = true
     }
 
     isTransitioningRef.current = true
@@ -147,6 +153,10 @@ export function HeroDatePicker({
 
     isTransitioningRef.current = true
     setTimeout(() => {
+      // If end date was auto-set, hide selection so user can click any date
+      if (endDateAutoSetRef.current) {
+        setHideEndDateSelection(true)
+      }
       setEndDateOpen(true)
       setActiveField('endDate')
       isTransitioningRef.current = false
@@ -157,6 +167,9 @@ export function HeroDatePicker({
     if (!date) return
     setEndDate(date)
     setEndDateOpen(false)
+    // User explicitly selected, reset flags
+    endDateAutoSetRef.current = false
+    setHideEndDateSelection(false)
 
     isTransitioningRef.current = true
     setTimeout(() => {
@@ -197,7 +210,12 @@ export function HeroDatePicker({
   const handleEndDateOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
     setEndDateOpen(open)
-    if (open) setActiveField('endDate')
+    if (open) {
+      setActiveField('endDate')
+    } else {
+      // Reset hide selection when closing picker
+      setHideEndDateSelection(false)
+    }
   }
 
   const handleEndTimeOpenChange = (open: boolean) => {
@@ -299,7 +317,7 @@ export function HeroDatePicker({
                       onSelect={handleStartDateSelect}
                       disabled={isDateDisabled}
                       locale={fr}
-                      initialFocus
+                      autoFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -343,11 +361,12 @@ export function HeroDatePicker({
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={endDate}
+                      selected={hideEndDateSelection ? undefined : endDate}
+                      defaultMonth={endDate}
                       onSelect={handleEndDateSelect}
                       disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
                       locale={fr}
-                      initialFocus
+                      autoFocus
                     />
                   </PopoverContent>
                 </Popover>

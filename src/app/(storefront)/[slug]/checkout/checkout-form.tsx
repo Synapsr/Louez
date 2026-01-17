@@ -274,7 +274,22 @@ export function CheckoutForm({
       })
 
       if (result.error) {
-        toast.error(result.error)
+        // Translate the error message if it's an i18n key
+        let errorMessage = result.error
+        if (result.error.startsWith('errors.')) {
+          const errorKey = result.error.replace('errors.', '')
+          // Filter out undefined values from errorParams for translation
+          const params: Record<string, string | number> = {}
+          if (result.errorParams) {
+            for (const [key, value] of Object.entries(result.errorParams)) {
+              if (value !== undefined) {
+                params[key] = value
+              }
+            }
+          }
+          errorMessage = tErrors(errorKey, params)
+        }
+        toast.error(errorMessage)
         return
       }
 

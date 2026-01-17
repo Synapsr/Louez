@@ -2776,6 +2776,7 @@
     "productRequired": "Produit requis",
     "customerRequired": "Client requis",
     "productUnavailable": "Produit non disponible: {name}",
+    "productNoLongerAvailable": "Le produit {name} n'est plus disponible pour ces dates. Une autre réservation a été effectuée entre-temps.",
     "insufficientStock": "Stock insuffisant pour: {name} ({count} disponibles)",
     "createCustomerError": "Erreur lors de la création du client",
     "updateCustomerError": "Erreur lors de la mise à jour du client",
