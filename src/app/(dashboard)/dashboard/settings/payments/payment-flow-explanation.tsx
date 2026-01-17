@@ -156,7 +156,7 @@ export function PaymentFlowExplanation({
               <FlowStep number={1} icon={FileCheck} text={t('steps.requestSubmitted')} isActive={activeStep === 1} />
               <FlowStep number={2} icon={Mail} text={t('steps.youReview')} isActive={activeStep === 2} />
               <FlowStep number={3} icon={CheckCircle2} text={t('steps.acceptOrReject')} isActive={activeStep === 3} />
-              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnlineOrSite')} isActive={activeStep === 4} highlight />
+              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnlineOrSite')} isActive={activeStep === 4} />
             </div>
           </div>
 
@@ -260,7 +260,7 @@ export function PaymentFlowExplanation({
             {t('currentFlow')}
           </h4>
           <div className="flex flex-col gap-2">
-            <FlowStep number={1} icon={CreditCard} text={t('steps.customerPays')} isActive={activeStep === 1} highlight />
+            <FlowStep number={1} icon={CreditCard} text={t('steps.customerPays')} isActive={activeStep === 1} />
             <FlowStep number={2} icon={CheckCircle2} text={t('steps.reservationConfirmed')} isActive={activeStep === 2} />
             <FlowStep number={3} icon={Mail} text={t('steps.bothNotified')} isActive={activeStep === 3} />
           </div>
@@ -297,46 +297,35 @@ interface FlowStepProps {
   number: number
   icon: React.ComponentType<{ className?: string }>
   text: string
-  highlight?: boolean
   isActive?: boolean
 }
 
-function FlowStep({ number, icon: Icon, text, highlight, isActive }: FlowStepProps) {
-  const isHighlighted = highlight || isActive
-
+function FlowStep({ number, icon: Icon, text, isActive }: FlowStepProps) {
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border p-3 transition-all duration-500 ease-in-out ${
+      className={`flex items-center gap-3 rounded-lg border p-3 transition-all duration-300 ease-in-out ${
         isActive
-          ? 'border-primary/50 bg-primary/10 scale-[1.02]'
-          : highlight
-            ? 'border-primary/30 bg-primary/5'
-            : 'border-transparent bg-muted/50'
+          ? 'border-primary/40 bg-primary/5'
+          : 'border-transparent bg-muted/50'
       }`}
     >
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-all duration-500 ${
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-all duration-300 ${
           isActive
-            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30'
-            : highlight
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted-foreground/20 text-muted-foreground'
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted-foreground/20 text-muted-foreground'
         }`}
       >
         {number}
       </div>
       <Icon
-        className={`h-4 w-4 shrink-0 transition-all duration-500 ${
-          isActive
-            ? 'text-primary scale-110'
-            : isHighlighted
-              ? 'text-primary'
-              : 'text-muted-foreground'
+        className={`h-4 w-4 shrink-0 transition-all duration-300 ${
+          isActive ? 'text-primary' : 'text-muted-foreground'
         }`}
       />
       <span
-        className={`text-sm transition-all duration-500 ${
-          isActive ? 'font-medium text-foreground' : highlight ? 'font-medium' : ''
+        className={`text-sm transition-all duration-300 ${
+          isActive ? 'font-medium text-foreground' : ''
         }`}
       >
         {text}
