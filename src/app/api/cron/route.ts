@@ -6,9 +6,9 @@ import { refreshAllStoresCache, cleanExpiredCache } from '@/lib/google-places/ca
  * Unified cron endpoint - called every minute
  *
  * Tasks and their frequencies:
- * - Review requests: every hour (minute 0)
- * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM)
- * - Cache cleanup: daily at 4:00 AM
+ * - Review requests: every minute (checks for eligible reservations)
+ * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM UTC)
+ * - Cache cleanup: daily at 4:00 AM UTC
  *
  * vercel.json:
  *   "crons": [{ "path": "/api/cron", "schedule": "* * * * *" }]
@@ -38,11 +38,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Review requests: every hour (at minute 0)
-    if (minute === 0) {
-      tasks.push('review-requests')
-      results.reviewRequests = await processReviewRequests()
-    }
+    // Review requests: every minute
+    tasks.push('review-requests')
+    results.reviewRequests = await processReviewRequests()
 
     // Google Places cache refresh: every 5 days at 3:00 AM
     // Days 1, 6, 11, 16, 21, 26 of each month
@@ -56,11 +54,6 @@ export async function GET(request: Request) {
       tasks.push('cache-cleanup')
       const cleaned = await cleanExpiredCache()
       results.cacheCleanup = { cleaned }
-    }
-
-    // If no tasks ran this minute, just return a heartbeat
-    if (tasks.length === 0) {
-      tasks.push('heartbeat')
     }
 
     return NextResponse.json({
