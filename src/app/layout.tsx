@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from '@/messages/fr.json'
+import { UmamiAnalytics } from '@/components/umami-analytics'
 
 const inter = Inter({
   variable: '--font-inter',
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html lang="fr" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        <UmamiAnalytics />
         {children}
       </body>
     </html>
