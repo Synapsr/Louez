@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { db } from '@/lib/db'
 import { products, categories } from '@/lib/db/schema'
-import { eq, desc, and, count, inArray, sql } from 'drizzle-orm'
+import { eq, desc, and, count, inArray } from 'drizzle-orm'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'

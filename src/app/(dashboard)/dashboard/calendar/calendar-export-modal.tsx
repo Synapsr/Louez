@@ -34,19 +34,19 @@ export function CalendarExportModal({
 
   // Fetch token when modal opens
   useEffect(() => {
+    const fetchToken = async () => {
+      setLoading(true)
+      const result = await getIcsToken()
+      if (result.success && result.token) {
+        setToken(result.token)
+      }
+      setLoading(false)
+    }
+
     if (open && !token) {
       fetchToken()
     }
   }, [open, token])
-
-  const fetchToken = async () => {
-    setLoading(true)
-    const result = await getIcsToken()
-    if (result.success && result.token) {
-      setToken(result.token)
-    }
-    setLoading(false)
-  }
 
   const handleRegenerate = async () => {
     setRegenerating(true)

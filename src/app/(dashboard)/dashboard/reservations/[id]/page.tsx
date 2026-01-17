@@ -11,8 +11,6 @@ import { getCurrencySymbol } from '@/lib/utils'
 import { isSmsConfigured } from '@/lib/sms'
 import {
   User,
-  Mail,
-  Phone,
   MapPin,
   Calendar,
   Package,
@@ -112,9 +110,6 @@ export default async function ReservationDetailPage({
   const depositReturned = reservation.payments
     .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0)
-
-  const isRentalFullyPaid = rentalPaid >= rental
-  const isDepositFullyCollected = depositCollected >= deposit
 
   // Check if there's an online payment pending (Stripe checkout in progress)
   const hasOnlinePaymentPending = reservation.payments.some(
