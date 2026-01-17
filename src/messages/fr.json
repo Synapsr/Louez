@@ -566,6 +566,33 @@
         "viewAsCustomer": "Voir côté client",
         "print": "Imprimer"
       },
+      "edit": {
+        "button": "Modifier",
+        "title": "Modifier la réservation",
+        "dates": "Dates",
+        "startDate": "Date de début",
+        "endDate": "Date de fin",
+        "items": "Articles",
+        "product": "Produit",
+        "qty": "Qté",
+        "unitPrice": "Prix unit.",
+        "total": "Total",
+        "addItem": "Ajouter un article",
+        "subtotal": "Sous-total",
+        "summary": "Récapitulatif",
+        "before": "Avant",
+        "after": "Après",
+        "difference": "Différence",
+        "deposit": "Caution",
+        "save": "Enregistrer",
+        "saved": "Réservation mise à jour",
+        "cannotRemoveLastItem": "Impossible de supprimer le dernier article",
+        "noItems": "Ajoutez au moins un article",
+        "lockPrice": "Figer le prix",
+        "unlockPrice": "Recalculer le prix",
+        "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
+        "adjustmentNegative": "Un remboursement de {amount} pourra être effectué."
+      },
       "accessLink": {
         "send": "Envoyer le lien",
         "sendSuccess": "Lien d'accès envoyé au client",
@@ -739,7 +766,8 @@
         "deposit_captured": "Caution prélevée",
         "deposit_released": "Caution libérée",
         "deposit_failed": "Échec de l'empreinte",
-        "access_link_sent": "Lien d'accès envoyé"
+        "access_link_sent": "Lien d'accès envoyé",
+        "modified": "Réservation modifiée"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -804,8 +832,13 @@
           "depositReturn": "Restitution caution",
           "damage": "Dommages",
           "depositHold": "Empreinte bancaire",
-          "depositCapture": "Caution prélevée"
+          "depositCapture": "Caution prélevée",
+          "adjustment": "Ajustement"
         },
+        "type": "Type de paiement",
+        "recordAdjustmentDescription": "Enregistrez un ajustement de prix (positif ou négatif)",
+        "adjustmentHint": "Montant négatif pour un remboursement, positif pour un complément",
+        "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
         "methods": {
           "cash": "Espèces",
           "card": "Carte bancaire",
@@ -2253,7 +2286,33 @@
       "amountPaid": "Montant payé",
       "securityNote": "Connexion sécurisée par email. Aucun mot de passe requis.",
       "payNow": "Payer maintenant",
-      "paymentInProgress": "Paiement en cours de traitement"
+      "paymentInProgress": "Paiement en cours de traitement",
+      "paymentRequired": "Paiement requis",
+      "confirmedAwaitingPayment": "En attente de paiement",
+      "paymentHistory": {
+        "title": "Historique des paiements",
+        "noPayments": "Aucun paiement enregistré",
+        "types": {
+          "rental": "Location",
+          "deposit": "Caution",
+          "deposit_return": "Remboursement caution",
+          "damage": "Dommages"
+        },
+        "methods": {
+          "stripe": "Carte en ligne",
+          "cash": "Espèces",
+          "card": "Carte bancaire",
+          "transfer": "Virement",
+          "check": "Chèque",
+          "other": "Autre"
+        },
+        "status": {
+          "completed": "Payé",
+          "pending": "En attente",
+          "failed": "Échoué",
+          "refunded": "Remboursé"
+        }
+      }
     },
     "footer": {
       "description": "Location de matériel simple et efficace.",
@@ -2707,6 +2766,8 @@
     "emailAlreadyExists": "Un client avec cet email existe déjà",
     "customerHasReservations": "Impossible de supprimer un client avec des réservations",
     "cannotCancelReservation": "Cette réservation ne peut pas être annulée",
+    "cannotEditCompletedReservation": "Les réservations terminées ne peuvent pas être modifiées",
+    "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
     "productRequired": "Produit requis",
     "customerRequired": "Client requis",
     "productUnavailable": "Produit non disponible: {name}",

@@ -2254,7 +2254,33 @@
       "amountPaid": "Bezahlter Betrag",
       "securityNote": "Sichere E-Mail-Anmeldung. Kein Passwort erforderlich.",
       "payNow": "Jetzt bezahlen",
-      "paymentInProgress": "Zahlung wird verarbeitet"
+      "paymentInProgress": "Zahlung wird verarbeitet",
+      "paymentRequired": "Zahlung erforderlich",
+      "confirmedAwaitingPayment": "Warten auf Zahlung",
+      "paymentHistory": {
+        "title": "Zahlungsverlauf",
+        "noPayments": "Keine Zahlungen verzeichnet",
+        "types": {
+          "rental": "Miete",
+          "deposit": "Kaution",
+          "deposit_return": "Kautionsrückerstattung",
+          "damage": "Schäden"
+        },
+        "methods": {
+          "stripe": "Online-Karte",
+          "cash": "Bargeld",
+          "card": "Karte",
+          "transfer": "Überweisung",
+          "check": "Scheck",
+          "other": "Andere"
+        },
+        "status": {
+          "completed": "Bezahlt",
+          "pending": "Ausstehend",
+          "failed": "Fehlgeschlagen",
+          "refunded": "Erstattet"
+        }
+      }
     },
     "footer": {
       "description": "Einfache und effiziente Gerätevermietung.",

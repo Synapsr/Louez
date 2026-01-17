@@ -2254,7 +2254,33 @@
       "amountPaid": "Valor pago",
       "securityNote": "Login seguro por email. Nenhuma senha necessaria.",
       "payNow": "Pagar agora",
-      "paymentInProgress": "Pagamento em processamento"
+      "paymentInProgress": "Pagamento em processamento",
+      "paymentRequired": "Pagamento necessario",
+      "confirmedAwaitingPayment": "Aguardando pagamento",
+      "paymentHistory": {
+        "title": "Historico de pagamentos",
+        "noPayments": "Nenhum pagamento registrado",
+        "types": {
+          "rental": "Aluguel",
+          "deposit": "Deposito",
+          "deposit_return": "Devolucao de deposito",
+          "damage": "Danos"
+        },
+        "methods": {
+          "stripe": "Cartao online",
+          "cash": "Dinheiro",
+          "card": "Cartao",
+          "transfer": "Transferencia",
+          "check": "Cheque",
+          "other": "Outro"
+        },
+        "status": {
+          "completed": "Pago",
+          "pending": "Pendente",
+          "failed": "Falhou",
+          "refunded": "Reembolsado"
+        }
+      }
     },
     "footer": {
       "description": "Aluguel de equipamentos simples e eficiente.",

@@ -566,6 +566,33 @@
         "viewAsCustomer": "View as customer",
         "print": "Print"
       },
+      "edit": {
+        "button": "Edit",
+        "title": "Edit reservation",
+        "dates": "Dates",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "items": "Items",
+        "product": "Product",
+        "qty": "Qty",
+        "unitPrice": "Unit price",
+        "total": "Total",
+        "addItem": "Add item",
+        "subtotal": "Subtotal",
+        "summary": "Summary",
+        "before": "Before",
+        "after": "After",
+        "difference": "Difference",
+        "deposit": "Deposit",
+        "save": "Save",
+        "saved": "Reservation updated",
+        "cannotRemoveLastItem": "Cannot remove the last item",
+        "noItems": "Add at least one item",
+        "lockPrice": "Lock price",
+        "unlockPrice": "Recalculate price",
+        "adjustmentPositive": "An additional {amount} will need to be collected.",
+        "adjustmentNegative": "A refund of {amount} can be issued."
+      },
       "contract": {
         "title": "Contract",
         "signed": "Signed on {date}",
@@ -734,7 +761,8 @@
         "deposit_captured": "Deposit captured",
         "deposit_released": "Deposit released",
         "deposit_failed": "Authorization failed",
-        "access_link_sent": "Access link sent"
+        "access_link_sent": "Access link sent",
+        "modified": "Reservation modified"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -799,8 +827,13 @@
           "depositReturn": "Deposit return",
           "damage": "Damages",
           "depositHold": "Authorization hold",
-          "depositCapture": "Deposit captured"
+          "depositCapture": "Deposit captured",
+          "adjustment": "Adjustment"
         },
+        "type": "Payment type",
+        "recordAdjustmentDescription": "Record a price adjustment (positive or negative)",
+        "adjustmentHint": "Negative amount for refund, positive for additional charge",
+        "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
         "methods": {
           "cash": "Cash",
           "card": "Card",
@@ -2253,7 +2286,33 @@
       "amountPaid": "Amount paid",
       "securityNote": "Secure email login. No password required.",
       "payNow": "Pay now",
-      "paymentInProgress": "Payment processing"
+      "paymentInProgress": "Payment processing",
+      "paymentRequired": "Payment required",
+      "confirmedAwaitingPayment": "Awaiting payment",
+      "paymentHistory": {
+        "title": "Payment history",
+        "noPayments": "No payments recorded",
+        "types": {
+          "rental": "Rental",
+          "deposit": "Deposit",
+          "deposit_return": "Deposit refund",
+          "damage": "Damages"
+        },
+        "methods": {
+          "stripe": "Online card",
+          "cash": "Cash",
+          "card": "Card",
+          "transfer": "Transfer",
+          "check": "Check",
+          "other": "Other"
+        },
+        "status": {
+          "completed": "Paid",
+          "pending": "Pending",
+          "failed": "Failed",
+          "refunded": "Refunded"
+        }
+      }
     },
     "footer": {
       "description": "Simple and efficient equipment rental.",
@@ -2707,6 +2766,8 @@
     "emailAlreadyExists": "A customer with this email already exists",
     "customerHasReservations": "Cannot delete a customer with reservations",
     "cannotCancelReservation": "This reservation cannot be cancelled",
+    "cannotEditCompletedReservation": "Completed reservations cannot be edited",
+    "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",
     "customerRequired": "Customer required",
     "productUnavailable": "Product unavailable: {name}",

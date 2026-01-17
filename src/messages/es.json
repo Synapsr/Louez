@@ -2256,7 +2256,33 @@
       "amountPaid": "Monto pagado",
       "securityNote": "Inicio de sesion seguro por correo. No se requiere contrasena.",
       "payNow": "Pagar ahora",
-      "paymentInProgress": "Pago en proceso"
+      "paymentInProgress": "Pago en proceso",
+      "paymentRequired": "Pago requerido",
+      "confirmedAwaitingPayment": "Esperando pago",
+      "paymentHistory": {
+        "title": "Historial de pagos",
+        "noPayments": "Sin pagos registrados",
+        "types": {
+          "rental": "Alquiler",
+          "deposit": "Deposito",
+          "deposit_return": "Devolucion de deposito",
+          "damage": "Danos"
+        },
+        "methods": {
+          "stripe": "Tarjeta en linea",
+          "cash": "Efectivo",
+          "card": "Tarjeta",
+          "transfer": "Transferencia",
+          "check": "Cheque",
+          "other": "Otro"
+        },
+        "status": {
+          "completed": "Pagado",
+          "pending": "Pendiente",
+          "failed": "Fallido",
+          "refunded": "Reembolsado"
+        }
+      }
     },
     "footer": {
       "description": "Alquiler de equipos simple y eficiente.",

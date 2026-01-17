@@ -2252,7 +2252,33 @@
       "amountPaid": "Betaald bedrag",
       "securityNote": "Veilige e-mail login. Geen wachtwoord nodig.",
       "payNow": "Nu betalen",
-      "paymentInProgress": "Betaling wordt verwerkt"
+      "paymentInProgress": "Betaling wordt verwerkt",
+      "paymentRequired": "Betaling vereist",
+      "confirmedAwaitingPayment": "Wachten op betaling",
+      "paymentHistory": {
+        "title": "Betalingsgeschiedenis",
+        "noPayments": "Geen betalingen geregistreerd",
+        "types": {
+          "rental": "Huur",
+          "deposit": "Borg",
+          "deposit_return": "Borg terugbetaling",
+          "damage": "Schade"
+        },
+        "methods": {
+          "stripe": "Online kaart",
+          "cash": "Contant",
+          "card": "Kaart",
+          "transfer": "Overschrijving",
+          "check": "Cheque",
+          "other": "Andere"
+        },
+        "status": {
+          "completed": "Betaald",
+          "pending": "In afwachting",
+          "failed": "Mislukt",
+          "refunded": "Terugbetaald"
+        }
+      }
     },
     "footer": {
       "description": "Eenvoudige en efficiënte materiaalverhuur.",

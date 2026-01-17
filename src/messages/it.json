@@ -2253,7 +2253,33 @@
       "amountPaid": "Importo pagato",
       "securityNote": "Accesso sicuro via email. Nessuna password richiesta.",
       "payNow": "Paga ora",
-      "paymentInProgress": "Pagamento in corso"
+      "paymentInProgress": "Pagamento in corso",
+      "paymentRequired": "Pagamento richiesto",
+      "confirmedAwaitingPayment": "In attesa di pagamento",
+      "paymentHistory": {
+        "title": "Storico pagamenti",
+        "noPayments": "Nessun pagamento registrato",
+        "types": {
+          "rental": "Noleggio",
+          "deposit": "Deposito",
+          "deposit_return": "Rimborso deposito",
+          "damage": "Danni"
+        },
+        "methods": {
+          "stripe": "Carta online",
+          "cash": "Contanti",
+          "card": "Carta",
+          "transfer": "Bonifico",
+          "check": "Assegno",
+          "other": "Altro"
+        },
+        "status": {
+          "completed": "Pagato",
+          "pending": "In attesa",
+          "failed": "Fallito",
+          "refunded": "Rimborsato"
+        }
+      }
     },
     "footer": {
       "description": "Noleggio attrezzature semplice ed efficiente.",

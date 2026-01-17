@@ -2253,7 +2253,33 @@
       "amountPaid": "Zapłacona kwota",
       "securityNote": "Bezpieczne logowanie przez email. Hasło nie jest wymagane.",
       "payNow": "Zapłać teraz",
-      "paymentInProgress": "Płatność w trakcie realizacji"
+      "paymentInProgress": "Płatność w trakcie realizacji",
+      "paymentRequired": "Wymagana płatność",
+      "confirmedAwaitingPayment": "Oczekiwanie na płatność",
+      "paymentHistory": {
+        "title": "Historia płatności",
+        "noPayments": "Brak zarejestrowanych płatności",
+        "types": {
+          "rental": "Wynajem",
+          "deposit": "Kaucja",
+          "deposit_return": "Zwrot kaucji",
+          "damage": "Uszkodzenia"
+        },
+        "methods": {
+          "stripe": "Karta online",
+          "cash": "Gotówka",
+          "card": "Karta",
+          "transfer": "Przelew",
+          "check": "Czek",
+          "other": "Inne"
+        },
+        "status": {
+          "completed": "Zapłacone",
+          "pending": "Oczekujące",
+          "failed": "Nieudane",
+          "refunded": "Zwrócone"
+        }
+      }
     },
     "footer": {
       "description": "Prosty i efektywny wynajem sprzętu.",

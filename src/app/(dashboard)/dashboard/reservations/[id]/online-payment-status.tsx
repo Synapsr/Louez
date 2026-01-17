@@ -26,7 +26,7 @@ import { getReservationPaymentMethod } from '../actions'
 interface Payment {
   id: string
   amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture'
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
   method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
   status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
   paidAt: Date | null

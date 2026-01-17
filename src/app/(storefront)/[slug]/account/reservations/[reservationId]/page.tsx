@@ -23,6 +23,9 @@ import {
   ArrowRight,
   CircleDot,
   CreditCard,
+  AlertCircle,
+  History,
+  Banknote,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -162,6 +165,9 @@ export default async function ReservationDetailPage({
   const hasPendingPayment = reservation.payments.some((p) => p.type === 'rental' && p.status === 'pending')
   const canPay = !isPaid && !hasPendingPayment && store.stripeAccountId && store.stripeChargesEnabled
 
+  // Show payment required warning when confirmed but not paid
+  const showPaymentRequired = reservation.status === 'confirmed' && !isPaid && canPay
+
   return (
     <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -196,21 +202,39 @@ export default async function ReservationDetailPage({
         </div>
 
         {/* Status Card */}
-        <Card className={`mb-6 border-l-4 ${config.borderColor}`}>
+        <Card className={`mb-6 border-l-4 ${showPaymentRequired ? 'border-amber-400 dark:border-amber-600' : config.borderColor}`}>
           <CardContent className="p-5">
             <div className="flex items-center gap-4">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${config.bgColor}`}>
-                <StatusIcon className={`h-6 w-6 ${config.color}`} />
+              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${showPaymentRequired ? 'bg-amber-100 dark:bg-amber-950/50' : config.bgColor}`}>
+                {showPaymentRequired ? (
+                  <AlertCircle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                ) : (
+                  <StatusIcon className={`h-6 w-6 ${config.color}`} />
+                )}
               </div>
               <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <h3 className={`font-semibold text-lg ${config.color}`}>{config.label}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className={`font-semibold text-lg ${showPaymentRequired ? 'text-amber-600 dark:text-amber-400' : config.color}`}>
+                    {config.label}
+                  </h3>
+                  {showPaymentRequired && (
+                    <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 gap-1">
+                      <CreditCard className="h-3 w-3" />
+                      {t('confirmedAwaitingPayment')}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {config.description}
+                  {showPaymentRequired ? t('paymentRequired') : config.description}
                 </p>
               </div>
             </div>
+            {/* Quick Pay Button in status card when payment required */}
+            {showPaymentRequired && (
+              <div className="mt-4 pt-4 border-t">
+                <PayNowButton storeSlug={slug} reservationId={reservationId} />
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -391,6 +415,90 @@ export default async function ReservationDetailPage({
             </div>
           </CardContent>
         </Card>
+
+        {/* Payment History */}
+        {reservation.payments.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+                <History className="h-5 w-5 text-primary" />
+                {t('paymentHistory.title')}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="space-y-3">
+                {reservation.payments.map((payment) => {
+                  const paymentType = payment.type as 'rental' | 'deposit' | 'deposit_return' | 'damage'
+                  const paymentMethod = payment.method as 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
+                  const paymentStatus = payment.status as 'completed' | 'pending' | 'failed' | 'refunded'
+                  const isCompleted = paymentStatus === 'completed'
+                  const isRefund = paymentType === 'deposit_return'
+
+                  return (
+                    <div
+                      key={payment.id}
+                      className={`flex items-center justify-between p-3 rounded-lg border ${
+                        isCompleted
+                          ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900'
+                          : paymentStatus === 'pending'
+                          ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900'
+                          : 'bg-muted/30 border-border'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                          isCompleted
+                            ? 'bg-emerald-100 dark:bg-emerald-900/50'
+                            : paymentStatus === 'pending'
+                            ? 'bg-amber-100 dark:bg-amber-900/50'
+                            : 'bg-muted'
+                        }`}>
+                          {isCompleted ? (
+                            <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                          ) : paymentStatus === 'pending' ? (
+                            <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                          ) : (
+                            <Banknote className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">
+                            {t(`paymentHistory.types.${paymentType}`)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t(`paymentHistory.methods.${paymentMethod}`)}
+                            {' • '}
+                            {format(payment.paidAt || payment.createdAt, 'dd MMM yyyy', { locale: fr })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-semibold ${
+                          isCompleted
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : paymentStatus === 'pending'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {isRefund ? '-' : ''}{formatCurrency(parseFloat(payment.amount), currency)}
+                        </p>
+                        <p className={`text-xs ${
+                          isCompleted
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : paymentStatus === 'pending'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-muted-foreground'
+                        }`}>
+                          {t(`paymentHistory.status.${paymentStatus}`)}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Notes */}
         {reservation.customerNotes && (
