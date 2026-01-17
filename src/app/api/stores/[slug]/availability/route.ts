@@ -86,11 +86,12 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found' }, { status: 404 })
     }
 
-    // Validate business hours
+    // Validate business hours (using the store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       startDate,
       endDate,
-      store.settings?.businessHours
+      store.settings?.businessHours,
+      store.settings?.timezone
     )
 
     // Validate advance notice

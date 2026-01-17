@@ -1,19 +1,46 @@
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { reservations, products } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray, gte, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { subDays } from 'date-fns'
 import { EditReservationForm } from './edit-reservation-form'
 
 interface EditReservationPageProps {
   params: Promise<{ id: string }>
 }
 
+// Fetch existing reservations for availability conflict checking (excluding current reservation)
+async function getActiveReservations(storeId: string, excludeReservationId: string) {
+  const thirtyDaysAgo = subDays(new Date(), 30)
+
+  return db.query.reservations.findMany({
+    where: and(
+      eq(reservations.storeId, storeId),
+      ne(reservations.id, excludeReservationId),
+      inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+      gte(reservations.endDate, thirtyDaysAgo)
+    ),
+    with: {
+      items: {
+        columns: {
+          productId: true,
+          quantity: true,
+        },
+      },
+    },
+    columns: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      status: true,
+    },
+  })
+}
+
 export default async function EditReservationPage({
   params,
 }: EditReservationPageProps) {
-  const t = await getTranslations('dashboard.reservations')
   const store = await getCurrentStore()
 
   if (!store) {
@@ -42,19 +69,22 @@ export default async function EditReservationPage({
     notFound()
   }
 
-  // Cannot edit completed reservations
-  if (reservation.status === 'completed') {
+  // Cannot edit completed, cancelled or rejected reservations
+  if (['completed', 'cancelled', 'rejected'].includes(reservation.status)) {
     redirect(`/dashboard/reservations/${id}`)
   }
 
-  // Get all active products for adding new items
-  const availableProducts = await db.query.products.findMany({
-    where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
-    with: {
-      pricingTiers: true,
-    },
-    orderBy: (products, { asc }) => [asc(products.name)],
-  })
+  // Fetch products and existing reservations in parallel
+  const [availableProducts, existingReservations] = await Promise.all([
+    db.query.products.findMany({
+      where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
+      with: {
+        pricingTiers: true,
+      },
+      orderBy: (products, { asc }) => [asc(products.name)],
+    }),
+    getActiveReservations(store.id, id),
+  ])
 
   const pricingMode = store.settings?.pricingMode || 'day'
   const currency = store.settings?.currency || 'EUR'
@@ -64,6 +94,7 @@ export default async function EditReservationPage({
       reservation={{
         id: reservation.id,
         number: reservation.number,
+        status: reservation.status,
         startDate: reservation.startDate,
         endDate: reservation.endDate,
         subtotalAmount: reservation.subtotalAmount,
@@ -84,6 +115,7 @@ export default async function EditReservationPage({
                 name: item.product.name,
                 price: item.product.price,
                 deposit: item.product.deposit ?? '0',
+                quantity: item.product.quantity,
                 pricingMode: item.product.pricingMode,
                 pricingTiers: item.product.pricingTiers.map((tier) => ({
                   id: tier.id,
@@ -103,6 +135,7 @@ export default async function EditReservationPage({
         name: p.name,
         price: p.price,
         deposit: p.deposit || '0',
+        quantity: p.quantity,
         pricingMode: p.pricingMode,
         pricingTiers: p.pricingTiers.map((tier) => ({
           id: tier.id,
@@ -110,6 +143,7 @@ export default async function EditReservationPage({
           discountPercent: tier.discountPercent,
         })),
       }))}
+      existingReservations={existingReservations}
       pricingMode={pricingMode}
       currency={currency}
     />

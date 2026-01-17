@@ -94,11 +94,12 @@ export async function createReservation(input: CreateReservationInput) {
     const rentalStartDate = new Date(Math.min(...itemStartDates.map((d) => d.getTime())))
     const rentalEndDate = new Date(Math.max(...itemEndDates.map((d) => d.getTime())))
 
-    // Validate business hours for the rental period
+    // Validate business hours for the rental period (using store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       rentalStartDate,
       rentalEndDate,
-      store.settings?.businessHours
+      store.settings?.businessHours,
+      store.settings?.timezone
     )
 
     if (!businessHoursValidation.valid) {

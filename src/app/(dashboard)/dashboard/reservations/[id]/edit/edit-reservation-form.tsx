@@ -87,6 +87,7 @@ interface ReservationItem {
 interface Reservation {
   id: string
   number: string
+  status: string
   startDate: Date
   endDate: Date
   subtotalAmount: string
@@ -109,9 +110,18 @@ interface EditableItem {
   product: Product | null
 }
 
+interface ExistingReservation {
+  id: string
+  startDate: Date
+  endDate: Date
+  status: string
+  items: Array<{ productId: string | null; quantity: number }>
+}
+
 interface EditReservationFormProps {
   reservation: Reservation
   availableProducts: Product[]
+  existingReservations: ExistingReservation[]
   pricingMode: string
   currency: string
 }
@@ -176,6 +186,7 @@ function calculateItemPrice(
 export function EditReservationForm({
   reservation,
   availableProducts,
+  existingReservations: _existingReservations,
   pricingMode,
   currency,
 }: EditReservationFormProps) {
