@@ -860,8 +860,13 @@
           "depositReturn": "Restituzione deposito",
           "damage": "Danni",
           "depositHold": "Autorizzazione",
-          "depositCapture": "Deposito addebitato"
+          "depositCapture": "Deposito addebitato",
+          "adjustment": "Rettifica"
         },
+        "type": "Tipo di pagamento",
+        "recordAdjustmentDescription": "Registra una rettifica di prezzo (positiva o negativa)",
+        "adjustmentHint": "Importo negativo per rimborso, positivo per addebito aggiuntivo",
+        "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per le rettifiche",
         "methods": {
           "cash": "Contanti",
           "card": "Carta",

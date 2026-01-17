@@ -860,8 +860,13 @@
           "depositReturn": "Devolucao de caucao",
           "damage": "Danos",
           "depositHold": "Autorizacao",
-          "depositCapture": "Caucao capturada"
+          "depositCapture": "Caucao capturada",
+          "adjustment": "Ajuste"
         },
+        "type": "Tipo de pagamento",
+        "recordAdjustmentDescription": "Registrar um ajuste de preço (positivo ou negativo)",
+        "adjustmentHint": "Valor negativo para reembolso, positivo para cobrança adicional",
+        "negativeAmountOnlyForAdjustment": "Valores negativos são permitidos apenas para ajustes",
         "methods": {
           "cash": "Dinheiro",
           "card": "Cartao",

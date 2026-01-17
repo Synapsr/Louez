@@ -860,8 +860,13 @@
           "depositReturn": "Kautionsrückgabe",
           "damage": "Schäden",
           "depositHold": "Autorisierung",
-          "depositCapture": "Kaution eingezogen"
+          "depositCapture": "Kaution eingezogen",
+          "adjustment": "Anpassung"
         },
+        "type": "Zahlungsart",
+        "recordAdjustmentDescription": "Preisanpassung erfassen (positiv oder negativ)",
+        "adjustmentHint": "Negativer Betrag für Erstattung, positiv für Nachzahlung",
+        "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen erlaubt",
         "methods": {
           "cash": "Bargeld",
           "card": "Karte",

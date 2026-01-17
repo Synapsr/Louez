@@ -860,8 +860,13 @@
           "depositReturn": "Zwrot kaucji",
           "damage": "Uszkodzenia",
           "depositHold": "Autoryzacja",
-          "depositCapture": "Kaucja pobrana"
+          "depositCapture": "Kaucja pobrana",
+          "adjustment": "Korekta"
         },
+        "type": "Typ płatności",
+        "recordAdjustmentDescription": "Zarejestruj korektę ceny (dodatnią lub ujemną)",
+        "adjustmentHint": "Kwota ujemna dla zwrotu, dodatnia dla dopłaty",
+        "negativeAmountOnlyForAdjustment": "Kwoty ujemne są dozwolone tylko dla korekt",
         "methods": {
           "cash": "Gotówka",
           "card": "Karta",

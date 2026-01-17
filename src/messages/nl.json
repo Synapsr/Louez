@@ -859,8 +859,13 @@
           "depositReturn": "Borgterugbetaling",
           "damage": "Schade",
           "depositHold": "Autorisatie",
-          "depositCapture": "Borg geïnd"
+          "depositCapture": "Borg geïnd",
+          "adjustment": "Aanpassing"
         },
+        "type": "Betalingstype",
+        "recordAdjustmentDescription": "Prijsaanpassing registreren (positief of negatief)",
+        "adjustmentHint": "Negatief bedrag voor terugbetaling, positief voor extra kosten",
+        "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
         "methods": {
           "cash": "Contant",
           "card": "Pinpas",

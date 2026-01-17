@@ -860,8 +860,13 @@
           "depositReturn": "Devolucion de deposito",
           "damage": "Danos",
           "depositHold": "Autorizacion",
-          "depositCapture": "Deposito capturado"
+          "depositCapture": "Deposito capturado",
+          "adjustment": "Ajuste"
         },
+        "type": "Tipo de pago",
+        "recordAdjustmentDescription": "Registrar un ajuste de precio (positivo o negativo)",
+        "adjustmentHint": "Monto negativo para reembolso, positivo para cargo adicional",
+        "negativeAmountOnlyForAdjustment": "Los montos negativos solo están permitidos para ajustes",
         "methods": {
           "cash": "Efectivo",
           "card": "Tarjeta",
