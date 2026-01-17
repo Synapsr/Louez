@@ -11,7 +11,24 @@ import { eq, and, isNull, lte, inArray, notInArray, sql } from 'drizzle-orm'
 import { sendThankYouReviewSms } from '@/lib/sms/send'
 import { buildReviewUrl } from '@/lib/google-places'
 import { sendThankYouReviewEmail } from '@/lib/email/send'
+import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
 import type { ReviewBoosterSettings } from '@/types'
+
+// Base domain for short URLs (e.g., "louez.io" or "localhost:3000")
+const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
+const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
+/**
+ * Build a short review URL for SMS
+ * Example: https://ddm.louez.io/review
+ */
+function buildShortReviewUrl(storeSlug: string): string {
+  if (IS_PRODUCTION) {
+    return `https://${storeSlug}.${APP_DOMAIN}/review`
+  }
+  // In development, use path-based routing
+  return `http://${APP_DOMAIN}/${storeSlug}/review`
+}
 
 interface ProcessResult {
   processed: number
@@ -42,18 +59,24 @@ export async function processReviewRequests(): Promise<ProcessResult> {
       const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null
       if (!settings?.googlePlaceId) continue
 
-      const reviewUrl = buildReviewUrl(settings.googlePlaceId)
+      // Full Google URL for emails (more trustworthy)
+      const fullReviewUrl = buildReviewUrl(settings.googlePlaceId)
+      // Short URL for SMS (saves characters)
+      const shortReviewUrl = buildShortReviewUrl(store.slug)
+      // Get locale from store's country (from store settings)
+      const storeSettings = store.settings as { country?: string } | null
+      const locale = getLocaleFromCountry(storeSettings?.country)
 
       // Process email requests
       if (settings.autoSendThankYouEmail) {
-        const emailResult = await processEmailRequests(store, settings, reviewUrl)
+        const emailResult = await processEmailRequests(store, settings, shortReviewUrl, locale)
         result.emailsSent += emailResult.sent
         result.errors.push(...emailResult.errors)
       }
 
       // Process SMS requests
       if (settings.autoSendThankYouSms) {
-        const smsResult = await processSmsRequests(store, settings, reviewUrl)
+        const smsResult = await processSmsRequests(store, settings, shortReviewUrl, locale)
         result.smsSent += smsResult.sent
         result.errors.push(...smsResult.errors)
       }
@@ -81,7 +104,8 @@ async function processEmailRequests(
     theme: { primaryColor?: string } | null
   },
   settings: ReviewBoosterSettings,
-  reviewUrl: string
+  reviewUrl: string,
+  locale: EmailLocale
 ): Promise<{ sent: number; errors: string[] }> {
   const result = { sent: 0, errors: [] as string[] }
   const delayMs = settings.emailDelayHours * 60 * 60 * 1000
@@ -141,7 +165,7 @@ async function processEmailRequests(
           endDate: reservation.endDate,
         },
         reviewUrl,
-        locale: 'fr',
+        locale,
       })
 
       // Log the sent request
@@ -172,7 +196,8 @@ async function processSmsRequests(
     name: string
   },
   settings: ReviewBoosterSettings,
-  reviewUrl: string
+  reviewUrl: string,
+  locale: EmailLocale
 ): Promise<{ sent: number; errors: string[] }> {
   const result = { sent: 0, errors: [] as string[] }
   const delayMs = settings.smsDelayHours * 60 * 60 * 1000
@@ -217,6 +242,7 @@ async function processSmsRequests(
         customer: { id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
+        locale,
       })
 
       if (smsResult.success) {
@@ -271,7 +297,11 @@ export async function sendManualReviewRequest(
     return { success: false, error: 'Review Booster not configured' }
   }
 
-  const reviewUrl = buildReviewUrl(settings.googlePlaceId)
+  // Use short URL for both email and SMS
+  const reviewUrl = buildShortReviewUrl(store.slug)
+  // Get locale from store's country (from store settings)
+  const storeSettings = store.settings as { country?: string } | null
+  const locale = getLocaleFromCountry(storeSettings?.country)
 
   try {
     if (channel === 'email') {
@@ -294,7 +324,7 @@ export async function sendManualReviewRequest(
           endDate: reservation.endDate,
         },
         reviewUrl,
-        locale: 'fr',
+        locale,
       })
     } else {
       if (!customer.phone) {
@@ -306,6 +336,7 @@ export async function sendManualReviewRequest(
         customer: { id: customer.id, firstName: customer.firstName, lastName: customer.lastName, phone: customer.phone },
         reservation: { id: reservation.id, number: reservation.number },
         reviewUrl,
+        locale,
       })
 
       if (!smsResult.success) {

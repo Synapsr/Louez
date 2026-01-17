@@ -2728,7 +2728,9 @@
       "title": "Thank you for your trust!",
       "body": "We hope your rental went well. Your review helps us improve and helps other customers make their choice.",
       "cta": "Leave a Review",
-      "disclaimer": "It only takes a minute and would be a great help!"
+      "disclaimer": "It only takes a minute and would be a great help!",
+      "smsThankYou": "Thanks for your rental!",
+      "smsReview": "Your review matters:"
     },
     "newRequestLandlord": {
       "subject": "New reservation request #{number}",

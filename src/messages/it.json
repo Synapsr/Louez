@@ -2728,7 +2728,9 @@
       "title": "Grazie per la tua fiducia!",
       "body": "Speriamo che il tuo noleggio sia andato bene. La tua recensione ci aiuta a migliorare e aiuta altri clienti nella loro scelta.",
       "cta": "Lascia una recensione",
-      "disclaimer": "Ci vuole solo un minuto e sarebbe di grande aiuto!"
+      "disclaimer": "Ci vuole solo un minuto e sarebbe di grande aiuto!",
+      "smsThankYou": "Grazie per il noleggio!",
+      "smsReview": "La tua opinione conta:"
     },
     "newRequestLandlord": {
       "subject": "Nuova richiesta di prenotazione #{number}",

@@ -2727,7 +2727,9 @@
       "title": "Bedankt voor uw vertrouwen!",
       "body": "We hopen dat uw huur goed is verlopen. Uw review helpt ons verbeteren en helpt andere klanten bij hun keuze.",
       "cta": "Laat een review achter",
-      "disclaimer": "Het duurt maar een minuutje en zou ons enorm helpen!"
+      "disclaimer": "Het duurt maar een minuutje en zou ons enorm helpen!",
+      "smsThankYou": "Bedankt voor uw huur!",
+      "smsReview": "Uw mening telt:"
     },
     "newRequestLandlord": {
       "subject": "Nieuwe reserveringsaanvraag #{number}",

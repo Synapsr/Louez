@@ -22,9 +22,15 @@ function getLocaleFromRequest(request?: Request): EmailLocale {
 }
 
 // Translations for email subject
-const subjectTranslations = {
+const subjectTranslations: Record<string, string> = {
   fr: 'Connexion à votre compte Louez',
   en: 'Sign in to your Louez account',
+  de: 'Anmeldung bei Ihrem Louez-Konto',
+  es: 'Iniciar sesion en su cuenta Louez',
+  it: 'Accedi al tuo account Louez',
+  nl: 'Inloggen op uw Louez-account',
+  pl: 'Zaloguj sie do konta Louez',
+  pt: 'Entrar na sua conta Louez',
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

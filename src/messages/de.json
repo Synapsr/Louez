@@ -2729,7 +2729,9 @@
       "title": "Vielen Dank für Ihr Vertrauen!",
       "body": "Wir hoffen, dass Ihre Miete gut verlaufen ist. Ihre Bewertung hilft uns, uns zu verbessern und anderen Kunden bei ihrer Entscheidung.",
       "cta": "Bewertung abgeben",
-      "disclaimer": "Es dauert nur eine Minute und wäre uns eine große Hilfe!"
+      "disclaimer": "Es dauert nur eine Minute und wäre uns eine große Hilfe!",
+      "smsThankYou": "Danke fur Ihre Miete!",
+      "smsReview": "Ihre Bewertung zahlt:"
     },
     "newRequestLandlord": {
       "subject": "Neue Reservierungsanfrage #{number}",

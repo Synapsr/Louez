@@ -7,7 +7,7 @@ import {
 import { BaseLayoutSimple } from './base-layout-simple'
 import type { EmailLocale } from '../i18n'
 
-const translations = {
+const translations: Record<string, { subject: string; title: string; greeting: string; body: string; button: string; expiry: string; alternative: string }> = {
   fr: {
     subject: 'Connexion à votre compte Louez',
     title: 'Connexion à votre compte',
@@ -25,6 +25,60 @@ const translations = {
     button: 'Sign in',
     expiry: 'If you didn\'t request this sign-in, you can safely ignore this email.',
     alternative: 'Or copy and paste this link in your browser:',
+  },
+  de: {
+    subject: 'Anmeldung bei Ihrem Louez-Konto',
+    title: 'Anmeldung bei Ihrem Konto',
+    greeting: 'Hallo,',
+    body: 'Klicken Sie auf die Schaltfläche unten, um sich bei Ihrem Louez-Konto anzumelden. Dieser Link ist 24 Stunden gültig.',
+    button: 'Anmelden',
+    expiry: 'Wenn Sie diese Anmeldung nicht angefordert haben, können Sie diese E-Mail ignorieren.',
+    alternative: 'Oder kopieren Sie diesen Link in Ihren Browser:',
+  },
+  es: {
+    subject: 'Iniciar sesion en su cuenta Louez',
+    title: 'Iniciar sesion en su cuenta',
+    greeting: 'Hola,',
+    body: 'Haga clic en el boton de abajo para iniciar sesion en su cuenta Louez. Este enlace es valido durante 24 horas.',
+    button: 'Iniciar sesion',
+    expiry: 'Si no solicito este inicio de sesion, puede ignorar este correo.',
+    alternative: 'O copie y pegue este enlace en su navegador:',
+  },
+  it: {
+    subject: 'Accedi al tuo account Louez',
+    title: 'Accedi al tuo account',
+    greeting: 'Ciao,',
+    body: 'Clicca il pulsante qui sotto per accedere al tuo account Louez. Questo link è valido per 24 ore.',
+    button: 'Accedi',
+    expiry: 'Se non hai richiesto questo accesso, puoi ignorare questa email.',
+    alternative: 'Oppure copia e incolla questo link nel tuo browser:',
+  },
+  nl: {
+    subject: 'Inloggen op uw Louez-account',
+    title: 'Inloggen op uw account',
+    greeting: 'Hallo,',
+    body: 'Klik op de onderstaande knop om in te loggen op uw Louez-account. Deze link is 24 uur geldig.',
+    button: 'Inloggen',
+    expiry: 'Als u deze aanmelding niet heeft aangevraagd, kunt u deze e-mail negeren.',
+    alternative: 'Of kopieer en plak deze link in uw browser:',
+  },
+  pl: {
+    subject: 'Zaloguj sie do konta Louez',
+    title: 'Zaloguj sie do konta',
+    greeting: 'Czesc,',
+    body: 'Kliknij ponizszy przycisk, aby zalogowac sie do konta Louez. Ten link jest wazny przez 24 godziny.',
+    button: 'Zaloguj sie',
+    expiry: 'Jesli nie prosiles o to logowanie, mozesz zignorowac ten e-mail.',
+    alternative: 'Lub skopiuj i wklej ten link do przegladarki:',
+  },
+  pt: {
+    subject: 'Entrar na sua conta Louez',
+    title: 'Entrar na sua conta',
+    greeting: 'Ola,',
+    body: 'Clique no botao abaixo para entrar na sua conta Louez. Este link é valido por 24 horas.',
+    button: 'Entrar',
+    expiry: 'Se voce nao solicitou este login, pode ignorar este email.',
+    alternative: 'Ou copie e cole este link no seu navegador:',
   },
 }
 

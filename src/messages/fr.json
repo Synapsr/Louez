@@ -2728,7 +2728,9 @@
       "title": "Merci pour votre confiance !",
       "body": "Nous espérons que votre location s'est bien passée. Votre avis nous aide à nous améliorer et à aider d'autres clients à faire leur choix.",
       "cta": "Laisser un avis",
-      "disclaimer": "Cela ne prend qu'une minute et nous serait d'une grande aide !"
+      "disclaimer": "Cela ne prend qu'une minute et nous serait d'une grande aide !",
+      "smsThankYou": "Merci pour votre location!",
+      "smsReview": "Votre avis compte:"
     },
     "newRequestLandlord": {
       "subject": "Nouvelle demande de réservation #{number}",

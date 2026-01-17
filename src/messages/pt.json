@@ -2729,7 +2729,9 @@
       "title": "Obrigado pela sua confianca!",
       "body": "Esperamos que seu aluguel tenha corrido bem. Sua avaliacao nos ajuda a melhorar e ajuda outros clientes na escolha.",
       "cta": "Deixar uma avaliacao",
-      "disclaimer": "Leva apenas um minuto e seria de grande ajuda!"
+      "disclaimer": "Leva apenas um minuto e seria de grande ajuda!",
+      "smsThankYou": "Obrigado pelo aluguel!",
+      "smsReview": "Sua opiniao conta:"
     },
     "newRequestLandlord": {
       "subject": "Nova solicitacao de reserva #{number}",

@@ -10,6 +10,7 @@ import { smsLogs } from '@/lib/db/schema'
 import { sendSms, isSmsConfigured } from './client'
 import { validateAndNormalizePhone } from './phone'
 import { canSendSms } from '@/lib/plan-limits'
+import { getEmailMessages, type EmailLocale } from '@/lib/email/i18n'
 
 /**
  * SMS send result with optional limit info for UI handling
@@ -587,6 +588,7 @@ export async function sendThankYouReviewSms({
   customer,
   reservation,
   reviewUrl,
+  locale = 'fr',
 }: {
   store: Store
   customer: Customer & { id: string }
@@ -595,6 +597,7 @@ export async function sendThankYouReviewSms({
     number: string
   }
   reviewUrl: string
+  locale?: EmailLocale
 }): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
@@ -626,11 +629,16 @@ export async function sendThankYouReviewSms({
   }
   const normalizedPhone = phoneValidation.normalized
 
+  // Get localized messages
+  const messages = getEmailMessages(locale)
+  const smsThankYou = messages.emails.thankYouReview.smsThankYou
+  const smsReview = messages.emails.thankYouReview.smsReview
+
   // Keep message short - SMS are limited to 160 chars
   const message = buildSmsMessage([
     `${store.name}`,
-    `Merci pour votre location!`,
-    `Votre avis compte: ${reviewUrl}`,
+    smsThankYou,
+    `${smsReview} ${reviewUrl}`,
   ])
 
   try {

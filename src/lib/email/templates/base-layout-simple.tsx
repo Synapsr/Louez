@@ -11,7 +11,7 @@ import {
 } from '@react-email/components'
 import type { EmailLocale } from '../i18n'
 
-const translations = {
+const translations: Record<string, { sentBy: string; ignoreIfNotYou: string; poweredBy: string }> = {
   fr: {
     sentBy: 'Cet email a été envoyé par Louez',
     ignoreIfNotYou: 'Si vous n\'êtes pas à l\'origine de cette action, veuillez ignorer cet email.',
@@ -20,6 +20,36 @@ const translations = {
   en: {
     sentBy: 'This email was sent by Louez',
     ignoreIfNotYou: 'If you didn\'t initiate this action, please ignore this email.',
+    poweredBy: 'Powered by',
+  },
+  de: {
+    sentBy: 'Diese E-Mail wurde von Louez gesendet',
+    ignoreIfNotYou: 'Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie bitte diese E-Mail.',
+    poweredBy: 'Bereitgestellt von',
+  },
+  es: {
+    sentBy: 'Este correo fue enviado por Louez',
+    ignoreIfNotYou: 'Si no inicio esta accion, ignore este correo.',
+    poweredBy: 'Desarrollado por',
+  },
+  it: {
+    sentBy: 'Questa email è stata inviata da Louez',
+    ignoreIfNotYou: 'Se non hai avviato questa azione, ignora questa email.',
+    poweredBy: 'Powered by',
+  },
+  nl: {
+    sentBy: 'Deze e-mail is verzonden door Louez',
+    ignoreIfNotYou: 'Als u deze actie niet heeft gestart, negeer deze e-mail dan.',
+    poweredBy: 'Powered by',
+  },
+  pl: {
+    sentBy: 'Ten e-mail zostal wyslany przez Louez',
+    ignoreIfNotYou: 'Jesli nie zainicjowales tej akcji, zignoruj ten e-mail.',
+    poweredBy: 'Powered by',
+  },
+  pt: {
+    sentBy: 'Este email foi enviado por Louez',
+    ignoreIfNotYou: 'Se voce nao iniciou esta acao, ignore este email.',
     poweredBy: 'Powered by',
   },
 }
