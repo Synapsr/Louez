@@ -23,13 +23,14 @@ import {
   Hourglass,
   AlertCircle,
   Link,
+  Pencil,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent' | 'modified'
 
 interface Activity {
   id: string
@@ -151,6 +152,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
     icon: <Link className="h-4 w-4" />,
     bgColor: 'bg-blue-100 dark:bg-blue-950/50',
     iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  modified: {
+    icon: <Pencil className="h-4 w-4" />,
+    bgColor: 'bg-amber-100 dark:bg-amber-950/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
   },
 }
 
@@ -336,6 +342,21 @@ async function ActivityItem({
                 }`}
               >
                 {activityType === 'payment_received' ? '+' : ''}{paymentAmount.toFixed(2)} {paymentCurrency}
+              </Badge>
+            )}
+            {/* Modified amount badge */}
+            {activityType === 'modified' && metadata?.difference !== undefined && (
+              <Badge
+                variant="secondary"
+                className={`text-[10px] px-1.5 py-0 h-4 font-mono ${
+                  (metadata.difference as number) > 0
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : (metadata.difference as number) < 0
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                }`}
+              >
+                {(metadata.difference as number) >= 0 ? '+' : ''}{(metadata.difference as number).toFixed(2)} EUR
               </Badge>
             )}
           </div>

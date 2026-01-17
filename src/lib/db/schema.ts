@@ -535,6 +535,7 @@ export const paymentType = mysqlEnum('payment_type', [
   'deposit_capture', // Partial/full capture from hold
   'deposit_return',
   'damage',
+  'adjustment', // Price adjustment (positive or negative)
 ])
 
 export const paymentMethod = mysqlEnum('payment_method', [
@@ -621,6 +622,7 @@ export const activityType = mysqlEnum('activity_type', [
   'deposit_released', // Authorization released
   'deposit_failed', // Authorization failed
   'access_link_sent', // Instant access link sent to customer
+  'modified', // Reservation modified (dates, items, prices)
 ])
 
 export const reservationActivity = mysqlTable(
