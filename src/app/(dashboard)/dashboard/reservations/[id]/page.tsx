@@ -8,6 +8,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { getTranslations } from 'next-intl/server'
 import { getCurrencySymbol } from '@/lib/utils'
+import { isSmsConfigured } from '@/lib/sms'
 import {
   User,
   Mail,
@@ -125,6 +126,9 @@ export default async function ReservationDetailPage({
   // Check if contract exists
   const hasContract = reservation.documents.some((d) => d.type === 'contract')
 
+  // Check if SMS is configured
+  const smsConfigured = isSmsConfigured()
+
   return (
     <div className="space-y-6">
       {/* Header with badges and actions */}
@@ -140,6 +144,7 @@ export default async function ReservationDetailPage({
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
+          phone: reservation.customer.phone,
         }}
         storeSlug={store.slug}
         rentalAmount={rental}
@@ -150,6 +155,7 @@ export default async function ReservationDetailPage({
         totalAmount={parseFloat(reservation.totalAmount)}
         hasContract={hasContract}
         currency={currency}
+        smsConfigured={smsConfigured}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">

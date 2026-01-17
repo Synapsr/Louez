@@ -43,6 +43,13 @@
       "when": 1768656544749,
       "tag": "0005_rapid_richard_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1768668527755,
+      "tag": "0006_opposite_sasquatch",
+      "breakpoints": true
     }
   ]
 }

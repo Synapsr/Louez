@@ -999,8 +999,12 @@
       "linkCopied": "Link skopiowany do schowka",
       "accessLink": {
         "send": "Wyślij link dostępu",
+        "sendSms": "Wyślij SMS",
         "sendSuccess": "Link dostępu wysłany",
-        "sendError": "Błąd wysyłania linku dostępu"
+        "sendError": "Błąd wysyłania linku dostępu",
+        "smsSendSuccess": "Link dostępu wysłany SMS-em",
+        "smsSendError": "Błąd wysyłania SMS",
+        "noPhone": "Klient nie ma numeru telefonu"
       }
     },
     "customers": {
@@ -2883,6 +2887,9 @@
     "alreadyPaid": "Ta rezerwacja jest już opłacona.",
     "paymentNotAvailable": "Płatność online nie jest dostępna dla tego sklepu.",
     "paymentSessionError": "Błąd tworzenia sesji płatności",
-    "accessLinkSendFailed": "Błąd wysyłania linku dostępu"
+    "accessLinkSendFailed": "Błąd wysyłania linku dostępu",
+    "smsNotConfigured": "SMS nie jest skonfigurowany",
+    "customerNoPhone": "Klient nie ma numeru telefonu",
+    "smsSendFailed": "Błąd wysyłania SMS"
   }
 }

@@ -680,6 +680,25 @@ export const emailLogs = mysqlTable('email_logs', {
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
 })
 
+export const smsLogs = mysqlTable('sms_logs', {
+  id: id(),
+  storeId: varchar('store_id', { length: 21 }).notNull(),
+  reservationId: varchar('reservation_id', { length: 21 }),
+  customerId: varchar('customer_id', { length: 21 }),
+
+  // SMS
+  to: varchar('to', { length: 50 }).notNull(),
+  message: text('message').notNull(),
+  templateType: varchar('template_type', { length: 50 }).notNull(),
+
+  // Result
+  messageId: varchar('message_id', { length: 255 }),
+  status: varchar('status', { length: 20 }).default('sent'),
+  error: text('error'),
+
+  sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+})
+
 // ============================================================================
 // Relations
 // ============================================================================
@@ -755,6 +774,7 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   customers: many(customers),
   reservations: many(reservations),
   emailLogs: many(emailLogs),
+  smsLogs: many(smsLogs),
 }))
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -900,6 +920,21 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
   }),
   customer: one(customers, {
     fields: [emailLogs.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
+  store: one(stores, {
+    fields: [smsLogs.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [smsLogs.reservationId],
+    references: [reservations.id],
+  }),
+  customer: one(customers, {
+    fields: [smsLogs.customerId],
     references: [customers.id],
   }),
 }))

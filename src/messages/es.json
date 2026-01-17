@@ -999,8 +999,12 @@
       "linkCopied": "Enlace copiado al portapapeles",
       "accessLink": {
         "send": "Enviar enlace de acceso",
+        "sendSms": "Enviar por SMS",
         "sendSuccess": "Enlace de acceso enviado",
-        "sendError": "Error al enviar el enlace de acceso"
+        "sendError": "Error al enviar el enlace de acceso",
+        "smsSendSuccess": "Enlace de acceso enviado por SMS",
+        "smsSendError": "Error al enviar SMS",
+        "noPhone": "El cliente no tiene numero de telefono"
       }
     },
     "customers": {
@@ -2886,6 +2890,9 @@
     "alreadyPaid": "Esta reserva ya esta pagada.",
     "paymentNotAvailable": "El pago en linea no esta disponible para esta tienda.",
     "paymentSessionError": "Error al crear la sesion de pago",
-    "accessLinkSendFailed": "Error al enviar el enlace de acceso"
+    "accessLinkSendFailed": "Error al enviar el enlace de acceso",
+    "smsNotConfigured": "SMS no esta configurado",
+    "customerNoPhone": "El cliente no tiene numero de telefono",
+    "smsSendFailed": "Error al enviar SMS"
   }
 }

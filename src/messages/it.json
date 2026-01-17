@@ -999,8 +999,12 @@
       "linkCopied": "Link copiato negli appunti",
       "accessLink": {
         "send": "Invia link di accesso",
+        "sendSms": "Invia via SMS",
         "sendSuccess": "Link di accesso inviato",
-        "sendError": "Errore nell'invio del link di accesso"
+        "sendError": "Errore nell'invio del link di accesso",
+        "smsSendSuccess": "Link di accesso inviato via SMS",
+        "smsSendError": "Errore nell'invio dell'SMS",
+        "noPhone": "Il cliente non ha un numero di telefono"
       }
     },
     "customers": {
@@ -2883,6 +2887,9 @@
     "alreadyPaid": "Questa prenotazione e gia stata pagata.",
     "paymentNotAvailable": "Il pagamento online non e disponibile per questo negozio.",
     "paymentSessionError": "Errore nella creazione della sessione di pagamento",
-    "accessLinkSendFailed": "Errore nell'invio del link di accesso"
+    "accessLinkSendFailed": "Errore nell'invio del link di accesso",
+    "smsNotConfigured": "SMS non configurato",
+    "customerNoPhone": "Il cliente non ha un numero di telefono",
+    "smsSendFailed": "Errore nell'invio dell'SMS"
   }
 }

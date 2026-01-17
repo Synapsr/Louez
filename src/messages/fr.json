@@ -596,8 +596,12 @@
       },
       "accessLink": {
         "send": "Envoyer le lien",
+        "sendSms": "Envoyer par SMS",
         "sendSuccess": "Lien d'accès envoyé au client",
-        "sendError": "Erreur lors de l'envoi du lien"
+        "sendError": "Erreur lors de l'envoi du lien",
+        "smsSendSuccess": "Lien d'accès envoyé par SMS",
+        "smsSendError": "Erreur lors de l'envoi du SMS",
+        "noPhone": "Le client n'a pas de numéro de téléphone"
       },
       "contract": {
         "title": "Contrat",
@@ -2900,6 +2904,9 @@
     "alreadyPaid": "Cette réservation est déjà payée.",
     "paymentNotAvailable": "Le paiement en ligne n'est pas disponible pour cette boutique.",
     "paymentSessionError": "Erreur lors de la création de la session de paiement",
-    "accessLinkSendFailed": "Erreur lors de l'envoi du lien d'accès"
+    "accessLinkSendFailed": "Erreur lors de l'envoi du lien d'accès",
+    "smsNotConfigured": "Les SMS ne sont pas configurés",
+    "customerNoPhone": "Le client n'a pas de numéro de téléphone",
+    "smsSendFailed": "Erreur lors de l'envoi du SMS"
   }
 }

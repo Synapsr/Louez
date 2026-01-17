@@ -2,17 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
-import Link from 'next/link'
 import {
   FileCheck,
   CreditCard,
   Mail,
   CheckCircle2,
-  ArrowRight,
   Zap,
   Clock,
   AlertCircle,
   Lightbulb,
+  Loader2,
 } from 'lucide-react'
 
 import {
@@ -28,6 +27,8 @@ import { Button } from '@/components/ui/button'
 interface PaymentFlowExplanationProps {
   reservationMode: 'payment' | 'request'
   stripeChargesEnabled: boolean
+  onConnectStripe?: () => Promise<void>
+  isConnecting?: boolean
 }
 
 // Hook to animate through steps sequentially
@@ -48,6 +49,8 @@ function useStepAnimation(totalSteps: number, intervalMs: number = 2000) {
 export function PaymentFlowExplanation({
   reservationMode,
   stripeChargesEnabled,
+  onConnectStripe,
+  isConnecting = false,
 }: PaymentFlowExplanationProps) {
   const t = useTranslations('dashboard.settings.payments.flowExplanation')
 
@@ -107,12 +110,17 @@ export function PaymentFlowExplanation({
                 <p className="text-sm text-muted-foreground">
                   {t('suggestions.enableStripe.description')}
                 </p>
-                <Button size="sm" variant="outline" className="mt-2" asChild>
-                  <Link href="/dashboard/settings/payments">
+                {onConnectStripe && (
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={onConnectStripe}
+                    disabled={isConnecting}
+                  >
+                    {isConnecting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                     {t('suggestions.enableStripe.action')}
-                    <ArrowRight className="ml-2 h-3 w-3" />
-                  </Link>
-                </Button>
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -215,12 +223,17 @@ export function PaymentFlowExplanation({
                 <p className="text-sm text-muted-foreground">
                   {t('warnings.noStripeWithPayment.description')}
                 </p>
-                <Button size="sm" variant="default" className="mt-2" asChild>
-                  <Link href="/dashboard/settings/payments">
+                {onConnectStripe && (
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={onConnectStripe}
+                    disabled={isConnecting}
+                  >
+                    {isConnecting && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                     {t('suggestions.enableStripe.action')}
-                    <ArrowRight className="ml-2 h-3 w-3" />
-                  </Link>
-                </Button>
+                  </Button>
+                )}
               </div>
             </div>
           </div>

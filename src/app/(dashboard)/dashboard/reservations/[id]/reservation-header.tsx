@@ -18,6 +18,7 @@ import {
   Link as LinkIcon,
   Loader2,
   Pencil,
+  Smartphone,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -35,7 +36,7 @@ import { cn, getCurrencySymbol } from '@/lib/utils'
 
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
-import { sendAccessLink } from '../actions'
+import { sendAccessLink, sendAccessLinkBySms } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -44,6 +45,7 @@ interface Customer {
   firstName: string
   lastName: string
   email: string
+  phone?: string | null
 }
 
 interface ReservationHeaderProps {
@@ -66,6 +68,8 @@ interface ReservationHeaderProps {
   sentEmails?: string[]
   hasContract?: boolean
   currency?: string
+  // SMS
+  smsConfigured?: boolean
 }
 
 const STATUS_CLASSES: Record<ReservationStatus, string> = {
@@ -95,6 +99,7 @@ export function ReservationHeader({
   sentEmails = [],
   hasContract = false,
   currency = 'EUR',
+  smsConfigured = false,
 }: ReservationHeaderProps) {
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
@@ -104,6 +109,7 @@ export function ReservationHeader({
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [isSendingAccessLink, setIsSendingAccessLink] = useState(false)
+  const [isSendingAccessLinkSms, setIsSendingAccessLinkSms] = useState(false)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
   const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
@@ -138,6 +144,30 @@ export function ReservationHeader({
       toast.error(t('accessLink.sendError'))
     } finally {
       setIsSendingAccessLink(false)
+    }
+  }
+
+  const handleSendAccessLinkSms = async () => {
+    if (!customer.phone) {
+      toast.error(t('accessLink.noPhone'))
+      return
+    }
+    setIsSendingAccessLinkSms(true)
+    try {
+      const result = await sendAccessLinkBySms(reservationId)
+      if (result.error) {
+        if (result.error === 'errors.customerNoPhone') {
+          toast.error(t('accessLink.noPhone'))
+        } else {
+          toast.error(t('accessLink.smsSendError'))
+        }
+      } else {
+        toast.success(t('accessLink.smsSendSuccess'))
+      }
+    } catch {
+      toast.error(t('accessLink.smsSendError'))
+    } finally {
+      setIsSendingAccessLinkSms(false)
     }
   }
 
@@ -228,6 +258,24 @@ export function ReservationHeader({
               {t('accessLink.send')}
             </Button>
 
+            {/* SMS Access Link button */}
+            {smsConfigured && customer.phone && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendAccessLinkSms}
+                disabled={isSendingAccessLinkSms}
+                className="hidden sm:flex"
+              >
+                {isSendingAccessLinkSms ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Smartphone className="h-4 w-4 mr-2" />
+                )}
+                {t('accessLink.sendSms')}
+              </Button>
+            )}
+
             {/* Contract button */}
             {hasContract && (
               <Button
@@ -270,6 +318,20 @@ export function ReservationHeader({
                   )}
                   {t('accessLink.send')}
                 </DropdownMenuItem>
+                {smsConfigured && customer.phone && (
+                  <DropdownMenuItem
+                    onClick={handleSendAccessLinkSms}
+                    disabled={isSendingAccessLinkSms}
+                    className="sm:hidden"
+                  >
+                    {isSendingAccessLinkSms ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Smartphone className="h-4 w-4 mr-2" />
+                    )}
+                    {t('accessLink.sendSms')}
+                  </DropdownMenuItem>
+                )}
                 {hasContract && (
                   <DropdownMenuItem
                     onClick={handleDownloadContract}

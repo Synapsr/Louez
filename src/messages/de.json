@@ -999,8 +999,12 @@
       "linkCopied": "Link in Zwischenablage kopiert",
       "accessLink": {
         "send": "Zugriffslink senden",
+        "sendSms": "Per SMS senden",
         "sendSuccess": "Zugriffslink gesendet",
-        "sendError": "Fehler beim Senden des Zugriffslinks"
+        "sendError": "Fehler beim Senden des Zugriffslinks",
+        "smsSendSuccess": "Zugriffslink per SMS gesendet",
+        "smsSendError": "Fehler beim Senden der SMS",
+        "noPhone": "Kunde hat keine Telefonnummer"
       }
     },
     "customers": {
@@ -2884,6 +2888,9 @@
     "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
     "paymentNotAvailable": "Online-Zahlung ist für diesen Shop nicht verfügbar.",
     "paymentSessionError": "Fehler beim Erstellen der Zahlungssitzung",
-    "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks"
+    "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks",
+    "smsNotConfigured": "SMS ist nicht konfiguriert",
+    "customerNoPhone": "Kunde hat keine Telefonnummer",
+    "smsSendFailed": "Fehler beim Senden der SMS"
   }
 }

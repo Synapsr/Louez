@@ -998,8 +998,12 @@
       "linkCopied": "Link gekopieerd naar klembord",
       "accessLink": {
         "send": "Toegangslink versturen",
+        "sendSms": "Verstuur via SMS",
         "sendSuccess": "Toegangslink verzonden",
-        "sendError": "Fout bij verzenden toegangslink"
+        "sendError": "Fout bij verzenden toegangslink",
+        "smsSendSuccess": "Toegangslink via SMS verzonden",
+        "smsSendError": "Fout bij verzenden SMS",
+        "noPhone": "Klant heeft geen telefoonnummer"
       }
     },
     "customers": {
@@ -2882,6 +2886,9 @@
     "alreadyPaid": "Deze reservering is al betaald.",
     "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
     "paymentSessionError": "Fout bij aanmaken betalingssessie",
-    "accessLinkSendFailed": "Fout bij verzenden toegangslink"
+    "accessLinkSendFailed": "Fout bij verzenden toegangslink",
+    "smsNotConfigured": "SMS is niet geconfigureerd",
+    "customerNoPhone": "Klant heeft geen telefoonnummer",
+    "smsSendFailed": "Fout bij verzenden SMS"
   }
 }

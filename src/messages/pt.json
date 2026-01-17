@@ -999,8 +999,12 @@
       "linkCopied": "Link copiado para a area de transferencia",
       "accessLink": {
         "send": "Enviar link de acesso",
+        "sendSms": "Enviar por SMS",
         "sendSuccess": "Link de acesso enviado",
-        "sendError": "Erro ao enviar link de acesso"
+        "sendError": "Erro ao enviar link de acesso",
+        "smsSendSuccess": "Link de acesso enviado por SMS",
+        "smsSendError": "Erro ao enviar SMS",
+        "noPhone": "Cliente nao tem numero de telefone"
       }
     },
     "customers": {
@@ -2884,6 +2888,9 @@
     "alreadyPaid": "Esta reserva ja foi paga.",
     "paymentNotAvailable": "Pagamento online nao esta disponivel para esta loja.",
     "paymentSessionError": "Erro ao criar sessao de pagamento",
-    "accessLinkSendFailed": "Erro ao enviar link de acesso"
+    "accessLinkSendFailed": "Erro ao enviar link de acesso",
+    "smsNotConfigured": "SMS nao esta configurado",
+    "customerNoPhone": "Cliente nao tem numero de telefone",
+    "smsSendFailed": "Erro ao enviar SMS"
   }
 }

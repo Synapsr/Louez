@@ -16,6 +16,7 @@ import {
   sendReminderReturnEmail,
   sendInstantAccessEmail,
 } from '@/lib/email/send'
+import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import { getCurrencySymbol } from '@/lib/utils'
@@ -1898,5 +1899,109 @@ export async function sendAccessLink(reservationId: string) {
   } catch (error) {
     console.error('Failed to send access link:', error)
     return { error: 'errors.accessLinkSendFailed' }
+  }
+}
+
+// ============================================================================
+// SMS Actions
+// ============================================================================
+
+/**
+ * Check if SMS is configured for the system
+ */
+export async function checkSmsConfigured(): Promise<boolean> {
+  return isSmsConfigured()
+}
+
+/**
+ * Send access link via SMS to customer
+ */
+export async function sendAccessLinkBySms(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  if (!isSmsConfigured()) {
+    return { error: 'errors.smsNotConfigured' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      customer: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (!reservation.customer.phone) {
+    return { error: 'errors.customerNoPhone' }
+  }
+
+  try {
+    // Generate secure 64-char token
+    const token = nanoid(64)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    // Store token in verificationCodes table
+    await db.insert(verificationCodes).values({
+      id: nanoid(),
+      email: reservation.customer.email,
+      storeId: store.id,
+      code: '', // Not used for instant_access
+      type: 'instant_access',
+      token,
+      reservationId,
+      expiresAt,
+      createdAt: new Date(),
+    })
+
+    // Build access URL
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+
+    // Send SMS
+    const result = await sendAccessLinkSms({
+      store: {
+        id: store.id,
+        name: store.name,
+      },
+      customer: {
+        id: reservation.customer.id,
+        firstName: reservation.customer.firstName,
+        lastName: reservation.customer.lastName,
+        phone: reservation.customer.phone,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+      },
+      accessUrl,
+    })
+
+    if (!result.success) {
+      return { error: result.error || 'errors.smsSendFailed' }
+    }
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'access_link_sent',
+      `Lien d'accès envoyé par SMS à ${reservation.customer.phone}`,
+      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString(), method: 'sms' }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send access link via SMS:', error)
+    return { error: 'errors.smsSendFailed' }
   }
 }

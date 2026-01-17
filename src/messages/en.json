@@ -1005,8 +1005,12 @@
       "linkCopied": "Link copied to clipboard",
       "accessLink": {
         "send": "Send access link",
+        "sendSms": "Send via SMS",
         "sendSuccess": "Access link sent",
-        "sendError": "Failed to send access link"
+        "sendError": "Failed to send access link",
+        "smsSendSuccess": "Access link sent via SMS",
+        "smsSendError": "Failed to send SMS",
+        "noPhone": "Customer has no phone number"
       }
     },
     "customers": {
@@ -2900,6 +2904,9 @@
     "alreadyPaid": "This reservation is already paid.",
     "paymentNotAvailable": "Online payment is not available for this store.",
     "paymentSessionError": "Error creating payment session",
-    "accessLinkSendFailed": "Error sending access link"
+    "accessLinkSendFailed": "Error sending access link",
+    "smsNotConfigured": "SMS is not configured",
+    "customerNoPhone": "Customer has no phone number",
+    "smsSendFailed": "Failed to send SMS"
   }
 }
