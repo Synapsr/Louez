@@ -274,8 +274,40 @@ async function handleCheckoutExpired(session: Stripe.Checkout.Session) {
   const reservationId = session.metadata?.reservationId
   if (!reservationId) return
 
+  const currency = session.currency?.toUpperCase() || 'EUR'
+  const amount = fromStripeCents(session.amount_total || 0, currency)
+
+  // Update pending payment to failed/cancelled
+  const existingPayment = await db.query.payments.findFirst({
+    where: eq(payments.stripeCheckoutSessionId, session.id),
+  })
+
+  if (existingPayment && existingPayment.status === 'pending') {
+    await db
+      .update(payments)
+      .set({
+        status: 'cancelled',
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, existingPayment.id))
+  }
+
+  // Log payment expired activity
+  await db.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId,
+    activityType: 'payment_expired',
+    description: null,
+    metadata: {
+      checkoutSessionId: session.id,
+      amount,
+      currency,
+      method: 'stripe',
+    },
+    createdAt: new Date(),
+  })
+
   console.log(`Checkout session expired for reservation ${reservationId}`)
-  // Could send a reminder email here if needed
 }
 
 // ============================================================================
@@ -498,47 +530,81 @@ async function handleDepositCaptured(
 }
 
 /**
- * Handles deposit authorization failure
- * Triggered when card is declined or authorization fails
+ * Handles payment failure
+ * Triggered when card is declined or payment fails
  */
 async function handleDepositFailed(
   paymentIntent: Stripe.PaymentIntent,
   connectedAccountId?: string
 ) {
-  // Only handle deposit_hold type payments
-  if (paymentIntent.metadata?.type !== 'deposit_hold') return
-
   const reservationId = paymentIntent.metadata?.reservationId
   if (!reservationId) return
 
-  // Update reservation deposit status
-  await db
-    .update(reservations)
-    .set({
-      depositStatus: 'failed',
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId))
-
   const currency = paymentIntent.currency.toUpperCase()
   const amount = fromStripeCents(paymentIntent.amount, currency)
+  const errorMessage = paymentIntent.last_payment_error?.message || 'Unknown error'
+  const isDepositHold = paymentIntent.metadata?.type === 'deposit_hold'
 
-  // Log activity
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    activityType: 'deposit_failed',
-    description: `Deposit authorization of ${amount.toFixed(2)} ${currency} failed`,
-    metadata: {
-      paymentIntentId: paymentIntent.id,
-      amount,
-      error: paymentIntent.last_payment_error?.message || 'Unknown error',
-    },
-    createdAt: new Date(),
-  })
+  if (isDepositHold) {
+    // Handle deposit authorization failure
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
 
-  console.log(`Deposit authorization failed for reservation ${reservationId}`)
-  // TODO: Send notification to store owner
+    // Log deposit failed activity
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'deposit_failed',
+      description: `Deposit authorization of ${amount.toFixed(2)} ${currency} failed`,
+      metadata: {
+        paymentIntentId: paymentIntent.id,
+        amount,
+        error: errorMessage,
+      },
+      createdAt: new Date(),
+    })
+
+    console.log(`Deposit authorization failed for reservation ${reservationId}`)
+  } else {
+    // Handle rental payment failure
+    // Update pending payment to failed
+    const existingPayment = await db.query.payments.findFirst({
+      where: eq(payments.stripePaymentIntentId, paymentIntent.id),
+    })
+
+    if (existingPayment && existingPayment.status === 'pending') {
+      await db
+        .update(payments)
+        .set({
+          status: 'failed',
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, existingPayment.id))
+    }
+
+    // Log payment failed activity
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'payment_failed',
+      description: errorMessage,
+      metadata: {
+        paymentIntentId: paymentIntent.id,
+        amount,
+        currency,
+        method: 'stripe',
+        error: errorMessage,
+      },
+      createdAt: new Date(),
+    })
+
+    console.log(`Payment failed for reservation ${reservationId}: ${errorMessage}`)
+  }
 }
 
 async function handleChargeRefunded(

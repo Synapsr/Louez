@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments } from '@/lib/db/schema'
+import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments, reservationActivity } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
@@ -426,6 +426,21 @@ export async function createReservation(input: CreateReservationInput) {
           currency,
           createdAt: new Date(),
           updatedAt: new Date(),
+        })
+
+        // Log payment initiated activity
+        await db.insert(reservationActivity).values({
+          id: nanoid(),
+          reservationId,
+          activityType: 'payment_initiated',
+          description: null,
+          metadata: {
+            checkoutSessionId: sessionId,
+            amount: input.subtotalAmount,
+            currency,
+            method: 'stripe',
+          },
+          createdAt: new Date(),
         })
       } catch (error) {
         console.error('Failed to create Stripe checkout session:', error)
