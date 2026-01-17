@@ -10,7 +10,7 @@ interface ThemeWrapperProps {
 
 /**
  * Calculate contrasting text color (white or black) based on background luminance.
- * Uses a threshold of 0.45 to favor white text on medium-dark colors.
+ * Uses a threshold of 0.55 to favor white text on medium-dark colors like pink or purple.
  */
 function getContrastForeground(hexColor: string): string {
   const hex = hexColor.replace('#', '')
@@ -18,7 +18,7 @@ function getContrastForeground(hexColor: string): string {
   const g = parseInt(hex.slice(2, 4), 16)
   const b = parseInt(hex.slice(4, 6), 16)
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
-  return luminance > 0.45 ? 'oklch(0.205 0 0)' : 'oklch(0.985 0 0)'
+  return luminance > 0.55 ? 'oklch(0.205 0 0)' : 'oklch(0.985 0 0)'
 }
 
 export function ThemeWrapper({ mode, primaryColor, children }: ThemeWrapperProps) {
