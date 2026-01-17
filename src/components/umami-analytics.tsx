@@ -1,48 +1,28 @@
 import Script from 'next/script'
 
 /**
- * Umami Analytics component (Server Component)
+ * Umami Analytics component
  *
- * Configured via UMAMI_URL environment variable (without NEXT_PUBLIC_ prefix)
- * Format: https://your-umami-host.com/script.js#website-id
+ * Configure with two environment variables:
+ * - NEXT_PUBLIC_UMAMI_HOST: The Umami server URL (e.g., https://analytics.example.com)
+ * - NEXT_PUBLIC_UMAMI_WEBSITE_ID: Your website ID from Umami dashboard
  *
- * Example: UMAMI_URL=https://analytics.example.com/script.js#abc123def
- *
- * If the variable is not set, no script is injected.
- * This runs at runtime on the server, not at build time.
+ * If either variable is missing, no script is injected.
  */
 export function UmamiAnalytics() {
-  const umamiUrl = process.env.UMAMI_URL
+  const host = process.env.NEXT_PUBLIC_UMAMI_HOST
+  const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID
 
-  if (!umamiUrl) {
+  if (!host || !websiteId) {
     return null
   }
 
-  // Parse URL to extract script src and website ID from hash
-  let src: string
-  let websiteId: string
-
-  try {
-    const url = new URL(umamiUrl)
-    websiteId = url.hash.slice(1) // Remove the # prefix
-    url.hash = '' // Remove hash from URL
-    src = url.toString()
-
-    if (!websiteId) {
-      console.warn(
-        '[Umami] Missing website ID in UMAMI_URL. Format: https://host/script.js#website-id'
-      )
-      return null
-    }
-  } catch {
-    console.warn('[Umami] Invalid UMAMI_URL:', umamiUrl)
-    return null
-  }
+  // Ensure host doesn't have trailing slash
+  const baseUrl = host.endsWith('/') ? host.slice(0, -1) : host
 
   return (
     <Script
-      defer
-      src={src}
+      src={`${baseUrl}/script.js`}
       data-website-id={websiteId}
       strategy="afterInteractive"
     />
