@@ -1474,7 +1474,14 @@
           "week": "In weken"
         },
         "requireAddress": "Klantadres vereisen",
-        "requireAddressDescription": "Voegt een stap toe aan de checkout om het postadres te verzamelen"
+        "requireAddressDescription": "Voegt een stap toe aan de checkout om het postadres te verzamelen",
+        "stripeRequired": {
+          "title": "Stripe-configuratie vereist",
+          "description": "Directe betaling vereist Stripe om online betalingen te verwerken.",
+          "benefits": "De instelling duurt slechts enkele minuten. U kunt kaartbetalingen accepteren en uw reserveringen beveiligen met borgsommen.",
+          "configureStripe": "Stripe configureren",
+          "keepRequest": "Aanvraagmodus behouden"
+        }
       },
       "emailSettings": {
         "title": "E-mails",
@@ -1713,6 +1720,54 @@
           "title": "Link verlopen",
           "description": "De configuratielink is verlopen. Probeer opnieuw via de instellingen.",
           "backToSettings": "Terug naar instellingen"
+        },
+        "flowExplanation": {
+          "title": "Reserveringsproces",
+          "subtitle": "Dit is hoe uw klanten het proces ervaren op basis van uw configuratie",
+          "currentFlow": "Huidig proces",
+          "modes": {
+            "request": "Aanvraagmodus",
+            "instant": "Directe betaling",
+            "stripeActive": "Stripe actief",
+            "configRequired": "Configuratie vereist"
+          },
+          "steps": {
+            "requestSubmitted": "Klant dient een reserveringsaanvraag in",
+            "youReview": "U ontvangt een e-mail en beoordeelt de aanvraag",
+            "acceptOrReject": "U accepteert of weigert de aanvraag",
+            "paymentOnSite": "Klant betaalt ter plaatse (contant, kaart, overschrijving...)",
+            "paymentOnlineOrSite": "Klant betaalt online via account of ter plaatse",
+            "customerPays": "Klant betaalt direct met kaart",
+            "reservationConfirmed": "Reservering wordt automatisch bevestigd",
+            "bothNotified": "U en de klant ontvangen bevestiging"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accepteer online betalingen",
+              "description": "Activeer Stripe zodat klanten met kaart kunnen betalen. U kunt ook betaallinks versturen via e-mail of SMS.",
+              "action": "Stripe configureren"
+            },
+            "instantPayment": {
+              "title": "Overschakelen naar directe betaling?",
+              "description": "Om uw reserveringen volledig te automatiseren, activeer de directe betaalmodus in uw winkelinstellingen."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Onvolledige configuratie",
+              "description": "Directe betaling is geactiveerd maar Stripe is niet geconfigureerd. Klanten kunnen reserveringen niet voltooien."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Na acceptatie van de aanvraag kan uw klant online betalen via zijn account. U kunt ook een betaallink sturen via e-mail of SMS, of ter plaatse incasseren.",
+            "instantPayment": "Optimale configuratie! Uw reserveringen zijn volledig geautomatiseerd. De betaling beveiligt direct de reservering."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Handmatige validatie nodig?",
+              "description": "De aanvraagmodus laat u elke reservering controleren voor betaling. Aanpasbaar in de winkelinstellingen."
+            }
+          }
         }
       },
       "subscriptionSettings": {

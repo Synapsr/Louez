@@ -1475,7 +1475,14 @@
           "week": "In settimane"
         },
         "requireAddress": "Richiedi indirizzo cliente",
-        "requireAddressDescription": "Aggiunge un passaggio al checkout per raccogliere l'indirizzo postale"
+        "requireAddressDescription": "Aggiunge un passaggio al checkout per raccogliere l'indirizzo postale",
+        "stripeRequired": {
+          "title": "Configurazione Stripe richiesta",
+          "description": "La modalita pagamento immediato richiede Stripe per elaborare i pagamenti online.",
+          "benefits": "La configurazione richiede solo pochi minuti. Potrai accettare pagamenti con carta e proteggere le tue prenotazioni con depositi.",
+          "configureStripe": "Configura Stripe",
+          "keepRequest": "Mantieni modalita richiesta"
+        }
       },
       "emailSettings": {
         "title": "Email",
@@ -1714,6 +1721,54 @@
           "title": "Link scaduto",
           "description": "Il link di configurazione e scaduto. Riprova dalle impostazioni.",
           "backToSettings": "Torna alle impostazioni"
+        },
+        "flowExplanation": {
+          "title": "Flusso di prenotazione",
+          "subtitle": "Ecco come i tuoi clienti vivono il processo in base alla tua configurazione",
+          "currentFlow": "Flusso attuale",
+          "modes": {
+            "request": "Modalita richiesta",
+            "instant": "Pagamento immediato",
+            "stripeActive": "Stripe attivo",
+            "configRequired": "Configurazione richiesta"
+          },
+          "steps": {
+            "requestSubmitted": "Il cliente invia una richiesta di prenotazione",
+            "youReview": "Ricevi un'email e valuti la richiesta",
+            "acceptOrReject": "Accetti o rifiuti la richiesta",
+            "paymentOnSite": "Il cliente paga sul posto (contanti, carta, bonifico...)",
+            "paymentOnlineOrSite": "Il cliente paga online dal suo account o sul posto",
+            "customerPays": "Il cliente paga immediatamente con carta",
+            "reservationConfirmed": "La prenotazione viene confermata automaticamente",
+            "bothNotified": "Tu e il cliente ricevete conferma"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accetta pagamenti online",
+              "description": "Attiva Stripe per permettere ai clienti di pagare con carta. Puoi anche inviare link di pagamento via email o SMS.",
+              "action": "Configura Stripe"
+            },
+            "instantPayment": {
+              "title": "Passare al pagamento immediato?",
+              "description": "Per automatizzare completamente le tue prenotazioni, attiva la modalita pagamento immediato nelle impostazioni del negozio."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Configurazione incompleta",
+              "description": "La modalita pagamento immediato e attiva ma Stripe non e configurato. I clienti non potranno completare le prenotazioni."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Una volta accettata la richiesta, il cliente puo pagare online dal suo account. Puoi anche inviare un link di pagamento via email o SMS, o incassare sul posto.",
+            "instantPayment": "Configurazione ottimale! Le tue prenotazioni sono completamente automatizzate. Il pagamento protegge immediatamente la prenotazione."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Hai bisogno di validazione manuale?",
+              "description": "La modalita richiesta ti permette di verificare ogni prenotazione prima di incassare. Modificabile nelle impostazioni del negozio."
+            }
+          }
         }
       },
       "subscriptionSettings": {

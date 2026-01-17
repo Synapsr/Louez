@@ -1476,7 +1476,14 @@
           "week": "In Wochen"
         },
         "requireAddress": "Kundenadresse erforderlich",
-        "requireAddressDescription": "Fügt einen Schritt zum Checkout hinzu, um die Postadresse zu erfassen"
+        "requireAddressDescription": "Fügt einen Schritt zum Checkout hinzu, um die Postadresse zu erfassen",
+        "stripeRequired": {
+          "title": "Stripe-Konfiguration erforderlich",
+          "description": "Der Sofortzahlungsmodus erfordert Stripe, um Online-Zahlungen zu verarbeiten.",
+          "benefits": "Die Einrichtung dauert nur wenige Minuten. Sie können Kartenzahlungen akzeptieren und Ihre Reservierungen mit Kautionen absichern.",
+          "configureStripe": "Stripe konfigurieren",
+          "keepRequest": "Anfragemodus beibehalten"
+        }
       },
       "emailSettings": {
         "title": "E-Mails",
@@ -1715,6 +1722,54 @@
           "title": "Link abgelaufen",
           "description": "Der Konfigurationslink ist abgelaufen. Bitte versuchen Sie es erneut über die Einstellungen.",
           "backToSettings": "Zurück zu Einstellungen"
+        },
+        "flowExplanation": {
+          "title": "Reservierungsablauf",
+          "subtitle": "So erleben Ihre Kunden den Prozess basierend auf Ihrer Konfiguration",
+          "currentFlow": "Aktueller Ablauf",
+          "modes": {
+            "request": "Anfragemodus",
+            "instant": "Sofortzahlung",
+            "stripeActive": "Stripe aktiv",
+            "configRequired": "Konfiguration erforderlich"
+          },
+          "steps": {
+            "requestSubmitted": "Kunde sendet eine Reservierungsanfrage",
+            "youReview": "Sie erhalten eine E-Mail und prüfen die Anfrage",
+            "acceptOrReject": "Sie nehmen an oder lehnen ab",
+            "paymentOnSite": "Kunde zahlt vor Ort (Bar, Karte, Überweisung...)",
+            "paymentOnlineOrSite": "Kunde zahlt online oder vor Ort",
+            "customerPays": "Kunde zahlt sofort per Karte",
+            "reservationConfirmed": "Reservierung wird automatisch bestätigt",
+            "bothNotified": "Sie und der Kunde erhalten eine Bestätigung"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Online-Zahlungen akzeptieren",
+              "description": "Aktivieren Sie Stripe, damit Kunden per Karte zahlen können. Sie können auch Zahlungslinks per E-Mail oder SMS senden.",
+              "action": "Stripe konfigurieren"
+            },
+            "instantPayment": {
+              "title": "Zu Sofortzahlung wechseln?",
+              "description": "Um Ihre Reservierungen vollständig zu automatisieren, aktivieren Sie den Sofortzahlungsmodus in Ihren Shop-Einstellungen."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Unvollständige Konfiguration",
+              "description": "Sofortzahlungsmodus ist aktiviert, aber Stripe ist nicht konfiguriert. Kunden können Reservierungen nicht abschließen."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Nach Annahme der Anfrage kann Ihr Kunde online über sein Konto bezahlen. Sie können auch einen Zahlungslink per E-Mail oder SMS senden oder vor Ort kassieren.",
+            "instantPayment": "Optimale Einstellung! Ihre Reservierungen sind vollständig automatisiert. Die Zahlung sichert die Reservierung sofort."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Manuelle Validierung benötigt?",
+              "description": "Der Anfragemodus ermöglicht es Ihnen, jede Reservierung vor der Zahlung zu prüfen. In den Shop-Einstellungen anpassbar."
+            }
+          }
         }
       },
       "subscriptionSettings": {

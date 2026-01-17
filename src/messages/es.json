@@ -1478,7 +1478,14 @@
           "week": "En semanas"
         },
         "requireAddress": "Requerir direccion del cliente",
-        "requireAddressDescription": "Agrega un paso al checkout para recopilar la direccion postal"
+        "requireAddressDescription": "Agrega un paso al checkout para recopilar la direccion postal",
+        "stripeRequired": {
+          "title": "Configuracion de Stripe requerida",
+          "description": "El modo de pago inmediato requiere Stripe para procesar pagos en linea.",
+          "benefits": "La configuracion solo toma unos minutos. Podra aceptar pagos con tarjeta y asegurar sus reservas con depositos.",
+          "configureStripe": "Configurar Stripe",
+          "keepRequest": "Mantener modo solicitud"
+        }
       },
       "emailSettings": {
         "title": "Correos",
@@ -1717,6 +1724,54 @@
           "title": "Enlace expirado",
           "description": "El enlace de configuracion ha expirado. Por favor, intentelo de nuevo desde los ajustes.",
           "backToSettings": "Volver a ajustes"
+        },
+        "flowExplanation": {
+          "title": "Flujo de reserva",
+          "subtitle": "Asi es como sus clientes experimentan el proceso segun su configuracion",
+          "currentFlow": "Flujo actual",
+          "modes": {
+            "request": "Modo solicitud",
+            "instant": "Pago inmediato",
+            "stripeActive": "Stripe activo",
+            "configRequired": "Configuracion requerida"
+          },
+          "steps": {
+            "requestSubmitted": "El cliente envia una solicitud de reserva",
+            "youReview": "Usted recibe un correo y revisa la solicitud",
+            "acceptOrReject": "Usted acepta o rechaza la solicitud",
+            "paymentOnSite": "El cliente paga en el lugar (efectivo, tarjeta, transferencia...)",
+            "paymentOnlineOrSite": "El cliente paga en linea desde su cuenta o en el lugar",
+            "customerPays": "El cliente paga inmediatamente con tarjeta",
+            "reservationConfirmed": "La reserva se confirma automaticamente",
+            "bothNotified": "Usted y el cliente reciben confirmacion"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Acepte pagos en linea",
+              "description": "Active Stripe para que los clientes puedan pagar con tarjeta. Tambien puede enviar enlaces de pago por correo o SMS.",
+              "action": "Configurar Stripe"
+            },
+            "instantPayment": {
+              "title": "Cambiar a pago inmediato?",
+              "description": "Para automatizar completamente sus reservas, active el modo de pago inmediato en los ajustes de su tienda."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Configuracion incompleta",
+              "description": "El modo de pago inmediato esta activado pero Stripe no esta configurado. Los clientes no podran completar las reservas."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Una vez aceptada la solicitud, su cliente puede pagar en linea desde su cuenta. Tambien puede enviar un enlace de pago por correo o SMS, o cobrar en el lugar.",
+            "instantPayment": "Configuracion optima! Sus reservas estan completamente automatizadas. El pago asegura la reserva inmediatamente."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Necesita validacion manual?",
+              "description": "El modo solicitud le permite revisar cada reserva antes de cobrar. Ajustable en la configuracion de la tienda."
+            }
+          }
         }
       },
       "subscriptionSettings": {

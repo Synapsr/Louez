@@ -1480,7 +1480,14 @@
           "week": "In weeks"
         },
         "requireAddress": "Require customer address",
-        "requireAddressDescription": "Adds a step to checkout to collect postal address"
+        "requireAddressDescription": "Adds a step to checkout to collect postal address",
+        "stripeRequired": {
+          "title": "Stripe configuration required",
+          "description": "Instant payment mode requires Stripe to process online payments.",
+          "benefits": "Setup only takes a few minutes. You'll be able to accept card payments and secure your reservations with deposits.",
+          "configureStripe": "Configure Stripe",
+          "keepRequest": "Keep request mode"
+        }
       },
       "emailSettings": {
         "title": "Emails",
@@ -1719,6 +1726,54 @@
           "title": "Link Expired",
           "description": "The setup link has expired. Please try again from settings.",
           "backToSettings": "Back to Settings"
+        },
+        "flowExplanation": {
+          "title": "Reservation flow",
+          "subtitle": "Here's what your customers experience based on your settings",
+          "currentFlow": "Current flow",
+          "modes": {
+            "request": "Request mode",
+            "instant": "Instant payment",
+            "stripeActive": "Stripe active",
+            "configRequired": "Configuration required"
+          },
+          "steps": {
+            "requestSubmitted": "Customer submits a reservation request",
+            "youReview": "You receive an email and review the request",
+            "acceptOrReject": "You accept or decline the request",
+            "paymentOnSite": "Customer pays on-site (cash, card, transfer...)",
+            "paymentOnlineOrSite": "Customer pays online from their account or on-site",
+            "customerPays": "Customer pays immediately by card",
+            "reservationConfirmed": "Reservation is automatically confirmed",
+            "bothNotified": "You and the customer receive confirmation"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accept online payments",
+              "description": "Enable Stripe to let customers pay by card. You can also send payment links via email or SMS.",
+              "action": "Configure Stripe"
+            },
+            "instantPayment": {
+              "title": "Switch to instant payment?",
+              "description": "To fully automate your reservations, enable instant payment mode in your store settings."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Incomplete configuration",
+              "description": "Instant payment mode is enabled but Stripe is not configured. Customers won't be able to complete reservations."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Once the request is accepted, your customer can pay online from their account. You can also send a payment link via email or SMS, or collect payment on-site.",
+            "instantPayment": "Optimal setup! Your reservations are fully automated. Payment immediately secures the reservation."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Need manual validation?",
+              "description": "Request mode lets you review each reservation before collecting payment. Adjustable in store settings."
+            }
+          }
         }
       },
       "subscriptionSettings": {

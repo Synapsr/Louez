@@ -7,7 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, ExternalLink, Pencil } from 'lucide-react'
+import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -40,6 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { updateStoreSettings } from './actions'
 import type { StoreSettings } from '@/types'
 import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
@@ -90,12 +99,14 @@ interface Store {
 
 interface StoreSettingsFormProps {
   store: Store
+  stripeChargesEnabled: boolean
 }
 
-export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
+export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettingsFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isSlugModalOpen, setIsSlugModalOpen] = useState(false)
+  const [isStripeRequiredDialogOpen, setIsStripeRequiredDialogOpen] = useState(false)
   const t = useTranslations('dashboard.settings')
 
   const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
@@ -552,8 +563,14 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
                     <FormItem>
                       <FormLabel>{t('reservationSettings.mode')}</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        onValueChange={(value) => {
+                          if (value === 'payment' && !stripeChargesEnabled) {
+                            setIsStripeRequiredDialogOpen(true)
+                            return
+                          }
+                          field.onChange(value)
+                        }}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -718,6 +735,43 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
         currentSlug={store.slug}
         domain={domain}
       />
+
+      {/* Stripe Required Dialog */}
+      <Dialog open={isStripeRequiredDialogOpen} onOpenChange={setIsStripeRequiredDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <CreditCard className="h-6 w-6 text-primary" />
+            </div>
+            <DialogTitle className="text-center">
+              {t('reservationSettings.stripeRequired.title')}
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              {t('reservationSettings.stripeRequired.description')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border bg-muted/50 p-4">
+            <p className="text-sm text-muted-foreground">
+              {t('reservationSettings.stripeRequired.benefits')}
+            </p>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/settings/payments">
+                {t('reservationSettings.stripeRequired.configureStripe')}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full"
+              onClick={() => setIsStripeRequiredDialogOpen(false)}
+            >
+              {t('reservationSettings.stripeRequired.keepRequest')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
