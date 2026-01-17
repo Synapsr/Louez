@@ -1380,6 +1380,7 @@
         "hoursDescription": "Orari e chiusure",
         "legalDescription": "Termini e note legali",
         "emailsDescription": "Personalizzazione notifiche",
+        "reviewBoosterDescription": "Recensioni Google e automazione",
         "accountDescription": "Profilo e sicurezza",
         "subscriptionDescription": "Piano e fatturazione",
         "teamDescription": "Membri del team e ruoli",
@@ -1576,6 +1577,43 @@
         "messageHint": "Questo messaggio apparira nel corpo dell'email. Usa {number} per il numero di prenotazione.",
         "signature": "Firma",
         "signaturePlaceholder": "Lascia vuoto per usare la firma predefinita"
+      },
+      "reviewBooster": {
+        "title": "Booster recensioni",
+        "description": "Raccogli piu recensioni Google e mostrali nel tuo negozio",
+        "searchPlace": "Trova la tua attivita su Google",
+        "searchPlaceDescription": "Cerca la tua attivita per abilitare le funzioni di recensione",
+        "searchPlaceholder": "Cerca la tua attivita...",
+        "noResults": "Nessun risultato trovato",
+        "selectedPlace": "Attivita selezionata",
+        "changePlace": "Cambia",
+        "reviews": "recensioni",
+        "displaySettings": "Visualizzazione",
+        "displaySettingsDescription": "Controlla dove vengono mostrate le tue recensioni Google",
+        "displayOnStorefront": "Mostra recensioni nel negozio",
+        "displayOnStorefrontDesc": "Mostra la tua valutazione e le recensioni ai visitatori",
+        "showPromptInPortal": "Richiedi recensioni",
+        "showPromptInPortalDesc": "Mostra una richiesta di recensione dopo noleggi completati",
+        "previewOnStorefront": "Anteprima nel negozio",
+        "automationSettings": "Automazione",
+        "automationSettingsDescription": "Invia automaticamente richieste di recensione dopo i noleggi",
+        "autoEmail": "Invia email di ringraziamento automaticamente",
+        "autoEmailDesc": "Invia una email con un link per lasciare una recensione",
+        "autoSms": "Invia SMS di ringraziamento automaticamente",
+        "autoSmsDesc": "Invia un SMS con un link per lasciare una recensione",
+        "delayHours": "Invia dopo",
+        "afterReturn": "dopo la restituzione",
+        "hours": "ore",
+        "smsLimitNote": "Gli SMS sono soggetti ai limiti del tuo piano",
+        "saved": "Impostazioni booster recensioni salvate",
+        "error": "Errore nel salvataggio",
+        "locked": {
+          "title": "Sblocca Booster recensioni",
+          "description": "Raccogli piu recensioni e mostrali nel tuo negozio",
+          "upgrade": "Passa a Pro",
+          "featureLocked": "Funzione bloccata",
+          "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
+        }
       },
       "businessHours": {
         "title": "Orari di apertura",
@@ -1940,7 +1978,8 @@
       "simpleReservation": "Prenotazione semplice",
       "simpleReservationDesc": "Prenota in pochi clic",
       "securePaymentDesc": "Transazioni 100% sicure",
-      "localPickupDesc": "Ritira facilmente la tua attrezzatura"
+      "localPickupDesc": "Ritira facilmente la tua attrezzatura",
+        "reviewsBadge": "recensioni"
     },
     "home": {
       "ourCategories": "Le nostre categorie",
@@ -1966,6 +2005,15 @@
       "alreadyReserved": "Hai gia una prenotazione?",
       "alreadyReservedDesc": "Accedi al tuo account per monitorare le tue prenotazioni e scaricare i tuoi contratti.",
       "accessAccount": "Accedi al mio account"
+    },
+    "reviews": {
+      "title": "Recensioni clienti",
+      "subtitle": "Scopri cosa dicono i nostri clienti di noi",
+      "viewOnGoogle": "Vedi su Google",
+      "basedOn": "basato su {count} recensioni",
+      "noReviewText": "Questa recensione non ha commento.",
+      "seeAllOnGoogle": "Vedi tutte le recensioni",
+      "verifiedByGoogle": "Recensioni verificate da Google"
     },
     "catalog": {
       "title": "Catalogo",
@@ -2421,6 +2469,11 @@
           "failed": "Fallito",
           "refunded": "Rimborsato"
         }
+      },
+      "reviewPrompt": {
+        "title": "Come e stato il tuo noleggio?",
+        "description": "Il tuo feedback aiuta {name} a migliorare",
+        "leaveReview": "Lascia una recensione"
       }
     },
     "footer": {
@@ -2669,6 +2722,13 @@
       "scheduledReturn": "Ritorno programmato",
       "returnInfo": "Restituisci l'attrezzatura in buone condizioni. Il deposito sara restituito dopo la verifica.",
       "thanks": "Grazie per la tua fiducia!"
+    },
+    "thankYouReview": {
+      "subject": "Grazie per il tuo noleggio!",
+      "title": "Grazie per la tua fiducia!",
+      "body": "Speriamo che il tuo noleggio sia andato bene. La tua recensione ci aiuta a migliorare e aiuta altri clienti nella loro scelta.",
+      "cta": "Lascia una recensione",
+      "disclaimer": "Ci vuole solo un minuto e sarebbe di grande aiuto!"
     },
     "newRequestLandlord": {
       "subject": "Nuova richiesta di prenotazione #{number}",

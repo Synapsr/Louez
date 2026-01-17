@@ -6,7 +6,7 @@ import { db } from '@/lib/db'
 import { stores, products, categories } from '@/lib/db/schema'
 import { eq, desc, and, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { ArrowRight, Calendar, Shield, Truck, Sparkles, ChevronRight, MapPin, Phone, Mail, User, KeyRound, CheckCircle } from 'lucide-react'
+import { ArrowRight, Calendar, Shield, Truck, Sparkles, ChevronRight, MapPin, Phone, Mail, User, KeyRound, CheckCircle, Star } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +15,7 @@ import { StoreMap } from '@/components/storefront/store-map'
 import { HeroDatePicker } from '@/components/storefront/hero-date-picker'
 import { HeroImageSlider } from '@/components/storefront/hero-image-slider'
 import { StoreStatusBadge } from '@/components/storefront/store-status-badge'
+import { GoogleReviewsSection } from '@/components/storefront/google-reviews-section'
 import {
   generateStoreMetadata,
   generateLocalBusinessSchema,
@@ -22,7 +23,7 @@ import {
   JsonLd,
   stripHtml,
 } from '@/lib/seo'
-import type { StoreTheme, StoreSettings } from '@/types/store'
+import type { StoreTheme, StoreSettings, ReviewBoosterSettings } from '@/types/store'
 
 interface StorefrontPageProps {
   params: Promise<{ slug: string }>
@@ -137,6 +138,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const advanceNotice = storeWithRelations.settings?.advanceNotice || 0
   const heroImages = storeWithRelations.theme?.heroImages || []
   const hasHeroImages = heroImages.length > 0
+  const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
 
   // Prepare store data for JSON-LD
   const storeForSchema = {
@@ -207,9 +209,18 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   {storeWithRelations.name}
                 </h1>
 
-                {/* Status badge */}
-                <div className="mb-3">
+                {/* Status and rating badges */}
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   <StoreStatusBadge businessHours={businessHours} />
+                  {reviewBoosterSettings?.googleRating && (
+                    <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1 text-sm">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="font-medium">{reviewBoosterSettings.googleRating.toFixed(1)}</span>
+                      {reviewBoosterSettings.googleReviewCount && (
+                        <span className="text-muted-foreground text-xs">({reviewBoosterSettings.googleReviewCount})</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Tagline */}
@@ -272,9 +283,18 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                   {storeWithRelations.name}
                 </h1>
 
-                {/* Status badge */}
-                <div className="mb-6">
+                {/* Status and rating badges */}
+                <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
                   <StoreStatusBadge businessHours={businessHours} />
+                  {reviewBoosterSettings?.googleRating && (
+                    <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1.5 text-sm">
+                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                      <span className="font-medium">{reviewBoosterSettings.googleRating.toFixed(1)}</span>
+                      {reviewBoosterSettings.googleReviewCount && (
+                        <span className="text-muted-foreground text-xs">({reviewBoosterSettings.googleReviewCount} {t('hero.reviewsBadge')})</span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Tagline */}
@@ -395,6 +415,15 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
           )}
         </div>
       </section>
+
+      {/* Google Reviews Section */}
+      {reviewBoosterSettings?.displayReviewsOnStorefront &&
+        reviewBoosterSettings?.googlePlaceId && (
+          <GoogleReviewsSection
+            placeId={reviewBoosterSettings.googlePlaceId}
+            primaryColor={primaryColor}
+          />
+        )}
 
       {/* Location Section */}
       {storeWithRelations.address && (

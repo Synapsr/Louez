@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { stores, storeMembers } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
-import type { StoreSettings, StoreTheme, EmailSettings } from '@/types/store'
+import type { StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings } from '@/types/store'
 
 const ACTIVE_STORE_COOKIE = 'louez_active_store'
 
@@ -37,6 +37,7 @@ export type StoreWithFullData = {
   stripeOnboardingComplete: boolean | null
   stripeChargesEnabled: boolean | null
   emailSettings: EmailSettings | null
+  reviewBoosterSettings: ReviewBoosterSettings | null
   icsToken: string | null
   onboardingCompleted: boolean | null
   createdAt: Date

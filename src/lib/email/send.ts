@@ -14,6 +14,7 @@ import {
   NewRequestLandlordEmail,
   TeamInvitationEmail,
   InstantAccessEmail,
+  ThankYouReviewEmail,
 } from './templates'
 
 interface Store {
@@ -750,6 +751,81 @@ export async function sendInstantAccessEmail({
       to,
       subject,
       templateType: 'instant_access',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Thank You Review Email
+export async function sendThankYouReviewEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  reviewUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: {
+    id: string
+    name: string
+    logoUrl?: string | null
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+    theme?: { primaryColor?: string } | null
+  }
+  customer: { firstName: string }
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+  }
+  reviewUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.thankYouReview.subject} - ${store.name}`
+
+  const html = await render(
+    ThankYouReviewEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storePhone: store.phone,
+      storeEmail: store.email,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      reviewUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'thank_you_review',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'thank_you_review',
       status: 'failed',
       error: String(error),
     })

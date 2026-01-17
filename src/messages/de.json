@@ -1381,6 +1381,7 @@
         "hoursDescription": "Öffnungszeiten und Schließungen",
         "legalDescription": "AGB und Impressum",
         "emailsDescription": "Benachrichtigungsanpassung",
+        "reviewBoosterDescription": "Google-Bewertungen und Automatisierung",
         "accountDescription": "Profil und Sicherheit",
         "subscriptionDescription": "Plan und Abrechnung",
         "teamDescription": "Teammitglieder und Rollen",
@@ -1577,6 +1578,43 @@
         "messageHint": "Diese Nachricht erscheint im E-Mail-Text. Verwenden Sie {number} für die Reservierungsnummer.",
         "signature": "Signatur",
         "signaturePlaceholder": "Leer lassen für Standard-Signatur"
+      },
+      "reviewBooster": {
+        "title": "Bewertungs-Booster",
+        "description": "Sammeln Sie mehr Google-Bewertungen und zeigen Sie sie in Ihrem Shop an",
+        "searchPlace": "Finden Sie Ihr Unternehmen bei Google",
+        "searchPlaceDescription": "Suchen Sie nach Ihrem Unternehmen, um Bewertungsfunktionen zu aktivieren",
+        "searchPlaceholder": "Nach Ihrem Unternehmen suchen...",
+        "noResults": "Keine Ergebnisse gefunden",
+        "selectedPlace": "Ausgewähltes Unternehmen",
+        "changePlace": "Ändern",
+        "reviews": "Bewertungen",
+        "displaySettings": "Anzeige",
+        "displaySettingsDescription": "Steuern Sie, wo Ihre Google-Bewertungen angezeigt werden",
+        "displayOnStorefront": "Bewertungen im Shop anzeigen",
+        "displayOnStorefrontDesc": "Zeigen Sie Besuchern Ihre Bewertung und Rezensionen",
+        "showPromptInPortal": "Zur Bewertung auffordern",
+        "showPromptInPortalDesc": "Zeigen Sie nach abgeschlossenen Vermietungen eine Bewertungsaufforderung",
+        "previewOnStorefront": "Im Shop ansehen",
+        "automationSettings": "Automatisierung",
+        "automationSettingsDescription": "Senden Sie automatisch Bewertungsanfragen nach Vermietungen",
+        "autoEmail": "Dankeschön-E-Mail automatisch senden",
+        "autoEmailDesc": "Senden Sie eine E-Mail mit einem Link zum Bewerten",
+        "autoSms": "Dankeschön-SMS automatisch senden",
+        "autoSmsDesc": "Senden Sie eine SMS mit einem Link zum Bewerten",
+        "delayHours": "Senden nach",
+        "afterReturn": "nach Rückgabe",
+        "hours": "Stunden",
+        "smsLimitNote": "SMS unterliegen Ihren Planlimits",
+        "saved": "Bewertungs-Booster Einstellungen gespeichert",
+        "error": "Fehler beim Speichern",
+        "locked": {
+          "title": "Bewertungs-Booster freischalten",
+          "description": "Sammeln Sie mehr Bewertungen und zeigen Sie sie in Ihrem Shop an",
+          "upgrade": "Auf Pro upgraden",
+          "featureLocked": "Funktion gesperrt",
+          "upgradeToUnlock": "Upgraden Sie auf Pro, um diese Funktion zu aktivieren"
+        }
       },
       "businessHours": {
         "title": "Öffnungszeiten",
@@ -1941,7 +1979,8 @@
       "simpleReservation": "Einfache Reservierung",
       "simpleReservationDesc": "In wenigen Klicks buchen",
       "securePaymentDesc": "100% sichere Transaktionen",
-      "localPickupDesc": "Holen Sie Ihre Ausrüstung einfach ab"
+      "localPickupDesc": "Holen Sie Ihre Ausrüstung einfach ab",
+        "reviewsBadge": "Bewertungen"
     },
     "home": {
       "ourCategories": "Unsere Kategorien",
@@ -1967,6 +2006,15 @@
       "alreadyReserved": "Bereits eine Reservierung?",
       "alreadyReservedDesc": "Greifen Sie auf Ihr Konto zu, um Ihre Reservierungen zu verfolgen und Ihre Verträge herunterzuladen.",
       "accessAccount": "Auf mein Konto zugreifen"
+    },
+    "reviews": {
+      "title": "Kundenbewertungen",
+      "subtitle": "Sehen Sie, was unsere Kunden über uns sagen",
+      "viewOnGoogle": "Auf Google ansehen",
+      "basedOn": "basierend auf {count} Bewertungen",
+      "noReviewText": "Diese Bewertung hat keinen Kommentar.",
+      "seeAllOnGoogle": "Alle Bewertungen ansehen",
+      "verifiedByGoogle": "Von Google verifizierte Bewertungen"
     },
     "catalog": {
       "title": "Katalog",
@@ -2422,6 +2470,11 @@
           "failed": "Fehlgeschlagen",
           "refunded": "Erstattet"
         }
+      },
+      "reviewPrompt": {
+        "title": "Wie war Ihre Miete?",
+        "description": "Ihr Feedback hilft {name}, sich zu verbessern",
+        "leaveReview": "Bewertung abgeben"
       }
     },
     "footer": {
@@ -2670,6 +2723,13 @@
       "scheduledReturn": "Geplante Rückgabe",
       "returnInfo": "Bitte geben Sie die Ausrüstung in gutem Zustand zurück. Die Kaution wird nach Prüfung zurückgegeben.",
       "thanks": "Vielen Dank für Ihr Vertrauen!"
+    },
+    "thankYouReview": {
+      "subject": "Vielen Dank für Ihre Miete!",
+      "title": "Vielen Dank für Ihr Vertrauen!",
+      "body": "Wir hoffen, dass Ihre Miete gut verlaufen ist. Ihre Bewertung hilft uns, uns zu verbessern und anderen Kunden bei ihrer Entscheidung.",
+      "cta": "Bewertung abgeben",
+      "disclaimer": "Es dauert nur eine Minute und wäre uns eine große Hilfe!"
     },
     "newRequestLandlord": {
       "subject": "Neue Reservierungsanfrage #{number}",

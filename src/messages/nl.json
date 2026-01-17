@@ -1379,6 +1379,7 @@
         "hoursDescription": "Openingstijden en sluitingen",
         "legalDescription": "Voorwaarden en juridische vermeldingen",
         "emailsDescription": "Notificatie-aanpassing",
+        "reviewBoosterDescription": "Google reviews en automatisering",
         "accountDescription": "Profiel en beveiliging",
         "subscriptionDescription": "Plan en facturering",
         "teamDescription": "Teamleden en rollen",
@@ -1575,6 +1576,43 @@
         "messageHint": "Dit bericht verschijnt in de e-mail body. Gebruik {number} voor het reserveringsnummer.",
         "signature": "Handtekening",
         "signaturePlaceholder": "Laat leeg om standaard handtekening te gebruiken"
+      },
+      "reviewBooster": {
+        "title": "Review Booster",
+        "description": "Verzamel meer Google reviews en toon ze in uw winkel",
+        "searchPlace": "Vind uw bedrijf op Google",
+        "searchPlaceDescription": "Zoek naar uw bedrijf om reviewfuncties in te schakelen",
+        "searchPlaceholder": "Zoek naar uw bedrijf...",
+        "noResults": "Geen resultaten gevonden",
+        "selectedPlace": "Geselecteerd bedrijf",
+        "changePlace": "Wijzigen",
+        "reviews": "beoordelingen",
+        "displaySettings": "Weergave",
+        "displaySettingsDescription": "Bepaal waar uw Google reviews worden getoond",
+        "displayOnStorefront": "Reviews tonen in winkel",
+        "displayOnStorefrontDesc": "Toon uw beoordeling en reviews aan bezoekers",
+        "showPromptInPortal": "Vraag om reviews",
+        "showPromptInPortalDesc": "Toon een reviewverzoek na voltooide verhuur",
+        "previewOnStorefront": "Bekijk in winkel",
+        "automationSettings": "Automatisering",
+        "automationSettingsDescription": "Stuur automatisch reviewverzoeken na verhuur",
+        "autoEmail": "Stuur automatisch bedankmail",
+        "autoEmailDesc": "Stuur een email met een link om een review achter te laten",
+        "autoSms": "Stuur automatisch bedank-SMS",
+        "autoSmsDesc": "Stuur een SMS met een link om een review achter te laten",
+        "delayHours": "Verstuur na",
+        "afterReturn": "na retour",
+        "hours": "uur",
+        "smsLimitNote": "SMS zijn onderworpen aan uw planlimieten",
+        "saved": "Review Booster instellingen opgeslagen",
+        "error": "Fout bij opslaan",
+        "locked": {
+          "title": "Ontgrendel Review Booster",
+          "description": "Verzamel meer reviews en toon ze in uw winkel",
+          "upgrade": "Upgrade naar Pro",
+          "featureLocked": "Functie vergrendeld",
+          "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
+        }
       },
       "businessHours": {
         "title": "Openingstijden",
@@ -1939,7 +1977,8 @@
       "simpleReservation": "Eenvoudige reservering",
       "simpleReservationDesc": "Boek in een paar klikken",
       "securePaymentDesc": "100% veilige transacties",
-      "localPickupDesc": "Haal uw materiaal eenvoudig op"
+      "localPickupDesc": "Haal uw materiaal eenvoudig op",
+        "reviewsBadge": "beoordelingen"
     },
     "home": {
       "ourCategories": "Onze categorieën",
@@ -1965,6 +2004,15 @@
       "alreadyReserved": "Al een reservering?",
       "alreadyReservedDesc": "Ga naar uw account om uw reserveringen te volgen en uw contracten te downloaden.",
       "accessAccount": "Naar mijn account"
+    },
+    "reviews": {
+      "title": "Klantbeoordelingen",
+      "subtitle": "Ontdek wat onze klanten over ons zeggen",
+      "viewOnGoogle": "Bekijk op Google",
+      "basedOn": "gebaseerd op {count} beoordelingen",
+      "noReviewText": "Deze beoordeling heeft geen opmerking.",
+      "seeAllOnGoogle": "Bekijk alle beoordelingen",
+      "verifiedByGoogle": "Door Google geverifieerde beoordelingen"
     },
     "catalog": {
       "title": "Catalogus",
@@ -2420,6 +2468,11 @@
           "failed": "Mislukt",
           "refunded": "Terugbetaald"
         }
+      },
+      "reviewPrompt": {
+        "title": "Hoe was uw huur?",
+        "description": "Uw feedback helpt {name} verbeteren",
+        "leaveReview": "Laat een review achter"
       }
     },
     "footer": {
@@ -2668,6 +2721,13 @@
       "scheduledReturn": "Gepland retour",
       "returnInfo": "Breng het materiaal alstublieft in goede staat terug. De borg wordt na verificatie geretourneerd.",
       "thanks": "Bedankt voor uw vertrouwen!"
+    },
+    "thankYouReview": {
+      "subject": "Bedankt voor uw huur!",
+      "title": "Bedankt voor uw vertrouwen!",
+      "body": "We hopen dat uw huur goed is verlopen. Uw review helpt ons verbeteren en helpt andere klanten bij hun keuze.",
+      "cta": "Laat een review achter",
+      "disclaimer": "Het duurt maar een minuutje en zou ons enorm helpen!"
     },
     "newRequestLandlord": {
       "subject": "Nieuwe reserveringsaanvraag #{number}",
