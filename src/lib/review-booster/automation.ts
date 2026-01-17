@@ -7,7 +7,7 @@
 
 import { db } from '@/lib/db'
 import { stores, reservations, customers, reviewRequestLogs } from '@/lib/db/schema'
-import { eq, and, isNull, lte, inArray, notInArray, sql } from 'drizzle-orm'
+import { eq, and, lte, gte, inArray, sql } from 'drizzle-orm'
 import { sendThankYouReviewSms } from '@/lib/sms/send'
 import { buildReviewUrl } from '@/lib/google-places'
 import { sendThankYouReviewEmail } from '@/lib/email/send'
@@ -17,6 +17,10 @@ import type { ReviewBoosterSettings } from '@/types'
 // Base domain for short URLs (e.g., "louez.io" or "localhost:3000")
 const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
 const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+
+// Maximum window for eligible reservations (prevents mass sending on feature activation)
+// Only reservations returned within the last 24 hours are eligible
+const MAX_ELIGIBILITY_WINDOW_MS = 24 * 60 * 60 * 1000 // 1 day
 
 /**
  * Build a short review URL for SMS
@@ -110,9 +114,11 @@ async function processEmailRequests(
   const result = { sent: 0, errors: [] as string[] }
   const delayMs = settings.emailDelayHours * 60 * 60 * 1000
   const cutoffDate = new Date(Date.now() - delayMs)
+  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS)
 
   // Find completed reservations that need email review request
   // - returnedAt is before cutoff (delay has passed)
+  // - returnedAt is within the eligibility window (prevents mass sending on activation)
   // - no email review request has been sent yet
   const eligibleReservations = await db
     .select({
@@ -125,7 +131,8 @@ async function processEmailRequests(
       and(
         eq(reservations.storeId, store.id),
         eq(reservations.status, 'completed'),
-        lte(reservations.returnedAt, cutoffDate)
+        lte(reservations.returnedAt, cutoffDate),
+        gte(reservations.returnedAt, maxAgeDate)
       )
     )
     .limit(50) // Process in batches
@@ -202,8 +209,11 @@ async function processSmsRequests(
   const result = { sent: 0, errors: [] as string[] }
   const delayMs = settings.smsDelayHours * 60 * 60 * 1000
   const cutoffDate = new Date(Date.now() - delayMs)
+  const maxAgeDate = new Date(Date.now() - MAX_ELIGIBILITY_WINDOW_MS)
 
   // Find completed reservations that need SMS review request
+  // - returnedAt is before cutoff (delay has passed)
+  // - returnedAt is within the eligibility window (prevents mass sending on activation)
   const eligibleReservations = await db
     .select({
       reservation: reservations,
@@ -215,7 +225,8 @@ async function processSmsRequests(
       and(
         eq(reservations.storeId, store.id),
         eq(reservations.status, 'completed'),
-        lte(reservations.returnedAt, cutoffDate)
+        lte(reservations.returnedAt, cutoffDate),
+        gte(reservations.returnedAt, maxAgeDate)
       )
     )
     .limit(50)
