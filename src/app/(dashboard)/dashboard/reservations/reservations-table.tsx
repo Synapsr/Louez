@@ -18,6 +18,7 @@ import {
   Loader2,
   Ban,
   AlertCircle,
+  CreditCard,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useState } from 'react'
@@ -66,8 +67,9 @@ interface ReservationItem {
 interface Payment {
   id: string
   amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage'
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
+  method: 'cash' | 'card' | 'transfer' | 'check' | 'other' | 'stripe'
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
 }
 
 interface Reservation {
@@ -313,6 +315,11 @@ export function ReservationsTable({ reservations, currency = 'EUR' }: Reservatio
           const paymentInfo = getPaymentStatus(reservation)
           const showPaymentStatus = !['cancelled', 'rejected'].includes(status)
 
+          // Check if there's a pending online payment (customer is on Stripe Checkout)
+          const hasPendingOnlinePayment = reservation.payments.some(
+            (p) => p.method === 'stripe' && p.status === 'pending' && p.type === 'rental'
+          )
+
           return (
             <Link
               key={reservation.id}
@@ -407,7 +414,7 @@ export function ReservationsTable({ reservations, currency = 'EUR' }: Reservatio
                       </div>
 
                       {/* Quick Actions for Pending */}
-                      {isPending && (
+                      {isPending && !hasPendingOnlinePayment && (
                         <div className="flex items-center gap-1.5">
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -443,6 +450,19 @@ export function ReservationsTable({ reservations, currency = 'EUR' }: Reservatio
                             </TooltipTrigger>
                             <TooltipContent>{t('actions.reject')}</TooltipContent>
                           </Tooltip>
+                        </div>
+                      )}
+
+                      {/* Pending online payment indicator */}
+                      {isPending && hasPendingOnlinePayment && (
+                        <div className="flex items-center gap-1.5">
+                          <Badge
+                            variant="secondary"
+                            className="gap-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 animate-pulse"
+                          >
+                            <CreditCard className="h-3.5 w-3.5" />
+                            {t('paymentInProgress')}
+                          </Badge>
                         </div>
                       )}
 

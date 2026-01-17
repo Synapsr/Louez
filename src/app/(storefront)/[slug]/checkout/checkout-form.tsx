@@ -274,7 +274,22 @@ export function CheckoutForm({
       })
 
       if (result.error) {
-        toast.error(result.error)
+        // Translate the error message if it's an i18n key
+        let errorMessage = result.error
+        if (result.error.startsWith('errors.')) {
+          const errorKey = result.error.replace('errors.', '')
+          // Filter out undefined values from errorParams for translation
+          const params: Record<string, string | number> = {}
+          if (result.errorParams) {
+            for (const [key, value] of Object.entries(result.errorParams)) {
+              if (value !== undefined) {
+                params[key] = value
+              }
+            }
+          }
+          errorMessage = tErrors(errorKey, params)
+        }
+        toast.error(errorMessage)
         return
       }
 
@@ -785,8 +800,19 @@ export function CheckoutForm({
                 </div>
               )}
 
-              {/* Deposit info - discrete, just informational */}
-              {getTotalDeposit() > 0 && (
+              {/* Deposit info - explains authorization hold */}
+              {getTotalDeposit() > 0 && reservationMode === 'payment' && (
+                <div className="border-t pt-3 mt-2 space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">{t('depositLabel')}</span>
+                    <span className="font-medium">{formatCurrency(getTotalDeposit(), currency)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {t('depositAuthorizationInfo')}
+                  </p>
+                </div>
+              )}
+              {getTotalDeposit() > 0 && reservationMode !== 'payment' && (
                 <div className="text-xs text-muted-foreground border-t pt-3 mt-2">
                   <p>{t('depositInfo', { amount: formatCurrency(getTotalDeposit(), currency) })}</p>
                 </div>

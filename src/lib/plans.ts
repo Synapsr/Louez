@@ -42,6 +42,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       maxReservationsPerMonth: 10,
       maxCustomers: 50,
       maxCollaborators: 0,
+      maxSmsPerMonth: 5,
       onlinePayment: false,
       analytics: false,
       emailNotifications: true,
@@ -66,6 +67,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       maxReservationsPerMonth: 100,
       maxCustomers: 500,
       maxCollaborators: 2,
+      maxSmsPerMonth: 50,
       onlinePayment: true,
       analytics: true,
       emailNotifications: true,
@@ -89,6 +91,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       maxReservationsPerMonth: null, // unlimited
       maxCustomers: null, // unlimited
       maxCollaborators: null, // unlimited
+      maxSmsPerMonth: 500,
       onlinePayment: true,
       analytics: true,
       emailNotifications: true,

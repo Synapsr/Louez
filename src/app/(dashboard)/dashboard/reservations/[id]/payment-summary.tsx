@@ -83,9 +83,9 @@ import {
 interface Payment {
   id: string
   amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage'
+  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
   method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
-  status: 'pending' | 'completed' | 'failed' | 'refunded'
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
   paidAt: Date | null
   notes: string | null
 }
@@ -105,7 +105,7 @@ const METHOD_ICONS: Record<string, React.ReactNode> = {
   card: <CreditCard className="h-3.5 w-3.5" />,
   transfer: <Building2 className="h-3.5 w-3.5" />,
   check: <Receipt className="h-3.5 w-3.5" />,
-  stripe: <CreditCard className="h-3.5 w-3.5" />,
+  stripe: <CreditCard className="h-3.5 w-3.5 text-[#635BFF]" />,
   other: <Wallet className="h-3.5 w-3.5" />,
 }
 
@@ -176,8 +176,13 @@ export function PaymentSummary({
 
   const handleRecordPayment = async () => {
     const amount = parseFloat(paymentAmount)
-    if (isNaN(amount) || amount <= 0) {
+    if (isNaN(amount) || amount === 0) {
       toast.error(t('payment.invalidAmount'))
+      return
+    }
+    // Only adjustment type can have negative amounts
+    if (amount < 0 && paymentType !== 'adjustment') {
+      toast.error(t('payment.negativeAmountOnlyForAdjustment'))
       return
     }
 
@@ -330,6 +335,9 @@ export function PaymentSummary({
       deposit: t('payment.types.deposit'),
       deposit_return: t('payment.types.depositReturn'),
       damage: t('payment.types.damage'),
+      deposit_hold: t('payment.types.depositHold'),
+      deposit_capture: t('payment.types.depositCapture'),
+      adjustment: t('payment.types.adjustment'),
     }
     return labels[type] || type
   }
@@ -544,17 +552,57 @@ export function PaymentSummary({
                 {payments.map((payment) => (
                   <div
                     key={payment.id}
-                    className="flex items-center justify-between p-2 rounded-lg border bg-card text-xs"
+                    className={cn(
+                      'flex items-center justify-between p-2 rounded-lg border bg-card text-xs',
+                      payment.method === 'stripe' && 'border-l-2 border-l-[#635BFF]'
+                    )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-full bg-muted">
+                      <div className={cn(
+                        'flex items-center justify-center w-6 h-6 rounded-full',
+                        payment.method === 'stripe' ? 'bg-[#635BFF]/10' : 'bg-muted'
+                      )}>
                         {METHOD_ICONS[payment.method]}
                       </div>
                       <div>
-                        <span className="font-medium">{getTypeLabel(payment.type)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium">{getTypeLabel(payment.type)}</span>
+                          {payment.method === 'stripe' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-[#635BFF]/10 text-[#635BFF] border-0"
+                            >
+                              Stripe
+                            </Badge>
+                          )}
+                          {payment.status === 'authorized' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-0"
+                            >
+                              {t('payment.statusAuthorized')}
+                            </Badge>
+                          )}
+                          {payment.status === 'refunded' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
+                            >
+                              {t('payment.statusRefunded')}
+                            </Badge>
+                          )}
+                          {payment.status === 'cancelled' && (
+                            <Badge
+                              variant="secondary"
+                              className="h-4 px-1 text-[9px] bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
+                            >
+                              {t('payment.statusCancelled')}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-[10px] text-muted-foreground">
                           {payment.paidAt
-                            ? format(new Date(payment.paidAt), 'dd/MM/yy', { locale: fr })
+                            ? format(new Date(payment.paidAt), 'dd/MM/yy HH:mm', { locale: fr })
                             : '-'}
                         </p>
                       </div>
@@ -563,10 +611,17 @@ export function PaymentSummary({
                       <span className={cn(
                         'font-mono font-medium',
                         payment.type === 'deposit_return' && 'text-emerald-600 dark:text-emerald-400',
-                        payment.type === 'damage' && 'text-red-600 dark:text-red-400'
+                        payment.type === 'damage' && 'text-red-600 dark:text-red-400',
+                        payment.type === 'deposit_capture' && 'text-red-600 dark:text-red-400',
+                        payment.type === 'adjustment' && parseFloat(payment.amount) < 0 && 'text-red-600 dark:text-red-400',
+                        payment.type === 'adjustment' && parseFloat(payment.amount) > 0 && 'text-emerald-600 dark:text-emerald-400',
+                        payment.status === 'cancelled' && 'text-muted-foreground line-through'
                       )}>
-                        {payment.type === 'deposit_return' ? '-' : '+'}
-                        {parseFloat(payment.amount).toFixed(2)}{currencySymbol}
+                        {payment.type === 'deposit_return' ? '-' :
+                         payment.type === 'adjustment' ? (parseFloat(payment.amount) < 0 ? '' : '+') : '+'}
+                        {payment.type === 'adjustment'
+                          ? parseFloat(payment.amount).toFixed(2)
+                          : parseFloat(payment.amount).toFixed(2)}{currencySymbol}
                       </span>
                       {payment.method !== 'stripe' && (
                         <Tooltip>
@@ -603,32 +658,54 @@ export function PaymentSummary({
             <DialogDescription>
               {paymentType === 'rental'
                 ? t('payment.recordRentalDescription')
-                : t('payment.recordDepositDescription')}
+                : paymentType === 'adjustment'
+                  ? t('payment.recordAdjustmentDescription')
+                  : t('payment.recordDepositDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>{t('payment.type')}</Label>
+              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rental">{t('payment.types.rental')}</SelectItem>
+                  <SelectItem value="deposit">{t('payment.types.deposit')}</SelectItem>
+                  <SelectItem value="adjustment">{t('payment.types.adjustment')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label>{t('payment.amount')}</Label>
               <div className="relative">
                 <Input
                   type="number"
                   step="0.01"
-                  min="0"
+                  min={paymentType === 'adjustment' ? undefined : '0'}
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0.00"
+                  placeholder={paymentType === 'adjustment' ? '-0.00' : '0.00'}
                   className="pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                   {currencySymbol}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {paymentType === 'rental'
-                  ? t('payment.rentalRemaining', { amount: rentalRemaining.toFixed(2) })
-                  : t('payment.depositRemaining', { amount: depositRemaining.toFixed(2) })}
-              </p>
+              {paymentType === 'adjustment' ? (
+                <p className="text-xs text-muted-foreground">
+                  {t('payment.adjustmentHint')}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {paymentType === 'rental'
+                    ? t('payment.rentalRemaining', { formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}` })
+                    : t('payment.depositRemaining', { formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}` })}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">

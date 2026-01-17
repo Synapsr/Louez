@@ -22,6 +22,34 @@
       "when": 1768556192420,
       "tag": "0002_classy_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1768587220786,
+      "tag": "0003_fine_clea",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1768651700907,
+      "tag": "0004_tiny_marauders",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1768656544749,
+      "tag": "0005_rapid_richard_fisk",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1768668527755,
+      "tag": "0006_opposite_sasquatch",
+      "breakpoints": true
     }
   ]
 }

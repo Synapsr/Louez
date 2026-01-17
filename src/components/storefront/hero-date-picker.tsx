@@ -52,6 +52,8 @@ export function HeroDatePicker({
   const { getUrl } = useStorefrontUrl(storeSlug)
 
   const isTransitioningRef = useRef(false)
+  // Track if end date was auto-set (to allow re-clicking same date in calendar)
+  const endDateAutoSetRef = useRef(false)
 
   const [startDate, setStartDate] = useState<Date | undefined>(() => {
     const urlStart = searchParams.get('startDate')
@@ -75,6 +77,8 @@ export function HeroDatePicker({
   const [startTimeOpen, setStartTimeOpen] = useState(false)
   const [endDateOpen, setEndDateOpen] = useState(false)
   const [endTimeOpen, setEndTimeOpen] = useState(false)
+  // When true, don't show end date as selected (allows clicking auto-set date)
+  const [hideEndDateSelection, setHideEndDateSelection] = useState(false)
 
   // Calculate minimum start date based on advance notice setting
   const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
@@ -86,10 +90,21 @@ export function HeroDatePicker({
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
   }, [startDate, businessHours, advanceNotice])
 
+  // Check if start and end are on the same day
+  const isSameDay = useMemo(() => {
+    if (!startDate || !endDate) return false
+    return startDate.toDateString() === endDate.toDateString()
+  }, [startDate, endDate])
+
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30)
-  }, [endDate, businessHours])
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30)
+    // When same day, filter out times that are <= start time
+    if (isSameDay && startTime) {
+      return slots.filter(slot => slot > startTime)
+    }
+    return slots
+  }, [endDate, businessHours, isSameDay, startTime])
 
   const isDateDisabled = useCallback((date: Date): boolean => {
     if (date < minDate) return true
@@ -110,6 +125,8 @@ export function HeroDatePicker({
 
   useEffect(() => {
     if (endDate && endTimeSlots.length > 0 && !endTimeSlots.includes(endTime)) {
+      // Default to last available slot (typically closing time)
+      // For same day, endTimeSlots is already filtered to be > startTime
       setEndTime(endTimeSlots[endTimeSlots.length - 1] || endTimeSlots[0])
     }
   }, [endDate, endTimeSlots, endTime])
@@ -128,9 +145,17 @@ export function HeroDatePicker({
     setStartDateOpen(false)
 
     if (!endDate || date >= endDate) {
-      const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
-      setEndDate(nextAvailable ?? nextDay)
+      // For hourly pricing: default to same day (allows same-day rentals)
+      // For day/week pricing: default to next day
+      if (pricingMode === 'hour') {
+        setEndDate(date)
+      } else {
+        const nextDay = addDays(date, 1)
+        const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+        setEndDate(nextAvailable ?? nextDay)
+      }
+      // Mark that end date was auto-set (so we can clear selection when opening picker)
+      endDateAutoSetRef.current = true
     }
 
     isTransitioningRef.current = true
@@ -147,6 +172,10 @@ export function HeroDatePicker({
 
     isTransitioningRef.current = true
     setTimeout(() => {
+      // If end date was auto-set, hide selection so user can click any date
+      if (endDateAutoSetRef.current) {
+        setHideEndDateSelection(true)
+      }
       setEndDateOpen(true)
       setActiveField('endDate')
       isTransitioningRef.current = false
@@ -157,6 +186,9 @@ export function HeroDatePicker({
     if (!date) return
     setEndDate(date)
     setEndDateOpen(false)
+    // User explicitly selected, reset flags
+    endDateAutoSetRef.current = false
+    setHideEndDateSelection(false)
 
     isTransitioningRef.current = true
     setTimeout(() => {
@@ -197,7 +229,12 @@ export function HeroDatePicker({
   const handleEndDateOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
     setEndDateOpen(open)
-    if (open) setActiveField('endDate')
+    if (open) {
+      setActiveField('endDate')
+    } else {
+      // Reset hide selection when closing picker
+      setHideEndDateSelection(false)
+    }
   }
 
   const handleEndTimeOpenChange = (open: boolean) => {
@@ -206,7 +243,12 @@ export function HeroDatePicker({
     if (open) setActiveField('endTime')
   }
 
-  const canSubmit = startDate && endDate && startTime && endTime
+  const canSubmit = useMemo(() => {
+    if (!startDate || !endDate || !startTime || !endTime) return false
+    // For same day, ensure end time is after start time
+    if (isSameDay && endTime <= startTime) return false
+    return true
+  }, [startDate, endDate, startTime, endTime, isSameDay])
 
   const handleSubmit = () => {
     if (!canSubmit) return
@@ -299,7 +341,7 @@ export function HeroDatePicker({
                       onSelect={handleStartDateSelect}
                       disabled={isDateDisabled}
                       locale={fr}
-                      initialFocus
+                      autoFocus
                     />
                   </PopoverContent>
                 </Popover>
@@ -343,11 +385,12 @@ export function HeroDatePicker({
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
                       mode="single"
-                      selected={endDate}
+                      selected={hideEndDateSelection ? undefined : endDate}
+                      defaultMonth={endDate}
                       onSelect={handleEndDateSelect}
                       disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
                       locale={fr}
-                      initialFocus
+                      autoFocus
                     />
                   </PopoverContent>
                 </Popover>

@@ -35,6 +35,7 @@ interface StoreSettingsInput {
   // Settings
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
+  pendingBlocksAvailability: boolean
   minDuration: number
   maxDuration: number | null
   advanceNotice: number
@@ -62,6 +63,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
         settings: {
           pricingMode: data.pricingMode,
           reservationMode: data.reservationMode,
+          pendingBlocksAvailability: data.pendingBlocksAvailability,
           minDuration: data.minDuration,
           maxDuration: data.maxDuration,
           advanceNotice: data.advanceNotice,

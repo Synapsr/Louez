@@ -5,7 +5,6 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Package,
   ArrowUpRight,
   ArrowDownRight,
   FileText,
@@ -15,13 +14,21 @@ import {
   Plus,
   Globe,
   UserPlus,
+  ShieldCheck,
+  ShieldX,
+  Banknote,
+  Wifi,
+  Hourglass,
+  AlertCircle,
+  Link,
+  Pencil,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent' | 'modified'
 
 interface Activity {
   id: string
@@ -96,6 +103,56 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
   },
   payment_updated: {
     icon: <CreditCard className="h-4 w-4" />,
+    bgColor: 'bg-amber-100 dark:bg-amber-950/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  payment_received: {
+    icon: <Wifi className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  payment_initiated: {
+    icon: <Hourglass className="h-4 w-4" />,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  payment_failed: {
+    icon: <AlertCircle className="h-4 w-4" />,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+  },
+  payment_expired: {
+    icon: <Clock className="h-4 w-4" />,
+    bgColor: 'bg-gray-100 dark:bg-gray-900/50',
+    iconColor: 'text-gray-600 dark:text-gray-400',
+  },
+  deposit_authorized: {
+    icon: <ShieldCheck className="h-4 w-4" />,
+    bgColor: 'bg-amber-100 dark:bg-amber-950/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  deposit_captured: {
+    icon: <Banknote className="h-4 w-4" />,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+  },
+  deposit_released: {
+    icon: <ShieldCheck className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  deposit_failed: {
+    icon: <ShieldX className="h-4 w-4" />,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+  },
+  access_link_sent: {
+    icon: <Link className="h-4 w-4" />,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  modified: {
+    icon: <Pencil className="h-4 w-4" />,
     bgColor: 'bg-amber-100 dark:bg-amber-950/50',
     iconColor: 'text-amber-600 dark:text-amber-400',
   },
@@ -181,6 +238,7 @@ export async function ActivityTimeline({
                     user={activity.user}
                     metadata={activity.metadata}
                     source={isCreationEvent ? activitySource : undefined}
+                    activityType={activity.activityType}
                   />
                 )
               })
@@ -212,9 +270,16 @@ async function ActivityItem({
   subtitle,
   timestamp,
   user,
+  metadata,
   source,
-}: ActivityItemProps) {
+  activityType,
+}: ActivityItemProps & { activityType?: ActivityType }) {
   const t = await getTranslations('dashboard.reservations')
+
+  // Extract payment amount from metadata for payment-related activities
+  const paymentAmount = metadata?.amount as number | undefined
+  const paymentCurrency = (metadata?.currency as string) || 'EUR'
+  const isStripePayment = metadata?.method === 'stripe'
 
   return (
     <div className="relative flex gap-3 pl-1">
@@ -253,6 +318,45 @@ async function ActivityItem({
                 )}
               </Badge>
             )}
+            {/* Stripe badge for online payment activities */}
+            {(activityType === 'payment_received' || activityType === 'payment_initiated' || activityType === 'payment_failed' || activityType === 'payment_expired') && isStripePayment && (
+              <Badge
+                variant="secondary"
+                className="text-[10px] px-1.5 py-0 h-4 bg-[#635BFF]/10 text-[#635BFF] border-0"
+              >
+                Stripe
+              </Badge>
+            )}
+            {/* Payment amount badge */}
+            {paymentAmount && (activityType === 'payment_received' || activityType === 'payment_initiated' || activityType === 'payment_failed' || activityType === 'payment_expired') && (
+              <Badge
+                variant="secondary"
+                className={`text-[10px] px-1.5 py-0 h-4 font-mono ${
+                  activityType === 'payment_received'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : activityType === 'payment_failed' || activityType === 'payment_expired'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                }`}
+              >
+                {activityType === 'payment_received' ? '+' : ''}{paymentAmount.toFixed(2)} {paymentCurrency}
+              </Badge>
+            )}
+            {/* Modified amount badge */}
+            {activityType === 'modified' && metadata?.difference !== undefined && (
+              <Badge
+                variant="secondary"
+                className={`text-[10px] px-1.5 py-0 h-4 font-mono ${
+                  (metadata.difference as number) > 0
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : (metadata.difference as number) < 0
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    : 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400'
+                }`}
+              >
+                {(metadata.difference as number) >= 0 ? '+' : ''}{(metadata.difference as number).toFixed(2)} EUR
+              </Badge>
+            )}
           </div>
           <time className="text-xs text-muted-foreground">
             {format(timestamp, 'dd MMM yyyy HH:mm', { locale: fr })}
@@ -274,8 +378,8 @@ async function ActivityItem({
           </div>
         )}
 
-        {/* Show "by customer" for online reservations without user */}
-        {!user && source === 'online' && (
+        {/* Show "by customer" for online reservations/payments */}
+        {!user && (source === 'online' || activityType === 'payment_received' || activityType === 'payment_initiated' || activityType === 'payment_failed' || activityType === 'payment_expired') && (
           <div className="flex items-center gap-2 mt-1">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
               <User className="h-2.5 w-2.5 text-muted-foreground" />
@@ -287,7 +391,7 @@ async function ActivityItem({
         )}
 
         {/* Show "system" for other cases without user */}
-        {!user && source !== 'online' && !source && (
+        {!user && source !== 'online' && !source && !['payment_received', 'payment_initiated', 'payment_failed', 'payment_expired'].includes(activityType || '') && (
           <div className="flex items-center gap-2 mt-1">
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-muted">
               <User className="h-2.5 w-2.5 text-muted-foreground" />

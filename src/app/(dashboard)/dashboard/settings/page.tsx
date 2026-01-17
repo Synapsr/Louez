@@ -25,7 +25,10 @@ export default async function SettingsPage() {
 
       <SettingsNav />
 
-      <StoreSettingsForm store={store} />
+      <StoreSettingsForm
+        store={store}
+        stripeChargesEnabled={store.stripeChargesEnabled ?? false}
+      />
     </div>
   )
 }

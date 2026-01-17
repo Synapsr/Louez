@@ -566,6 +566,34 @@
         "viewAsCustomer": "Vedi come cliente",
         "print": "Stampa"
       },
+      "edit": {
+        "button": "Modifica",
+        "title": "Modifica prenotazione",
+        "dates": "Date",
+        "startDate": "Data di inizio",
+        "endDate": "Data di fine",
+        "items": "Articoli",
+        "product": "Prodotto",
+        "qty": "Qtà",
+        "unitPrice": "Prezzo unit.",
+        "total": "Totale",
+        "addItem": "Aggiungi articolo",
+        "subtotal": "Subtotale",
+        "summary": "Riepilogo",
+        "before": "Prima",
+        "after": "Dopo",
+        "difference": "Differenza",
+        "deposit": "Deposito",
+        "save": "Salva",
+        "saved": "Prenotazione aggiornata",
+        "cannotRemoveLastItem": "Impossibile rimuovere l'ultimo articolo",
+        "noItems": "Aggiungi almeno un articolo",
+        "datesRequired": "Le date di inizio e fine sono obbligatorie",
+        "lockPrice": "Blocca prezzo",
+        "unlockPrice": "Ricalcola prezzo",
+        "adjustmentPositive": "Dovra essere riscosso un supplemento di {amount}.",
+        "adjustmentNegative": "Puo essere emesso un rimborso di {amount}."
+      },
       "contract": {
         "title": "Contratto",
         "signed": "Firmato il {date}",
@@ -654,6 +682,8 @@
         "customItem": {
           "title": "Articoli personalizzati",
           "add": "Aggiungi",
+          "button": "Personalizzato",
+          "units": "unità",
           "badge": "Personalizzato",
           "empty": "Nessun articolo personalizzato aggiunto",
           "dialogTitle": "Aggiungi un articolo personalizzato",
@@ -686,6 +716,24 @@
           "priceUpdated": "Prezzo aggiornato",
           "priceReset": "Prezzo reimpostato"
         },
+        "warnings": {
+          "advanceNotice": "La data di inizio è prima del periodo di preavviso",
+          "advanceNoticeDetails": "Il preavviso abituale è di {hours}h. Puoi comunque procedere.",
+          "startDayClosed": "La data di inizio è un giorno di chiusura",
+          "endDayClosed": "La data di fine è un giorno di chiusura",
+          "dayClosedDetails": "Il negozio è normalmente chiuso in questo giorno.",
+          "startOutsideHours": "L'orario di inizio è fuori dall'orario di apertura",
+          "endOutsideHours": "L'orario di fine è fuori dall'orario di apertura",
+          "outsideHoursDetails": "Orario abituale: {open} - {close}",
+          "startClosurePeriod": "La data di inizio cade in un periodo di chiusura",
+          "endClosurePeriod": "La data di fine cade in un periodo di chiusura",
+          "closurePeriodDetails": "Il negozio è eccezionalmente chiuso.",
+          "canContinue": "Come gestore, puoi creare questa prenotazione nonostante gli avvisi.",
+          "productConflict": "{name}: conflitto di disponibilità",
+          "productConflictDetails": "Quantità richiesta: {requested}, disponibile per questo periodo: {available}",
+          "conflictCanContinue": "Questi prodotti sono già prenotati durante questo periodo. Puoi procedere se gestisci manualmente la disponibilità.",
+          "insufficientStock": "Stock insufficiente"
+        },
         "addItemError": "Aggiungi almeno un prodotto o articolo personalizzato"
       },
       "rejectDialog": {
@@ -708,7 +756,40 @@
         "returned": "Articoli restituiti",
         "note_updated": "Note aggiornate",
         "payment_added": "Pagamento aggiunto",
-        "payment_updated": "Pagamento aggiornato"
+        "payment_updated": "Pagamento aggiornato",
+        "payment_received": "Pagamento online ricevuto",
+        "payment_initiated": "Pagamento online avviato",
+        "payment_failed": "Pagamento online fallito",
+        "payment_expired": "Pagamento online scaduto",
+        "deposit_authorized": "Autorizzazione deposito creata",
+        "deposit_captured": "Deposito addebitato",
+        "deposit_released": "Deposito rilasciato",
+        "deposit_failed": "Autorizzazione fallita",
+        "access_link_sent": "Link di accesso inviato",
+        "modified": "Prenotazione modificata",
+        "showAll": "Mostra tutto ({count} eventi)",
+        "showLess": "Mostra meno"
+      },
+      "smartActions": {
+        "paymentIncomplete": "Noleggio non pagato ({remaining} rimanente)",
+        "depositNotCollected": "Deposito non riscosso ({amount})",
+        "pickupConfirmTitle": "Conferma ritiro",
+        "pickupConfirmDescription": "Conferma che il cliente ha ritirato l'attrezzatura noleggiata.",
+        "warningPaymentTitle": "Pagamento incompleto",
+        "warningPaymentDescription": "Restano {remaining} da pagare per il noleggio. Il cliente dovrebbe pagare prima di ritirare l'attrezzatura.",
+        "warningDepositTitle": "Deposito non riscosso",
+        "warningDepositDescription": "Il deposito di {amount} non è ancora stato riscosso. Assicurati di riscuoterlo prima della consegna.",
+        "acknowledgePickupWarnings": "Capisco e desidero continuare nonostante questi avvisi",
+        "confirmPickup": "Conferma ritiro",
+        "returnConfirmTitle": "Conferma restituzione",
+        "returnConfirmDescription": "Verifica le condizioni dell'attrezzatura e il riepilogo finanziario prima di confermare.",
+        "fullyPaid": "Completamente pagato",
+        "partiallyPaid": "{paid} di {total} pagato",
+        "collected": "riscosso",
+        "notCollected": "Non riscosso",
+        "toReturnToCustomer": "Da restituire al cliente",
+        "returnQuestion": "Confermi che l'attrezzatura è stata restituita in buono stato?",
+        "confirmReturn": "Conferma restituzione"
       },
       "activityBy": "da",
       "activitySystem": "Azione automatica",
@@ -767,12 +848,25 @@
         "deleteConfirmDescription": "Questa azione e irreversibile. Il pagamento sara eliminato definitivamente dalla cronologia.",
         "unpaidWarning": "C'e ancora {formattedAmount} da riscuotere su questa prenotazione",
         "allPaid": "Tutti i pagamenti sono stati effettuati",
+        "allPaidBadge": "Pagato",
+        "pendingBadge": "In attesa",
+        "depositToReturnBadge": "Deposito da restituire",
+        "toCollect": "Da riscuotere",
+        "fullyReturned": "Completamente restituito",
+        "showAll": "Mostra tutti i {count} pagamenti",
         "types": {
           "rental": "Noleggio",
           "deposit": "Deposito",
           "depositReturn": "Restituzione deposito",
-          "damage": "Danni"
+          "damage": "Danni",
+          "depositHold": "Autorizzazione",
+          "depositCapture": "Deposito addebitato",
+          "adjustment": "Rettifica"
         },
+        "type": "Tipo di pagamento",
+        "recordAdjustmentDescription": "Registra una rettifica di prezzo (positiva o negativa)",
+        "adjustmentHint": "Importo negativo per rimborso, positivo per addebito aggiuntivo",
+        "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per le rettifiche",
         "methods": {
           "cash": "Contanti",
           "card": "Carta",
@@ -785,14 +879,77 @@
           "pending": "In attesa",
           "completed": "Completato",
           "failed": "Fallito",
-          "refunded": "Rimborsato"
-        }
+          "refunded": "Rimborsato",
+          "authorized": "Autorizzato",
+          "cancelled": "Annullato"
+        },
+        "statusAuthorized": "Autorizzato",
+        "statusRefunded": "Rimborsato",
+        "statusCancelled": "Annullato"
+      },
+      "onlinePayment": {
+        "title": "Pagamento online",
+        "received": "Ricevuto",
+        "pending": "In attesa",
+        "paymentInProgress": "Pagamento in corso",
+        "paymentInProgressDescription": "Il cliente è stato reindirizzato alla pagina di pagamento. In attesa di conferma.",
+        "rentalPayment": "Pagamento noleggio",
+        "paidOn": "Pagato il",
+        "cardSavedForDeposit": "Carta salvata per la cauzione",
+        "cardNotSaved": "Impossibile salvare la carta. Il cliente dovrà fornire un altro metodo di pagamento per la cauzione.",
+        "transactionId": "Transazione"
+      },
+      "deposit": {
+        "title": "Deposito (Autorizzazione)",
+        "description": "Gestisci l'autorizzazione del deposito per questa prenotazione",
+        "amount": "Importo deposito",
+        "status": {
+          "none": "Non richiesto",
+          "pending": "Carta non salvata",
+          "cardSaved": "Pronto",
+          "authorized": "Blocco attivo",
+          "captured": "Acquisito",
+          "released": "Rilasciato",
+          "failed": "Fallito"
+        },
+        "pendingTitle": "Carta non salvata",
+        "pendingDescription": "Il pagamento è stato ricevuto ma la carta non è stata salvata per la cauzione. Dovrai riscuotere la cauzione manualmente o chiedere al cliente di fornire una carta.",
+        "cardSavedTitle": "Carta salvata",
+        "cardSavedDescription": "La carta del cliente è salvata. Puoi creare un blocco per trattenere l'importo della cauzione.",
+        "authorizedTitle": "Blocco attivo",
+        "authorizedDescription": "L'importo della cauzione è bloccato sulla carta del cliente. Puoi acquisirlo per danni o rilasciarlo alla fine del noleggio.",
+        "capturedDescription": "L'importo della cauzione è stato acquisito dalla carta del cliente.",
+        "releasedDescription": "L'autorizzazione e stata rilasciata, nessun addebito effettuato.",
+        "failedDescription": "L'autorizzazione e fallita. Il cliente potrebbe dover usare un'altra carta.",
+        "expiresIn": "Scade {time}",
+        "expired": "Autorizzazione scaduta",
+        "createHold": "Crea autorizzazione",
+        "release": "Rilascia deposito",
+        "capture": "Addebita",
+        "holdCreated": "Autorizzazione creata con successo",
+        "released": "Deposito rilasciato con successo",
+        "captured": "Deposito addebitato con successo",
+        "captureTitle": "Addebita deposito",
+        "captureDescription": "Addebita tutto o parte del deposito per coprire danni o perdite.",
+        "maxCapturable": "Importo massimo",
+        "captureAmount": "Importo da addebitare",
+        "captureReason": "Motivo dell'addebito",
+        "captureReasonPlaceholder": "Descrivi i danni o il motivo dell'addebito...",
+        "captureReasonHint": "Questo motivo sara registrato nella cronologia e visibile al cliente.",
+        "confirmCapture": "Conferma addebito",
+        "releaseTitle": "Rilascia deposito",
+        "releaseDescription": "Sei sicuro di voler rilasciare il deposito di {amount}? L'autorizzazione sara annullata e non verranno effettuati addebiti.",
+        "confirmRelease": "Rilascia deposito",
+        "invalidCaptureAmount": "Importo non valido",
+        "captureExceedsDeposit": "L'importo supera il deposito",
+        "reasonRequired": "Fornisci un motivo"
       },
       "paymentStatus": {
         "paid": "Pagato",
         "unpaid": "Non pagato",
         "partial": "Parziale"
       },
+      "paymentInProgress": "Pagamento in corso",
       "paymentBadge": {
         "paid": "Pagato",
         "partial": "Parziale",
@@ -807,6 +964,10 @@
       "pendingCard": {
         "title": "Richiesta in attesa",
         "description": "Questo cliente vuole prenotare. Accetta o rifiuta la sua richiesta."
+      },
+      "paymentPendingCard": {
+        "title": "Pagamento in corso",
+        "description": "Il cliente sta completando il pagamento. La prenotazione sarà confermata automaticamente una volta ricevuto il pagamento."
       },
       "confirmedCard": {
         "title": "Prenotazione confermata",
@@ -870,7 +1031,16 @@
           }
         }
       },
-      "linkCopied": "Link copiato negli appunti"
+      "linkCopied": "Link copiato negli appunti",
+      "accessLink": {
+        "send": "Invia link di accesso",
+        "sendSms": "Invia via SMS",
+        "sendSuccess": "Link di accesso inviato",
+        "sendError": "Errore nell'invio del link di accesso",
+        "smsSendSuccess": "Link di accesso inviato via SMS",
+        "smsSendError": "Errore nell'invio dell'SMS",
+        "noPhone": "Il cliente non ha un numero di telefono"
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -1013,6 +1183,34 @@
         "completed": "Completata",
         "cancelled": "Annullata",
         "rejected": "Rifiutata"
+      },
+      "export": {
+        "button": "Esporta calendario",
+        "title": "Esporta in calendario",
+        "description": "Sincronizza le tue prenotazioni con il tuo calendario preferito copiando il link qui sotto.",
+        "urlLabel": "Link calendario ICS",
+        "loading": "Caricamento...",
+        "instructions": {
+          "title": "Come aggiungere questo calendario?",
+          "google": {
+            "step1": "Apri Google Calendar",
+            "step2": "Clicca sul + accanto a \"Altri calendari\" e poi su \"Da URL\"",
+            "step3": "Incolla il link e clicca su \"Aggiungi calendario\"",
+            "openLink": "Apri Google Calendar"
+          },
+          "apple": {
+            "step1": "Apri l'app Calendario su Mac o iPhone",
+            "step2": "File > Nuovo abbonamento calendario (Mac) o Aggiungi account > Altro > Aggiungi calendario sottoscritto (iOS)",
+            "step3": "Incolla il link e conferma"
+          },
+          "outlook": {
+            "step1": "Apri Outlook Calendar",
+            "step2": "Clicca su \"Aggiungi calendario\" e poi su \"Iscriviti dal web\"",
+            "step3": "Incolla il link e dai un nome al calendario"
+          }
+        },
+        "regenerate": "Rigenera link",
+        "regenerateHint": "Rigenerare il link invalidera i link condivisi precedentemente."
       }
     },
     "statistics": {
@@ -1175,6 +1373,7 @@
       },
       "team": "Team",
       "saveChanges": "Salva modifiche",
+      "settingsSaved": "Impostazioni salvate",
       "nav": {
         "storeDescription": "Informazioni e configurazione",
         "appearanceDescription": "Logo, colori e tema",
@@ -1299,6 +1498,8 @@
         "modeRequestDescription": "Validi le richieste manualmente",
         "modePayment": "Pagamento immediato",
         "modePaymentDescription": "I clienti pagano immediatamente",
+        "pendingBlocksAvailability": "Blocca disponibilita durante richiesta in sospeso",
+        "pendingBlocksAvailabilityDescription": "Quando abilitato, una richiesta di prenotazione in sospeso blocca immediatamente la disponibilita del prodotto. Disabilita per consentire piu richieste per le stesse date.",
         "pricingMode": "Unita di prezzo",
         "pricingDay": "Al giorno",
         "pricingHour": "All'ora",
@@ -1313,7 +1514,14 @@
           "week": "In settimane"
         },
         "requireAddress": "Richiedi indirizzo cliente",
-        "requireAddressDescription": "Aggiunge un passaggio al checkout per raccogliere l'indirizzo postale"
+        "requireAddressDescription": "Aggiunge un passaggio al checkout per raccogliere l'indirizzo postale",
+        "stripeRequired": {
+          "title": "Configurazione Stripe richiesta",
+          "description": "La modalita pagamento immediato richiede Stripe per elaborare i pagamenti online.",
+          "benefits": "La configurazione richiede solo pochi minuti. Potrai accettare pagamenti con carta e proteggere le tue prenotazioni con depositi.",
+          "configureStripe": "Configura Stripe",
+          "keepRequest": "Mantieni modalita richiesta"
+        }
       },
       "emailSettings": {
         "title": "Email",
@@ -1425,6 +1633,7 @@
           "deleteDescription": "Questa azione e irreversibile."
         },
         "updated": "Orari aggiornati",
+        "saved": "Orari salvati",
         "closureAdded": "Periodo di chiusura aggiunto",
         "closureUpdated": "Periodo di chiusura aggiornato",
         "closureDeleted": "Periodo di chiusura eliminato",
@@ -1515,7 +1724,91 @@
         "taxNumber": "Partita IVA",
         "taxNumberPlaceholder": "IT12345678901",
         "taxNumberDescription": "La tua partita IVA (mostrata sui contratti)",
-        "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente."
+        "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente.",
+        "saved": "Impostazioni imposte salvate"
+      },
+      "payments": {
+        "title": "Pagamenti",
+        "description": "Configura i pagamenti online per il tuo negozio",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accetta pagamenti con carta direttamente nel tuo negozio",
+        "notConnectedDescription": "Collega il tuo account Stripe per accettare pagamenti online. Sarai reindirizzato a Stripe per completare la configurazione.",
+        "activeDescription": "Il tuo account Stripe e connesso e operativo. Puoi accettare pagamenti online.",
+        "incompleteDescription": "La configurazione di Stripe e incompleta. Completa la configurazione per accettare pagamenti.",
+        "connectStripe": "Collega Stripe",
+        "completeSetup": "Completa configurazione",
+        "openDashboard": "Dashboard Stripe",
+        "sync": "Sincronizza",
+        "synced": "Stato sincronizzato",
+        "disconnect": "Disconnetti",
+        "disconnected": "Account Stripe disconnesso",
+        "disconnectTitle": "Disconnettere Stripe?",
+        "disconnectDescription": "Non potrai piu accettare pagamenti online. I pagamenti esistenti non saranno interessati.",
+        "cancel": "Annulla",
+        "status": {
+          "active": "Attivo",
+          "incomplete": "Incompleto"
+        },
+        "callback": {
+          "successTitle": "Stripe collegato!",
+          "successDescription": "Il tuo account Stripe e ora collegato. Puoi accettare pagamenti online.",
+          "incompleteTitle": "Configurazione incompleta",
+          "incompleteDescription": "Alcune informazioni sono mancanti. Potrai completare la configurazione in seguito.",
+          "backToSettings": "Torna alle impostazioni"
+        },
+        "refresh": {
+          "title": "Link scaduto",
+          "description": "Il link di configurazione e scaduto. Riprova dalle impostazioni.",
+          "backToSettings": "Torna alle impostazioni"
+        },
+        "flowExplanation": {
+          "title": "Flusso di prenotazione",
+          "subtitle": "Ecco come i tuoi clienti vivono il processo in base alla tua configurazione",
+          "currentFlow": "Flusso attuale",
+          "modes": {
+            "request": "Modalita richiesta",
+            "instant": "Pagamento immediato",
+            "stripeActive": "Stripe attivo",
+            "configRequired": "Configurazione richiesta"
+          },
+          "steps": {
+            "requestSubmitted": "Il cliente invia una richiesta di prenotazione",
+            "youReview": "Ricevi un'email e valuti la richiesta",
+            "acceptOrReject": "Accetti o rifiuti la richiesta",
+            "paymentOnSite": "Il cliente paga sul posto (contanti, carta, bonifico...)",
+            "paymentOnlineOrSite": "Il cliente paga online dal suo account o sul posto",
+            "customerPays": "Il cliente paga immediatamente con carta",
+            "reservationConfirmed": "La prenotazione viene confermata automaticamente",
+            "bothNotified": "Tu e il cliente ricevete conferma"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accetta pagamenti online",
+              "description": "Attiva Stripe per permettere ai clienti di pagare con carta. Puoi anche inviare link di pagamento via email o SMS.",
+              "action": "Configura Stripe"
+            },
+            "instantPayment": {
+              "title": "Passare al pagamento immediato?",
+              "description": "Per automatizzare completamente le tue prenotazioni, attiva la modalita pagamento immediato nelle impostazioni del negozio."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Configurazione incompleta",
+              "description": "La modalita pagamento immediato e attiva ma Stripe non e configurato. I clienti non potranno completare le prenotazioni."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Una volta accettata la richiesta, il cliente puo pagare online dal suo account. Puoi anche inviare un link di pagamento via email o SMS, o incassare sul posto.",
+            "instantPayment": "Configurazione ottimale! Le tue prenotazioni sono completamente automatizzate. Il pagamento protegge immediatamente la prenotazione."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Hai bisogno di validazione manuale?",
+              "description": "La modalita richiesta ti permette di verificare ogni prenotazione prima di incassare. Modificabile nelle impostazioni del negozio."
+            }
+          }
+        }
       },
       "subscriptionSettings": {
         "title": "Abbonamento",
@@ -1851,6 +2144,17 @@
         "limited": "{count} rimanente/i",
         "unavailable": "Non disponibile",
         "inCart": "Nel carrello"
+      },
+      "businessHoursWarning": {
+        "title": "Conflitto di orario",
+        "pickup": "Ritiro",
+        "return": "Restituzione",
+        "reasons": {
+          "outside_hours": "fuori dall'orario di apertura",
+          "day_closed": "giorno di chiusura",
+          "closure_period": "periodo di chiusura eccezionale"
+        },
+        "suggestion": "Modifica le date per rispettare gli orari di apertura, altrimenti la prenotazione sarà rifiutata."
       }
     },
     "productModal": {
@@ -1969,7 +2273,22 @@
         "total": "Totale da pagare",
         "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
       },
-      "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura."
+      "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
+      "success": {
+        "confirmedTitle": "Pagamento confermato!",
+        "confirmedDescription": "Il tuo pagamento e stato accettato. Riceverai un'email di conferma.",
+        "pendingTitle": "In attesa di pagamento",
+        "pendingDescription": "La tua prenotazione e stata creata ed e in attesa di conferma del pagamento.",
+        "reservationNumber": "Prenotazione",
+        "dates": "Date",
+        "total": "Totale",
+        "depositSaved": "Carta salvata per il deposito",
+        "depositSavedDescription": "La tua carta e stata salvata. Un'autorizzazione di {amount} sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
+        "deposit": "Deposito",
+        "items": "Prodotti prenotati",
+        "emailSent": "Un'email di conferma e stata inviata a {email}",
+        "backToStore": "Torna al negozio"
+      }
     },
     "confirmation": {
       "title": "Prenotazione confermata!",
@@ -1985,7 +2304,8 @@
       "emailConfirmation": "Email di conferma",
       "confirmationSentTo": "Conferma inviata a",
       "subtotalLabel": "Subtotale",
-      "depositLabel": "Deposito",
+      "depositLabel": "Deposito (autorizzazione)",
+      "depositAuthorizationInfo": "La tua carta sara salvata. Un'autorizzazione sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
       "totalLabel": "Totale",
       "whatNext": "Prossimi passi",
       "stepRequest1": "Stiamo esaminando la tua richiesta di prenotazione",
@@ -2030,6 +2350,8 @@
       "myReservations": "Le mie prenotazioni",
       "noReservations": "Nessuna prenotazione",
       "noReservationsDescription": "Non hai ancora prenotazioni",
+      "noHistory": "Nessuna cronologia",
+      "noHistoryDescription": "Le tue prenotazioni completate appariranno qui",
       "viewCatalog": "Vedi catalogo",
       "itemCount": "{count} articolo/i",
       "reservationDetail": "Dettagli prenotazione",
@@ -2054,6 +2376,8 @@
         "pendingDescription": "La tua richiesta e in elaborazione",
         "confirmed": "Confermata",
         "confirmedDescription": "La tua prenotazione e confermata",
+        "allSet": "Tutto a posto",
+        "allSetDescription": "La tua prenotazione è confermata e pagata. Ti aspettiamo alla data e ora previste.",
         "ongoing": "In corso",
         "ongoingDescription": "Noleggio in corso",
         "completed": "Completata",
@@ -2069,7 +2393,35 @@
       "paymentPaid": "Pagato",
       "paymentPending": "Non pagato",
       "amountPaid": "Importo pagato",
-      "securityNote": "Accesso sicuro via email. Nessuna password richiesta."
+      "securityNote": "Accesso sicuro via email. Nessuna password richiesta.",
+      "payNow": "Paga ora",
+      "paymentInProgress": "Pagamento in corso",
+      "paymentRequired": "Pagamento richiesto",
+      "confirmedAwaitingPayment": "In attesa di pagamento",
+      "paymentHistory": {
+        "title": "Storico pagamenti",
+        "noPayments": "Nessun pagamento registrato",
+        "types": {
+          "rental": "Noleggio",
+          "deposit": "Deposito",
+          "deposit_return": "Rimborso deposito",
+          "damage": "Danni"
+        },
+        "methods": {
+          "stripe": "Carta online",
+          "cash": "Contanti",
+          "card": "Carta",
+          "transfer": "Bonifico",
+          "check": "Assegno",
+          "other": "Altro"
+        },
+        "status": {
+          "completed": "Pagato",
+          "pending": "In attesa",
+          "failed": "Fallito",
+          "refunded": "Rimborsato"
+        }
+      }
     },
     "footer": {
       "description": "Noleggio attrezzature semplice ed efficiente.",
@@ -2189,14 +2541,15 @@
       "recommended": "Consigliato",
       "requestModeDescription": "I clienti inviano una richiesta. Validi manualmente e gestisci il pagamento tu stesso (contanti, bonifico, carta in loco).",
       "paymentMode": "Pagamento online",
-      "comingSoon": "Prossimamente",
-      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Questa funzionalita sara disponibile a breve.",
+      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Ricevi pagamenti automaticamente tramite Stripe.",
       "howItWorks": "Come funziona?",
       "step1": "1. Il cliente fa una richiesta di prenotazione",
       "step2": "2. Ricevi una notifica via email",
       "step3": "3. Accetti o rifiuti la richiesta",
       "step4": "4. Il cliente riceve la conferma via email",
       "step5": "5. Gestisci il pagamento al ritiro",
+      "paymentSetupTitle": "Configurazione rapida",
+      "paymentSetupDescription": "Dopo aver creato il tuo negozio, vai in Impostazioni → Pagamento online per collegare il tuo account Stripe e iniziare a ricevere pagamenti.",
       "configComplete": "Configurazione completata!"
     },
     "complete": {
@@ -2261,7 +2614,8 @@
       "deposit": "Deposito",
       "total": "Totale",
       "totalToPay": "Totale da pagare",
-      "question": "Domande? Contattaci:"
+      "question": "Domande? Contattaci:",
+      "summary": "Riepilogo"
     },
     "verificationCode": {
       "subject": "Il tuo codice di accesso: {code}",
@@ -2340,6 +2694,14 @@
       "sentBy": "Questa email e stata inviata da {storeName}",
       "ignoreIfNotYou": "Se non hai avviato questa azione, ignora questa email.",
       "poweredBy": "Powered by"
+    },
+    "instantAccess": {
+      "subject": "Accedi alla tua prenotazione #{number}",
+      "title": "Accedi alla tua prenotazione",
+      "body": "Clicca per accedere alla tua prenotazione #{number}.",
+      "paymentPending": "Il pagamento di questa prenotazione e in sospeso.",
+      "viewAndPay": "Visualizza e paga",
+      "linkValid": "Questo link e valido per 30 giorni."
     }
   },
   "contract": {
@@ -2494,6 +2856,22 @@
       "blurDescription": "Aggiorna a {plan} per accedere a tutti i tuoi clienti.",
       "bannerAtLimit": "Limite clienti raggiunto",
       "bannerNearLimit": "Ti stai avvicinando al limite dei clienti"
+    },
+    "sms": {
+      "limitReachedTitle": "Limite SMS raggiunto",
+      "limitReachedDescription": "Hai raggiunto il limite di {limit} SMS questo mese.",
+      "overLimitTitle": "I tuoi SMS stanno decollando!",
+      "overLimitDescription": "Hai inviato {count} SMS ma il tuo piano attuale ne consente {limit}.",
+      "successMessage": "La tua comunicazione sta crescendo!",
+      "successSubtext": "Piu SMS = migliori relazioni con i clienti. Passa al livello successivo.",
+      "upgradeDescription": "Aggiorna a {plan} per inviare piu SMS ai tuoi clienti.",
+      "benefit1": "Fino a 50 SMS/mese con {plan}",
+      "benefit2": "Notifiche automatiche",
+      "benefit3": "Promemoria prenotazione",
+      "blurTitle": "SMS bloccati",
+      "blurDescription": "Aggiorna a {plan} per continuare a inviare SMS.",
+      "bannerAtLimit": "Limite mensile SMS raggiunto",
+      "bannerNearLimit": "Ti stai avvicinando al limite SMS"
     }
   },
   "errors": {
@@ -2516,6 +2894,7 @@
     "productRequired": "Prodotto richiesto",
     "customerRequired": "Cliente richiesto",
     "productUnavailable": "Prodotto non disponibile: {name}",
+    "productNoLongerAvailable": "Il prodotto {name} non e piu disponibile per queste date. Nel frattempo e stata effettuata un'altra prenotazione.",
     "insufficientStock": "Stock insufficiente per: {name} ({count} disponibili)",
     "createCustomerError": "Errore nella creazione del cliente",
     "updateCustomerError": "Errore nell'aggiornamento del cliente",
@@ -2542,6 +2921,27 @@
     "tryAgain": "Riprova",
     "goBack": "Indietro",
     "goHome": "Torna alla home",
-    "loading": "Caricamento..."
+    "loading": "Caricamento...",
+    "noStripeAccount": "Nessun account Stripe collegato",
+    "stripe": {
+      "onboardingFailed": "Errore nella configurazione di Stripe",
+      "verificationFailed": "Errore nella verifica dell'account Stripe",
+      "syncFailed": "Errore nella sincronizzazione",
+      "dashboardLinkFailed": "Errore nell'apertura del dashboard Stripe",
+      "alreadyConnected": "Account Stripe gia collegato",
+      "noChargeToRefund": "Nessun pagamento Stripe da rimborsare",
+      "alreadyRefunded": "Questo pagamento e gia stato rimborsato",
+      "refundExceedsCharge": "L'importo del rimborso supera l'importo del pagamento",
+      "refundFailed": "Errore nel rimborso"
+    },
+    "invalidOrExpiredToken": "Questo link non e valido o e scaduto. Per favore richiedi un nuovo link di accesso.",
+    "alreadyPaid": "Questa prenotazione e gia stata pagata.",
+    "paymentNotAvailable": "Il pagamento online non e disponibile per questo negozio.",
+    "paymentSessionError": "Errore nella creazione della sessione di pagamento",
+    "accessLinkSendFailed": "Errore nell'invio del link di accesso",
+    "smsNotConfigured": "SMS non configurato",
+    "smsLimitReached": "Limite SMS raggiunto. Aggiorna a un piano superiore per continuare a inviare SMS.",
+    "customerNoPhone": "Il cliente non ha un numero di telefono",
+    "smsSendFailed": "Errore nell'invio dell'SMS"
   }
 }

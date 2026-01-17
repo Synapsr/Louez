@@ -6,7 +6,7 @@ import { getTranslations } from 'next-intl/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, products, customers } from '@/lib/db/schema'
+import { reservations } from '@/lib/db/schema'
 import { eq, and, gte, lte, sql, count, desc } from 'drizzle-orm'
 import {
   Card,
@@ -29,7 +29,6 @@ import {
 import {
   CalendarDays,
   Package,
-  TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
   Euro,

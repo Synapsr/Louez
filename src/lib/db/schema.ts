@@ -222,9 +222,10 @@ export const stores = mysqlTable(
     cgv: text('cgv'),
     legalNotice: text('legal_notice'),
 
-    // Stripe
+    // Stripe Connect
     stripeAccountId: varchar('stripe_account_id', { length: 255 }),
     stripeOnboardingComplete: boolean('stripe_onboarding_complete').default(false),
+    stripeChargesEnabled: boolean('stripe_charges_enabled').default(false),
 
     // Email settings
     emailSettings: json('email_settings').$type<EmailSettings>().default({
@@ -233,6 +234,9 @@ export const stores = mysqlTable(
       reminderReturnEnabled: true,
       replyToEmail: null,
     }),
+
+    // Calendar export
+    icsToken: varchar('ics_token', { length: 32 }),
 
     // Metadata
     onboardingCompleted: boolean('onboarding_completed').default(false),
@@ -399,8 +403,9 @@ export const verificationCodes = mysqlTable('verification_codes', {
   email: varchar('email', { length: 255 }).notNull(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
   code: varchar('code', { length: 6 }).notNull(),
-  type: varchar('type', { length: 20 }).notNull(), // 'magic_link' | 'code'
-  token: varchar('token', { length: 255 }), // For magic link
+  type: varchar('type', { length: 20 }).notNull(), // 'magic_link' | 'code' | 'instant_access'
+  token: varchar('token', { length: 255 }), // For magic link and instant access
+  reservationId: varchar('reservation_id', { length: 21 }), // For instant access links to specific reservation
   expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
   usedAt: timestamp('used_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -413,6 +418,16 @@ export const reservationStatus = mysqlEnum('reservation_status', [
   'completed',
   'cancelled',
   'rejected',
+])
+
+export const depositStatus = mysqlEnum('deposit_status', [
+  'none', // No deposit required
+  'pending', // Awaiting card to be saved
+  'card_saved', // Card saved, hold not yet created
+  'authorized', // Authorization hold active
+  'captured', // Deposit captured (damage/loss)
+  'released', // Authorization released
+  'failed', // Authorization failed
 ])
 
 export const reservations = mysqlTable(
@@ -445,6 +460,13 @@ export const reservations = mysqlTable(
     // Signature
     signedAt: timestamp('signed_at', { mode: 'date' }),
     signatureIp: varchar('signature_ip', { length: 50 }),
+
+    // Deposit (caution) management
+    depositStatus: depositStatus.default('pending'),
+    depositPaymentIntentId: varchar('deposit_payment_intent_id', { length: 255 }),
+    depositAuthorizationExpiresAt: timestamp('deposit_authorization_expires_at', { mode: 'date' }),
+    stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
+    stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
 
     // Tracking
     pickedUpAt: timestamp('picked_up_at', { mode: 'date' }),
@@ -509,8 +531,11 @@ export const reservationItems = mysqlTable(
 export const paymentType = mysqlEnum('payment_type', [
   'rental',
   'deposit',
+  'deposit_hold', // Authorization hold (empreinte)
+  'deposit_capture', // Partial/full capture from hold
   'deposit_return',
   'damage',
+  'adjustment', // Price adjustment (positive or negative)
 ])
 
 export const paymentMethod = mysqlEnum('payment_method', [
@@ -524,8 +549,10 @@ export const paymentMethod = mysqlEnum('payment_method', [
 
 export const paymentStatus = mysqlEnum('payment_status', [
   'pending',
+  'authorized', // For deposit holds (requires_capture)
   'completed',
   'failed',
+  'cancelled', // Authorization cancelled (released)
   'refunded',
 ])
 
@@ -546,6 +573,16 @@ export const payments = mysqlTable(
     // Stripe (if online payment)
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
     stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
+    stripeCheckoutSessionId: varchar('stripe_checkout_session_id', { length: 255 }),
+    stripeRefundId: varchar('stripe_refund_id', { length: 255 }),
+    stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
+
+    // Authorization hold (empreinte)
+    authorizationExpiresAt: timestamp('authorization_expires_at', { mode: 'date' }),
+    capturedAmount: decimal('captured_amount', { precision: 10, scale: 2 }),
+
+    // Currency (for multi-currency support)
+    currency: varchar('currency', { length: 3 }).default('EUR'),
 
     // Notes
     notes: text('notes'),
@@ -576,6 +613,16 @@ export const activityType = mysqlEnum('activity_type', [
   'note_updated',
   'payment_added',
   'payment_updated',
+  'payment_received', // Online payment received via Stripe
+  'payment_initiated', // Customer started online payment (checkout session created)
+  'payment_failed', // Online payment failed
+  'payment_expired', // Checkout session expired (customer didn't complete payment)
+  'deposit_authorized', // Authorization hold created
+  'deposit_captured', // Deposit captured (damage/loss)
+  'deposit_released', // Authorization released
+  'deposit_failed', // Authorization failed
+  'access_link_sent', // Instant access link sent to customer
+  'modified', // Reservation modified (dates, items, prices)
 ])
 
 export const reservationActivity = mysqlTable(
@@ -623,6 +670,25 @@ export const emailLogs = mysqlTable('email_logs', {
   // Email
   to: varchar('to', { length: 255 }).notNull(),
   subject: varchar('subject', { length: 500 }).notNull(),
+  templateType: varchar('template_type', { length: 50 }).notNull(),
+
+  // Result
+  messageId: varchar('message_id', { length: 255 }),
+  status: varchar('status', { length: 20 }).default('sent'),
+  error: text('error'),
+
+  sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+})
+
+export const smsLogs = mysqlTable('sms_logs', {
+  id: id(),
+  storeId: varchar('store_id', { length: 21 }).notNull(),
+  reservationId: varchar('reservation_id', { length: 21 }),
+  customerId: varchar('customer_id', { length: 21 }),
+
+  // SMS
+  to: varchar('to', { length: 50 }).notNull(),
+  message: text('message').notNull(),
   templateType: varchar('template_type', { length: 50 }).notNull(),
 
   // Result
@@ -708,6 +774,7 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   customers: many(customers),
   reservations: many(reservations),
   emailLogs: many(emailLogs),
+  smsLogs: many(smsLogs),
 }))
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -853,6 +920,21 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
   }),
   customer: one(customers, {
     fields: [emailLogs.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
+  store: one(stores, {
+    fields: [smsLogs.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [smsLogs.reservationId],
+    references: [reservations.id],
+  }),
+  customer: one(customers, {
+    fields: [smsLogs.customerId],
     references: [customers.id],
   }),
 }))

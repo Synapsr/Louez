@@ -13,6 +13,7 @@ import {
   ReminderReturnEmail,
   NewRequestLandlordEmail,
   TeamInvitationEmail,
+  InstantAccessEmail,
 } from './templates'
 
 interface Store {
@@ -676,6 +677,82 @@ export async function sendTeamInvitationEmail({
     return { success: true, messageId: result.messageId }
   } catch (error) {
     console.error('Failed to send team invitation email:', error)
+    throw error
+  }
+}
+
+// Instant Access Email (for sending access links to customers)
+export async function sendInstantAccessEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  items,
+  accessUrl,
+  showPaymentCta,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  items: { name: string; quantity: number; totalPrice: number }[]
+  accessUrl: string
+  showPaymentCta: boolean
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.instantAccess.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const html = await render(
+    InstantAccessEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storePhone: store.phone,
+      storeEmail: store.email,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      items,
+      totalAmount: reservation.totalAmount,
+      accessUrl,
+      showPaymentCta,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'instant_access',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'instant_access',
+      status: 'failed',
+      error: String(error),
+    })
     throw error
   }
 }

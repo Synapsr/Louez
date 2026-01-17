@@ -9,7 +9,7 @@ import { validateRentalPeriod } from '@/lib/utils/business-hours'
 const querySchema = z.object({
   startDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   endDate: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
-  productIds: z.string().optional(),
+  productIds: z.string().nullish(),
 })
 
 export interface ProductAvailability {
@@ -86,11 +86,12 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found' }, { status: 404 })
     }
 
-    // Validate business hours
+    // Validate business hours (using the store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       startDate,
       endDate,
-      store.settings?.businessHours
+      store.settings?.businessHours,
+      store.settings?.timezone
     )
 
     // Validate advance notice
@@ -127,6 +128,14 @@ export async function GET(
       } as AvailabilityResponse)
     }
 
+    // Determine which statuses block availability based on store settings
+    // If pendingBlocksAvailability is false (and mode is 'request'), pending reservations don't block
+    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+      pendingBlocksAvailability
+        ? ['pending', 'confirmed', 'ongoing']
+        : ['confirmed', 'ongoing']
+
     // Get overlapping reservations
     // A reservation overlaps if:
     // - It starts before our end date AND
@@ -135,7 +144,7 @@ export async function GET(
     const overlappingReservations = await db.query.reservations.findMany({
       where: and(
         eq(reservations.storeId, store.id),
-        inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+        inArray(reservations.status, blockingStatuses),
         lt(reservations.startDate, endDate),
         gt(reservations.endDate, startDate)
       ),

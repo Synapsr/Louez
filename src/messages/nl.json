@@ -565,6 +565,34 @@
         "viewAsCustomer": "Bekijken als klant",
         "print": "Afdrukken"
       },
+      "edit": {
+        "button": "Bewerken",
+        "title": "Reservering bewerken",
+        "dates": "Datums",
+        "startDate": "Startdatum",
+        "endDate": "Einddatum",
+        "items": "Artikelen",
+        "product": "Product",
+        "qty": "Aantal",
+        "unitPrice": "Stuksprijs",
+        "total": "Totaal",
+        "addItem": "Artikel toevoegen",
+        "subtotal": "Subtotaal",
+        "summary": "Samenvatting",
+        "before": "Ervoor",
+        "after": "Erna",
+        "difference": "Verschil",
+        "deposit": "Borg",
+        "save": "Opslaan",
+        "saved": "Reservering bijgewerkt",
+        "cannotRemoveLastItem": "Het laatste artikel kan niet worden verwijderd",
+        "noItems": "Voeg minstens een artikel toe",
+        "datesRequired": "Begin- en einddatum zijn verplicht",
+        "lockPrice": "Prijs vergrendelen",
+        "unlockPrice": "Prijs herberekenen",
+        "adjustmentPositive": "Er moet een toeslag van {amount} worden geïnd.",
+        "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt."
+      },
       "contract": {
         "title": "Contract",
         "signed": "Ondertekend op {date}",
@@ -653,6 +681,8 @@
         "customItem": {
           "title": "Aangepaste artikelen",
           "add": "Toevoegen",
+          "button": "Aangepast",
+          "units": "eenheid(en)",
           "badge": "Aangepast",
           "empty": "Geen aangepaste artikelen toegevoegd",
           "dialogTitle": "Aangepast artikel toevoegen",
@@ -685,6 +715,24 @@
           "priceUpdated": "Prijs bijgewerkt",
           "priceReset": "Prijs hersteld"
         },
+        "warnings": {
+          "advanceNotice": "Startdatum is vóór de vooraanmeldingsperiode",
+          "advanceNoticeDetails": "De gebruikelijke vooraanmelding is {hours}u. U kunt toch doorgaan.",
+          "startDayClosed": "Startdatum is een sluitingsdag",
+          "endDayClosed": "Einddatum is een sluitingsdag",
+          "dayClosedDetails": "De winkel is normaal gesloten op deze dag.",
+          "startOutsideHours": "Starttijd is buiten de openingstijden",
+          "endOutsideHours": "Eindtijd is buiten de openingstijden",
+          "outsideHoursDetails": "Gebruikelijke tijden: {open} - {close}",
+          "startClosurePeriod": "Startdatum valt in een sluitingsperiode",
+          "endClosurePeriod": "Einddatum valt in een sluitingsperiode",
+          "closurePeriodDetails": "De winkel is uitzonderlijk gesloten.",
+          "canContinue": "Als manager kunt u deze reservering aanmaken ondanks de waarschuwingen.",
+          "productConflict": "{name}: beschikbaarheidsconflict",
+          "productConflictDetails": "Gevraagde hoeveelheid: {requested}, beschikbaar voor deze periode: {available}",
+          "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert.",
+          "insufficientStock": "Onvoldoende voorraad"
+        },
         "addItemError": "Voeg minimaal één product of aangepast artikel toe"
       },
       "rejectDialog": {
@@ -707,7 +755,40 @@
         "returned": "Artikelen geretourneerd",
         "note_updated": "Notities bijgewerkt",
         "payment_added": "Betaling toegevoegd",
-        "payment_updated": "Betaling bijgewerkt"
+        "payment_updated": "Betaling bijgewerkt",
+        "payment_received": "Online betaling ontvangen",
+        "payment_initiated": "Online betaling gestart",
+        "payment_failed": "Online betaling mislukt",
+        "payment_expired": "Online betaling verlopen",
+        "deposit_authorized": "Borgautorisatie aangemaakt",
+        "deposit_captured": "Borg geïnd",
+        "deposit_released": "Borg vrijgegeven",
+        "deposit_failed": "Autorisatie mislukt",
+        "access_link_sent": "Toegangslink verzonden",
+        "modified": "Reservering gewijzigd",
+        "showAll": "Alles tonen ({count} gebeurtenissen)",
+        "showLess": "Minder tonen"
+      },
+      "smartActions": {
+        "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
+        "depositNotCollected": "Borg niet geïnd ({amount})",
+        "pickupConfirmTitle": "Afhaling bevestigen",
+        "pickupConfirmDescription": "Bevestig dat de klant het gehuurde materiaal heeft opgehaald.",
+        "warningPaymentTitle": "Betaling onvolledig",
+        "warningPaymentDescription": "Er moet nog {remaining} worden betaald voor de huur. De klant zou normaal moeten betalen voor afhaling.",
+        "warningDepositTitle": "Borg niet geïnd",
+        "warningDepositDescription": "De borg van {amount} is nog niet geïnd. Zorg ervoor dat u deze int voor overdracht.",
+        "acknowledgePickupWarnings": "Ik begrijp het en wil ondanks deze waarschuwingen doorgaan",
+        "confirmPickup": "Afhaling bevestigen",
+        "returnConfirmTitle": "Retour bevestigen",
+        "returnConfirmDescription": "Controleer de staat van het materiaal en het financieel overzicht voor bevestiging.",
+        "fullyPaid": "Volledig betaald",
+        "partiallyPaid": "{paid} van {total} betaald",
+        "collected": "geïnd",
+        "notCollected": "Niet geïnd",
+        "toReturnToCustomer": "Terug te geven aan klant",
+        "returnQuestion": "Bevestigen dat het materiaal in goede staat is teruggebracht?",
+        "confirmReturn": "Retour bevestigen"
       },
       "activityBy": "door",
       "activitySystem": "Automatische actie",
@@ -766,12 +847,25 @@
         "deleteConfirmDescription": "Deze actie is onomkeerbaar. De betaling wordt permanent uit de geschiedenis verwijderd.",
         "unpaidWarning": "Er moet nog {formattedAmount} worden geïnd voor deze reservering",
         "allPaid": "Alle betalingen zijn voldaan",
+        "allPaidBadge": "Betaald",
+        "pendingBadge": "In behandeling",
+        "depositToReturnBadge": "Borg terug te geven",
+        "toCollect": "Te innen",
+        "fullyReturned": "Volledig terugbetaald",
+        "showAll": "Alle {count} betalingen tonen",
         "types": {
           "rental": "Verhuur",
           "deposit": "Borg",
           "depositReturn": "Borgterugbetaling",
-          "damage": "Schade"
+          "damage": "Schade",
+          "depositHold": "Autorisatie",
+          "depositCapture": "Borg geïnd",
+          "adjustment": "Aanpassing"
         },
+        "type": "Betalingstype",
+        "recordAdjustmentDescription": "Prijsaanpassing registreren (positief of negatief)",
+        "adjustmentHint": "Negatief bedrag voor terugbetaling, positief voor extra kosten",
+        "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
         "methods": {
           "cash": "Contant",
           "card": "Pinpas",
@@ -784,14 +878,77 @@
           "pending": "In behandeling",
           "completed": "Voltooid",
           "failed": "Mislukt",
-          "refunded": "Terugbetaald"
-        }
+          "refunded": "Terugbetaald",
+          "authorized": "Geautoriseerd",
+          "cancelled": "Geannuleerd"
+        },
+        "statusAuthorized": "Geautoriseerd",
+        "statusRefunded": "Terugbetaald",
+        "statusCancelled": "Geannuleerd"
+      },
+      "onlinePayment": {
+        "title": "Online Betaling",
+        "received": "Ontvangen",
+        "pending": "In afwachting",
+        "paymentInProgress": "Betaling bezig",
+        "paymentInProgressDescription": "De klant is doorgestuurd naar de betaalpagina. Wachten op bevestiging.",
+        "rentalPayment": "Huurbetaling",
+        "paidOn": "Betaald op",
+        "cardSavedForDeposit": "Kaart opgeslagen voor borg",
+        "cardNotSaved": "De kaart kon niet worden opgeslagen. De klant moet een andere betaalmethode voor de borg opgeven.",
+        "transactionId": "Transactie"
+      },
+      "deposit": {
+        "title": "Borg (Autorisatie)",
+        "description": "Beheer de borgautorisatie voor deze reservering",
+        "amount": "Borgbedrag",
+        "status": {
+          "none": "Niet vereist",
+          "pending": "Kaart niet opgeslagen",
+          "cardSaved": "Klaar",
+          "authorized": "Reservering actief",
+          "captured": "Afgeschreven",
+          "released": "Vrijgegeven",
+          "failed": "Mislukt"
+        },
+        "pendingTitle": "Kaart niet opgeslagen",
+        "pendingDescription": "De betaling is ontvangen maar de kaart kon niet worden opgeslagen voor de borg. U moet de borg handmatig innen of de klant vragen een kaart op te geven.",
+        "cardSavedTitle": "Kaart opgeslagen",
+        "cardSavedDescription": "De kaart van de klant is opgeslagen. U kunt een reservering maken om het borgbedrag te blokkeren.",
+        "authorizedTitle": "Reservering actief",
+        "authorizedDescription": "Het borgbedrag is geblokkeerd op de kaart van de klant. U kunt het afschrijven voor schade of vrijgeven aan het einde van de huur.",
+        "capturedDescription": "Het borgbedrag is afgeschreven van de kaart van de klant.",
+        "releasedDescription": "De autorisatie is vrijgegeven, er zijn geen kosten in rekening gebracht.",
+        "failedDescription": "De autorisatie is mislukt. De klant moet mogelijk een andere kaart gebruiken.",
+        "expiresIn": "Verloopt {time}",
+        "expired": "Autorisatie verlopen",
+        "createHold": "Autorisatie aanmaken",
+        "release": "Borg vrijgeven",
+        "capture": "Innen",
+        "holdCreated": "Autorisatie succesvol aangemaakt",
+        "released": "Borg succesvol vrijgegeven",
+        "captured": "Borg succesvol geïnd",
+        "captureTitle": "Borg innen",
+        "captureDescription": "In de borg geheel of gedeeltelijk om schade of verlies te dekken.",
+        "maxCapturable": "Maximumbedrag",
+        "captureAmount": "Te innen bedrag",
+        "captureReason": "Reden voor inning",
+        "captureReasonPlaceholder": "Beschrijf de schade of reden voor inning...",
+        "captureReasonHint": "Deze reden wordt vastgelegd in de geschiedenis en is zichtbaar voor de klant.",
+        "confirmCapture": "Inning bevestigen",
+        "releaseTitle": "Borg vrijgeven",
+        "releaseDescription": "Weet u zeker dat u de borg van {amount} wilt vrijgeven? De autorisatie wordt geannuleerd en er worden geen kosten in rekening gebracht.",
+        "confirmRelease": "Borg vrijgeven",
+        "invalidCaptureAmount": "Ongeldig bedrag",
+        "captureExceedsDeposit": "Bedrag overschrijdt borg",
+        "reasonRequired": "Geef een reden op"
       },
       "paymentStatus": {
         "paid": "Betaald",
         "unpaid": "Onbetaald",
         "partial": "Gedeeltelijk"
       },
+      "paymentInProgress": "Betaling bezig",
       "paymentBadge": {
         "paid": "Betaald",
         "partial": "Gedeeltelijk",
@@ -806,6 +963,10 @@
       "pendingCard": {
         "title": "Aanvraag in behandeling",
         "description": "Deze klant wil reserveren. Accepteer of wijs de aanvraag af."
+      },
+      "paymentPendingCard": {
+        "title": "Betaling bezig",
+        "description": "De klant is bezig met betalen. De reservering wordt automatisch bevestigd zodra de betaling is ontvangen."
       },
       "confirmedCard": {
         "title": "Bevestigde reservering",
@@ -869,7 +1030,16 @@
           }
         }
       },
-      "linkCopied": "Link gekopieerd naar klembord"
+      "linkCopied": "Link gekopieerd naar klembord",
+      "accessLink": {
+        "send": "Toegangslink versturen",
+        "sendSms": "Verstuur via SMS",
+        "sendSuccess": "Toegangslink verzonden",
+        "sendError": "Fout bij verzenden toegangslink",
+        "smsSendSuccess": "Toegangslink via SMS verzonden",
+        "smsSendError": "Fout bij verzenden SMS",
+        "noPhone": "Klant heeft geen telefoonnummer"
+      }
     },
     "customers": {
       "title": "Klanten",
@@ -1012,6 +1182,34 @@
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
         "rejected": "Afgewezen"
+      },
+      "export": {
+        "button": "Kalender exporteren",
+        "title": "Exporteren naar kalender",
+        "description": "Synchroniseer uw reserveringen met uw favoriete kalender door de link hieronder te kopieren.",
+        "urlLabel": "ICS-kalenderlink",
+        "loading": "Laden...",
+        "instructions": {
+          "title": "Hoe voeg ik deze kalender toe?",
+          "google": {
+            "step1": "Open Google Agenda",
+            "step2": "Klik op het + naast \"Andere agenda's\" en dan op \"Via URL\"",
+            "step3": "Plak de link en klik op \"Agenda toevoegen\"",
+            "openLink": "Google Agenda openen"
+          },
+          "apple": {
+            "step1": "Open de Agenda-app op Mac of iPhone",
+            "step2": "Archief > Nieuw agenda-abonnement (Mac) of Voeg account toe > Overige > Agenda-abonnement toevoegen (iOS)",
+            "step3": "Plak de link en bevestig"
+          },
+          "outlook": {
+            "step1": "Open Outlook Agenda",
+            "step2": "Klik op \"Agenda toevoegen\" en dan op \"Abonneren vanaf web\"",
+            "step3": "Plak de link en geef de kalender een naam"
+          }
+        },
+        "regenerate": "Link opnieuw genereren",
+        "regenerateHint": "Het opnieuw genereren van de link maakt eerder gedeelde links ongeldig."
       }
     },
     "statistics": {
@@ -1174,6 +1372,7 @@
       },
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",
+      "settingsSaved": "Instellingen opgeslagen",
       "nav": {
         "storeDescription": "Informatie en configuratie",
         "appearanceDescription": "Logo, kleuren en thema",
@@ -1298,6 +1497,8 @@
         "modeRequestDescription": "U valideert aanvragen handmatig",
         "modePayment": "Directe betaling",
         "modePaymentDescription": "Klanten betalen direct",
+        "pendingBlocksAvailability": "Beschikbaarheid blokkeren tijdens openstaande aanvraag",
+        "pendingBlocksAvailabilityDescription": "Indien ingeschakeld, blokkeert een openstaande reserveringsaanvraag direct de productbeschikbaarheid. Uitschakelen om meerdere aanvragen voor dezelfde data toe te staan.",
         "pricingMode": "Prijseenheid",
         "pricingDay": "Per dag",
         "pricingHour": "Per uur",
@@ -1312,7 +1513,14 @@
           "week": "In weken"
         },
         "requireAddress": "Klantadres vereisen",
-        "requireAddressDescription": "Voegt een stap toe aan de checkout om het postadres te verzamelen"
+        "requireAddressDescription": "Voegt een stap toe aan de checkout om het postadres te verzamelen",
+        "stripeRequired": {
+          "title": "Stripe-configuratie vereist",
+          "description": "Directe betaling vereist Stripe om online betalingen te verwerken.",
+          "benefits": "De instelling duurt slechts enkele minuten. U kunt kaartbetalingen accepteren en uw reserveringen beveiligen met borgsommen.",
+          "configureStripe": "Stripe configureren",
+          "keepRequest": "Aanvraagmodus behouden"
+        }
       },
       "emailSettings": {
         "title": "E-mails",
@@ -1424,6 +1632,7 @@
           "deleteDescription": "Deze actie is onomkeerbaar."
         },
         "updated": "Tijden bijgewerkt",
+        "saved": "Openingstijden opgeslagen",
         "closureAdded": "Sluitingsperiode toegevoegd",
         "closureUpdated": "Sluitingsperiode bijgewerkt",
         "closureDeleted": "Sluitingsperiode verwijderd",
@@ -1514,7 +1723,91 @@
         "taxNumber": "BTW-nummer",
         "taxNumberPlaceholder": "NL123456789B01",
         "taxNumberDescription": "Uw BTW-nummer (weergegeven op contracten)",
-        "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald."
+        "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald.",
+        "saved": "Belastinginstellingen opgeslagen"
+      },
+      "payments": {
+        "title": "Betalingen",
+        "description": "Configureer online betalingen voor uw winkel",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accepteer kaartbetalingen rechtstreeks in uw winkel",
+        "notConnectedDescription": "Verbind uw Stripe-account om online betalingen te accepteren. U wordt doorgestuurd naar Stripe om de configuratie te voltooien.",
+        "activeDescription": "Uw Stripe-account is verbonden en operationeel. U kunt online betalingen accepteren.",
+        "incompleteDescription": "Uw Stripe-configuratie is onvolledig. Voltooi de configuratie om betalingen te accepteren.",
+        "connectStripe": "Stripe verbinden",
+        "completeSetup": "Configuratie voltooien",
+        "openDashboard": "Stripe Dashboard",
+        "sync": "Synchroniseren",
+        "synced": "Status gesynchroniseerd",
+        "disconnect": "Ontkoppelen",
+        "disconnected": "Stripe-account ontkoppeld",
+        "disconnectTitle": "Stripe ontkoppelen?",
+        "disconnectDescription": "U kunt geen online betalingen meer accepteren. Bestaande betalingen worden niet beinvloed.",
+        "cancel": "Annuleren",
+        "status": {
+          "active": "Actief",
+          "incomplete": "Onvolledig"
+        },
+        "callback": {
+          "successTitle": "Stripe verbonden!",
+          "successDescription": "Uw Stripe-account is nu verbonden. U kunt online betalingen accepteren.",
+          "incompleteTitle": "Onvolledige configuratie",
+          "incompleteDescription": "Sommige informatie ontbreekt. U kunt de configuratie later voltooien.",
+          "backToSettings": "Terug naar instellingen"
+        },
+        "refresh": {
+          "title": "Link verlopen",
+          "description": "De configuratielink is verlopen. Probeer opnieuw via de instellingen.",
+          "backToSettings": "Terug naar instellingen"
+        },
+        "flowExplanation": {
+          "title": "Reserveringsproces",
+          "subtitle": "Dit is hoe uw klanten het proces ervaren op basis van uw configuratie",
+          "currentFlow": "Huidig proces",
+          "modes": {
+            "request": "Aanvraagmodus",
+            "instant": "Directe betaling",
+            "stripeActive": "Stripe actief",
+            "configRequired": "Configuratie vereist"
+          },
+          "steps": {
+            "requestSubmitted": "Klant dient een reserveringsaanvraag in",
+            "youReview": "U ontvangt een e-mail en beoordeelt de aanvraag",
+            "acceptOrReject": "U accepteert of weigert de aanvraag",
+            "paymentOnSite": "Klant betaalt ter plaatse (contant, kaart, overschrijving...)",
+            "paymentOnlineOrSite": "Klant betaalt online via account of ter plaatse",
+            "customerPays": "Klant betaalt direct met kaart",
+            "reservationConfirmed": "Reservering wordt automatisch bevestigd",
+            "bothNotified": "U en de klant ontvangen bevestiging"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accepteer online betalingen",
+              "description": "Activeer Stripe zodat klanten met kaart kunnen betalen. U kunt ook betaallinks versturen via e-mail of SMS.",
+              "action": "Stripe configureren"
+            },
+            "instantPayment": {
+              "title": "Overschakelen naar directe betaling?",
+              "description": "Om uw reserveringen volledig te automatiseren, activeer de directe betaalmodus in uw winkelinstellingen."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Onvolledige configuratie",
+              "description": "Directe betaling is geactiveerd maar Stripe is niet geconfigureerd. Klanten kunnen reserveringen niet voltooien."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Na acceptatie van de aanvraag kan uw klant online betalen via zijn account. U kunt ook een betaallink sturen via e-mail of SMS, of ter plaatse incasseren.",
+            "instantPayment": "Optimale configuratie! Uw reserveringen zijn volledig geautomatiseerd. De betaling beveiligt direct de reservering."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Handmatige validatie nodig?",
+              "description": "De aanvraagmodus laat u elke reservering controleren voor betaling. Aanpasbaar in de winkelinstellingen."
+            }
+          }
+        }
       },
       "subscriptionSettings": {
         "title": "Abonnement",
@@ -1850,6 +2143,17 @@
         "limited": "{count} over",
         "unavailable": "Niet beschikbaar",
         "inCart": "In winkelwagen"
+      },
+      "businessHoursWarning": {
+        "title": "Tijdconflict",
+        "pickup": "Ophalen",
+        "return": "Terugbrengen",
+        "reasons": {
+          "outside_hours": "buiten openingstijden",
+          "day_closed": "gesloten dag",
+          "closure_period": "uitzonderlijke sluitingsperiode"
+        },
+        "suggestion": "Pas uw data aan om aan de openingstijden te voldoen, anders wordt de reservering geweigerd."
       }
     },
     "productModal": {
@@ -1968,7 +2272,22 @@
         "total": "Te betalen totaal",
         "savingsBanner": "U bespaart {amount} met de langdurige korting"
       },
-      "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal."
+      "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
+      "success": {
+        "confirmedTitle": "Betaling bevestigd!",
+        "confirmedDescription": "Uw betaling is geaccepteerd. U ontvangt een bevestigingsmail.",
+        "pendingTitle": "In afwachting van betaling",
+        "pendingDescription": "Uw reservering is aangemaakt en wacht op betalingsbevestiging.",
+        "reservationNumber": "Reservering",
+        "dates": "Data",
+        "total": "Totaal",
+        "depositSaved": "Kaart opgeslagen voor borg",
+        "depositSavedDescription": "Uw kaart is opgeslagen. Bij ophalen wordt een autorisatie van {amount} aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
+        "deposit": "Borg",
+        "items": "Gereserveerde producten",
+        "emailSent": "Een bevestigingsmail is verzonden naar {email}",
+        "backToStore": "Terug naar winkel"
+      }
     },
     "confirmation": {
       "title": "Reservering bevestigd!",
@@ -1984,7 +2303,8 @@
       "emailConfirmation": "Bevestigingsmail",
       "confirmationSentTo": "Bevestiging verzonden naar",
       "subtotalLabel": "Subtotaal",
-      "depositLabel": "Borg",
+      "depositLabel": "Borg (autorisatie)",
+      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij ophalen wordt een autorisatie aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
       "totalLabel": "Totaal",
       "whatNext": "Volgende stappen",
       "stepRequest1": "We beoordelen uw reserveringsaanvraag",
@@ -2029,6 +2349,8 @@
       "myReservations": "Mijn reserveringen",
       "noReservations": "Geen reserveringen",
       "noReservationsDescription": "U heeft nog geen reserveringen",
+      "noHistory": "Geen geschiedenis",
+      "noHistoryDescription": "Uw voltooide reserveringen worden hier weergegeven",
       "viewCatalog": "Catalogus bekijken",
       "itemCount": "{count} artikel(en)",
       "reservationDetail": "Reserveringsdetails",
@@ -2053,6 +2375,8 @@
         "pendingDescription": "Uw aanvraag wordt verwerkt",
         "confirmed": "Bevestigd",
         "confirmedDescription": "Uw reservering is bevestigd",
+        "allSet": "Alles in orde",
+        "allSetDescription": "Uw reservering is bevestigd en betaald. We verwachten u op de geplande datum en tijd.",
         "ongoing": "Lopend",
         "ongoingDescription": "Verhuur lopend",
         "completed": "Voltooid",
@@ -2068,7 +2392,35 @@
       "paymentPaid": "Betaald",
       "paymentPending": "Onbetaald",
       "amountPaid": "Betaald bedrag",
-      "securityNote": "Veilige e-mail login. Geen wachtwoord nodig."
+      "securityNote": "Veilige e-mail login. Geen wachtwoord nodig.",
+      "payNow": "Nu betalen",
+      "paymentInProgress": "Betaling wordt verwerkt",
+      "paymentRequired": "Betaling vereist",
+      "confirmedAwaitingPayment": "Wachten op betaling",
+      "paymentHistory": {
+        "title": "Betalingsgeschiedenis",
+        "noPayments": "Geen betalingen geregistreerd",
+        "types": {
+          "rental": "Huur",
+          "deposit": "Borg",
+          "deposit_return": "Borg terugbetaling",
+          "damage": "Schade"
+        },
+        "methods": {
+          "stripe": "Online kaart",
+          "cash": "Contant",
+          "card": "Kaart",
+          "transfer": "Overschrijving",
+          "check": "Cheque",
+          "other": "Andere"
+        },
+        "status": {
+          "completed": "Betaald",
+          "pending": "In afwachting",
+          "failed": "Mislukt",
+          "refunded": "Terugbetaald"
+        }
+      }
     },
     "footer": {
       "description": "Eenvoudige en efficiënte materiaalverhuur.",
@@ -2188,14 +2540,15 @@
       "recommended": "Aanbevolen",
       "requestModeDescription": "Klanten sturen een aanvraag. U valideert handmatig en beheert de betaling zelf (contant, overboeking, pin ter plaatse).",
       "paymentMode": "Online betaling",
-      "comingSoon": "Binnenkort",
-      "paymentModeDescription": "Klanten betalen direct bij boeking. Deze functie is binnenkort beschikbaar.",
+      "paymentModeDescription": "Klanten betalen direct bij boeking. Ontvang automatisch betalingen via Stripe.",
       "howItWorks": "Hoe werkt het?",
       "step1": "1. Klant doet een reserveringsaanvraag",
       "step2": "2. U ontvangt een e-mailmelding",
       "step3": "3. U accepteert of wijst de aanvraag af",
       "step4": "4. Klant ontvangt bevestiging per e-mail",
       "step5": "5. U beheert de betaling bij ophalen",
+      "paymentSetupTitle": "Snelle configuratie",
+      "paymentSetupDescription": "Na het aanmaken van uw winkel gaat u naar Instellingen → Online betaling om uw Stripe-account te verbinden en betalingen te ontvangen.",
       "configComplete": "Configuratie voltooid!"
     },
     "complete": {
@@ -2260,7 +2613,8 @@
       "deposit": "Borg",
       "total": "Totaal",
       "totalToPay": "Te betalen totaal",
-      "question": "Vragen? Neem contact met ons op:"
+      "question": "Vragen? Neem contact met ons op:",
+      "summary": "Overzicht"
     },
     "verificationCode": {
       "subject": "Uw inlogcode: {code}",
@@ -2339,6 +2693,14 @@
       "sentBy": "Deze e-mail is verzonden door {storeName}",
       "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
       "poweredBy": "Mogelijk gemaakt door"
+    },
+    "instantAccess": {
+      "subject": "Toegang tot uw reservering #{number}",
+      "title": "Toegang tot uw reservering",
+      "body": "Klik om toegang te krijgen tot uw reservering #{number}.",
+      "paymentPending": "De betaling voor deze reservering is in afwachting.",
+      "viewAndPay": "Bekijken en betalen",
+      "linkValid": "Deze link is 30 dagen geldig."
     }
   },
   "contract": {
@@ -2493,6 +2855,22 @@
       "blurDescription": "Upgrade naar {plan} om toegang te krijgen tot al je klanten.",
       "bannerAtLimit": "Klantlimiet bereikt",
       "bannerNearLimit": "Je nadert je klantlimiet"
+    },
+    "sms": {
+      "limitReachedTitle": "SMS-limiet bereikt",
+      "limitReachedDescription": "Je hebt de limiet van {limit} SMS deze maand bereikt.",
+      "overLimitTitle": "Je SMS nemen een vlucht!",
+      "overLimitDescription": "Je hebt {count} SMS verzonden maar je huidige plan staat {limit} toe.",
+      "successMessage": "Je communicatie groeit!",
+      "successSubtext": "Meer SMS = betere klantrelaties. Ga naar het volgende niveau.",
+      "upgradeDescription": "Upgrade naar {plan} om meer SMS naar je klanten te sturen.",
+      "benefit1": "Tot 50 SMS/maand met {plan}",
+      "benefit2": "Automatische meldingen",
+      "benefit3": "Reserveringsherinneringen",
+      "blurTitle": "SMS geblokkeerd",
+      "blurDescription": "Upgrade naar {plan} om SMS te blijven versturen.",
+      "bannerAtLimit": "Maandelijkse SMS-limiet bereikt",
+      "bannerNearLimit": "Je nadert je SMS-limiet"
     }
   },
   "errors": {
@@ -2515,6 +2893,7 @@
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",
     "productUnavailable": "Product niet beschikbaar: {name}",
+    "productNoLongerAvailable": "Product {name} is niet meer beschikbaar voor deze datums. Er is inmiddels een andere reservering gemaakt.",
     "insufficientStock": "Onvoldoende voorraad voor: {name} ({count} beschikbaar)",
     "createCustomerError": "Fout bij aanmaken klant",
     "updateCustomerError": "Fout bij bijwerken klant",
@@ -2541,6 +2920,27 @@
     "tryAgain": "Opnieuw proberen",
     "goBack": "Terug",
     "goHome": "Terug naar home",
-    "loading": "Laden..."
+    "loading": "Laden...",
+    "noStripeAccount": "Geen Stripe-account verbonden",
+    "stripe": {
+      "onboardingFailed": "Fout bij Stripe-configuratie",
+      "verificationFailed": "Fout bij Stripe-accountverificatie",
+      "syncFailed": "Fout bij synchronisatie",
+      "dashboardLinkFailed": "Fout bij openen van Stripe-dashboard",
+      "alreadyConnected": "Stripe-account al verbonden",
+      "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
+      "alreadyRefunded": "Deze betaling is al terugbetaald",
+      "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
+      "refundFailed": "Fout bij terugbetaling"
+    },
+    "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
+    "alreadyPaid": "Deze reservering is al betaald.",
+    "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
+    "paymentSessionError": "Fout bij aanmaken betalingssessie",
+    "accessLinkSendFailed": "Fout bij verzenden toegangslink",
+    "smsNotConfigured": "SMS is niet geconfigureerd",
+    "smsLimitReached": "SMS-limiet bereikt. Upgrade naar een hoger plan om SMS te blijven versturen.",
+    "customerNoPhone": "Klant heeft geen telefoonnummer",
+    "smsSendFailed": "Fout bij verzenden SMS"
   }
 }

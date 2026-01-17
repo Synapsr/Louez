@@ -7,7 +7,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, ExternalLink, Pencil } from 'lucide-react'
+import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight } from 'lucide-react'
+import Link from 'next/link'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -39,6 +41,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { updateStoreSettings } from './actions'
 import type { StoreSettings } from '@/types'
 import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
@@ -65,6 +75,7 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   // Settings
   pricingMode: z.enum(['day', 'hour', 'week']),
   reservationMode: z.enum(['payment', 'request']),
+  pendingBlocksAvailability: z.boolean(),
   minDuration: z.number().min(1),
   maxDuration: z.number().nullable(),
   advanceNotice: z.number().min(0),
@@ -88,12 +99,14 @@ interface Store {
 
 interface StoreSettingsFormProps {
   store: Store
+  stripeChargesEnabled: boolean
 }
 
-export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
+export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettingsFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isSlugModalOpen, setIsSlugModalOpen] = useState(false)
+  const [isStripeRequiredDialogOpen, setIsStripeRequiredDialogOpen] = useState(false)
   const t = useTranslations('dashboard.settings')
 
   const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
@@ -134,6 +147,7 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
       billingCountry: billingAddress.country || defaultCountry,
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
+      pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
       minDuration: settings.minDuration,
       maxDuration: settings.maxDuration,
       advanceNotice: settings.advanceNotice,
@@ -156,6 +170,7 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
         form.setError('root', { message: result.error })
         return
       }
+      toast.success(t('settingsSaved'))
       router.refresh()
     })
   }
@@ -548,8 +563,14 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
                     <FormItem>
                       <FormLabel>{t('reservationSettings.mode')}</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
+                        onValueChange={(value) => {
+                          if (value === 'payment' && !stripeChargesEnabled) {
+                            setIsStripeRequiredDialogOpen(true)
+                            return
+                          }
+                          field.onChange(value)
+                        }}
+                        value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -601,6 +622,32 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
                   )}
                 />
               </div>
+
+              {/* Pending blocks availability - only shown in request mode */}
+              {form.watch('reservationMode') === 'request' && (
+                <FormField
+                  control={form.control}
+                  name="pendingBlocksAvailability"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">
+                          {t('reservationSettings.pendingBlocksAvailability')}
+                        </FormLabel>
+                        <FormDescription>
+                          {t('reservationSettings.pendingBlocksAvailabilityDescription')}
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
@@ -688,6 +735,45 @@ export function StoreSettingsForm({ store }: StoreSettingsFormProps) {
         currentSlug={store.slug}
         domain={domain}
       />
+
+      {/* Stripe Required Dialog */}
+      <Dialog open={isStripeRequiredDialogOpen} onOpenChange={setIsStripeRequiredDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+              <CreditCard className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-2 text-center">
+              <DialogTitle>
+                {t('reservationSettings.stripeRequired.title')}
+              </DialogTitle>
+              <DialogDescription>
+                {t('reservationSettings.stripeRequired.description')}
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+            <p className="text-sm text-muted-foreground">
+              {t('reservationSettings.stripeRequired.benefits')}
+            </p>
+          </div>
+          <DialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button asChild className="w-full">
+              <Link href="/dashboard/settings/payments">
+                {t('reservationSettings.stripeRequired.configureStripe')}
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full text-muted-foreground"
+              onClick={() => setIsStripeRequiredDialogOpen(false)}
+            >
+              {t('reservationSettings.stripeRequired.keepRequest')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
