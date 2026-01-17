@@ -38,12 +38,10 @@ import {
 } from '@/components/ui/table'
 
 import { ReservationHeader } from './reservation-header'
-import { ReservationActions } from './reservation-actions'
+import { SmartReservationActions } from './smart-reservation-actions'
 import { ReservationNotes } from './reservation-notes'
-import { ActivityTimeline } from './activity-timeline'
-import { PaymentSummary } from './payment-summary'
-import { DepositSection } from './deposit-section'
-import { OnlinePaymentStatus } from './online-payment-status'
+import { ActivityTimelineV2 } from './activity-timeline-v2'
+import { UnifiedPaymentSection } from './unified-payment-section'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -327,38 +325,35 @@ export default async function ReservationDetailPage({
             </CardContent>
           </Card>
 
-          {/* Activity Timeline - Moved to main column */}
-          <ActivityTimeline
+          {/* Activity Timeline with fade effect */}
+          <ActivityTimelineV2
             activities={reservation.activity}
             reservationCreatedAt={reservation.createdAt}
             reservationSource={reservation.source}
+            initialVisibleCount={3}
           />
         </div>
 
         {/* Sidebar - Right Column */}
         <div className="space-y-4">
-          {/* Status Actions - Contextual based on state */}
-          <ReservationActions
+          {/* Smart Actions - Contextual with intelligent warnings */}
+          <SmartReservationActions
             reservationId={reservation.id}
             status={status}
             startDate={startDate}
             endDate={endDate}
-            isDepositCollected={isDepositFullyCollected}
-            isRentalPaid={isRentalFullyPaid}
+            rentalAmount={rental}
+            rentalPaid={rentalPaid}
+            depositAmount={deposit}
+            depositCollected={depositCollected}
+            depositReturned={depositReturned}
             hasOnlinePaymentPending={hasOnlinePaymentPending}
-          />
-
-          {/* Online Payment Status - Shows Stripe payment details */}
-          <OnlinePaymentStatus
-            reservationId={reservation.id}
-            payments={reservation.payments}
-            stripePaymentMethodId={reservation.stripePaymentMethodId}
-            depositStatus={reservation.depositStatus}
+            hasActiveAuthorization={reservation.depositStatus === 'authorized'}
             currency={currency}
           />
 
-          {/* Payment Summary */}
-          <PaymentSummary
+          {/* Unified Payment Section - Combines all payment info */}
+          <UnifiedPaymentSection
             reservationId={reservation.id}
             subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
@@ -366,16 +361,9 @@ export default async function ReservationDetailPage({
             payments={reservation.payments}
             status={status}
             currency={currency}
-          />
-
-          {/* Deposit Authorization Hold */}
-          <DepositSection
-            reservationId={reservation.id}
-            depositAmount={reservation.depositAmount}
             depositStatus={reservation.depositStatus as 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed' | null}
             depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
             stripePaymentMethodId={reservation.stripePaymentMethodId}
-            currency={currency}
           />
 
           {/* Notes */}
