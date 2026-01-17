@@ -291,7 +291,7 @@ export function SmartReservationActions({
                       <CreditCard className="h-3 w-3 shrink-0" />
                       <p className="text-[11px]">
                         {t('smartActions.paymentIncomplete', {
-                          formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                          remaining: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
                         })}
                       </p>
                     </div>
@@ -301,7 +301,7 @@ export function SmartReservationActions({
                       <Shield className="h-3 w-3 shrink-0" />
                       <p className="text-[11px]">
                         {t('smartActions.depositNotCollected', {
-                          formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
+                          amount: `${depositRemaining.toFixed(2)}${currencySymbol}`,
                         })}
                       </p>
                     </div>
@@ -592,7 +592,8 @@ export function SmartReservationActions({
                   {isRentalFullyPaid
                     ? t('smartActions.fullyPaid')
                     : t('smartActions.partiallyPaid', {
-                        remaining: `${rentalRemaining.toFixed(2)}${currencySymbol}`,
+                        paid: `${rentalPaid.toFixed(2)}${currencySymbol}`,
+                        total: `${rentalAmount.toFixed(2)}${currencySymbol}`,
                       })}
                 </span>
               </div>
