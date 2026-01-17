@@ -8,12 +8,28 @@ interface ThemeWrapperProps {
   children: React.ReactNode
 }
 
+/**
+ * Calculate contrasting text color (white or black) based on background luminance.
+ * Uses a threshold of 0.45 to favor white text on medium-dark colors.
+ */
+function getContrastForeground(hexColor: string): string {
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  return luminance > 0.45 ? 'oklch(0.205 0 0)' : 'oklch(0.985 0 0)'
+}
+
 export function ThemeWrapper({ mode, primaryColor, children }: ThemeWrapperProps) {
   useEffect(() => {
     const root = document.documentElement
 
     // Apply primary color as CSS variable
     root.style.setProperty('--primary', primaryColor)
+
+    // Calculate and apply contrasting foreground color
+    root.style.setProperty('--primary-foreground', getContrastForeground(primaryColor))
 
     // Determine the actual theme to apply
     let isDark = false

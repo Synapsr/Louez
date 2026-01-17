@@ -24,7 +24,8 @@ interface AppearanceFormProps {
 
 /**
  * Calculate the contrast text color (black or white) based on background color luminance.
- * Uses the WCAG relative luminance formula.
+ * Uses the WCAG relative luminance formula with a threshold of 0.45 to favor
+ * white text on medium-dark colors like pink or purple.
  */
 function getContrastColor(hexColor: string): 'black' | 'white' {
   // Remove # if present
@@ -39,7 +40,8 @@ function getContrastColor(hexColor: string): 'black' | 'white' {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
 
   // Return black for light backgrounds, white for dark backgrounds
-  return luminance > 0.5 ? 'black' : 'white'
+  // Threshold of 0.45 favors white text on medium-dark backgrounds
+  return luminance > 0.45 ? 'black' : 'white'
 }
 
 /**
