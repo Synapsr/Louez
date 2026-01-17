@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import {
@@ -29,6 +30,21 @@ interface PaymentFlowExplanationProps {
   stripeChargesEnabled: boolean
 }
 
+// Hook to animate through steps sequentially
+function useStepAnimation(totalSteps: number, intervalMs: number = 2000) {
+  const [activeStep, setActiveStep] = useState(1)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev >= totalSteps ? 1 : prev + 1))
+    }, intervalMs)
+
+    return () => clearInterval(interval)
+  }, [totalSteps, intervalMs])
+
+  return activeStep
+}
+
 export function PaymentFlowExplanation({
   reservationMode,
   stripeChargesEnabled,
@@ -39,6 +55,15 @@ export function PaymentFlowExplanation({
   const isRequestMode = reservationMode === 'request'
   const isPaymentMode = reservationMode === 'payment'
   const hasStripe = stripeChargesEnabled
+
+  // Determine number of steps based on scenario
+  const getStepCount = () => {
+    if (isPaymentMode && hasStripe) return 3
+    return 4
+  }
+
+  // Animation: cycle through steps every 2 seconds
+  const activeStep = useStepAnimation(getStepCount(), 2000)
 
   // Scenario: Request mode without Stripe
   if (isRequestMode && !hasStripe) {
@@ -66,10 +91,10 @@ export function PaymentFlowExplanation({
               {t('currentFlow')}
             </h4>
             <div className="flex flex-col gap-2">
-              <FlowStep number={1} icon={FileCheck} text={t('steps.requestSubmitted')} />
-              <FlowStep number={2} icon={Mail} text={t('steps.youReview')} />
-              <FlowStep number={3} icon={CheckCircle2} text={t('steps.acceptOrReject')} />
-              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnSite')} />
+              <FlowStep number={1} icon={FileCheck} text={t('steps.requestSubmitted')} isActive={activeStep === 1} />
+              <FlowStep number={2} icon={Mail} text={t('steps.youReview')} isActive={activeStep === 2} />
+              <FlowStep number={3} icon={CheckCircle2} text={t('steps.acceptOrReject')} isActive={activeStep === 3} />
+              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnSite')} isActive={activeStep === 4} />
             </div>
           </div>
 
@@ -128,10 +153,10 @@ export function PaymentFlowExplanation({
               {t('currentFlow')}
             </h4>
             <div className="flex flex-col gap-2">
-              <FlowStep number={1} icon={FileCheck} text={t('steps.requestSubmitted')} />
-              <FlowStep number={2} icon={Mail} text={t('steps.youReview')} />
-              <FlowStep number={3} icon={CheckCircle2} text={t('steps.acceptOrReject')} />
-              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnlineOrSite')} highlight />
+              <FlowStep number={1} icon={FileCheck} text={t('steps.requestSubmitted')} isActive={activeStep === 1} />
+              <FlowStep number={2} icon={Mail} text={t('steps.youReview')} isActive={activeStep === 2} />
+              <FlowStep number={3} icon={CheckCircle2} text={t('steps.acceptOrReject')} isActive={activeStep === 3} />
+              <FlowStep number={4} icon={CreditCard} text={t('steps.paymentOnlineOrSite')} isActive={activeStep === 4} highlight />
             </div>
           </div>
 
@@ -235,9 +260,9 @@ export function PaymentFlowExplanation({
             {t('currentFlow')}
           </h4>
           <div className="flex flex-col gap-2">
-            <FlowStep number={1} icon={CreditCard} text={t('steps.customerPays')} highlight />
-            <FlowStep number={2} icon={CheckCircle2} text={t('steps.reservationConfirmed')} />
-            <FlowStep number={3} icon={Mail} text={t('steps.bothNotified')} />
+            <FlowStep number={1} icon={CreditCard} text={t('steps.customerPays')} isActive={activeStep === 1} highlight />
+            <FlowStep number={2} icon={CheckCircle2} text={t('steps.reservationConfirmed')} isActive={activeStep === 2} />
+            <FlowStep number={3} icon={Mail} text={t('steps.bothNotified')} isActive={activeStep === 3} />
           </div>
         </div>
 
@@ -273,28 +298,49 @@ interface FlowStepProps {
   icon: React.ComponentType<{ className?: string }>
   text: string
   highlight?: boolean
+  isActive?: boolean
 }
 
-function FlowStep({ number, icon: Icon, text, highlight }: FlowStepProps) {
+function FlowStep({ number, icon: Icon, text, highlight, isActive }: FlowStepProps) {
+  const isHighlighted = highlight || isActive
+
   return (
     <div
-      className={`flex items-center gap-3 rounded-lg border p-3 ${
-        highlight
-          ? 'border-primary/30 bg-primary/5'
-          : 'border-transparent bg-muted/50'
+      className={`flex items-center gap-3 rounded-lg border p-3 transition-all duration-500 ease-in-out ${
+        isActive
+          ? 'border-primary/50 bg-primary/10 scale-[1.02]'
+          : highlight
+            ? 'border-primary/30 bg-primary/5'
+            : 'border-transparent bg-muted/50'
       }`}
     >
       <div
-        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium ${
-          highlight
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted-foreground/20 text-muted-foreground'
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium transition-all duration-500 ${
+          isActive
+            ? 'bg-primary text-primary-foreground shadow-md shadow-primary/30'
+            : highlight
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted-foreground/20 text-muted-foreground'
         }`}
       >
         {number}
       </div>
-      <Icon className={`h-4 w-4 shrink-0 ${highlight ? 'text-primary' : 'text-muted-foreground'}`} />
-      <span className={`text-sm ${highlight ? 'font-medium' : ''}`}>{text}</span>
+      <Icon
+        className={`h-4 w-4 shrink-0 transition-all duration-500 ${
+          isActive
+            ? 'text-primary scale-110'
+            : isHighlighted
+              ? 'text-primary'
+              : 'text-muted-foreground'
+        }`}
+      />
+      <span
+        className={`text-sm transition-all duration-500 ${
+          isActive ? 'font-medium text-foreground' : highlight ? 'font-medium' : ''
+        }`}
+      >
+        {text}
+      </span>
     </div>
   )
 }
