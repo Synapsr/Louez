@@ -374,7 +374,7 @@ export function EditReservationForm({
   const handleAddCustomItem = () => {
     const name = customItemForm.name.trim()
     if (!name) {
-      toast.error(t('customItem.nameRequired'))
+      toast.error(t('manualForm.customItem.nameRequired'))
       return
     }
 
@@ -384,7 +384,7 @@ export function EditReservationForm({
     const deposit = parseFloat(customItemForm.deposit) || 0
 
     if (totalPrice <= 0 && unitPrice <= 0) {
-      toast.error(t('customItem.priceRequired'))
+      toast.error(t('manualForm.customItem.priceRequired'))
       return
     }
 
@@ -408,7 +408,7 @@ export function EditReservationForm({
     setItems((prev) => [...prev, newItem])
     resetCustomItemForm()
     setShowCustomItemDialog(false)
-    toast.success(t('customItem.added'))
+    toast.success(t('manualForm.customItem.added'))
   }
 
   const handleSave = async () => {
@@ -567,7 +567,7 @@ export function EditReservationForm({
                       onClick={() => setShowCustomItemDialog(true)}
                     >
                       <PenLine className="h-3.5 w-3.5 mr-1.5" />
-                      {t('customItem.button')}
+                      {t('manualForm.customItem.button')}
                     </Button>
                     <Select onValueChange={handleAddProduct}>
                       <SelectTrigger className="w-[180px] h-8 text-sm">
@@ -773,27 +773,27 @@ export function EditReservationForm({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
-              {t('customItem.dialogTitle')}
+              {t('manualForm.customItem.dialogTitle')}
             </DialogTitle>
             <DialogDescription>
-              {t('customItem.dialogDescription')}
+              {t('manualForm.customItem.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="custom-name">{t('customItem.name')} *</Label>
+              <Label htmlFor="custom-name">{t('manualForm.customItem.name')} *</Label>
               <Input
                 id="custom-name"
-                placeholder={t('customItem.namePlaceholder')}
+                placeholder={t('manualForm.customItem.namePlaceholder')}
                 value={customItemForm.name}
                 onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="custom-description">{t('customItem.description')}</Label>
+              <Label htmlFor="custom-description">{t('manualForm.customItem.description')}</Label>
               <Textarea
                 id="custom-description"
-                placeholder={t('customItem.descriptionPlaceholder')}
+                placeholder={t('manualForm.customItem.descriptionPlaceholder')}
                 value={customItemForm.description}
                 onChange={(e) => setCustomItemForm({ ...customItemForm, description: e.target.value })}
                 className="resize-none"
@@ -802,7 +802,7 @@ export function EditReservationForm({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="custom-quantity">{t('customItem.quantity')}</Label>
+                <Label htmlFor="custom-quantity">{t('manualForm.customItem.quantity')}</Label>
                 <Input
                   id="custom-quantity"
                   type="number"
@@ -813,7 +813,7 @@ export function EditReservationForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="custom-deposit">{t('customItem.deposit')}</Label>
+                <Label htmlFor="custom-deposit">{t('manualForm.customItem.deposit')}</Label>
                 <div className="relative">
                   <Input
                     id="custom-deposit"
@@ -834,14 +834,14 @@ export function EditReservationForm({
             {newDuration > 0 && (
               <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{t('customItem.pricingPeriod')}</span>
+                  <span>{t('manualForm.customItem.pricingPeriod')}</span>
                   <span className="font-medium text-foreground">
-                    {newDuration} {pricingUnit} × {customItemForm.quantity || 1} {t('customItem.units')}
+                    {newDuration} {pricingUnit} × {customItemForm.quantity || 1} {t('manualForm.customItem.units')}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label htmlFor="custom-total" className="text-xs">{t('customItem.totalPrice')} *</Label>
+                    <Label htmlFor="custom-total" className="text-xs">{t('manualForm.customItem.totalPrice')} *</Label>
                     <div className="relative">
                       <Input
                         id="custom-total"
@@ -860,7 +860,7 @@ export function EditReservationForm({
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="custom-unit" className="text-xs">{t('customItem.unitPrice')}</Label>
+                    <Label htmlFor="custom-unit" className="text-xs">{t('manualForm.customItem.unitPrice')}</Label>
                     <div className="relative">
                       <Input
                         id="custom-unit"
@@ -883,7 +883,7 @@ export function EditReservationForm({
             )}
             {newDuration === 0 && (
               <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                {t('customItem.selectPeriodFirst')}
+                {t('manualForm.customItem.selectPeriodFirst')}
               </p>
             )}
           </div>
@@ -900,7 +900,7 @@ export function EditReservationForm({
             </Button>
             <Button type="button" onClick={handleAddCustomItem} disabled={newDuration === 0}>
               <Plus className="h-4 w-4 mr-1" />
-              {t('customItem.addButton')}
+              {t('manualForm.customItem.addButton')}
             </Button>
           </DialogFooter>
         </DialogContent>
