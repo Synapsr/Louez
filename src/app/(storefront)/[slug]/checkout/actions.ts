@@ -1,8 +1,8 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { customers, reservations, reservationItems, products, stores, storeMembers, users } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments, reservationActivity } from '@/lib/db/schema'
+import { eq, and, inArray, lt, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
 import type { TaxSettings, ProductTaxSettings } from '@/types/store'
@@ -10,8 +10,9 @@ import {
   sendRequestReceivedEmail,
   sendNewRequestLandlordEmail,
 } from '@/lib/email/send'
+import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
-import { getMinStartDateTime } from '@/lib/utils/duration'
+import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
 
 interface ReservationItem {
@@ -93,11 +94,12 @@ export async function createReservation(input: CreateReservationInput) {
     const rentalStartDate = new Date(Math.min(...itemStartDates.map((d) => d.getTime())))
     const rentalEndDate = new Date(Math.max(...itemEndDates.map((d) => d.getTime())))
 
-    // Validate business hours for the rental period
+    // Validate business hours for the rental period (using store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       rentalStartDate,
       rentalEndDate,
-      store.settings?.businessHours
+      store.settings?.businessHours,
+      store.settings?.timezone
     )
 
     if (!businessHoursValidation.valid) {
@@ -119,7 +121,7 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    // Validate products exist and are available
+    // Validate products exist and check stock
     for (const item of input.items) {
       const product = await db.query.products.findFirst({
         where: and(
@@ -137,6 +139,56 @@ export async function createReservation(input: CreateReservationInput) {
         return {
           error: 'errors.insufficientStock',
           errorParams: { name: item.productSnapshot.name, count: product.quantity },
+        }
+      }
+    }
+
+    // Check for date conflicts with existing reservations
+    // This prevents race conditions where availability was checked earlier but changed since
+    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+      pendingBlocksAvailability
+        ? ['pending', 'confirmed', 'ongoing']
+        : ['confirmed', 'ongoing']
+
+    const overlappingReservations = await db.query.reservations.findMany({
+      where: and(
+        eq(reservations.storeId, input.storeId),
+        inArray(reservations.status, blockingStatuses),
+        lt(reservations.startDate, rentalEndDate),
+        gt(reservations.endDate, rentalStartDate)
+      ),
+      with: {
+        items: true,
+      },
+    })
+
+    // Calculate reserved quantity per product for the requested period
+    const reservedByProduct = new Map<string, number>()
+    for (const reservation of overlappingReservations) {
+      if (dateRangesOverlap(reservation.startDate, reservation.endDate, rentalStartDate, rentalEndDate)) {
+        for (const resItem of reservation.items) {
+          if (!resItem.productId) continue
+          const current = reservedByProduct.get(resItem.productId) || 0
+          reservedByProduct.set(resItem.productId, current + resItem.quantity)
+        }
+      }
+    }
+
+    // Check if requested quantities are still available
+    for (const item of input.items) {
+      const product = await db.query.products.findFirst({
+        where: eq(products.id, item.productId),
+      })
+      if (!product) continue
+
+      const reserved = reservedByProduct.get(item.productId) || 0
+      const available = Math.max(0, product.quantity - reserved)
+
+      if (item.quantity > available) {
+        return {
+          error: 'errors.productNoLongerAvailable',
+          errorParams: { name: item.productSnapshot.name },
         }
       }
     }
@@ -299,6 +351,21 @@ export async function createReservation(input: CreateReservationInput) {
       })
     }
 
+    // Log activity for online reservation creation (by customer)
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'created',
+      description: `${input.customer.firstName} ${input.customer.lastName}`,
+      metadata: {
+        source: 'online',
+        status: 'pending',
+        customerEmail: input.customer.email,
+        customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+      },
+      createdAt: new Date(),
+    })
+
     // Get store owner for fallback email
     const ownerMember = await db
       .select({ email: users.email })
@@ -372,13 +439,85 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    // For now, we don't have Stripe integration complete, so we just return success
-    // In the future, if reservationMode is 'payment', we would create a Stripe checkout session
+    // Check if we should process payment via Stripe
+    const shouldProcessPayment =
+      store.settings?.reservationMode === 'payment' &&
+      store.stripeAccountId &&
+      store.stripeChargesEnabled
+
+    let paymentUrl: string | null = null
+
+    if (shouldProcessPayment) {
+      try {
+        const currency = store.settings?.currency || 'EUR'
+        const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+        const protocol = domain.includes('localhost') ? 'http' : 'https'
+        const baseUrl = `${protocol}://${store.slug}.${domain}`
+
+        // Build line items for Stripe
+        const lineItems = input.items.map((item) => ({
+          name: item.productSnapshot.name,
+          description: item.productSnapshot.description || undefined,
+          quantity: item.quantity,
+          unitAmount: toStripeCents(item.unitPrice * calculateDuration(item.startDate, item.endDate), currency),
+        }))
+
+        // Create checkout session
+        const { url, sessionId } = await createCheckoutSession({
+          stripeAccountId: store.stripeAccountId!,
+          reservationId,
+          reservationNumber,
+          customerEmail: customer.email,
+          lineItems,
+          depositAmount: toStripeCents(input.depositAmount, currency),
+          currency,
+          successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
+          cancelUrl: `${baseUrl}/checkout?cancelled=true`,
+          locale: input.locale,
+        })
+
+        paymentUrl = url
+
+        // Create a pending payment record to track the checkout session
+        // This will be updated to 'completed' by the webhook when payment succeeds
+        await db.insert(payments).values({
+          id: nanoid(),
+          reservationId,
+          amount: input.subtotalAmount.toFixed(2),
+          type: 'rental',
+          method: 'stripe',
+          status: 'pending',
+          stripeCheckoutSessionId: sessionId,
+          currency,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+
+        // Log payment initiated activity
+        await db.insert(reservationActivity).values({
+          id: nanoid(),
+          reservationId,
+          activityType: 'payment_initiated',
+          description: null,
+          metadata: {
+            checkoutSessionId: sessionId,
+            amount: input.subtotalAmount,
+            currency,
+            method: 'stripe',
+          },
+          createdAt: new Date(),
+        })
+      } catch (error) {
+        console.error('Failed to create Stripe checkout session:', error)
+        // Don't fail the reservation, store owner can send payment link manually
+      }
+    }
+
     return {
       success: true,
       reservationId,
       reservationNumber,
-      paymentUrl: null as string | null,
+      paymentUrl,
     }
   } catch (error) {
     console.error('Error creating reservation:', error)

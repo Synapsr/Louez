@@ -15,8 +15,13 @@ import {
   Copy,
   ExternalLink,
   Check,
+  Link as LinkIcon,
+  Loader2,
+  Pencil,
+  Smartphone,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +36,8 @@ import { cn, getCurrencySymbol } from '@/lib/utils'
 
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
+import { UpgradeModal } from '@/components/dashboard/upgrade-modal'
+import { sendAccessLink, sendAccessLinkBySms } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -39,6 +46,7 @@ interface Customer {
   firstName: string
   lastName: string
   email: string
+  phone?: string | null
 }
 
 interface ReservationHeaderProps {
@@ -61,6 +69,8 @@ interface ReservationHeaderProps {
   sentEmails?: string[]
   hasContract?: boolean
   currency?: string
+  // SMS
+  smsConfigured?: boolean
 }
 
 const STATUS_CLASSES: Record<ReservationStatus, string> = {
@@ -90,15 +100,26 @@ export function ReservationHeader({
   sentEmails = [],
   hasContract = false,
   currency = 'EUR',
+  smsConfigured = false,
 }: ReservationHeaderProps) {
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const currencySymbol = getCurrencySymbol(currency)
+  const router = useRouter()
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [isSendingAccessLink, setIsSendingAccessLink] = useState(false)
+  const [isSendingAccessLinkSms, setIsSendingAccessLinkSms] = useState(false)
+  const [smsLimitModalOpen, setSmsLimitModalOpen] = useState(false)
+  const [smsLimitInfo, setSmsLimitInfo] = useState<{
+    current: number
+    limit: number
+    planSlug: string
+  } | null>(null)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
+  const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
 
   // Format date range
   const formatDateRange = () => {
@@ -115,6 +136,55 @@ export function ReservationHeader({
     setCopiedLink(true)
     toast.success(t('linkCopied'))
     setTimeout(() => setCopiedLink(false), 2000)
+  }
+
+  const handleSendAccessLink = async () => {
+    setIsSendingAccessLink(true)
+    try {
+      const result = await sendAccessLink(reservationId)
+      if (result.error) {
+        toast.error(t('accessLink.sendError'))
+      } else {
+        toast.success(t('accessLink.sendSuccess'))
+      }
+    } catch {
+      toast.error(t('accessLink.sendError'))
+    } finally {
+      setIsSendingAccessLink(false)
+    }
+  }
+
+  const handleSendAccessLinkSms = async () => {
+    if (!customer.phone) {
+      toast.error(t('accessLink.noPhone'))
+      return
+    }
+    setIsSendingAccessLinkSms(true)
+    try {
+      const result = await sendAccessLinkBySms(reservationId) as {
+        error?: string
+        limitReached?: boolean
+        limitInfo?: { current: number; limit: number; planSlug: string }
+        success?: boolean
+      }
+      if (result.error) {
+        // Handle SMS limit reached
+        if (result.limitReached && result.limitInfo) {
+          setSmsLimitInfo(result.limitInfo)
+          setSmsLimitModalOpen(true)
+        } else if (result.error === 'errors.customerNoPhone') {
+          toast.error(t('accessLink.noPhone'))
+        } else {
+          toast.error(t('accessLink.smsSendError'))
+        }
+      } else {
+        toast.success(t('accessLink.smsSendSuccess'))
+      }
+    } catch {
+      toast.error(t('accessLink.smsSendError'))
+    } finally {
+      setIsSendingAccessLinkSms(false)
+    }
   }
 
   const handleDownloadContract = () => {
@@ -188,6 +258,40 @@ export function ReservationHeader({
               {t('actions.sendEmail')}
             </Button>
 
+            {/* Access Link button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendAccessLink}
+              disabled={isSendingAccessLink}
+              className="hidden sm:flex"
+            >
+              {isSendingAccessLink ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <LinkIcon className="h-4 w-4 mr-2" />
+              )}
+              {t('accessLink.send')}
+            </Button>
+
+            {/* SMS Access Link button */}
+            {smsConfigured && customer.phone && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSendAccessLinkSms}
+                disabled={isSendingAccessLinkSms}
+                className="hidden sm:flex"
+              >
+                {isSendingAccessLinkSms ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Smartphone className="h-4 w-4 mr-2" />
+                )}
+                {t('accessLink.sendSms')}
+              </Button>
+            )}
+
             {/* Contract button */}
             {hasContract && (
               <Button
@@ -218,6 +322,32 @@ export function ReservationHeader({
                   <Mail className="h-4 w-4 mr-2" />
                   {t('actions.sendEmail')}
                 </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleSendAccessLink}
+                  disabled={isSendingAccessLink}
+                  className="sm:hidden"
+                >
+                  {isSendingAccessLink ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                  )}
+                  {t('accessLink.send')}
+                </DropdownMenuItem>
+                {smsConfigured && customer.phone && (
+                  <DropdownMenuItem
+                    onClick={handleSendAccessLinkSms}
+                    disabled={isSendingAccessLinkSms}
+                    className="sm:hidden"
+                  >
+                    {isSendingAccessLinkSms ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Smartphone className="h-4 w-4 mr-2" />
+                    )}
+                    {t('accessLink.sendSms')}
+                  </DropdownMenuItem>
+                )}
                 {hasContract && (
                   <DropdownMenuItem
                     onClick={handleDownloadContract}
@@ -228,6 +358,15 @@ export function ReservationHeader({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="sm:hidden" />
+
+                {/* Edit reservation */}
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => router.push(`/dashboard/reservations/${reservationId}/edit`)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    {t('edit.button')}
+                  </DropdownMenuItem>
+                )}
+                {canEdit && <DropdownMenuSeparator />}
 
                 {/* Common items */}
                 <DropdownMenuItem onClick={handleDownloadContract}>
@@ -279,6 +418,18 @@ export function ReservationHeader({
         isFullyPaid={isFullyPaid}
         sentEmails={sentEmails}
       />
+
+      {/* SMS Limit Upgrade Modal */}
+      {smsLimitInfo && (
+        <UpgradeModal
+          open={smsLimitModalOpen}
+          onOpenChange={setSmsLimitModalOpen}
+          limitType="sms"
+          currentCount={smsLimitInfo.current}
+          limit={smsLimitInfo.limit}
+          currentPlan={smsLimitInfo.planSlug}
+        />
+      )}
     </>
   )
 }

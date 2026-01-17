@@ -46,7 +46,7 @@ Louez supports multiple languages out of the box.
 
 ### 💰 Tax Management
 
-**Status**: ✅ Available (January 16, 2025)
+**Status**: ✅ Available (January 16, 2026)
 
 Handle taxes flexibly to match your local regulations.
 
@@ -63,7 +63,7 @@ Handle taxes flexibly to match your local regulations.
 
 ### 🎯 Advanced Pricing Control
 
-**Status**: ✅ Available (January 16, 2025)
+**Status**: ✅ Available (January 16, 2026)
 
 Fine-tune rental prices for each reservation.
 
@@ -80,7 +80,7 @@ Fine-tune rental prices for each reservation.
 
 ### 🏢 Billing Address Options
 
-**Status**: ✅ Available (January 16, 2025)
+**Status**: ✅ Available (January 16, 2026)
 
 Separate your billing address from your store location.
 
@@ -97,17 +97,20 @@ Separate your billing address from your store location.
 
 ### 💳 Online Payments
 
-**Status**: 🔜 Coming Soon
+**Status**: ✅ Available (January 16, 2026)
 
 Accept payments directly through your storefront.
 
 | Feature | Description |
 |---------|-------------|
-| **Stripe Connect** | First payment provider, with platform fees support |
-| **Payment links** | Send payment requests via email |
-| **Deposits & balances** | Collect deposits, manage remaining payments |
-| **Refunds** | Process refunds directly from dashboard |
+| **Stripe Connect** | Seamless onboarding for cloud and self-hosted users |
+| **Deposit holds** | Authorize deposits without charging, release or capture later |
+| **Card on file** | Securely save customer payment methods |
+| **Refunds** | Process full or partial refunds directly from dashboard |
+| **Self-hosted support** | Connect your own Stripe account on self-hosted instances |
 
+> Works on both Louez Cloud (managed onboarding) and self-hosted installations (bring your own Stripe account).
+>
 > *Future*: Additional payment providers (PayPal, Mollie, etc.) via a connector system.
 
 ---
@@ -128,33 +131,53 @@ Keep your team informed in real-time.
 
 ### 📱 SMS Notifications
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 17, 2026)
 
 Reach customers directly on their phones.
 
 | Feature | Description |
 |---------|-------------|
-| **Provider agnostic** | Connect any SMS provider (Twilio, OVH, Vonage, etc.) |
+| **SMS Partner integration** | Send SMS via SMS Partner (more providers coming) |
 | **Reservation reminders** | Automatic pickup/return reminders via SMS |
-| **Custom messages** | Send manual SMS from the dashboard |
-| **Templates** | Configurable SMS templates per event type |
+| **Instant access links** | Send reservation access links via SMS |
+| **Plan-based limits** | SMS quotas based on your subscription plan |
+
+> Currently supports SMS Partner. Additional providers (Twilio, Vonage, etc.) planned for future releases.
 
 ---
 
-### 📅 Calendar Sync
+### 📅 Calendar Export
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 16, 2026)
 
-Sync reservations with external calendars.
+Share your reservations with external calendars.
 
 | Feature | Description |
 |---------|-------------|
-| **Google Calendar** | Two-way sync with Google Calendar |
-| **iCal export** | Export reservations to any calendar app |
-| **Block time slots** | Block availability from external calendar events |
-| **Outlook sync** | Microsoft 365 calendar integration |
+| **ICS link** | Generate a shareable ICS link for your calendar |
+| **Google Calendar** | Subscribe to reservations in Google Calendar |
+| **Apple Calendar** | Add reservations to iCal/Apple Calendar |
+| **Outlook sync** | Subscribe from Microsoft Outlook |
+| **Secure token** | Regenerate link anytime to revoke access |
 
-> Useful for: Viewing reservations alongside personal appointments, blocking vacation days automatically.
+> Useful for: Viewing reservations alongside personal appointments, sharing availability with team members.
+
+---
+
+### 📅 Calendar Import (Blocked Slots)
+
+**Status**: 📋 Planned
+
+Import external calendars to automatically block availability.
+
+| Feature | Description |
+|---------|-------------|
+| **ICS import** | Subscribe to external calendars (Google, Outlook, iCal) |
+| **Auto-block slots** | Automatically block rental availability during external events |
+| **Vacation sync** | Block dates from your personal calendar |
+| **Multiple sources** | Connect several external calendars |
+
+> Useful for: Blocking vacation days automatically, syncing with other booking platforms, preventing double-bookings.
 
 ---
 
@@ -204,9 +227,9 @@ Document equipment condition before and after rentals.
 
 ---
 
-### 🔗 Related Products
+### 🔗 Related Products & Accessories
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 17, 2026)
 
 Suggest complementary items to increase average order value.
 
@@ -214,8 +237,8 @@ Suggest complementary items to increase average order value.
 |---------|-------------|
 | **Product linking** | Associate related products (e.g., helmet with bike) |
 | **Storefront suggestions** | Display related items on product pages |
-| **Cart recommendations** | Suggest add-ons during checkout |
-| **Bidirectional links** | Optionally link products in both directions |
+| **Quick add to cart** | Customers can add accessories with one click |
+| **Automatic pricing** | Accessories use their own pricing tiers |
 
 > Useful for: Upselling accessories, safety equipment bundles, complete rental packages.
 
@@ -266,6 +289,8 @@ Have an idea that's not on this list?
 
 *This roadmap is a living document. Priorities may shift based on community feedback.*
 
-**Last updated**: January 16, 2025
+**Last updated**: January 17, 2026
+
+📋 **See what's already shipped in our [Changelog](CHANGELOG.md)**
 
 </div>

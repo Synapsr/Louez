@@ -9,6 +9,9 @@
  * Uses the WCAG luminance formula:
  * L = 0.299 * R + 0.587 * G + 0.114 * B
  *
+ * Uses a threshold of 0.55 (instead of 0.5) to favor white text
+ * on medium-dark colors like pink (#ec4899) or purple (#7724eb).
+ *
  * @param hexColor - A hex color string (with or without #)
  * @returns 'black' or 'white' for optimal text contrast
  */
@@ -29,7 +32,8 @@ export function getContrastColor(hexColor: string): 'black' | 'white' {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
 
   // Return white for dark colors, black for light colors
-  return luminance > 0.5 ? 'black' : 'white'
+  // Threshold of 0.55 favors white text on medium-dark backgrounds
+  return luminance > 0.55 ? 'black' : 'white'
 }
 
 /**

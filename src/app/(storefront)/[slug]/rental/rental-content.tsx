@@ -11,6 +11,7 @@ import {
   ChevronDown,
   Filter,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ProductCardAvailable } from '@/components/storefront/product-card-available'
 import { CartSidebar } from '@/components/storefront/cart-sidebar'
 import { DatePickerModal } from '@/components/storefront/date-picker-modal'
@@ -43,6 +45,7 @@ import {
 import type {
   ProductAvailability,
   AvailabilityResponse,
+  BusinessHoursValidation,
 } from '@/app/api/stores/[slug]/availability/route'
 
 interface PricingTier {
@@ -126,6 +129,7 @@ export function RentalContent({
   const [availability, setAvailability] = useState<
     Map<string, ProductAvailability>
   >(new Map())
+  const [businessHoursValidation, setBusinessHoursValidation] = useState<BusinessHoursValidation | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '')
   const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all')
@@ -170,6 +174,8 @@ export function RentalContent({
           const map = new Map<string, ProductAvailability>()
           data.products.forEach((p) => map.set(p.productId, p))
           setAvailability(map)
+          // Store business hours validation result
+          setBusinessHoursValidation(data.businessHoursValidation || null)
         }
       } catch (error) {
         console.error('Failed to fetch availability:', error)
@@ -362,6 +368,31 @@ export function RentalContent({
               </Button>
             </div>
           </div>
+
+          {/* Business Hours Warning */}
+          {businessHoursValidation && !businessHoursValidation.valid && (
+            <Alert variant="destructive" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
+              <AlertTriangle className="h-4 w-4 !text-orange-600 dark:!text-orange-400" />
+              <AlertTitle className="text-orange-900 dark:text-orange-100">
+                {t('businessHoursWarning.title')}
+              </AlertTitle>
+              <AlertDescription className="text-orange-800 dark:text-orange-200">
+                {businessHoursValidation.errors.map((error) => {
+                  // Parse error like "pickup_outside_hours" or "return_day_closed"
+                  const [action, ...reasonParts] = error.split('_')
+                  const reason = reasonParts.join('_')
+                  return (
+                    <span key={error} className="block">
+                      {t(`businessHoursWarning.${action}`)}: {t(`businessHoursWarning.reasons.${reason}`)}
+                    </span>
+                  )
+                })}
+                <span className="block mt-2 text-sm">
+                  {t('businessHoursWarning.suggestion')}
+                </span>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Filters */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>

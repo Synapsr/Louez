@@ -566,6 +566,43 @@
         "viewAsCustomer": "Voir côté client",
         "print": "Imprimer"
       },
+      "edit": {
+        "button": "Modifier",
+        "title": "Modifier la réservation",
+        "dates": "Dates",
+        "startDate": "Date de début",
+        "endDate": "Date de fin",
+        "items": "Articles",
+        "product": "Produit",
+        "qty": "Qté",
+        "unitPrice": "Prix unit.",
+        "total": "Total",
+        "addItem": "Ajouter un article",
+        "subtotal": "Sous-total",
+        "summary": "Récapitulatif",
+        "before": "Avant",
+        "after": "Après",
+        "difference": "Différence",
+        "deposit": "Caution",
+        "save": "Enregistrer",
+        "saved": "Réservation mise à jour",
+        "cannotRemoveLastItem": "Impossible de supprimer le dernier article",
+        "noItems": "Ajoutez au moins un article",
+        "datesRequired": "Les dates de début et de fin sont requises",
+        "lockPrice": "Figer le prix",
+        "unlockPrice": "Recalculer le prix",
+        "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
+        "adjustmentNegative": "Un remboursement de {amount} pourra être effectué."
+      },
+      "accessLink": {
+        "send": "Envoyer le lien",
+        "sendSms": "Envoyer par SMS",
+        "sendSuccess": "Lien d'accès envoyé au client",
+        "sendError": "Erreur lors de l'envoi du lien",
+        "smsSendSuccess": "Lien d'accès envoyé par SMS",
+        "smsSendError": "Erreur lors de l'envoi du SMS",
+        "noPhone": "Le client n'a pas de numéro de téléphone"
+      },
       "contract": {
         "title": "Contrat",
         "signed": "Signé le {date}",
@@ -654,6 +691,8 @@
         "customItem": {
           "title": "Articles personnalisés",
           "add": "Ajouter",
+          "button": "Sur mesure",
+          "units": "unité(s)",
           "badge": "Personnalisé",
           "empty": "Aucun article personnalisé ajouté",
           "dialogTitle": "Ajouter un article personnalisé",
@@ -686,6 +725,24 @@
           "priceUpdated": "Prix mis à jour",
           "priceReset": "Prix réinitialisé"
         },
+        "warnings": {
+          "advanceNotice": "Date de début avant le délai de préavis",
+          "advanceNoticeDetails": "Le préavis habituel est de {hours}h. Vous pouvez continuer malgré tout.",
+          "startDayClosed": "La date de début est un jour de fermeture",
+          "endDayClosed": "La date de fin est un jour de fermeture",
+          "dayClosedDetails": "Le magasin est normalement fermé ce jour-là.",
+          "startOutsideHours": "L'heure de début est en dehors des horaires d'ouverture",
+          "endOutsideHours": "L'heure de fin est en dehors des horaires d'ouverture",
+          "outsideHoursDetails": "Horaires habituels : {open} - {close}",
+          "startClosurePeriod": "La date de début tombe pendant une période de fermeture",
+          "endClosurePeriod": "La date de fin tombe pendant une période de fermeture",
+          "closurePeriodDetails": "Le magasin est en fermeture exceptionnelle.",
+          "canContinue": "En tant que gérant, vous pouvez créer cette réservation malgré les avertissements.",
+          "productConflict": "{name} : conflit de disponibilité",
+          "productConflictDetails": "Quantité demandée : {requested}, disponible sur cette période : {available}",
+          "conflictCanContinue": "Ces produits sont déjà réservés sur cette période. Vous pouvez continuer si vous gérez manuellement la disponibilité.",
+          "insufficientStock": "Stock insuffisant"
+        },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé"
       },
       "rejectDialog": {
@@ -708,7 +765,40 @@
         "returned": "Articles rendus",
         "note_updated": "Notes modifiées",
         "payment_added": "Paiement ajouté",
-        "payment_updated": "Paiement mis à jour"
+        "payment_updated": "Paiement mis à jour",
+        "payment_received": "Paiement en ligne reçu",
+        "payment_initiated": "Paiement en ligne initié",
+        "payment_failed": "Échec du paiement en ligne",
+        "payment_expired": "Paiement en ligne expiré",
+        "deposit_authorized": "Empreinte de caution créée",
+        "deposit_captured": "Caution prélevée",
+        "deposit_released": "Caution libérée",
+        "deposit_failed": "Échec de l'empreinte",
+        "access_link_sent": "Lien d'accès envoyé",
+        "modified": "Réservation modifiée",
+        "showAll": "Voir tout ({count} événements)",
+        "showLess": "Voir moins"
+      },
+      "smartActions": {
+        "paymentIncomplete": "Location non réglée ({remaining} restant)",
+        "depositNotCollected": "Caution non encaissée ({amount})",
+        "pickupConfirmTitle": "Confirmer le retrait",
+        "pickupConfirmDescription": "Confirmez que le client a récupéré le matériel loué.",
+        "warningPaymentTitle": "Paiement incomplet",
+        "warningPaymentDescription": "Il reste {remaining} à régler sur la location. Le client devrait normalement payer avant de récupérer le matériel.",
+        "warningDepositTitle": "Caution non encaissée",
+        "warningDepositDescription": "La caution de {amount} n'a pas encore été encaissée. Assurez-vous de l'encaisser avant la remise du matériel.",
+        "acknowledgePickupWarnings": "Je comprends et souhaite continuer malgré ces avertissements",
+        "confirmPickup": "Confirmer le retrait",
+        "returnConfirmTitle": "Confirmer le retour",
+        "returnConfirmDescription": "Vérifiez l'état du matériel et le résumé financier avant de confirmer le retour.",
+        "fullyPaid": "Intégralement payée",
+        "partiallyPaid": "{paid} sur {total} payé",
+        "collected": "encaissée",
+        "notCollected": "Non encaissée",
+        "toReturnToCustomer": "À restituer au client",
+        "returnQuestion": "Confirmez-vous que le matériel a été rendu en bon état ?",
+        "confirmReturn": "Confirmer le retour"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -767,12 +857,25 @@
         "deleteConfirmDescription": "Cette action est irréversible. Le paiement sera définitivement supprimé de l'historique.",
         "unpaidWarning": "Il reste {formattedAmount} à encaisser sur cette réservation",
         "allPaid": "Tous les paiements ont été effectués",
+        "allPaidBadge": "Payé",
+        "pendingBadge": "En attente",
+        "depositToReturnBadge": "Caution à rendre",
+        "toCollect": "À encaisser",
+        "fullyReturned": "Intégralement restituée",
+        "showAll": "Voir les {count} paiements",
         "types": {
           "rental": "Location",
           "deposit": "Caution",
           "depositReturn": "Restitution caution",
-          "damage": "Dommages"
+          "damage": "Dommages",
+          "depositHold": "Empreinte bancaire",
+          "depositCapture": "Caution prélevée",
+          "adjustment": "Ajustement"
         },
+        "type": "Type de paiement",
+        "recordAdjustmentDescription": "Enregistrez un ajustement de prix (positif ou négatif)",
+        "adjustmentHint": "Montant négatif pour un remboursement, positif pour un complément",
+        "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
         "methods": {
           "cash": "Espèces",
           "card": "Carte bancaire",
@@ -785,14 +888,77 @@
           "pending": "En attente",
           "completed": "Complété",
           "failed": "Échoué",
-          "refunded": "Remboursé"
-        }
+          "refunded": "Remboursé",
+          "authorized": "Autorisé",
+          "cancelled": "Annulé"
+        },
+        "statusAuthorized": "Autorisé",
+        "statusRefunded": "Remboursé",
+        "statusCancelled": "Annulé"
+      },
+      "onlinePayment": {
+        "title": "Paiement en ligne",
+        "received": "Reçu",
+        "pending": "En attente",
+        "paymentInProgress": "Paiement en cours",
+        "paymentInProgressDescription": "Le client a été redirigé vers la page de paiement. En attente de confirmation.",
+        "rentalPayment": "Paiement de location",
+        "paidOn": "Payé le",
+        "cardSavedForDeposit": "Carte enregistrée pour la caution",
+        "cardNotSaved": "La carte n'a pas pu être enregistrée. Le client devra fournir un autre moyen de paiement pour la caution.",
+        "transactionId": "Transaction"
+      },
+      "deposit": {
+        "title": "Caution (Empreinte)",
+        "description": "Gérez l'empreinte bancaire pour la caution de cette réservation",
+        "amount": "Montant de la caution",
+        "status": {
+          "none": "Non requise",
+          "pending": "Carte non enregistrée",
+          "cardSaved": "Prêt",
+          "authorized": "Empreinte active",
+          "captured": "Prélevée",
+          "released": "Libérée",
+          "failed": "Échec"
+        },
+        "pendingTitle": "Carte non enregistrée",
+        "pendingDescription": "Le paiement a été effectué mais la carte n'a pas pu être sauvegardée pour la caution. Vous devrez collecter la caution manuellement ou demander au client de fournir une carte.",
+        "cardSavedTitle": "Carte enregistrée",
+        "cardSavedDescription": "La carte du client est enregistrée. Vous pouvez créer l'empreinte bancaire pour bloquer le montant de la caution.",
+        "authorizedTitle": "Empreinte active",
+        "authorizedDescription": "Le montant de la caution est bloqué sur la carte du client. Vous pouvez le prélever en cas de dommages ou le libérer à la fin de la location.",
+        "capturedDescription": "Le montant de la caution a été prélevé sur la carte du client.",
+        "releasedDescription": "L'empreinte a été libérée, aucune retenue n'a été effectuée.",
+        "failedDescription": "L'autorisation a échoué. Le client devra peut-être utiliser une autre carte.",
+        "expiresIn": "Expire {time}",
+        "expired": "L'autorisation a expiré",
+        "createHold": "Créer l'empreinte",
+        "release": "Libérer la caution",
+        "capture": "Prélever",
+        "holdCreated": "Empreinte créée avec succès",
+        "released": "Caution libérée avec succès",
+        "captured": "Caution prélevée avec succès",
+        "captureTitle": "Prélever la caution",
+        "captureDescription": "Prélevez tout ou partie de la caution pour couvrir des dommages ou pertes.",
+        "maxCapturable": "Montant maximum",
+        "captureAmount": "Montant à prélever",
+        "captureReason": "Motif du prélèvement",
+        "captureReasonPlaceholder": "Décrivez les dommages ou la raison du prélèvement...",
+        "captureReasonHint": "Ce motif sera enregistré dans l'historique et visible par le client.",
+        "confirmCapture": "Confirmer le prélèvement",
+        "releaseTitle": "Libérer la caution",
+        "releaseDescription": "Confirmez-vous vouloir libérer la caution de {amount} ? L'empreinte sera annulée et le montant ne sera pas prélevé.",
+        "confirmRelease": "Libérer la caution",
+        "invalidCaptureAmount": "Montant invalide",
+        "captureExceedsDeposit": "Le montant dépasse la caution",
+        "reasonRequired": "Veuillez indiquer un motif"
       },
       "paymentStatus": {
         "paid": "Payé",
         "unpaid": "Non payé",
         "partial": "Partiel"
       },
+      "paymentInProgress": "Paiement en cours",
       "paymentBadge": {
         "paid": "Payé",
         "partial": "Partiel",
@@ -807,6 +973,10 @@
       "pendingCard": {
         "title": "Demande en attente",
         "description": "Ce client souhaite réserver. Acceptez ou refusez sa demande."
+      },
+      "paymentPendingCard": {
+        "title": "Paiement en cours",
+        "description": "Le client est en train de finaliser son paiement. La réservation sera automatiquement confirmée une fois le paiement reçu."
       },
       "confirmedCard": {
         "title": "Réservation confirmée",
@@ -1012,6 +1182,34 @@
         "completed": "Terminée",
         "cancelled": "Annulée",
         "rejected": "Refusée"
+      },
+      "export": {
+        "button": "Exporter le calendrier",
+        "title": "Exporter vers un calendrier",
+        "description": "Synchronisez vos reservations avec votre calendrier favori en copiant le lien ci-dessous.",
+        "urlLabel": "Lien du calendrier ICS",
+        "loading": "Chargement...",
+        "instructions": {
+          "title": "Comment ajouter ce calendrier ?",
+          "google": {
+            "step1": "Ouvrez Google Agenda",
+            "step2": "Cliquez sur le + a cote de \"Autres agendas\" puis \"A partir de l'URL\"",
+            "step3": "Collez le lien et cliquez sur \"Ajouter un agenda\"",
+            "openLink": "Ouvrir Google Agenda"
+          },
+          "apple": {
+            "step1": "Ouvrez l'app Calendrier sur Mac ou iPhone",
+            "step2": "Fichier > Nouvel abonnement a un calendrier (Mac) ou Ajouter un compte > Autre > Ajouter un cal. avec abonnement (iOS)",
+            "step3": "Collez le lien et validez"
+          },
+          "outlook": {
+            "step1": "Ouvrez Outlook Calendar",
+            "step2": "Cliquez sur \"Ajouter un calendrier\" puis \"S'abonner a partir du web\"",
+            "step3": "Collez le lien et donnez un nom au calendrier"
+          }
+        },
+        "regenerate": "Regenerer le lien",
+        "regenerateHint": "Regenerer le lien invalidera les anciens liens partages."
       }
     },
     "statistics": {
@@ -1174,6 +1372,7 @@
       },
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",
+      "settingsSaved": "Paramètres enregistrés",
       "nav": {
         "storeDescription": "Informations et configuration",
         "appearanceDescription": "Logo, couleurs et thème",
@@ -1298,6 +1497,8 @@
         "modeRequestDescription": "Vous validez les demandes manuellement",
         "modePayment": "Paiement immédiat",
         "modePaymentDescription": "Les clients paient immédiatement",
+        "pendingBlocksAvailability": "Bloquer la disponibilité pendant une demande",
+        "pendingBlocksAvailabilityDescription": "Quand activé, une demande de réservation en attente bloque immédiatement la disponibilité du produit. Désactivez si vous souhaitez permettre plusieurs demandes pour les mêmes dates.",
         "pricingMode": "Unité de tarification",
         "pricingDay": "Par jour",
         "pricingHour": "Par heure",
@@ -1312,7 +1513,14 @@
           "week": "En semaines"
         },
         "requireAddress": "Demander l'adresse du client",
-        "requireAddressDescription": "Ajoute une étape au checkout pour collecter l'adresse postale"
+        "requireAddressDescription": "Ajoute une étape au checkout pour collecter l'adresse postale",
+        "stripeRequired": {
+          "title": "Configuration Stripe requise",
+          "description": "Le mode paiement immédiat nécessite Stripe pour encaisser les paiements en ligne.",
+          "benefits": "La configuration ne prend que quelques minutes. Vous pourrez accepter les cartes bancaires et sécuriser vos réservations avec des cautions.",
+          "configureStripe": "Configurer Stripe",
+          "keepRequest": "Rester en mode demande"
+        }
       },
       "emailSettings": {
         "title": "Emails",
@@ -1424,6 +1632,7 @@
           "deleteDescription": "Cette action est irréversible."
         },
         "updated": "Horaires mis à jour",
+        "saved": "Horaires enregistrés",
         "closureAdded": "Période de fermeture ajoutée",
         "closureUpdated": "Période de fermeture mise à jour",
         "closureDeleted": "Période de fermeture supprimée",
@@ -1514,7 +1723,91 @@
         "taxNumber": "Numéro de TVA",
         "taxNumberPlaceholder": "FR12345678901",
         "taxNumberDescription": "Votre numéro de TVA intracommunautaire (affiché sur les contrats)",
-        "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client."
+        "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client.",
+        "saved": "Paramètres de taxes enregistrés"
+      },
+      "payments": {
+        "title": "Paiements",
+        "description": "Configurez les paiements en ligne pour votre boutique",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Acceptez les paiements par carte bancaire directement sur votre boutique",
+        "notConnectedDescription": "Connectez votre compte Stripe pour accepter les paiements en ligne. Vous serez redirigé vers Stripe pour compléter la configuration.",
+        "activeDescription": "Votre compte Stripe est connecté et opérationnel. Vous pouvez accepter les paiements en ligne.",
+        "incompleteDescription": "Votre configuration Stripe est incomplète. Veuillez terminer la configuration pour accepter les paiements.",
+        "connectStripe": "Connecter Stripe",
+        "completeSetup": "Terminer la configuration",
+        "openDashboard": "Tableau de bord Stripe",
+        "sync": "Synchroniser",
+        "synced": "Statut synchronisé",
+        "disconnect": "Déconnecter",
+        "disconnected": "Compte Stripe déconnecté",
+        "disconnectTitle": "Déconnecter Stripe ?",
+        "disconnectDescription": "Vous ne pourrez plus accepter de paiements en ligne. Les paiements existants ne seront pas affectés.",
+        "cancel": "Annuler",
+        "status": {
+          "active": "Actif",
+          "incomplete": "Incomplet"
+        },
+        "callback": {
+          "successTitle": "Stripe connecté !",
+          "successDescription": "Votre compte Stripe est maintenant connecté. Vous pouvez accepter les paiements en ligne.",
+          "incompleteTitle": "Configuration incomplète",
+          "incompleteDescription": "Certaines informations sont manquantes. Vous pourrez terminer la configuration plus tard.",
+          "backToSettings": "Retour aux paramètres"
+        },
+        "refresh": {
+          "title": "Lien expiré",
+          "description": "Le lien de configuration a expiré. Veuillez réessayer depuis les paramètres.",
+          "backToSettings": "Retour aux paramètres"
+        },
+        "flowExplanation": {
+          "title": "Parcours de réservation",
+          "subtitle": "Voici ce que vivent vos clients selon votre configuration",
+          "currentFlow": "Parcours actuel",
+          "modes": {
+            "request": "Mode demande",
+            "instant": "Paiement immédiat",
+            "stripeActive": "Stripe actif",
+            "configRequired": "Configuration requise"
+          },
+          "steps": {
+            "requestSubmitted": "Le client soumet une demande de réservation",
+            "youReview": "Vous recevez un email et examinez la demande",
+            "acceptOrReject": "Vous acceptez ou refusez la demande",
+            "paymentOnSite": "Le client paie sur place (espèces, CB, virement...)",
+            "paymentOnlineOrSite": "Le client paie en ligne depuis son espace ou sur place",
+            "customerPays": "Le client paie immédiatement par carte bancaire",
+            "reservationConfirmed": "La réservation est automatiquement confirmée",
+            "bothNotified": "Vous et le client recevez une confirmation"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Acceptez les paiements en ligne",
+              "description": "Activez Stripe pour permettre à vos clients de payer par carte. Vous pourrez aussi envoyer des liens de paiement par email ou SMS.",
+              "action": "Configurer Stripe"
+            },
+            "instantPayment": {
+              "title": "Passez au paiement immédiat ?",
+              "description": "Pour automatiser complètement vos réservations, activez le mode paiement immédiat dans les paramètres de votre boutique."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Configuration incomplète",
+              "description": "Le mode paiement immédiat est activé mais Stripe n'est pas configuré. Vos clients ne pourront pas finaliser leurs réservations."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Une fois la demande acceptée, votre client peut payer en ligne depuis son espace client. Vous pouvez aussi lui envoyer un lien de paiement par email ou SMS, ou encaisser sur place.",
+            "instantPayment": "Configuration optimale ! Vos réservations sont entièrement automatisées. Le paiement sécurise immédiatement la réservation."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Besoin de valider manuellement ?",
+              "description": "Le mode demande vous permet de vérifier chaque réservation avant d'encaisser. Modifiable dans les paramètres de la boutique."
+            }
+          }
+        }
       },
       "subscriptionSettings": {
         "title": "Abonnement",
@@ -1850,6 +2143,17 @@
         "limited": "{count} restant(s)",
         "unavailable": "Non disponible",
         "inCart": "Dans le panier"
+      },
+      "businessHoursWarning": {
+        "title": "Horaires non compatibles",
+        "pickup": "Retrait",
+        "return": "Retour",
+        "reasons": {
+          "outside_hours": "en dehors des heures d'ouverture",
+          "day_closed": "jour de fermeture",
+          "closure_period": "période de fermeture exceptionnelle"
+        },
+        "suggestion": "Modifiez vos dates pour respecter les horaires d'ouverture, sinon la réservation sera refusée."
       }
     },
     "productModal": {
@@ -1968,7 +2272,24 @@
         "total": "Total à payer",
         "savingsBanner": "Vous économisez {amount} grâce à la réduction longue durée"
       },
-      "depositInfo": "Une empreinte bancaire de {amount} sera réalisée à titre de caution. Cette somme ne sera pas débitée et sera libérée au retour du matériel."
+      "depositInfo": "Une caution de {amount} est demandée.",
+      "depositLabel": "Caution (empreinte)",
+      "depositAuthorizationInfo": "Votre carte sera enregistrée. Une empreinte bancaire sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
+      "success": {
+        "confirmedTitle": "Paiement confirmé !",
+        "confirmedDescription": "Votre paiement a été accepté. Vous recevrez un email de confirmation.",
+        "pendingTitle": "En attente de paiement",
+        "pendingDescription": "Votre réservation a été créée et est en attente de confirmation du paiement.",
+        "reservationNumber": "Réservation",
+        "dates": "Dates",
+        "total": "Total",
+        "depositSaved": "Carte enregistrée pour la caution",
+        "depositSavedDescription": "Votre carte a été enregistrée. Une empreinte bancaire de {amount} sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
+        "deposit": "Caution",
+        "items": "Produits réservés",
+        "emailSent": "Un email de confirmation a été envoyé à {email}",
+        "backToStore": "Retour à la boutique"
+      }
     },
     "confirmation": {
       "title": "Réservation confirmée !",
@@ -2029,6 +2350,8 @@
       "myReservations": "Mes réservations",
       "noReservations": "Aucune réservation",
       "noReservationsDescription": "Vous n'avez pas encore de réservations",
+      "noHistory": "Aucun historique",
+      "noHistoryDescription": "Vos réservations terminées apparaîtront ici",
       "viewCatalog": "Voir le catalogue",
       "itemCount": "{count} article(s)",
       "reservationDetail": "Détail de la réservation",
@@ -2053,6 +2376,8 @@
         "pendingDescription": "Votre demande est en cours de traitement",
         "confirmed": "Confirmée",
         "confirmedDescription": "Votre réservation est confirmée",
+        "allSet": "Tout est en ordre",
+        "allSetDescription": "Votre réservation est confirmée et payée. Nous vous attendons à la date et l'heure prévues.",
         "ongoing": "En cours",
         "ongoingDescription": "Location en cours",
         "completed": "Terminée",
@@ -2068,7 +2393,35 @@
       "paymentPaid": "Payé",
       "paymentPending": "Non payé",
       "amountPaid": "Montant payé",
-      "securityNote": "Connexion sécurisée par email. Aucun mot de passe requis."
+      "securityNote": "Connexion sécurisée par email. Aucun mot de passe requis.",
+      "payNow": "Payer maintenant",
+      "paymentInProgress": "Paiement en cours de traitement",
+      "paymentRequired": "Paiement requis",
+      "confirmedAwaitingPayment": "En attente de paiement",
+      "paymentHistory": {
+        "title": "Historique des paiements",
+        "noPayments": "Aucun paiement enregistré",
+        "types": {
+          "rental": "Location",
+          "deposit": "Caution",
+          "deposit_return": "Remboursement caution",
+          "damage": "Dommages"
+        },
+        "methods": {
+          "stripe": "Carte en ligne",
+          "cash": "Espèces",
+          "card": "Carte bancaire",
+          "transfer": "Virement",
+          "check": "Chèque",
+          "other": "Autre"
+        },
+        "status": {
+          "completed": "Payé",
+          "pending": "En attente",
+          "failed": "Échoué",
+          "refunded": "Remboursé"
+        }
+      }
     },
     "footer": {
       "description": "Location de matériel simple et efficace.",
@@ -2188,14 +2541,15 @@
       "recommended": "Recommandé",
       "requestModeDescription": "Les clients envoient une demande. Vous validez manuellement et gérez le paiement vous-même (espèces, virement, CB sur place).",
       "paymentMode": "Paiement en ligne",
-      "comingSoon": "Bientôt disponible",
-      "paymentModeDescription": "Les clients paient directement lors de la réservation. Cette fonctionnalité sera disponible prochainement.",
+      "paymentModeDescription": "Les clients paient directement lors de la réservation. Encaissez automatiquement via Stripe.",
       "howItWorks": "Comment ça fonctionne ?",
       "step1": "1. Le client fait une demande de réservation",
       "step2": "2. Vous recevez un email de notification",
       "step3": "3. Vous acceptez ou refusez la demande",
       "step4": "4. Le client reçoit la confirmation par email",
       "step5": "5. Vous gérez le paiement lors du retrait",
+      "paymentSetupTitle": "Configuration rapide",
+      "paymentSetupDescription": "Après la création de votre boutique, rendez-vous dans Paramètres → Paiement en ligne pour connecter votre compte Stripe et commencer à recevoir des paiements.",
       "configComplete": "Configuration terminée !"
     },
     "complete": {
@@ -2260,7 +2614,8 @@
       "deposit": "Caution",
       "total": "Total",
       "totalToPay": "Total à payer",
-      "question": "Une question ? Contactez-nous :"
+      "question": "Une question ? Contactez-nous :",
+      "summary": "Récapitulatif"
     },
     "verificationCode": {
       "subject": "Votre code de connexion: {code}",
@@ -2334,6 +2689,14 @@
       "accessDescription": "En acceptant cette invitation, vous pourrez accéder au tableau de bord de la boutique et gérer les réservations, produits et clients.",
       "acceptButton": "Accepter l'invitation",
       "expiry": "Cette invitation expire dans 7 jours. Si vous n'avez pas demandé à rejoindre cette équipe, vous pouvez ignorer cet email."
+    },
+    "instantAccess": {
+      "subject": "Accédez à votre réservation #{number}",
+      "title": "Accédez à votre réservation",
+      "body": "Cliquez sur le bouton ci-dessous pour accéder aux détails de votre réservation #{number}.",
+      "paymentPending": "Un paiement est en attente pour cette réservation. Vous pouvez payer en ligne en toute sécurité.",
+      "viewAndPay": "Voir et payer",
+      "linkValid": "Ce lien est valable 30 jours et peut être utilisé plusieurs fois."
     },
     "baseLayout": {
       "sentBy": "Cet email a été envoyé par {storeName}",
@@ -2493,6 +2856,22 @@
       "blurDescription": "Passez au plan {plan} pour accéder à tous vos clients.",
       "bannerAtLimit": "Limite de clients atteinte",
       "bannerNearLimit": "Vous approchez de la limite de clients"
+    },
+    "sms": {
+      "limitReachedTitle": "Limite de SMS atteinte",
+      "limitReachedDescription": "Vous avez atteint la limite de {limit} SMS ce mois-ci.",
+      "overLimitTitle": "Vos SMS décollent !",
+      "overLimitDescription": "Vous avez envoyé {count} SMS mais votre plan actuel en autorise {limit}.",
+      "successMessage": "Votre communication s'intensifie !",
+      "successSubtext": "Plus de SMS = meilleure relation client. Passez à la vitesse supérieure.",
+      "upgradeDescription": "Passez au plan {plan} pour envoyer plus de SMS à vos clients.",
+      "benefit1": "Jusqu'à 50 SMS/mois avec {plan}",
+      "benefit2": "Notifications automatiques",
+      "benefit3": "Rappels de réservation",
+      "blurTitle": "SMS bloqués",
+      "blurDescription": "Passez au plan {plan} pour continuer à envoyer des SMS.",
+      "bannerAtLimit": "Limite de SMS du mois atteinte",
+      "bannerNearLimit": "Vous approchez de la limite de SMS"
     }
   },
   "errors": {
@@ -2512,9 +2891,12 @@
     "emailAlreadyExists": "Un client avec cet email existe déjà",
     "customerHasReservations": "Impossible de supprimer un client avec des réservations",
     "cannotCancelReservation": "Cette réservation ne peut pas être annulée",
+    "cannotEditCompletedReservation": "Les réservations terminées ne peuvent pas être modifiées",
+    "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
     "productRequired": "Produit requis",
     "customerRequired": "Client requis",
     "productUnavailable": "Produit non disponible: {name}",
+    "productNoLongerAvailable": "Le produit {name} n'est plus disponible pour ces dates. Une autre réservation a été effectuée entre-temps.",
     "insufficientStock": "Stock insuffisant pour: {name} ({count} disponibles)",
     "createCustomerError": "Erreur lors de la création du client",
     "updateCustomerError": "Erreur lors de la mise à jour du client",
@@ -2541,6 +2923,36 @@
     "tryAgain": "Réessayer",
     "goBack": "Retour",
     "goHome": "Retour à l'accueil",
-    "loading": "Chargement..."
+    "loading": "Chargement...",
+    "noStripeAccount": "Aucun compte Stripe connecté",
+    "stripe": {
+      "onboardingFailed": "Erreur lors de la configuration Stripe",
+      "verificationFailed": "Erreur lors de la vérification du compte Stripe",
+      "syncFailed": "Erreur lors de la synchronisation",
+      "dashboardLinkFailed": "Erreur lors de l'ouverture du tableau de bord Stripe",
+      "alreadyConnected": "Compte Stripe déjà connecté",
+      "noChargeToRefund": "Aucun paiement Stripe à rembourser",
+      "alreadyRefunded": "Ce paiement a déjà été remboursé",
+      "refundExceedsCharge": "Le montant du remboursement dépasse le montant du paiement",
+      "refundFailed": "Erreur lors du remboursement",
+      "noSavedCard": "Aucune carte enregistrée pour ce client",
+      "invalidDepositStatus": "Le statut de la caution ne permet pas cette opération",
+      "noDepositRequired": "Aucune caution n'est requise pour cette réservation",
+      "authorizationFailed": "Impossible de créer l'empreinte bancaire",
+      "noActiveAuthorization": "Aucune empreinte active pour cette réservation",
+      "captureFailed": "Impossible de prélever la caution",
+      "releaseFailed": "Impossible de libérer la caution"
+    },
+    "reasonRequired": "Veuillez indiquer un motif",
+    "invalidAmount": "Montant invalide",
+    "invalidOrExpiredToken": "Ce lien est invalide ou a expiré. Veuillez demander un nouveau lien d'accès.",
+    "alreadyPaid": "Cette réservation est déjà payée.",
+    "paymentNotAvailable": "Le paiement en ligne n'est pas disponible pour cette boutique.",
+    "paymentSessionError": "Erreur lors de la création de la session de paiement",
+    "accessLinkSendFailed": "Erreur lors de l'envoi du lien d'accès",
+    "smsNotConfigured": "Les SMS ne sont pas configurés",
+    "smsLimitReached": "Limite de SMS atteinte. Passez à un plan supérieur pour continuer à envoyer des SMS.",
+    "customerNoPhone": "Le client n'a pas de numéro de téléphone",
+    "smsSendFailed": "Erreur lors de l'envoi du SMS"
   }
 }

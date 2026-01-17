@@ -1,9 +1,10 @@
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { customers, products } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { customers, products, reservations } from '@/lib/db/schema'
+import { eq, and, inArray, gte } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
+import { subDays } from 'date-fns'
 
 import { NewReservationForm } from './new-reservation-form'
 
@@ -26,6 +27,35 @@ async function getProductsWithTiers(storeId: string) {
   return result.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 }
 
+// Fetch existing reservations for availability conflict checking
+async function getActiveReservations(storeId: string) {
+  // Get reservations that are active or upcoming (not cancelled/rejected/completed)
+  // Only look at reservations from 30 days ago to avoid loading too much data
+  const thirtyDaysAgo = subDays(new Date(), 30)
+
+  return db.query.reservations.findMany({
+    where: and(
+      eq(reservations.storeId, storeId),
+      inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+      gte(reservations.endDate, thirtyDaysAgo)
+    ),
+    with: {
+      items: {
+        columns: {
+          productId: true,
+          quantity: true,
+        },
+      },
+    },
+    columns: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      status: true,
+    },
+  })
+}
+
 export default async function NewReservationPage() {
   const t = await getTranslations('dashboard.reservations')
   const store = await getCurrentStore()
@@ -34,9 +64,10 @@ export default async function NewReservationPage() {
     redirect('/onboarding')
   }
 
-  const [customersList, productsList] = await Promise.all([
+  const [customersList, productsList, activeReservations] = await Promise.all([
     getCustomers(store.id),
     getProductsWithTiers(store.id),
+    getActiveReservations(store.id),
   ])
 
   return (
@@ -56,6 +87,7 @@ export default async function NewReservationPage() {
         pricingMode={store.settings?.pricingMode || 'day'}
         businessHours={store.settings?.businessHours}
         advanceNotice={store.settings?.advanceNotice || 0}
+        existingReservations={activeReservations}
       />
     </div>
   )

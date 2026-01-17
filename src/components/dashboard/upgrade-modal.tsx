@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Check,
   Zap,
+  MessageSquare,
 } from 'lucide-react'
 import {
   Dialog,
@@ -26,7 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-export type LimitType = 'products' | 'reservations' | 'customers'
+export type LimitType = 'products' | 'reservations' | 'customers' | 'sms'
 
 interface UpgradeModalProps {
   open: boolean
@@ -42,6 +43,7 @@ const LIMIT_ICONS = {
   products: Package,
   reservations: CalendarCheck,
   customers: Users,
+  sms: MessageSquare,
 }
 
 export function UpgradeModal({

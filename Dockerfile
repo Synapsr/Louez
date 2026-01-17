@@ -6,6 +6,11 @@
 # Optimized multi-stage build for Next.js standalone output
 # Image size: ~150MB | Startup: <5s | Non-root user
 #
+# Features:
+# - Automatic database migrations at container startup
+# - Health checks for container orchestrators
+# - Non-root user for security
+#
 # Build:  docker build -t louez .
 # Run:    docker run -p 3000:3000 --env-file .env louez
 # =============================================================================
@@ -44,7 +49,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Enable pnpm and build
+# Build the application
 RUN corepack enable pnpm && pnpm build
 
 # -----------------------------------------------------------------------------
@@ -73,6 +78,14 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy database migration script and SQL files
+COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
+COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db/migrations ./migrations
+
+# Copy and prepare entrypoint script
+COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
+RUN chmod +x ./docker/entrypoint.sh
+
 # Switch to non-root user
 USER nextjs
 
@@ -80,9 +93,8 @@ USER nextjs
 EXPOSE 3000
 
 # Health check for container orchestrators (EasyPanel, Dokploy, Kubernetes)
-# Uses $PORT env var (defaults to 3000) to support platforms that override the port
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "wget --no-verbose --tries=1 --spider http://localhost:\${PORT:-3000}/api/health || exit 1"
 
-# Start Next.js server
-CMD ["node", "server.js"]
+# Start with entrypoint (runs migrations then starts server)
+ENTRYPOINT ["./docker/entrypoint.sh"]

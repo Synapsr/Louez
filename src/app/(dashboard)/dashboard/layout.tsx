@@ -1,8 +1,10 @@
 import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import { auth } from '@/lib/auth'
 import { getCurrentStore, getUserStores } from '@/lib/store-context'
 import { Sidebar, MobileHeader } from '@/components/dashboard/sidebar'
 import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider'
+import { OnboardingCelebration } from '@/components/dashboard/onboarding-celebration'
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions'
 
 export default async function DashboardMainLayout({
@@ -57,6 +59,9 @@ export default async function DashboardMainLayout({
         <main className="lg:pl-64">
           <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
         </main>
+        <Suspense fallback={null}>
+          <OnboardingCelebration />
+        </Suspense>
       </div>
     </ReservationPollingProvider>
   )

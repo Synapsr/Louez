@@ -8,10 +8,9 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { getTranslations } from 'next-intl/server'
 import { getCurrencySymbol } from '@/lib/utils'
+import { isSmsConfigured } from '@/lib/sms'
 import {
   User,
-  Mail,
-  Phone,
   MapPin,
   Calendar,
   Package,
@@ -37,10 +36,10 @@ import {
 } from '@/components/ui/table'
 
 import { ReservationHeader } from './reservation-header'
-import { ReservationActions } from './reservation-actions'
+import { SmartReservationActions } from './smart-reservation-actions'
 import { ReservationNotes } from './reservation-notes'
-import { ActivityTimeline } from './activity-timeline'
-import { PaymentSummary } from './payment-summary'
+import { ActivityTimelineV2 } from './activity-timeline-v2'
+import { UnifiedPaymentSection } from './unified-payment-section'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -112,11 +111,16 @@ export default async function ReservationDetailPage({
     .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0)
 
-  const isRentalFullyPaid = rentalPaid >= rental
-  const isDepositFullyCollected = depositCollected >= deposit
+  // Check if there's an online payment pending (Stripe checkout in progress)
+  const hasOnlinePaymentPending = reservation.payments.some(
+    (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending'
+  )
 
   // Check if contract exists
   const hasContract = reservation.documents.some((d) => d.type === 'contract')
+
+  // Check if SMS is configured
+  const smsConfigured = isSmsConfigured()
 
   return (
     <div className="space-y-6">
@@ -133,6 +137,7 @@ export default async function ReservationDetailPage({
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
+          phone: reservation.customer.phone,
         }}
         storeSlug={store.slug}
         rentalAmount={rental}
@@ -143,6 +148,7 @@ export default async function ReservationDetailPage({
         totalAmount={parseFloat(reservation.totalAmount)}
         hasContract={hasContract}
         currency={currency}
+        smsConfigured={smsConfigured}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -314,28 +320,35 @@ export default async function ReservationDetailPage({
             </CardContent>
           </Card>
 
-          {/* Activity Timeline - Moved to main column */}
-          <ActivityTimeline
+          {/* Activity Timeline with fade effect */}
+          <ActivityTimelineV2
             activities={reservation.activity}
             reservationCreatedAt={reservation.createdAt}
             reservationSource={reservation.source}
+            initialVisibleCount={3}
           />
         </div>
 
         {/* Sidebar - Right Column */}
         <div className="space-y-4">
-          {/* Status Actions - Contextual based on state */}
-          <ReservationActions
+          {/* Smart Actions - Contextual with intelligent warnings */}
+          <SmartReservationActions
             reservationId={reservation.id}
             status={status}
             startDate={startDate}
             endDate={endDate}
-            isDepositCollected={isDepositFullyCollected}
-            isRentalPaid={isRentalFullyPaid}
+            rentalAmount={rental}
+            rentalPaid={rentalPaid}
+            depositAmount={deposit}
+            depositCollected={depositCollected}
+            depositReturned={depositReturned}
+            hasOnlinePaymentPending={hasOnlinePaymentPending}
+            hasActiveAuthorization={reservation.depositStatus === 'authorized'}
+            currency={currency}
           />
 
-          {/* Payment Summary */}
-          <PaymentSummary
+          {/* Unified Payment Section - Combines all payment info */}
+          <UnifiedPaymentSection
             reservationId={reservation.id}
             subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
@@ -343,6 +356,9 @@ export default async function ReservationDetailPage({
             payments={reservation.payments}
             status={status}
             currency={currency}
+            depositStatus={reservation.depositStatus as 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed' | null}
+            depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
+            stripePaymentMethodId={reservation.stripePaymentMethodId}
           />
 
           {/* Notes */}

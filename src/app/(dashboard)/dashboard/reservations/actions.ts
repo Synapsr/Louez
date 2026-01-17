@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments } from '@/lib/db/schema'
+import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes } from '@/lib/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
@@ -14,7 +14,9 @@ import {
   sendReservationConfirmationEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
+  sendInstantAccessEmail,
 } from '@/lib/email/send'
+import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import { getCurrencySymbol } from '@/lib/utils'
@@ -24,12 +26,13 @@ import {
   generatePricingBreakdown,
   type PricingTier,
 } from '@/lib/pricing'
+import type { PricingBreakdown } from '@/types/store'
 
 async function getStoreForUser() {
   return getCurrentStore()
 }
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified'
 
 async function logReservationActivity(
   reservationId: string,
@@ -631,10 +634,285 @@ export async function getStoreProducts() {
 }
 
 // ============================================================================
+// Reservation Edit Actions
+// ============================================================================
+
+interface UpdateReservationItem {
+  id?: string // Existing item ID (for update) or undefined (for new)
+  productId?: string | null // null for custom items
+  quantity: number
+  unitPrice: number
+  depositPerUnit: number
+  isManualPrice?: boolean
+  productSnapshot: {
+    name: string
+    description?: string | null
+    images?: string[]
+  }
+}
+
+interface UpdateReservationData {
+  startDate?: Date
+  endDate?: Date
+  items?: UpdateReservationItem[]
+}
+
+export async function updateReservation(
+  reservationId: string,
+  data: UpdateReservationData
+) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      items: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  // Cannot edit completed reservations
+  if (reservation.status === 'completed') {
+    return { error: 'errors.cannotEditCompletedReservation' }
+  }
+
+  // Store previous state for activity log
+  const previousState = {
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
+    subtotalAmount: parseFloat(reservation.subtotalAmount),
+    depositAmount: parseFloat(reservation.depositAmount),
+    totalAmount: parseFloat(reservation.totalAmount),
+    items: reservation.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: parseFloat(item.unitPrice),
+      totalPrice: parseFloat(item.totalPrice),
+      productSnapshot: item.productSnapshot,
+    })),
+  }
+
+  // Determine new dates
+  const newStartDate = data.startDate || reservation.startDate
+  const newEndDate = data.endDate || reservation.endDate
+
+  // Get store pricing mode
+  const storePricingMode = store.settings?.pricingMode || 'day'
+  const newDuration = calculateDuration(newStartDate, newEndDate, storePricingMode)
+
+  // Calculate new totals
+  let newSubtotalAmount = 0
+  let newDepositAmount = 0
+
+  // Process items
+  if (data.items && data.items.length > 0) {
+    // Delete existing items
+    await db.delete(reservationItems).where(
+      eq(reservationItems.reservationId, reservationId)
+    )
+
+    // Insert new items
+    for (const item of data.items) {
+      let pricingBreakdown: PricingBreakdown | null = null
+      let finalUnitPrice = item.unitPrice
+      let totalPrice = item.unitPrice * newDuration * item.quantity
+
+      // If not manual price and has a productId, calculate with tiers
+      if (!item.isManualPrice && item.productId) {
+        const product = await db.query.products.findFirst({
+          where: eq(products.id, item.productId),
+          with: { pricingTiers: true },
+        })
+
+        if (product) {
+          const effectivePricingMode = product.pricingMode || storePricingMode
+          const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration,
+            discountPercent: parseFloat(tier.discountPercent),
+            displayOrder: tier.displayOrder || 0,
+          }))
+
+          const pricing = {
+            basePrice: parseFloat(product.price),
+            deposit: parseFloat(product.deposit || '0'),
+            pricingMode: effectivePricingMode,
+            tiers,
+          }
+
+          const priceResult = calculateRentalPrice(pricing, newDuration, item.quantity)
+          pricingBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
+          finalUnitPrice = priceResult.effectivePricePerUnit
+          totalPrice = priceResult.subtotal
+        }
+      } else if (item.isManualPrice) {
+        pricingBreakdown = {
+          basePrice: item.unitPrice,
+          effectivePrice: item.unitPrice,
+          duration: newDuration,
+          pricingMode: storePricingMode,
+          discountPercent: null,
+          discountAmount: 0,
+          tierApplied: null,
+          taxRate: null,
+          taxAmount: null,
+          subtotalExclTax: null,
+          subtotalInclTax: null,
+          isManualOverride: true,
+        }
+      }
+
+      const itemDeposit = item.depositPerUnit * item.quantity
+      newSubtotalAmount += totalPrice
+      newDepositAmount += itemDeposit
+
+      await db.insert(reservationItems).values({
+        id: nanoid(),
+        reservationId,
+        productId: item.productId || null,
+        isCustomItem: !item.productId,
+        quantity: item.quantity,
+        unitPrice: finalUnitPrice.toFixed(2),
+        depositPerUnit: item.depositPerUnit.toFixed(2),
+        totalPrice: totalPrice.toFixed(2),
+        pricingBreakdown,
+        productSnapshot: {
+          name: item.productSnapshot.name,
+          description: item.productSnapshot.description || null,
+          images: item.productSnapshot.images || [],
+        },
+      })
+    }
+  } else {
+    // Just recalculate existing items with new duration
+    for (const item of reservation.items) {
+      const pricingBreakdown = item.pricingBreakdown as Record<string, unknown> | null
+      const isManualPrice = pricingBreakdown?.isManualOverride === true
+
+      let totalPrice: number
+      let finalUnitPrice = parseFloat(item.unitPrice)
+
+      if (!isManualPrice && item.productId) {
+        // Recalculate with tiers
+        const product = await db.query.products.findFirst({
+          where: eq(products.id, item.productId),
+          with: { pricingTiers: true },
+        })
+
+        if (product) {
+          const effectivePricingMode = product.pricingMode || storePricingMode
+          const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration,
+            discountPercent: parseFloat(tier.discountPercent),
+            displayOrder: tier.displayOrder || 0,
+          }))
+
+          const pricing = {
+            basePrice: parseFloat(product.price),
+            deposit: parseFloat(product.deposit || '0'),
+            pricingMode: effectivePricingMode,
+            tiers,
+          }
+
+          const priceResult = calculateRentalPrice(pricing, newDuration, item.quantity)
+          const newBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
+          finalUnitPrice = priceResult.effectivePricePerUnit
+          totalPrice = priceResult.subtotal
+
+          await db
+            .update(reservationItems)
+            .set({
+              unitPrice: finalUnitPrice.toFixed(2),
+              totalPrice: totalPrice.toFixed(2),
+              pricingBreakdown: newBreakdown,
+            })
+            .where(eq(reservationItems.id, item.id))
+        } else {
+          totalPrice = finalUnitPrice * newDuration * item.quantity
+          await db
+            .update(reservationItems)
+            .set({ totalPrice: totalPrice.toFixed(2) })
+            .where(eq(reservationItems.id, item.id))
+        }
+      } else {
+        // Manual price - just multiply by new duration
+        totalPrice = finalUnitPrice * newDuration * item.quantity
+        await db
+          .update(reservationItems)
+          .set({ totalPrice: totalPrice.toFixed(2) })
+          .where(eq(reservationItems.id, item.id))
+      }
+
+      newSubtotalAmount += totalPrice
+      newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity
+    }
+  }
+
+  // Update reservation
+  await db
+    .update(reservations)
+    .set({
+      startDate: newStartDate,
+      endDate: newEndDate,
+      subtotalAmount: newSubtotalAmount.toFixed(2),
+      depositAmount: newDepositAmount.toFixed(2),
+      totalAmount: newSubtotalAmount.toFixed(2),
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, reservationId))
+
+  // Calculate difference for activity log
+  const difference = newSubtotalAmount - previousState.subtotalAmount
+
+  // Log activity
+  await logReservationActivity(
+    reservationId,
+    'modified',
+    undefined,
+    {
+      previous: {
+        startDate: previousState.startDate,
+        endDate: previousState.endDate,
+        subtotalAmount: previousState.subtotalAmount,
+        depositAmount: previousState.depositAmount,
+      },
+      updated: {
+        startDate: newStartDate,
+        endDate: newEndDate,
+        subtotalAmount: newSubtotalAmount,
+        depositAmount: newDepositAmount,
+      },
+      difference,
+    }
+  )
+
+  revalidatePath('/dashboard/reservations')
+  revalidatePath(`/dashboard/reservations/${reservationId}`)
+
+  return {
+    success: true,
+    difference,
+    newTotal: newSubtotalAmount,
+    previousTotal: previousState.subtotalAmount,
+  }
+}
+
+// ============================================================================
 // Payment Actions
 // ============================================================================
 
-export type PaymentType = 'rental' | 'deposit' | 'deposit_return' | 'damage'
+export type PaymentType = 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
 export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'check' | 'other'
 
 interface RecordPaymentData {
@@ -665,8 +943,13 @@ export async function recordPayment(
     return { error: 'errors.reservationNotFound' }
   }
 
-  if (data.amount <= 0) {
+  if (data.amount === 0) {
     return { error: 'errors.invalidAmount' }
+  }
+
+  // Only adjustment type can have negative amounts
+  if (data.amount < 0 && data.type !== 'adjustment') {
+    return { error: 'errors.negativeAmountOnlyForAdjustment' }
   }
 
   const paymentId = nanoid()
@@ -683,10 +966,20 @@ export async function recordPayment(
 
   // Log activity
   const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
+  const typeLabels: Record<PaymentType, string> = {
+    rental: 'Location',
+    deposit: 'Caution',
+    deposit_return: 'Restitution caution',
+    damage: 'Dommages',
+    adjustment: 'Ajustement',
+  }
+  const formattedAmount = data.amount < 0
+    ? `-${Math.abs(data.amount).toFixed(2)}${currencySymbol}`
+    : `${data.amount.toFixed(2)}${currencySymbol}`
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `${data.type === 'rental' ? 'Location' : data.type === 'deposit' ? 'Caution' : data.type === 'deposit_return' ? 'Restitution caution' : 'Dommages'}: ${data.amount.toFixed(2)}${currencySymbol} (${data.method})`,
+    `${typeLabels[data.type]}: ${formattedAmount} (${data.method})`,
     { paymentId, type: data.type, amount: data.amount, method: data.method }
   )
 
@@ -860,6 +1153,473 @@ export async function recordDamage(
 }
 
 // ============================================================================
+// Deposit Authorization Hold (Empreinte Bancaire)
+// ============================================================================
+
+import {
+  createRefund,
+  getChargeRefundableAmount,
+  toStripeCents,
+  createDepositAuthorization,
+  captureDeposit,
+  releaseDeposit,
+  getPaymentMethodDetails,
+} from '@/lib/stripe'
+
+type DepositActivityType = 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
+
+async function logDepositActivity(
+  reservationId: string,
+  activityType: DepositActivityType,
+  description?: string,
+  metadata?: Record<string, unknown>
+) {
+  const session = await auth()
+  const userId = session?.user?.id || null
+
+  await db.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId,
+    userId,
+    activityType,
+    description,
+    metadata,
+  })
+}
+
+/**
+ * Create a deposit authorization hold (empreinte bancaire)
+ */
+export async function createDepositHold(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  // Check prerequisites
+  if (!reservation.stripeCustomerId || !reservation.stripePaymentMethodId) {
+    return { error: 'errors.stripe.noSavedCard' }
+  }
+
+  if (reservation.depositStatus !== 'card_saved') {
+    return { error: 'errors.stripe.invalidDepositStatus' }
+  }
+
+  const depositAmount = parseFloat(reservation.depositAmount)
+  if (depositAmount <= 0) {
+    return { error: 'errors.stripe.noDepositRequired' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    const result = await createDepositAuthorization({
+      stripeAccountId: store.stripeAccountId,
+      customerId: reservation.stripeCustomerId,
+      paymentMethodId: reservation.stripePaymentMethodId,
+      amount: toStripeCents(depositAmount, currency),
+      currency,
+      reservationId,
+      reservationNumber: reservation.number,
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'authorized',
+        depositPaymentIntentId: result.paymentIntentId,
+        depositAuthorizationExpiresAt: result.expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Create payment record
+    await db.insert(payments).values({
+      id: nanoid(),
+      reservationId,
+      amount: depositAmount.toFixed(2),
+      type: 'deposit_hold',
+      method: 'stripe',
+      status: 'authorized',
+      stripePaymentIntentId: result.paymentIntentId,
+      stripePaymentMethodId: reservation.stripePaymentMethodId,
+      authorizationExpiresAt: result.expiresAt,
+      currency,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logDepositActivity(
+      reservationId,
+      'deposit_authorized',
+      `Empreinte de ${depositAmount.toFixed(2)}${currencySymbol} créée`,
+      { paymentIntentId: result.paymentIntentId, amount: depositAmount, expiresAt: result.expiresAt.toISOString() }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, paymentIntentId: result.paymentIntentId }
+  } catch (error) {
+    console.error('Failed to create deposit hold:', error)
+
+    // Update status to failed
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    await logDepositActivity(
+      reservationId,
+      'deposit_failed',
+      `Échec de l'empreinte: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error: error instanceof Error ? error.message : 'Unknown error' }
+    )
+
+    return { error: 'errors.stripe.authorizationFailed' }
+  }
+}
+
+/**
+ * Capture deposit from authorization hold (for damage/loss)
+ */
+export async function captureDepositHold(
+  reservationId: string,
+  data: { amount: number; reason: string }
+) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
+    return { error: 'errors.stripe.noActiveAuthorization' }
+  }
+
+  const depositAmount = parseFloat(reservation.depositAmount)
+  if (data.amount <= 0 || data.amount > depositAmount) {
+    return { error: 'errors.invalidAmount' }
+  }
+
+  if (!data.reason.trim()) {
+    return { error: 'errors.reasonRequired' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    const result = await captureDeposit({
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: reservation.depositPaymentIntentId,
+      amountToCapture: toStripeCents(data.amount, currency),
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'captured',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Update the deposit_hold payment
+    const depositPayment = await db.query.payments.findFirst({
+      where: and(
+        eq(payments.reservationId, reservationId),
+        eq(payments.type, 'deposit_hold'),
+        eq(payments.status, 'authorized')
+      ),
+    })
+
+    if (depositPayment) {
+      await db
+        .update(payments)
+        .set({
+          status: 'completed',
+          capturedAmount: data.amount.toFixed(2),
+          notes: data.reason,
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, depositPayment.id))
+    }
+
+    // Create deposit_capture payment record
+    await db.insert(payments).values({
+      id: nanoid(),
+      reservationId,
+      amount: data.amount.toFixed(2),
+      type: 'deposit_capture',
+      method: 'stripe',
+      status: 'completed',
+      stripePaymentIntentId: reservation.depositPaymentIntentId,
+      currency,
+      notes: data.reason,
+      paidAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logDepositActivity(
+      reservationId,
+      'deposit_captured',
+      `Caution capturée: ${data.amount.toFixed(2)}${currencySymbol} - ${data.reason}`,
+      { paymentIntentId: reservation.depositPaymentIntentId, amount: data.amount, reason: data.reason }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, amountCaptured: result.amountCaptured }
+  } catch (error) {
+    console.error('Failed to capture deposit:', error)
+    return { error: 'errors.stripe.captureFailed' }
+  }
+}
+
+/**
+ * Release deposit authorization (no damage)
+ */
+export async function releaseDepositHold(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
+    return { error: 'errors.stripe.noActiveAuthorization' }
+  }
+
+  try {
+    await releaseDeposit({
+      stripeAccountId: store.stripeAccountId,
+      paymentIntentId: reservation.depositPaymentIntentId,
+    })
+
+    // Update reservation
+    await db
+      .update(reservations)
+      .set({
+        depositStatus: 'released',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
+
+    // Update the deposit_hold payment
+    const depositPayment = await db.query.payments.findFirst({
+      where: and(
+        eq(payments.reservationId, reservationId),
+        eq(payments.type, 'deposit_hold'),
+        eq(payments.status, 'authorized')
+      ),
+    })
+
+    if (depositPayment) {
+      await db
+        .update(payments)
+        .set({
+          status: 'cancelled',
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, depositPayment.id))
+    }
+
+    // Log activity
+    const currency = store.settings?.currency || 'EUR'
+    const currencySymbol = getCurrencySymbol(currency)
+    const depositAmount = parseFloat(reservation.depositAmount)
+    await logDepositActivity(
+      reservationId,
+      'deposit_released',
+      `Caution de ${depositAmount.toFixed(2)}${currencySymbol} libérée`,
+      { paymentIntentId: reservation.depositPaymentIntentId, amount: depositAmount }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to release deposit:', error)
+    return { error: 'errors.stripe.releaseFailed' }
+  }
+}
+
+/**
+ * Get saved payment method details for a reservation
+ */
+export async function getReservationPaymentMethod(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return null
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+  })
+
+  if (!reservation?.stripePaymentMethodId) {
+    return null
+  }
+
+  try {
+    return await getPaymentMethodDetails(
+      store.stripeAccountId,
+      reservation.stripePaymentMethodId
+    )
+  } catch (error) {
+    console.error('Failed to get payment method details:', error)
+    return null
+  }
+}
+
+// ============================================================================
+// Stripe Refunds
+// ============================================================================
+
+interface ProcessStripeRefundData {
+  type: 'deposit_return' | 'rental_refund'
+  amount: number
+  notes?: string
+}
+
+export async function processStripeRefund(
+  reservationId: string,
+  data: ProcessStripeRefundData
+) {
+  const store = await getStoreForUser()
+  if (!store || !store.stripeAccountId) {
+    return { error: 'errors.noStripeAccount' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      payments: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  // Find the original Stripe payment with a charge
+  const stripePayment = reservation.payments.find(
+    (p) => p.method === 'stripe' && p.status === 'completed' && p.stripeChargeId
+  )
+
+  if (!stripePayment || !stripePayment.stripeChargeId) {
+    return { error: 'errors.stripe.noChargeToRefund' }
+  }
+
+  const currency = store.settings?.currency || 'EUR'
+
+  try {
+    // Check refundable amount
+    const { refundable, amount: maxRefundable } = await getChargeRefundableAmount(
+      store.stripeAccountId,
+      stripePayment.stripeChargeId
+    )
+
+    if (!refundable) {
+      return { error: 'errors.stripe.alreadyRefunded' }
+    }
+
+    const refundAmountCents = toStripeCents(data.amount, currency)
+
+    if (refundAmountCents > maxRefundable) {
+      return { error: 'errors.stripe.refundExceedsCharge' }
+    }
+
+    // Process refund
+    const refund = await createRefund({
+      stripeAccountId: store.stripeAccountId,
+      chargeId: stripePayment.stripeChargeId,
+      amount: refundAmountCents,
+    })
+
+    // Create payment record for the refund (negative amount for display)
+    const paymentId = nanoid()
+    await db.insert(payments).values({
+      id: paymentId,
+      reservationId,
+      amount: data.amount.toFixed(2),
+      type: data.type === 'deposit_return' ? 'deposit_return' : 'rental',
+      method: 'stripe',
+      status: 'completed',
+      stripeRefundId: refund.refundId,
+      stripeChargeId: stripePayment.stripeChargeId,
+      currency: refund.currency,
+      notes: data.notes,
+      paidAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    // Log activity
+    const currencySymbol = getCurrencySymbol(currency)
+    await logReservationActivity(
+      reservationId,
+      'payment_updated',
+      `Remboursement Stripe: ${data.amount.toFixed(2)}${currencySymbol}`,
+      { paymentId, refundId: refund.refundId, amount: data.amount, type: data.type }
+    )
+
+    revalidatePath('/dashboard/reservations')
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true, refundId: refund.refundId }
+  } catch (error) {
+    console.error('Stripe refund error:', error)
+    return { error: 'errors.stripe.refundFailed' }
+  }
+}
+
+// ============================================================================
 // Email Actions
 // ============================================================================
 
@@ -1027,5 +1787,229 @@ export async function sendReservationEmail(
   } catch (error) {
     console.error('Failed to send reservation email:', error)
     return { error: 'errors.emailSendFailed' }
+  }
+}
+
+// ============================================================================
+// Access Link Actions
+// ============================================================================
+
+export async function sendAccessLink(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      customer: true,
+      items: true,
+      payments: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  try {
+    // Generate secure 64-char token
+    const token = nanoid(64)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    // Store token in verificationCodes table
+    await db.insert(verificationCodes).values({
+      id: nanoid(),
+      email: reservation.customer.email,
+      storeId: store.id,
+      code: '', // Not used for instant_access
+      type: 'instant_access',
+      token,
+      reservationId,
+      expiresAt,
+      createdAt: new Date(),
+    })
+
+    // Build access URL
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+
+    // Calculate payment status
+    const isPaid = reservation.payments.some(p => p.type === 'rental' && p.status === 'completed')
+    const isStripeEnabled = store.stripeAccountId && store.stripeChargesEnabled
+
+    // Build store and customer data
+    const storeData = {
+      id: store.id,
+      name: store.name,
+      logoUrl: store.logoUrl,
+      email: store.email,
+      phone: store.phone,
+      address: store.address,
+      theme: store.theme,
+      settings: store.settings,
+    }
+
+    const customerData = {
+      firstName: reservation.customer.firstName,
+      lastName: reservation.customer.lastName,
+      email: reservation.customer.email,
+    }
+
+    // Build items data
+    const items = reservation.items.map(item => ({
+      name: item.productSnapshot.name,
+      quantity: item.quantity,
+      totalPrice: parseFloat(item.totalPrice),
+    }))
+
+    // Send email
+    await sendInstantAccessEmail({
+      to: reservation.customer.email,
+      store: storeData,
+      customer: customerData,
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: parseFloat(reservation.totalAmount),
+      },
+      items,
+      accessUrl,
+      showPaymentCta: !isPaid && !!isStripeEnabled,
+      locale: 'fr',
+    })
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'access_link_sent',
+      `Lien d'accès envoyé à ${reservation.customer.email}`,
+      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString() }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send access link:', error)
+    return { error: 'errors.accessLinkSendFailed' }
+  }
+}
+
+// ============================================================================
+// SMS Actions
+// ============================================================================
+
+/**
+ * Check if SMS is configured for the system
+ */
+export async function checkSmsConfigured(): Promise<boolean> {
+  return isSmsConfigured()
+}
+
+/**
+ * Send access link via SMS to customer
+ */
+export async function sendAccessLinkBySms(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  if (!isSmsConfigured()) {
+    return { error: 'errors.smsNotConfigured' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      customer: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  if (!reservation.customer.phone) {
+    return { error: 'errors.customerNoPhone' }
+  }
+
+  try {
+    // Generate secure 64-char token
+    const token = nanoid(64)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    // Store token in verificationCodes table
+    await db.insert(verificationCodes).values({
+      id: nanoid(),
+      email: reservation.customer.email,
+      storeId: store.id,
+      code: '', // Not used for instant_access
+      type: 'instant_access',
+      token,
+      reservationId,
+      expiresAt,
+      createdAt: new Date(),
+    })
+
+    // Build access URL
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+
+    // Send SMS
+    const result = await sendAccessLinkSms({
+      store: {
+        id: store.id,
+        name: store.name,
+      },
+      customer: {
+        id: reservation.customer.id,
+        firstName: reservation.customer.firstName,
+        lastName: reservation.customer.lastName,
+        phone: reservation.customer.phone,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+      },
+      accessUrl,
+    })
+
+    if (!result.success) {
+      // Return limit info if SMS limit was reached
+      if (result.limitReached && result.limitInfo) {
+        return {
+          error: 'errors.smsLimitReached',
+          limitReached: true,
+          limitInfo: result.limitInfo,
+        }
+      }
+      return { error: result.error || 'errors.smsSendFailed' }
+    }
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'access_link_sent',
+      `Lien d'accès envoyé par SMS à ${reservation.customer.phone}`,
+      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString(), method: 'sms' }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send access link via SMS:', error)
+    return { error: 'errors.smsSendFailed' }
   }
 }

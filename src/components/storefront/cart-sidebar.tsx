@@ -42,6 +42,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
+import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 
 interface CartSidebarProps {
   storeSlug: string
@@ -49,9 +50,10 @@ interface CartSidebarProps {
   showDates?: boolean
 }
 
-export function CartSidebar({ className, showDates = true }: CartSidebarProps) {
+export function CartSidebar({ storeSlug, className, showDates = true }: CartSidebarProps) {
   const t = useTranslations('storefront.cart')
   const currency = useStoreCurrency()
+  const { getUrl } = useStorefrontUrl(storeSlug)
   const {
     items,
     globalStartDate,
@@ -216,7 +218,7 @@ export function CartSidebar({ className, showDates = true }: CartSidebarProps) {
           {/* Actions */}
           <div className="mt-4 space-y-2">
             <Button asChild className="w-full" size="lg">
-              <Link href="/checkout">
+              <Link href={getUrl('/checkout')}>
                 {t('checkout')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

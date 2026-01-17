@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { products, reservations, customers, subscriptions, storeMembers } from '@/lib/db/schema'
+import { products, reservations, customers, subscriptions, storeMembers, smsLogs } from '@/lib/db/schema'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
 import { getPlan, getDefaultPlan, type Plan } from '@/lib/plans'
 import type { PlanFeatures } from '@/types'
@@ -234,6 +234,63 @@ export async function canAddTeamMember(storeId: string): Promise<{
     allowed: collaboratorCount < limit,
     current: collaboratorCount,
     limit,
+  }
+}
+
+/**
+ * Get the number of SMS sent this month for a store
+ */
+export async function getSmsUsageThisMonth(storeId: string): Promise<number> {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  const result = await db
+    .select({ count: count() })
+    .from(smsLogs)
+    .where(
+      and(
+        eq(smsLogs.storeId, storeId),
+        gte(smsLogs.sentAt, startOfMonth),
+        // Only count successfully sent SMS
+        sql`${smsLogs.status} = 'sent'`
+      )
+    )
+
+  return result[0]?.count || 0
+}
+
+/**
+ * Check if a store can send an SMS based on plan limits
+ * Returns detailed info for UI display (current usage, limit, plan)
+ */
+export async function canSendSms(storeId: string): Promise<{
+  allowed: boolean
+  current: number
+  limit: number | null
+  planSlug: string
+}> {
+  const [plan, smsCount] = await Promise.all([
+    getStorePlan(storeId),
+    getSmsUsageThisMonth(storeId),
+  ])
+
+  const limit = plan.features.maxSmsPerMonth
+
+  // null means unlimited
+  if (limit === null) {
+    return {
+      allowed: true,
+      current: smsCount,
+      limit: null,
+      planSlug: plan.slug,
+    }
+  }
+
+  return {
+    allowed: smsCount < limit,
+    current: smsCount,
+    limit,
+    planSlug: plan.slug,
   }
 }
 

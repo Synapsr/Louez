@@ -566,6 +566,34 @@
         "viewAsCustomer": "View as customer",
         "print": "Print"
       },
+      "edit": {
+        "button": "Edit",
+        "title": "Edit reservation",
+        "dates": "Dates",
+        "startDate": "Start date",
+        "endDate": "End date",
+        "items": "Items",
+        "product": "Product",
+        "qty": "Qty",
+        "unitPrice": "Unit price",
+        "total": "Total",
+        "addItem": "Add item",
+        "subtotal": "Subtotal",
+        "summary": "Summary",
+        "before": "Before",
+        "after": "After",
+        "difference": "Difference",
+        "deposit": "Deposit",
+        "save": "Save",
+        "saved": "Reservation updated",
+        "cannotRemoveLastItem": "Cannot remove the last item",
+        "noItems": "Add at least one item",
+        "datesRequired": "Start and end dates are required",
+        "lockPrice": "Lock price",
+        "unlockPrice": "Recalculate price",
+        "adjustmentPositive": "An additional {amount} will need to be collected.",
+        "adjustmentNegative": "A refund of {amount} can be issued."
+      },
       "contract": {
         "title": "Contract",
         "signed": "Signed on {date}",
@@ -654,6 +682,8 @@
         "customItem": {
           "title": "Custom items",
           "add": "Add",
+          "button": "Custom",
+          "units": "unit(s)",
           "badge": "Custom",
           "empty": "No custom items added",
           "dialogTitle": "Add a custom item",
@@ -686,6 +716,24 @@
           "priceUpdated": "Price updated",
           "priceReset": "Price reset"
         },
+        "warnings": {
+          "advanceNotice": "Start date is before the advance notice period",
+          "advanceNoticeDetails": "The usual advance notice is {hours}h. You can still proceed.",
+          "startDayClosed": "Start date is on a closing day",
+          "endDayClosed": "End date is on a closing day",
+          "dayClosedDetails": "The store is normally closed on this day.",
+          "startOutsideHours": "Start time is outside business hours",
+          "endOutsideHours": "End time is outside business hours",
+          "outsideHoursDetails": "Usual hours: {open} - {close}",
+          "startClosurePeriod": "Start date falls during a closure period",
+          "endClosurePeriod": "End date falls during a closure period",
+          "closurePeriodDetails": "The store is exceptionally closed.",
+          "canContinue": "As a manager, you can create this reservation despite the warnings.",
+          "productConflict": "{name}: availability conflict",
+          "productConflictDetails": "Requested quantity: {requested}, available for this period: {available}",
+          "conflictCanContinue": "These products are already reserved during this period. You can proceed if you manage availability manually.",
+          "insufficientStock": "Insufficient stock"
+        },
         "addItemError": "Please add at least one product or custom item"
       },
       "rejectDialog": {
@@ -708,7 +756,40 @@
         "returned": "Items returned",
         "note_updated": "Notes updated",
         "payment_added": "Payment added",
-        "payment_updated": "Payment updated"
+        "payment_updated": "Payment updated",
+        "payment_received": "Online payment received",
+        "payment_initiated": "Online payment initiated",
+        "payment_failed": "Online payment failed",
+        "payment_expired": "Online payment expired",
+        "deposit_authorized": "Deposit authorization created",
+        "deposit_captured": "Deposit captured",
+        "deposit_released": "Deposit released",
+        "deposit_failed": "Authorization failed",
+        "access_link_sent": "Access link sent",
+        "modified": "Reservation modified",
+        "showAll": "Show all ({count} events)",
+        "showLess": "Show less"
+      },
+      "smartActions": {
+        "paymentIncomplete": "Rental unpaid ({remaining} remaining)",
+        "depositNotCollected": "Deposit not collected ({amount})",
+        "pickupConfirmTitle": "Confirm pickup",
+        "pickupConfirmDescription": "Confirm that the customer has picked up the rented equipment.",
+        "warningPaymentTitle": "Payment incomplete",
+        "warningPaymentDescription": "There is still {remaining} to pay on the rental. The customer should normally pay before picking up the equipment.",
+        "warningDepositTitle": "Deposit not collected",
+        "warningDepositDescription": "The {amount} deposit has not been collected yet. Make sure to collect it before handing over the equipment.",
+        "acknowledgePickupWarnings": "I understand and wish to continue despite these warnings",
+        "confirmPickup": "Confirm pickup",
+        "returnConfirmTitle": "Confirm return",
+        "returnConfirmDescription": "Check the equipment condition and financial summary before confirming the return.",
+        "fullyPaid": "Fully paid",
+        "partiallyPaid": "{paid} of {total} paid",
+        "collected": "collected",
+        "notCollected": "Not collected",
+        "toReturnToCustomer": "To return to customer",
+        "returnQuestion": "Confirm that the equipment was returned in good condition?",
+        "confirmReturn": "Confirm return"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -767,12 +848,25 @@
         "deleteConfirmDescription": "This action is irreversible. The payment will be permanently deleted from history.",
         "unpaidWarning": "There is still {formattedAmount} to collect on this reservation",
         "allPaid": "All payments have been made",
+        "allPaidBadge": "Paid",
+        "pendingBadge": "Pending",
+        "depositToReturnBadge": "Deposit to return",
+        "toCollect": "To collect",
+        "fullyReturned": "Fully returned",
+        "showAll": "Show all {count} payments",
         "types": {
           "rental": "Rental",
           "deposit": "Deposit",
           "depositReturn": "Deposit return",
-          "damage": "Damages"
+          "damage": "Damages",
+          "depositHold": "Authorization hold",
+          "depositCapture": "Deposit captured",
+          "adjustment": "Adjustment"
         },
+        "type": "Payment type",
+        "recordAdjustmentDescription": "Record a price adjustment (positive or negative)",
+        "adjustmentHint": "Negative amount for refund, positive for additional charge",
+        "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
         "methods": {
           "cash": "Cash",
           "card": "Card",
@@ -785,14 +879,77 @@
           "pending": "Pending",
           "completed": "Completed",
           "failed": "Failed",
-          "refunded": "Refunded"
-        }
+          "refunded": "Refunded",
+          "authorized": "Authorized",
+          "cancelled": "Cancelled"
+        },
+        "statusAuthorized": "Authorized",
+        "statusRefunded": "Refunded",
+        "statusCancelled": "Cancelled"
+      },
+      "onlinePayment": {
+        "title": "Online Payment",
+        "received": "Received",
+        "pending": "Pending",
+        "paymentInProgress": "Payment in progress",
+        "paymentInProgressDescription": "Customer has been redirected to the payment page. Waiting for confirmation.",
+        "rentalPayment": "Rental payment",
+        "paidOn": "Paid on",
+        "cardSavedForDeposit": "Card saved for deposit",
+        "cardNotSaved": "The card could not be saved. The customer will need to provide another payment method for the deposit.",
+        "transactionId": "Transaction"
+      },
+      "deposit": {
+        "title": "Deposit (Authorization Hold)",
+        "description": "Manage the deposit authorization hold for this reservation",
+        "amount": "Deposit amount",
+        "status": {
+          "none": "Not required",
+          "pending": "Card not saved",
+          "cardSaved": "Ready",
+          "authorized": "Hold active",
+          "captured": "Captured",
+          "released": "Released",
+          "failed": "Failed"
+        },
+        "pendingTitle": "Card not saved",
+        "pendingDescription": "Payment was received but the card could not be saved for the deposit. You will need to collect the deposit manually or ask the customer to provide a card.",
+        "cardSavedTitle": "Card saved",
+        "cardSavedDescription": "The customer's card is saved. You can create a hold to block the deposit amount.",
+        "authorizedTitle": "Hold active",
+        "authorizedDescription": "The deposit amount is held on the customer's card. You can capture it for damages or release it at the end of the rental.",
+        "capturedDescription": "The deposit amount has been captured from the customer's card.",
+        "releasedDescription": "The authorization has been released, no charges were made.",
+        "failedDescription": "The authorization failed. The customer may need to use a different card.",
+        "expiresIn": "Expires {time}",
+        "expired": "Authorization expired",
+        "createHold": "Create authorization",
+        "release": "Release deposit",
+        "capture": "Capture",
+        "holdCreated": "Authorization created successfully",
+        "released": "Deposit released successfully",
+        "captured": "Deposit captured successfully",
+        "captureTitle": "Capture deposit",
+        "captureDescription": "Capture all or part of the deposit to cover damages or losses.",
+        "maxCapturable": "Maximum amount",
+        "captureAmount": "Amount to capture",
+        "captureReason": "Reason for capture",
+        "captureReasonPlaceholder": "Describe the damages or reason for capture...",
+        "captureReasonHint": "This reason will be recorded in the history and visible to the customer.",
+        "confirmCapture": "Confirm capture",
+        "releaseTitle": "Release deposit",
+        "releaseDescription": "Are you sure you want to release the {amount} deposit? The authorization will be cancelled and no charges will be made.",
+        "confirmRelease": "Release deposit",
+        "invalidCaptureAmount": "Invalid amount",
+        "captureExceedsDeposit": "Amount exceeds deposit",
+        "reasonRequired": "Please provide a reason"
       },
       "paymentStatus": {
         "paid": "Paid",
         "unpaid": "Unpaid",
         "partial": "Partial"
       },
+      "paymentInProgress": "Payment in progress",
       "paymentBadge": {
         "paid": "Paid",
         "partial": "Partial",
@@ -807,6 +964,10 @@
       "pendingCard": {
         "title": "Pending request",
         "description": "This customer wants to book. Accept or reject their request."
+      },
+      "paymentPendingCard": {
+        "title": "Payment in progress",
+        "description": "Customer is completing their payment. The reservation will be automatically confirmed once payment is received."
       },
       "confirmedCard": {
         "title": "Confirmed reservation",
@@ -870,7 +1031,16 @@
           }
         }
       },
-      "linkCopied": "Link copied to clipboard"
+      "linkCopied": "Link copied to clipboard",
+      "accessLink": {
+        "send": "Send access link",
+        "sendSms": "Send via SMS",
+        "sendSuccess": "Access link sent",
+        "sendError": "Failed to send access link",
+        "smsSendSuccess": "Access link sent via SMS",
+        "smsSendError": "Failed to send SMS",
+        "noPhone": "Customer has no phone number"
+      }
     },
     "customers": {
       "title": "Customers",
@@ -1012,6 +1182,34 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "rejected": "Rejected"
+      },
+      "export": {
+        "button": "Export calendar",
+        "title": "Export to calendar",
+        "description": "Sync your reservations with your favorite calendar by copying the link below.",
+        "urlLabel": "ICS calendar link",
+        "loading": "Loading...",
+        "instructions": {
+          "title": "How to add this calendar?",
+          "google": {
+            "step1": "Open Google Calendar",
+            "step2": "Click the + next to \"Other calendars\" then \"From URL\"",
+            "step3": "Paste the link and click \"Add calendar\"",
+            "openLink": "Open Google Calendar"
+          },
+          "apple": {
+            "step1": "Open the Calendar app on Mac or iPhone",
+            "step2": "File > New Calendar Subscription (Mac) or Add Account > Other > Add Subscribed Calendar (iOS)",
+            "step3": "Paste the link and confirm"
+          },
+          "outlook": {
+            "step1": "Open Outlook Calendar",
+            "step2": "Click \"Add calendar\" then \"Subscribe from web\"",
+            "step3": "Paste the link and give the calendar a name"
+          }
+        },
+        "regenerate": "Regenerate link",
+        "regenerateHint": "Regenerating the link will invalidate previously shared links."
       }
     },
     "statistics": {
@@ -1174,6 +1372,7 @@
       },
       "team": "Team",
       "saveChanges": "Save changes",
+      "settingsSaved": "Settings saved",
       "nav": {
         "storeDescription": "Information and configuration",
         "appearanceDescription": "Logo, colors and theme",
@@ -1298,6 +1497,8 @@
         "modeRequestDescription": "You validate requests manually",
         "modePayment": "Immediate payment",
         "modePaymentDescription": "Customers pay immediately",
+        "pendingBlocksAvailability": "Block availability during pending request",
+        "pendingBlocksAvailabilityDescription": "When enabled, a pending reservation request immediately blocks product availability. Disable to allow multiple requests for the same dates.",
         "pricingMode": "Pricing unit",
         "pricingDay": "Per day",
         "pricingHour": "Per hour",
@@ -1312,7 +1513,14 @@
           "week": "In weeks"
         },
         "requireAddress": "Require customer address",
-        "requireAddressDescription": "Adds a step to checkout to collect postal address"
+        "requireAddressDescription": "Adds a step to checkout to collect postal address",
+        "stripeRequired": {
+          "title": "Stripe configuration required",
+          "description": "Instant payment mode requires Stripe to process online payments.",
+          "benefits": "Setup only takes a few minutes. You'll be able to accept card payments and secure your reservations with deposits.",
+          "configureStripe": "Configure Stripe",
+          "keepRequest": "Keep request mode"
+        }
       },
       "emailSettings": {
         "title": "Emails",
@@ -1424,6 +1632,7 @@
           "deleteDescription": "This action is irreversible."
         },
         "updated": "Hours updated",
+        "saved": "Hours saved",
         "closureAdded": "Closure period added",
         "closureUpdated": "Closure period updated",
         "closureDeleted": "Closure period deleted",
@@ -1514,7 +1723,91 @@
         "taxNumber": "VAT number",
         "taxNumberPlaceholder": "GB123456789",
         "taxNumberDescription": "Your VAT number (displayed on contracts)",
-        "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer."
+        "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer.",
+        "saved": "Tax settings saved"
+      },
+      "payments": {
+        "title": "Payments",
+        "description": "Configure online payments for your store",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Accept credit card payments directly on your store",
+        "notConnectedDescription": "Connect your Stripe account to accept online payments. You will be redirected to Stripe to complete the setup.",
+        "activeDescription": "Your Stripe account is connected and operational. You can accept online payments.",
+        "incompleteDescription": "Your Stripe setup is incomplete. Please complete the setup to accept payments.",
+        "connectStripe": "Connect Stripe",
+        "completeSetup": "Complete Setup",
+        "openDashboard": "Stripe Dashboard",
+        "sync": "Sync",
+        "synced": "Status synced",
+        "disconnect": "Disconnect",
+        "disconnected": "Stripe account disconnected",
+        "disconnectTitle": "Disconnect Stripe?",
+        "disconnectDescription": "You will no longer be able to accept online payments. Existing payments will not be affected.",
+        "cancel": "Cancel",
+        "status": {
+          "active": "Active",
+          "incomplete": "Incomplete"
+        },
+        "callback": {
+          "successTitle": "Stripe Connected!",
+          "successDescription": "Your Stripe account is now connected. You can accept online payments.",
+          "incompleteTitle": "Setup Incomplete",
+          "incompleteDescription": "Some information is missing. You can complete the setup later.",
+          "backToSettings": "Back to Settings"
+        },
+        "refresh": {
+          "title": "Link Expired",
+          "description": "The setup link has expired. Please try again from settings.",
+          "backToSettings": "Back to Settings"
+        },
+        "flowExplanation": {
+          "title": "Reservation flow",
+          "subtitle": "Here's what your customers experience based on your settings",
+          "currentFlow": "Current flow",
+          "modes": {
+            "request": "Request mode",
+            "instant": "Instant payment",
+            "stripeActive": "Stripe active",
+            "configRequired": "Configuration required"
+          },
+          "steps": {
+            "requestSubmitted": "Customer submits a reservation request",
+            "youReview": "You receive an email and review the request",
+            "acceptOrReject": "You accept or decline the request",
+            "paymentOnSite": "Customer pays on-site (cash, card, transfer...)",
+            "paymentOnlineOrSite": "Customer pays online from their account or on-site",
+            "customerPays": "Customer pays immediately by card",
+            "reservationConfirmed": "Reservation is automatically confirmed",
+            "bothNotified": "You and the customer receive confirmation"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Accept online payments",
+              "description": "Enable Stripe to let customers pay by card. You can also send payment links via email or SMS.",
+              "action": "Configure Stripe"
+            },
+            "instantPayment": {
+              "title": "Switch to instant payment?",
+              "description": "To fully automate your reservations, enable instant payment mode in your store settings."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Incomplete configuration",
+              "description": "Instant payment mode is enabled but Stripe is not configured. Customers won't be able to complete reservations."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Once the request is accepted, your customer can pay online from their account. You can also send a payment link via email or SMS, or collect payment on-site.",
+            "instantPayment": "Optimal setup! Your reservations are fully automated. Payment immediately secures the reservation."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Need manual validation?",
+              "description": "Request mode lets you review each reservation before collecting payment. Adjustable in store settings."
+            }
+          }
+        }
       },
       "subscriptionSettings": {
         "title": "Subscription",
@@ -1850,6 +2143,17 @@
         "limited": "{count} left",
         "unavailable": "Unavailable",
         "inCart": "In cart"
+      },
+      "businessHoursWarning": {
+        "title": "Schedule conflict",
+        "pickup": "Pickup",
+        "return": "Return",
+        "reasons": {
+          "outside_hours": "outside business hours",
+          "day_closed": "day closed",
+          "closure_period": "exceptional closure period"
+        },
+        "suggestion": "Adjust your dates to match our opening hours, otherwise the reservation will be declined."
       }
     },
     "productModal": {
@@ -1968,7 +2272,24 @@
         "total": "Total to pay",
         "savingsBanner": "You save {amount} with the long-term discount"
       },
-      "depositInfo": "A hold of {amount} will be placed on your card as a security deposit. This amount will not be charged and will be released upon return of the equipment."
+      "depositInfo": "A security deposit of {amount} is required.",
+      "depositLabel": "Deposit (authorization)",
+      "depositAuthorizationInfo": "Your card will be saved. An authorization hold will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
+      "success": {
+        "confirmedTitle": "Payment Confirmed!",
+        "confirmedDescription": "Your payment has been accepted. You will receive a confirmation email.",
+        "pendingTitle": "Awaiting Payment",
+        "pendingDescription": "Your reservation has been created and is awaiting payment confirmation.",
+        "reservationNumber": "Reservation",
+        "dates": "Dates",
+        "total": "Total",
+        "depositSaved": "Card saved for deposit",
+        "depositSavedDescription": "Your card has been saved. An authorization hold of {amount} will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
+        "deposit": "Deposit",
+        "items": "Reserved Items",
+        "emailSent": "A confirmation email has been sent to {email}",
+        "backToStore": "Back to Store"
+      }
     },
     "confirmation": {
       "title": "Reservation confirmed!",
@@ -2029,6 +2350,8 @@
       "myReservations": "My reservations",
       "noReservations": "No reservations",
       "noReservationsDescription": "You don't have any reservations yet",
+      "noHistory": "No history",
+      "noHistoryDescription": "Your completed reservations will appear here",
       "viewCatalog": "View catalog",
       "itemCount": "{count} item(s)",
       "reservationDetail": "Reservation details",
@@ -2053,6 +2376,8 @@
         "pendingDescription": "Your request is being processed",
         "confirmed": "Confirmed",
         "confirmedDescription": "Your reservation is confirmed",
+        "allSet": "All set",
+        "allSetDescription": "Your reservation is confirmed and paid. We look forward to seeing you at the scheduled date and time.",
         "ongoing": "Ongoing",
         "ongoingDescription": "Rental in progress",
         "completed": "Completed",
@@ -2068,7 +2393,35 @@
       "paymentPaid": "Paid",
       "paymentPending": "Unpaid",
       "amountPaid": "Amount paid",
-      "securityNote": "Secure email login. No password required."
+      "securityNote": "Secure email login. No password required.",
+      "payNow": "Pay now",
+      "paymentInProgress": "Payment processing",
+      "paymentRequired": "Payment required",
+      "confirmedAwaitingPayment": "Awaiting payment",
+      "paymentHistory": {
+        "title": "Payment history",
+        "noPayments": "No payments recorded",
+        "types": {
+          "rental": "Rental",
+          "deposit": "Deposit",
+          "deposit_return": "Deposit refund",
+          "damage": "Damages"
+        },
+        "methods": {
+          "stripe": "Online card",
+          "cash": "Cash",
+          "card": "Card",
+          "transfer": "Transfer",
+          "check": "Check",
+          "other": "Other"
+        },
+        "status": {
+          "completed": "Paid",
+          "pending": "Pending",
+          "failed": "Failed",
+          "refunded": "Refunded"
+        }
+      }
     },
     "footer": {
       "description": "Simple and efficient equipment rental.",
@@ -2188,14 +2541,15 @@
       "recommended": "Recommended",
       "requestModeDescription": "Customers send a request. You validate manually and manage payment yourself (cash, transfer, card on site).",
       "paymentMode": "Online payment",
-      "comingSoon": "Coming soon",
-      "paymentModeDescription": "Customers pay directly when booking. This feature will be available soon.",
+      "paymentModeDescription": "Customers pay directly when booking. Automatically collect payments via Stripe.",
       "howItWorks": "How does it work?",
       "step1": "1. Customer makes a reservation request",
       "step2": "2. You receive an email notification",
       "step3": "3. You accept or reject the request",
       "step4": "4. Customer receives confirmation by email",
       "step5": "5. You manage payment at pickup",
+      "paymentSetupTitle": "Quick setup",
+      "paymentSetupDescription": "After creating your store, go to Settings → Online Payment to connect your Stripe account and start receiving payments.",
       "configComplete": "Setup complete!"
     },
     "complete": {
@@ -2260,7 +2614,8 @@
       "deposit": "Deposit",
       "total": "Total",
       "totalToPay": "Total to pay",
-      "question": "Questions? Contact us:"
+      "question": "Questions? Contact us:",
+      "summary": "Summary"
     },
     "verificationCode": {
       "subject": "Your login code: {code}",
@@ -2339,6 +2694,14 @@
       "sentBy": "This email was sent by {storeName}",
       "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
       "poweredBy": "Powered by"
+    },
+    "instantAccess": {
+      "subject": "Access your reservation #{number}",
+      "title": "Access your reservation",
+      "body": "Click to access your reservation #{number}.",
+      "paymentPending": "Payment is pending for this reservation.",
+      "viewAndPay": "View and pay",
+      "linkValid": "This link is valid for 30 days."
     }
   },
   "contract": {
@@ -2493,6 +2856,22 @@
       "blurDescription": "Upgrade to {plan} to access all your customers.",
       "bannerAtLimit": "Customer limit reached",
       "bannerNearLimit": "You're approaching your customer limit"
+    },
+    "sms": {
+      "limitReachedTitle": "SMS limit reached",
+      "limitReachedDescription": "You've reached the limit of {limit} SMS this month.",
+      "overLimitTitle": "Your SMS are taking off!",
+      "overLimitDescription": "You've sent {count} SMS but your current plan allows {limit}.",
+      "successMessage": "Your communication is growing!",
+      "successSubtext": "More SMS = better customer relationships. Take it to the next level.",
+      "upgradeDescription": "Upgrade to {plan} to send more SMS to your customers.",
+      "benefit1": "Up to 50 SMS/month with {plan}",
+      "benefit2": "Automatic notifications",
+      "benefit3": "Reservation reminders",
+      "blurTitle": "SMS blocked",
+      "blurDescription": "Upgrade to {plan} to continue sending SMS.",
+      "bannerAtLimit": "Monthly SMS limit reached",
+      "bannerNearLimit": "You're approaching your SMS limit"
     }
   },
   "errors": {
@@ -2512,9 +2891,12 @@
     "emailAlreadyExists": "A customer with this email already exists",
     "customerHasReservations": "Cannot delete a customer with reservations",
     "cannotCancelReservation": "This reservation cannot be cancelled",
+    "cannotEditCompletedReservation": "Completed reservations cannot be edited",
+    "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",
     "customerRequired": "Customer required",
     "productUnavailable": "Product unavailable: {name}",
+    "productNoLongerAvailable": "Product {name} is no longer available for these dates. Another reservation was made in the meantime.",
     "insufficientStock": "Insufficient stock for: {name} ({count} available)",
     "createCustomerError": "Error creating customer",
     "updateCustomerError": "Error updating customer",
@@ -2541,6 +2923,36 @@
     "tryAgain": "Try again",
     "goBack": "Back",
     "goHome": "Back to home",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "noStripeAccount": "No Stripe account connected",
+    "stripe": {
+      "onboardingFailed": "Error during Stripe setup",
+      "verificationFailed": "Error verifying Stripe account",
+      "syncFailed": "Error syncing status",
+      "dashboardLinkFailed": "Error opening Stripe dashboard",
+      "alreadyConnected": "Stripe account already connected",
+      "noChargeToRefund": "No Stripe payment to refund",
+      "alreadyRefunded": "This payment has already been refunded",
+      "refundExceedsCharge": "Refund amount exceeds payment amount",
+      "refundFailed": "Error processing refund",
+      "noSavedCard": "No card saved for this customer",
+      "invalidDepositStatus": "The deposit status does not allow this operation",
+      "noDepositRequired": "No deposit required for this reservation",
+      "authorizationFailed": "Unable to create authorization hold",
+      "noActiveAuthorization": "No active authorization for this reservation",
+      "captureFailed": "Unable to capture deposit",
+      "releaseFailed": "Unable to release deposit"
+    },
+    "reasonRequired": "Please provide a reason",
+    "invalidAmount": "Invalid amount",
+    "invalidOrExpiredToken": "This link is invalid or has expired. Please request a new access link.",
+    "alreadyPaid": "This reservation is already paid.",
+    "paymentNotAvailable": "Online payment is not available for this store.",
+    "paymentSessionError": "Error creating payment session",
+    "accessLinkSendFailed": "Error sending access link",
+    "smsNotConfigured": "SMS is not configured",
+    "smsLimitReached": "SMS limit reached. Upgrade to a higher plan to continue sending SMS.",
+    "customerNoPhone": "Customer has no phone number",
+    "smsSendFailed": "Failed to send SMS"
   }
 }

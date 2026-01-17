@@ -566,6 +566,34 @@
         "viewAsCustomer": "Zobacz jako klient",
         "print": "Drukuj"
       },
+      "edit": {
+        "button": "Edytuj",
+        "title": "Edytuj rezerwację",
+        "dates": "Daty",
+        "startDate": "Data rozpoczęcia",
+        "endDate": "Data zakończenia",
+        "items": "Przedmioty",
+        "product": "Produkt",
+        "qty": "Ilość",
+        "unitPrice": "Cena jedn.",
+        "total": "Suma",
+        "addItem": "Dodaj przedmiot",
+        "subtotal": "Suma częściowa",
+        "summary": "Podsumowanie",
+        "before": "Przed",
+        "after": "Po",
+        "difference": "Różnica",
+        "deposit": "Kaucja",
+        "save": "Zapisz",
+        "saved": "Rezerwacja zaktualizowana",
+        "cannotRemoveLastItem": "Nie można usunąć ostatniego przedmiotu",
+        "noItems": "Dodaj przynajmniej jeden przedmiot",
+        "datesRequired": "Daty rozpoczęcia i zakończenia są wymagane",
+        "lockPrice": "Zablokuj cenę",
+        "unlockPrice": "Przelicz cenę",
+        "adjustmentPositive": "Należy pobrać dopłatę w wysokości {amount}.",
+        "adjustmentNegative": "Można dokonać zwrotu w wysokości {amount}."
+      },
       "contract": {
         "title": "Umowa",
         "signed": "Podpisano {date}",
@@ -654,6 +682,8 @@
         "customItem": {
           "title": "Niestandardowe przedmioty",
           "add": "Dodaj",
+          "button": "Niestandardowy",
+          "units": "jednostka(i)",
           "badge": "Niestandardowy",
           "empty": "Brak dodanych niestandardowych przedmiotów",
           "dialogTitle": "Dodaj niestandardowy przedmiot",
@@ -686,6 +716,24 @@
           "priceUpdated": "Cena zaktualizowana",
           "priceReset": "Cena zresetowana"
         },
+        "warnings": {
+          "advanceNotice": "Data rozpoczęcia jest przed okresem wyprzedzenia",
+          "advanceNoticeDetails": "Zwykłe wyprzedzenie wynosi {hours}h. Możesz kontynuować mimo to.",
+          "startDayClosed": "Data rozpoczęcia to dzień zamknięcia",
+          "endDayClosed": "Data zakończenia to dzień zamknięcia",
+          "dayClosedDetails": "Sklep jest normalnie zamknięty w tym dniu.",
+          "startOutsideHours": "Godzina rozpoczęcia jest poza godzinami otwarcia",
+          "endOutsideHours": "Godzina zakończenia jest poza godzinami otwarcia",
+          "outsideHoursDetails": "Zwykłe godziny: {open} - {close}",
+          "startClosurePeriod": "Data rozpoczęcia przypada w okresie zamknięcia",
+          "endClosurePeriod": "Data zakończenia przypada w okresie zamknięcia",
+          "closurePeriodDetails": "Sklep jest wyjątkowo zamknięty.",
+          "canContinue": "Jako menedżer możesz utworzyć tę rezerwację mimo ostrzeżeń.",
+          "productConflict": "{name}: konflikt dostępności",
+          "productConflictDetails": "Żądana ilość: {requested}, dostępna na ten okres: {available}",
+          "conflictCanContinue": "Te produkty są już zarezerwowane w tym okresie. Możesz kontynuować, jeśli ręcznie zarządzasz dostępnością.",
+          "insufficientStock": "Niewystarczający stan magazynowy"
+        },
         "addItemError": "Proszę dodać co najmniej jeden produkt lub niestandardowy przedmiot"
       },
       "rejectDialog": {
@@ -708,7 +756,40 @@
         "returned": "Przedmioty zwrócone",
         "note_updated": "Notatki zaktualizowane",
         "payment_added": "Płatność dodana",
-        "payment_updated": "Płatność zaktualizowana"
+        "payment_updated": "Płatność zaktualizowana",
+        "payment_received": "Otrzymano płatność online",
+        "payment_initiated": "Płatność online rozpoczęta",
+        "payment_failed": "Płatność online nieudana",
+        "payment_expired": "Płatność online wygasła",
+        "deposit_authorized": "Autoryzacja kaucji utworzona",
+        "deposit_captured": "Kaucja pobrana",
+        "deposit_released": "Kaucja zwolniona",
+        "deposit_failed": "Autoryzacja nieudana",
+        "access_link_sent": "Link dostępu wysłany",
+        "modified": "Rezerwacja zmodyfikowana",
+        "showAll": "Pokaż wszystko ({count} wydarzeń)",
+        "showLess": "Pokaż mniej"
+      },
+      "smartActions": {
+        "paymentIncomplete": "Wynajem nieopłacony ({remaining} pozostało)",
+        "depositNotCollected": "Kaucja niepobrana ({amount})",
+        "pickupConfirmTitle": "Potwierdź odbiór",
+        "pickupConfirmDescription": "Potwierdź, że klient odebrał wynajęty sprzęt.",
+        "warningPaymentTitle": "Płatność niekompletna",
+        "warningPaymentDescription": "Pozostało {remaining} do zapłaty za wynajem. Klient powinien zapłacić przed odbiorem.",
+        "warningDepositTitle": "Kaucja niepobrana",
+        "warningDepositDescription": "Kaucja w wysokości {amount} nie została jeszcze pobrana. Upewnij się, że ją pobierzesz przed wydaniem sprzętu.",
+        "acknowledgePickupWarnings": "Rozumiem i chcę kontynuować mimo tych ostrzeżeń",
+        "confirmPickup": "Potwierdź odbiór",
+        "returnConfirmTitle": "Potwierdź zwrot",
+        "returnConfirmDescription": "Sprawdź stan sprzętu i podsumowanie finansowe przed potwierdzeniem.",
+        "fullyPaid": "W pełni opłacone",
+        "partiallyPaid": "{paid} z {total} zapłacone",
+        "collected": "pobrana",
+        "notCollected": "Niepobrana",
+        "toReturnToCustomer": "Do zwrotu klientowi",
+        "returnQuestion": "Potwierdzasz, że sprzęt został zwrócony w dobrym stanie?",
+        "confirmReturn": "Potwierdź zwrot"
       },
       "activityBy": "przez",
       "activitySystem": "Akcja automatyczna",
@@ -767,12 +848,25 @@
         "deleteConfirmDescription": "Ta akcja jest nieodwracalna. Płatność zostanie trwale usunięta z historii.",
         "unpaidWarning": "Pozostało {formattedAmount} do pobrania dla tej rezerwacji",
         "allPaid": "Wszystkie płatności zostały dokonane",
+        "allPaidBadge": "Opłacone",
+        "pendingBadge": "Oczekujące",
+        "depositToReturnBadge": "Kaucja do zwrotu",
+        "toCollect": "Do pobrania",
+        "fullyReturned": "W pełni zwrócona",
+        "showAll": "Pokaż wszystkie {count} płatności",
         "types": {
           "rental": "Wynajem",
           "deposit": "Kaucja",
           "depositReturn": "Zwrot kaucji",
-          "damage": "Uszkodzenia"
+          "damage": "Uszkodzenia",
+          "depositHold": "Autoryzacja",
+          "depositCapture": "Kaucja pobrana",
+          "adjustment": "Korekta"
         },
+        "type": "Typ płatności",
+        "recordAdjustmentDescription": "Zarejestruj korektę ceny (dodatnią lub ujemną)",
+        "adjustmentHint": "Kwota ujemna dla zwrotu, dodatnia dla dopłaty",
+        "negativeAmountOnlyForAdjustment": "Kwoty ujemne są dozwolone tylko dla korekt",
         "methods": {
           "cash": "Gotówka",
           "card": "Karta",
@@ -785,14 +879,77 @@
           "pending": "Oczekująca",
           "completed": "Zakończona",
           "failed": "Nieudana",
-          "refunded": "Zwrócona"
-        }
+          "refunded": "Zwrócona",
+          "authorized": "Autoryzowana",
+          "cancelled": "Anulowana"
+        },
+        "statusAuthorized": "Autoryzowana",
+        "statusRefunded": "Zwrócona",
+        "statusCancelled": "Anulowana"
+      },
+      "onlinePayment": {
+        "title": "Płatność online",
+        "received": "Otrzymana",
+        "pending": "Oczekuje",
+        "paymentInProgress": "Płatność w toku",
+        "paymentInProgressDescription": "Klient został przekierowany na stronę płatności. Oczekiwanie na potwierdzenie.",
+        "rentalPayment": "Płatność za wynajem",
+        "paidOn": "Zapłacono",
+        "cardSavedForDeposit": "Karta zapisana dla kaucji",
+        "cardNotSaved": "Nie udało się zapisać karty. Klient będzie musiał podać inną metodę płatności dla kaucji.",
+        "transactionId": "Transakcja"
+      },
+      "deposit": {
+        "title": "Kaucja (Autoryzacja)",
+        "description": "Zarządzaj autoryzacją kaucji dla tej rezerwacji",
+        "amount": "Kwota kaucji",
+        "status": {
+          "none": "Niewymagana",
+          "pending": "Karta niezapisana",
+          "cardSaved": "Gotowa",
+          "authorized": "Blokada aktywna",
+          "captured": "Pobrana",
+          "released": "Zwolniona",
+          "failed": "Niepowodzenie"
+        },
+        "pendingTitle": "Karta niezapisana",
+        "pendingDescription": "Płatność została otrzymana, ale karta nie mogła zostać zapisana dla kaucji. Będziesz musiał pobrać kaucję ręcznie lub poprosić klienta o podanie karty.",
+        "cardSavedTitle": "Karta zapisana",
+        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć blokadę, aby zablokować kwotę kaucji.",
+        "authorizedTitle": "Blokada aktywna",
+        "authorizedDescription": "Kwota kaucji jest zablokowana na karcie klienta. Możesz ją pobrać za szkody lub zwolnić na koniec wynajmu.",
+        "capturedDescription": "Kwota kaucji została pobrana z karty klienta.",
+        "releasedDescription": "Autoryzacja została zwolniona, nie pobrano żadnych opłat.",
+        "failedDescription": "Autoryzacja nie powiodła się. Klient może potrzebować użyć innej karty.",
+        "expiresIn": "Wygasa {time}",
+        "expired": "Autoryzacja wygasła",
+        "createHold": "Utwórz autoryzację",
+        "release": "Zwolnij kaucję",
+        "capture": "Pobierz",
+        "holdCreated": "Autoryzacja utworzona pomyślnie",
+        "released": "Kaucja zwolniona pomyślnie",
+        "captured": "Kaucja pobrana pomyślnie",
+        "captureTitle": "Pobierz kaucję",
+        "captureDescription": "Pobierz całość lub część kaucji, aby pokryć szkody lub straty.",
+        "maxCapturable": "Maksymalna kwota",
+        "captureAmount": "Kwota do pobrania",
+        "captureReason": "Powód pobrania",
+        "captureReasonPlaceholder": "Opisz szkody lub powód pobrania...",
+        "captureReasonHint": "Ten powód zostanie zapisany w historii i będzie widoczny dla klienta.",
+        "confirmCapture": "Potwierdź pobranie",
+        "releaseTitle": "Zwolnij kaucję",
+        "releaseDescription": "Czy na pewno chcesz zwolnić kaucję w wysokości {amount}? Autoryzacja zostanie anulowana i nie zostaną pobrane żadne opłaty.",
+        "confirmRelease": "Zwolnij kaucję",
+        "invalidCaptureAmount": "Nieprawidłowa kwota",
+        "captureExceedsDeposit": "Kwota przekracza kaucję",
+        "reasonRequired": "Proszę podać powód"
       },
       "paymentStatus": {
         "paid": "Opłacone",
         "unpaid": "Nieopłacone",
         "partial": "Częściowe"
       },
+      "paymentInProgress": "Płatność w toku",
       "paymentBadge": {
         "paid": "Opłacone",
         "partial": "Częściowe",
@@ -807,6 +964,10 @@
       "pendingCard": {
         "title": "Oczekujące żądanie",
         "description": "Ten klient chce zarezerwować. Zaakceptuj lub odrzuć żądanie."
+      },
+      "paymentPendingCard": {
+        "title": "Płatność w toku",
+        "description": "Klient kończy płatność. Rezerwacja zostanie automatycznie potwierdzona po otrzymaniu płatności."
       },
       "confirmedCard": {
         "title": "Potwierdzona rezerwacja",
@@ -870,7 +1031,16 @@
           }
         }
       },
-      "linkCopied": "Link skopiowany do schowka"
+      "linkCopied": "Link skopiowany do schowka",
+      "accessLink": {
+        "send": "Wyślij link dostępu",
+        "sendSms": "Wyślij SMS",
+        "sendSuccess": "Link dostępu wysłany",
+        "sendError": "Błąd wysyłania linku dostępu",
+        "smsSendSuccess": "Link dostępu wysłany SMS-em",
+        "smsSendError": "Błąd wysyłania SMS",
+        "noPhone": "Klient nie ma numeru telefonu"
+      }
     },
     "customers": {
       "title": "Klienci",
@@ -1013,6 +1183,34 @@
         "completed": "Zakończona",
         "cancelled": "Anulowana",
         "rejected": "Odrzucona"
+      },
+      "export": {
+        "button": "Eksportuj kalendarz",
+        "title": "Eksportuj do kalendarza",
+        "description": "Zsynchronizuj swoje rezerwacje z ulubionym kalendarzem, kopiujac ponizszy link.",
+        "urlLabel": "Link do kalendarza ICS",
+        "loading": "Ladowanie...",
+        "instructions": {
+          "title": "Jak dodac ten kalendarz?",
+          "google": {
+            "step1": "Otworz Kalendarz Google",
+            "step2": "Kliknij + obok \"Inne kalendarze\" i nastepnie \"Z adresu URL\"",
+            "step3": "Wklej link i kliknij \"Dodaj kalendarz\"",
+            "openLink": "Otworz Kalendarz Google"
+          },
+          "apple": {
+            "step1": "Otworz aplikacje Kalendarz na Macu lub iPhonie",
+            "step2": "Plik > Nowa subskrypcja kalendarza (Mac) lub Dodaj konto > Inne > Dodaj subskrybowany kalendarz (iOS)",
+            "step3": "Wklej link i potwierdz"
+          },
+          "outlook": {
+            "step1": "Otworz Kalendarz Outlook",
+            "step2": "Kliknij \"Dodaj kalendarz\" i nastepnie \"Subskrybuj z sieci\"",
+            "step3": "Wklej link i nadaj kalendarzowi nazwe"
+          }
+        },
+        "regenerate": "Wygeneruj nowy link",
+        "regenerateHint": "Wygenerowanie nowego linku uniewazni poprzednio udostepnione linki."
       }
     },
     "statistics": {
@@ -1175,6 +1373,7 @@
       },
       "team": "Zespół",
       "saveChanges": "Zapisz zmiany",
+      "settingsSaved": "Ustawienia zapisane",
       "nav": {
         "storeDescription": "Informacje i konfiguracja",
         "appearanceDescription": "Logo, kolory i motyw",
@@ -1299,6 +1498,8 @@
         "modeRequestDescription": "Ręcznie zatwierdzasz żądania",
         "modePayment": "Płatność natychmiastowa",
         "modePaymentDescription": "Klienci płacą od razu",
+        "pendingBlocksAvailability": "Blokuj dostępność podczas oczekującego żądania",
+        "pendingBlocksAvailabilityDescription": "Po włączeniu oczekujące żądanie rezerwacji natychmiast blokuje dostępność produktu. Wyłącz, aby umożliwić wielokrotne żądania na te same daty.",
         "pricingMode": "Jednostka cenowa",
         "pricingDay": "Za dzień",
         "pricingHour": "Za godzinę",
@@ -1313,7 +1514,14 @@
           "week": "W tygodniach"
         },
         "requireAddress": "Wymagaj adresu klienta",
-        "requireAddressDescription": "Dodaje krok w checkout do zebrania adresu pocztowego"
+        "requireAddressDescription": "Dodaje krok w checkout do zebrania adresu pocztowego",
+        "stripeRequired": {
+          "title": "Wymagana konfiguracja Stripe",
+          "description": "Tryb natychmiastowej płatności wymaga Stripe do przetwarzania płatności online.",
+          "benefits": "Konfiguracja zajmuje tylko kilka minut. Będziesz mógł przyjmować płatności kartą i zabezpieczać rezerwacje kaucjami.",
+          "configureStripe": "Skonfiguruj Stripe",
+          "keepRequest": "Pozostań w trybie zapytania"
+        }
       },
       "emailSettings": {
         "title": "Emaile",
@@ -1425,6 +1633,7 @@
           "deleteDescription": "Ta akcja jest nieodwracalna."
         },
         "updated": "Godziny zaktualizowane",
+        "saved": "Godziny zapisane",
         "closureAdded": "Okres zamknięcia dodany",
         "closureUpdated": "Okres zamknięcia zaktualizowany",
         "closureDeleted": "Okres zamknięcia usunięty",
@@ -1515,7 +1724,91 @@
         "taxNumber": "Numer VAT",
         "taxNumberPlaceholder": "PL1234567890",
         "taxNumberDescription": "Twój numer NIP (wyświetlany na umowach)",
-        "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi."
+        "depositNoTaxInfo": "Kaucje nie podlegają VAT, ponieważ są zwracane klientowi.",
+        "saved": "Ustawienia podatków zapisane"
+      },
+      "payments": {
+        "title": "Płatności",
+        "description": "Skonfiguruj płatności online dla swojego sklepu",
+        "stripeConnect": "Stripe Connect",
+        "stripeConnectDescription": "Akceptuj płatności kartą bezpośrednio w swoim sklepie",
+        "notConnectedDescription": "Połącz swoje konto Stripe, aby akceptować płatności online. Zostaniesz przekierowany do Stripe w celu dokończenia konfiguracji.",
+        "activeDescription": "Twoje konto Stripe jest połączone i działa. Możesz akceptować płatności online.",
+        "incompleteDescription": "Konfiguracja Stripe jest niekompletna. Dokończ konfigurację, aby akceptować płatności.",
+        "connectStripe": "Połącz Stripe",
+        "completeSetup": "Dokończ konfigurację",
+        "openDashboard": "Panel Stripe",
+        "sync": "Synchronizuj",
+        "synced": "Status zsynchronizowany",
+        "disconnect": "Rozłącz",
+        "disconnected": "Konto Stripe rozłączone",
+        "disconnectTitle": "Rozłączyć Stripe?",
+        "disconnectDescription": "Nie będziesz mógł akceptować płatności online. Istniejące płatności nie zostaną naruszone.",
+        "cancel": "Anuluj",
+        "status": {
+          "active": "Aktywne",
+          "incomplete": "Niekompletne"
+        },
+        "callback": {
+          "successTitle": "Stripe połączony!",
+          "successDescription": "Twoje konto Stripe jest teraz połączone. Możesz akceptować płatności online.",
+          "incompleteTitle": "Niekompletna konfiguracja",
+          "incompleteDescription": "Brakuje niektórych informacji. Możesz dokończyć konfigurację później.",
+          "backToSettings": "Powrót do ustawień"
+        },
+        "refresh": {
+          "title": "Link wygasł",
+          "description": "Link konfiguracyjny wygasł. Spróbuj ponownie z ustawień.",
+          "backToSettings": "Powrót do ustawień"
+        },
+        "flowExplanation": {
+          "title": "Proces rezerwacji",
+          "subtitle": "Oto jak klienci doświadczają procesu w zależności od konfiguracji",
+          "currentFlow": "Aktualny proces",
+          "modes": {
+            "request": "Tryb zapytania",
+            "instant": "Natychmiastowa płatność",
+            "stripeActive": "Stripe aktywny",
+            "configRequired": "Wymagana konfiguracja"
+          },
+          "steps": {
+            "requestSubmitted": "Klient składa zapytanie o rezerwację",
+            "youReview": "Otrzymujesz email i sprawdzasz zapytanie",
+            "acceptOrReject": "Akceptujesz lub odrzucasz zapytanie",
+            "paymentOnSite": "Klient płaci na miejscu (gotówka, karta, przelew...)",
+            "paymentOnlineOrSite": "Klient płaci online ze swojego konta lub na miejscu",
+            "customerPays": "Klient płaci natychmiast kartą",
+            "reservationConfirmed": "Rezerwacja jest automatycznie potwierdzona",
+            "bothNotified": "Ty i klient otrzymujecie potwierdzenie"
+          },
+          "suggestions": {
+            "enableStripe": {
+              "title": "Przyjmuj płatności online",
+              "description": "Włącz Stripe, aby klienci mogli płacić kartą. Możesz także wysyłać linki do płatności przez email lub SMS.",
+              "action": "Skonfiguruj Stripe"
+            },
+            "instantPayment": {
+              "title": "Przełączyć na natychmiastową płatność?",
+              "description": "Aby w pełni zautomatyzować rezerwacje, włącz tryb natychmiastowej płatności w ustawieniach sklepu."
+            }
+          },
+          "warnings": {
+            "noStripeWithPayment": {
+              "title": "Niekompletna konfiguracja",
+              "description": "Tryb natychmiastowej płatności jest włączony, ale Stripe nie jest skonfigurowany. Klienci nie będą mogli dokończyć rezerwacji."
+            }
+          },
+          "info": {
+            "requestWithStripe": "Po zaakceptowaniu zapytania klient może zapłacić online ze swojego konta. Możesz także wysłać link do płatności przez email lub SMS, lub pobrać płatność na miejscu.",
+            "instantPayment": "Optymalna konfiguracja! Twoje rezerwacje są w pełni zautomatyzowane. Płatność natychmiast zabezpiecza rezerwację."
+          },
+          "alternatives": {
+            "requestMode": {
+              "title": "Potrzebujesz ręcznej walidacji?",
+              "description": "Tryb zapytania pozwala sprawdzić każdą rezerwację przed płatnością. Możliwość zmiany w ustawieniach sklepu."
+            }
+          }
+        }
       },
       "subscriptionSettings": {
         "title": "Subskrypcja",
@@ -1851,6 +2144,17 @@
         "limited": "{count} pozostało",
         "unavailable": "Niedostępne",
         "inCart": "W koszyku"
+      },
+      "businessHoursWarning": {
+        "title": "Konflikt terminów",
+        "pickup": "Odbiór",
+        "return": "Zwrot",
+        "reasons": {
+          "outside_hours": "poza godzinami otwarcia",
+          "day_closed": "dzień zamknięty",
+          "closure_period": "wyjątkowy okres zamknięcia"
+        },
+        "suggestion": "Dostosuj daty do naszych godzin otwarcia, w przeciwnym razie rezerwacja zostanie odrzucona."
       }
     },
     "productModal": {
@@ -1969,7 +2273,22 @@
         "total": "Do zapłaty",
         "savingsBanner": "Oszczędzasz {amount} dzięki zniżce długoterminowej"
       },
-      "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu."
+      "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu.",
+      "success": {
+        "confirmedTitle": "Płatność potwierdzona!",
+        "confirmedDescription": "Twoja płatność została zaakceptowana. Otrzymasz email z potwierdzeniem.",
+        "pendingTitle": "Oczekiwanie na płatność",
+        "pendingDescription": "Twoja rezerwacja została utworzona i oczekuje na potwierdzenie płatności.",
+        "reservationNumber": "Rezerwacja",
+        "dates": "Daty",
+        "total": "Suma",
+        "depositSaved": "Karta zapisana dla kaucji",
+        "depositSavedDescription": "Twoja karta została zapisana. Autoryzacja na {amount} zostanie utworzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
+        "deposit": "Kaucja",
+        "items": "Zarezerwowane produkty",
+        "emailSent": "Email z potwierdzeniem został wysłany na adres {email}",
+        "backToStore": "Powrót do sklepu"
+      }
     },
     "confirmation": {
       "title": "Rezerwacja potwierdzona!",
@@ -1985,7 +2304,8 @@
       "emailConfirmation": "Email z potwierdzeniem",
       "confirmationSentTo": "Potwierdzenie wysłane do",
       "subtotalLabel": "Suma częściowa",
-      "depositLabel": "Kaucja",
+      "depositLabel": "Kaucja (autoryzacja)",
+      "depositAuthorizationInfo": "Twoja karta zostanie zapisana. Autoryzacja zostanie utworzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
       "totalLabel": "Suma",
       "whatNext": "Następne kroki",
       "stepRequest1": "Przeglądamy Twoje żądanie rezerwacji",
@@ -2030,6 +2350,8 @@
       "myReservations": "Moje rezerwacje",
       "noReservations": "Brak rezerwacji",
       "noReservationsDescription": "Nie masz jeszcze żadnych rezerwacji",
+      "noHistory": "Brak historii",
+      "noHistoryDescription": "Twoje zakończone rezerwacje pojawią się tutaj",
       "viewCatalog": "Zobacz katalog",
       "itemCount": "{count} przedmiot(ów)",
       "reservationDetail": "Szczegóły rezerwacji",
@@ -2054,6 +2376,8 @@
         "pendingDescription": "Twoje żądanie jest przetwarzane",
         "confirmed": "Potwierdzona",
         "confirmedDescription": "Twoja rezerwacja jest potwierdzona",
+        "allSet": "Wszystko gotowe",
+        "allSetDescription": "Twoja rezerwacja jest potwierdzona i opłacona. Czekamy na Ciebie w zaplanowanym terminie.",
         "ongoing": "W trakcie",
         "ongoingDescription": "Wynajem w trakcie",
         "completed": "Zakończona",
@@ -2069,7 +2393,35 @@
       "paymentPaid": "Opłacone",
       "paymentPending": "Nieopłacone",
       "amountPaid": "Zapłacona kwota",
-      "securityNote": "Bezpieczne logowanie przez email. Hasło nie jest wymagane."
+      "securityNote": "Bezpieczne logowanie przez email. Hasło nie jest wymagane.",
+      "payNow": "Zapłać teraz",
+      "paymentInProgress": "Płatność w trakcie realizacji",
+      "paymentRequired": "Wymagana płatność",
+      "confirmedAwaitingPayment": "Oczekiwanie na płatność",
+      "paymentHistory": {
+        "title": "Historia płatności",
+        "noPayments": "Brak zarejestrowanych płatności",
+        "types": {
+          "rental": "Wynajem",
+          "deposit": "Kaucja",
+          "deposit_return": "Zwrot kaucji",
+          "damage": "Uszkodzenia"
+        },
+        "methods": {
+          "stripe": "Karta online",
+          "cash": "Gotówka",
+          "card": "Karta",
+          "transfer": "Przelew",
+          "check": "Czek",
+          "other": "Inne"
+        },
+        "status": {
+          "completed": "Zapłacone",
+          "pending": "Oczekujące",
+          "failed": "Nieudane",
+          "refunded": "Zwrócone"
+        }
+      }
     },
     "footer": {
       "description": "Prosty i efektywny wynajem sprzętu.",
@@ -2189,14 +2541,15 @@
       "recommended": "Zalecane",
       "requestModeDescription": "Klienci wysyłają żądanie. Ręcznie zatwierdzasz i sam zarządzasz płatnością (gotówka, przelew, karta na miejscu).",
       "paymentMode": "Płatność online",
-      "comingSoon": "Wkrótce",
-      "paymentModeDescription": "Klienci płacą bezpośrednio przy rezerwacji. Ta funkcja będzie wkrótce dostępna.",
+      "paymentModeDescription": "Klienci płacą bezpośrednio przy rezerwacji. Automatycznie otrzymuj płatności przez Stripe.",
       "howItWorks": "Jak to działa?",
       "step1": "1. Klient składa żądanie rezerwacji",
       "step2": "2. Otrzymujesz powiadomienie email",
       "step3": "3. Akceptujesz lub odrzucasz żądanie",
       "step4": "4. Klient otrzymuje potwierdzenie emailem",
       "step5": "5. Zarządzasz płatnością przy odbiorze",
+      "paymentSetupTitle": "Szybka konfiguracja",
+      "paymentSetupDescription": "Po utworzeniu sklepu przejdź do Ustawienia → Płatność online, aby połączyć konto Stripe i zacząć otrzymywać płatności.",
       "configComplete": "Konfiguracja zakończona!"
     },
     "complete": {
@@ -2261,7 +2614,8 @@
       "deposit": "Kaucja",
       "total": "Suma",
       "totalToPay": "Do zapłaty",
-      "question": "Pytania? Skontaktuj się z nami:"
+      "question": "Pytania? Skontaktuj się z nami:",
+      "summary": "Podsumowanie"
     },
     "verificationCode": {
       "subject": "Twój kod logowania: {code}",
@@ -2340,6 +2694,14 @@
       "sentBy": "Ten email został wysłany przez {storeName}",
       "ignoreIfNotYou": "Jeśli to nie Ty zainicjowałeś tę akcję, zignoruj ten email.",
       "poweredBy": "Napędzane przez"
+    },
+    "instantAccess": {
+      "subject": "Dostęp do Twojej rezerwacji #{number}",
+      "title": "Dostęp do Twojej rezerwacji",
+      "body": "Kliknij, aby uzyskać dostęp do rezerwacji #{number}.",
+      "paymentPending": "Płatność za tę rezerwację jest oczekująca.",
+      "viewAndPay": "Zobacz i zapłać",
+      "linkValid": "Ten link jest ważny przez 30 dni."
     }
   },
   "contract": {
@@ -2494,6 +2856,22 @@
       "blurDescription": "Ulepsz do {plan}, aby uzyskać dostęp do wszystkich swoich klientów.",
       "bannerAtLimit": "Osiągnięto limit klientów",
       "bannerNearLimit": "Zbliżasz się do limitu klientów"
+    },
+    "sms": {
+      "limitReachedTitle": "Limit SMS osiągnięty",
+      "limitReachedDescription": "Osiągnąłeś limit {limit} SMS w tym miesiącu.",
+      "overLimitTitle": "Twoje SMS startują!",
+      "overLimitDescription": "Wysłałeś {count} SMS, ale Twój aktualny plan pozwala na {limit}.",
+      "successMessage": "Twoja komunikacja rośnie!",
+      "successSubtext": "Więcej SMS = lepsze relacje z klientami. Przejdź na wyższy poziom.",
+      "upgradeDescription": "Ulepsz do {plan}, aby wysyłać więcej SMS do swoich klientów.",
+      "benefit1": "Do 50 SMS/miesiąc z {plan}",
+      "benefit2": "Automatyczne powiadomienia",
+      "benefit3": "Przypomnienia o rezerwacji",
+      "blurTitle": "SMS zablokowane",
+      "blurDescription": "Ulepsz do {plan}, aby nadal wysyłać SMS.",
+      "bannerAtLimit": "Miesięczny limit SMS osiągnięty",
+      "bannerNearLimit": "Zbliżasz się do limitu SMS"
     }
   },
   "errors": {
@@ -2516,6 +2894,7 @@
     "productRequired": "Produkt wymagany",
     "customerRequired": "Klient wymagany",
     "productUnavailable": "Produkt niedostępny: {name}",
+    "productNoLongerAvailable": "Produkt {name} nie jest juz dostepny na te daty. W miedzyczasie dokonano innej rezerwacji.",
     "insufficientStock": "Niewystarczający stan magazynowy dla: {name} ({count} dostępne)",
     "createCustomerError": "Błąd tworzenia klienta",
     "updateCustomerError": "Błąd aktualizacji klienta",
@@ -2542,6 +2921,27 @@
     "tryAgain": "Spróbuj ponownie",
     "goBack": "Wstecz",
     "goHome": "Powrót do strony głównej",
-    "loading": "Ładowanie..."
+    "loading": "Ładowanie...",
+    "noStripeAccount": "Brak połączonego konta Stripe",
+    "stripe": {
+      "onboardingFailed": "Błąd podczas konfiguracji Stripe",
+      "verificationFailed": "Błąd podczas weryfikacji konta Stripe",
+      "syncFailed": "Błąd podczas synchronizacji",
+      "dashboardLinkFailed": "Błąd podczas otwierania panelu Stripe",
+      "alreadyConnected": "Konto Stripe już połączone",
+      "noChargeToRefund": "Brak płatności Stripe do zwrotu",
+      "alreadyRefunded": "Ta płatność została już zwrócona",
+      "refundExceedsCharge": "Kwota zwrotu przekracza kwotę płatności",
+      "refundFailed": "Błąd podczas zwrotu"
+    },
+    "invalidOrExpiredToken": "Ten link jest nieprawidłowy lub wygasł. Poproś o nowy link dostępu.",
+    "alreadyPaid": "Ta rezerwacja jest już opłacona.",
+    "paymentNotAvailable": "Płatność online nie jest dostępna dla tego sklepu.",
+    "paymentSessionError": "Błąd tworzenia sesji płatności",
+    "accessLinkSendFailed": "Błąd wysyłania linku dostępu",
+    "smsNotConfigured": "SMS nie jest skonfigurowany",
+    "smsLimitReached": "Limit SMS osiągnięty. Ulepsz do wyższego planu, aby nadal wysyłać SMS.",
+    "customerNoPhone": "Klient nie ma numeru telefonu",
+    "smsSendFailed": "Błąd wysyłania SMS"
   }
 }
