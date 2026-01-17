@@ -803,6 +803,9 @@
       "onlinePayment": {
         "title": "Online-Zahlung",
         "received": "Erhalten",
+        "pending": "Ausstehend",
+        "paymentInProgress": "Zahlung läuft",
+        "paymentInProgressDescription": "Der Kunde wurde zur Zahlungsseite weitergeleitet. Warten auf Bestätigung.",
         "rentalPayment": "Mietzahlung",
         "paidOn": "Bezahlt am",
         "cardSavedForDeposit": "Karte für Kaution gespeichert",
@@ -873,6 +876,10 @@
       "pendingCard": {
         "title": "Ausstehende Anfrage",
         "description": "Dieser Kunde möchte buchen. Nehmen Sie die Anfrage an oder lehnen Sie sie ab."
+      },
+      "paymentPendingCard": {
+        "title": "Zahlung läuft",
+        "description": "Der Kunde schließt seine Zahlung ab. Die Reservierung wird automatisch bestätigt, sobald die Zahlung eingegangen ist."
       },
       "confirmedCard": {
         "title": "Bestätigte Reservierung",

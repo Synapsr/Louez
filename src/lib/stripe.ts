@@ -126,12 +126,17 @@ export async function createCheckoutSession({
       quantity: item.quantity,
     }))
 
+  // Append session_id to success URL for payment verification
+  const successUrlWithSession = successUrl.includes('?')
+    ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
+    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     payment_method_types: ['card'],
     line_items: stripeLineItems,
     customer_email: customerEmail,
-    success_url: successUrl,
+    success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
@@ -162,6 +167,29 @@ export async function createCheckoutSession({
   return {
     sessionId: session.id,
     url: session.url!,
+  }
+}
+
+/**
+ * Retrieves a checkout session and returns payment status
+ */
+export async function getCheckoutSession(
+  stripeAccountId: string,
+  sessionId: string
+) {
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    stripeAccount: stripeAccountId,
+  })
+
+  return {
+    id: session.id,
+    status: session.status,
+    paymentStatus: session.payment_status,
+    paymentIntentId: session.payment_intent as string | null,
+    customerId: session.customer as string | null,
+    amountTotal: session.amount_total,
+    currency: session.currency?.toUpperCase() ?? 'EUR',
+    metadata: session.metadata,
   }
 }
 

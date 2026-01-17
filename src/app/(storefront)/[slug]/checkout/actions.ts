@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { customers, reservations, reservationItems, products, stores, storeMembers, users } from '@/lib/db/schema'
+import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
@@ -398,7 +398,7 @@ export async function createReservation(input: CreateReservationInput) {
         }))
 
         // Create checkout session
-        const { url } = await createCheckoutSession({
+        const { url, sessionId } = await createCheckoutSession({
           stripeAccountId: store.stripeAccountId!,
           reservationId,
           reservationNumber,
@@ -412,6 +412,21 @@ export async function createReservation(input: CreateReservationInput) {
         })
 
         paymentUrl = url
+
+        // Create a pending payment record to track the checkout session
+        // This will be updated to 'completed' by the webhook when payment succeeds
+        await db.insert(payments).values({
+          id: nanoid(),
+          reservationId,
+          amount: input.subtotalAmount.toFixed(2),
+          type: 'rental',
+          method: 'stripe',
+          status: 'pending',
+          stripeCheckoutSessionId: sessionId,
+          currency,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
       } catch (error) {
         console.error('Failed to create Stripe checkout session:', error)
         // Don't fail the reservation, store owner can send payment link manually

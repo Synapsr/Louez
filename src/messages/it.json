@@ -803,6 +803,9 @@
       "onlinePayment": {
         "title": "Pagamento online",
         "received": "Ricevuto",
+        "pending": "In attesa",
+        "paymentInProgress": "Pagamento in corso",
+        "paymentInProgressDescription": "Il cliente è stato reindirizzato alla pagina di pagamento. In attesa di conferma.",
         "rentalPayment": "Pagamento noleggio",
         "paidOn": "Pagato il",
         "cardSavedForDeposit": "Carta salvata per la cauzione",
@@ -873,6 +876,10 @@
       "pendingCard": {
         "title": "Richiesta in attesa",
         "description": "Questo cliente vuole prenotare. Accetta o rifiuta la sua richiesta."
+      },
+      "paymentPendingCard": {
+        "title": "Pagamento in corso",
+        "description": "Il cliente sta completando il pagamento. La prenotazione sarà confermata automaticamente una volta ricevuto il pagamento."
       },
       "confirmedCard": {
         "title": "Prenotazione confermata",

@@ -117,6 +117,11 @@ export default async function ReservationDetailPage({
   const isRentalFullyPaid = rentalPaid >= rental
   const isDepositFullyCollected = depositCollected >= deposit
 
+  // Check if there's an online payment pending (Stripe checkout in progress)
+  const hasOnlinePaymentPending = reservation.payments.some(
+    (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending'
+  )
+
   // Check if contract exists
   const hasContract = reservation.documents.some((d) => d.type === 'contract')
 
@@ -334,6 +339,7 @@ export default async function ReservationDetailPage({
             endDate={endDate}
             isDepositCollected={isDepositFullyCollected}
             isRentalPaid={isRentalFullyPaid}
+            hasOnlinePaymentPending={hasOnlinePaymentPending}
           />
 
           {/* Online Payment Status - Shows Stripe payment details */}

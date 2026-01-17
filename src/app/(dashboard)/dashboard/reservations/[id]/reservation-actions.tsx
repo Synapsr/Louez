@@ -55,6 +55,7 @@ interface ReservationActionsProps {
   endDate: Date
   isDepositCollected?: boolean
   isRentalPaid?: boolean
+  hasOnlinePaymentPending?: boolean
 }
 
 export function ReservationActions({
@@ -64,6 +65,7 @@ export function ReservationActions({
   endDate,
   isDepositCollected = false,
   isRentalPaid = false,
+  hasOnlinePaymentPending = false,
 }: ReservationActionsProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.reservations')
@@ -122,6 +124,37 @@ export function ReservationActions({
   const renderContent = () => {
     switch (status) {
       case 'pending':
+        // If there's an online payment pending, show a different message
+        if (hasOnlinePaymentPending) {
+          return (
+            <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50">
+                    <Loader2 className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{t('paymentPendingCard.title')}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {t('paymentPendingCard.description')}
+                </p>
+                {canCancel && (
+                  <button
+                    className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors pt-1"
+                    onClick={() => setCancelDialogOpen(true)}
+                    disabled={isLoading}
+                  >
+                    {t('cancelReservation')}
+                  </button>
+                )}
+              </CardContent>
+            </Card>
+          )
+        }
+
+        // Standard request pending (manual approval needed)
         return (
           <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
             <CardContent className="p-4 space-y-3">

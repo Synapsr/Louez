@@ -119,13 +119,13 @@ async function handleCheckoutCompleted(
     return
   }
 
-  // Check idempotence: if payment already exists for this session, skip
+  // Check idempotence: if payment already completed for this session, skip
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
   })
 
-  if (existingPayment) {
-    console.log(`Payment already processed for session ${session.id}, skipping`)
+  if (existingPayment?.status === 'completed') {
+    console.log(`Payment already completed for session ${session.id}, skipping`)
     return
   }
 
@@ -140,6 +140,11 @@ async function handleCheckoutCompleted(
   if (!reservation) {
     console.error(`Reservation ${reservationId} not found`)
     return
+  }
+
+  // If reservation is already confirmed (e.g., by success page), skip
+  if (reservation.status !== 'pending') {
+    console.log(`Reservation ${reservationId} already ${reservation.status}, updating payment only`)
   }
 
   // Get payment intent details and extract customer/payment method
@@ -179,70 +184,90 @@ async function handleCheckoutCompleted(
     newDepositStatus = stripeCustomerId && stripePaymentMethodId ? 'card_saved' : 'pending'
   }
 
-  // Create payment record for rental (deposit is NOT charged - it will be an authorization hold later)
-  await db.insert(payments).values({
-    id: nanoid(),
-    reservationId,
-    amount: totalAmount.toFixed(2),
-    type: 'rental',
-    method: 'stripe',
-    status: 'completed',
-    stripePaymentIntentId: paymentIntentId,
-    stripeChargeId: chargeId,
-    stripeCheckoutSessionId: session.id,
-    stripePaymentMethodId,
-    currency,
-    paidAt: new Date(),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  })
-
-  // Update reservation with status, customer info, and deposit status
-  await db
-    .update(reservations)
-    .set({
-      status: 'confirmed',
-      stripeCustomerId,
+  // Update existing pending payment or create new one
+  if (existingPayment && existingPayment.status === 'pending') {
+    // Update the pending payment created during checkout
+    await db
+      .update(payments)
+      .set({
+        status: 'completed',
+        stripePaymentIntentId: paymentIntentId,
+        stripeChargeId: chargeId,
+        stripePaymentMethodId,
+        paidAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(payments.id, existingPayment.id))
+  } else if (!existingPayment) {
+    // Create payment record (fallback if pending payment wasn't created)
+    await db.insert(payments).values({
+      id: nanoid(),
+      reservationId,
+      amount: totalAmount.toFixed(2),
+      type: 'rental',
+      method: 'stripe',
+      status: 'completed',
+      stripePaymentIntentId: paymentIntentId,
+      stripeChargeId: chargeId,
+      stripeCheckoutSessionId: session.id,
       stripePaymentMethodId,
-      depositStatus: newDepositStatus,
+      currency,
+      paidAt: new Date(),
+      createdAt: new Date(),
       updatedAt: new Date(),
     })
-    .where(eq(reservations.id, reservationId))
+  }
 
-  // Log payment received activity (distinct from confirmation)
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    activityType: 'payment_received',
-    description: null, // Will be displayed via i18n
-    metadata: {
-      paymentIntentId,
-      chargeId,
-      checkoutSessionId: session.id,
-      amount: totalAmount,
-      currency,
-      method: 'stripe',
-      type: 'rental',
-    },
-    createdAt: new Date(),
-  })
+  // Update reservation only if still pending
+  if (reservation.status === 'pending') {
+    await db
+      .update(reservations)
+      .set({
+        status: 'confirmed',
+        stripeCustomerId,
+        stripePaymentMethodId,
+        depositStatus: newDepositStatus,
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservationId))
 
-  // Log confirmation activity
-  await db.insert(reservationActivity).values({
-    id: nanoid(),
-    reservationId,
-    activityType: 'confirmed',
-    description: null, // Will be displayed via i18n
-    metadata: {
-      source: 'online_payment',
-      depositAmount,
-      depositStatus: newDepositStatus,
-      cardSaved: !!stripePaymentMethodId,
-    },
-    createdAt: new Date(),
-  })
+    // Log payment received activity
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'payment_received',
+      description: null,
+      metadata: {
+        paymentIntentId,
+        chargeId,
+        checkoutSessionId: session.id,
+        amount: totalAmount,
+        currency,
+        method: 'stripe',
+        type: 'rental',
+      },
+      createdAt: new Date(),
+    })
 
-  console.log(`Reservation ${reservationId} confirmed. Deposit status: ${newDepositStatus}`)
+    // Log confirmation activity
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'confirmed',
+      description: null,
+      metadata: {
+        source: 'online_payment',
+        depositAmount,
+        depositStatus: newDepositStatus,
+        cardSaved: !!stripePaymentMethodId,
+      },
+      createdAt: new Date(),
+    })
+
+    console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
+  } else {
+    console.log(`Reservation ${reservationId} already processed, payment record updated`)
+  }
 }
 
 async function handleCheckoutExpired(session: Stripe.Checkout.Session) {

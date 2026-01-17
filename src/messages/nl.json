@@ -802,6 +802,9 @@
       "onlinePayment": {
         "title": "Online Betaling",
         "received": "Ontvangen",
+        "pending": "In afwachting",
+        "paymentInProgress": "Betaling bezig",
+        "paymentInProgressDescription": "De klant is doorgestuurd naar de betaalpagina. Wachten op bevestiging.",
         "rentalPayment": "Huurbetaling",
         "paidOn": "Betaald op",
         "cardSavedForDeposit": "Kaart opgeslagen voor borg",
@@ -872,6 +875,10 @@
       "pendingCard": {
         "title": "Aanvraag in behandeling",
         "description": "Deze klant wil reserveren. Accepteer of wijs de aanvraag af."
+      },
+      "paymentPendingCard": {
+        "title": "Betaling bezig",
+        "description": "De klant is bezig met betalen. De reservering wordt automatisch bevestigd zodra de betaling is ontvangen."
       },
       "confirmedCard": {
         "title": "Bevestigde reservering",

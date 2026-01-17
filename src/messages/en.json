@@ -803,6 +803,9 @@
       "onlinePayment": {
         "title": "Online Payment",
         "received": "Received",
+        "pending": "Pending",
+        "paymentInProgress": "Payment in progress",
+        "paymentInProgressDescription": "Customer has been redirected to the payment page. Waiting for confirmation.",
         "rentalPayment": "Rental payment",
         "paidOn": "Paid on",
         "cardSavedForDeposit": "Card saved for deposit",
@@ -873,6 +876,10 @@
       "pendingCard": {
         "title": "Pending request",
         "description": "This customer wants to book. Accept or reject their request."
+      },
+      "paymentPendingCard": {
+        "title": "Payment in progress",
+        "description": "Customer is completing their payment. The reservation will be automatically confirmed once payment is received."
       },
       "confirmedCard": {
         "title": "Confirmed reservation",

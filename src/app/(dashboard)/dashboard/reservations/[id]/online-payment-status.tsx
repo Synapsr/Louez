@@ -6,10 +6,11 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   CheckCircle,
+  Clock,
   CreditCard,
-  ExternalLink,
   Loader2,
   Wifi,
+  AlertCircle,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -19,8 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { cn, getCurrencySymbol } from '@/lib/utils'
+import { getCurrencySymbol } from '@/lib/utils'
 
 import { getReservationPaymentMethod } from '../actions'
 
@@ -33,6 +33,7 @@ interface Payment {
   paidAt: Date | null
   stripeChargeId: string | null
   stripePaymentIntentId: string | null
+  stripeCheckoutSessionId: string | null
 }
 
 interface PaymentMethodInfo {
@@ -73,13 +74,16 @@ export function OnlinePaymentStatus({
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null)
 
-  // Find Stripe rental payment
+  // Find Stripe rental payment (completed or pending)
   const stripeRentalPayment = payments.find(
     (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'completed'
   )
+  const stripePendingPayment = payments.find(
+    (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending'
+  )
 
-  // If no Stripe payment, don't render
-  if (!stripeRentalPayment) {
+  // If no Stripe payment at all, don't render
+  if (!stripeRentalPayment && !stripePendingPayment) {
     return null
   }
 
@@ -90,89 +94,146 @@ export function OnlinePaymentStatus({
     }
   }, [reservationId, stripePaymentMethodId])
 
-  const paymentAmount = parseFloat(stripeRentalPayment.amount)
-  const paymentDate = stripeRentalPayment.paidAt
-    ? format(new Date(stripeRentalPayment.paidAt), "d MMM yyyy 'à' HH:mm", { locale: fr })
-    : null
+  // Payment is pending - show waiting state
+  if (stripePendingPayment && !stripeRentalPayment) {
+    const paymentAmount = parseFloat(stripePendingPayment.amount)
 
-  const hasCardSaved = !!stripePaymentMethodId && depositStatus !== 'pending'
+    return (
+      <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50/50 to-white dark:from-amber-950/20 dark:to-background">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              {t('title')}
+            </CardTitle>
+            <Badge
+              variant="secondary"
+              className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            >
+              <Clock className="h-3 w-3 mr-1" />
+              {t('pending')}
+            </Badge>
+          </div>
+        </CardHeader>
 
-  return (
-    <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-950/20 dark:to-background">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Wifi className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-            {t('title')}
-          </CardTitle>
-          <Badge
-            variant="secondary"
-            className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-          >
-            <CheckCircle className="h-3 w-3 mr-1" />
-            {t('received')}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-        {/* Payment amount and date */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-background border">
-          <div>
-            <p className="text-sm text-muted-foreground">{t('rentalPayment')}</p>
-            <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+        <CardContent className="space-y-3">
+          {/* Payment in progress */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-background border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-900/30">
+                <Loader2 className="h-4 w-4 text-amber-600 dark:text-amber-400 animate-spin" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">{t('paymentInProgress')}</p>
+                <p className="text-xs text-muted-foreground">{t('paymentInProgressDescription')}</p>
+              </div>
+            </div>
+            <p className="text-lg font-semibold text-amber-700 dark:text-amber-400">
               {paymentAmount.toFixed(2)}{currencySymbol}
             </p>
           </div>
-          {paymentDate && (
-            <div className="text-right">
-              <p className="text-xs text-muted-foreground">{t('paidOn')}</p>
-              <p className="text-sm">{paymentDate}</p>
+
+          {/* Checkout session info */}
+          {stripePendingPayment.stripeCheckoutSessionId && (
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                Session: <span className="font-mono text-[10px]">{stripePendingPayment.stripeCheckoutSessionId.slice(0, 20)}...</span>
+              </p>
             </div>
           )}
-        </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-        {/* Saved card info */}
-        {paymentMethod && hasCardSaved && (
+  // Payment completed
+  if (stripeRentalPayment) {
+    const paymentAmount = parseFloat(stripeRentalPayment.amount)
+    const paymentDate = stripeRentalPayment.paidAt
+      ? format(new Date(stripeRentalPayment.paidAt), "d MMM yyyy 'à' HH:mm", { locale: fr })
+      : null
+
+    const hasCardSaved = !!stripePaymentMethodId && depositStatus !== 'pending'
+
+    return (
+      <Card className="border-emerald-200 dark:border-emerald-800 bg-gradient-to-br from-emerald-50/50 to-white dark:from-emerald-950/20 dark:to-background">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wifi className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              {t('title')}
+            </CardTitle>
+            <Badge
+              variant="secondary"
+              className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+            >
+              <CheckCircle className="h-3 w-3 mr-1" />
+              {t('received')}
+            </Badge>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-3">
+          {/* Payment amount and date */}
           <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-background border">
-            <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">
-                  {CARD_BRANDS[paymentMethod.brand || ''] || paymentMethod.brand}
-                  {' '}
-                  <span className="font-mono">****{paymentMethod.last4}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">{t('cardSavedForDeposit')}</p>
-              </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{t('rentalPayment')}</p>
+              <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">
+                {paymentAmount.toFixed(2)}{currencySymbol}
+              </p>
             </div>
-            {paymentMethod.expMonth && paymentMethod.expYear && (
-              <span className="text-xs text-muted-foreground">
-                {String(paymentMethod.expMonth).padStart(2, '0')}/{String(paymentMethod.expYear).slice(-2)}
-              </span>
+            {paymentDate && (
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">{t('paidOn')}</p>
+                <p className="text-sm">{paymentDate}</p>
+              </div>
             )}
           </div>
-        )}
 
-        {/* Card not saved warning */}
-        {!hasCardSaved && depositStatus === 'pending' && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-            <CreditCard className="h-4 w-4 text-amber-500 shrink-0" />
-            <p className="text-xs text-amber-700 dark:text-amber-400">
-              {t('cardNotSaved')}
-            </p>
-          </div>
-        )}
+          {/* Saved card info */}
+          {paymentMethod && hasCardSaved && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-background border">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">
+                    {CARD_BRANDS[paymentMethod.brand || ''] || paymentMethod.brand}
+                    {' '}
+                    <span className="font-mono">****{paymentMethod.last4}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">{t('cardSavedForDeposit')}</p>
+                </div>
+              </div>
+              {paymentMethod.expMonth && paymentMethod.expYear && (
+                <span className="text-xs text-muted-foreground">
+                  {String(paymentMethod.expMonth).padStart(2, '0')}/{String(paymentMethod.expYear).slice(-2)}
+                </span>
+              )}
+            </div>
+          )}
 
-        {/* Stripe transaction ID */}
-        {stripeRentalPayment.stripePaymentIntentId && (
-          <div className="pt-2 border-t">
-            <p className="text-xs text-muted-foreground">
-              {t('transactionId')}: <span className="font-mono text-[10px]">{stripeRentalPayment.stripePaymentIntentId}</span>
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
+          {/* Card not saved warning */}
+          {!hasCardSaved && depositStatus === 'pending' && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+              <CreditCard className="h-4 w-4 text-amber-500 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {t('cardNotSaved')}
+              </p>
+            </div>
+          )}
+
+          {/* Stripe transaction ID */}
+          {stripeRentalPayment.stripePaymentIntentId && (
+            <div className="pt-2 border-t">
+              <p className="text-xs text-muted-foreground">
+                {t('transactionId')}: <span className="font-mono text-[10px]">{stripeRentalPayment.stripePaymentIntentId}</span>
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return null
 }
