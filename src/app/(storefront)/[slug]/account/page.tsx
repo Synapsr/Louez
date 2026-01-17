@@ -19,6 +19,7 @@ import {
   LogOut,
   Sparkles,
   CreditCard,
+  History,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -148,12 +149,22 @@ export default async function AccountPage({ params }: AccountPageProps) {
     },
   })
 
-  const activeReservations = customerReservations.filter(
-    (r) => r.status === 'confirmed' || r.status === 'ongoing'
+  // Current reservations: pending, confirmed, ongoing (active)
+  const currentReservations = customerReservations.filter(
+    (r) => r.status === 'pending' || r.status === 'confirmed' || r.status === 'ongoing'
+  )
+
+  // History: completed, cancelled, rejected (closed)
+  const historyReservations = customerReservations.filter(
+    (r) => r.status === 'completed' || r.status === 'cancelled' || r.status === 'rejected'
   )
 
   const pendingReservations = customerReservations.filter(
     (r) => r.status === 'pending'
+  )
+
+  const activeReservations = customerReservations.filter(
+    (r) => r.status === 'confirmed' || r.status === 'ongoing'
   )
 
   async function handleLogout() {
@@ -211,8 +222,8 @@ export default async function AccountPage({ params }: AccountPageProps) {
           </div>
         </Card>
 
-        {/* Active Reservations */}
-        {activeReservations.length > 0 && (
+        {/* Current Reservations (pending, confirmed, ongoing) */}
+        {currentReservations.length > 0 && (
           <section className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
@@ -221,10 +232,11 @@ export default async function AccountPage({ params }: AccountPageProps) {
               <h2 className="text-lg font-semibold">{t('activeReservationsTitle')}</h2>
             </div>
             <div className="space-y-3">
-              {activeReservations.map((reservation) => {
+              {currentReservations.map((reservation) => {
                 const config = statusConfig[reservation.status as ReservationStatus]
                 const StatusIcon = config.icon
                 const isPaid = reservation.payments.some((p) => p.status === 'completed')
+                const isPending = reservation.status === 'pending'
 
                 return (
                   <Link
@@ -232,7 +244,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                     href={`/account/reservations/${reservation.id}`}
                     className="block"
                   >
-                    <Card className="group hover:shadow-md transition-all duration-200 border-l-4 border-l-primary">
+                    <Card className={`group hover:shadow-md transition-all duration-200 border-l-4 ${isPending ? 'border-l-amber-400 dark:border-l-amber-600' : 'border-l-primary'}`}>
                       <CardContent className="p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-4">
                           <div className="space-y-2 flex-1 min-w-0">
@@ -285,34 +297,30 @@ export default async function AccountPage({ params }: AccountPageProps) {
           </section>
         )}
 
-        {/* All Reservations */}
+        {/* Reservations History (completed, cancelled, rejected) */}
         <section>
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <History className="h-4 w-4 text-muted-foreground" />
             </div>
             <h2 className="text-lg font-semibold">{t('reservationsHistory')}</h2>
           </div>
 
-          {customerReservations.length === 0 ? (
+          {historyReservations.length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <div className="flex h-16 w-16 mx-auto mb-4 items-center justify-center rounded-full bg-muted">
                   <Package className="h-8 w-8 text-muted-foreground" />
                 </div>
-                <h3 className="font-semibold mb-1">{t('noReservations')}</h3>
-                <p className="text-muted-foreground mb-6">{t('noReservationsDescription')}</p>
-                <Button asChild>
-                  <Link href="/catalog">{t('viewCatalog')}</Link>
-                </Button>
+                <h3 className="font-semibold mb-1">{t('noHistory')}</h3>
+                <p className="text-muted-foreground">{t('noHistoryDescription')}</p>
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-3">
-              {customerReservations.map((reservation) => {
+              {historyReservations.map((reservation) => {
                 const config = statusConfig[reservation.status as ReservationStatus]
                 const StatusIcon = config.icon
-                const isActive = reservation.status === 'confirmed' || reservation.status === 'ongoing'
                 const isPaid = reservation.payments.some((p) => p.status === 'completed')
 
                 return (
@@ -321,7 +329,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                     href={`/account/reservations/${reservation.id}`}
                     className="block"
                   >
-                    <Card className={`group hover:shadow-sm transition-all duration-200 ${isActive ? 'opacity-60' : ''}`}>
+                    <Card className="group hover:shadow-sm transition-all duration-200">
                       <CardContent className="p-4">
                         <div className="flex items-center justify-between gap-4">
                           <div className="flex items-center gap-3 min-w-0">
