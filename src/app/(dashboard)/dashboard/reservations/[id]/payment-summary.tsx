@@ -670,8 +670,8 @@ export function PaymentSummary({
               </div>
               <p className="text-xs text-muted-foreground">
                 {paymentType === 'rental'
-                  ? t('payment.rentalRemaining', { amount: rentalRemaining.toFixed(2) })
-                  : t('payment.depositRemaining', { amount: depositRemaining.toFixed(2) })}
+                  ? t('payment.rentalRemaining', { formattedAmount: `${rentalRemaining.toFixed(2)}${currencySymbol}` })
+                  : t('payment.depositRemaining', { formattedAmount: `${depositRemaining.toFixed(2)}${currencySymbol}` })}
               </p>
             </div>
 
