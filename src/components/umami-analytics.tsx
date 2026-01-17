@@ -1,19 +1,18 @@
-'use client'
-
 import Script from 'next/script'
 
 /**
- * Umami Analytics component
+ * Umami Analytics component (Server Component)
  *
- * Configured via NEXT_PUBLIC_UMAMI environment variable
+ * Configured via UMAMI_URL environment variable (without NEXT_PUBLIC_ prefix)
  * Format: https://your-umami-host.com/script.js#website-id
  *
- * Example: NEXT_PUBLIC_UMAMI=https://analytics.example.com/script.js#abc123def
+ * Example: UMAMI_URL=https://analytics.example.com/script.js#abc123def
  *
  * If the variable is not set, no script is injected.
+ * This runs at runtime on the server, not at build time.
  */
 export function UmamiAnalytics() {
-  const umamiUrl = process.env.NEXT_PUBLIC_UMAMI
+  const umamiUrl = process.env.UMAMI_URL
 
   if (!umamiUrl) {
     return null
@@ -31,17 +30,18 @@ export function UmamiAnalytics() {
 
     if (!websiteId) {
       console.warn(
-        '[Umami] Missing website ID in NEXT_PUBLIC_UMAMI. Format: https://host/script.js#website-id'
+        '[Umami] Missing website ID in UMAMI_URL. Format: https://host/script.js#website-id'
       )
       return null
     }
   } catch {
-    console.warn('[Umami] Invalid NEXT_PUBLIC_UMAMI URL:', umamiUrl)
+    console.warn('[Umami] Invalid UMAMI_URL:', umamiUrl)
     return null
   }
 
   return (
     <Script
+      defer
       src={src}
       data-website-id={websiteId}
       strategy="afterInteractive"
