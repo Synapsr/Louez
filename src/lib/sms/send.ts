@@ -9,6 +9,21 @@ import { db } from '@/lib/db'
 import { smsLogs } from '@/lib/db/schema'
 import { sendSms, isSmsConfigured } from './client'
 import { validateAndNormalizePhone } from './phone'
+import { canSendSms } from '@/lib/plan-limits'
+
+/**
+ * SMS send result with optional limit info for UI handling
+ */
+export interface SmsSendResult {
+  success: boolean
+  error?: string
+  limitReached?: boolean
+  limitInfo?: {
+    current: number
+    limit: number
+    planSlug: string
+  }
+}
 
 interface Store {
   id: string
@@ -88,13 +103,28 @@ export async function sendAccessLinkSms({
     number: string
   }
   accessUrl: string
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
   }
 
   if (!isSmsConfigured()) {
     return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
   }
 
   // Validate and normalize phone number
@@ -169,13 +199,28 @@ export async function sendReservationConfirmationSms({
     startDate: Date
     endDate: Date
   }
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
   }
 
   if (!isSmsConfigured()) {
     return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
   }
 
   // Validate and normalize phone number
@@ -258,13 +303,28 @@ export async function sendReminderPickupSms({
     number: string
     startDate: Date
   }
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
   }
 
   if (!isSmsConfigured()) {
     return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
   }
 
   // Validate and normalize phone number
@@ -343,13 +403,28 @@ export async function sendReminderReturnSms({
     number: string
     endDate: Date
   }
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
   }
 
   if (!isSmsConfigured()) {
     return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
   }
 
   // Validate and normalize phone number
@@ -429,13 +504,28 @@ export async function sendCustomSms({
     number: string
   }
   message: string
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<SmsSendResult> {
   if (!customer.phone) {
     return { success: false, error: 'Customer has no phone number' }
   }
 
   if (!isSmsConfigured()) {
     return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS limit for the store's plan
+  const smsLimit = await canSendSms(store.id)
+  if (!smsLimit.allowed) {
+    return {
+      success: false,
+      error: 'SMS limit reached',
+      limitReached: true,
+      limitInfo: {
+        current: smsLimit.current,
+        limit: smsLimit.limit!,
+        planSlug: smsLimit.planSlug,
+      },
+    }
   }
 
   // Validate and normalize phone number

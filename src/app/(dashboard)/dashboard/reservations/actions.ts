@@ -1987,6 +1987,14 @@ export async function sendAccessLinkBySms(reservationId: string) {
     })
 
     if (!result.success) {
+      // Return limit info if SMS limit was reached
+      if (result.limitReached && result.limitInfo) {
+        return {
+          error: 'errors.smsLimitReached',
+          limitReached: true,
+          limitInfo: result.limitInfo,
+        }
+      }
       return { error: result.error || 'errors.smsSendFailed' }
     }
 

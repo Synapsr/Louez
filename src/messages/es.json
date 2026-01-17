@@ -2824,6 +2824,22 @@
       "blurDescription": "Actualiza a {plan} para acceder a todos tus clientes.",
       "bannerAtLimit": "Limite de clientes alcanzado",
       "bannerNearLimit": "Te estas acercando al limite de clientes"
+    },
+    "sms": {
+      "limitReachedTitle": "Limite de SMS alcanzado",
+      "limitReachedDescription": "Has alcanzado el limite de {limit} SMS este mes.",
+      "overLimitTitle": "Tus SMS despegan!",
+      "overLimitDescription": "Has enviado {count} SMS pero tu plan actual permite {limit}.",
+      "successMessage": "Tu comunicacion esta creciendo!",
+      "successSubtext": "Mas SMS = mejores relaciones con clientes. Pasa al siguiente nivel.",
+      "upgradeDescription": "Actualiza a {plan} para enviar mas SMS a tus clientes.",
+      "benefit1": "Hasta 50 SMS/mes con {plan}",
+      "benefit2": "Notificaciones automaticas",
+      "benefit3": "Recordatorios de reserva",
+      "blurTitle": "SMS bloqueados",
+      "blurDescription": "Actualiza a {plan} para seguir enviando SMS.",
+      "bannerAtLimit": "Limite mensual de SMS alcanzado",
+      "bannerNearLimit": "Te estas acercando al limite de SMS"
     }
   },
   "errors": {
@@ -2892,6 +2908,7 @@
     "paymentSessionError": "Error al crear la sesion de pago",
     "accessLinkSendFailed": "Error al enviar el enlace de acceso",
     "smsNotConfigured": "SMS no esta configurado",
+    "smsLimitReached": "Limite de SMS alcanzado. Actualiza a un plan superior para seguir enviando SMS.",
     "customerNoPhone": "El cliente no tiene numero de telefono",
     "smsSendFailed": "Error al enviar SMS"
   }

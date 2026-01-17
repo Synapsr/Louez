@@ -36,6 +36,7 @@ import { cn, getCurrencySymbol } from '@/lib/utils'
 
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
+import { UpgradeModal } from '@/components/dashboard/upgrade-modal'
 import { sendAccessLink, sendAccessLinkBySms } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
@@ -110,6 +111,12 @@ export function ReservationHeader({
   const [copiedLink, setCopiedLink] = useState(false)
   const [isSendingAccessLink, setIsSendingAccessLink] = useState(false)
   const [isSendingAccessLinkSms, setIsSendingAccessLinkSms] = useState(false)
+  const [smsLimitModalOpen, setSmsLimitModalOpen] = useState(false)
+  const [smsLimitInfo, setSmsLimitInfo] = useState<{
+    current: number
+    limit: number
+    planSlug: string
+  } | null>(null)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
   const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
@@ -154,9 +161,18 @@ export function ReservationHeader({
     }
     setIsSendingAccessLinkSms(true)
     try {
-      const result = await sendAccessLinkBySms(reservationId)
+      const result = await sendAccessLinkBySms(reservationId) as {
+        error?: string
+        limitReached?: boolean
+        limitInfo?: { current: number; limit: number; planSlug: string }
+        success?: boolean
+      }
       if (result.error) {
-        if (result.error === 'errors.customerNoPhone') {
+        // Handle SMS limit reached
+        if (result.limitReached && result.limitInfo) {
+          setSmsLimitInfo(result.limitInfo)
+          setSmsLimitModalOpen(true)
+        } else if (result.error === 'errors.customerNoPhone') {
           toast.error(t('accessLink.noPhone'))
         } else {
           toast.error(t('accessLink.smsSendError'))
@@ -402,6 +418,18 @@ export function ReservationHeader({
         isFullyPaid={isFullyPaid}
         sentEmails={sentEmails}
       />
+
+      {/* SMS Limit Upgrade Modal */}
+      {smsLimitInfo && (
+        <UpgradeModal
+          open={smsLimitModalOpen}
+          onOpenChange={setSmsLimitModalOpen}
+          limitType="sms"
+          currentCount={smsLimitInfo.current}
+          limit={smsLimitInfo.limit}
+          currentPlan={smsLimitInfo.planSlug}
+        />
+      )}
     </>
   )
 }

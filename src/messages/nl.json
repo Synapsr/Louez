@@ -2820,6 +2820,22 @@
       "blurDescription": "Upgrade naar {plan} om toegang te krijgen tot al je klanten.",
       "bannerAtLimit": "Klantlimiet bereikt",
       "bannerNearLimit": "Je nadert je klantlimiet"
+    },
+    "sms": {
+      "limitReachedTitle": "SMS-limiet bereikt",
+      "limitReachedDescription": "Je hebt de limiet van {limit} SMS deze maand bereikt.",
+      "overLimitTitle": "Je SMS nemen een vlucht!",
+      "overLimitDescription": "Je hebt {count} SMS verzonden maar je huidige plan staat {limit} toe.",
+      "successMessage": "Je communicatie groeit!",
+      "successSubtext": "Meer SMS = betere klantrelaties. Ga naar het volgende niveau.",
+      "upgradeDescription": "Upgrade naar {plan} om meer SMS naar je klanten te sturen.",
+      "benefit1": "Tot 50 SMS/maand met {plan}",
+      "benefit2": "Automatische meldingen",
+      "benefit3": "Reserveringsherinneringen",
+      "blurTitle": "SMS geblokkeerd",
+      "blurDescription": "Upgrade naar {plan} om SMS te blijven versturen.",
+      "bannerAtLimit": "Maandelijkse SMS-limiet bereikt",
+      "bannerNearLimit": "Je nadert je SMS-limiet"
     }
   },
   "errors": {
@@ -2888,6 +2904,7 @@
     "paymentSessionError": "Fout bij aanmaken betalingssessie",
     "accessLinkSendFailed": "Fout bij verzenden toegangslink",
     "smsNotConfigured": "SMS is niet geconfigureerd",
+    "smsLimitReached": "SMS-limiet bereikt. Upgrade naar een hoger plan om SMS te blijven versturen.",
     "customerNoPhone": "Klant heeft geen telefoonnummer",
     "smsSendFailed": "Fout bij verzenden SMS"
   }

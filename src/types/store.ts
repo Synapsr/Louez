@@ -153,6 +153,7 @@ export interface PlanFeatures {
   maxReservationsPerMonth: number | null // null = unlimited
   maxCustomers: number | null // null = unlimited
   maxCollaborators: number | null // null = unlimited, 0 = none
+  maxSmsPerMonth: number | null // null = unlimited, 0 = none
 
   // Features
   customDomain: boolean

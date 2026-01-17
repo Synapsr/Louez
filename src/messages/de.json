@@ -2822,6 +2822,22 @@
       "blurDescription": "Upgraden Sie auf {plan}, um auf alle Ihre Kunden zuzugreifen.",
       "bannerAtLimit": "Kundenlimit erreicht",
       "bannerNearLimit": "Sie nähern sich Ihrem Kundenlimit"
+    },
+    "sms": {
+      "limitReachedTitle": "SMS-Limit erreicht",
+      "limitReachedDescription": "Sie haben das Limit von {limit} SMS in diesem Monat erreicht.",
+      "overLimitTitle": "Ihre SMS heben ab!",
+      "overLimitDescription": "Sie haben {count} SMS gesendet, aber Ihr aktueller Plan erlaubt nur {limit}.",
+      "successMessage": "Ihre Kommunikation wächst!",
+      "successSubtext": "Mehr SMS = bessere Kundenbeziehungen. Auf zur nächsten Stufe.",
+      "upgradeDescription": "Upgraden Sie auf {plan}, um mehr SMS an Ihre Kunden zu senden.",
+      "benefit1": "Bis zu 50 SMS/Monat mit {plan}",
+      "benefit2": "Automatische Benachrichtigungen",
+      "benefit3": "Reservierungserinnerungen",
+      "blurTitle": "SMS blockiert",
+      "blurDescription": "Upgraden Sie auf {plan}, um weiter SMS zu senden.",
+      "bannerAtLimit": "Monatliches SMS-Limit erreicht",
+      "bannerNearLimit": "Sie nähern sich Ihrem SMS-Limit"
     }
   },
   "errors": {
@@ -2890,6 +2906,7 @@
     "paymentSessionError": "Fehler beim Erstellen der Zahlungssitzung",
     "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks",
     "smsNotConfigured": "SMS ist nicht konfiguriert",
+    "smsLimitReached": "SMS-Limit erreicht. Upgraden Sie auf einen höheren Plan, um weiter SMS zu senden.",
     "customerNoPhone": "Kunde hat keine Telefonnummer",
     "smsSendFailed": "Fehler beim Senden der SMS"
   }

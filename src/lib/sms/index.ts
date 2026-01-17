@@ -29,3 +29,4 @@ export {
 // Types
 export type { SendSmsOptions, SendSmsResult, SmsProviderType, SmsConfig } from './types'
 export type { PhoneValidationResult } from './phone'
+export type { SmsSendResult } from './send'
