@@ -865,6 +865,7 @@
         "unpaid": "Non pagato",
         "partial": "Parziale"
       },
+      "paymentInProgress": "Pagamento in corso",
       "paymentBadge": {
         "paid": "Pagato",
         "partial": "Parziale",

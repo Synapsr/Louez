@@ -34,6 +34,7 @@ interface Payment {
   id: string
   amount: string
   type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture'
+  method: 'cash' | 'card' | 'transfer' | 'check' | 'other' | 'stripe'
   status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
 }
 

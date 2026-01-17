@@ -864,6 +864,7 @@
         "unpaid": "Onbetaald",
         "partial": "Gedeeltelijk"
       },
+      "paymentInProgress": "Betaling bezig",
       "paymentBadge": {
         "paid": "Betaald",
         "partial": "Gedeeltelijk",
