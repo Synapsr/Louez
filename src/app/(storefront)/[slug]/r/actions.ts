@@ -82,10 +82,11 @@ export async function validateInstantAccessToken(
       path: '/',
     })
 
+    // Note: Don't include slug in path - subdomain routing handles it
     return {
       success: true,
       customerId: reservation.customer.id,
-      redirectUrl: `/${storeSlug}/account/reservations/${reservationId}`,
+      redirectUrl: `/account/reservations/${reservationId}`,
     }
   } catch (error) {
     console.error('Error validating instant access token:', error)
