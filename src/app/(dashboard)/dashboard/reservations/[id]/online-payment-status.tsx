@@ -10,7 +10,6 @@ import {
   CreditCard,
   Loader2,
   Wifi,
-  AlertCircle,
 } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
@@ -82,17 +81,20 @@ export function OnlinePaymentStatus({
     (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending'
   )
 
-  // If no Stripe payment at all, don't render
-  if (!stripeRentalPayment && !stripePendingPayment) {
-    return null
-  }
+  // Determine if we should show anything
+  const hasStripePayment = stripeRentalPayment || stripePendingPayment
 
-  // Fetch payment method details
+  // Fetch payment method details (must be called before any conditional returns)
   useEffect(() => {
-    if (stripePaymentMethodId) {
+    if (stripePaymentMethodId && hasStripePayment) {
       getReservationPaymentMethod(reservationId).then(setPaymentMethod)
     }
-  }, [reservationId, stripePaymentMethodId])
+  }, [reservationId, stripePaymentMethodId, hasStripePayment])
+
+  // If no Stripe payment at all, don't render
+  if (!hasStripePayment) {
+    return null
+  }
 
   // Payment is pending - show waiting state
   if (stripePendingPayment && !stripeRentalPayment) {
