@@ -130,7 +130,7 @@ export function formatDateRange(startDate: Date | string, endDate: Date | string
 }
 
 // Relative time formatting (e.g., "il y a 2 jours", "dans 3 heures")
-export function formatRelativeTime(date: Date | string): string {
+export function formatRelativeTime(date: Date | string, locale: string = 'fr'): string {
   const d = typeof date === 'string' ? new Date(date) : date
   const now = new Date()
   const diffMs = d.getTime() - now.getTime()
@@ -138,10 +138,19 @@ export function formatRelativeTime(date: Date | string): string {
   const diffMin = Math.round(diffSec / 60)
   const diffHours = Math.round(diffMin / 60)
   const diffDays = Math.round(diffHours / 24)
+  const diffWeeks = Math.round(diffDays / 7)
+  const diffMonths = Math.round(diffDays / 30)
+  const diffYears = Math.round(diffDays / 365)
 
-  const rtf = new Intl.RelativeTimeFormat('fr-FR', { numeric: 'auto' })
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
 
-  if (Math.abs(diffDays) >= 1) {
+  if (Math.abs(diffYears) >= 1) {
+    return rtf.format(diffYears, 'year')
+  } else if (Math.abs(diffMonths) >= 1) {
+    return rtf.format(diffMonths, 'month')
+  } else if (Math.abs(diffWeeks) >= 1) {
+    return rtf.format(diffWeeks, 'week')
+  } else if (Math.abs(diffDays) >= 1) {
     return rtf.format(diffDays, 'day')
   } else if (Math.abs(diffHours) >= 1) {
     return rtf.format(diffHours, 'hour')
