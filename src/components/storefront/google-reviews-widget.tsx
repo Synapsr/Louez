@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Star, ChevronLeft, ChevronRight, Quote, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { cn } from '@/lib/utils'
+import { cn, formatRelativeTime } from '@/lib/utils'
 import type { GoogleReview } from '@/types'
 
 // Inline Google "G" logo SVG to avoid external requests
@@ -42,6 +42,7 @@ export function GoogleReviewsWidget({
   primaryColor = '#0066FF',
 }: GoogleReviewsWidgetProps) {
   const t = useTranslations('storefront.reviews')
+  const locale = useLocale()
   const [currentIndex, setCurrentIndex] = useState(0)
 
   const visibleReviews = reviews.slice(0, 5)
@@ -131,12 +132,21 @@ export function GoogleReviewsWidget({
             {visibleReviews.map((review, index) => (
               <Card
                 key={index}
-                className="flex-shrink-0 w-full md:w-[calc(33.333%-1rem)]"
+                className="flex-shrink-0 w-full md:w-[calc(33.333%-1rem)] transition-all duration-200 hover:shadow-md"
+                style={{
+                  borderColor: 'transparent',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = primaryColor
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = 'transparent'
+                }}
               >
                 <CardContent className="p-6">
                   {/* Quote icon */}
                   <Quote
-                    className="h-8 w-8 mb-4 opacity-10"
+                    className="h-8 w-8 mb-4"
                     style={{ color: primaryColor }}
                   />
 
@@ -179,7 +189,7 @@ export function GoogleReviewsWidget({
                     <div>
                       <p className="font-medium text-sm">{review.authorName}</p>
                       <p className="text-xs text-muted-foreground">
-                        {review.relativeTimeDescription}
+                        {formatRelativeTime(new Date(review.time * 1000), locale)}
                       </p>
                     </div>
                   </div>
@@ -192,13 +202,16 @@ export function GoogleReviewsWidget({
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 w-full md:w-[calc(33.333%-1rem)]"
+              className="flex-shrink-0 w-full md:w-[calc(33.333%-1rem)] group"
             >
-              <Card className="h-full hover:bg-muted/50 transition-colors cursor-pointer border-dashed">
+              <Card
+                className="h-full transition-all duration-200 cursor-pointer border-dashed hover:shadow-md"
+                style={{ borderColor: primaryColor }}
+              >
                 <CardContent className="p-6 h-full flex flex-col items-center justify-center text-center gap-4">
                   <div
-                    className="h-16 w-16 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${primaryColor}15` }}
+                    className="h-16 w-16 rounded-full flex items-center justify-center transition-colors"
+                    style={{ backgroundColor: `${primaryColor}25` }}
                   >
                     <GoogleLogo size={32} />
                   </div>
@@ -209,7 +222,7 @@ export function GoogleReviewsWidget({
                     </p>
                   </div>
                   <div
-                    className="flex items-center gap-1 text-sm font-medium"
+                    className="flex items-center gap-1 text-sm font-medium transition-transform group-hover:translate-x-1"
                     style={{ color: primaryColor }}
                   >
                     {t('viewOnGoogle')}
@@ -224,16 +237,15 @@ export function GoogleReviewsWidget({
         {/* Mobile navigation dots */}
         {visibleReviews.length > 1 && (
           <div className="flex justify-center gap-2 mt-4 md:hidden">
-            {visibleReviews.map((_, index) => (
+            {Array.from({ length: totalCards }).map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index)}
-                className={cn(
-                  'h-2 w-2 rounded-full transition-colors',
-                  index === currentIndex
-                    ? 'bg-primary'
-                    : 'bg-muted hover:bg-muted-foreground/50'
-                )}
+                className="h-2 w-2 rounded-full transition-colors"
+                style={{
+                  backgroundColor:
+                    index === currentIndex ? primaryColor : `${primaryColor}50`,
+                }}
               />
             ))}
           </div>

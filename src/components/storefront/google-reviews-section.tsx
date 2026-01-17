@@ -24,7 +24,11 @@ async function GoogleReviewsContent({
       <div className="container mx-auto px-4">
         <div className="text-center mb-8 md:mb-10">
           <h2 className="text-2xl md:text-3xl font-bold">{t('title')}</h2>
-          <p className="mt-2 text-muted-foreground">{t('subtitle')}</p>
+          <div
+            className="mx-auto mt-3 h-1 w-12 rounded-full"
+            style={{ backgroundColor: primaryColor || '#0066FF' }}
+          />
+          <p className="mt-3 text-muted-foreground">{t('subtitle')}</p>
         </div>
         <GoogleReviewsWidget
           placeName={details.name}
