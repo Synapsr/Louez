@@ -3,8 +3,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { SettingsNav } from '@/components/dashboard/settings-nav'
-import { StripeConnectCard } from './stripe-connect-card'
-import { PaymentFlowExplanation } from './payment-flow-explanation'
+import { PaymentsContent } from './payments-content'
 
 export default async function PaymentsSettingsPage() {
   const store = await getCurrentStore()
@@ -25,15 +24,11 @@ export default async function PaymentsSettingsPage() {
 
       <SettingsNav />
 
-      <StripeConnectCard
+      <PaymentsContent
         stripeAccountId={store.stripeAccountId}
         stripeChargesEnabled={store.stripeChargesEnabled ?? false}
         stripeOnboardingComplete={store.stripeOnboardingComplete ?? false}
-      />
-
-      <PaymentFlowExplanation
         reservationMode={reservationMode}
-        stripeChargesEnabled={store.stripeChargesEnabled ?? false}
       />
     </div>
   )

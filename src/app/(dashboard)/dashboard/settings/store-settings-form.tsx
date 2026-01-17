@@ -739,18 +739,20 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
       {/* Stripe Required Dialog */}
       <Dialog open={isStripeRequiredDialogOpen} onOpenChange={setIsStripeRequiredDialogOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <CreditCard className="h-6 w-6 text-primary" />
+          <DialogHeader className="space-y-4">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+              <CreditCard className="h-7 w-7 text-primary" />
             </div>
-            <DialogTitle className="text-center">
-              {t('reservationSettings.stripeRequired.title')}
-            </DialogTitle>
-            <DialogDescription className="text-center">
-              {t('reservationSettings.stripeRequired.description')}
-            </DialogDescription>
+            <div className="space-y-2 text-center">
+              <DialogTitle>
+                {t('reservationSettings.stripeRequired.title')}
+              </DialogTitle>
+              <DialogDescription>
+                {t('reservationSettings.stripeRequired.description')}
+              </DialogDescription>
+            </div>
           </DialogHeader>
-          <div className="rounded-lg border bg-muted/50 p-4">
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
             <p className="text-sm text-muted-foreground">
               {t('reservationSettings.stripeRequired.benefits')}
             </p>
@@ -764,7 +766,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </Button>
             <Button
               variant="ghost"
-              className="w-full"
+              className="w-full text-muted-foreground"
               onClick={() => setIsStripeRequiredDialogOpen(false)}
             >
               {t('reservationSettings.stripeRequired.keepRequest')}
