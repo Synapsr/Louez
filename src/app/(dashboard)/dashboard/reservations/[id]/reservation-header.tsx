@@ -15,6 +15,8 @@ import {
   Copy,
   ExternalLink,
   Check,
+  Link as LinkIcon,
+  Loader2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -31,6 +33,7 @@ import { cn, getCurrencySymbol } from '@/lib/utils'
 
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
+import { sendAccessLink } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -97,6 +100,7 @@ export function ReservationHeader({
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [isSendingAccessLink, setIsSendingAccessLink] = useState(false)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
 
@@ -115,6 +119,22 @@ export function ReservationHeader({
     setCopiedLink(true)
     toast.success(t('linkCopied'))
     setTimeout(() => setCopiedLink(false), 2000)
+  }
+
+  const handleSendAccessLink = async () => {
+    setIsSendingAccessLink(true)
+    try {
+      const result = await sendAccessLink(reservationId)
+      if (result.error) {
+        toast.error(t('accessLink.sendError'))
+      } else {
+        toast.success(t('accessLink.sendSuccess'))
+      }
+    } catch {
+      toast.error(t('accessLink.sendError'))
+    } finally {
+      setIsSendingAccessLink(false)
+    }
   }
 
   const handleDownloadContract = () => {
@@ -188,6 +208,22 @@ export function ReservationHeader({
               {t('actions.sendEmail')}
             </Button>
 
+            {/* Access Link button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSendAccessLink}
+              disabled={isSendingAccessLink}
+              className="hidden sm:flex"
+            >
+              {isSendingAccessLink ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <LinkIcon className="h-4 w-4 mr-2" />
+              )}
+              {t('accessLink.send')}
+            </Button>
+
             {/* Contract button */}
             {hasContract && (
               <Button
@@ -217,6 +253,18 @@ export function ReservationHeader({
                 >
                   <Mail className="h-4 w-4 mr-2" />
                   {t('actions.sendEmail')}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleSendAccessLink}
+                  disabled={isSendingAccessLink}
+                  className="sm:hidden"
+                >
+                  {isSendingAccessLink ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                  )}
+                  {t('accessLink.send')}
                 </DropdownMenuItem>
                 {hasContract && (
                   <DropdownMenuItem

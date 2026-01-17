@@ -22,13 +22,14 @@ import {
   Wifi,
   Hourglass,
   AlertCircle,
+  Link,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent'
 
 interface Activity {
   id: string
@@ -145,6 +146,11 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
     icon: <ShieldX className="h-4 w-4" />,
     bgColor: 'bg-red-100 dark:bg-red-950/50',
     iconColor: 'text-red-600 dark:text-red-400',
+  },
+  access_link_sent: {
+    icon: <Link className="h-4 w-4" />,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
   },
 }
 

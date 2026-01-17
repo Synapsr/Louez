@@ -716,7 +716,8 @@
         "deposit_authorized": "Autorizacion de deposito creada",
         "deposit_captured": "Deposito capturado",
         "deposit_released": "Deposito liberado",
-        "deposit_failed": "Autorizacion fallida"
+        "deposit_failed": "Autorizacion fallida",
+        "access_link_sent": "Enlace de acceso enviado"
       },
       "activityBy": "por",
       "activitySystem": "Accion automatica",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Enlace copiado al portapapeles"
+      "linkCopied": "Enlace copiado al portapapeles",
+      "accessLink": {
+        "send": "Enviar enlace de acceso",
+        "sendSuccess": "Enlace de acceso enviado",
+        "sendError": "Error al enviar el enlace de acceso"
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -2231,7 +2237,9 @@
       "paymentPaid": "Pagado",
       "paymentPending": "No pagado",
       "amountPaid": "Monto pagado",
-      "securityNote": "Inicio de sesion seguro por correo. No se requiere contrasena."
+      "securityNote": "Inicio de sesion seguro por correo. No se requiere contrasena.",
+      "payNow": "Pagar ahora",
+      "paymentInProgress": "Pago en proceso"
     },
     "footer": {
       "description": "Alquiler de equipos simple y eficiente.",
@@ -2424,7 +2432,8 @@
       "deposit": "Deposito",
       "total": "Total",
       "totalToPay": "Total a pagar",
-      "question": "Preguntas? Contactenos:"
+      "question": "Preguntas? Contactenos:",
+      "summary": "Resumen"
     },
     "verificationCode": {
       "subject": "Su codigo de acceso: {code}",
@@ -2503,6 +2512,14 @@
       "sentBy": "Este correo fue enviado por {storeName}",
       "ignoreIfNotYou": "Si usted no inicio esta accion, por favor ignore este correo.",
       "poweredBy": "Impulsado por"
+    },
+    "instantAccess": {
+      "subject": "Acceda a su reserva #{number}",
+      "title": "Acceda a su reserva",
+      "body": "Haga clic para acceder a su reserva #{number}.",
+      "paymentPending": "El pago de esta reserva esta pendiente.",
+      "viewAndPay": "Ver y pagar",
+      "linkValid": "Este enlace es valido por 30 dias."
     }
   },
   "contract": {
@@ -2717,6 +2734,11 @@
       "alreadyRefunded": "Este pago ya ha sido reembolsado",
       "refundExceedsCharge": "El monto del reembolso excede el monto del pago",
       "refundFailed": "Error en el reembolso"
-    }
+    },
+    "invalidOrExpiredToken": "Este enlace es invalido o ha expirado. Por favor solicite un nuevo enlace de acceso.",
+    "alreadyPaid": "Esta reserva ya esta pagada.",
+    "paymentNotAvailable": "El pago en linea no esta disponible para esta tienda.",
+    "paymentSessionError": "Error al crear la sesion de pago",
+    "accessLinkSendFailed": "Error al enviar el enlace de acceso"
   }
 }

@@ -716,7 +716,8 @@
         "deposit_authorized": "Kautionsautorisierung erstellt",
         "deposit_captured": "Kaution eingezogen",
         "deposit_released": "Kaution freigegeben",
-        "deposit_failed": "Autorisierung fehlgeschlagen"
+        "deposit_failed": "Autorisierung fehlgeschlagen",
+        "access_link_sent": "Zugriffslink gesendet"
       },
       "activityBy": "von",
       "activitySystem": "Automatische Aktion",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Link in Zwischenablage kopiert"
+      "linkCopied": "Link in Zwischenablage kopiert",
+      "accessLink": {
+        "send": "Zugriffslink senden",
+        "sendSuccess": "Zugriffslink gesendet",
+        "sendError": "Fehler beim Senden des Zugriffslinks"
+      }
     },
     "customers": {
       "title": "Kunden",
@@ -2229,7 +2235,9 @@
       "paymentPaid": "Bezahlt",
       "paymentPending": "Unbezahlt",
       "amountPaid": "Bezahlter Betrag",
-      "securityNote": "Sichere E-Mail-Anmeldung. Kein Passwort erforderlich."
+      "securityNote": "Sichere E-Mail-Anmeldung. Kein Passwort erforderlich.",
+      "payNow": "Jetzt bezahlen",
+      "paymentInProgress": "Zahlung wird verarbeitet"
     },
     "footer": {
       "description": "Einfache und effiziente Gerätevermietung.",
@@ -2422,7 +2430,8 @@
       "deposit": "Kaution",
       "total": "Gesamt",
       "totalToPay": "Zu zahlender Betrag",
-      "question": "Fragen? Kontaktieren Sie uns:"
+      "question": "Fragen? Kontaktieren Sie uns:",
+      "summary": "Zusammenfassung"
     },
     "verificationCode": {
       "subject": "Ihr Anmeldecode: {code}",
@@ -2501,6 +2510,14 @@
       "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
       "ignoreIfNotYou": "Wenn Sie diese Aktion nicht eingeleitet haben, ignorieren Sie bitte diese E-Mail.",
       "poweredBy": "Powered by"
+    },
+    "instantAccess": {
+      "subject": "Zugriff auf Ihre Reservierung #{number}",
+      "title": "Zugriff auf Ihre Reservierung",
+      "body": "Klicken Sie hier, um auf Ihre Reservierung #{number} zuzugreifen.",
+      "paymentPending": "Eine Zahlung für diese Reservierung steht noch aus.",
+      "viewAndPay": "Anzeigen und bezahlen",
+      "linkValid": "Dieser Link ist 30 Tage gültig."
     }
   },
   "contract": {
@@ -2715,6 +2732,11 @@
       "alreadyRefunded": "Diese Zahlung wurde bereits erstattet",
       "refundExceedsCharge": "Der Erstattungsbetrag übersteigt den Zahlungsbetrag",
       "refundFailed": "Fehler bei der Erstattung"
-    }
+    },
+    "invalidOrExpiredToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Zugriffslink an.",
+    "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
+    "paymentNotAvailable": "Online-Zahlung ist für diesen Shop nicht verfügbar.",
+    "paymentSessionError": "Fehler beim Erstellen der Zahlungssitzung",
+    "accessLinkSendFailed": "Fehler beim Senden des Zugriffslinks"
   }
 }

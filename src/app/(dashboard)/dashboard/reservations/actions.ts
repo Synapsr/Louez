@@ -3,7 +3,7 @@
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments } from '@/lib/db/schema'
+import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes } from '@/lib/db/schema'
 import { eq, and, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
@@ -14,6 +14,7 @@ import {
   sendReservationConfirmationEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
+  sendInstantAccessEmail,
 } from '@/lib/email/send'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
@@ -29,7 +30,7 @@ async function getStoreForUser() {
   return getCurrentStore()
 }
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent'
 
 async function logReservationActivity(
   reservationId: string,
@@ -1494,5 +1495,117 @@ export async function sendReservationEmail(
   } catch (error) {
     console.error('Failed to send reservation email:', error)
     return { error: 'errors.emailSendFailed' }
+  }
+}
+
+// ============================================================================
+// Access Link Actions
+// ============================================================================
+
+export async function sendAccessLink(reservationId: string) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id)
+    ),
+    with: {
+      customer: true,
+      items: true,
+      payments: true,
+    },
+  })
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' }
+  }
+
+  try {
+    // Generate secure 64-char token
+    const token = nanoid(64)
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    // Store token in verificationCodes table
+    await db.insert(verificationCodes).values({
+      id: nanoid(),
+      email: reservation.customer.email,
+      storeId: store.id,
+      code: '', // Not used for instant_access
+      type: 'instant_access',
+      token,
+      reservationId,
+      expiresAt,
+      createdAt: new Date(),
+    })
+
+    // Build access URL
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+
+    // Calculate payment status
+    const isPaid = reservation.payments.some(p => p.type === 'rental' && p.status === 'completed')
+    const isStripeEnabled = store.stripeAccountId && store.stripeChargesEnabled
+
+    // Build store and customer data
+    const storeData = {
+      id: store.id,
+      name: store.name,
+      logoUrl: store.logoUrl,
+      email: store.email,
+      phone: store.phone,
+      address: store.address,
+      theme: store.theme,
+      settings: store.settings,
+    }
+
+    const customerData = {
+      firstName: reservation.customer.firstName,
+      lastName: reservation.customer.lastName,
+      email: reservation.customer.email,
+    }
+
+    // Build items data
+    const items = reservation.items.map(item => ({
+      name: item.productSnapshot.name,
+      quantity: item.quantity,
+      totalPrice: parseFloat(item.totalPrice),
+    }))
+
+    // Send email
+    await sendInstantAccessEmail({
+      to: reservation.customer.email,
+      store: storeData,
+      customer: customerData,
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: parseFloat(reservation.totalAmount),
+      },
+      items,
+      accessUrl,
+      showPaymentCta: !isPaid && !!isStripeEnabled,
+      locale: 'fr',
+    })
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'access_link_sent',
+      `Lien d'accès envoyé à ${reservation.customer.email}`,
+      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString() }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to send access link:', error)
+    return { error: 'errors.accessLinkSendFailed' }
   }
 }

@@ -566,6 +566,11 @@
         "viewAsCustomer": "Voir côté client",
         "print": "Imprimer"
       },
+      "accessLink": {
+        "send": "Envoyer le lien",
+        "sendSuccess": "Lien d'accès envoyé au client",
+        "sendError": "Erreur lors de l'envoi du lien"
+      },
       "contract": {
         "title": "Contrat",
         "signed": "Signé le {date}",
@@ -716,7 +721,8 @@
         "deposit_authorized": "Empreinte de caution créée",
         "deposit_captured": "Caution prélevée",
         "deposit_released": "Caution libérée",
-        "deposit_failed": "Échec de l'empreinte"
+        "deposit_failed": "Échec de l'empreinte",
+        "access_link_sent": "Lien d'accès envoyé"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -2228,7 +2234,9 @@
       "paymentPaid": "Payé",
       "paymentPending": "Non payé",
       "amountPaid": "Montant payé",
-      "securityNote": "Connexion sécurisée par email. Aucun mot de passe requis."
+      "securityNote": "Connexion sécurisée par email. Aucun mot de passe requis.",
+      "payNow": "Payer maintenant",
+      "paymentInProgress": "Paiement en cours de traitement"
     },
     "footer": {
       "description": "Location de matériel simple et efficace.",
@@ -2421,7 +2429,8 @@
       "deposit": "Caution",
       "total": "Total",
       "totalToPay": "Total à payer",
-      "question": "Une question ? Contactez-nous :"
+      "question": "Une question ? Contactez-nous :",
+      "summary": "Récapitulatif"
     },
     "verificationCode": {
       "subject": "Votre code de connexion: {code}",
@@ -2495,6 +2504,14 @@
       "accessDescription": "En acceptant cette invitation, vous pourrez accéder au tableau de bord de la boutique et gérer les réservations, produits et clients.",
       "acceptButton": "Accepter l'invitation",
       "expiry": "Cette invitation expire dans 7 jours. Si vous n'avez pas demandé à rejoindre cette équipe, vous pouvez ignorer cet email."
+    },
+    "instantAccess": {
+      "subject": "Accédez à votre réservation #{number}",
+      "title": "Accédez à votre réservation",
+      "body": "Cliquez sur le bouton ci-dessous pour accéder aux détails de votre réservation #{number}.",
+      "paymentPending": "Un paiement est en attente pour cette réservation. Vous pouvez payer en ligne en toute sécurité.",
+      "viewAndPay": "Voir et payer",
+      "linkValid": "Ce lien est valable 30 jours et peut être utilisé plusieurs fois."
     },
     "baseLayout": {
       "sentBy": "Cet email a été envoyé par {storeName}",
@@ -2723,6 +2740,11 @@
       "releaseFailed": "Impossible de libérer la caution"
     },
     "reasonRequired": "Veuillez indiquer un motif",
-    "invalidAmount": "Montant invalide"
+    "invalidAmount": "Montant invalide",
+    "invalidOrExpiredToken": "Ce lien est invalide ou a expiré. Veuillez demander un nouveau lien d'accès.",
+    "alreadyPaid": "Cette réservation est déjà payée.",
+    "paymentNotAvailable": "Le paiement en ligne n'est pas disponible pour cette boutique.",
+    "paymentSessionError": "Erreur lors de la création de la session de paiement",
+    "accessLinkSendFailed": "Erreur lors de l'envoi du lien d'accès"
   }
 }

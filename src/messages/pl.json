@@ -716,7 +716,8 @@
         "deposit_authorized": "Autoryzacja kaucji utworzona",
         "deposit_captured": "Kaucja pobrana",
         "deposit_released": "Kaucja zwolniona",
-        "deposit_failed": "Autoryzacja nieudana"
+        "deposit_failed": "Autoryzacja nieudana",
+        "access_link_sent": "Link dostępu wysłany"
       },
       "activityBy": "przez",
       "activitySystem": "Akcja automatyczna",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Link skopiowany do schowka"
+      "linkCopied": "Link skopiowany do schowka",
+      "accessLink": {
+        "send": "Wyślij link dostępu",
+        "sendSuccess": "Link dostępu wysłany",
+        "sendError": "Błąd wysyłania linku dostępu"
+      }
     },
     "customers": {
       "title": "Klienci",
@@ -2228,7 +2234,9 @@
       "paymentPaid": "Opłacone",
       "paymentPending": "Nieopłacone",
       "amountPaid": "Zapłacona kwota",
-      "securityNote": "Bezpieczne logowanie przez email. Hasło nie jest wymagane."
+      "securityNote": "Bezpieczne logowanie przez email. Hasło nie jest wymagane.",
+      "payNow": "Zapłać teraz",
+      "paymentInProgress": "Płatność w trakcie realizacji"
     },
     "footer": {
       "description": "Prosty i efektywny wynajem sprzętu.",
@@ -2421,7 +2429,8 @@
       "deposit": "Kaucja",
       "total": "Suma",
       "totalToPay": "Do zapłaty",
-      "question": "Pytania? Skontaktuj się z nami:"
+      "question": "Pytania? Skontaktuj się z nami:",
+      "summary": "Podsumowanie"
     },
     "verificationCode": {
       "subject": "Twój kod logowania: {code}",
@@ -2500,6 +2509,14 @@
       "sentBy": "Ten email został wysłany przez {storeName}",
       "ignoreIfNotYou": "Jeśli to nie Ty zainicjowałeś tę akcję, zignoruj ten email.",
       "poweredBy": "Napędzane przez"
+    },
+    "instantAccess": {
+      "subject": "Dostęp do Twojej rezerwacji #{number}",
+      "title": "Dostęp do Twojej rezerwacji",
+      "body": "Kliknij, aby uzyskać dostęp do rezerwacji #{number}.",
+      "paymentPending": "Płatność za tę rezerwację jest oczekująca.",
+      "viewAndPay": "Zobacz i zapłać",
+      "linkValid": "Ten link jest ważny przez 30 dni."
     }
   },
   "contract": {
@@ -2714,6 +2731,11 @@
       "alreadyRefunded": "Ta płatność została już zwrócona",
       "refundExceedsCharge": "Kwota zwrotu przekracza kwotę płatności",
       "refundFailed": "Błąd podczas zwrotu"
-    }
+    },
+    "invalidOrExpiredToken": "Ten link jest nieprawidłowy lub wygasł. Poproś o nowy link dostępu.",
+    "alreadyPaid": "Ta rezerwacja jest już opłacona.",
+    "paymentNotAvailable": "Płatność online nie jest dostępna dla tego sklepu.",
+    "paymentSessionError": "Błąd tworzenia sesji płatności",
+    "accessLinkSendFailed": "Błąd wysyłania linku dostępu"
   }
 }

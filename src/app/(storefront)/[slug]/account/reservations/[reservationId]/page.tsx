@@ -33,6 +33,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings } from '@/types/store'
 import { getCustomerSession } from '../../actions'
 import { DownloadContractButton } from './download-contract-button'
+import { PayNowButton } from './pay-now-button'
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -151,11 +152,15 @@ export default async function ReservationDetailPage({
   // Contract download available for confirmed, ongoing, completed
   const canDownloadContract = ['confirmed', 'ongoing', 'completed'].includes(reservation.status as ReservationStatus)
 
-  // Check payment status - consider paid if any payment is completed
-  const isPaid = reservation.payments.some((p) => p.status === 'completed')
+  // Check payment status - consider paid if any rental payment is completed
+  const isPaid = reservation.payments.some((p) => p.type === 'rental' && p.status === 'completed')
   const totalPaid = reservation.payments
     .filter((p) => p.status === 'completed')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+
+  // Check if payment button should be shown
+  const hasPendingPayment = reservation.payments.some((p) => p.type === 'rental' && p.status === 'pending')
+  const canPay = !isPaid && !hasPendingPayment && store.stripeAccountId && store.stripeChargesEnabled
 
   return (
     <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
@@ -364,6 +369,23 @@ export default async function ReservationDetailPage({
                     {t('amountPaid')}
                   </span>
                   <span>{formatCurrency(totalPaid, currency)}</span>
+                </div>
+              )}
+
+              {/* Pay Now Button */}
+              {canPay && (
+                <div className="pt-4 mt-2">
+                  <PayNowButton storeSlug={slug} reservationId={reservationId} />
+                </div>
+              )}
+
+              {/* Payment in progress indicator */}
+              {hasPendingPayment && (
+                <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400 pt-2">
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {t('paymentInProgress')}
+                  </span>
                 </div>
               )}
             </div>

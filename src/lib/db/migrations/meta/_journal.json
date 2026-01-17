@@ -36,6 +36,13 @@
       "when": 1768651700907,
       "tag": "0004_tiny_marauders",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1768656544749,
+      "tag": "0005_rapid_richard_fisk",
+      "breakpoints": true
     }
   ]
 }

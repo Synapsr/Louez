@@ -403,8 +403,9 @@ export const verificationCodes = mysqlTable('verification_codes', {
   email: varchar('email', { length: 255 }).notNull(),
   storeId: varchar('store_id', { length: 21 }).notNull(),
   code: varchar('code', { length: 6 }).notNull(),
-  type: varchar('type', { length: 20 }).notNull(), // 'magic_link' | 'code'
-  token: varchar('token', { length: 255 }), // For magic link
+  type: varchar('type', { length: 20 }).notNull(), // 'magic_link' | 'code' | 'instant_access'
+  token: varchar('token', { length: 255 }), // For magic link and instant access
+  reservationId: varchar('reservation_id', { length: 21 }), // For instant access links to specific reservation
   expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
   usedAt: timestamp('used_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -619,6 +620,7 @@ export const activityType = mysqlEnum('activity_type', [
   'deposit_captured', // Deposit captured (damage/loss)
   'deposit_released', // Authorization released
   'deposit_failed', // Authorization failed
+  'access_link_sent', // Instant access link sent to customer
 ])
 
 export const reservationActivity = mysqlTable(

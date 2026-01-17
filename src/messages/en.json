@@ -716,7 +716,8 @@
         "deposit_authorized": "Deposit authorization created",
         "deposit_captured": "Deposit captured",
         "deposit_released": "Deposit released",
-        "deposit_failed": "Authorization failed"
+        "deposit_failed": "Authorization failed",
+        "access_link_sent": "Access link sent"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Link copied to clipboard"
+      "linkCopied": "Link copied to clipboard",
+      "accessLink": {
+        "send": "Send access link",
+        "sendSuccess": "Access link sent",
+        "sendError": "Failed to send access link"
+      }
     },
     "customers": {
       "title": "Customers",
@@ -2228,7 +2234,9 @@
       "paymentPaid": "Paid",
       "paymentPending": "Unpaid",
       "amountPaid": "Amount paid",
-      "securityNote": "Secure email login. No password required."
+      "securityNote": "Secure email login. No password required.",
+      "payNow": "Pay now",
+      "paymentInProgress": "Payment processing"
     },
     "footer": {
       "description": "Simple and efficient equipment rental.",
@@ -2421,7 +2429,8 @@
       "deposit": "Deposit",
       "total": "Total",
       "totalToPay": "Total to pay",
-      "question": "Questions? Contact us:"
+      "question": "Questions? Contact us:",
+      "summary": "Summary"
     },
     "verificationCode": {
       "subject": "Your login code: {code}",
@@ -2500,6 +2509,14 @@
       "sentBy": "This email was sent by {storeName}",
       "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
       "poweredBy": "Powered by"
+    },
+    "instantAccess": {
+      "subject": "Access your reservation #{number}",
+      "title": "Access your reservation",
+      "body": "Click to access your reservation #{number}.",
+      "paymentPending": "Payment is pending for this reservation.",
+      "viewAndPay": "View and pay",
+      "linkValid": "This link is valid for 30 days."
     }
   },
   "contract": {
@@ -2723,6 +2740,11 @@
       "releaseFailed": "Unable to release deposit"
     },
     "reasonRequired": "Please provide a reason",
-    "invalidAmount": "Invalid amount"
+    "invalidAmount": "Invalid amount",
+    "invalidOrExpiredToken": "This link is invalid or has expired. Please request a new access link.",
+    "alreadyPaid": "This reservation is already paid.",
+    "paymentNotAvailable": "Online payment is not available for this store.",
+    "paymentSessionError": "Error creating payment session",
+    "accessLinkSendFailed": "Error sending access link"
   }
 }

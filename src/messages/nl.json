@@ -715,7 +715,8 @@
         "deposit_authorized": "Borgautorisatie aangemaakt",
         "deposit_captured": "Borg geïnd",
         "deposit_released": "Borg vrijgegeven",
-        "deposit_failed": "Autorisatie mislukt"
+        "deposit_failed": "Autorisatie mislukt",
+        "access_link_sent": "Toegangslink verzonden"
       },
       "activityBy": "door",
       "activitySystem": "Automatische actie",
@@ -946,7 +947,12 @@
           }
         }
       },
-      "linkCopied": "Link gekopieerd naar klembord"
+      "linkCopied": "Link gekopieerd naar klembord",
+      "accessLink": {
+        "send": "Toegangslink versturen",
+        "sendSuccess": "Toegangslink verzonden",
+        "sendError": "Fout bij verzenden toegangslink"
+      }
     },
     "customers": {
       "title": "Klanten",
@@ -2227,7 +2233,9 @@
       "paymentPaid": "Betaald",
       "paymentPending": "Onbetaald",
       "amountPaid": "Betaald bedrag",
-      "securityNote": "Veilige e-mail login. Geen wachtwoord nodig."
+      "securityNote": "Veilige e-mail login. Geen wachtwoord nodig.",
+      "payNow": "Nu betalen",
+      "paymentInProgress": "Betaling wordt verwerkt"
     },
     "footer": {
       "description": "Eenvoudige en efficiënte materiaalverhuur.",
@@ -2420,7 +2428,8 @@
       "deposit": "Borg",
       "total": "Totaal",
       "totalToPay": "Te betalen totaal",
-      "question": "Vragen? Neem contact met ons op:"
+      "question": "Vragen? Neem contact met ons op:",
+      "summary": "Overzicht"
     },
     "verificationCode": {
       "subject": "Uw inlogcode: {code}",
@@ -2499,6 +2508,14 @@
       "sentBy": "Deze e-mail is verzonden door {storeName}",
       "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
       "poweredBy": "Mogelijk gemaakt door"
+    },
+    "instantAccess": {
+      "subject": "Toegang tot uw reservering #{number}",
+      "title": "Toegang tot uw reservering",
+      "body": "Klik om toegang te krijgen tot uw reservering #{number}.",
+      "paymentPending": "De betaling voor deze reservering is in afwachting.",
+      "viewAndPay": "Bekijken en betalen",
+      "linkValid": "Deze link is 30 dagen geldig."
     }
   },
   "contract": {
@@ -2713,6 +2730,11 @@
       "alreadyRefunded": "Deze betaling is al terugbetaald",
       "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
       "refundFailed": "Fout bij terugbetaling"
-    }
+    },
+    "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
+    "alreadyPaid": "Deze reservering is al betaald.",
+    "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
+    "paymentSessionError": "Fout bij aanmaken betalingssessie",
+    "accessLinkSendFailed": "Fout bij verzenden toegangslink"
   }
 }

@@ -716,7 +716,8 @@
         "deposit_authorized": "Autorizzazione deposito creata",
         "deposit_captured": "Deposito addebitato",
         "deposit_released": "Deposito rilasciato",
-        "deposit_failed": "Autorizzazione fallita"
+        "deposit_failed": "Autorizzazione fallita",
+        "access_link_sent": "Link di accesso inviato"
       },
       "activityBy": "da",
       "activitySystem": "Azione automatica",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Link copiato negli appunti"
+      "linkCopied": "Link copiato negli appunti",
+      "accessLink": {
+        "send": "Invia link di accesso",
+        "sendSuccess": "Link di accesso inviato",
+        "sendError": "Errore nell'invio del link di accesso"
+      }
     },
     "customers": {
       "title": "Clienti",
@@ -2228,7 +2234,9 @@
       "paymentPaid": "Pagato",
       "paymentPending": "Non pagato",
       "amountPaid": "Importo pagato",
-      "securityNote": "Accesso sicuro via email. Nessuna password richiesta."
+      "securityNote": "Accesso sicuro via email. Nessuna password richiesta.",
+      "payNow": "Paga ora",
+      "paymentInProgress": "Pagamento in corso"
     },
     "footer": {
       "description": "Noleggio attrezzature semplice ed efficiente.",
@@ -2421,7 +2429,8 @@
       "deposit": "Deposito",
       "total": "Totale",
       "totalToPay": "Totale da pagare",
-      "question": "Domande? Contattaci:"
+      "question": "Domande? Contattaci:",
+      "summary": "Riepilogo"
     },
     "verificationCode": {
       "subject": "Il tuo codice di accesso: {code}",
@@ -2500,6 +2509,14 @@
       "sentBy": "Questa email e stata inviata da {storeName}",
       "ignoreIfNotYou": "Se non hai avviato questa azione, ignora questa email.",
       "poweredBy": "Powered by"
+    },
+    "instantAccess": {
+      "subject": "Accedi alla tua prenotazione #{number}",
+      "title": "Accedi alla tua prenotazione",
+      "body": "Clicca per accedere alla tua prenotazione #{number}.",
+      "paymentPending": "Il pagamento di questa prenotazione e in sospeso.",
+      "viewAndPay": "Visualizza e paga",
+      "linkValid": "Questo link e valido per 30 giorni."
     }
   },
   "contract": {
@@ -2714,6 +2731,11 @@
       "alreadyRefunded": "Questo pagamento e gia stato rimborsato",
       "refundExceedsCharge": "L'importo del rimborso supera l'importo del pagamento",
       "refundFailed": "Errore nel rimborso"
-    }
+    },
+    "invalidOrExpiredToken": "Questo link non e valido o e scaduto. Per favore richiedi un nuovo link di accesso.",
+    "alreadyPaid": "Questa prenotazione e gia stata pagata.",
+    "paymentNotAvailable": "Il pagamento online non e disponibile per questo negozio.",
+    "paymentSessionError": "Errore nella creazione della sessione di pagamento",
+    "accessLinkSendFailed": "Errore nell'invio del link di accesso"
   }
 }

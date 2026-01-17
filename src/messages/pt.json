@@ -716,7 +716,8 @@
         "deposit_authorized": "Autorizacao de caucao criada",
         "deposit_captured": "Caucao capturada",
         "deposit_released": "Caucao liberada",
-        "deposit_failed": "Autorizacao falhou"
+        "deposit_failed": "Autorizacao falhou",
+        "access_link_sent": "Link de acesso enviado"
       },
       "activityBy": "por",
       "activitySystem": "Acao automatica",
@@ -947,7 +948,12 @@
           }
         }
       },
-      "linkCopied": "Link copiado para a area de transferencia"
+      "linkCopied": "Link copiado para a area de transferencia",
+      "accessLink": {
+        "send": "Enviar link de acesso",
+        "sendSuccess": "Link de acesso enviado",
+        "sendError": "Erro ao enviar link de acesso"
+      }
     },
     "customers": {
       "title": "Clientes",
@@ -2229,7 +2235,9 @@
       "paymentPaid": "Pago",
       "paymentPending": "Nao pago",
       "amountPaid": "Valor pago",
-      "securityNote": "Login seguro por email. Nenhuma senha necessaria."
+      "securityNote": "Login seguro por email. Nenhuma senha necessaria.",
+      "payNow": "Pagar agora",
+      "paymentInProgress": "Pagamento em processamento"
     },
     "footer": {
       "description": "Aluguel de equipamentos simples e eficiente.",
@@ -2422,7 +2430,8 @@
       "deposit": "Caucao",
       "total": "Total",
       "totalToPay": "Total a pagar",
-      "question": "Duvidas? Entre em contato:"
+      "question": "Duvidas? Entre em contato:",
+      "summary": "Resumo"
     },
     "verificationCode": {
       "subject": "Seu codigo de login: {code}",
@@ -2501,6 +2510,14 @@
       "sentBy": "Este email foi enviado por {storeName}",
       "ignoreIfNotYou": "Se voce nao iniciou esta acao, por favor ignore este email.",
       "poweredBy": "Desenvolvido por"
+    },
+    "instantAccess": {
+      "subject": "Acesse sua reserva #{number}",
+      "title": "Acesse sua reserva",
+      "body": "Clique para acessar sua reserva #{number}.",
+      "paymentPending": "O pagamento desta reserva esta pendente.",
+      "viewAndPay": "Ver e pagar",
+      "linkValid": "Este link e valido por 30 dias."
     }
   },
   "contract": {
@@ -2715,6 +2732,11 @@
       "alreadyRefunded": "Este pagamento ja foi reembolsado",
       "refundExceedsCharge": "O valor do reembolso excede o valor do pagamento",
       "refundFailed": "Erro no reembolso"
-    }
+    },
+    "invalidOrExpiredToken": "Este link e invalido ou expirou. Por favor solicite um novo link de acesso.",
+    "alreadyPaid": "Esta reserva ja foi paga.",
+    "paymentNotAvailable": "Pagamento online nao esta disponivel para esta loja.",
+    "paymentSessionError": "Erro ao criar sessao de pagamento",
+    "accessLinkSendFailed": "Erro ao enviar link de acesso"
   }
 }
