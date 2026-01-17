@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { FileCheck, Loader2, CheckCircle2, Info } from 'lucide-react'
+import { FileCheck, Loader2, CheckCircle2, CreditCard, Settings, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
@@ -44,6 +44,11 @@ export default function OnboardingStripePage() {
     },
   })
 
+  const reservationMode = useWatch({
+    control: form.control,
+    name: 'reservationMode',
+  })
+
   async function onSubmit(data: StripeSetupInput) {
     setIsLoading(true)
     try {
@@ -53,7 +58,7 @@ export default function OnboardingStripePage() {
         return
       }
       toast.success(t('configComplete'))
-      router.push('/dashboard')
+      router.push('/dashboard?welcome=1')
     } catch {
       toast.error(tErrors('generic'))
     } finally {
@@ -114,26 +119,22 @@ export default function OnboardingStripePage() {
                           </div>
                         </Label>
                       </div>
-                      <div className="opacity-60">
+                      <div>
                         <RadioGroupItem
                           value="payment"
                           id="payment"
                           className="peer sr-only"
-                          disabled
                         />
                         <Label
                           htmlFor="payment"
-                          className="border-muted bg-popover flex cursor-not-allowed items-start gap-4 rounded-lg border-2 p-4"
+                          className="border-muted bg-popover hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4"
                         >
-                          <div className="bg-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                            <Info className="text-muted-foreground h-5 w-5" />
+                          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                            <CreditCard className="text-primary h-5 w-5" />
                           </div>
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <p className="font-medium text-muted-foreground">{t('paymentMode')}</p>
-                              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                {t('comingSoon')}
-                              </span>
+                              <p className="font-medium">{t('paymentMode')}</p>
                             </div>
                             <p className="text-muted-foreground text-sm">
                               {t('paymentModeDescription')}
@@ -148,24 +149,40 @@ export default function OnboardingStripePage() {
               )}
             />
 
-            {/* Info Box */}
-            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
-              <div className="flex gap-3">
-                <Info className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                <div className="space-y-1">
-                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                    {t('howItWorks')}
-                  </p>
-                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                    <li>{t('step1')}</li>
-                    <li>{t('step2')}</li>
-                    <li>{t('step3')}</li>
-                    <li>{t('step4')}</li>
-                    <li>{t('step5')}</li>
-                  </ul>
+            {/* Info Box - changes based on selected mode */}
+            {reservationMode === 'request' ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+                <div className="flex gap-3">
+                  <Info className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                      {t('howItWorks')}
+                    </p>
+                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                      <li>{t('step1')}</li>
+                      <li>{t('step2')}</li>
+                      <li>{t('step3')}</li>
+                      <li>{t('step4')}</li>
+                      <li>{t('step5')}</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-950/20">
+                <div className="flex gap-3">
+                  <Settings className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-400" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                      {t('paymentSetupTitle')}
+                    </p>
+                    <p className="text-sm text-violet-700 dark:text-violet-300">
+                      {t('paymentSetupDescription')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-3">
               <Button

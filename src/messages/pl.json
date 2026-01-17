@@ -2348,14 +2348,15 @@
       "recommended": "Zalecane",
       "requestModeDescription": "Klienci wysyłają żądanie. Ręcznie zatwierdzasz i sam zarządzasz płatnością (gotówka, przelew, karta na miejscu).",
       "paymentMode": "Płatność online",
-      "comingSoon": "Wkrótce",
-      "paymentModeDescription": "Klienci płacą bezpośrednio przy rezerwacji. Ta funkcja będzie wkrótce dostępna.",
+      "paymentModeDescription": "Klienci płacą bezpośrednio przy rezerwacji. Automatycznie otrzymuj płatności przez Stripe.",
       "howItWorks": "Jak to działa?",
       "step1": "1. Klient składa żądanie rezerwacji",
       "step2": "2. Otrzymujesz powiadomienie email",
       "step3": "3. Akceptujesz lub odrzucasz żądanie",
       "step4": "4. Klient otrzymuje potwierdzenie emailem",
       "step5": "5. Zarządzasz płatnością przy odbiorze",
+      "paymentSetupTitle": "Szybka konfiguracja",
+      "paymentSetupDescription": "Po utworzeniu sklepu przejdź do Ustawienia → Płatność online, aby połączyć konto Stripe i zacząć otrzymywać płatności.",
       "configComplete": "Konfiguracja zakończona!"
     },
     "complete": {

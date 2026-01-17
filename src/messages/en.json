@@ -2348,14 +2348,15 @@
       "recommended": "Recommended",
       "requestModeDescription": "Customers send a request. You validate manually and manage payment yourself (cash, transfer, card on site).",
       "paymentMode": "Online payment",
-      "comingSoon": "Coming soon",
-      "paymentModeDescription": "Customers pay directly when booking. This feature will be available soon.",
+      "paymentModeDescription": "Customers pay directly when booking. Automatically collect payments via Stripe.",
       "howItWorks": "How does it work?",
       "step1": "1. Customer makes a reservation request",
       "step2": "2. You receive an email notification",
       "step3": "3. You accept or reject the request",
       "step4": "4. Customer receives confirmation by email",
       "step5": "5. You manage payment at pickup",
+      "paymentSetupTitle": "Quick setup",
+      "paymentSetupDescription": "After creating your store, go to Settings → Online Payment to connect your Stripe account and start receiving payments.",
       "configComplete": "Setup complete!"
     },
     "complete": {

@@ -2349,14 +2349,15 @@
       "recommended": "Empfohlen",
       "requestModeDescription": "Kunden senden eine Anfrage. Sie validieren manuell und verwalten die Zahlung selbst (Bargeld, Überweisung, Karte vor Ort).",
       "paymentMode": "Online-Zahlung",
-      "comingSoon": "Demnächst",
-      "paymentModeDescription": "Kunden zahlen direkt bei der Buchung. Diese Funktion wird bald verfügbar sein.",
+      "paymentModeDescription": "Kunden zahlen direkt bei der Buchung. Zahlungen automatisch über Stripe einziehen.",
       "howItWorks": "Wie funktioniert es?",
       "step1": "1. Kunde stellt eine Reservierungsanfrage",
       "step2": "2. Sie erhalten eine E-Mail-Benachrichtigung",
       "step3": "3. Sie nehmen die Anfrage an oder lehnen sie ab",
       "step4": "4. Kunde erhält Bestätigung per E-Mail",
       "step5": "5. Sie verwalten die Zahlung bei der Abholung",
+      "paymentSetupTitle": "Schnelle Einrichtung",
+      "paymentSetupDescription": "Nach dem Erstellen Ihres Shops gehen Sie zu Einstellungen → Online-Zahlung, um Ihr Stripe-Konto zu verbinden und Zahlungen zu empfangen.",
       "configComplete": "Einrichtung abgeschlossen!"
     },
     "complete": {

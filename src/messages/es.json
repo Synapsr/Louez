@@ -2351,14 +2351,15 @@
       "recommended": "Recomendado",
       "requestModeDescription": "Los clientes envian una solicitud. Usted valida manualmente y gestiona el pago usted mismo (efectivo, transferencia, tarjeta en el local).",
       "paymentMode": "Pago en linea",
-      "comingSoon": "Proximamente",
-      "paymentModeDescription": "Los clientes pagan directamente al reservar. Esta funcion estara disponible pronto.",
+      "paymentModeDescription": "Los clientes pagan directamente al reservar. Reciba pagos automaticamente via Stripe.",
       "howItWorks": "Como funciona?",
       "step1": "1. El cliente hace una solicitud de reserva",
       "step2": "2. Usted recibe una notificacion por correo",
       "step3": "3. Usted acepta o rechaza la solicitud",
       "step4": "4. El cliente recibe confirmacion por correo",
       "step5": "5. Usted gestiona el pago en la recogida",
+      "paymentSetupTitle": "Configuracion rapida",
+      "paymentSetupDescription": "Despues de crear su tienda, vaya a Configuracion → Pago en linea para conectar su cuenta Stripe y comenzar a recibir pagos.",
       "configComplete": "Configuracion completa!"
     },
     "complete": {

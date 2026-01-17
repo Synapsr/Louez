@@ -2348,14 +2348,15 @@
       "recommended": "Recommandé",
       "requestModeDescription": "Les clients envoient une demande. Vous validez manuellement et gérez le paiement vous-même (espèces, virement, CB sur place).",
       "paymentMode": "Paiement en ligne",
-      "comingSoon": "Bientôt disponible",
-      "paymentModeDescription": "Les clients paient directement lors de la réservation. Cette fonctionnalité sera disponible prochainement.",
+      "paymentModeDescription": "Les clients paient directement lors de la réservation. Encaissez automatiquement via Stripe.",
       "howItWorks": "Comment ça fonctionne ?",
       "step1": "1. Le client fait une demande de réservation",
       "step2": "2. Vous recevez un email de notification",
       "step3": "3. Vous acceptez ou refusez la demande",
       "step4": "4. Le client reçoit la confirmation par email",
       "step5": "5. Vous gérez le paiement lors du retrait",
+      "paymentSetupTitle": "Configuration rapide",
+      "paymentSetupDescription": "Après la création de votre boutique, rendez-vous dans Paramètres → Paiement en ligne pour connecter votre compte Stripe et commencer à recevoir des paiements.",
       "configComplete": "Configuration terminée !"
     },
     "complete": {

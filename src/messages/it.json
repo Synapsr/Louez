@@ -2348,14 +2348,15 @@
       "recommended": "Consigliato",
       "requestModeDescription": "I clienti inviano una richiesta. Validi manualmente e gestisci il pagamento tu stesso (contanti, bonifico, carta in loco).",
       "paymentMode": "Pagamento online",
-      "comingSoon": "Prossimamente",
-      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Questa funzionalita sara disponibile a breve.",
+      "paymentModeDescription": "I clienti pagano direttamente al momento della prenotazione. Ricevi pagamenti automaticamente tramite Stripe.",
       "howItWorks": "Come funziona?",
       "step1": "1. Il cliente fa una richiesta di prenotazione",
       "step2": "2. Ricevi una notifica via email",
       "step3": "3. Accetti o rifiuti la richiesta",
       "step4": "4. Il cliente riceve la conferma via email",
       "step5": "5. Gestisci il pagamento al ritiro",
+      "paymentSetupTitle": "Configurazione rapida",
+      "paymentSetupDescription": "Dopo aver creato il tuo negozio, vai in Impostazioni → Pagamento online per collegare il tuo account Stripe e iniziare a ricevere pagamenti.",
       "configComplete": "Configurazione completata!"
     },
     "complete": {

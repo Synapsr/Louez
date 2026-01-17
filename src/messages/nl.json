@@ -2347,14 +2347,15 @@
       "recommended": "Aanbevolen",
       "requestModeDescription": "Klanten sturen een aanvraag. U valideert handmatig en beheert de betaling zelf (contant, overboeking, pin ter plaatse).",
       "paymentMode": "Online betaling",
-      "comingSoon": "Binnenkort",
-      "paymentModeDescription": "Klanten betalen direct bij boeking. Deze functie is binnenkort beschikbaar.",
+      "paymentModeDescription": "Klanten betalen direct bij boeking. Ontvang automatisch betalingen via Stripe.",
       "howItWorks": "Hoe werkt het?",
       "step1": "1. Klant doet een reserveringsaanvraag",
       "step2": "2. U ontvangt een e-mailmelding",
       "step3": "3. U accepteert of wijst de aanvraag af",
       "step4": "4. Klant ontvangt bevestiging per e-mail",
       "step5": "5. U beheert de betaling bij ophalen",
+      "paymentSetupTitle": "Snelle configuratie",
+      "paymentSetupDescription": "Na het aanmaken van uw winkel gaat u naar Instellingen → Online betaling om uw Stripe-account te verbinden en betalingen te ontvangen.",
       "configComplete": "Configuratie voltooid!"
     },
     "complete": {
