@@ -351,6 +351,21 @@ export async function createReservation(input: CreateReservationInput) {
       })
     }
 
+    // Log activity for online reservation creation (by customer)
+    await db.insert(reservationActivity).values({
+      id: nanoid(),
+      reservationId,
+      activityType: 'created',
+      description: `${input.customer.firstName} ${input.customer.lastName}`,
+      metadata: {
+        source: 'online',
+        status: 'pending',
+        customerEmail: input.customer.email,
+        customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+      },
+      createdAt: new Date(),
+    })
+
     // Get store owner for fallback email
     const ownerMember = await db
       .select({ email: users.email })
