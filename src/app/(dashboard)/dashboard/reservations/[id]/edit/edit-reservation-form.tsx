@@ -4,8 +4,6 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { toast } from 'sonner'
 import {
   ArrowLeft,
@@ -15,12 +13,14 @@ import {
   Plus,
   Lock,
   Unlock,
+  PenLine,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -38,17 +38,20 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
-import { Calendar as CalendarComponent } from '@/components/ui/calendar'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { cn, getCurrencySymbol } from '@/lib/utils'
 import { updateReservation } from '../../actions'
 import type { PricingBreakdown, ProductSnapshot } from '@/types'
@@ -183,8 +186,8 @@ export function EditReservationForm({
   const currencySymbol = getCurrencySymbol(currency)
 
   const [isLoading, setIsLoading] = useState(false)
-  const [startDate, setStartDate] = useState<Date>(new Date(reservation.startDate))
-  const [endDate, setEndDate] = useState<Date>(new Date(reservation.endDate))
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
   const [items, setItems] = useState<EditableItem[]>(
     reservation.items.map((item) => ({
       id: item.id,
@@ -198,6 +201,18 @@ export function EditReservationForm({
     }))
   )
 
+  // Custom item dialog state
+  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
+  const [customItemForm, setCustomItemForm] = useState({
+    name: '',
+    description: '',
+    unitPrice: '',
+    totalPrice: '',
+    deposit: '',
+    quantity: '1',
+  })
+  const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
+
   // Original values for comparison
   const originalSubtotal = parseFloat(reservation.subtotalAmount)
   const originalDeposit = parseFloat(reservation.depositAmount)
@@ -209,9 +224,12 @@ export function EditReservationForm({
 
   // Calculate new values
   const newDuration = useMemo(
-    () => calculateDuration(startDate, endDate, pricingMode),
+    () => startDate && endDate ? calculateDuration(startDate, endDate, pricingMode) : 0,
     [startDate, endDate, pricingMode]
   )
+
+  // Pricing unit label
+  const pricingUnit = pricingMode === 'hour' ? 'h' : pricingMode === 'week' ? 'sem' : 'j'
 
   const calculations = useMemo(() => {
     let subtotal = 0
@@ -298,9 +316,108 @@ export function EditReservationForm({
     setItems((prev) => [...prev, newItem])
   }
 
+  // Custom item handlers
+  const resetCustomItemForm = () => {
+    setCustomItemForm({
+      name: '',
+      description: '',
+      unitPrice: '',
+      totalPrice: '',
+      deposit: '',
+      quantity: '1',
+    })
+    setPriceInputMode('total')
+  }
+
+  const handleTotalPriceChange = (value: string) => {
+    setCustomItemForm((prev) => {
+      const total = parseFloat(value) || 0
+      const qty = parseInt(prev.quantity) || 1
+      const unit = newDuration > 0 && qty > 0 ? total / (newDuration * qty) : 0
+      return {
+        ...prev,
+        totalPrice: value,
+        unitPrice: priceInputMode === 'total' ? unit.toFixed(2) : prev.unitPrice,
+      }
+    })
+  }
+
+  const handleUnitPriceChange = (value: string) => {
+    setCustomItemForm((prev) => {
+      const unit = parseFloat(value) || 0
+      const qty = parseInt(prev.quantity) || 1
+      const total = unit * newDuration * qty
+      return {
+        ...prev,
+        unitPrice: value,
+        totalPrice: priceInputMode === 'unit' ? total.toFixed(2) : prev.totalPrice,
+      }
+    })
+  }
+
+  const handleCustomItemQuantityChange = (value: string) => {
+    setCustomItemForm((prev) => {
+      const qty = parseInt(value) || 1
+      if (priceInputMode === 'total' && prev.totalPrice) {
+        const total = parseFloat(prev.totalPrice) || 0
+        const unit = newDuration > 0 && qty > 0 ? total / (newDuration * qty) : 0
+        return { ...prev, quantity: value, unitPrice: unit.toFixed(2) }
+      } else if (priceInputMode === 'unit' && prev.unitPrice) {
+        const unit = parseFloat(prev.unitPrice) || 0
+        const total = unit * newDuration * qty
+        return { ...prev, quantity: value, totalPrice: total.toFixed(2) }
+      }
+      return { ...prev, quantity: value }
+    })
+  }
+
+  const handleAddCustomItem = () => {
+    const name = customItemForm.name.trim()
+    if (!name) {
+      toast.error(t('customItem.nameRequired'))
+      return
+    }
+
+    const totalPrice = parseFloat(customItemForm.totalPrice) || 0
+    const unitPrice = parseFloat(customItemForm.unitPrice) || 0
+    const quantity = parseInt(customItemForm.quantity) || 1
+    const deposit = parseFloat(customItemForm.deposit) || 0
+
+    if (totalPrice <= 0 && unitPrice <= 0) {
+      toast.error(t('customItem.priceRequired'))
+      return
+    }
+
+    const effectiveUnitPrice = unitPrice > 0 ? unitPrice : (totalPrice / (newDuration * quantity))
+
+    const newItem: EditableItem = {
+      id: `custom-${Date.now()}`,
+      productId: null,
+      quantity,
+      unitPrice: effectiveUnitPrice,
+      depositPerUnit: deposit,
+      isManualPrice: true,
+      productSnapshot: {
+        name,
+        description: customItemForm.description || null,
+        images: [],
+      },
+      product: null,
+    }
+
+    setItems((prev) => [...prev, newItem])
+    resetCustomItemForm()
+    setShowCustomItemDialog(false)
+    toast.success(t('customItem.added'))
+  }
+
   const handleSave = async () => {
     if (items.length === 0) {
       toast.error(t('edit.noItems'))
+      return
+    }
+    if (!startDate || !endDate) {
+      toast.error(t('edit.datesRequired'))
       return
     }
 
@@ -310,7 +427,7 @@ export function EditReservationForm({
         startDate,
         endDate,
         items: items.map((item) => ({
-          id: item.id.startsWith('new-') ? undefined : item.id,
+          id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
           productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -335,9 +452,10 @@ export function EditReservationForm({
   }
 
   const hasChanges =
-    startDate.getTime() !== new Date(reservation.startDate).getTime() ||
-    endDate.getTime() !== new Date(reservation.endDate).getTime() ||
-    calculations.subtotal !== originalSubtotal
+    (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
+    (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
+    calculations.subtotal !== originalSubtotal ||
+    items.length !== reservation.items.length
 
   const durationLabel =
     pricingMode === 'hour'
@@ -395,56 +513,34 @@ export function EditReservationForm({
                     <Label className="text-xs text-muted-foreground">
                       {t('edit.startDate')}
                     </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start font-normal"
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {format(startDate, 'PPP', { locale: fr })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(date) => date && setStartDate(date)}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateTimePicker
+                      date={startDate}
+                      setDate={setStartDate}
+                      showTime={true}
+                      minTime="00:00"
+                      maxTime="23:59"
+                      timeStep={30}
+                    />
                   </div>
 
-                  <span className="text-muted-foreground hidden sm:block">→</span>
+                  <span className="text-muted-foreground hidden sm:block pt-5">→</span>
 
                   <div className="space-y-1.5 flex-1">
                     <Label className="text-xs text-muted-foreground">
                       {t('edit.endDate')}
                     </Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start font-normal"
-                        >
-                          <Calendar className="mr-2 h-4 w-4" />
-                          {format(endDate, 'PPP', { locale: fr })}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <CalendarComponent
-                          mode="single"
-                          selected={endDate}
-                          onSelect={(date) => date && setEndDate(date)}
-                          disabled={(date) => date < startDate}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DateTimePicker
+                      date={endDate}
+                      setDate={setEndDate}
+                      showTime={true}
+                      minTime="00:00"
+                      maxTime="23:59"
+                      timeStep={30}
+                      disabledDates={(date) => startDate ? date < startDate : false}
+                    />
                   </div>
 
-                  <div className="sm:pt-6">
+                  <div className="sm:pt-5">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-sm">
                       {durationLabel}
                       {newDuration !== originalDuration && (
@@ -463,19 +559,30 @@ export function EditReservationForm({
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base">{t('edit.items')}</CardTitle>
-                  <Select onValueChange={handleAddProduct}>
-                    <SelectTrigger className="w-[200px] h-8 text-sm">
-                      <Plus className="h-3.5 w-3.5 mr-1.5" />
-                      <SelectValue placeholder={t('edit.addItem')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableProducts.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          {product.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-sm"
+                      onClick={() => setShowCustomItemDialog(true)}
+                    >
+                      <PenLine className="h-3.5 w-3.5 mr-1.5" />
+                      {t('customItem.button')}
+                    </Button>
+                    <Select onValueChange={handleAddProduct}>
+                      <SelectTrigger className="w-[180px] h-8 text-sm">
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        <SelectValue placeholder={t('edit.addItem')} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableProducts.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -659,6 +766,145 @@ export function EditReservationForm({
           </div>
         </div>
       </div>
+
+      {/* Custom Item Dialog */}
+      <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PenLine className="h-5 w-5" />
+              {t('customItem.dialogTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('customItem.dialogDescription')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="custom-name">{t('customItem.name')} *</Label>
+              <Input
+                id="custom-name"
+                placeholder={t('customItem.namePlaceholder')}
+                value={customItemForm.name}
+                onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="custom-description">{t('customItem.description')}</Label>
+              <Textarea
+                id="custom-description"
+                placeholder={t('customItem.descriptionPlaceholder')}
+                value={customItemForm.description}
+                onChange={(e) => setCustomItemForm({ ...customItemForm, description: e.target.value })}
+                className="resize-none"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="custom-quantity">{t('customItem.quantity')}</Label>
+                <Input
+                  id="custom-quantity"
+                  type="number"
+                  min="1"
+                  value={customItemForm.quantity}
+                  onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-deposit">{t('customItem.deposit')}</Label>
+                <div className="relative">
+                  <Input
+                    id="custom-deposit"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={customItemForm.deposit}
+                    onChange={(e) => setCustomItemForm({ ...customItemForm, deposit: e.target.value })}
+                    className="pr-8"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    {currencySymbol}
+                  </span>
+                </div>
+              </div>
+            </div>
+            {newDuration > 0 && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>{t('customItem.pricingPeriod')}</span>
+                  <span className="font-medium text-foreground">
+                    {newDuration} {pricingUnit} × {customItemForm.quantity || 1} {t('customItem.units')}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="custom-total" className="text-xs">{t('customItem.totalPrice')} *</Label>
+                    <div className="relative">
+                      <Input
+                        id="custom-total"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={customItemForm.totalPrice}
+                        onChange={(e) => handleTotalPriceChange(e.target.value)}
+                        onFocus={() => setPriceInputMode('total')}
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        {currencySymbol}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="custom-unit" className="text-xs">{t('customItem.unitPrice')}</Label>
+                    <div className="relative">
+                      <Input
+                        id="custom-unit"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={customItemForm.unitPrice}
+                        onChange={(e) => handleUnitPriceChange(e.target.value)}
+                        onFocus={() => setPriceInputMode('unit')}
+                        className="pr-12"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        {currencySymbol}/{pricingUnit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            {newDuration === 0 && (
+              <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                {t('customItem.selectPeriodFirst')}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                resetCustomItemForm()
+                setShowCustomItemDialog(false)
+              }}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button type="button" onClick={handleAddCustomItem} disabled={newDuration === 0}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t('customItem.addButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   )
 }

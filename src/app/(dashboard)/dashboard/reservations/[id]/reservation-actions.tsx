@@ -14,9 +14,7 @@ import {
   Package,
   Ban,
   AlertCircle,
-  Pencil,
 } from 'lucide-react'
-import Link from 'next/link'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
@@ -196,19 +194,6 @@ export function ReservationActions({
                   {t('rejectRequest')}
                 </Button>
               </div>
-              <div className="flex items-center justify-center pt-2 border-t mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  asChild
-                >
-                  <Link href={`/dashboard/reservations/${reservationId}/edit`}>
-                    <Pencil className="h-3 w-3 mr-1.5" />
-                    {t('edit.button')}
-                  </Link>
-                </Button>
-              </div>
             </CardContent>
           </Card>
         )
@@ -263,28 +248,17 @@ export function ReservationActions({
                 </div>
               )}
 
-              <div className="flex items-center justify-between pt-2 border-t mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  asChild
-                >
-                  <Link href={`/dashboard/reservations/${reservationId}/edit`}>
-                    <Pencil className="h-3 w-3 mr-1.5" />
-                    {t('edit.button')}
-                  </Link>
-                </Button>
-                {canCancel && (
+              {canCancel && (
+                <div className="pt-2 border-t mt-3">
                   <button
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
                     disabled={isLoading}
                   >
                     {t('cancelReservation')}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )
@@ -321,28 +295,17 @@ export function ReservationActions({
                 {t('actions.markReturned')}
               </Button>
 
-              <div className="flex items-center justify-between pt-2 border-t mt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  asChild
-                >
-                  <Link href={`/dashboard/reservations/${reservationId}/edit`}>
-                    <Pencil className="h-3 w-3 mr-1.5" />
-                    {t('edit.button')}
-                  </Link>
-                </Button>
-                {canCancel && (
+              {canCancel && (
+                <div className="pt-2 border-t mt-3">
                   <button
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
                     onClick={() => setCancelDialogOpen(true)}
                     disabled={isLoading}
                   >
                     {t('cancelReservation')}
                   </button>
-                )}
-              </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         )

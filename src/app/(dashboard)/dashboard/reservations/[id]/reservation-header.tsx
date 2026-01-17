@@ -17,8 +17,10 @@ import {
   Check,
   Link as LinkIcon,
   Loader2,
+  Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -97,12 +99,14 @@ export function ReservationHeader({
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const currencySymbol = getCurrencySymbol(currency)
+  const router = useRouter()
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [isSendingAccessLink, setIsSendingAccessLink] = useState(false)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
+  const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
 
   // Format date range
   const formatDateRange = () => {
@@ -276,6 +280,15 @@ export function ReservationHeader({
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator className="sm:hidden" />
+
+                {/* Edit reservation */}
+                {canEdit && (
+                  <DropdownMenuItem onClick={() => router.push(`/dashboard/reservations/${reservationId}/edit`)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    {t('edit.button')}
+                  </DropdownMenuItem>
+                )}
+                {canEdit && <DropdownMenuSeparator />}
 
                 {/* Common items */}
                 <DropdownMenuItem onClick={handleDownloadContract}>
