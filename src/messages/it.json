@@ -731,7 +731,8 @@
           "canContinue": "Come gestore, puoi creare questa prenotazione nonostante gli avvisi.",
           "productConflict": "{name}: conflitto di disponibilità",
           "productConflictDetails": "Quantità richiesta: {requested}, disponibile per questo periodo: {available}",
-          "conflictCanContinue": "Questi prodotti sono già prenotati durante questo periodo. Puoi procedere se gestisci manualmente la disponibilità."
+          "conflictCanContinue": "Questi prodotti sono già prenotati durante questo periodo. Puoi procedere se gestisci manualmente la disponibilità.",
+          "insufficientStock": "Stock insufficiente"
         },
         "addItemError": "Aggiungi almeno un prodotto o articolo personalizzato"
       },

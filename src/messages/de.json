@@ -731,7 +731,8 @@
           "canContinue": "Als Manager können Sie diese Reservierung trotz der Warnungen erstellen.",
           "productConflict": "{name}: Verfügbarkeitskonflikt",
           "productConflictDetails": "Angeforderte Menge: {requested}, verfügbar für diesen Zeitraum: {available}",
-          "conflictCanContinue": "Diese Produkte sind in diesem Zeitraum bereits reserviert. Sie können fortfahren, wenn Sie die Verfügbarkeit manuell verwalten."
+          "conflictCanContinue": "Diese Produkte sind in diesem Zeitraum bereits reserviert. Sie können fortfahren, wenn Sie die Verfügbarkeit manuell verwalten.",
+          "insufficientStock": "Unzureichender Lagerbestand"
         },
         "addItemError": "Bitte fügen Sie mindestens ein Produkt oder benutzerdefinierten Artikel hinzu"
       },

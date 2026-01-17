@@ -731,7 +731,8 @@
           "canContinue": "Como gerente, puede crear esta reserva a pesar de las advertencias.",
           "productConflict": "{name}: conflicto de disponibilidad",
           "productConflictDetails": "Cantidad solicitada: {requested}, disponible para este período: {available}",
-          "conflictCanContinue": "Estos productos ya están reservados durante este período. Puede continuar si gestiona la disponibilidad manualmente."
+          "conflictCanContinue": "Estos productos ya están reservados durante este período. Puede continuar si gestiona la disponibilidad manualmente.",
+          "insufficientStock": "Stock insuficiente"
         },
         "addItemError": "Por favor agregue al menos un producto o articulo personalizado"
       },

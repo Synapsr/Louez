@@ -730,7 +730,8 @@
           "canContinue": "Als manager kunt u deze reservering aanmaken ondanks de waarschuwingen.",
           "productConflict": "{name}: beschikbaarheidsconflict",
           "productConflictDetails": "Gevraagde hoeveelheid: {requested}, beschikbaar voor deze periode: {available}",
-          "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert."
+          "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert.",
+          "insufficientStock": "Onvoldoende voorraad"
         },
         "addItemError": "Voeg minimaal één product of aangepast artikel toe"
       },

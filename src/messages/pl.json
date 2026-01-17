@@ -731,7 +731,8 @@
           "canContinue": "Jako menedżer możesz utworzyć tę rezerwację mimo ostrzeżeń.",
           "productConflict": "{name}: konflikt dostępności",
           "productConflictDetails": "Żądana ilość: {requested}, dostępna na ten okres: {available}",
-          "conflictCanContinue": "Te produkty są już zarezerwowane w tym okresie. Możesz kontynuować, jeśli ręcznie zarządzasz dostępnością."
+          "conflictCanContinue": "Te produkty są już zarezerwowane w tym okresie. Możesz kontynuować, jeśli ręcznie zarządzasz dostępnością.",
+          "insufficientStock": "Niewystarczający stan magazynowy"
         },
         "addItemError": "Proszę dodać co najmniej jeden produkt lub niestandardowy przedmiot"
       },
