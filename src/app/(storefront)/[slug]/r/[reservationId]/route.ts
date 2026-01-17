@@ -1,9 +1,8 @@
-'use server'
-
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
+import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import {
-  customers,
   verificationCodes,
   customerSessions,
   stores,
@@ -15,19 +14,26 @@ import { nanoid } from 'nanoid'
 const CUSTOMER_SESSION_COOKIE = 'customer_session'
 const SESSION_DURATION_DAYS = 30
 
-export async function validateInstantAccessToken(
-  storeSlug: string,
-  reservationId: string,
-  token: string
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string; reservationId: string }> }
 ) {
+  const { slug, reservationId } = await params
+  const token = request.nextUrl.searchParams.get('token')
+
+  if (!token) {
+    // No token provided, redirect to login
+    redirect(`/account/login?redirect=/account/reservations/${reservationId}`)
+  }
+
   try {
     // Get store by slug
     const store = await db.query.stores.findFirst({
-      where: eq(stores.slug, storeSlug),
+      where: eq(stores.slug, slug),
     })
 
     if (!store) {
-      return { error: 'errors.storeNotFound' }
+      redirect(`/account/login?error=storeNotFound&redirect=/account/reservations/${reservationId}`)
     }
 
     // Find valid instant access token
@@ -42,7 +48,7 @@ export async function validateInstantAccessToken(
     })
 
     if (!verification) {
-      return { error: 'errors.invalidOrExpiredToken' }
+      redirect(`/account/login?error=invalidToken&redirect=/account/reservations/${reservationId}`)
     }
 
     // Verify reservation exists and belongs to this store
@@ -55,10 +61,10 @@ export async function validateInstantAccessToken(
     })
 
     if (!reservation) {
-      return { error: 'errors.reservationNotFound' }
+      redirect(`/account/login?error=reservationNotFound&redirect=/account/reservations/${reservationId}`)
     }
 
-    // Do NOT mark token as used (reusable tokens)
+    // Token is valid and reusable (we don't mark it as used)
 
     // Create customer session
     const sessionToken = nanoid(32)
@@ -72,7 +78,7 @@ export async function validateInstantAccessToken(
       expiresAt,
     })
 
-    // Set cookie
+    // Set session cookie - this works in Route Handlers
     const cookieStore = await cookies()
     cookieStore.set(CUSTOMER_SESSION_COOKIE, sessionToken, {
       httpOnly: true,
@@ -82,14 +88,15 @@ export async function validateInstantAccessToken(
       path: '/',
     })
 
-    // Note: Don't include slug in path - subdomain routing handles it
-    return {
-      success: true,
-      customerId: reservation.customer.id,
-      redirectUrl: `/account/reservations/${reservationId}`,
-    }
+    // Redirect to reservation detail page
+    redirect(`/account/reservations/${reservationId}`)
   } catch (error) {
-    console.error('Error validating instant access token:', error)
-    return { error: 'errors.verificationError' }
+    // If it's a redirect, rethrow it
+    if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+      throw error
+    }
+
+    console.error('Error processing instant access:', error)
+    redirect(`/account/login?error=verificationError&redirect=/account/reservations/${reservationId}`)
   }
 }
