@@ -384,10 +384,9 @@ export async function createReservation(input: CreateReservationInput) {
     if (shouldProcessPayment) {
       try {
         const currency = store.settings?.currency || 'EUR'
-        const storefrontUrl = process.env.NEXT_PUBLIC_STOREFRONT_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-        const baseUrl = storefrontUrl.includes('{slug}')
-          ? storefrontUrl.replace('{slug}', store.slug)
-          : `${storefrontUrl}/${store.slug}`
+        const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+        const protocol = domain.includes('localhost') ? 'http' : 'https'
+        const baseUrl = `${protocol}://${store.slug}.${domain}`
 
         // Build line items for Stripe
         const lineItems = input.items.map((item) => ({
