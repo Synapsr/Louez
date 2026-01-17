@@ -686,6 +686,23 @@
           "priceUpdated": "Preis aktualisiert",
           "priceReset": "Preis zurückgesetzt"
         },
+        "warnings": {
+          "advanceNotice": "Startdatum liegt vor der Vorlaufzeit",
+          "advanceNoticeDetails": "Die übliche Vorlaufzeit beträgt {hours}h. Sie können trotzdem fortfahren.",
+          "startDayClosed": "Startdatum ist ein Schließtag",
+          "endDayClosed": "Enddatum ist ein Schließtag",
+          "dayClosedDetails": "Das Geschäft ist an diesem Tag normalerweise geschlossen.",
+          "startOutsideHours": "Startzeit liegt außerhalb der Öffnungszeiten",
+          "endOutsideHours": "Endzeit liegt außerhalb der Öffnungszeiten",
+          "outsideHoursDetails": "Übliche Zeiten: {open} - {close}",
+          "startClosurePeriod": "Startdatum fällt in eine Schließungsperiode",
+          "endClosurePeriod": "Enddatum fällt in eine Schließungsperiode",
+          "closurePeriodDetails": "Das Geschäft ist ausnahmsweise geschlossen.",
+          "canContinue": "Als Manager können Sie diese Reservierung trotz der Warnungen erstellen.",
+          "productConflict": "{name}: Verfügbarkeitskonflikt",
+          "productConflictDetails": "Angeforderte Menge: {requested}, verfügbar für diesen Zeitraum: {available}",
+          "conflictCanContinue": "Diese Produkte sind in diesem Zeitraum bereits reserviert. Sie können fortfahren, wenn Sie die Verfügbarkeit manuell verwalten."
+        },
         "addItemError": "Bitte fügen Sie mindestens ein Produkt oder benutzerdefinierten Artikel hinzu"
       },
       "rejectDialog": {

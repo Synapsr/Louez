@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { format } from 'date-fns'
@@ -20,8 +20,10 @@ import {
   ArrowRight,
   ShoppingCart,
   PenLine,
-  X,
   ImageIcon,
+  AlertTriangle,
+  Clock,
+  PackageX,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
@@ -69,9 +71,10 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 
 import { cn, formatCurrency } from '@/lib/utils'
-import { isDateAvailable, getAvailableTimeSlots } from '@/lib/utils/business-hours'
-import { getDetailedDuration, getMinStartDate } from '@/lib/utils/duration'
-import { findApplicableTier, calculateRentalPrice } from '@/lib/pricing/calculate'
+import { isWithinBusinessHours, getDaySchedule } from '@/lib/utils/business-hours'
+import { getDetailedDuration, getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { findApplicableTier } from '@/lib/pricing/calculate'
 import { createManualReservation } from '../actions'
 import type { BusinessHours } from '@/types/store'
 import type { PricingTier } from '@/types/store'
@@ -118,12 +121,35 @@ interface CustomItem {
   quantity: number
 }
 
+// Warning types for flexible date selection
+interface PeriodWarning {
+  type: 'advance_notice' | 'day_closed' | 'outside_hours' | 'closure_period'
+  field: 'start' | 'end' | 'both'
+  message: string
+  details?: string
+}
+
+interface AvailabilityWarning {
+  productId: string
+  productName: string
+  requestedQuantity: number
+  availableQuantity: number
+  conflictingReservations?: number
+}
+
 interface NewReservationFormProps {
   customers: Customer[]
   products: Product[]
   pricingMode: 'day' | 'hour' | 'week'
   businessHours?: BusinessHours
   advanceNotice?: number
+  existingReservations?: Array<{
+    id: string
+    startDate: Date
+    endDate: Date
+    status: string
+    items: Array<{ productId: string | null; quantity: number }>
+  }>
 }
 
 interface FormData {
@@ -144,6 +170,7 @@ export function NewReservationForm({
   pricingMode,
   businessHours,
   advanceNotice = 0,
+  existingReservations = [],
 }: NewReservationFormProps) {
   const router = useRouter()
   const locale = useLocale()
@@ -153,36 +180,156 @@ export function NewReservationForm({
 
   const dateLocale = locale === 'fr' ? fr : enUS
 
-  // Calculate minimum start date based on advance notice setting
-  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
+  // Warning states for flexible date selection (warnings instead of blocking)
+  const [periodWarnings, setPeriodWarnings] = useState<PeriodWarning[]>([])
+  const [availabilityWarnings, setAvailabilityWarnings] = useState<AvailabilityWarning[]>([])
 
-  // Helper to check if a date is disabled (not open or before advance notice)
-  const isDateDisabled = (date: Date): boolean => {
-    if (date < minDate) return true
+  // Calculate minimum start date based on advance notice setting (for warning, not blocking)
+  const minDateTime = useMemo(() => getMinStartDateTime(advanceNotice), [advanceNotice])
 
-    // Check if store is open on this day
-    if (businessHours?.enabled) {
-      const { available } = isDateAvailable(date, businessHours)
-      return !available
+  // Check period warnings when dates change
+  const checkPeriodWarnings = useCallback((startDate: Date | undefined, endDate: Date | undefined) => {
+    const warnings: PeriodWarning[] = []
+
+    if (startDate) {
+      // Check advance notice
+      if (startDate < minDateTime) {
+        warnings.push({
+          type: 'advance_notice',
+          field: 'start',
+          message: t('warnings.advanceNotice'),
+          details: t('warnings.advanceNoticeDetails', { hours: advanceNotice }),
+        })
+      }
+
+      // Check business hours for start date
+      if (businessHours?.enabled) {
+        const startCheck = isWithinBusinessHours(startDate, businessHours)
+        if (!startCheck.valid) {
+          if (startCheck.reason === 'day_closed') {
+            warnings.push({
+              type: 'day_closed',
+              field: 'start',
+              message: t('warnings.startDayClosed'),
+              details: t('warnings.dayClosedDetails'),
+            })
+          } else if (startCheck.reason === 'outside_hours') {
+            const startDaySchedule = getDaySchedule(startDate, businessHours)
+            warnings.push({
+              type: 'outside_hours',
+              field: 'start',
+              message: t('warnings.startOutsideHours'),
+              details: t('warnings.outsideHoursDetails', {
+                open: startDaySchedule.openTime,
+                close: startDaySchedule.closeTime
+              }),
+            })
+          } else if (startCheck.reason === 'closure_period' && startCheck.closurePeriod) {
+            warnings.push({
+              type: 'closure_period',
+              field: 'start',
+              message: t('warnings.startClosurePeriod'),
+              details: startCheck.closurePeriod.name || t('warnings.closurePeriodDetails'),
+            })
+          }
+        }
+      }
     }
-    return false
-  }
 
-  // Get time slots for a specific date based on business hours
-  const getTimeSlotsForDate = (date: Date | undefined): { minTime: string; maxTime: string } => {
-    if (!date || !businessHours?.enabled) {
-      return { minTime: '07:00', maxTime: '21:00' }
+    if (endDate) {
+      // Check business hours for end date
+      if (businessHours?.enabled) {
+        const endCheck = isWithinBusinessHours(endDate, businessHours)
+        if (!endCheck.valid) {
+          if (endCheck.reason === 'day_closed') {
+            warnings.push({
+              type: 'day_closed',
+              field: 'end',
+              message: t('warnings.endDayClosed'),
+              details: t('warnings.dayClosedDetails'),
+            })
+          } else if (endCheck.reason === 'outside_hours') {
+            const endDaySchedule = getDaySchedule(endDate, businessHours)
+            warnings.push({
+              type: 'outside_hours',
+              field: 'end',
+              message: t('warnings.endOutsideHours'),
+              details: t('warnings.outsideHoursDetails', {
+                open: endDaySchedule.openTime,
+                close: endDaySchedule.closeTime
+              }),
+            })
+          } else if (endCheck.reason === 'closure_period' && endCheck.closurePeriod) {
+            warnings.push({
+              type: 'closure_period',
+              field: 'end',
+              message: t('warnings.endClosurePeriod'),
+              details: endCheck.closurePeriod.name || t('warnings.closurePeriodDetails'),
+            })
+          }
+        }
+      }
     }
 
-    const slots = getAvailableTimeSlots(date, businessHours, 30)
-    if (slots.length === 0) {
-      return { minTime: '07:00', maxTime: '21:00' }
+    setPeriodWarnings(warnings)
+  }, [businessHours, minDateTime, advanceNotice, t])
+
+  // Check availability warnings when dates and products change
+  const checkAvailabilityWarnings = useCallback((
+    startDate: Date | undefined,
+    endDate: Date | undefined,
+    selectedItems: SelectedProduct[]
+  ) => {
+    if (!startDate || !endDate || selectedItems.length === 0) {
+      setAvailabilityWarnings([])
+      return
     }
 
-    return {
-      minTime: slots[0],
-      maxTime: slots[slots.length - 1],
+    const warnings: AvailabilityWarning[] = []
+
+    // Calculate reserved quantities from existing reservations
+    const reservedByProduct = new Map<string, number>()
+
+    for (const reservation of existingReservations) {
+      // Only check active reservations
+      if (!['pending', 'confirmed', 'ongoing'].includes(reservation.status)) continue
+
+      // Check if reservation overlaps with selected period
+      if (dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
+        for (const item of reservation.items) {
+          if (!item.productId) continue
+          const current = reservedByProduct.get(item.productId) || 0
+          reservedByProduct.set(item.productId, current + item.quantity)
+        }
+      }
     }
+
+    // Check each selected product
+    for (const selectedItem of selectedItems) {
+      const product = products.find(p => p.id === selectedItem.productId)
+      if (!product) continue
+
+      const reserved = reservedByProduct.get(selectedItem.productId) || 0
+      const available = Math.max(0, product.quantity - reserved)
+
+      if (selectedItem.quantity > available) {
+        warnings.push({
+          productId: selectedItem.productId,
+          productName: product.name,
+          requestedQuantity: selectedItem.quantity,
+          availableQuantity: available,
+          conflictingReservations: reserved,
+        })
+      }
+    }
+
+    setAvailabilityWarnings(warnings)
+  }, [existingReservations, products])
+
+  // Full time range for dashboard (no restrictions)
+  const getTimeSlotsForDate = (_date: Date | undefined): { minTime: string; maxTime: string } => {
+    // Dashboard: allow full day selection (store owners can book anytime)
+    return { minTime: '00:00', maxTime: '23:30' }
   }
 
   const STEPS = useMemo(() => [
@@ -278,6 +425,16 @@ export function NewReservationForm({
 
   // Check if there are any items (products or custom)
   const hasItems = selectedProducts.length > 0 || customItems.length > 0
+
+  // Effect: Check period warnings when dates change
+  useEffect(() => {
+    checkPeriodWarnings(watchStartDate, watchEndDate)
+  }, [watchStartDate, watchEndDate, checkPeriodWarnings])
+
+  // Effect: Check availability warnings when dates or selected products change
+  useEffect(() => {
+    checkAvailabilityWarnings(watchStartDate, watchEndDate, selectedProducts)
+  }, [watchStartDate, watchEndDate, selectedProducts, checkAvailabilityWarnings])
 
   // Calculate totals with pricing tier discounts
   const { subtotal, originalSubtotal, deposit, totalSavings } = useMemo(() => {
@@ -867,7 +1024,6 @@ export function NewReservationForm({
                               date={field.value}
                               setDate={field.onChange}
                               placeholder={t('pickDate')}
-                              disabledDates={isDateDisabled}
                               showTime={true}
                               minTime={timeSlots.minTime}
                               maxTime={timeSlots.maxTime}
@@ -892,9 +1048,7 @@ export function NewReservationForm({
                               setDate={field.onChange}
                               placeholder={t('pickDate')}
                               disabledDates={(date) => {
-                                // First check if store is open
-                                if (isDateDisabled(date)) return true
-                                // Then check if it's after start date
+                                // Only block dates before start date (logical constraint)
                                 if (watchStartDate) {
                                   const startDay = new Date(watchStartDate)
                                   startDay.setHours(0, 0, 0, 0)
@@ -953,6 +1107,36 @@ export function NewReservationForm({
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Period Warnings - Shown when dates are outside normal business conditions */}
+                {periodWarnings.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    {periodWarnings.map((warning, index) => (
+                      <Alert
+                        key={`${warning.type}-${warning.field}-${index}`}
+                        className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                      >
+                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                        <AlertDescription className="ml-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium text-amber-800 dark:text-amber-200">
+                              {warning.message}
+                            </span>
+                            {warning.details && (
+                              <span className="text-sm text-amber-700 dark:text-amber-300">
+                                {warning.details}
+                              </span>
+                            )}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {t('warnings.canContinue')}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -1307,6 +1491,37 @@ export function NewReservationForm({
                     </p>
                   )}
                 </div>
+
+                {/* Availability Warnings - Shown when products conflict with existing reservations */}
+                {availabilityWarnings.length > 0 && (
+                  <div className="space-y-2">
+                    {availabilityWarnings.map((warning) => (
+                      <Alert
+                        key={warning.productId}
+                        className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                      >
+                        <PackageX className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                        <AlertDescription className="ml-2">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium text-amber-800 dark:text-amber-200">
+                              {t('warnings.productConflict', { name: warning.productName })}
+                            </span>
+                            <span className="text-sm text-amber-700 dark:text-amber-300">
+                              {t('warnings.productConflictDetails', {
+                                requested: warning.requestedQuantity,
+                                available: warning.availableQuantity,
+                              })}
+                            </span>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    ))}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      {t('warnings.conflictCanContinue')}
+                    </p>
+                  </div>
+                )}
 
                 {/* Summary */}
                 {hasItems && (

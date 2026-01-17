@@ -686,6 +686,23 @@
           "priceUpdated": "Price updated",
           "priceReset": "Price reset"
         },
+        "warnings": {
+          "advanceNotice": "Start date is before the advance notice period",
+          "advanceNoticeDetails": "The usual advance notice is {hours}h. You can still proceed.",
+          "startDayClosed": "Start date is on a closing day",
+          "endDayClosed": "End date is on a closing day",
+          "dayClosedDetails": "The store is normally closed on this day.",
+          "startOutsideHours": "Start time is outside business hours",
+          "endOutsideHours": "End time is outside business hours",
+          "outsideHoursDetails": "Usual hours: {open} - {close}",
+          "startClosurePeriod": "Start date falls during a closure period",
+          "endClosurePeriod": "End date falls during a closure period",
+          "closurePeriodDetails": "The store is exceptionally closed.",
+          "canContinue": "As a manager, you can create this reservation despite the warnings.",
+          "productConflict": "{name}: availability conflict",
+          "productConflictDetails": "Requested quantity: {requested}, available for this period: {available}",
+          "conflictCanContinue": "These products are already reserved during this period. You can proceed if you manage availability manually."
+        },
         "addItemError": "Please add at least one product or custom item"
       },
       "rejectDialog": {

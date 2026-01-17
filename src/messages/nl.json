@@ -685,6 +685,23 @@
           "priceUpdated": "Prijs bijgewerkt",
           "priceReset": "Prijs hersteld"
         },
+        "warnings": {
+          "advanceNotice": "Startdatum is vóór de vooraanmeldingsperiode",
+          "advanceNoticeDetails": "De gebruikelijke vooraanmelding is {hours}u. U kunt toch doorgaan.",
+          "startDayClosed": "Startdatum is een sluitingsdag",
+          "endDayClosed": "Einddatum is een sluitingsdag",
+          "dayClosedDetails": "De winkel is normaal gesloten op deze dag.",
+          "startOutsideHours": "Starttijd is buiten de openingstijden",
+          "endOutsideHours": "Eindtijd is buiten de openingstijden",
+          "outsideHoursDetails": "Gebruikelijke tijden: {open} - {close}",
+          "startClosurePeriod": "Startdatum valt in een sluitingsperiode",
+          "endClosurePeriod": "Einddatum valt in een sluitingsperiode",
+          "closurePeriodDetails": "De winkel is uitzonderlijk gesloten.",
+          "canContinue": "Als manager kunt u deze reservering aanmaken ondanks de waarschuwingen.",
+          "productConflict": "{name}: beschikbaarheidsconflict",
+          "productConflictDetails": "Gevraagde hoeveelheid: {requested}, beschikbaar voor deze periode: {available}",
+          "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert."
+        },
         "addItemError": "Voeg minimaal één product of aangepast artikel toe"
       },
       "rejectDialog": {

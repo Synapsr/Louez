@@ -686,6 +686,23 @@
           "priceUpdated": "Cena zaktualizowana",
           "priceReset": "Cena zresetowana"
         },
+        "warnings": {
+          "advanceNotice": "Data rozpoczęcia jest przed okresem wyprzedzenia",
+          "advanceNoticeDetails": "Zwykłe wyprzedzenie wynosi {hours}h. Możesz kontynuować mimo to.",
+          "startDayClosed": "Data rozpoczęcia to dzień zamknięcia",
+          "endDayClosed": "Data zakończenia to dzień zamknięcia",
+          "dayClosedDetails": "Sklep jest normalnie zamknięty w tym dniu.",
+          "startOutsideHours": "Godzina rozpoczęcia jest poza godzinami otwarcia",
+          "endOutsideHours": "Godzina zakończenia jest poza godzinami otwarcia",
+          "outsideHoursDetails": "Zwykłe godziny: {open} - {close}",
+          "startClosurePeriod": "Data rozpoczęcia przypada w okresie zamknięcia",
+          "endClosurePeriod": "Data zakończenia przypada w okresie zamknięcia",
+          "closurePeriodDetails": "Sklep jest wyjątkowo zamknięty.",
+          "canContinue": "Jako menedżer możesz utworzyć tę rezerwację mimo ostrzeżeń.",
+          "productConflict": "{name}: konflikt dostępności",
+          "productConflictDetails": "Żądana ilość: {requested}, dostępna na ten okres: {available}",
+          "conflictCanContinue": "Te produkty są już zarezerwowane w tym okresie. Możesz kontynuować, jeśli ręcznie zarządzasz dostępnością."
+        },
         "addItemError": "Proszę dodać co najmniej jeden produkt lub niestandardowy przedmiot"
       },
       "rejectDialog": {

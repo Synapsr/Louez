@@ -686,6 +686,23 @@
           "priceUpdated": "Prezzo aggiornato",
           "priceReset": "Prezzo reimpostato"
         },
+        "warnings": {
+          "advanceNotice": "La data di inizio è prima del periodo di preavviso",
+          "advanceNoticeDetails": "Il preavviso abituale è di {hours}h. Puoi comunque procedere.",
+          "startDayClosed": "La data di inizio è un giorno di chiusura",
+          "endDayClosed": "La data di fine è un giorno di chiusura",
+          "dayClosedDetails": "Il negozio è normalmente chiuso in questo giorno.",
+          "startOutsideHours": "L'orario di inizio è fuori dall'orario di apertura",
+          "endOutsideHours": "L'orario di fine è fuori dall'orario di apertura",
+          "outsideHoursDetails": "Orario abituale: {open} - {close}",
+          "startClosurePeriod": "La data di inizio cade in un periodo di chiusura",
+          "endClosurePeriod": "La data di fine cade in un periodo di chiusura",
+          "closurePeriodDetails": "Il negozio è eccezionalmente chiuso.",
+          "canContinue": "Come gestore, puoi creare questa prenotazione nonostante gli avvisi.",
+          "productConflict": "{name}: conflitto di disponibilità",
+          "productConflictDetails": "Quantità richiesta: {requested}, disponibile per questo periodo: {available}",
+          "conflictCanContinue": "Questi prodotti sono già prenotati durante questo periodo. Puoi procedere se gestisci manualmente la disponibilità."
+        },
         "addItemError": "Aggiungi almeno un prodotto o articolo personalizzato"
       },
       "rejectDialog": {
