@@ -1906,7 +1906,12 @@
           "smsVariables": "Variabili: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Ripristina",
           "cancel": "Annulla",
-          "save": "Salva"
+          "save": "Salva",
+          "customized": "Personalizzato",
+          "default": "Predefinito",
+          "resetToDefault": "Ripristina predefinito",
+          "clearMessage": "Cancella messaggio",
+          "resetAll": "Ripristina tutto"
         },
         "templateSaved": "Modello salvato"
       },

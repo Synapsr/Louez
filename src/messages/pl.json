@@ -1906,7 +1906,12 @@
           "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Resetuj",
           "cancel": "Anuluj",
-          "save": "Zapisz"
+          "save": "Zapisz",
+          "customized": "Dostosowany",
+          "default": "Domyślny",
+          "resetToDefault": "Przywróć domyślne",
+          "clearMessage": "Wyczyść wiadomość",
+          "resetAll": "Zresetuj wszystko"
         },
         "templateSaved": "Szablon zapisany"
       },
