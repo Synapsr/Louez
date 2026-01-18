@@ -1,6 +1,10 @@
 import { Suspense } from 'react'
+import { unstable_noStore as noStore } from 'next/cache'
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
+
+// Disable caching for this page - always fetch fresh analytics data
+export const dynamic = 'force-dynamic'
 import {
   dailyStats,
   productStats,
@@ -599,10 +603,13 @@ async function TrafficStatsSection({ storeId, period }: { storeId: string; perio
 
   // Try aggregated stats first, fallback to raw events
   let stats = await getTrafficStats(storeId, period)
+  console.log('[Analytics] Aggregated stats:', { visitors: stats.visitors, productViews: stats.productViews, storeId })
 
   // If no aggregated data, try raw events
   if (stats.visitors === 0 && stats.productViews === 0) {
+    console.log('[Analytics] Falling back to raw events for store:', storeId)
     stats = await getRawEventStats(storeId, period)
+    console.log('[Analytics] Raw stats result:', { visitors: stats.visitors, productViews: stats.productViews })
   }
 
   return (
@@ -773,6 +780,9 @@ async function TopProductsByRevenueSection({ storeId, period }: { storeId: strin
 // ============================================
 
 export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps) {
+  // Ensure fresh data on every request
+  noStore()
+
   const t = await getTranslations('dashboard.analytics')
   const tStats = await getTranslations('dashboard.statistics')
   const store = await getCurrentStore()
