@@ -1775,6 +1775,80 @@
           "upgradeToUnlock": "Upgrade to Pro to enable this feature"
         }
       },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configure how you receive store event notifications",
+        "saveError": "Error saving settings",
+        "phone": {
+          "title": "Phone number",
+          "description": "To receive SMS notifications",
+          "placeholder": "+1 555 123 4567",
+          "configured": "Number configured",
+          "saved": "Phone number saved",
+          "invalidNumber": "Invalid phone number",
+          "required": "Configure your phone number first"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Receive instant notifications in your Discord server",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Connected",
+          "saved": "Discord webhook saved",
+          "invalidUrl": "Invalid webhook URL",
+          "test": "Test",
+          "testSuccess": "Test notification sent",
+          "testError": "Failed to send test",
+          "howTo": "How to create a Discord webhook?",
+          "required": "Configure Discord first"
+        },
+        "events": {
+          "event": "Event",
+          "reservation": {
+            "title": "Reservation events",
+            "reservation_new": {
+              "label": "New request",
+              "description": "When a customer submits a new request"
+            },
+            "reservation_confirmed": {
+              "label": "Reservation confirmed",
+              "description": "When you accept a request"
+            },
+            "reservation_rejected": {
+              "label": "Reservation rejected",
+              "description": "When you decline a request"
+            },
+            "reservation_cancelled": {
+              "label": "Reservation cancelled",
+              "description": "When a reservation is cancelled"
+            },
+            "reservation_picked_up": {
+              "label": "Equipment picked up",
+              "description": "When the customer picks up the equipment"
+            },
+            "reservation_completed": {
+              "label": "Reservation completed",
+              "description": "When the equipment is returned"
+            }
+          },
+          "payment": {
+            "title": "Payment events",
+            "payment_received": {
+              "label": "Payment received",
+              "description": "When a payment succeeds"
+            },
+            "payment_failed": {
+              "label": "Payment failed",
+              "description": "When a payment fails"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "SMS limit reached",
+          "limitReachedMessage": "You have reached your monthly SMS limit.",
+          "lowCredits": "You have {current} out of {limit} SMS remaining this month.",
+          "buyMore": "Buy more SMS"
+        }
+      },
       "businessHours": {
         "title": "Business hours",
         "description": "Set your store's opening hours",

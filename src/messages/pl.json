@@ -1775,6 +1775,80 @@
           "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
         }
       },
+      "notifications": {
+        "title": "Powiadomienia",
+        "description": "Skonfiguruj sposob otrzymywania powiadomien o wydarzeniach w sklepie",
+        "saveError": "Blad podczas zapisywania",
+        "phone": {
+          "title": "Numer telefonu",
+          "description": "Aby otrzymywac powiadomienia SMS",
+          "placeholder": "+48 512 345 678",
+          "configured": "Numer skonfigurowany",
+          "saved": "Numer telefonu zapisany",
+          "invalidNumber": "Nieprawidlowy numer telefonu",
+          "required": "Najpierw skonfiguruj numer telefonu"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Otrzymuj natychmiastowe powiadomienia na serwerze Discord",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Polaczony",
+          "saved": "Webhook Discord zapisany",
+          "invalidUrl": "Nieprawidlowy URL webhooka",
+          "test": "Testuj",
+          "testSuccess": "Powiadomienie testowe wyslane",
+          "testError": "Nie udalo sie wyslac testu",
+          "howTo": "Jak utworzyc webhook Discord?",
+          "required": "Najpierw skonfiguruj Discord"
+        },
+        "events": {
+          "event": "Wydarzenie",
+          "reservation": {
+            "title": "Wydarzenia rezerwacji",
+            "reservation_new": {
+              "label": "Nowe zapytanie",
+              "description": "Gdy klient wysyla nowe zapytanie"
+            },
+            "reservation_confirmed": {
+              "label": "Rezerwacja potwierdzona",
+              "description": "Gdy akceptujesz zapytanie"
+            },
+            "reservation_rejected": {
+              "label": "Rezerwacja odrzucona",
+              "description": "Gdy odrzucasz zapytanie"
+            },
+            "reservation_cancelled": {
+              "label": "Rezerwacja anulowana",
+              "description": "Gdy rezerwacja zostaje anulowana"
+            },
+            "reservation_picked_up": {
+              "label": "Sprzet odebrany",
+              "description": "Gdy klient odbiera sprzet"
+            },
+            "reservation_completed": {
+              "label": "Rezerwacja zakonczona",
+              "description": "Gdy sprzet zostaje zwrocony"
+            }
+          },
+          "payment": {
+            "title": "Wydarzenia platnosci",
+            "payment_received": {
+              "label": "Platnosc otrzymana",
+              "description": "Gdy platnosc sie powiedzie"
+            },
+            "payment_failed": {
+              "label": "Platnosc nieudana",
+              "description": "Gdy platnosc sie nie powiedzie"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "Osiagnieto limit SMS",
+          "limitReachedMessage": "Osiagnales miesieczny limit SMS.",
+          "lowCredits": "Pozostalo Ci {current} z {limit} SMS w tym miesiacu.",
+          "buyMore": "Kup wiecej SMS"
+        }
+      },
       "businessHours": {
         "title": "Godziny otwarcia",
         "description": "Ustaw godziny otwarcia swojego sklepu",

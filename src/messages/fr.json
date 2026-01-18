@@ -1775,6 +1775,80 @@
           "upgradeToUnlock": "Passez au plan Pro pour activer cette fonctionnalité"
         }
       },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configurez comment vous êtes notifié des événements de votre boutique",
+        "saveError": "Erreur lors de l'enregistrement",
+        "phone": {
+          "title": "Numéro de téléphone",
+          "description": "Pour recevoir les notifications par SMS",
+          "placeholder": "+33 6 12 34 56 78",
+          "configured": "Numéro configuré",
+          "saved": "Numéro enregistré",
+          "invalidNumber": "Numéro de téléphone invalide",
+          "required": "Configurez votre numéro de téléphone d'abord"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Recevez des notifications instantanées dans votre serveur Discord",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Connecté",
+          "saved": "Webhook Discord enregistré",
+          "invalidUrl": "URL de webhook invalide",
+          "test": "Tester",
+          "testSuccess": "Notification de test envoyée",
+          "testError": "Échec de l'envoi du test",
+          "howTo": "Comment créer un webhook Discord ?",
+          "required": "Configurez Discord d'abord"
+        },
+        "events": {
+          "event": "Événement",
+          "reservation": {
+            "title": "Événements de réservation",
+            "reservation_new": {
+              "label": "Nouvelle demande",
+              "description": "Quand un client soumet une nouvelle demande"
+            },
+            "reservation_confirmed": {
+              "label": "Réservation confirmée",
+              "description": "Quand vous acceptez une demande"
+            },
+            "reservation_rejected": {
+              "label": "Réservation rejetée",
+              "description": "Quand vous refusez une demande"
+            },
+            "reservation_cancelled": {
+              "label": "Réservation annulée",
+              "description": "Quand une réservation est annulée"
+            },
+            "reservation_picked_up": {
+              "label": "Équipement récupéré",
+              "description": "Quand le client récupère l'équipement"
+            },
+            "reservation_completed": {
+              "label": "Réservation terminée",
+              "description": "Quand l'équipement est retourné"
+            }
+          },
+          "payment": {
+            "title": "Événements de paiement",
+            "payment_received": {
+              "label": "Paiement reçu",
+              "description": "Quand un paiement est réussi"
+            },
+            "payment_failed": {
+              "label": "Paiement échoué",
+              "description": "Quand un paiement échoue"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "Limite SMS atteinte",
+          "limitReachedMessage": "Vous avez atteint votre limite de SMS mensuelle.",
+          "lowCredits": "Il vous reste {current} SMS sur {limit} ce mois-ci.",
+          "buyMore": "Acheter des SMS"
+        }
+      },
       "businessHours": {
         "title": "Horaires d'ouverture",
         "description": "Définissez les horaires d'ouverture de votre boutique",
