@@ -54,6 +54,28 @@ export function formatCurrency(amount: number, currency: string = 'EUR'): string
   }).format(amount)
 }
 
+/**
+ * Format currency for SMS (uses text instead of symbol to stay in GSM-7)
+ * Example: "54,00 euros" instead of "54,00 €"
+ */
+export function formatCurrencyForSms(amount: number, currency: string = 'EUR'): string {
+  const formatted = new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+
+  // Use readable currency names for common currencies
+  const currencyNames: Record<string, string> = {
+    EUR: 'euros',
+    USD: 'dollars',
+    GBP: 'livres',
+    CHF: 'CHF',
+  }
+
+  const currencyName = currencyNames[currency] || currency
+  return `${formatted} ${currencyName}`
+}
+
 // Number formatting
 export function formatNumber(value: number, decimals = 0): string {
   return new Intl.NumberFormat('fr-FR', {
