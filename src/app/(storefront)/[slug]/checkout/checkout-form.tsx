@@ -28,6 +28,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Form,
@@ -126,7 +127,9 @@ export function CheckoutForm({
     email: z.string().email(t('errors.invalidEmail')),
     firstName: z.string().min(1, t('errors.firstNameRequired')),
     lastName: z.string().min(1, t('errors.lastNameRequired')),
-    phone: z.string().min(1, t('errors.phoneRequired')),
+    phone: z.string()
+      .min(1, t('errors.phoneRequired'))
+      .regex(/^\+[1-9]\d{6,14}$/, t('errors.invalidPhone')),
     isBusinessCustomer: z.boolean(),
     companyName: z.string().optional(),
     address: z.string().optional(),
@@ -443,7 +446,11 @@ export function CheckoutForm({
                         <FormItem>
                           <FormLabel>{t('phone')}</FormLabel>
                           <FormControl>
-                            <Input type="tel" placeholder={t('phonePlaceholder')} {...field} />
+                            <PhoneInput
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder={t('phonePlaceholder')}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

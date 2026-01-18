@@ -305,6 +305,8 @@
         "reservationConfirmation": "Bestätigung",
         "reminderPickup": "Abholungserinnerung",
         "reminderReturn": "Rückgabeerinnerung",
+        "requestReceived": "Anfrage erhalten",
+        "requestAccepted": "Anfrage akzeptiert",
         "custom": "Benutzerdefiniert",
         "thankYouReview": "Bewertungsanfrage"
       },
@@ -2596,6 +2598,7 @@
         "firstNameRequired": "Vorname erforderlich",
         "lastNameRequired": "Nachname erforderlich",
         "phoneRequired": "Telefon erforderlich",
+        "invalidPhone": "Ungültiges Telefonformat",
         "companyNameRequired": "Bitte geben Sie den Firmennamen ein",
         "acceptCgv": "Sie müssen die AGB akzeptieren"
       },

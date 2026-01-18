@@ -305,6 +305,8 @@
         "reservationConfirmation": "Confirmation",
         "reminderPickup": "Rappel retrait",
         "reminderReturn": "Rappel retour",
+        "requestReceived": "Demande reçue",
+        "requestAccepted": "Demande acceptée",
         "custom": "Personnalisé",
         "thankYouReview": "Demande d'avis"
       },
@@ -2595,6 +2597,7 @@
         "firstNameRequired": "Prénom requis",
         "lastNameRequired": "Nom requis",
         "phoneRequired": "Téléphone requis",
+        "invalidPhone": "Format de téléphone invalide",
         "companyNameRequired": "Veuillez saisir le nom de l'entreprise",
         "acceptCgv": "Vous devez accepter les conditions générales"
       },
