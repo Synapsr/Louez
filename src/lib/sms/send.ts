@@ -30,17 +30,17 @@ const SMS_TEMPLATES: Record<EmailLocale, {
 }> = {
   fr: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
-      `${storeName}\nReservation #${number} confirmee\nDu ${startDate} au ${endDate}`,
+      `${storeName}\nRéservation #${number} confirmée\nDu ${startDate} au ${endDate}`,
     reminder_pickup: ({ storeName, number, date }) =>
-      `${storeName}\nRappel: retrait reservation #${number}\nLe ${date}`,
+      `${storeName}\nRappel: retrait réservation #${number}\nLe ${date}`,
     reminder_return: ({ storeName, number, date }) =>
-      `${storeName}\nRappel: retour reservation #${number}\nLe ${date}`,
+      `${storeName}\nRappel: retour réservation #${number}\nLe ${date}`,
     request_received: ({ storeName, number }) =>
-      `${storeName}\nDemande #${number} recue. Confirmation sous 24h.`,
+      `${storeName}\nDemande #${number} reçue. Confirmation sous 24h.`,
     request_accepted: ({ storeName, number }) =>
-      `${storeName}\nDemande #${number} acceptee! Consultez vos emails.`,
+      `${storeName}\nDemande #${number} acceptée! Consultez vos emails.`,
     instant_access: ({ storeName, number, url }) =>
-      `${storeName}\nVotre reservation #${number}\nAcces: ${url}`,
+      `${storeName}\nVotre réservation #${number}\nAccès: ${url}`,
   },
   en: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
