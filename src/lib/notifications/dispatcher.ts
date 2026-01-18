@@ -90,22 +90,22 @@ function buildAdminSmsMessage(
     case 'reservation_new':
       return `[${storeName}] Nouvelle demande #${resNumber} de ${customerName}. Montant: ${amount}`
     case 'reservation_confirmed':
-      return `[${storeName}] Reservation #${resNumber} confirmee pour ${customerName}`
+      return `[${storeName}] Réservation #${resNumber} confirmée pour ${customerName}`
     case 'reservation_rejected':
-      return `[${storeName}] Reservation #${resNumber} rejetee`
+      return `[${storeName}] Réservation #${resNumber} rejetée`
     case 'reservation_cancelled':
-      return `[${storeName}] Reservation #${resNumber} annulee`
+      return `[${storeName}] Réservation #${resNumber} annulée`
     case 'reservation_picked_up':
-      return `[${storeName}] Equipement recupere pour #${resNumber}`
+      return `[${storeName}] Équipement récupéré pour #${resNumber}`
     case 'reservation_completed':
-      return `[${storeName}] Reservation #${resNumber} terminee. ${amount}`
+      return `[${storeName}] Réservation #${resNumber} terminée. ${amount}`
     case 'payment_received':
       const paymentAmount = ctx.payment
         ? formatCurrency(ctx.payment.amount, ctx.store.settings?.currency)
         : amount
-      return `[${storeName}] Paiement recu #${resNumber}: ${paymentAmount}`
+      return `[${storeName}] Paiement reçu #${resNumber}: ${paymentAmount}`
     case 'payment_failed':
-      return `[${storeName}] Echec paiement #${resNumber}`
+      return `[${storeName}] Échec paiement #${resNumber}`
     default:
       return `[${storeName}] Notification: ${eventType}`
   }
