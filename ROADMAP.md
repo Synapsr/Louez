@@ -141,6 +141,7 @@ Reach customers directly on their phones.
 | **Reservation reminders** | Automatic pickup/return reminders via SMS |
 | **Instant access links** | Send reservation access links via SMS |
 | **Plan-based limits** | SMS quotas based on your subscription plan |
+| **Credit top-up** | Purchase additional SMS credits via Stripe (January 18, 2026) |
 
 > Currently supports SMS Partner. Additional providers (Twilio, Vonage, etc.) planned for future releases.
 
@@ -183,7 +184,7 @@ Import external calendars to automatically block availability.
 
 ### ⭐ Review Booster
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 18, 2026)
 
 Grow your online reputation automatically.
 
@@ -191,14 +192,14 @@ Grow your online reputation automatically.
 |---------|-------------|
 | **Automated requests** | Send review requests via email or SMS after completed rentals |
 | **Google Reviews link** | Direct customers to leave a Google review |
-| **Timing control** | Configure when to send (e.g., 2 days after return) |
-| **Smart filtering** | Only request reviews from satisfied customers |
+| **Timing control** | Configure when to send (e.g., 24h after return) |
+| **Multi-language support** | Send review requests in the customer's preferred language |
 
 ---
 
 ### 🌟 Google Reviews Display
 
-**Status**: 📋 Planned
+**Status**: ✅ Available (January 18, 2026)
 
 Showcase your reputation on your storefront.
 
@@ -206,8 +207,8 @@ Showcase your reputation on your storefront.
 |---------|-------------|
 | **Auto-sync** | Automatically fetch and display your Google reviews |
 | **Review widget** | Beautiful widget showing rating and recent reviews |
-| **Moderation** | Choose which reviews to display |
-| **Rich snippets** | SEO-optimized review data for search engines |
+| **Responsive design** | Adapts to any screen size |
+| **Localized display** | Reviews displayed in the appropriate language context |
 
 ---
 
@@ -289,7 +290,7 @@ Have an idea that's not on this list?
 
 *This roadmap is a living document. Priorities may shift based on community feedback.*
 
-**Last updated**: January 17, 2026
+**Last updated**: January 18, 2026
 
 📋 **See what's already shipped in our [Changelog](CHANGELOG.md)**
 
