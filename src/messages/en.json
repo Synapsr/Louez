@@ -1906,7 +1906,12 @@
           "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Reset",
           "cancel": "Cancel",
-          "save": "Save"
+          "save": "Save",
+          "customized": "Customized",
+          "default": "Default",
+          "resetToDefault": "Reset to default",
+          "clearMessage": "Clear message",
+          "resetAll": "Reset all"
         },
         "templateSaved": "Template saved"
       },

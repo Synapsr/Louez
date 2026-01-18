@@ -1909,7 +1909,12 @@
           "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Restablecer",
           "cancel": "Cancelar",
-          "save": "Guardar"
+          "save": "Guardar",
+          "customized": "Personalizado",
+          "default": "Por defecto",
+          "resetToDefault": "Restablecer valor predeterminado",
+          "clearMessage": "Borrar mensaje",
+          "resetAll": "Restablecer todo"
         },
         "templateSaved": "Plantilla guardada"
       },

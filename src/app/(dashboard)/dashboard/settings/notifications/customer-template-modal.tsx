@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { Mail, Smartphone } from 'lucide-react'
+import { Mail, Smartphone, RotateCcw } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import type { CustomerNotificationEventType, CustomerNotificationTemplate } from '@/types/store'
 import type { EmailLocale } from '@/lib/email/i18n'
 
@@ -162,6 +169,9 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
   },
 }
 
+// Export defaults for use in other files
+export { DEFAULT_SUBJECTS, DEFAULT_SMS_TEMPLATES }
+
 export function CustomerTemplateModal({
   open,
   onOpenChange,
@@ -173,110 +183,226 @@ export function CustomerTemplateModal({
   const t = useTranslations('dashboard.settings.notifications.customerTemplates')
   const tc = useTranslations('common')
 
-  const [subject, setSubject] = useState(template?.subject || '')
-  const [emailMessage, setEmailMessage] = useState(template?.emailMessage || '')
-  const [smsMessage, setSmsMessage] = useState(template?.smsMessage || '')
+  // Get defaults for current locale and event type
+  const defaultSubject = useMemo(
+    () => DEFAULT_SUBJECTS[locale]?.[eventType] || DEFAULT_SUBJECTS['en'][eventType],
+    [locale, eventType]
+  )
+  const defaultSms = useMemo(
+    () => DEFAULT_SMS_TEMPLATES[locale]?.[eventType] || DEFAULT_SMS_TEMPLATES['en'][eventType],
+    [locale, eventType]
+  )
 
-  const defaultSubject = DEFAULT_SUBJECTS[locale]?.[eventType] || DEFAULT_SUBJECTS['en'][eventType]
-  const defaultSms = DEFAULT_SMS_TEMPLATES[locale]?.[eventType] || DEFAULT_SMS_TEMPLATES['en'][eventType]
+  // Initialize with custom value if exists, otherwise default
+  const [subject, setSubject] = useState('')
+  const [emailMessage, setEmailMessage] = useState('')
+  const [smsMessage, setSmsMessage] = useState('')
+
+  // Reset state when modal opens or eventType changes
+  useEffect(() => {
+    if (open) {
+      // Use custom template if exists, otherwise show default
+      setSubject(template?.subject || defaultSubject)
+      setEmailMessage(template?.emailMessage || '')
+      setSmsMessage(template?.smsMessage || defaultSms)
+    }
+  }, [open, eventType, template, defaultSubject, defaultSms])
+
+  // Check if values are customized (different from default)
+  const isSubjectCustomized = subject !== defaultSubject
+  const isSmsCustomized = smsMessage !== defaultSms
+  const isEmailMessageCustomized = emailMessage.trim() !== ''
 
   const handleSave = () => {
+    // Only save non-default values (save undefined to clear customization)
     onSave({
-      subject: subject || undefined,
-      emailMessage: emailMessage || undefined,
-      smsMessage: smsMessage || undefined,
+      subject: isSubjectCustomized ? subject : undefined,
+      emailMessage: isEmailMessageCustomized ? emailMessage : undefined,
+      smsMessage: isSmsCustomized ? smsMessage : undefined,
     })
   }
 
-  const handleReset = () => {
-    setSubject('')
+  const handleResetSubject = () => setSubject(defaultSubject)
+  const handleResetSms = () => setSmsMessage(defaultSms)
+  const handleResetEmailMessage = () => setEmailMessage('')
+
+  const handleResetAll = () => {
+    setSubject(defaultSubject)
     setEmailMessage('')
-    setSmsMessage('')
+    setSmsMessage(defaultSms)
   }
 
+  // Calculate SMS character count
+  const smsCharCount = smsMessage.length
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-base">{t('title')}</DialogTitle>
-        </DialogHeader>
+    <TooltipProvider>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">{t('title')}</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Email Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Mail className="h-4 w-4" />
-              {t('emailSection')}
+          <div className="space-y-6">
+            {/* Email Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Mail className="h-4 w-4" />
+                {t('emailSection')}
+              </div>
+
+              {/* Subject field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">{t('subject')}</Label>
+                  <div className="flex items-center gap-2">
+                    {isSubjectCustomized ? (
+                      <>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {t('customized')}
+                        </Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={handleResetSubject}
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('resetToDefault')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                        {t('default')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Input
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('subjectHint')}
+                </p>
+              </div>
+
+              {/* Additional message field */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">{t('additionalMessage')}</Label>
+                  {isEmailMessageCustomized && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                        {t('customized')}
+                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={handleResetEmailMessage}
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t('clearMessage')}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  )}
+                </div>
+                <Textarea
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  placeholder={t('additionalMessagePlaceholder')}
+                  rows={3}
+                  className="text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('additionalMessageHint')}
+                </p>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">{t('subject')}</Label>
-              <Input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder={defaultSubject}
-                className="text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('subjectHint')}
-              </p>
-            </div>
+            {/* SMS Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Smartphone className="h-4 w-4" />
+                {t('smsSection')}
+              </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs">{t('additionalMessage')}</Label>
-              <Textarea
-                value={emailMessage}
-                onChange={(e) => setEmailMessage(e.target.value)}
-                placeholder={t('additionalMessagePlaceholder')}
-                rows={3}
-                className="text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t('additionalMessageHint')}
-              </p>
-            </div>
-          </div>
-
-          {/* SMS Section */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <Smartphone className="h-4 w-4" />
-              {t('smsSection')}
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-xs">{t('smsMessage')}</Label>
-              <Textarea
-                value={smsMessage}
-                onChange={(e) => setSmsMessage(e.target.value)}
-                placeholder={defaultSms}
-                rows={3}
-                maxLength={160}
-                className="text-sm font-mono"
-              />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{t('smsVariables')}</span>
-                <span className={smsMessage.length > 160 ? 'text-destructive' : ''}>
-                  {smsMessage.length}/160
-                </span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs">{t('smsMessage')}</Label>
+                  <div className="flex items-center gap-2">
+                    {isSmsCustomized ? (
+                      <>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {t('customized')}
+                        </Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={handleResetSms}
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{t('resetToDefault')}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                        {t('default')}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                <Textarea
+                  value={smsMessage}
+                  onChange={(e) => setSmsMessage(e.target.value)}
+                  rows={4}
+                  className="text-sm font-mono"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{t('smsVariables')}</span>
+                  <span className={smsCharCount > 160 ? 'text-destructive font-medium' : ''}>
+                    {smsCharCount}/160
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="ghost" size="sm" onClick={handleReset}>
-            {t('reset')}
-          </Button>
-          <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {tc('cancel')}
-          </Button>
-          <Button size="sm" onClick={handleSave}>
-            {tc('save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" size="sm" onClick={handleResetAll}>
+              {t('resetAll')}
+            </Button>
+            <div className="flex-1" />
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+              {tc('cancel')}
+            </Button>
+            <Button size="sm" onClick={handleSave}>
+              {tc('save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </TooltipProvider>
   )
 }

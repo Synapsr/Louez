@@ -1905,7 +1905,12 @@
           "smsVariables": "Variabelen: {storeName}, {number}, {startDate}, {endDate}",
           "reset": "Resetten",
           "cancel": "Annuleren",
-          "save": "Opslaan"
+          "save": "Opslaan",
+          "customized": "Aangepast",
+          "default": "Standaard",
+          "resetToDefault": "Standaard herstellen",
+          "clearMessage": "Bericht wissen",
+          "resetAll": "Alles resetten"
         },
         "templateSaved": "Sjabloon opgeslagen"
       },
