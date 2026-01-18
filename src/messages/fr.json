@@ -3057,6 +3057,50 @@
       "viewAndPay": "Voir et payer",
       "linkValid": "Ce lien est valable 30 jours et peut être utilisé plusieurs fois."
     },
+    "reservationCancelled": {
+      "subject": "Réservation #{number} annulée",
+      "title": "Réservation annulée",
+      "body": "Votre réservation #{number} a été annulée.",
+      "cancelledPeriod": "Période annulée",
+      "reasonLabel": "Motif",
+      "contactForQuestions": "Si vous avez des questions, n'hésitez pas à nous contacter.",
+      "browseEquipment": "Voir notre catalogue",
+      "thankYou": "Merci de votre compréhension."
+    },
+    "reservationCompleted": {
+      "subject": "Réservation #{number} terminée",
+      "title": "Location terminée !",
+      "body": "Votre réservation #{number} est maintenant terminée.",
+      "rentalPeriod": "Période de location",
+      "depositReturned": "Votre caution de {amount} vous sera remboursée.",
+      "depositPending": "Votre caution de {amount} sera vérifiée et remboursée sous peu.",
+      "thankYouMessage": "Merci d'avoir fait appel à nos services !",
+      "rentAgain": "Louer à nouveau",
+      "seeYouSoon": "À bientôt !"
+    },
+    "paymentConfirmation": {
+      "subject": "Paiement confirmé - Réservation #{number}",
+      "title": "Paiement reçu !",
+      "body": "Nous avons bien reçu votre paiement pour la réservation #{number}.",
+      "paymentDetails": "Détails du paiement",
+      "amount": "Montant",
+      "date": "Date",
+      "method": "Méthode",
+      "reservation": "Réservation",
+      "confirmation": "Votre paiement a été traité avec succès.",
+      "keepEmail": "Conservez cet email comme justificatif de paiement."
+    },
+    "paymentFailed": {
+      "subject": "Échec de paiement - Réservation #{number}",
+      "title": "Échec du paiement",
+      "body": "Le paiement de {amount} pour votre réservation #{number} n'a pas pu être traité.",
+      "whatToDo": "Que faire ?",
+      "tip1": "Vérifiez que votre carte est valide et dispose de fonds suffisants",
+      "tip2": "Essayez avec une autre carte bancaire",
+      "tip3": "Contactez votre banque si le problème persiste",
+      "retryPayment": "Réessayer le paiement",
+      "contactSupport": "Besoin d'aide ? Contactez-nous."
+    },
     "baseLayout": {
       "sentBy": "Cet email a été envoyé par {storeName}",
       "ignoreIfNotYou": "Si vous n'êtes pas à l'origine de cette action, veuillez ignorer cet email.",

@@ -3061,6 +3061,55 @@
       "paymentPending": "Payment is pending for this reservation.",
       "viewAndPay": "View and pay",
       "linkValid": "This link is valid for 30 days."
+    },
+    "reservationCancelled": {
+      "subject": "Reservation #{number} cancelled",
+      "title": "Reservation cancelled",
+      "body": "Your reservation #{number} has been cancelled.",
+      "cancelledPeriod": "Cancelled period",
+      "reasonLabel": "Reason",
+      "contactForQuestions": "If you have any questions, please don't hesitate to contact us.",
+      "browseEquipment": "Browse our catalog",
+      "thankYou": "Thank you for your understanding."
+    },
+    "reservationCompleted": {
+      "subject": "Reservation #{number} completed",
+      "title": "Rental completed!",
+      "body": "Your reservation #{number} is now complete.",
+      "rentalPeriod": "Rental period",
+      "depositReturned": "Your deposit of {amount} will be refunded.",
+      "depositPending": "Your deposit of {amount} will be verified and refunded shortly.",
+      "thankYouMessage": "Thank you for choosing our services!",
+      "rentAgain": "Rent again",
+      "seeYouSoon": "See you soon!"
+    },
+    "paymentConfirmation": {
+      "subject": "Payment confirmed - Reservation #{number}",
+      "title": "Payment received!",
+      "body": "We have received your payment for reservation #{number}.",
+      "paymentDetails": "Payment details",
+      "amount": "Amount",
+      "date": "Date",
+      "method": "Method",
+      "reservation": "Reservation",
+      "confirmation": "Your payment has been successfully processed.",
+      "keepEmail": "Keep this email as proof of payment."
+    },
+    "paymentFailed": {
+      "subject": "Payment failed - Reservation #{number}",
+      "title": "Payment failed",
+      "body": "The payment of {amount} for your reservation #{number} could not be processed.",
+      "whatToDo": "What to do?",
+      "tip1": "Check that your card is valid and has sufficient funds",
+      "tip2": "Try with a different card",
+      "tip3": "Contact your bank if the problem persists",
+      "retryPayment": "Retry payment",
+      "contactSupport": "Need help? Contact us."
+    },
+    "baseLayout": {
+      "sentBy": "This email was sent by {storeName}",
+      "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
+      "poweredBy": "Powered by"
     }
   },
   "contract": {

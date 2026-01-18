@@ -3063,6 +3063,50 @@
       "paymentPending": "El pago de esta reserva esta pendiente.",
       "viewAndPay": "Ver y pagar",
       "linkValid": "Este enlace es valido por 30 dias."
+    },
+    "reservationCancelled": {
+      "subject": "Reserva #{number} cancelada",
+      "title": "Reserva cancelada",
+      "body": "Su reserva #{number} ha sido cancelada.",
+      "cancelledPeriod": "Período cancelado",
+      "reasonLabel": "Motivo",
+      "contactForQuestions": "Si tiene alguna pregunta, no dude en contactarnos.",
+      "browseEquipment": "Ver nuestro catálogo",
+      "thankYou": "Gracias por su comprensión."
+    },
+    "reservationCompleted": {
+      "subject": "Reserva #{number} completada",
+      "title": "¡Alquiler completado!",
+      "body": "Su reserva #{number} ha sido completada.",
+      "rentalPeriod": "Período de alquiler",
+      "depositReturned": "Su depósito de {amount} será reembolsado.",
+      "depositPending": "Su depósito de {amount} será verificado y reembolsado en breve.",
+      "thankYouMessage": "¡Gracias por elegir nuestros servicios!",
+      "rentAgain": "Alquilar de nuevo",
+      "seeYouSoon": "¡Hasta pronto!"
+    },
+    "paymentConfirmation": {
+      "subject": "Pago confirmado - Reserva #{number}",
+      "title": "¡Pago recibido!",
+      "body": "Hemos recibido su pago para la reserva #{number}.",
+      "paymentDetails": "Detalles del pago",
+      "amount": "Importe",
+      "date": "Fecha",
+      "method": "Método",
+      "reservation": "Reserva",
+      "confirmation": "Su pago ha sido procesado correctamente.",
+      "keepEmail": "Guarde este correo como comprobante de pago."
+    },
+    "paymentFailed": {
+      "subject": "Pago fallido - Reserva #{number}",
+      "title": "Pago fallido",
+      "body": "El pago de {amount} para su reserva #{number} no pudo ser procesado.",
+      "whatToDo": "¿Qué hacer?",
+      "tip1": "Verifique que su tarjeta es válida y tiene fondos suficientes",
+      "tip2": "Intente con otra tarjeta",
+      "tip3": "Contacte a su banco si el problema persiste",
+      "retryPayment": "Reintentar pago",
+      "contactSupport": "¿Necesita ayuda? Contáctenos."
     }
   },
   "contract": {
