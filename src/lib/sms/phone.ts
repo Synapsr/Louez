@@ -6,23 +6,55 @@
  */
 
 /**
- * Common country codes and their national number lengths
- * This is a simplified list - real-world validation would use libphonenumber
+ * Country phone data with calling codes, expected lengths, and display info
  */
-const COUNTRY_CODES: Record<string, { code: string; lengths: number[] }> = {
-  FR: { code: '33', lengths: [9] }, // France: 9 digits after country code
-  BE: { code: '32', lengths: [8, 9] }, // Belgium
-  CH: { code: '41', lengths: [9] }, // Switzerland
-  LU: { code: '352', lengths: [8, 9] }, // Luxembourg
-  DE: { code: '49', lengths: [10, 11] }, // Germany
-  ES: { code: '34', lengths: [9] }, // Spain
-  IT: { code: '39', lengths: [9, 10] }, // Italy
-  PT: { code: '351', lengths: [9] }, // Portugal
-  NL: { code: '31', lengths: [9] }, // Netherlands
-  GB: { code: '44', lengths: [10] }, // United Kingdom
-  US: { code: '1', lengths: [10] }, // United States/Canada
-  PL: { code: '48', lengths: [9] }, // Poland
-  AT: { code: '43', lengths: [10, 11] }, // Austria
+export interface CountryPhoneData {
+  code: string
+  lengths: number[]
+  flag: string
+  name: string
+}
+
+/**
+ * Common country codes and their national number lengths
+ * Sorted by common usage in target markets (Europe-focused)
+ */
+export const COUNTRY_CODES: Record<string, CountryPhoneData> = {
+  FR: { code: '33', lengths: [9], flag: '🇫🇷', name: 'France' },
+  BE: { code: '32', lengths: [8, 9], flag: '🇧🇪', name: 'Belgium' },
+  CH: { code: '41', lengths: [9], flag: '🇨🇭', name: 'Switzerland' },
+  LU: { code: '352', lengths: [8, 9], flag: '🇱🇺', name: 'Luxembourg' },
+  DE: { code: '49', lengths: [10, 11], flag: '🇩🇪', name: 'Germany' },
+  ES: { code: '34', lengths: [9], flag: '🇪🇸', name: 'Spain' },
+  IT: { code: '39', lengths: [9, 10], flag: '🇮🇹', name: 'Italy' },
+  PT: { code: '351', lengths: [9], flag: '🇵🇹', name: 'Portugal' },
+  NL: { code: '31', lengths: [9], flag: '🇳🇱', name: 'Netherlands' },
+  GB: { code: '44', lengths: [10], flag: '🇬🇧', name: 'United Kingdom' },
+  US: { code: '1', lengths: [10], flag: '🇺🇸', name: 'United States' },
+  CA: { code: '1', lengths: [10], flag: '🇨🇦', name: 'Canada' },
+  PL: { code: '48', lengths: [9], flag: '🇵🇱', name: 'Poland' },
+  AT: { code: '43', lengths: [10, 11], flag: '🇦🇹', name: 'Austria' },
+  IE: { code: '353', lengths: [9], flag: '🇮🇪', name: 'Ireland' },
+  MC: { code: '377', lengths: [8, 9], flag: '🇲🇨', name: 'Monaco' },
+}
+
+/**
+ * Get sorted list of countries for display (common ones first)
+ */
+export function getCountriesSortedForDisplay(): Array<{ iso: string } & CountryPhoneData> {
+  const priorityOrder = ['FR', 'BE', 'CH', 'DE', 'ES', 'IT', 'GB', 'US']
+  const entries = Object.entries(COUNTRY_CODES)
+
+  return entries
+    .sort((a, b) => {
+      const aIndex = priorityOrder.indexOf(a[0])
+      const bIndex = priorityOrder.indexOf(b[0])
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+      if (aIndex !== -1) return -1
+      if (bIndex !== -1) return 1
+      return a[1].name.localeCompare(b[1].name)
+    })
+    .map(([iso, data]) => ({ iso, ...data }))
 }
 
 /**

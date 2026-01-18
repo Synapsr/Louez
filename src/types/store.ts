@@ -200,3 +200,56 @@ export interface ReviewBoosterSettings {
   emailDelayHours: number
   smsDelayHours: number
 }
+
+// ============================================================================
+// Notification Settings (Admin notifications)
+// ============================================================================
+
+export type NotificationEventType =
+  | 'reservation_new'
+  | 'reservation_confirmed'
+  | 'reservation_rejected'
+  | 'reservation_cancelled'
+  | 'reservation_picked_up'
+  | 'reservation_completed'
+  | 'payment_received'
+  | 'payment_failed'
+
+export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
+  'reservation_new',
+  'reservation_confirmed',
+  'reservation_rejected',
+  'reservation_cancelled',
+  'reservation_picked_up',
+  'reservation_completed',
+  'payment_received',
+  'payment_failed',
+]
+
+export interface NotificationChannelConfig {
+  email: boolean
+  sms: boolean
+  discord: boolean
+}
+
+export interface NotificationSettings {
+  reservation_new: NotificationChannelConfig
+  reservation_confirmed: NotificationChannelConfig
+  reservation_rejected: NotificationChannelConfig
+  reservation_cancelled: NotificationChannelConfig
+  reservation_picked_up: NotificationChannelConfig
+  reservation_completed: NotificationChannelConfig
+  payment_received: NotificationChannelConfig
+  payment_failed: NotificationChannelConfig
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  reservation_new: { email: true, sms: false, discord: false },
+  reservation_confirmed: { email: true, sms: false, discord: false },
+  reservation_rejected: { email: true, sms: false, discord: false },
+  reservation_cancelled: { email: true, sms: false, discord: false },
+  reservation_picked_up: { email: false, sms: false, discord: false },
+  reservation_completed: { email: false, sms: false, discord: false },
+  payment_received: { email: true, sms: false, discord: false },
+  payment_failed: { email: true, sms: false, discord: false },
+}

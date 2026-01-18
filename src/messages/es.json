@@ -1778,6 +1778,80 @@
           "upgradeToUnlock": "Actualice a Pro para habilitar esta funcion"
         }
       },
+      "notifications": {
+        "title": "Notificaciones",
+        "description": "Configure como recibe notificaciones de eventos de su tienda",
+        "saveError": "Error al guardar",
+        "phone": {
+          "title": "Numero de telefono",
+          "description": "Para recibir notificaciones por SMS",
+          "placeholder": "+34 612 345 678",
+          "configured": "Numero configurado",
+          "saved": "Numero guardado",
+          "invalidNumber": "Numero de telefono invalido",
+          "required": "Configure su numero de telefono primero"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Reciba notificaciones instantaneas en su servidor Discord",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Conectado",
+          "saved": "Webhook de Discord guardado",
+          "invalidUrl": "URL de webhook invalida",
+          "test": "Probar",
+          "testSuccess": "Notificacion de prueba enviada",
+          "testError": "Error al enviar prueba",
+          "howTo": "Como crear un webhook de Discord?",
+          "required": "Configure Discord primero"
+        },
+        "events": {
+          "event": "Evento",
+          "reservation": {
+            "title": "Eventos de reserva",
+            "reservation_new": {
+              "label": "Nueva solicitud",
+              "description": "Cuando un cliente envia una nueva solicitud"
+            },
+            "reservation_confirmed": {
+              "label": "Reserva confirmada",
+              "description": "Cuando acepta una solicitud"
+            },
+            "reservation_rejected": {
+              "label": "Reserva rechazada",
+              "description": "Cuando rechaza una solicitud"
+            },
+            "reservation_cancelled": {
+              "label": "Reserva cancelada",
+              "description": "Cuando se cancela una reserva"
+            },
+            "reservation_picked_up": {
+              "label": "Equipo recogido",
+              "description": "Cuando el cliente recoge el equipo"
+            },
+            "reservation_completed": {
+              "label": "Reserva completada",
+              "description": "Cuando se devuelve el equipo"
+            }
+          },
+          "payment": {
+            "title": "Eventos de pago",
+            "payment_received": {
+              "label": "Pago recibido",
+              "description": "Cuando un pago es exitoso"
+            },
+            "payment_failed": {
+              "label": "Pago fallido",
+              "description": "Cuando un pago falla"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "Limite de SMS alcanzado",
+          "limitReachedMessage": "Ha alcanzado su limite mensual de SMS.",
+          "lowCredits": "Le quedan {current} de {limit} SMS este mes.",
+          "buyMore": "Comprar mas SMS"
+        }
+      },
       "businessHours": {
         "title": "Horario comercial",
         "description": "Establezca los horarios de apertura de su tienda",

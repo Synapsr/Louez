@@ -71,6 +71,13 @@
       "when": 1768725205091,
       "tag": "0009_sms_credits",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1768731380077,
+      "tag": "0010_dazzling_legion",
+      "breakpoints": true
     }
   ]
 }

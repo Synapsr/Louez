@@ -1775,6 +1775,80 @@
           "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
         }
       },
+      "notifications": {
+        "title": "Notifiche",
+        "description": "Configura come ricevi le notifiche degli eventi del negozio",
+        "saveError": "Errore durante il salvataggio",
+        "phone": {
+          "title": "Numero di telefono",
+          "description": "Per ricevere notifiche SMS",
+          "placeholder": "+39 333 1234567",
+          "configured": "Numero configurato",
+          "saved": "Numero salvato",
+          "invalidNumber": "Numero di telefono non valido",
+          "required": "Configura prima il tuo numero di telefono"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Ricevi notifiche istantanee nel tuo server Discord",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Connesso",
+          "saved": "Webhook Discord salvato",
+          "invalidUrl": "URL webhook non valido",
+          "test": "Testa",
+          "testSuccess": "Notifica di test inviata",
+          "testError": "Invio test fallito",
+          "howTo": "Come creare un webhook Discord?",
+          "required": "Configura prima Discord"
+        },
+        "events": {
+          "event": "Evento",
+          "reservation": {
+            "title": "Eventi prenotazione",
+            "reservation_new": {
+              "label": "Nuova richiesta",
+              "description": "Quando un cliente invia una nuova richiesta"
+            },
+            "reservation_confirmed": {
+              "label": "Prenotazione confermata",
+              "description": "Quando accetti una richiesta"
+            },
+            "reservation_rejected": {
+              "label": "Prenotazione rifiutata",
+              "description": "Quando rifiuti una richiesta"
+            },
+            "reservation_cancelled": {
+              "label": "Prenotazione annullata",
+              "description": "Quando una prenotazione viene annullata"
+            },
+            "reservation_picked_up": {
+              "label": "Attrezzatura ritirata",
+              "description": "Quando il cliente ritira l'attrezzatura"
+            },
+            "reservation_completed": {
+              "label": "Prenotazione completata",
+              "description": "Quando l'attrezzatura viene restituita"
+            }
+          },
+          "payment": {
+            "title": "Eventi pagamento",
+            "payment_received": {
+              "label": "Pagamento ricevuto",
+              "description": "Quando un pagamento ha successo"
+            },
+            "payment_failed": {
+              "label": "Pagamento fallito",
+              "description": "Quando un pagamento fallisce"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "Limite SMS raggiunto",
+          "limitReachedMessage": "Hai raggiunto il limite mensile di SMS.",
+          "lowCredits": "Ti rimangono {current} SMS su {limit} questo mese.",
+          "buyMore": "Acquista altri SMS"
+        }
+      },
       "businessHours": {
         "title": "Orari di apertura",
         "description": "Imposta gli orari di apertura del tuo negozio",

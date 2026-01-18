@@ -1774,6 +1774,80 @@
           "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
         }
       },
+      "notifications": {
+        "title": "Meldingen",
+        "description": "Configureer hoe u meldingen over winkelgebeurtenissen ontvangt",
+        "saveError": "Fout bij opslaan",
+        "phone": {
+          "title": "Telefoonnummer",
+          "description": "Om SMS-meldingen te ontvangen",
+          "placeholder": "+31 6 12345678",
+          "configured": "Nummer geconfigureerd",
+          "saved": "Telefoonnummer opgeslagen",
+          "invalidNumber": "Ongeldig telefoonnummer",
+          "required": "Configureer eerst uw telefoonnummer"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Ontvang directe meldingen in uw Discord-server",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Verbonden",
+          "saved": "Discord-webhook opgeslagen",
+          "invalidUrl": "Ongeldige webhook-URL",
+          "test": "Testen",
+          "testSuccess": "Testmelding verzonden",
+          "testError": "Test verzenden mislukt",
+          "howTo": "Hoe maak ik een Discord-webhook?",
+          "required": "Configureer eerst Discord"
+        },
+        "events": {
+          "event": "Gebeurtenis",
+          "reservation": {
+            "title": "Reserveringsgebeurtenissen",
+            "reservation_new": {
+              "label": "Nieuwe aanvraag",
+              "description": "Wanneer een klant een nieuwe aanvraag indient"
+            },
+            "reservation_confirmed": {
+              "label": "Reservering bevestigd",
+              "description": "Wanneer u een aanvraag accepteert"
+            },
+            "reservation_rejected": {
+              "label": "Reservering afgewezen",
+              "description": "Wanneer u een aanvraag afwijst"
+            },
+            "reservation_cancelled": {
+              "label": "Reservering geannuleerd",
+              "description": "Wanneer een reservering wordt geannuleerd"
+            },
+            "reservation_picked_up": {
+              "label": "Apparatuur opgehaald",
+              "description": "Wanneer de klant de apparatuur ophaalt"
+            },
+            "reservation_completed": {
+              "label": "Reservering voltooid",
+              "description": "Wanneer de apparatuur wordt teruggebracht"
+            }
+          },
+          "payment": {
+            "title": "Betalingsgebeurtenissen",
+            "payment_received": {
+              "label": "Betaling ontvangen",
+              "description": "Wanneer een betaling slaagt"
+            },
+            "payment_failed": {
+              "label": "Betaling mislukt",
+              "description": "Wanneer een betaling mislukt"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "SMS-limiet bereikt",
+          "limitReachedMessage": "U heeft uw maandelijkse SMS-limiet bereikt.",
+          "lowCredits": "U heeft nog {current} van {limit} SMS over deze maand.",
+          "buyMore": "Meer SMS kopen"
+        }
+      },
       "businessHours": {
         "title": "Openingstijden",
         "description": "Stel de openingstijden van uw winkel in",
