@@ -2,14 +2,39 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { ArrowUpRight, ArrowDownRight, Minus, type LucideIcon } from 'lucide-react'
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Minus,
+  Users,
+  Eye,
+  ShoppingCart,
+  TrendingUp,
+  Euro,
+  Calendar,
+  Package,
+  BarChart3,
+} from 'lucide-react'
+
+type IconName = 'users' | 'eye' | 'shopping-cart' | 'trending-up' | 'euro' | 'calendar' | 'package' | 'bar-chart'
+
+const iconMap = {
+  users: Users,
+  eye: Eye,
+  'shopping-cart': ShoppingCart,
+  'trending-up': TrendingUp,
+  euro: Euro,
+  calendar: Calendar,
+  package: Package,
+  'bar-chart': BarChart3,
+}
 
 interface StatCardProps {
   title: string
   value: string | number
   change?: number
   changeLabel?: string
-  icon?: LucideIcon
+  icon?: IconName
   iconColor?: 'default' | 'green' | 'blue' | 'orange' | 'purple'
   format?: 'number' | 'currency' | 'percent'
 }
@@ -27,9 +52,10 @@ export function StatCard({
   value,
   change,
   changeLabel,
-  icon: Icon,
+  icon,
   iconColor = 'default',
 }: StatCardProps) {
+  const Icon = icon ? iconMap[icon] : null
   const isPositive = change !== undefined && change > 0
   const isNegative = change !== undefined && change < 0
   const isNeutral = change === undefined || change === 0

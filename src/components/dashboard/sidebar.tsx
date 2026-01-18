@@ -12,12 +12,10 @@ import {
   Calendar,
   Users,
   BarChart3,
-  TrendingUp,
   Settings,
   LogOut,
   Menu,
   X,
-  FolderOpen,
   ChevronRight,
   ExternalLink,
   CreditCard,
@@ -74,8 +72,7 @@ const catalogNavigation = [
 ]
 
 const analyticsNavigation = [
-  { key: 'analytics', href: '/dashboard/analytics', icon: TrendingUp },
-  { key: 'statistics', href: '/dashboard/statistics', icon: BarChart3 },
+  { key: 'analytics', href: '/dashboard/analytics', icon: BarChart3 },
 ]
 
 const managementNavigation = [
