@@ -1848,7 +1848,14 @@
           "limitReached": "Osiagnieto limit SMS",
           "limitReachedMessage": "Osiagnales miesieczny limit SMS.",
           "lowCredits": "Pozostalo Ci {current} z {limit} SMS w tym miesiacu.",
-          "buyMore": "Kup wiecej SMS"
+          "buyMore": "Kup wiecej SMS",
+          "quotaLabel": "Kredyty SMS",
+          "manage": "Zarzadzaj",
+          "noCreditsLeft": "Brak kredytow SMS",
+          "noCreditsDescription": "Kup kredyty, aby wysylac SMS do klientow",
+          "buyCredits": "Kup kredyty",
+          "remaining": "pozostalo",
+          "lowWarning": "Niski poziom kredytow"
         },
         "adminSection": {
           "title": "Powiadomienia administratora",
