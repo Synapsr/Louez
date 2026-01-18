@@ -125,7 +125,7 @@ export async function sendReservationConfirmedDiscord(ctx: DiscordNotificationCo
   if (!ctx.reservation || !ctx.customer) return
 
   const embed: DiscordEmbed = {
-    title: `Reservation confirmee #${ctx.reservation.number}`,
+    title: `Réservation confirmée #${ctx.reservation.number}`,
     color: COLORS.success,
     fields: [
       {
@@ -155,7 +155,7 @@ export async function sendReservationRejectedDiscord(ctx: DiscordNotificationCon
   if (!ctx.reservation || !ctx.customer) return
 
   const embed: DiscordEmbed = {
-    title: `Reservation rejetee #${ctx.reservation.number}`,
+    title: `Réservation rejetée #${ctx.reservation.number}`,
     color: COLORS.error,
     fields: [
       {
@@ -180,7 +180,7 @@ export async function sendReservationCancelledDiscord(ctx: DiscordNotificationCo
   if (!ctx.reservation || !ctx.customer) return
 
   const embed: DiscordEmbed = {
-    title: `Reservation annulee #${ctx.reservation.number}`,
+    title: `Réservation annulée #${ctx.reservation.number}`,
     color: COLORS.warning,
     fields: [
       {
@@ -205,7 +205,7 @@ export async function sendReservationPickedUpDiscord(ctx: DiscordNotificationCon
   if (!ctx.reservation || !ctx.customer) return
 
   const embed: DiscordEmbed = {
-    title: `Equipement recupere #${ctx.reservation.number}`,
+    title: `Équipement récupéré #${ctx.reservation.number}`,
     color: COLORS.success,
     fields: [
       {
@@ -214,7 +214,7 @@ export async function sendReservationPickedUpDiscord(ctx: DiscordNotificationCon
         inline: true,
       },
       {
-        name: 'Retour prevu',
+        name: 'Retour prévu',
         value: formatDate(ctx.reservation.endDate),
         inline: true,
       },
@@ -230,7 +230,7 @@ export async function sendReservationCompletedDiscord(ctx: DiscordNotificationCo
   if (!ctx.reservation || !ctx.customer) return
 
   const embed: DiscordEmbed = {
-    title: `Reservation terminee #${ctx.reservation.number}`,
+    title: `Réservation terminée #${ctx.reservation.number}`,
     color: COLORS.success,
     fields: [
       {
@@ -255,7 +255,7 @@ export async function sendPaymentReceivedDiscord(ctx: DiscordNotificationContext
   if (!ctx.reservation || !ctx.payment) return
 
   const embed: DiscordEmbed = {
-    title: `Paiement recu #${ctx.reservation.number}`,
+    title: `Paiement reçu #${ctx.reservation.number}`,
     color: COLORS.success,
     fields: [
       {
@@ -282,7 +282,7 @@ export async function sendPaymentFailedDiscord(ctx: DiscordNotificationContext) 
   if (!ctx.reservation) return
 
   const embed: DiscordEmbed = {
-    title: `Echec de paiement #${ctx.reservation.number}`,
+    title: `Échec de paiement #${ctx.reservation.number}`,
     color: COLORS.error,
     fields: [
       {

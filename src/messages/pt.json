@@ -305,6 +305,8 @@
         "reservationConfirmation": "Confirmacao",
         "reminderPickup": "Lembrete de levantamento",
         "reminderReturn": "Lembrete de devolucao",
+        "requestReceived": "Pedido recebido",
+        "requestAccepted": "Pedido aceito",
         "custom": "Personalizado",
         "thankYouReview": "Pedido de avaliacao"
       },
@@ -2596,6 +2598,7 @@
         "firstNameRequired": "Nome obrigatorio",
         "lastNameRequired": "Sobrenome obrigatorio",
         "phoneRequired": "Telefone obrigatorio",
+        "invalidPhone": "Formato de telefone invalido",
         "companyNameRequired": "Por favor introduza o nome da empresa",
         "acceptCgv": "Voce deve aceitar os termos e condicoes"
       },

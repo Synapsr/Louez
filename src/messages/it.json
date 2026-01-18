@@ -305,6 +305,8 @@
         "reservationConfirmation": "Conferma",
         "reminderPickup": "Promemoria ritiro",
         "reminderReturn": "Promemoria restituzione",
+        "requestReceived": "Richiesta ricevuta",
+        "requestAccepted": "Richiesta accettata",
         "custom": "Personalizzato",
         "thankYouReview": "Richiesta recensione"
       },
@@ -2595,6 +2597,7 @@
         "firstNameRequired": "Nome obbligatorio",
         "lastNameRequired": "Cognome obbligatorio",
         "phoneRequired": "Telefono obbligatorio",
+        "invalidPhone": "Formato telefono non valido",
         "companyNameRequired": "Inserisci il nome dell'azienda",
         "acceptCgv": "Devi accettare i termini e le condizioni"
       },

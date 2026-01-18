@@ -304,6 +304,8 @@
         "reservationConfirmation": "Bevestiging",
         "reminderPickup": "Ophaalherinnering",
         "reminderReturn": "Retourherinnering",
+        "requestReceived": "Aanvraag ontvangen",
+        "requestAccepted": "Aanvraag geaccepteerd",
         "custom": "Aangepast",
         "thankYouReview": "Reviewverzoek"
       },
@@ -2594,6 +2596,7 @@
         "firstNameRequired": "Voornaam vereist",
         "lastNameRequired": "Achternaam vereist",
         "phoneRequired": "Telefoon vereist",
+        "invalidPhone": "Ongeldig telefoonformaat",
         "companyNameRequired": "Vul de bedrijfsnaam in",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
