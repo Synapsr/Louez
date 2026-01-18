@@ -183,6 +183,12 @@ export interface GoogleReview {
   time: number // Unix timestamp
 }
 
+export interface ReviewBoosterTemplate {
+  subject?: string
+  emailMessage?: string
+  smsMessage?: string
+}
+
 export interface ReviewBoosterSettings {
   enabled: boolean
   // Google Place info
@@ -199,6 +205,8 @@ export interface ReviewBoosterSettings {
   autoSendThankYouSms: boolean
   emailDelayHours: number
   smsDelayHours: number
+  // Custom template
+  template?: ReviewBoosterTemplate
 }
 
 // ============================================================================

@@ -1775,7 +1775,9 @@
           "upgrade": "Passa a Pro",
           "featureLocked": "Funzione bloccata",
           "upgradeToUnlock": "Passa a Pro per abilitare questa funzione"
-        }
+        },
+        "customizeTemplate": "Personalizza",
+        "templateSaved": "Modello salvato"
       },
       "notifications": {
         "title": "Notifiche",
@@ -1912,6 +1914,22 @@
           "resetToDefault": "Ripristina predefinito",
           "clearMessage": "Cancella messaggio",
           "resetAll": "Ripristina tutto"
+        },
+        "templateSheet": {
+          "hidePreview": "Nascondi anteprima",
+          "showPreview": "Mostra anteprima",
+          "configuration": "Configurazione",
+          "subject": "Oggetto",
+          "customized": "Personalizzato",
+          "default": "Predefinito",
+          "resetToDefault": "Ripristina predefinito",
+          "additionalMessage": "Messaggio personalizzato",
+          "additionalMessagePlaceholder": "Aggiungi un messaggio che apparirà nell'email...",
+          "additionalMessageHint": "Questo messaggio sarà aggiunto al contenuto predefinito dell'email",
+          "preview": "Anteprima",
+          "smsMessage": "Messaggio SMS",
+          "smsVariables": "Variabili: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Cancella messaggio"
         },
         "templateSaved": "Modello salvato"
       },

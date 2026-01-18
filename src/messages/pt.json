@@ -1776,7 +1776,9 @@
           "upgrade": "Atualizar para Pro",
           "featureLocked": "Recurso bloqueado",
           "upgradeToUnlock": "Atualize para Pro para ativar este recurso"
-        }
+        },
+        "customizeTemplate": "Personalizar",
+        "templateSaved": "Modelo salvo"
       },
       "notifications": {
         "title": "Notificacoes",
@@ -1913,6 +1915,22 @@
           "resetToDefault": "Restaurar padrão",
           "clearMessage": "Limpar mensagem",
           "resetAll": "Redefinir tudo"
+        },
+        "templateSheet": {
+          "hidePreview": "Ocultar pré-visualização",
+          "showPreview": "Mostrar pré-visualização",
+          "configuration": "Configuração",
+          "subject": "Assunto",
+          "customized": "Personalizado",
+          "default": "Padrão",
+          "resetToDefault": "Restaurar padrão",
+          "additionalMessage": "Mensagem personalizada",
+          "additionalMessagePlaceholder": "Adicione uma mensagem que aparecerá no e-mail...",
+          "additionalMessageHint": "Esta mensagem será adicionada ao conteúdo padrão do e-mail",
+          "preview": "Pré-visualização",
+          "smsMessage": "Mensagem SMS",
+          "smsVariables": "Variáveis: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Limpar mensagem"
         },
         "templateSaved": "Modelo salvo"
       },
