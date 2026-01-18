@@ -1775,7 +1775,9 @@
           "upgrade": "Upgrade to Pro",
           "featureLocked": "Feature locked",
           "upgradeToUnlock": "Upgrade to Pro to enable this feature"
-        }
+        },
+        "customizeTemplate": "Customize",
+        "templateSaved": "Template saved"
       },
       "notifications": {
         "title": "Notifications",
@@ -1912,6 +1914,22 @@
           "resetToDefault": "Reset to default",
           "clearMessage": "Clear message",
           "resetAll": "Reset all"
+        },
+        "templateSheet": {
+          "hidePreview": "Hide preview",
+          "showPreview": "Show preview",
+          "configuration": "Configuration",
+          "subject": "Subject",
+          "customized": "Customized",
+          "default": "Default",
+          "resetToDefault": "Reset to default",
+          "additionalMessage": "Custom message",
+          "additionalMessagePlaceholder": "Add a message that will appear in the email...",
+          "additionalMessageHint": "This message will be added to the default email content",
+          "preview": "Preview",
+          "smsMessage": "SMS message",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Clear message"
         },
         "templateSaved": "Template saved"
       },

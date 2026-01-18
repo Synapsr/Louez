@@ -1775,7 +1775,9 @@
           "upgrade": "Passer au plan Pro",
           "featureLocked": "Fonctionnalité verrouillée",
           "upgradeToUnlock": "Passez au plan Pro pour activer cette fonctionnalité"
-        }
+        },
+        "customizeTemplate": "Personnaliser",
+        "templateSaved": "Modèle enregistré"
       },
       "notifications": {
         "title": "Notifications",
@@ -1912,6 +1914,22 @@
           "resetToDefault": "Rétablir la valeur par défaut",
           "clearMessage": "Effacer le message",
           "resetAll": "Tout réinitialiser"
+        },
+        "templateSheet": {
+          "hidePreview": "Masquer l'aperçu",
+          "showPreview": "Afficher l'aperçu",
+          "configuration": "Configuration",
+          "subject": "Objet",
+          "customized": "Personnalisé",
+          "default": "Par défaut",
+          "resetToDefault": "Rétablir par défaut",
+          "additionalMessage": "Message personnalisé",
+          "additionalMessagePlaceholder": "Ajoutez un message qui apparaîtra dans l'email...",
+          "additionalMessageHint": "Ce message sera ajouté au contenu par défaut de l'email",
+          "preview": "Aperçu",
+          "smsMessage": "Message SMS",
+          "smsVariables": "Variables : {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Effacer le message"
         },
         "templateSaved": "Modèle enregistré"
       },

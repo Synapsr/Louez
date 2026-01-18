@@ -14,6 +14,16 @@ export default async function NotificationsPage() {
 
   const t = await getTranslations('dashboard.settings')
 
+  // Prepare store info for email preview
+  const storeInfo = {
+    name: store.name,
+    logoUrl: store.logoUrl,
+    email: store.email,
+    phone: store.phone,
+    address: store.address,
+    theme: store.theme,
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -31,6 +41,7 @@ export default async function NotificationsPage() {
         customerSettings={data.customerSettings}
         storeLocale={data.storeLocale}
         storeLanguageName={data.storeLanguageName}
+        storeInfo={storeInfo}
       />
     </div>
   )

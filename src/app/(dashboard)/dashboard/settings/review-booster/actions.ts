@@ -72,3 +72,60 @@ export async function fetchGooglePlaceDetails(placeId: string) {
   const details = await getPlaceDetails(placeId)
   return { details }
 }
+
+export async function getReviewBoosterTemplate() {
+  const store = await getCurrentStore()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  const template = store.reviewBoosterSettings?.template || {}
+  return { template }
+}
+
+export async function updateReviewBoosterTemplate(template: {
+  subject?: string
+  emailMessage?: string
+  smsMessage?: string
+}) {
+  const store = await getCurrentStore()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  // Check plan access
+  const plan = await getStorePlan(store.id)
+  if (!plan.features.reviewBooster) {
+    return { error: 'errors.featureNotAvailable' }
+  }
+
+  // Update template within reviewBoosterSettings
+  const currentSettings = store.reviewBoosterSettings || {
+    enabled: false,
+    googlePlaceId: null,
+    googlePlaceName: null,
+    googlePlaceAddress: null,
+    googleRating: null,
+    googleReviewCount: null,
+    displayReviewsOnStorefront: false,
+    showReviewPromptInPortal: false,
+    autoSendThankYouEmail: false,
+    autoSendThankYouSms: false,
+    emailDelayHours: 24,
+    smsDelayHours: 24,
+  }
+
+  await db
+    .update(stores)
+    .set({
+      reviewBoosterSettings: {
+        ...currentSettings,
+        template,
+      },
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/review-booster')
+  return { success: true }
+}

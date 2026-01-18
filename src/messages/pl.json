@@ -1775,7 +1775,9 @@
           "upgrade": "Przejdź na Pro",
           "featureLocked": "Funkcja zablokowana",
           "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
-        }
+        },
+        "customizeTemplate": "Dostosuj",
+        "templateSaved": "Szablon zapisany"
       },
       "notifications": {
         "title": "Powiadomienia",
@@ -1912,6 +1914,22 @@
           "resetToDefault": "Przywróć domyślne",
           "clearMessage": "Wyczyść wiadomość",
           "resetAll": "Zresetuj wszystko"
+        },
+        "templateSheet": {
+          "hidePreview": "Ukryj podgląd",
+          "showPreview": "Pokaż podgląd",
+          "configuration": "Konfiguracja",
+          "subject": "Temat",
+          "customized": "Dostosowany",
+          "default": "Domyślny",
+          "resetToDefault": "Przywróć domyślne",
+          "additionalMessage": "Niestandardowa wiadomość",
+          "additionalMessagePlaceholder": "Dodaj wiadomość, która pojawi się w e-mailu...",
+          "additionalMessageHint": "Ta wiadomość zostanie dodana do domyślnej treści e-maila",
+          "preview": "Podgląd",
+          "smsMessage": "Wiadomość SMS",
+          "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Wyczyść wiadomość"
         },
         "templateSaved": "Szablon zapisany"
       },

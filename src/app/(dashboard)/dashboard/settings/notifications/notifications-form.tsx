@@ -30,7 +30,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { PhoneInput } from '@/components/ui/phone-input'
-import { CustomerTemplateModal } from './customer-template-modal'
+import { NotificationTemplateSheet } from '@/components/dashboard/notification-template-sheet'
 import {
   updateSinglePreference,
   updateDiscordWebhook,
@@ -63,6 +63,16 @@ interface NotificationsFormProps {
   customerSettings: CustomerNotificationSettings
   storeLocale: EmailLocale
   storeLanguageName: string
+  storeInfo: {
+    name: string
+    logoUrl?: string | null
+    email?: string | null
+    phone?: string | null
+    address?: string | null
+    theme?: {
+      primaryColor?: string
+    } | null
+  }
 }
 
 interface NotificationEvent {
@@ -103,6 +113,7 @@ export function NotificationsForm({
   customerSettings: initialCustomerSettings,
   storeLocale,
   storeLanguageName,
+  storeInfo,
 }: NotificationsFormProps) {
   const t = useTranslations('dashboard.settings.notifications')
   const tc = useTranslations('common')
@@ -617,15 +628,16 @@ export function NotificationsForm({
           </Alert>
         )}
 
-        {/* Template Modal */}
+        {/* Template Sheet */}
         {editingEventType && (
-          <CustomerTemplateModal
+          <NotificationTemplateSheet
             open={templateModalOpen}
             onOpenChange={setTemplateModalOpen}
             eventType={editingEventType}
             template={editingTemplate || undefined}
             onSave={handleSaveTemplate}
             locale={storeLocale}
+            store={storeInfo}
           />
         )}
       </div>

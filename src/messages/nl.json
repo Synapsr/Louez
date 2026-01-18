@@ -1774,7 +1774,9 @@
           "upgrade": "Upgrade naar Pro",
           "featureLocked": "Functie vergrendeld",
           "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
-        }
+        },
+        "customizeTemplate": "Aanpassen",
+        "templateSaved": "Sjabloon opgeslagen"
       },
       "notifications": {
         "title": "Meldingen",
@@ -1911,6 +1913,22 @@
           "resetToDefault": "Standaard herstellen",
           "clearMessage": "Bericht wissen",
           "resetAll": "Alles resetten"
+        },
+        "templateSheet": {
+          "hidePreview": "Voorbeeld verbergen",
+          "showPreview": "Voorbeeld tonen",
+          "configuration": "Configuratie",
+          "subject": "Onderwerp",
+          "customized": "Aangepast",
+          "default": "Standaard",
+          "resetToDefault": "Standaard herstellen",
+          "additionalMessage": "Aangepast bericht",
+          "additionalMessagePlaceholder": "Voeg een bericht toe dat in de e-mail verschijnt...",
+          "additionalMessageHint": "Dit bericht wordt toegevoegd aan de standaard e-mailinhoud",
+          "preview": "Voorbeeld",
+          "smsMessage": "SMS-bericht",
+          "smsVariables": "Variabelen: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Bericht wissen"
         },
         "templateSaved": "Sjabloon opgeslagen"
       },
