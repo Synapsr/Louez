@@ -22,7 +22,10 @@ import {
   Users,
   Gift,
   Clock,
+  MessageSquare,
+  ChevronRight,
 } from 'lucide-react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -73,12 +76,23 @@ interface Subscription {
   billingCurrency: Currency | null
 }
 
+interface UsageStats {
+  products: number
+  reservations: number
+  customers: number
+  collaborators: number
+  collaboratorsLimit: number | null
+  sms: number
+  smsLimit: number | null
+}
+
 interface SubscriptionManagementProps {
   subscription: Subscription | null
   plans: Plan[]
   canAccessBillingPortal: boolean
   showSuccess?: boolean
   showCanceled?: boolean
+  usage: UsageStats
 }
 
 // Helper function to format price with currency
@@ -108,6 +122,7 @@ export function SubscriptionManagement({
   canAccessBillingPortal,
   showSuccess,
   showCanceled,
+  usage,
 }: SubscriptionManagementProps) {
   const locale = useLocale()
   const [loading, setLoading] = useState<string | null>(null)
@@ -256,6 +271,11 @@ export function SubscriptionManagement({
 
     if (features.maxCollaborators !== null && features.maxCollaborators > 0) {
       list.push(t('plans.features.collaborators', { count: features.maxCollaborators }))
+    }
+
+    // Add SMS limit
+    if (features.maxSmsPerMonth !== null && features.maxSmsPerMonth > 0) {
+      list.push(t('plans.features.smsPerMonth', { count: features.maxSmsPerMonth }))
     }
 
     return list
@@ -429,6 +449,69 @@ export function SubscriptionManagement({
               </span>
             </div>
           )}
+
+          {/* Usage indicators */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {/* Products */}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+              <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{t('usage.products')}</p>
+                <p className="text-sm font-medium">
+                  {usage.products}
+                  <span className="text-muted-foreground font-normal">
+                    /{currentPlan?.features.maxProducts ?? '∞'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Reservations */}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{t('usage.reservations')}</p>
+                <p className="text-sm font-medium">
+                  {usage.reservations}
+                  <span className="text-muted-foreground font-normal">
+                    /{currentPlan?.features.maxReservationsPerMonth ?? '∞'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* Collaborators */}
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+              <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{t('usage.collaborators')}</p>
+                <p className="text-sm font-medium">
+                  {usage.collaborators}
+                  <span className="text-muted-foreground font-normal">
+                    /{usage.collaboratorsLimit ?? '∞'}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            {/* SMS - with link to SMS page */}
+            <Link
+              href="/dashboard/sms"
+              className="flex items-center gap-3 rounded-lg border bg-muted/30 px-3 py-2 hover:bg-muted/50 transition-colors group"
+            >
+              <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-foreground truncate">{t('usage.sms')}</p>
+                <p className="text-sm font-medium">
+                  {usage.sms}
+                  <span className="text-muted-foreground font-normal">
+                    /{usage.smsLimit ?? '∞'}
+                  </span>
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+            </Link>
+          </div>
 
           <Separator />
 

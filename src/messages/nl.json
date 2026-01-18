@@ -255,6 +255,55 @@
       "limitReachedDescription": "Je gebruikt {current} van {limit} teamleden. Upgrade om meer toe te voegen.",
       "upgradeForMore": "Meer toevoegen"
     },
+    "sms": {
+      "title": "SMS-tegoed",
+      "description": "Volg uw maandelijks SMS-verbruik",
+      "quota": {
+        "title": "SMS-quotum van de maand",
+        "description": "Wordt op de 1e van elke maand gereset",
+        "smsThisMonth": "SMS verzonden deze maand",
+        "remaining": "{count} resterend",
+        "used": "gebruikt",
+        "resetsMonthly": "Maandelijkse reset",
+        "limitReached": "Limiet bereikt",
+        "upgradeMessage": "U heeft uw maandelijkse SMS-limiet bereikt. Upgrade naar een hoger plan om door te gaan met SMS versturen.",
+        "upgradePlan": "Plan wijzigen",
+        "titlePastMonth": "SMS-overzicht",
+        "descriptionPastMonth": "Geschiedenis voor {month}",
+        "smsSentThisMonth": "SMS verzonden",
+        "failed": "{count} mislukt"
+      },
+      "history": {
+        "title": "SMS-geschiedenis",
+        "description": "De laatste 90 dagen verzendingen",
+        "descriptionMonth": "SMS verzonden in {month}",
+        "empty": "Nog geen SMS verzonden",
+        "emptyMonth": "Geen SMS verzonden deze maand",
+        "date": "Datum",
+        "recipient": "Ontvanger",
+        "type": "Type",
+        "status": "Status",
+        "view": "Details bekijken"
+      },
+      "detail": {
+        "title": "SMS-details",
+        "recipient": "Ontvanger",
+        "message": "Verzonden bericht",
+        "error": "Fout"
+      },
+      "types": {
+        "instantAccess": "Directe toegang",
+        "reservationConfirmation": "Bevestiging",
+        "reminderPickup": "Ophaalherinnering",
+        "reminderReturn": "Retourherinnering",
+        "custom": "Aangepast",
+        "thankYouReview": "Reviewverzoek"
+      },
+      "status": {
+        "sent": "Verzonden",
+        "failed": "Mislukt"
+      }
+    },
     "navigation": {
       "home": "Home",
       "products": "Producten",
@@ -264,6 +313,7 @@
       "categories": "Categorieën",
       "statistics": "Statistieken",
       "team": "Team",
+      "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Instellingen",
       "store": "Mijn winkel"
@@ -1358,8 +1408,15 @@
             "customDomain": "Eigen domein",
             "prioritySupport": "Prioritaire ondersteuning",
             "customerPortal": "Klantenportaal",
-            "reviewBooster": "Recensie booster"
+            "reviewBooster": "Recensie booster",
+            "smsPerMonth": "{count} SMS / maand"
           }
+        },
+        "usage": {
+          "products": "Producten",
+          "reservations": "Reserveringen",
+          "collaborators": "Medewerkers",
+          "sms": "SMS deze maand"
         },
         "earlyBird": {
           "badge": "-50%",
