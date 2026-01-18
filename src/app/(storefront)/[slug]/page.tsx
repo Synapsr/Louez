@@ -24,6 +24,7 @@ import {
   stripHtml,
 } from '@/lib/seo'
 import type { StoreTheme, StoreSettings, ReviewBoosterSettings } from '@/types/store'
+import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface StorefrontPageProps {
   params: Promise<{ slug: string }>
@@ -158,6 +159,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
   return (
     <>
+      <PageTracker page="home" />
       {/* JSON-LD Structured Data */}
       <JsonLd
         data={[

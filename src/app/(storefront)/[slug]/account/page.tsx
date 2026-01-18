@@ -29,6 +29,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 import { getCustomerSession, logout } from './actions'
 import { generateStoreMetadata } from '@/lib/seo'
+import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface AccountPageProps {
   params: Promise<{ slug: string }>
@@ -177,7 +178,9 @@ export default async function AccountPage({ params }: AccountPageProps) {
   const initials = `${session.customer.firstName?.[0] || ''}${session.customer.lastName?.[0] || ''}`.toUpperCase()
 
   return (
-    <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
+    <>
+      <PageTracker page="account" />
+      <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Profile Header */}
         <Card className="mb-8 overflow-hidden border-0 shadow-sm">
@@ -372,5 +375,6 @@ export default async function AccountPage({ params }: AccountPageProps) {
         </section>
       </div>
     </div>
+    </>
   )
 }

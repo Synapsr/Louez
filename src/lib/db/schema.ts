@@ -701,8 +701,72 @@ export const smsLogs = mysqlTable('sms_logs', {
   status: varchar('status', { length: 20 }).default('sent'),
   error: text('error'),
 
+  // Credit source tracking
+  creditSource: varchar('credit_source', { length: 20 }).default('plan'), // 'plan' or 'topup'
+
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
 })
+
+// ============================================================================
+// SMS Credits (Prepaid SMS Balance)
+// ============================================================================
+
+export const smsCredits = mysqlTable(
+  'sms_credits',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull().unique(),
+
+    // Balance tracking
+    balance: int('balance').notNull().default(0), // Current available credits
+    totalPurchased: int('total_purchased').notNull().default(0), // Lifetime total purchased
+    totalUsed: int('total_used').notNull().default(0), // Lifetime total used from prepaid
+
+    // Timestamps
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('sms_credits_store_idx').on(table.storeId),
+  })
+)
+
+export const smsTopupStatus = mysqlEnum('sms_topup_status', [
+  'pending',
+  'completed',
+  'failed',
+  'refunded',
+])
+
+export const smsTopupTransactions = mysqlTable(
+  'sms_topup_transactions',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+
+    // Purchase details
+    quantity: int('quantity').notNull(), // Number of SMS purchased
+    unitPriceCents: int('unit_price_cents').notNull(), // Price per SMS in cents (15 or 7)
+    totalAmountCents: int('total_amount_cents').notNull(), // Total amount in cents
+    currency: varchar('currency', { length: 3 }).notNull().default('eur'),
+
+    // Stripe references
+    stripeSessionId: varchar('stripe_session_id', { length: 255 }),
+    stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
+
+    // Status
+    status: smsTopupStatus.default('pending').notNull(),
+
+    // Timestamps
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+  },
+  (table) => ({
+    storeIdx: index('sms_topup_store_idx').on(table.storeId),
+    statusIdx: index('sms_topup_status_idx').on(table.status),
+    stripeSessionIdx: index('sms_topup_stripe_session_idx').on(table.stripeSessionId),
+  })
+)
 
 // ============================================================================
 // Review Booster Tables
@@ -986,6 +1050,20 @@ export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
   }),
 }))
 
+export const smsCreditsRelations = relations(smsCredits, ({ one }) => ({
+  store: one(stores, {
+    fields: [smsCredits.storeId],
+    references: [stores.id],
+  }),
+}))
+
+export const smsTopupTransactionsRelations = relations(smsTopupTransactions, ({ one }) => ({
+  store: one(stores, {
+    fields: [smsTopupTransactions.storeId],
+    references: [stores.id],
+  }),
+}))
+
 export const reviewRequestLogsRelations = relations(reviewRequestLogs, ({ one }) => ({
   reservation: one(reservations, {
     fields: [reviewRequestLogs.reservationId],
@@ -998,5 +1076,175 @@ export const reviewRequestLogsRelations = relations(reviewRequestLogs, ({ one })
   customer: one(customers, {
     fields: [reviewRequestLogs.customerId],
     references: [customers.id],
+  }),
+}))
+
+// ============================================================================
+// Analytics Tables
+// ============================================================================
+
+export const pageType = mysqlEnum('page_type', [
+  'home',
+  'catalog',
+  'product',
+  'cart',
+  'checkout',
+  'confirmation',
+  'account',
+])
+
+export const deviceType = mysqlEnum('device_type', ['mobile', 'tablet', 'desktop'])
+
+export const pageViews = mysqlTable(
+  'page_views',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    sessionId: varchar('session_id', { length: 36 }).notNull(), // UUID for anonymous tracking
+    page: pageType.notNull(),
+    productId: varchar('product_id', { length: 21 }), // If viewing a product page
+    categoryId: varchar('category_id', { length: 21 }), // If filtering by category
+    referrer: varchar('referrer', { length: 500 }), // Where the user came from
+    device: deviceType.default('desktop'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('page_views_store_idx').on(table.storeId),
+    sessionIdx: index('page_views_session_idx').on(table.sessionId),
+    storeCreatedIdx: index('page_views_store_created_idx').on(table.storeId, table.createdAt),
+    productIdx: index('page_views_product_idx').on(table.productId),
+  })
+)
+
+export const storefrontEventType = mysqlEnum('storefront_event_type', [
+  'add_to_cart',
+  'remove_from_cart',
+  'update_quantity',
+  'checkout_started',
+  'checkout_completed',
+  'checkout_abandoned',
+  'payment_initiated',
+  'payment_completed',
+  'payment_failed',
+  'login_requested',
+  'login_completed',
+])
+
+export const storefrontEvents = mysqlTable(
+  'storefront_events',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    sessionId: varchar('session_id', { length: 36 }).notNull(),
+    customerId: varchar('customer_id', { length: 21 }), // If logged in
+    eventType: storefrontEventType.notNull(),
+    metadata: json('metadata').$type<Record<string, unknown>>(), // productId, quantity, amount, etc.
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('storefront_events_store_idx').on(table.storeId),
+    sessionIdx: index('storefront_events_session_idx').on(table.sessionId),
+    storeCreatedIdx: index('storefront_events_store_created_idx').on(
+      table.storeId,
+      table.createdAt
+    ),
+    eventTypeIdx: index('storefront_events_type_idx').on(table.eventType),
+  })
+)
+
+export const dailyStats = mysqlTable(
+  'daily_stats',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    date: timestamp('date', { mode: 'date' }).notNull(), // Day at 00:00:00
+    pageViews: int('page_views').default(0).notNull(),
+    uniqueVisitors: int('unique_visitors').default(0).notNull(),
+    productViews: int('product_views').default(0).notNull(),
+    cartAdditions: int('cart_additions').default(0).notNull(),
+    checkoutStarted: int('checkout_started').default(0).notNull(),
+    checkoutCompleted: int('checkout_completed').default(0).notNull(),
+    reservationsCreated: int('reservations_created').default(0).notNull(),
+    reservationsConfirmed: int('reservations_confirmed').default(0).notNull(),
+    revenue: decimal('revenue', { precision: 10, scale: 2 }).default('0').notNull(),
+    averageCartValue: decimal('average_cart_value', { precision: 10, scale: 2 }).default('0'),
+    mobileVisitors: int('mobile_visitors').default(0).notNull(),
+    tabletVisitors: int('tablet_visitors').default(0).notNull(),
+    desktopVisitors: int('desktop_visitors').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueStoreDate: unique('daily_stats_unique_store_date').on(table.storeId, table.date),
+    storeIdx: index('daily_stats_store_idx').on(table.storeId),
+    dateIdx: index('daily_stats_date_idx').on(table.date),
+    storeDateIdx: index('daily_stats_store_date_idx').on(table.storeId, table.date),
+  })
+)
+
+export const productStats = mysqlTable(
+  'product_stats',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    productId: varchar('product_id', { length: 21 }).notNull(),
+    date: timestamp('date', { mode: 'date' }).notNull(),
+    views: int('views').default(0).notNull(),
+    cartAdditions: int('cart_additions').default(0).notNull(),
+    reservations: int('reservations').default(0).notNull(),
+    revenue: decimal('revenue', { precision: 10, scale: 2 }).default('0').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueProductDate: unique('product_stats_unique').on(table.storeId, table.productId, table.date),
+    storeIdx: index('product_stats_store_idx').on(table.storeId),
+    productIdx: index('product_stats_product_idx').on(table.productId),
+    dateIdx: index('product_stats_date_idx').on(table.date),
+  })
+)
+
+// Analytics Relations
+export const pageViewsRelations = relations(pageViews, ({ one }) => ({
+  store: one(stores, {
+    fields: [pageViews.storeId],
+    references: [stores.id],
+  }),
+  product: one(products, {
+    fields: [pageViews.productId],
+    references: [products.id],
+  }),
+  category: one(categories, {
+    fields: [pageViews.categoryId],
+    references: [categories.id],
+  }),
+}))
+
+export const storefrontEventsRelations = relations(storefrontEvents, ({ one }) => ({
+  store: one(stores, {
+    fields: [storefrontEvents.storeId],
+    references: [stores.id],
+  }),
+  customer: one(customers, {
+    fields: [storefrontEvents.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const dailyStatsRelations = relations(dailyStats, ({ one }) => ({
+  store: one(stores, {
+    fields: [dailyStats.storeId],
+    references: [stores.id],
+  }),
+}))
+
+export const productStatsRelations = relations(productStats, ({ one }) => ({
+  store: one(stores, {
+    fields: [productStats.storeId],
+    references: [stores.id],
+  }),
+  product: one(products, {
+    fields: [productStats.productId],
+    references: [products.id],
   }),
 }))

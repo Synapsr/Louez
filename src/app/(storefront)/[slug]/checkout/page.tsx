@@ -8,6 +8,7 @@ import { notFound } from 'next/navigation'
 import { CheckoutForm } from './checkout-form'
 import { BackButton } from './back-button'
 import { generateStoreMetadata } from '@/lib/seo'
+import { PageTracker } from '@/components/storefront/page-tracker'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 
 interface CheckoutPageProps {
@@ -61,27 +62,30 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const taxSettings = store.settings?.tax
 
   return (
-    <div className="container mx-auto px-4 py-6 md:py-8">
-      {/* Back button */}
-      <BackButton />
+    <>
+      <PageTracker page="checkout" />
+      <div className="container mx-auto px-4 py-6 md:py-8">
+        {/* Back button */}
+        <BackButton />
 
-      {/* Title */}
-      <div className="text-center mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold">{t('title')}</h1>
-        <p className="text-muted-foreground mt-1">
-          {reservationMode === 'payment' ? t('paymentMode') : t('requestMode')}
-        </p>
+        {/* Title */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl md:text-3xl font-bold">{t('title')}</h1>
+          <p className="text-muted-foreground mt-1">
+            {reservationMode === 'payment' ? t('paymentMode') : t('requestMode')}
+          </p>
+        </div>
+
+        <CheckoutForm
+          storeSlug={slug}
+          storeId={store.id}
+          pricingMode={pricingMode}
+          reservationMode={reservationMode}
+          requireCustomerAddress={requireCustomerAddress}
+          cgv={store.cgv}
+          taxSettings={taxSettings}
+        />
       </div>
-
-      <CheckoutForm
-        storeSlug={slug}
-        storeId={store.id}
-        pricingMode={pricingMode}
-        reservationMode={reservationMode}
-        requireCustomerAddress={requireCustomerAddress}
-        cgv={store.cgv}
-        taxSettings={taxSettings}
-      />
-    </div>
+    </>
   )
 }

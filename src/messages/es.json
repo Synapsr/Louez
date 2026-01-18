@@ -1308,6 +1308,41 @@
       "noRentalData": "Aun no hay datos de alquiler",
       "noRevenueData": "Aun no hay datos de ingresos"
     },
+    "analytics": {
+      "title": "Analíticas",
+      "description": "Seguimiento del tráfico y conversiones de tu tienda",
+      "visitors": "Visitantes",
+      "productViews": "Vistas de productos",
+      "conversions": "Pedidos",
+      "conversionRate": "Tasa de conversión",
+      "revenue": "Ingresos",
+      "vsPreviousPeriod": "vs periodo anterior",
+      "period": {
+        "7d": "7 días",
+        "30d": "30 días",
+        "90d": "90 días"
+      },
+      "refresh": "Actualizar",
+      "trafficTrend": "Tendencia de tráfico",
+      "trafficTrendDescription": "Visitantes y pedidos a lo largo del tiempo",
+      "conversionFunnel": "Embudo de conversión",
+      "conversionFunnelDescription": "De visita a pedido",
+      "topProducts": "Productos populares",
+      "topProductsDescription": "Productos más vistos",
+      "devices": "Dispositivos",
+      "devicesDescription": "Desglose por tipo de dispositivo",
+      "mobile": "Móvil",
+      "tablet": "Tableta",
+      "desktop": "Escritorio",
+      "noData": "Aún no hay datos",
+      "noProducts": "Ningún producto visto",
+      "funnel": {
+        "visitors": "Visitantes",
+        "productViews": "Vistas de productos",
+        "cartAdditions": "Añadido al carrito",
+        "orders": "Pedidos"
+      }
+    },
     "settings": {
       "title": "Configuracion",
       "store": "Tienda",
