@@ -34,6 +34,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { ProductCardAvailable } from '@/components/storefront/product-card-available'
 import { CartSidebar } from '@/components/storefront/cart-sidebar'
 import { DatePickerModal } from '@/components/storefront/date-picker-modal'
+import { PageTracker } from '@/components/storefront/page-tracker'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import {
@@ -279,6 +280,7 @@ export function RentalContent({
 
   return (
     <div className="container mx-auto px-4 py-4 md:py-6">
+      <PageTracker page="rental" categoryId={selectedCategory !== 'all' ? selectedCategory : undefined} />
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
         {/* Main Content */}
         <div className="space-y-4">

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { calculateDuration, getDetailedDuration, type PricingMode } from '@/lib/utils/duration'
 import {
   calculateRentalPrice,
@@ -93,6 +94,7 @@ export function ProductModal({
   const tProduct = useTranslations('storefront.product')
   const currency = useStoreCurrency()
   const { addItem, getCartItemByProductId, updateItemQuantity, items: cartItems } = useCart()
+  const { trackEvent } = useAnalytics()
 
   const cartItem = getCartItemByProductId(product.id)
   const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
@@ -109,8 +111,18 @@ export function ProductModal({
     if (isOpen) {
       setQuantity(cartItem?.quantity || 1)
       setSelectedImageIndex(0)
+      // Track product view when modal opens
+      trackEvent({
+        eventType: 'product_view',
+        metadata: {
+          productId: product.id,
+          productName: product.name,
+          price: product.price,
+          categoryName: product.category?.name,
+        },
+      })
     }
-  }, [isOpen, cartItem?.quantity])
+  }, [isOpen, cartItem?.quantity, trackEvent, product.id, product.name, product.price, product.category?.name])
 
   const price = parseFloat(product.price)
   const deposit = product.deposit ? parseFloat(product.deposit) : 0
@@ -165,6 +177,16 @@ export function ProductModal({
 
     if (currentCartItem) {
       updateItemQuantity(product.id, quantity)
+      // Track update quantity event
+      trackEvent({
+        eventType: 'update_quantity',
+        metadata: {
+          productId: product.id,
+          productName: product.name,
+          quantity,
+          price: product.price,
+        },
+      })
       toast.success(tProduct('addedToCart', { name: product.name }))
       onClose()
     } else {
@@ -189,6 +211,19 @@ export function ProductModal({
         },
         storeSlug
       )
+
+      // Track add to cart event
+      trackEvent({
+        eventType: 'add_to_cart',
+        metadata: {
+          productId: product.id,
+          productName: product.name,
+          quantity,
+          price: product.price,
+          totalPrice,
+          categoryName: product.category?.name,
+        },
+      })
 
       // Show accessories modal if there are available accessories, otherwise show toast
       if (availableAccessories.length > 0) {

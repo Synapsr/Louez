@@ -37,6 +37,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { useCart } from '@/contexts/cart-context'
+import { useAnalytics } from '@/contexts/analytics-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { calculateEffectivePrice, sortTiersByDuration } from '@/lib/pricing'
 import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
@@ -104,6 +105,7 @@ export function ProductPreviewModal({
   const router = useRouter()
   const { setGlobalDates, setPricingMode } = useCart()
   const { getUrl } = useStorefrontUrl(storeSlug)
+  const { trackEvent } = useAnalytics()
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 
@@ -118,7 +120,7 @@ export function ProductPreviewModal({
   const [endDateOpen, setEndDateOpen] = useState(false)
   const [endTimeOpen, setEndTimeOpen] = useState(false)
 
-  // Reset state when modal opens
+  // Reset state when modal opens and track product view
   useEffect(() => {
     if (isOpen) {
       setSelectedImageIndex(0)
@@ -126,8 +128,18 @@ export function ProductPreviewModal({
       setEndDate(undefined)
       setStartTime('09:00')
       setEndTime('18:00')
+      // Track product view when modal opens
+      trackEvent({
+        eventType: 'product_view',
+        metadata: {
+          productId: product.id,
+          productName: product.name,
+          price: product.price,
+          categoryName: product.category?.name,
+        },
+      })
     }
-  }, [isOpen])
+  }, [isOpen, trackEvent, product.id, product.name, product.price, product.category?.name])
 
   useEffect(() => {
     setPricingMode(storePricingMode)
