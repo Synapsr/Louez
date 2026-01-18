@@ -606,7 +606,8 @@ async function TrafficStatsSection({ storeId, period }: { storeId: string; perio
   console.log('[Analytics] Aggregated stats:', { visitors: stats.visitors, productViews: stats.productViews, storeId })
 
   // If no aggregated data, try raw events
-  if (stats.visitors === 0 && stats.productViews === 0) {
+  // Note: MySQL returns strings for aggregated values, so use Number() for comparison
+  if (Number(stats.visitors) === 0 && Number(stats.productViews) === 0) {
     console.log('[Analytics] Falling back to raw events for store:', storeId)
     stats = await getRawEventStats(storeId, period)
     console.log('[Analytics] Raw stats result:', { visitors: stats.visitors, productViews: stats.productViews })
