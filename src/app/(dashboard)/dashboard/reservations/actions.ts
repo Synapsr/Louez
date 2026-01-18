@@ -17,6 +17,8 @@ import {
   sendInstantAccessEmail,
 } from '@/lib/email/send'
 import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
+import { dispatchNotification } from '@/lib/notifications/dispatcher'
+import type { NotificationEventType } from '@/types/store'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import { getCurrencySymbol } from '@/lib/utils'
@@ -200,6 +202,44 @@ export async function updateReservationStatus(
     })
   }
 
+  // Dispatch admin notifications (SMS, Discord) based on preferences
+  const notificationEventMap: Record<string, NotificationEventType> = {
+    confirmed: 'reservation_confirmed',
+    rejected: 'reservation_rejected',
+    ongoing: 'reservation_picked_up',
+    completed: 'reservation_completed',
+  }
+
+  const eventType = notificationEventMap[status]
+  if (eventType) {
+    dispatchNotification(eventType, {
+      store: {
+        id: store.id,
+        name: store.name,
+        email: store.email,
+        discordWebhookUrl: store.discordWebhookUrl,
+        ownerPhone: store.ownerPhone,
+        notificationSettings: store.notificationSettings,
+        settings: store.settings,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: parseFloat(reservation.totalAmount),
+      },
+      customer: {
+        firstName: reservation.customer.firstName,
+        lastName: reservation.customer.lastName,
+        email: reservation.customer.email,
+        phone: reservation.customer.phone,
+      },
+    }).catch((error) => {
+      console.error('Failed to dispatch admin notification:', error)
+    })
+  }
+
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
   return { success: true }
@@ -216,6 +256,9 @@ export async function cancelReservation(reservationId: string) {
       eq(reservations.id, reservationId),
       eq(reservations.storeId, store.id)
     ),
+    with: {
+      customer: true,
+    },
   })
 
   if (!reservation) {
@@ -242,7 +285,33 @@ export async function cancelReservation(reservationId: string) {
     { previousStatus: reservation.status }
   )
 
-  // TODO: Send cancellation email to customer
+  // Dispatch admin notifications (SMS, Discord) based on preferences
+  dispatchNotification('reservation_cancelled', {
+    store: {
+      id: store.id,
+      name: store.name,
+      email: store.email,
+      discordWebhookUrl: store.discordWebhookUrl,
+      ownerPhone: store.ownerPhone,
+      notificationSettings: store.notificationSettings,
+      settings: store.settings,
+    },
+    reservation: {
+      id: reservationId,
+      number: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      totalAmount: parseFloat(reservation.totalAmount),
+    },
+    customer: {
+      firstName: reservation.customer.firstName,
+      lastName: reservation.customer.lastName,
+      email: reservation.customer.email,
+      phone: reservation.customer.phone,
+    },
+  }).catch((error) => {
+    console.error('Failed to dispatch cancellation notification:', error)
+  })
 
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
