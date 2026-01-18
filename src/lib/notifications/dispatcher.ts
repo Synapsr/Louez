@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@/lib/plan-limits'
 import { sendSms, isSmsConfigured } from '@/lib/sms/client'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrencyForSms } from '@/lib/utils'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -83,7 +83,7 @@ function buildAdminSmsMessage(
     ? `${ctx.customer.firstName} ${ctx.customer.lastName}`
     : ''
   const amount = ctx.reservation
-    ? formatCurrency(ctx.reservation.totalAmount, ctx.store.settings?.currency)
+    ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
     : ''
 
   switch (eventType) {
@@ -101,7 +101,7 @@ function buildAdminSmsMessage(
       return `[${storeName}] Réservation #${resNumber} terminée. ${amount}`
     case 'payment_received':
       const paymentAmount = ctx.payment
-        ? formatCurrency(ctx.payment.amount, ctx.store.settings?.currency)
+        ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
         : amount
       return `[${storeName}] Paiement reçu #${resNumber}: ${paymentAmount}`
     case 'payment_failed':
