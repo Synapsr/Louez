@@ -3061,6 +3061,55 @@
       "paymentPending": "Eine Zahlung für diese Reservierung steht noch aus.",
       "viewAndPay": "Anzeigen und bezahlen",
       "linkValid": "Dieser Link ist 30 Tage gültig."
+    },
+    "reservationCancelled": {
+      "subject": "Reservierung #{number} storniert",
+      "title": "Reservierung storniert",
+      "body": "Ihre Reservierung #{number} wurde storniert.",
+      "cancelledPeriod": "Stornierter Zeitraum",
+      "reasonLabel": "Grund",
+      "contactForQuestions": "Bei Fragen kontaktieren Sie uns gerne.",
+      "browseEquipment": "Katalog durchsuchen",
+      "thankYou": "Vielen Dank für Ihr Verständnis."
+    },
+    "reservationCompleted": {
+      "subject": "Reservierung #{number} abgeschlossen",
+      "title": "Vermietung abgeschlossen!",
+      "body": "Ihre Reservierung #{number} ist nun abgeschlossen.",
+      "rentalPeriod": "Mietzeitraum",
+      "depositReturned": "Ihre Kaution von {amount} wird erstattet.",
+      "depositPending": "Ihre Kaution von {amount} wird geprüft und in Kürze erstattet.",
+      "thankYouMessage": "Vielen Dank für Ihr Vertrauen!",
+      "rentAgain": "Erneut mieten",
+      "seeYouSoon": "Bis bald!"
+    },
+    "paymentConfirmation": {
+      "subject": "Zahlung bestätigt - Reservierung #{number}",
+      "title": "Zahlung erhalten!",
+      "body": "Wir haben Ihre Zahlung für Reservierung #{number} erhalten.",
+      "paymentDetails": "Zahlungsdetails",
+      "amount": "Betrag",
+      "date": "Datum",
+      "method": "Methode",
+      "reservation": "Reservierung",
+      "confirmation": "Ihre Zahlung wurde erfolgreich verarbeitet.",
+      "keepEmail": "Bewahren Sie diese E-Mail als Zahlungsbeleg auf."
+    },
+    "paymentFailed": {
+      "subject": "Zahlung fehlgeschlagen - Reservierung #{number}",
+      "title": "Zahlung fehlgeschlagen",
+      "body": "Die Zahlung von {amount} für Ihre Reservierung #{number} konnte nicht verarbeitet werden.",
+      "whatToDo": "Was tun?",
+      "tip1": "Überprüfen Sie, ob Ihre Karte gültig ist und ausreichend Guthaben hat",
+      "tip2": "Versuchen Sie es mit einer anderen Karte",
+      "tip3": "Kontaktieren Sie Ihre Bank, wenn das Problem weiterhin besteht",
+      "retryPayment": "Zahlung erneut versuchen",
+      "contactSupport": "Hilfe benötigt? Kontaktieren Sie uns."
+    },
+    "baseLayout": {
+      "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
+      "ignoreIfNotYou": "Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie diese E-Mail bitte.",
+      "poweredBy": "Bereitgestellt von"
     }
   },
   "contract": {

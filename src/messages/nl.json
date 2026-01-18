@@ -3059,6 +3059,55 @@
       "paymentPending": "De betaling voor deze reservering is in afwachting.",
       "viewAndPay": "Bekijken en betalen",
       "linkValid": "Deze link is 30 dagen geldig."
+    },
+    "reservationCancelled": {
+      "subject": "Reservering #{number} geannuleerd",
+      "title": "Reservering geannuleerd",
+      "body": "Uw reservering #{number} is geannuleerd.",
+      "cancelledPeriod": "Geannuleerde periode",
+      "reasonLabel": "Reden",
+      "contactForQuestions": "Als u vragen heeft, neem dan gerust contact met ons op.",
+      "browseEquipment": "Bekijk onze catalogus",
+      "thankYou": "Bedankt voor uw begrip."
+    },
+    "reservationCompleted": {
+      "subject": "Reservering #{number} voltooid",
+      "title": "Verhuur voltooid!",
+      "body": "Uw reservering #{number} is nu voltooid.",
+      "rentalPeriod": "Huurperiode",
+      "depositReturned": "Uw borg van {amount} wordt teruggestort.",
+      "depositPending": "Uw borg van {amount} wordt gecontroleerd en binnenkort teruggestort.",
+      "thankYouMessage": "Bedankt dat u voor onze diensten heeft gekozen!",
+      "rentAgain": "Opnieuw huren",
+      "seeYouSoon": "Tot ziens!"
+    },
+    "paymentConfirmation": {
+      "subject": "Betaling bevestigd - Reservering #{number}",
+      "title": "Betaling ontvangen!",
+      "body": "We hebben uw betaling voor reservering #{number} ontvangen.",
+      "paymentDetails": "Betalingsgegevens",
+      "amount": "Bedrag",
+      "date": "Datum",
+      "method": "Methode",
+      "reservation": "Reservering",
+      "confirmation": "Uw betaling is succesvol verwerkt.",
+      "keepEmail": "Bewaar deze e-mail als betalingsbewijs."
+    },
+    "paymentFailed": {
+      "subject": "Betaling mislukt - Reservering #{number}",
+      "title": "Betaling mislukt",
+      "body": "De betaling van {amount} voor uw reservering #{number} kon niet worden verwerkt.",
+      "whatToDo": "Wat te doen?",
+      "tip1": "Controleer of uw kaart geldig is en voldoende saldo heeft",
+      "tip2": "Probeer een andere kaart",
+      "tip3": "Neem contact op met uw bank als het probleem aanhoudt",
+      "retryPayment": "Betaling opnieuw proberen",
+      "contactSupport": "Hulp nodig? Neem contact met ons op."
+    },
+    "baseLayout": {
+      "sentBy": "Deze e-mail is verzonden door {storeName}",
+      "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
+      "poweredBy": "Powered by"
     }
   },
   "contract": {

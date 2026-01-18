@@ -3060,6 +3060,50 @@
       "paymentPending": "Il pagamento di questa prenotazione e in sospeso.",
       "viewAndPay": "Visualizza e paga",
       "linkValid": "Questo link e valido per 30 giorni."
+    },
+    "reservationCancelled": {
+      "subject": "Prenotazione #{number} annullata",
+      "title": "Prenotazione annullata",
+      "body": "La tua prenotazione #{number} è stata annullata.",
+      "cancelledPeriod": "Periodo annullato",
+      "reasonLabel": "Motivo",
+      "contactForQuestions": "Per qualsiasi domanda, non esitare a contattarci.",
+      "browseEquipment": "Sfoglia il nostro catalogo",
+      "thankYou": "Grazie per la comprensione."
+    },
+    "reservationCompleted": {
+      "subject": "Prenotazione #{number} completata",
+      "title": "Noleggio completato!",
+      "body": "La tua prenotazione #{number} è stata completata.",
+      "rentalPeriod": "Periodo di noleggio",
+      "depositReturned": "Il tuo deposito di {amount} sarà rimborsato.",
+      "depositPending": "Il tuo deposito di {amount} sarà verificato e rimborsato a breve.",
+      "thankYouMessage": "Grazie per aver scelto i nostri servizi!",
+      "rentAgain": "Noleggia di nuovo",
+      "seeYouSoon": "A presto!"
+    },
+    "paymentConfirmation": {
+      "subject": "Pagamento confermato - Prenotazione #{number}",
+      "title": "Pagamento ricevuto!",
+      "body": "Abbiamo ricevuto il tuo pagamento per la prenotazione #{number}.",
+      "paymentDetails": "Dettagli del pagamento",
+      "amount": "Importo",
+      "date": "Data",
+      "method": "Metodo",
+      "reservation": "Prenotazione",
+      "confirmation": "Il tuo pagamento è stato elaborato con successo.",
+      "keepEmail": "Conserva questa email come ricevuta di pagamento."
+    },
+    "paymentFailed": {
+      "subject": "Pagamento fallito - Prenotazione #{number}",
+      "title": "Pagamento fallito",
+      "body": "Il pagamento di {amount} per la tua prenotazione #{number} non è andato a buon fine.",
+      "whatToDo": "Cosa fare?",
+      "tip1": "Verifica che la tua carta sia valida e abbia fondi sufficienti",
+      "tip2": "Prova con un'altra carta",
+      "tip3": "Contatta la tua banca se il problema persiste",
+      "retryPayment": "Riprova pagamento",
+      "contactSupport": "Hai bisogno di aiuto? Contattaci."
     }
   },
   "contract": {

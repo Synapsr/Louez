@@ -3060,6 +3060,50 @@
       "paymentPending": "Płatność za tę rezerwację jest oczekująca.",
       "viewAndPay": "Zobacz i zapłać",
       "linkValid": "Ten link jest ważny przez 30 dni."
+    },
+    "reservationCancelled": {
+      "subject": "Rezerwacja #{number} anulowana",
+      "title": "Rezerwacja anulowana",
+      "body": "Twoja rezerwacja #{number} została anulowana.",
+      "cancelledPeriod": "Anulowany okres",
+      "reasonLabel": "Powód",
+      "contactForQuestions": "Jeśli masz pytania, skontaktuj się z nami.",
+      "browseEquipment": "Przeglądaj nasz katalog",
+      "thankYou": "Dziękujemy za zrozumienie."
+    },
+    "reservationCompleted": {
+      "subject": "Rezerwacja #{number} zakończona",
+      "title": "Wynajem zakończony!",
+      "body": "Twoja rezerwacja #{number} została zakończona.",
+      "rentalPeriod": "Okres wynajmu",
+      "depositReturned": "Twoja kaucja w wysokości {amount} zostanie zwrócona.",
+      "depositPending": "Twoja kaucja w wysokości {amount} zostanie zweryfikowana i wkrótce zwrócona.",
+      "thankYouMessage": "Dziękujemy za skorzystanie z naszych usług!",
+      "rentAgain": "Wynajmij ponownie",
+      "seeYouSoon": "Do zobaczenia!"
+    },
+    "paymentConfirmation": {
+      "subject": "Płatność potwierdzona - Rezerwacja #{number}",
+      "title": "Płatność otrzymana!",
+      "body": "Otrzymaliśmy Twoją płatność za rezerwację #{number}.",
+      "paymentDetails": "Szczegóły płatności",
+      "amount": "Kwota",
+      "date": "Data",
+      "method": "Metoda",
+      "reservation": "Rezerwacja",
+      "confirmation": "Twoja płatność została pomyślnie przetworzona.",
+      "keepEmail": "Zachowaj ten e-mail jako potwierdzenie płatności."
+    },
+    "paymentFailed": {
+      "subject": "Płatność nieudana - Rezerwacja #{number}",
+      "title": "Płatność nieudana",
+      "body": "Płatność {amount} za rezerwację #{number} nie mogła zostać przetworzona.",
+      "whatToDo": "Co zrobić?",
+      "tip1": "Sprawdź, czy Twoja karta jest ważna i ma wystarczające środki",
+      "tip2": "Spróbuj inną kartą",
+      "tip3": "Skontaktuj się z bankiem, jeśli problem się powtarza",
+      "retryPayment": "Ponów płatność",
+      "contactSupport": "Potrzebujesz pomocy? Skontaktuj się z nami."
     }
   },
   "contract": {
