@@ -1851,7 +1851,14 @@
           "limitReached": "Limite de SMS alcanzado",
           "limitReachedMessage": "Ha alcanzado su limite mensual de SMS.",
           "lowCredits": "Le quedan {current} de {limit} SMS este mes.",
-          "buyMore": "Comprar mas SMS"
+          "buyMore": "Comprar mas SMS",
+          "quotaLabel": "Creditos SMS",
+          "manage": "Gestionar",
+          "noCreditsLeft": "Sin creditos SMS",
+          "noCreditsDescription": "Compre creditos para enviar SMS a sus clientes",
+          "buyCredits": "Comprar creditos",
+          "remaining": "restantes",
+          "lowWarning": "Saldo bajo de creditos"
         },
         "adminSection": {
           "title": "Notificaciones de administrador",

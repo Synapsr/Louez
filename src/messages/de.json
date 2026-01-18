@@ -1849,7 +1849,14 @@
           "limitReached": "SMS-Limit erreicht",
           "limitReachedMessage": "Sie haben Ihr monatliches SMS-Limit erreicht.",
           "lowCredits": "Sie haben noch {current} von {limit} SMS diesen Monat.",
-          "buyMore": "Mehr SMS kaufen"
+          "buyMore": "Mehr SMS kaufen",
+          "quotaLabel": "SMS-Guthaben",
+          "manage": "Verwalten",
+          "noCreditsLeft": "Keine SMS-Guthaben mehr",
+          "noCreditsDescription": "Kaufen Sie Guthaben, um SMS an Ihre Kunden zu senden",
+          "buyCredits": "Guthaben kaufen",
+          "remaining": "verbleibend",
+          "lowWarning": "Niedriges Guthaben"
         },
         "adminSection": {
           "title": "Admin-Benachrichtigungen",

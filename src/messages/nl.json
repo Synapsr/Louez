@@ -1847,7 +1847,14 @@
           "limitReached": "SMS-limiet bereikt",
           "limitReachedMessage": "U heeft uw maandelijkse SMS-limiet bereikt.",
           "lowCredits": "U heeft nog {current} van {limit} SMS over deze maand.",
-          "buyMore": "Meer SMS kopen"
+          "buyMore": "Meer SMS kopen",
+          "quotaLabel": "SMS-tegoed",
+          "manage": "Beheren",
+          "noCreditsLeft": "Geen SMS-tegoed meer",
+          "noCreditsDescription": "Koop tegoed om SMS naar uw klanten te sturen",
+          "buyCredits": "Tegoed kopen",
+          "remaining": "resterend",
+          "lowWarning": "Laag tegoedsaldo"
         },
         "adminSection": {
           "title": "Beheerdersmeldingen",

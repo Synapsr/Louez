@@ -289,99 +289,141 @@ export function NotificationsForm({
             </div>
           </div>
 
-          {/* Phone Number Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
-                  <Phone className="h-4 w-4" />
+          {/* Phone & Discord Cards - Side by side on large screens */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Phone Number Card */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-500">
+                    <Phone className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-sm font-medium">{t('phone.title')}</CardTitle>
+                    <CardDescription className="text-xs">{t('phone.description')}</CardDescription>
+                  </div>
+                  {isSmsConfigured && (
+                    <span className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {t('phone.configured')}
+                    </span>
+                  )}
                 </div>
-                <div>
-                  <CardTitle className="text-sm font-medium">{t('phone.title')}</CardTitle>
-                  <CardDescription className="text-xs">{t('phone.description')}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2 items-start">
-                <PhoneInput
-                  placeholder={t('phone.placeholder')}
-                  value={ownerPhone}
-                  onChange={setOwnerPhone}
-                  className="max-w-xs"
-                />
-                <Button onClick={handleSavePhone} disabled={savingPhone} size="sm">
-                  {savingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
-                </Button>
-              </div>
-              {isSmsConfigured && (
-                <p className="mt-2 text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" />
-                  {t('phone.configured')}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Discord Card */}
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
-                  <MessageSquare className="h-4 w-4" />
-                </div>
-                <div className="flex-1">
-                  <CardTitle className="text-sm font-medium">{t('discord.title')}</CardTitle>
-                  <CardDescription className="text-xs">{t('discord.description')}</CardDescription>
-                </div>
-                {isDiscordConnected && (
-                  <span className="text-xs text-green-600 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3" />
-                    {t('discord.connected')}
-                  </span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex gap-2">
-                  <Input
-                    type="url"
-                    placeholder={t('discord.placeholder')}
-                    value={discordWebhookUrl}
-                    onChange={(e) => setDiscordWebhookUrl(e.target.value)}
-                    className="flex-1 text-sm"
+              </CardHeader>
+              <CardContent className="flex-1 flex flex-col">
+                <div className="flex gap-2 items-start">
+                  <PhoneInput
+                    placeholder={t('phone.placeholder')}
+                    value={ownerPhone}
+                    onChange={setOwnerPhone}
+                    className="flex-1"
                   />
-                  <Button onClick={handleSaveWebhook} disabled={savingWebhook} size="sm">
-                    {savingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
+                  <Button onClick={handleSavePhone} disabled={savingPhone} size="sm">
+                    {savingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
                   </Button>
+                </div>
+
+                {/* SMS Quota Section */}
+                <div className="mt-4 pt-4 border-t flex-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-muted-foreground">{t('sms.quotaLabel')}</span>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                      <Link href="/dashboard/sms">
+                        {t('sms.manage')}
+                        <ExternalLink className="ml-1 h-3 w-3" />
+                      </Link>
+                    </Button>
+                  </div>
+                  {smsLimitReached ? (
+                    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                        <span className="text-sm font-medium">{t('sms.noCreditsLeft')}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-destructive/80">{t('sms.noCreditsDescription')}</p>
+                      <Button size="sm" variant="destructive" className="mt-2 w-full" asChild>
+                        <Link href="/dashboard/sms">{t('sms.buyCredits')}</Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-2xl font-bold">{smsQuota.totalAvailable - smsQuota.current}</span>
+                        <span className="text-sm text-muted-foreground">/ {smsQuota.totalAvailable}</span>
+                        <span className="text-xs text-muted-foreground ml-1">{t('sms.remaining')}</span>
+                      </div>
+                      {smsLow && (
+                        <p className="mt-1 text-xs text-amber-600 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          {t('sms.lowWarning')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Discord Card */}
+            <Card className="flex flex-col">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-500">
+                    <MessageSquare className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1">
+                    <CardTitle className="text-sm font-medium">{t('discord.title')}</CardTitle>
+                    <CardDescription className="text-xs">{t('discord.description')}</CardDescription>
+                  </div>
+                  {isDiscordConnected && (
+                    <span className="text-xs text-green-600 flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {t('discord.connected')}
+                    </span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      type="url"
+                      placeholder={t('discord.placeholder')}
+                      value={discordWebhookUrl}
+                      onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+                      className="flex-1 text-sm"
+                    />
+                    <Button onClick={handleSaveWebhook} disabled={savingWebhook} size="sm">
+                      {savingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
+                    </Button>
+                  </div>
                   {isDiscordConnected && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleTestDiscord}
                       disabled={testingDiscord}
+                      className="w-full"
                     >
                       {testingDiscord ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        t('discord.test')
-                      )}
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      {t('discord.test')}
                     </Button>
                   )}
+                  <a
+                    href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
+                  >
+                    {t('discord.howTo')}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
                 </div>
-                <a
-                  href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1"
-                >
-                  {t('discord.howTo')}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Admin Reservation Events */}
           <Card>
