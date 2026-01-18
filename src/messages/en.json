@@ -256,6 +256,55 @@
       "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
       "upgradeForMore": "Add more"
     },
+    "sms": {
+      "title": "SMS Credits",
+      "description": "Track your monthly SMS usage",
+      "quota": {
+        "title": "Monthly SMS Quota",
+        "titlePastMonth": "SMS Summary",
+        "description": "Resets on the 1st of each month",
+        "descriptionPastMonth": "History for {month}",
+        "smsThisMonth": "SMS sent this month",
+        "smsSentThisMonth": "SMS sent",
+        "remaining": "{count} remaining",
+        "failed": "{count} failed",
+        "used": "used",
+        "resetsMonthly": "Resets monthly",
+        "limitReached": "Limit reached",
+        "upgradeMessage": "You have reached your monthly SMS limit. Upgrade to a higher plan to continue sending SMS.",
+        "upgradePlan": "Change plan"
+      },
+      "history": {
+        "title": "SMS History",
+        "description": "Last 90 days of messages",
+        "descriptionMonth": "SMS sent in {month}",
+        "empty": "No SMS sent yet",
+        "emptyMonth": "No SMS sent this month",
+        "date": "Date",
+        "recipient": "Recipient",
+        "type": "Type",
+        "status": "Status",
+        "view": "View details"
+      },
+      "detail": {
+        "title": "SMS Details",
+        "recipient": "Recipient",
+        "message": "Message sent",
+        "error": "Error"
+      },
+      "types": {
+        "instantAccess": "Instant access",
+        "reservationConfirmation": "Confirmation",
+        "reminderPickup": "Pickup reminder",
+        "reminderReturn": "Return reminder",
+        "custom": "Custom",
+        "thankYouReview": "Review request"
+      },
+      "status": {
+        "sent": "Sent",
+        "failed": "Failed"
+      }
+    },
     "navigation": {
       "home": "Home",
       "products": "Products",
@@ -265,6 +314,7 @@
       "categories": "Categories",
       "statistics": "Statistics",
       "team": "Team",
+      "sms": "SMS",
       "subscription": "Subscription",
       "settings": "Settings",
       "store": "My store"
@@ -1358,8 +1408,15 @@
             "customDomain": "Custom domain",
             "prioritySupport": "Priority support",
             "customerPortal": "Customer portal",
-            "reviewBooster": "Review booster"
+            "reviewBooster": "Review booster",
+            "smsPerMonth": "{count} SMS / month"
           }
+        },
+        "usage": {
+          "products": "Products",
+          "reservations": "Reservations",
+          "collaborators": "Team members",
+          "sms": "SMS this month"
         },
         "earlyBird": {
           "badge": "-50%",

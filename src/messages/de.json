@@ -256,6 +256,55 @@
       "limitReachedDescription": "Sie nutzen {current} von {limit} Teammitgliedern. Upgraden Sie, um mehr hinzuzufügen.",
       "upgradeForMore": "Mehr hinzufügen"
     },
+    "sms": {
+      "title": "SMS-Guthaben",
+      "description": "Verfolgen Sie Ihren monatlichen SMS-Verbrauch",
+      "quota": {
+        "title": "Monatliches SMS-Kontingent",
+        "description": "Wird am 1. jedes Monats zurückgesetzt",
+        "smsThisMonth": "Diesen Monat gesendete SMS",
+        "remaining": "{count} verbleibend",
+        "used": "verwendet",
+        "resetsMonthly": "Monatliche Zurücksetzung",
+        "limitReached": "Limit erreicht",
+        "upgradeMessage": "Sie haben Ihr monatliches SMS-Limit erreicht. Upgraden Sie auf einen höheren Plan, um weiterhin SMS zu senden.",
+        "upgradePlan": "Plan wechseln",
+        "titlePastMonth": "SMS-Zusammenfassung",
+        "descriptionPastMonth": "Verlauf für {month}",
+        "smsSentThisMonth": "SMS gesendet",
+        "failed": "{count} fehlgeschlagen"
+      },
+      "history": {
+        "title": "SMS-Verlauf",
+        "description": "Die letzten 90 Tage der Sendungen",
+        "descriptionMonth": "SMS gesendet im {month}",
+        "empty": "Noch keine SMS gesendet",
+        "emptyMonth": "Keine SMS in diesem Monat gesendet",
+        "date": "Datum",
+        "recipient": "Empfänger",
+        "type": "Typ",
+        "status": "Status",
+        "view": "Details anzeigen"
+      },
+      "detail": {
+        "title": "SMS-Details",
+        "recipient": "Empfänger",
+        "message": "Gesendete Nachricht",
+        "error": "Fehler"
+      },
+      "types": {
+        "instantAccess": "Sofortzugang",
+        "reservationConfirmation": "Bestätigung",
+        "reminderPickup": "Abholungserinnerung",
+        "reminderReturn": "Rückgabeerinnerung",
+        "custom": "Benutzerdefiniert",
+        "thankYouReview": "Bewertungsanfrage"
+      },
+      "status": {
+        "sent": "Gesendet",
+        "failed": "Fehlgeschlagen"
+      }
+    },
     "navigation": {
       "home": "Startseite",
       "products": "Produkte",
@@ -265,6 +314,7 @@
       "categories": "Kategorien",
       "statistics": "Statistiken",
       "team": "Team",
+      "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Einstellungen",
       "store": "Mein Shop"
@@ -1360,8 +1410,15 @@
             "customDomain": "Eigene Domain",
             "prioritySupport": "Prioritäts-Support",
             "customerPortal": "Kundenportal",
-            "reviewBooster": "Bewertungs-Booster"
+            "reviewBooster": "Bewertungs-Booster",
+            "smsPerMonth": "{count} SMS / Monat"
           }
+        },
+        "usage": {
+          "products": "Produkte",
+          "reservations": "Reservierungen",
+          "collaborators": "Mitarbeiter",
+          "sms": "SMS diesen Monat"
         },
         "earlyBird": {
           "badge": "-50%",
