@@ -120,8 +120,10 @@ export function AnalyticsProvider({
     }
 
     // Use sendBeacon for non-blocking requests (fire-and-forget)
+    // Must wrap in Blob with content-type for sendBeacon to send as JSON
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon('/api/track', JSON.stringify(payload))
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
+      navigator.sendBeacon('/api/track', blob)
     } else {
       // Fallback to fetch for older browsers
       fetch('/api/track', {
@@ -149,8 +151,10 @@ export function AnalyticsProvider({
     }
 
     // Use sendBeacon for non-blocking requests
+    // Must wrap in Blob with content-type for sendBeacon to send as JSON
     if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon('/api/track', JSON.stringify(payload))
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' })
+      navigator.sendBeacon('/api/track', blob)
     } else {
       fetch('/api/track', {
         method: 'POST',
