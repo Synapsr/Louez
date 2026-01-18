@@ -100,7 +100,7 @@ export class SmsPartnerProvider implements SmsProvider {
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(payload),
       })
