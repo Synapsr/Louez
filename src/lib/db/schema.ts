@@ -22,6 +22,7 @@ import type {
   ProductTaxSettings,
   ReviewBoosterSettings,
   GoogleReview,
+  NotificationSettings,
 } from '@/types'
 
 // Helper for generating IDs
@@ -239,6 +240,11 @@ export const stores = mysqlTable(
 
     // Review Booster settings
     reviewBoosterSettings: json('review_booster_settings').$type<ReviewBoosterSettings>(),
+
+    // Notification settings (admin notifications)
+    notificationSettings: json('notification_settings').$type<NotificationSettings>(),
+    discordWebhookUrl: varchar('discord_webhook_url', { length: 500 }),
+    ownerPhone: varchar('owner_phone', { length: 20 }),
 
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),
@@ -708,6 +714,25 @@ export const smsLogs = mysqlTable('sms_logs', {
 })
 
 // ============================================================================
+// Discord Logs (Admin notification logs)
+// ============================================================================
+
+export const discordLogs = mysqlTable('discord_logs', {
+  id: id(),
+  storeId: varchar('store_id', { length: 21 }).notNull(),
+  reservationId: varchar('reservation_id', { length: 21 }),
+
+  // Notification details
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+
+  // Result
+  status: varchar('status', { length: 20 }).default('sent').notNull(),
+  error: text('error'),
+
+  sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+})
+
+// ============================================================================
 // SMS Credits (Prepaid SMS Balance)
 // ============================================================================
 
@@ -1050,6 +1075,17 @@ export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
   }),
 }))
 
+export const discordLogsRelations = relations(discordLogs, ({ one }) => ({
+  store: one(stores, {
+    fields: [discordLogs.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [discordLogs.reservationId],
+    references: [reservations.id],
+  }),
+}))
+
 export const smsCreditsRelations = relations(smsCredits, ({ one }) => ({
   store: one(stores, {
     fields: [smsCredits.storeId],
@@ -1091,6 +1127,7 @@ export const pageType = mysqlEnum('page_type', [
   'checkout',
   'confirmation',
   'account',
+  'rental',
 ])
 
 export const deviceType = mysqlEnum('device_type', ['mobile', 'tablet', 'desktop'])
@@ -1117,6 +1154,7 @@ export const pageViews = mysqlTable(
 )
 
 export const storefrontEventType = mysqlEnum('storefront_event_type', [
+  'product_view',
   'add_to_cart',
   'remove_from_cart',
   'update_quantity',
