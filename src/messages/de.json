@@ -272,7 +272,15 @@
         "titlePastMonth": "SMS-Zusammenfassung",
         "descriptionPastMonth": "Verlauf für {month}",
         "smsSentThisMonth": "SMS gesendet",
-        "failed": "{count} fehlgeschlagen"
+        "failed": "{count} fehlgeschlagen",
+        "topup": "Aufladen",
+        "topupNow": "Jetzt aufladen",
+        "topupMessage": "Sie haben Ihr monatliches Limit erreicht. Laden Sie auf, um weiter SMS zu senden.",
+        "nearLimit": "Nur noch {count} SMS verfügbar",
+        "planIncluded": "Im Plan enthalten",
+        "prepaidCredits": "Prepaid-Guthaben",
+        "available": "verfügbar",
+        "totalAvailable": "Insgesamt verfügbar"
       },
       "history": {
         "title": "SMS-Verlauf",
@@ -303,6 +311,60 @@
       "status": {
         "sent": "Gesendet",
         "failed": "Fehlgeschlagen"
+      },
+      "topup": {
+        "title": "SMS-Guthaben aufladen",
+        "description": "Guthaben verfällt nie und wird zu Ihrem monatlichen Kontingent hinzugefügt",
+        "yourPrice": "Ihr Preis",
+        "perSms": "pro SMS",
+        "selectPackage": "Paket auswählen",
+        "smsCredits": "{count} SMS-Guthaben",
+        "popular": "Beliebt",
+        "bestValue": "Bestes Preis-Leistungs-Verhältnis",
+        "info": "Guthaben wird sofort nach der Zahlung hinzugefügt",
+        "cancel": "Abbrechen",
+        "pay": "Zur Zahlung",
+        "processing": "Verarbeitung...",
+        "success": "Aufladung erfolgreich! Ihr Guthaben wurde hinzugefügt.",
+        "cancelled": "Zahlung wurde abgebrochen. Ihr Guthaben wurde nicht belastet.",
+        "notAvailable": "SMS-Aufladung ist für den Start-Plan nicht verfügbar. Upgraden Sie auf Pro oder Ultra zum Aufladen.",
+        "errors": {
+          "generic": "Bei der Aufladung ist ein Fehler aufgetreten",
+          "notEligible": "Ihr Plan erlaubt keine SMS-Aufladung"
+        },
+        "stripeProductName": "SMS-Aufladung - {quantity} Guthaben",
+        "stripeProductDescription": "{quantity} SMS-Paket zu {price}€/SMS ({plan}-Plan)",
+        "upsell": {
+          "didYouKnow": "Wussten Sie schon?",
+          "ultraBenefit": "Mit Ultra zahlen Sie nur {price} pro SMS und erhalten {count} SMS monatlich inklusive.",
+          "upgradeToUltra": "Zu Ultra wechseln",
+          "startTitle": "SMS freischalten",
+          "startDescription": "Senden Sie automatische Benachrichtigungen an Ihre Kunden",
+          "upgradeToPro": "Pläne ansehen",
+          "compareTitle": "Wählen Sie Ihren Plan",
+          "smsIncluded": "{count} SMS/Monat inklusive",
+          "topupPrice": "Aufladung zu {price}/SMS",
+          "currentPlan": "Aktueller Plan",
+          "recommended": "Empfohlen",
+          "month": "/Monat"
+        }
+      },
+      "topupHistory": {
+        "title": "Aufladeverlauf",
+        "description": "Ihre SMS-Guthaben-Käufe",
+        "date": "Datum",
+        "quantity": "Menge",
+        "unitPrice": "Stückpreis",
+        "total": "Gesamt",
+        "statusColumn": "Status",
+        "status": {
+          "completed": "Abgeschlossen",
+          "pending": "Ausstehend",
+          "failed": "Fehlgeschlagen",
+          "refunded": "Erstattet"
+        },
+        "totalPurchased": "Insgesamt gekauft",
+        "totalSpent": "Insgesamt ausgegeben"
       }
     },
     "navigation": {
@@ -1318,7 +1380,13 @@
       "period": {
         "7d": "7 Tage",
         "30d": "30 Tage",
-        "90d": "90 Tage"
+        "90d": "90 Tage",
+        "6m": "6 Monate",
+        "12m": "12 Monate"
+      },
+      "tabs": {
+        "traffic": "Traffic",
+        "sales": "Verkäufe"
       },
       "refresh": "Aktualisieren",
       "trafficTrend": "Traffic-Trend",

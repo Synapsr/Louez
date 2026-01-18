@@ -272,7 +272,15 @@
         "titlePastMonth": "Riepilogo SMS",
         "descriptionPastMonth": "Cronologia per {month}",
         "smsSentThisMonth": "SMS inviati",
-        "failed": "{count} falliti"
+        "failed": "{count} falliti",
+        "topup": "Ricarica",
+        "topupNow": "Ricarica ora",
+        "topupMessage": "Hai raggiunto il limite mensile. Ricarica per continuare a inviare SMS.",
+        "nearLimit": "Solo {count} SMS rimasti",
+        "planIncluded": "Incluso nel piano",
+        "prepaidCredits": "Crediti prepagati",
+        "available": "disponibili",
+        "totalAvailable": "Totale disponibile"
       },
       "history": {
         "title": "Cronologia SMS",
@@ -303,6 +311,60 @@
       "status": {
         "sent": "Inviato",
         "failed": "Fallito"
+      },
+      "topup": {
+        "title": "Ricarica i tuoi crediti SMS",
+        "description": "I crediti non scadono mai e si aggiungono alla tua quota mensile",
+        "yourPrice": "Il tuo prezzo",
+        "perSms": "per SMS",
+        "selectPackage": "Seleziona un pacchetto",
+        "smsCredits": "{count} crediti SMS",
+        "popular": "Popolare",
+        "bestValue": "Miglior rapporto qualità-prezzo",
+        "info": "I crediti vengono aggiunti immediatamente dopo il pagamento",
+        "cancel": "Annulla",
+        "pay": "Procedi al pagamento",
+        "processing": "Elaborazione...",
+        "success": "Ricarica effettuata! I tuoi crediti sono stati aggiunti.",
+        "cancelled": "Il pagamento è stato annullato. I tuoi crediti non sono stati addebitati.",
+        "notAvailable": "La ricarica SMS non è disponibile per il piano Start. Passa a Pro o Ultra per ricaricare.",
+        "errors": {
+          "generic": "Si è verificato un errore durante la ricarica",
+          "notEligible": "Il tuo piano non consente la ricarica SMS"
+        },
+        "stripeProductName": "Ricarica SMS - {quantity} crediti",
+        "stripeProductDescription": "Pack di {quantity} SMS a {price}€/SMS (Piano {plan})",
+        "upsell": {
+          "didYouKnow": "Lo sapevi?",
+          "ultraBenefit": "Con Ultra, paghi solo {price} per SMS e ottieni {count} SMS inclusi ogni mese.",
+          "upgradeToUltra": "Passa a Ultra",
+          "startTitle": "Sblocca gli SMS",
+          "startDescription": "Invia notifiche automatiche ai tuoi clienti",
+          "upgradeToPro": "Vedi i piani",
+          "compareTitle": "Scegli il tuo piano",
+          "smsIncluded": "{count} SMS/mese inclusi",
+          "topupPrice": "Ricarica a {price}/SMS",
+          "currentPlan": "Piano attuale",
+          "recommended": "Consigliato",
+          "month": "/mese"
+        }
+      },
+      "topupHistory": {
+        "title": "Cronologia ricariche",
+        "description": "I tuoi acquisti di crediti SMS",
+        "date": "Data",
+        "quantity": "Quantità",
+        "unitPrice": "Prezzo unitario",
+        "total": "Totale",
+        "statusColumn": "Stato",
+        "status": {
+          "completed": "Completato",
+          "pending": "In attesa",
+          "failed": "Fallito",
+          "refunded": "Rimborsato"
+        },
+        "totalPurchased": "Totale acquistato",
+        "totalSpent": "Totale speso"
       }
     },
     "navigation": {
@@ -1317,7 +1379,13 @@
       "period": {
         "7d": "7 giorni",
         "30d": "30 giorni",
-        "90d": "90 giorni"
+        "90d": "90 giorni",
+        "6m": "6 mesi",
+        "12m": "12 mesi"
+      },
+      "tabs": {
+        "traffic": "Traffico",
+        "sales": "Vendite"
       },
       "refresh": "Aggiorna",
       "trafficTrend": "Trend del traffico",

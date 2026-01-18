@@ -1,7 +1,15 @@
 import { db } from '@/lib/db'
-import { products, reservations, customers, subscriptions, storeMembers, smsLogs } from '@/lib/db/schema'
+import {
+  products,
+  reservations,
+  customers,
+  subscriptions,
+  storeMembers,
+  smsLogs,
+  smsCredits,
+} from '@/lib/db/schema'
 import { eq, count, and, gte, sql } from 'drizzle-orm'
-import { getPlan, getDefaultPlan, type Plan } from '@/lib/plans'
+import { getPlan, getDefaultPlan, SMS_TOPUP_PRICING, type Plan } from '@/lib/plans'
 import type { PlanFeatures } from '@/types'
 
 // ============================================================================
@@ -260,8 +268,50 @@ export async function getSmsUsageThisMonth(storeId: string): Promise<number> {
 }
 
 /**
- * Check if a store can send an SMS based on plan limits
- * Returns detailed info for UI display (current usage, limit, plan)
+ * Get the prepaid SMS credit balance for a store
+ */
+export async function getSmsPrepaidBalance(storeId: string): Promise<number> {
+  const credits = await db.query.smsCredits.findFirst({
+    where: eq(smsCredits.storeId, storeId),
+  })
+  return credits?.balance ?? 0
+}
+
+/**
+ * Get full SMS credits info for a store
+ */
+export async function getSmsCreditsInfo(storeId: string): Promise<{
+  balance: number
+  totalPurchased: number
+  totalUsed: number
+}> {
+  const credits = await db.query.smsCredits.findFirst({
+    where: eq(smsCredits.storeId, storeId),
+  })
+  return {
+    balance: credits?.balance ?? 0,
+    totalPurchased: credits?.totalPurchased ?? 0,
+    totalUsed: credits?.totalUsed ?? 0,
+  }
+}
+
+/**
+ * Extended SMS status including prepaid credits
+ */
+export interface SmsQuotaStatus {
+  allowed: boolean
+  current: number // SMS sent this month
+  planLimit: number | null // Monthly limit from plan
+  prepaidBalance: number // Available prepaid credits
+  totalAvailable: number // planLimit + prepaidBalance
+  planSlug: string
+  canTopup: boolean // Whether the plan allows top-ups
+  topupPriceCents: number | null // Price per SMS for top-up (in cents)
+}
+
+/**
+ * Check if a store can send an SMS based on plan limits + prepaid credits
+ * Returns detailed info for UI display
  */
 export async function canSendSms(storeId: string): Promise<{
   allowed: boolean
@@ -269,29 +319,106 @@ export async function canSendSms(storeId: string): Promise<{
   limit: number | null
   planSlug: string
 }> {
+  const status = await getSmsQuotaStatus(storeId)
+
+  return {
+    allowed: status.allowed,
+    current: status.current,
+    limit: status.planLimit,
+    planSlug: status.planSlug,
+  }
+}
+
+/**
+ * Get full SMS quota status including prepaid credits
+ * This is the main function to use for the SMS page UI
+ */
+export async function getSmsQuotaStatus(storeId: string): Promise<SmsQuotaStatus> {
+  const [plan, smsCount, prepaidBalance] = await Promise.all([
+    getStorePlan(storeId),
+    getSmsUsageThisMonth(storeId),
+    getSmsPrepaidBalance(storeId),
+  ])
+
+  const planLimit = plan.features.maxSmsPerMonth
+  const topupPriceCents = SMS_TOPUP_PRICING[plan.slug] ?? null
+  const canTopup = topupPriceCents !== null
+
+  // Calculate total available SMS (plan limit + prepaid)
+  // If plan limit is null (unlimited), we don't need prepaid
+  if (planLimit === null) {
+    return {
+      allowed: true,
+      current: smsCount,
+      planLimit: null,
+      prepaidBalance,
+      totalAvailable: Infinity,
+      planSlug: plan.slug,
+      canTopup,
+      topupPriceCents,
+    }
+  }
+
+  // Total available = plan monthly limit + prepaid balance
+  const totalAvailable = planLimit + prepaidBalance
+  const allowed = smsCount < totalAvailable
+
+  return {
+    allowed,
+    current: smsCount,
+    planLimit,
+    prepaidBalance,
+    totalAvailable,
+    planSlug: plan.slug,
+    canTopup,
+    topupPriceCents,
+  }
+}
+
+/**
+ * Determine where to deduct SMS credit from (plan or prepaid)
+ * Returns 'plan' if within monthly limit, 'topup' if using prepaid
+ */
+export async function determineSmsSource(storeId: string): Promise<'plan' | 'topup'> {
   const [plan, smsCount] = await Promise.all([
     getStorePlan(storeId),
     getSmsUsageThisMonth(storeId),
   ])
 
-  const limit = plan.features.maxSmsPerMonth
+  const planLimit = plan.features.maxSmsPerMonth
 
-  // null means unlimited
-  if (limit === null) {
-    return {
-      allowed: true,
-      current: smsCount,
-      limit: null,
-      planSlug: plan.slug,
-    }
+  // If unlimited plan or still within plan limit, use plan
+  if (planLimit === null || smsCount < planLimit) {
+    return 'plan'
   }
 
-  return {
-    allowed: smsCount < limit,
-    current: smsCount,
-    limit,
-    planSlug: plan.slug,
+  // Otherwise, use prepaid credits
+  return 'topup'
+}
+
+/**
+ * Deduct one SMS credit from prepaid balance
+ * Call this after successfully sending an SMS that used prepaid credits
+ */
+export async function deductPrepaidSmsCredit(storeId: string): Promise<boolean> {
+  const credits = await db.query.smsCredits.findFirst({
+    where: eq(smsCredits.storeId, storeId),
+  })
+
+  if (!credits || credits.balance <= 0) {
+    return false
   }
+
+  await db
+    .update(smsCredits)
+    .set({
+      balance: sql`${smsCredits.balance} - 1`,
+      totalUsed: sql`${smsCredits.totalUsed} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(smsCredits.storeId, storeId))
+
+  return true
 }
 
 // ============================================================================

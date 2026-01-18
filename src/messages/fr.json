@@ -272,7 +272,15 @@
         "resetsMonthly": "Réinitialisation mensuelle",
         "limitReached": "Limite atteinte",
         "upgradeMessage": "Vous avez atteint votre limite de SMS mensuelle. Passez à un plan supérieur pour continuer à envoyer des SMS.",
-        "upgradePlan": "Changer de plan"
+        "upgradePlan": "Changer de plan",
+        "topup": "Recharger",
+        "topupNow": "Recharger maintenant",
+        "topupMessage": "Vous avez atteint votre limite mensuelle. Rechargez pour continuer à envoyer des SMS.",
+        "nearLimit": "Plus que {count} SMS disponibles",
+        "planIncluded": "Inclus dans le plan",
+        "prepaidCredits": "Crédits prépayés",
+        "available": "disponibles",
+        "totalAvailable": "Total disponible"
       },
       "history": {
         "title": "Historique des SMS",
@@ -303,6 +311,60 @@
       "status": {
         "sent": "Envoyé",
         "failed": "Échec"
+      },
+      "topup": {
+        "title": "Recharger vos crédits SMS",
+        "description": "Les crédits n'expirent jamais et s'ajoutent à votre quota mensuel",
+        "yourPrice": "Votre tarif",
+        "perSms": "par SMS",
+        "selectPackage": "Sélectionnez un pack",
+        "smsCredits": "{count} crédits SMS",
+        "popular": "Populaire",
+        "bestValue": "Meilleur rapport qualité/prix",
+        "info": "Les crédits sont ajoutés immédiatement après le paiement",
+        "cancel": "Annuler",
+        "pay": "Procéder au paiement",
+        "processing": "Traitement en cours...",
+        "success": "Recharge effectuée avec succès ! Vos crédits ont été ajoutés.",
+        "cancelled": "Le paiement a été annulé. Vos crédits n'ont pas été débités.",
+        "notAvailable": "La recharge SMS n'est pas disponible pour le plan Start. Passez à Pro ou Ultra pour recharger.",
+        "errors": {
+          "generic": "Une erreur est survenue lors de la recharge",
+          "notEligible": "Votre plan ne permet pas la recharge SMS"
+        },
+        "stripeProductName": "Recharge SMS - {quantity} crédits",
+        "stripeProductDescription": "Pack de {quantity} SMS à {price}€/SMS (Plan {plan})",
+        "upsell": {
+          "didYouKnow": "Le saviez-vous ?",
+          "ultraBenefit": "Avec Ultra, payez seulement {price} par SMS et profitez de {count} SMS inclus chaque mois.",
+          "upgradeToUltra": "Passer à Ultra",
+          "startTitle": "Débloquez les SMS",
+          "startDescription": "Envoyez des notifications automatiques à vos clients",
+          "upgradeToPro": "Découvrir les plans",
+          "compareTitle": "Choisissez votre plan",
+          "smsIncluded": "{count} SMS/mois inclus",
+          "topupPrice": "Recharge à {price}/SMS",
+          "currentPlan": "Plan actuel",
+          "recommended": "Recommandé",
+          "month": "/mois"
+        }
+      },
+      "topupHistory": {
+        "title": "Historique des recharges",
+        "description": "Vos achats de crédits SMS",
+        "date": "Date",
+        "quantity": "Quantité",
+        "unitPrice": "Prix unitaire",
+        "total": "Total",
+        "statusColumn": "Statut",
+        "status": {
+          "completed": "Complété",
+          "pending": "En attente",
+          "failed": "Échec",
+          "refunded": "Remboursé"
+        },
+        "totalPurchased": "Total acheté",
+        "totalSpent": "Total dépensé"
       }
     },
     "navigation": {
@@ -1317,7 +1379,13 @@
       "period": {
         "7d": "7 jours",
         "30d": "30 jours",
-        "90d": "90 jours"
+        "90d": "90 jours",
+        "6m": "6 mois",
+        "12m": "12 mois"
+      },
+      "tabs": {
+        "traffic": "Trafic",
+        "sales": "Ventes"
       },
       "refresh": "Actualiser",
       "trafficTrend": "Tendance du trafic",

@@ -9,7 +9,11 @@ import { db } from '@/lib/db'
 import { smsLogs } from '@/lib/db/schema'
 import { sendSms, isSmsConfigured } from './client'
 import { validateAndNormalizePhone } from './phone'
-import { canSendSms } from '@/lib/plan-limits'
+import {
+  getSmsQuotaStatus,
+  determineSmsSource,
+  deductPrepaidSmsCredit,
+} from '@/lib/plan-limits'
 import { getEmailMessages, type EmailLocale } from '@/lib/email/i18n'
 
 /**
@@ -38,7 +42,7 @@ interface Customer {
 }
 
 /**
- * Log SMS in database
+ * Log SMS in database with credit source tracking
  */
 async function logSms({
   storeId,
@@ -50,6 +54,7 @@ async function logSms({
   status,
   messageId,
   error,
+  creditSource = 'plan',
 }: {
   storeId: string
   reservationId?: string
@@ -60,6 +65,7 @@ async function logSms({
   status: 'sent' | 'failed'
   messageId?: string
   error?: string
+  creditSource?: 'plan' | 'topup'
 }) {
   try {
     await db.insert(smsLogs).values({
@@ -72,9 +78,51 @@ async function logSms({
       status,
       messageId: messageId || null,
       error: error || null,
+      creditSource,
     })
   } catch (e) {
     console.error('Failed to log SMS:', e)
+  }
+}
+
+/**
+ * Check SMS quota and determine credit source
+ * Returns error result if quota exceeded
+ */
+async function checkSmsQuotaAndSource(storeId: string): Promise<{
+  allowed: boolean
+  creditSource: 'plan' | 'topup'
+  error?: SmsSendResult
+}> {
+  const quota = await getSmsQuotaStatus(storeId)
+
+  if (!quota.allowed) {
+    return {
+      allowed: false,
+      creditSource: 'plan',
+      error: {
+        success: false,
+        error: 'SMS limit reached',
+        limitReached: true,
+        limitInfo: {
+          current: quota.current,
+          limit: quota.planLimit ?? 0,
+          planSlug: quota.planSlug,
+        },
+      },
+    }
+  }
+
+  const creditSource = await determineSmsSource(storeId)
+  return { allowed: true, creditSource }
+}
+
+/**
+ * Handle post-send operations (deduct prepaid credit if needed)
+ */
+async function handlePostSend(storeId: string, creditSource: 'plan' | 'topup', success: boolean) {
+  if (success && creditSource === 'topup') {
+    await deductPrepaidSmsCredit(storeId)
   }
 }
 
@@ -113,20 +161,12 @@ export async function sendAccessLinkSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -159,7 +199,11 @@ export async function sendAccessLinkSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -178,6 +222,7 @@ export async function sendAccessLinkSms({
       templateType: 'instant_access',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }
@@ -209,20 +254,12 @@ export async function sendReservationConfirmationSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -264,7 +301,11 @@ export async function sendReservationConfirmationSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -283,6 +324,7 @@ export async function sendReservationConfirmationSms({
       templateType: 'reservation_confirmation',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }
@@ -313,20 +355,12 @@ export async function sendReminderPickupSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -364,7 +398,11 @@ export async function sendReminderPickupSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -383,6 +421,7 @@ export async function sendReminderPickupSms({
       templateType: 'reminder_pickup',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }
@@ -413,20 +452,12 @@ export async function sendReminderReturnSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -464,7 +495,11 @@ export async function sendReminderReturnSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -483,6 +518,7 @@ export async function sendReminderReturnSms({
       templateType: 'reminder_return',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }
@@ -514,20 +550,12 @@ export async function sendCustomSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -555,7 +583,11 @@ export async function sendCustomSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -574,6 +606,7 @@ export async function sendCustomSms({
       templateType: 'custom',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }
@@ -607,20 +640,12 @@ export async function sendThankYouReviewSms({
     return { success: false, error: 'SMS not configured' }
   }
 
-  // Check SMS limit for the store's plan
-  const smsLimit = await canSendSms(store.id)
-  if (!smsLimit.allowed) {
-    return {
-      success: false,
-      error: 'SMS limit reached',
-      limitReached: true,
-      limitInfo: {
-        current: smsLimit.current,
-        limit: smsLimit.limit!,
-        planSlug: smsLimit.planSlug,
-      },
-    }
+  // Check SMS quota (includes plan limit + prepaid credits)
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
   }
+  const { creditSource } = quotaCheck
 
   // Validate and normalize phone number
   const phoneValidation = validateAndNormalizePhone(customer.phone)
@@ -658,7 +683,11 @@ export async function sendThankYouReviewSms({
       status: result.success ? 'sent' : 'failed',
       messageId: result.messageId,
       error: result.error,
+      creditSource,
     })
+
+    // Deduct prepaid credit if needed
+    await handlePostSend(store.id, creditSource, result.success)
 
     if (!result.success) {
       return { success: false, error: result.error }
@@ -677,6 +706,7 @@ export async function sendThankYouReviewSms({
       templateType: 'thank_you_review',
       status: 'failed',
       error: errorMessage,
+      creditSource,
     })
 
     return { success: false, error: errorMessage }

@@ -272,7 +272,15 @@
         "resetsMonthly": "Resets monthly",
         "limitReached": "Limit reached",
         "upgradeMessage": "You have reached your monthly SMS limit. Upgrade to a higher plan to continue sending SMS.",
-        "upgradePlan": "Change plan"
+        "upgradePlan": "Change plan",
+        "topup": "Top up",
+        "topupNow": "Top up now",
+        "topupMessage": "You've reached your monthly limit. Top up to continue sending SMS.",
+        "nearLimit": "Only {count} SMS remaining",
+        "planIncluded": "Included in plan",
+        "prepaidCredits": "Prepaid credits",
+        "available": "available",
+        "totalAvailable": "Total available"
       },
       "history": {
         "title": "SMS History",
@@ -303,6 +311,60 @@
       "status": {
         "sent": "Sent",
         "failed": "Failed"
+      },
+      "topup": {
+        "title": "Top up your SMS credits",
+        "description": "Credits never expire and add to your monthly quota",
+        "yourPrice": "Your price",
+        "perSms": "per SMS",
+        "selectPackage": "Select a package",
+        "smsCredits": "{count} SMS credits",
+        "popular": "Popular",
+        "bestValue": "Best value",
+        "info": "Credits are added immediately after payment",
+        "cancel": "Cancel",
+        "pay": "Proceed to payment",
+        "processing": "Processing...",
+        "success": "Top up successful! Your credits have been added.",
+        "cancelled": "Payment was cancelled. Your credits were not charged.",
+        "notAvailable": "SMS top-up is not available for the Start plan. Upgrade to Pro or Ultra to top up.",
+        "errors": {
+          "generic": "An error occurred during top-up",
+          "notEligible": "Your plan does not allow SMS top-up"
+        },
+        "stripeProductName": "SMS Top-up - {quantity} credits",
+        "stripeProductDescription": "Pack of {quantity} SMS at {price}€/SMS ({plan} Plan)",
+        "upsell": {
+          "didYouKnow": "Did you know?",
+          "ultraBenefit": "With Ultra, pay only {price} per SMS and get {count} SMS included every month.",
+          "upgradeToUltra": "Upgrade to Ultra",
+          "startTitle": "Unlock SMS",
+          "startDescription": "Send automatic notifications to your customers",
+          "upgradeToPro": "View plans",
+          "compareTitle": "Choose your plan",
+          "smsIncluded": "{count} SMS/month included",
+          "topupPrice": "Top-up at {price}/SMS",
+          "currentPlan": "Current plan",
+          "recommended": "Recommended",
+          "month": "/month"
+        }
+      },
+      "topupHistory": {
+        "title": "Top-up history",
+        "description": "Your SMS credit purchases",
+        "date": "Date",
+        "quantity": "Quantity",
+        "unitPrice": "Unit price",
+        "total": "Total",
+        "statusColumn": "Status",
+        "status": {
+          "completed": "Completed",
+          "pending": "Pending",
+          "failed": "Failed",
+          "refunded": "Refunded"
+        },
+        "totalPurchased": "Total purchased",
+        "totalSpent": "Total spent"
       }
     },
     "navigation": {
@@ -1317,7 +1379,13 @@
       "period": {
         "7d": "7 days",
         "30d": "30 days",
-        "90d": "90 days"
+        "90d": "90 days",
+        "6m": "6 months",
+        "12m": "12 months"
+      },
+      "tabs": {
+        "traffic": "Traffic",
+        "sales": "Sales"
       },
       "refresh": "Refresh",
       "trafficTrend": "Traffic trend",
