@@ -313,6 +313,7 @@
       "calendar": "Calendar",
       "categories": "Categories",
       "statistics": "Statistics",
+      "analytics": "Analytics",
       "team": "Team",
       "sms": "SMS",
       "subscription": "Subscription",
@@ -1303,6 +1304,41 @@
       "noData": "Not enough data",
       "noRentalData": "No rental data yet",
       "noRevenueData": "No revenue data yet"
+    },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Track your store's traffic and conversions",
+      "visitors": "Visitors",
+      "productViews": "Product views",
+      "conversions": "Orders",
+      "conversionRate": "Conversion rate",
+      "revenue": "Revenue",
+      "vsPreviousPeriod": "vs previous period",
+      "period": {
+        "7d": "7 days",
+        "30d": "30 days",
+        "90d": "90 days"
+      },
+      "refresh": "Refresh",
+      "trafficTrend": "Traffic trend",
+      "trafficTrendDescription": "Visitors and orders over time",
+      "conversionFunnel": "Conversion funnel",
+      "conversionFunnelDescription": "From visit to order",
+      "topProducts": "Popular products",
+      "topProductsDescription": "Most viewed products",
+      "devices": "Devices",
+      "devicesDescription": "Breakdown by device type",
+      "mobile": "Mobile",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "noData": "No data yet",
+      "noProducts": "No products viewed",
+      "funnel": {
+        "visitors": "Visitors",
+        "productViews": "Product views",
+        "cartAdditions": "Cart additions",
+        "orders": "Orders"
+      }
     },
     "settings": {
       "title": "Settings",

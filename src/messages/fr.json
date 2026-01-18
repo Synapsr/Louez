@@ -313,6 +313,7 @@
       "calendar": "Calendrier",
       "categories": "Catégories",
       "statistics": "Statistiques",
+      "analytics": "Analyses",
       "team": "Équipe",
       "sms": "SMS",
       "subscription": "Abonnement",
@@ -1303,6 +1304,41 @@
       "noData": "Pas assez de données",
       "noRentalData": "Pas encore de données de location",
       "noRevenueData": "Pas encore de données de revenus"
+    },
+    "analytics": {
+      "title": "Analyses",
+      "description": "Suivez le trafic et les conversions de votre boutique",
+      "visitors": "Visiteurs",
+      "productViews": "Vues produits",
+      "conversions": "Commandes",
+      "conversionRate": "Taux de conversion",
+      "revenue": "Chiffre d'affaires",
+      "vsPreviousPeriod": "vs période précédente",
+      "period": {
+        "7d": "7 jours",
+        "30d": "30 jours",
+        "90d": "90 jours"
+      },
+      "refresh": "Actualiser",
+      "trafficTrend": "Tendance du trafic",
+      "trafficTrendDescription": "Évolution des visiteurs et des commandes",
+      "conversionFunnel": "Entonnoir de conversion",
+      "conversionFunnelDescription": "De la visite à la commande",
+      "topProducts": "Produits populaires",
+      "topProductsDescription": "Les produits les plus consultés",
+      "devices": "Appareils",
+      "devicesDescription": "Répartition par type d'appareil",
+      "mobile": "Mobile",
+      "tablet": "Tablette",
+      "desktop": "Ordinateur",
+      "noData": "Pas encore de données",
+      "noProducts": "Aucun produit consulté",
+      "funnel": {
+        "visitors": "Visiteurs",
+        "productViews": "Vues produits",
+        "cartAdditions": "Ajouts panier",
+        "orders": "Commandes"
+      }
     },
     "settings": {
       "title": "Paramètres",

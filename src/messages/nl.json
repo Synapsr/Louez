@@ -1304,6 +1304,41 @@
       "noRentalData": "Nog geen verhuurgegevens",
       "noRevenueData": "Nog geen omzetgegevens"
     },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Volg het verkeer en conversies van je winkel",
+      "visitors": "Bezoekers",
+      "productViews": "Productweergaven",
+      "conversions": "Bestellingen",
+      "conversionRate": "Conversieratio",
+      "revenue": "Omzet",
+      "vsPreviousPeriod": "vs vorige periode",
+      "period": {
+        "7d": "7 dagen",
+        "30d": "30 dagen",
+        "90d": "90 dagen"
+      },
+      "refresh": "Vernieuwen",
+      "trafficTrend": "Verkeerstrend",
+      "trafficTrendDescription": "Bezoekers en bestellingen in de loop van de tijd",
+      "conversionFunnel": "Conversietrechter",
+      "conversionFunnelDescription": "Van bezoek tot bestelling",
+      "topProducts": "Populaire producten",
+      "topProductsDescription": "Meest bekeken producten",
+      "devices": "Apparaten",
+      "devicesDescription": "Uitsplitsing per apparaattype",
+      "mobile": "Mobiel",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "noData": "Nog geen gegevens",
+      "noProducts": "Geen producten bekeken",
+      "funnel": {
+        "visitors": "Bezoekers",
+        "productViews": "Productweergaven",
+        "cartAdditions": "Toegevoegd aan winkelwagen",
+        "orders": "Bestellingen"
+      }
+    },
     "settings": {
       "title": "Instellingen",
       "store": "Winkel",

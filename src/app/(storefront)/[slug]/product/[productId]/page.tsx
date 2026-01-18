@@ -24,6 +24,7 @@ import {
   getCanonicalUrl,
   JsonLd,
 } from '@/lib/seo'
+import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface ProductPageProps {
   params: Promise<{ slug: string; productId: string }>
@@ -202,6 +203,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <>
+      <PageTracker page="product" productId={productId} />
       {/* JSON-LD Structured Data */}
       <JsonLd
         data={[

@@ -19,6 +19,7 @@ import {
   JsonLd,
 } from '@/lib/seo'
 import type { StoreSettings, StoreTheme } from '@/types/store'
+import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface CatalogPageProps {
   params: Promise<{ slug: string }>
@@ -269,6 +270,7 @@ export default async function CatalogPage({
 
   return (
     <>
+      <PageTracker page="catalog" categoryId={categoryId} />
       {/* JSON-LD Structured Data */}
       <JsonLd
         data={[

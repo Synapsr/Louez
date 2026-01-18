@@ -1305,6 +1305,41 @@
       "noRentalData": "Ancora nessun dato di noleggio",
       "noRevenueData": "Ancora nessun dato di fatturato"
     },
+    "analytics": {
+      "title": "Analytics",
+      "description": "Monitora il traffico e le conversioni del tuo negozio",
+      "visitors": "Visitatori",
+      "productViews": "Visualizzazioni prodotti",
+      "conversions": "Ordini",
+      "conversionRate": "Tasso di conversione",
+      "revenue": "Fatturato",
+      "vsPreviousPeriod": "vs periodo precedente",
+      "period": {
+        "7d": "7 giorni",
+        "30d": "30 giorni",
+        "90d": "90 giorni"
+      },
+      "refresh": "Aggiorna",
+      "trafficTrend": "Trend del traffico",
+      "trafficTrendDescription": "Visitatori e ordini nel tempo",
+      "conversionFunnel": "Funnel di conversione",
+      "conversionFunnelDescription": "Dalla visita all'ordine",
+      "topProducts": "Prodotti popolari",
+      "topProductsDescription": "Prodotti più visualizzati",
+      "devices": "Dispositivi",
+      "devicesDescription": "Suddivisione per tipo di dispositivo",
+      "mobile": "Mobile",
+      "tablet": "Tablet",
+      "desktop": "Desktop",
+      "noData": "Ancora nessun dato",
+      "noProducts": "Nessun prodotto visualizzato",
+      "funnel": {
+        "visitors": "Visitatori",
+        "productViews": "Visualizzazioni prodotti",
+        "cartAdditions": "Aggiunte al carrello",
+        "orders": "Ordini"
+      }
+    },
     "settings": {
       "title": "Impostazioni",
       "store": "Negozio",
