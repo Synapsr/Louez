@@ -253,3 +253,71 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   payment_received: { email: true, sms: false, discord: false },
   payment_failed: { email: true, sms: false, discord: false },
 }
+
+// ============================================================================
+// Customer Notification Settings (Notifications sent to customers)
+// ============================================================================
+
+export type CustomerNotificationEventType =
+  | 'customer_request_received'
+  | 'customer_request_accepted'
+  | 'customer_request_rejected'
+  | 'customer_reservation_confirmed'
+  | 'customer_reminder_pickup'
+  | 'customer_reminder_return'
+
+export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] = [
+  'customer_request_received',
+  'customer_request_accepted',
+  'customer_request_rejected',
+  'customer_reservation_confirmed',
+  'customer_reminder_pickup',
+  'customer_reminder_return',
+]
+
+export interface CustomerNotificationChannelConfig {
+  enabled: boolean
+  email: boolean
+  sms: boolean
+}
+
+export interface CustomerNotificationTemplate {
+  subject?: string
+  emailMessage?: string
+  smsMessage?: string
+}
+
+export interface CustomerNotificationSettings {
+  // Preferences per event type
+  customer_request_received: CustomerNotificationChannelConfig
+  customer_request_accepted: CustomerNotificationChannelConfig
+  customer_request_rejected: CustomerNotificationChannelConfig
+  customer_reservation_confirmed: CustomerNotificationChannelConfig
+  customer_reminder_pickup: CustomerNotificationChannelConfig
+  customer_reminder_return: CustomerNotificationChannelConfig
+
+  // Custom templates
+  templates: {
+    customer_request_received?: CustomerNotificationTemplate
+    customer_request_accepted?: CustomerNotificationTemplate
+    customer_request_rejected?: CustomerNotificationTemplate
+    customer_reservation_confirmed?: CustomerNotificationTemplate
+    customer_reminder_pickup?: CustomerNotificationTemplate
+    customer_reminder_return?: CustomerNotificationTemplate
+  }
+}
+
+export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSettings = {
+  // Reservation journey - email enabled by default
+  customer_request_received: { enabled: true, email: true, sms: false },
+  customer_request_accepted: { enabled: true, email: true, sms: false },
+  customer_request_rejected: { enabled: true, email: true, sms: false },
+  customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+
+  // Reminders - email enabled by default (SMS disabled due to cost)
+  customer_reminder_pickup: { enabled: true, email: true, sms: false },
+  customer_reminder_return: { enabled: true, email: true, sms: false },
+
+  // No custom templates by default
+  templates: {},
+}

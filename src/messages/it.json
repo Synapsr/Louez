@@ -1847,7 +1847,59 @@
           "limitReachedMessage": "Hai raggiunto il limite mensile di SMS.",
           "lowCredits": "Ti rimangono {current} SMS su {limit} questo mese.",
           "buyMore": "Acquista altri SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Notifiche amministratore",
+          "description": "Ricevi avvisi quando si verificano eventi"
+        },
+        "customerSection": {
+          "title": "Notifiche cliente",
+          "description": "Email e SMS inviati automaticamente ai clienti"
+        },
+        "customerEvents": {
+          "reservationTitle": "Percorso di prenotazione",
+          "reminderTitle": "Promemoria automatici",
+          "customer_request_received": {
+            "label": "Richiesta ricevuta",
+            "description": "Conferma della richiesta"
+          },
+          "customer_request_accepted": {
+            "label": "Richiesta accettata",
+            "description": "Quando accetti una richiesta"
+          },
+          "customer_request_rejected": {
+            "label": "Richiesta rifiutata",
+            "description": "Quando rifiuti una richiesta"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Prenotazione confermata",
+            "description": "Dopo il pagamento riuscito"
+          },
+          "customer_reminder_pickup": {
+            "label": "Promemoria ritiro",
+            "description": "Inviato il giorno prima"
+          },
+          "customer_reminder_return": {
+            "label": "Promemoria restituzione",
+            "description": "Inviato il giorno prima"
+          }
+        },
+        "customerTemplates": {
+          "title": "Personalizza modello",
+          "emailSection": "Email",
+          "smsSection": "SMS",
+          "subject": "Oggetto dell'email",
+          "subjectHint": "Lascia vuoto per l'oggetto predefinito",
+          "additionalMessage": "Messaggio personalizzato",
+          "additionalMessagePlaceholder": "Aggiungi un messaggio che apparira nell'email",
+          "additionalMessageHint": "Questo messaggio sara aggiunto al contenuto predefinito",
+          "smsMessage": "Messaggio SMS",
+          "smsVariables": "Variabili: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Ripristina",
+          "cancel": "Annulla",
+          "save": "Salva"
+        },
+        "templateSaved": "Modello salvato"
       },
       "businessHours": {
         "title": "Orari di apertura",

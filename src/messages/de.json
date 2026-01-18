@@ -1848,7 +1848,59 @@
           "limitReachedMessage": "Sie haben Ihr monatliches SMS-Limit erreicht.",
           "lowCredits": "Sie haben noch {current} von {limit} SMS diesen Monat.",
           "buyMore": "Mehr SMS kaufen"
-        }
+        },
+        "adminSection": {
+          "title": "Admin-Benachrichtigungen",
+          "description": "Erhalten Sie Benachrichtigungen bei Ereignissen"
+        },
+        "customerSection": {
+          "title": "Kundenbenachrichtigungen",
+          "description": "E-Mails und SMS automatisch an Ihre Kunden gesendet"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reservierungsverlauf",
+          "reminderTitle": "Automatische Erinnerungen",
+          "customer_request_received": {
+            "label": "Anfrage erhalten",
+            "description": "Bestatigung der Anfrage"
+          },
+          "customer_request_accepted": {
+            "label": "Anfrage akzeptiert",
+            "description": "Wenn Sie eine Anfrage annehmen"
+          },
+          "customer_request_rejected": {
+            "label": "Anfrage abgelehnt",
+            "description": "Wenn Sie eine Anfrage ablehnen"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservierung bestatigt",
+            "description": "Nach erfolgreicher Zahlung"
+          },
+          "customer_reminder_pickup": {
+            "label": "Abholungserinnerung",
+            "description": "Am Tag vor der Abholung"
+          },
+          "customer_reminder_return": {
+            "label": "Ruckgabeerinnerung",
+            "description": "Am Tag vor der Ruckgabe"
+          }
+        },
+        "customerTemplates": {
+          "title": "Vorlage anpassen",
+          "emailSection": "E-Mail",
+          "smsSection": "SMS",
+          "subject": "E-Mail-Betreff",
+          "subjectHint": "Leer lassen fur Standardbetreff",
+          "additionalMessage": "Benutzerdefinierte Nachricht",
+          "additionalMessagePlaceholder": "Fugen Sie eine Nachricht hinzu",
+          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefugt",
+          "smsMessage": "SMS-Nachricht",
+          "smsVariables": "Variablen: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Zurucksetzen",
+          "cancel": "Abbrechen",
+          "save": "Speichern"
+        },
+        "templateSaved": "Vorlage gespeichert"
       },
       "businessHours": {
         "title": "Öffnungszeiten",

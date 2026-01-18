@@ -1848,7 +1848,59 @@
           "limitReachedMessage": "Voce atingiu seu limite mensal de SMS.",
           "lowCredits": "Voce tem {current} de {limit} SMS restantes este mes.",
           "buyMore": "Comprar mais SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Notificacoes do administrador",
+          "description": "Receba alertas quando ocorrerem eventos"
+        },
+        "customerSection": {
+          "title": "Notificacoes ao cliente",
+          "description": "E-mails e SMS enviados automaticamente aos seus clientes"
+        },
+        "customerEvents": {
+          "reservationTitle": "Processo de reserva",
+          "reminderTitle": "Lembretes automaticos",
+          "customer_request_received": {
+            "label": "Pedido recebido",
+            "description": "Confirmacao do pedido"
+          },
+          "customer_request_accepted": {
+            "label": "Pedido aceito",
+            "description": "Quando voce aceita um pedido"
+          },
+          "customer_request_rejected": {
+            "label": "Pedido recusado",
+            "description": "Quando voce recusa um pedido"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reserva confirmada",
+            "description": "Apos pagamento bem-sucedido"
+          },
+          "customer_reminder_pickup": {
+            "label": "Lembrete de retirada",
+            "description": "Enviado no dia anterior"
+          },
+          "customer_reminder_return": {
+            "label": "Lembrete de devolucao",
+            "description": "Enviado no dia anterior"
+          }
+        },
+        "customerTemplates": {
+          "title": "Personalizar modelo",
+          "emailSection": "E-mail",
+          "smsSection": "SMS",
+          "subject": "Assunto do e-mail",
+          "subjectHint": "Deixe vazio para o assunto padrao",
+          "additionalMessage": "Mensagem personalizada",
+          "additionalMessagePlaceholder": "Adicione uma mensagem que aparecera no e-mail",
+          "additionalMessageHint": "Esta mensagem sera adicionada ao conteudo padrao",
+          "smsMessage": "Mensagem SMS",
+          "smsVariables": "Variaveis: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Redefinir",
+          "cancel": "Cancelar",
+          "save": "Salvar"
+        },
+        "templateSaved": "Modelo salvo"
       },
       "businessHours": {
         "title": "Horario comercial",

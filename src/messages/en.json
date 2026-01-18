@@ -1847,7 +1847,59 @@
           "limitReachedMessage": "You have reached your monthly SMS limit.",
           "lowCredits": "You have {current} out of {limit} SMS remaining this month.",
           "buyMore": "Buy more SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Admin notifications",
+          "description": "Get alerts when events occur in your store"
+        },
+        "customerSection": {
+          "title": "Customer notifications",
+          "description": "Emails and SMS automatically sent to your customers"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reservation journey",
+          "reminderTitle": "Automatic reminders",
+          "customer_request_received": {
+            "label": "Request received",
+            "description": "Acknowledgment of the request"
+          },
+          "customer_request_accepted": {
+            "label": "Request accepted",
+            "description": "When you accept a request"
+          },
+          "customer_request_rejected": {
+            "label": "Request rejected",
+            "description": "When you decline a request"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservation confirmed",
+            "description": "After successful payment"
+          },
+          "customer_reminder_pickup": {
+            "label": "Pickup reminder",
+            "description": "Sent the day before pickup"
+          },
+          "customer_reminder_return": {
+            "label": "Return reminder",
+            "description": "Sent the day before return"
+          }
+        },
+        "customerTemplates": {
+          "title": "Customize template",
+          "emailSection": "Email",
+          "smsSection": "SMS",
+          "subject": "Email subject",
+          "subjectHint": "Leave empty to use the default subject",
+          "additionalMessage": "Custom message",
+          "additionalMessagePlaceholder": "Add a message that will appear in the email",
+          "additionalMessageHint": "This message will be added to the default content",
+          "smsMessage": "SMS message",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Reset",
+          "cancel": "Cancel",
+          "save": "Save"
+        },
+        "templateSaved": "Template saved"
       },
       "businessHours": {
         "title": "Business hours",

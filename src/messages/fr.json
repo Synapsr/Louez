@@ -1847,7 +1847,59 @@
           "limitReachedMessage": "Vous avez atteint votre limite de SMS mensuelle.",
           "lowCredits": "Il vous reste {current} SMS sur {limit} ce mois-ci.",
           "buyMore": "Acheter des SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Notifications administrateur",
+          "description": "Recevez des alertes quand des événements se produisent"
+        },
+        "customerSection": {
+          "title": "Notifications client",
+          "description": "Emails et SMS envoyés automatiquement à vos clients"
+        },
+        "customerEvents": {
+          "reservationTitle": "Parcours de réservation",
+          "reminderTitle": "Rappels automatiques",
+          "customer_request_received": {
+            "label": "Demande reçue",
+            "description": "Accusé de réception de la demande"
+          },
+          "customer_request_accepted": {
+            "label": "Demande acceptée",
+            "description": "Quand vous acceptez une demande"
+          },
+          "customer_request_rejected": {
+            "label": "Demande refusée",
+            "description": "Quand vous refusez une demande"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Réservation confirmée",
+            "description": "Après paiement réussi"
+          },
+          "customer_reminder_pickup": {
+            "label": "Rappel retrait",
+            "description": "Envoyé la veille du retrait"
+          },
+          "customer_reminder_return": {
+            "label": "Rappel retour",
+            "description": "Envoyé la veille du retour"
+          }
+        },
+        "customerTemplates": {
+          "title": "Personnaliser le modèle",
+          "emailSection": "Email",
+          "smsSection": "SMS",
+          "subject": "Objet de l'email",
+          "subjectHint": "Laissez vide pour utiliser l'objet par défaut",
+          "additionalMessage": "Message personnalisé",
+          "additionalMessagePlaceholder": "Ajoutez un message qui apparaîtra dans l'email",
+          "additionalMessageHint": "Ce message sera ajouté au contenu par défaut",
+          "smsMessage": "Message SMS",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Réinitialiser",
+          "cancel": "Annuler",
+          "save": "Enregistrer"
+        },
+        "templateSaved": "Modèle enregistré"
       },
       "businessHours": {
         "title": "Horaires d'ouverture",

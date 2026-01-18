@@ -1846,7 +1846,59 @@
           "limitReachedMessage": "U heeft uw maandelijkse SMS-limiet bereikt.",
           "lowCredits": "U heeft nog {current} van {limit} SMS over deze maand.",
           "buyMore": "Meer SMS kopen"
-        }
+        },
+        "adminSection": {
+          "title": "Beheerdersmeldingen",
+          "description": "Ontvang meldingen wanneer er gebeurtenissen plaatsvinden"
+        },
+        "customerSection": {
+          "title": "Klantmeldingen",
+          "description": "E-mails en SMS automatisch verzonden naar uw klanten"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reserveringsproces",
+          "reminderTitle": "Automatische herinneringen",
+          "customer_request_received": {
+            "label": "Aanvraag ontvangen",
+            "description": "Bevestiging van de aanvraag"
+          },
+          "customer_request_accepted": {
+            "label": "Aanvraag geaccepteerd",
+            "description": "Wanneer u een aanvraag accepteert"
+          },
+          "customer_request_rejected": {
+            "label": "Aanvraag geweigerd",
+            "description": "Wanneer u een aanvraag weigert"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservering bevestigd",
+            "description": "Na succesvolle betaling"
+          },
+          "customer_reminder_pickup": {
+            "label": "Ophaalherinnering",
+            "description": "Verzonden de dag ervoor"
+          },
+          "customer_reminder_return": {
+            "label": "Terugbrengherinnering",
+            "description": "Verzonden de dag ervoor"
+          }
+        },
+        "customerTemplates": {
+          "title": "Sjabloon aanpassen",
+          "emailSection": "E-mail",
+          "smsSection": "SMS",
+          "subject": "E-mail onderwerp",
+          "subjectHint": "Laat leeg voor standaard onderwerp",
+          "additionalMessage": "Aangepast bericht",
+          "additionalMessagePlaceholder": "Voeg een bericht toe dat in de e-mail verschijnt",
+          "additionalMessageHint": "Dit bericht wordt toegevoegd aan de standaardinhoud",
+          "smsMessage": "SMS-bericht",
+          "smsVariables": "Variabelen: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Resetten",
+          "cancel": "Annuleren",
+          "save": "Opslaan"
+        },
+        "templateSaved": "Sjabloon opgeslagen"
       },
       "businessHours": {
         "title": "Openingstijden",
