@@ -54,10 +54,14 @@ export function AccessoriesModal({
   currency = 'EUR',
 }: AccessoriesModalProps) {
   const t = useTranslations('storefront.accessories')
-  const { addItem } = useCart()
+  const { addItem, items: cartItems } = useCart()
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [isAdding, setIsAdding] = useState(false)
   const carouselRef = useRef<HTMLDivElement>(null)
+
+  // Filter out accessories that are already in the cart
+  const cartProductIds = new Set(cartItems.map((item) => item.productId))
+  const availableAccessories = accessories.filter((acc) => !cartProductIds.has(acc.id))
 
   const toggleAccessory = (id: string) => {
     setSelectedIds((prev) => {
@@ -90,7 +94,7 @@ export function AccessoriesModal({
 
     // Add selected accessories to cart
     const addedNames: string[] = []
-    for (const accessory of accessories) {
+    for (const accessory of availableAccessories) {
       if (selectedIds.has(accessory.id)) {
         const effectivePricingMode = accessory.pricingMode || storePricingMode
         addItem(
@@ -128,8 +132,8 @@ export function AccessoriesModal({
 
   const selectedCount = selectedIds.size
 
-  // Don't render if no accessories
-  if (accessories.length === 0) return null
+  // Don't render if no accessories available (after filtering cart items)
+  if (availableAccessories.length === 0) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -159,7 +163,7 @@ export function AccessoriesModal({
           {/* Carousel */}
           <div className="relative">
             {/* Navigation buttons */}
-            {accessories.length > 2 && (
+            {availableAccessories.length > 2 && (
               <>
                 <Button
                   variant="outline"
@@ -186,7 +190,7 @@ export function AccessoriesModal({
               className="flex gap-3 overflow-x-auto py-4 snap-x snap-mandatory scrollbar-hide"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
-              {accessories.map((accessory) => {
+              {availableAccessories.map((accessory) => {
                 const isSelected = selectedIds.has(accessory.id)
                 const effectivePricingMode = accessory.pricingMode || storePricingMode
 

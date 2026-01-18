@@ -92,15 +92,18 @@ export function ProductModal({
   const t = useTranslations('storefront.productModal')
   const tProduct = useTranslations('storefront.product')
   const currency = useStoreCurrency()
-  const { addItem, getCartItemByProductId, updateItemQuantity } = useCart()
+  const { addItem, getCartItemByProductId, updateItemQuantity, items: cartItems } = useCart()
 
   const cartItem = getCartItemByProductId(product.id)
   const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
 
-  // Filter available accessories (active with stock)
-  const availableAccessories = (product.accessories || []).filter((acc) => acc.quantity > 0)
+  // Filter available accessories (active with stock and not already in cart)
+  const cartProductIds = new Set(cartItems.map((item) => item.productId))
+  const availableAccessories = (product.accessories || []).filter(
+    (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id)
+  )
 
   useEffect(() => {
     if (isOpen) {

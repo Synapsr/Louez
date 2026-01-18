@@ -70,7 +70,7 @@ export function AddToCartForm({
   const router = useRouter()
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
-  const { addItem } = useCart()
+  const { addItem, items: cartItems } = useCart()
   const { getUrl } = useStorefrontUrl(storeSlug)
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
@@ -109,8 +109,11 @@ export function AddToCartForm({
   const discountPercent = priceResult.discountPercent
   const totalDeposit = deposit * quantity
 
-  // Filter accessories to only show available ones (in stock and active status is already filtered server-side)
-  const availableAccessories = accessories.filter((acc) => acc.quantity > 0)
+  // Filter accessories to only show available ones (in stock, active status is already filtered server-side, and not in cart)
+  const cartProductIds = new Set(cartItems.map((item) => item.productId))
+  const availableAccessories = accessories.filter(
+    (acc) => acc.quantity > 0 && !cartProductIds.has(acc.id)
+  )
 
   const handleAddToCart = () => {
     if (!startDate || !endDate) {
