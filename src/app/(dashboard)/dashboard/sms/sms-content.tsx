@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { format, type Locale } from 'date-fns'
@@ -17,6 +17,8 @@ import {
   Eye,
   CalendarDays,
   ChevronDown,
+  Plus,
+  Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -24,6 +26,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Table,
   TableBody,
@@ -47,7 +50,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
-import type { SmsLog, SmsMonthStats } from './actions'
+import type { SmsLog, SmsMonthStats, TopupTransaction } from './actions'
+import type { SmsQuotaStatus } from '@/lib/plan-limits'
+import { TopupModal } from './topup-modal'
+import { TopupHistory } from './topup-history'
 
 const localeMap: Record<string, Locale> = {
   fr,
@@ -61,11 +67,11 @@ const localeMap: Record<string, Locale> = {
 }
 
 interface SmsContentProps {
-  smsStatus: {
-    allowed: boolean
-    current: number
-    limit: number | null
-    planSlug: string
+  quotaStatus: SmsQuotaStatus
+  creditsInfo: {
+    balance: number
+    totalPurchased: number
+    totalUsed: number
   }
   smsLogs: SmsLog[]
   monthStats: SmsMonthStats
@@ -73,6 +79,9 @@ interface SmsContentProps {
   selectedMonth: number
   isCurrentMonth: boolean
   availableMonths: { year: number; month: number }[]
+  topupHistory: TopupTransaction[]
+  topupSuccess?: boolean
+  topupCancelled?: boolean
 }
 
 const TEMPLATE_TYPE_LABELS: Record<string, string> = {
@@ -85,31 +94,71 @@ const TEMPLATE_TYPE_LABELS: Record<string, string> = {
 }
 
 export function SmsContent({
-  smsStatus,
+  quotaStatus,
+  creditsInfo,
   smsLogs,
   monthStats,
   selectedYear,
   selectedMonth,
   isCurrentMonth,
   availableMonths,
+  topupHistory,
+  topupSuccess,
+  topupCancelled,
 }: SmsContentProps) {
   const t = useTranslations('dashboard.sms')
   const locale = useLocale()
   const router = useRouter()
   const [selectedSms, setSelectedSms] = useState<SmsLog | null>(null)
+  const [showTopupModal, setShowTopupModal] = useState(false)
+  const [showSuccessAlert, setShowSuccessAlert] = useState(topupSuccess)
+  const [showCancelledAlert, setShowCancelledAlert] = useState(topupCancelled)
 
   const dateLocale = localeMap[locale] || fr
 
-  // For current month, use the live quota; for past months, show historical stats
-  const displayCurrent = isCurrentMonth ? smsStatus.current : monthStats.sent
-  const displayLimit = smsStatus.limit
+  // Clear URL params after showing alerts
+  useEffect(() => {
+    if (topupSuccess || topupCancelled) {
+      const timer = setTimeout(() => {
+        router.replace('/dashboard/sms')
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [topupSuccess, topupCancelled, router])
 
-  const percentUsed = displayLimit
-    ? Math.min(100, Math.round((displayCurrent / displayLimit) * 100))
+  // Auto-hide alerts after 5 seconds
+  useEffect(() => {
+    if (showSuccessAlert) {
+      const timer = setTimeout(() => setShowSuccessAlert(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccessAlert])
+
+  useEffect(() => {
+    if (showCancelledAlert) {
+      const timer = setTimeout(() => setShowCancelledAlert(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [showCancelledAlert])
+
+  // For current month, use live quota; for past months, show historical stats
+  const displayCurrent = isCurrentMonth ? quotaStatus.current : monthStats.sent
+  const planLimit = quotaStatus.planLimit
+  const prepaidBalance = creditsInfo.balance
+
+  // Total available = plan limit + prepaid (for display only when viewing current month)
+  const totalAvailable = planLimit !== null ? planLimit + prepaidBalance : null
+
+  // Calculate percentage based on plan limit only (prepaid is bonus)
+  const percentUsed = planLimit
+    ? Math.min(100, Math.round((displayCurrent / planLimit) * 100))
     : 0
 
-  const isNearLimit = isCurrentMonth && displayLimit && percentUsed >= 80
-  const isAtLimit = isCurrentMonth && displayLimit && displayCurrent >= displayLimit
+  const isNearLimit = isCurrentMonth && planLimit && percentUsed >= 80 && prepaidBalance === 0
+  const isAtLimit = isCurrentMonth && totalAvailable !== null && displayCurrent >= totalAvailable
+
+  // Check if plan limit is exhausted but prepaid credits are available
+  const usingPrepaid = isCurrentMonth && planLimit !== null && displayCurrent >= planLimit && prepaidBalance > 0
 
   // Format month for display
   const formatMonthYear = (year: number, month: number) => {
@@ -128,6 +177,24 @@ export function SmsContent({
 
   return (
     <div className="space-y-6">
+      {/* Success Alert */}
+      {showSuccessAlert && (
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-600">
+            {t('topup.success')}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Cancelled Alert */}
+      {showCancelledAlert && (
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertDescription>{t('topup.cancelled')}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Header with title and month selector */}
       <div className="flex items-start justify-between">
         <div>
@@ -180,12 +247,20 @@ export function SmsContent({
                 </CardDescription>
               </div>
             </div>
-            {isAtLimit && (
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <AlertTriangle className="h-3 w-3" />
-                {t('quota.limitReached')}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {isAtLimit && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {t('quota.limitReached')}
+                </Badge>
+              )}
+              {isCurrentMonth && (
+                <Button size="sm" onClick={() => setShowTopupModal(true)}>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  {t('quota.topup')}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -193,23 +268,19 @@ export function SmsContent({
             <div>
               <p className="text-4xl font-bold">
                 {displayCurrent}
-                {isCurrentMonth && (
+                {isCurrentMonth && totalAvailable !== null && (
                   <span className="text-lg font-normal text-muted-foreground">
-                    /{displayLimit ?? '∞'}
+                    /{totalAvailable}
                   </span>
+                )}
+                {isCurrentMonth && totalAvailable === null && (
+                  <span className="text-lg font-normal text-muted-foreground">/∞</span>
                 )}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 {isCurrentMonth ? t('quota.smsThisMonth') : t('quota.smsSentThisMonth')}
               </p>
             </div>
-            {isCurrentMonth && displayLimit && (
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">
-                  {t('quota.remaining', { count: Math.max(0, displayLimit - displayCurrent) })}
-                </p>
-              </div>
-            )}
             {!isCurrentMonth && monthStats.failed > 0 && (
               <div className="text-right">
                 <p className="text-sm text-destructive">
@@ -219,7 +290,33 @@ export function SmsContent({
             )}
           </div>
 
-          {isCurrentMonth && displayLimit && (
+          {/* Credits breakdown */}
+          {isCurrentMonth && planLimit !== null && (
+            <div className="flex items-center gap-4">
+              <div className="flex-1 rounded-lg border bg-muted/30 px-3 py-2">
+                <p className="text-xs text-muted-foreground">{t('quota.planIncluded')}</p>
+                <p className="text-sm font-medium">
+                  {Math.min(displayCurrent, planLimit)}/{planLimit} SMS
+                </p>
+              </div>
+              <div className="flex-1 rounded-lg border bg-muted/30 px-3 py-2">
+                <div className="flex items-center gap-1">
+                  <p className="text-xs text-muted-foreground">{t('quota.prepaidCredits')}</p>
+                  {usingPrepaid && <Sparkles className="h-3 w-3 text-amber-500" />}
+                </div>
+                <p className="text-sm font-medium">
+                  {prepaidBalance} SMS
+                  {usingPrepaid && (
+                    <span className="text-xs text-amber-600 ml-1">
+                      (-{displayCurrent - planLimit} {t('quota.used').toLowerCase()})
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {isCurrentMonth && planLimit !== null && (
             <div className="space-y-2">
               <Progress
                 value={percentUsed}
@@ -230,27 +327,44 @@ export function SmsContent({
                 )}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{percentUsed}% {t('quota.used')}</span>
+                <span>
+                  {percentUsed}% {t('quota.used')}
+                </span>
                 <span>{t('quota.resetsMonthly')}</span>
               </div>
             </div>
           )}
 
+          {/* At limit CTA - shows topup modal (which handles upgrade for Start plan) */}
           {isAtLimit && (
-            <div className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-              <p className="text-sm text-destructive">
-                {t('quota.upgradeMessage')}
+            <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                {quotaStatus.canTopup ? t('quota.topupMessage') : t('quota.upgradeMessage')}
               </p>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/subscription">
-                  {t('quota.upgradePlan')}
-                  <ArrowUpRight className="ml-1 h-3 w-3" />
-                </Link>
+              <Button variant="outline" size="sm" onClick={() => setShowTopupModal(true)}>
+                {quotaStatus.canTopup ? t('quota.topupNow') : t('quota.upgradePlan')}
+                <Plus className="ml-1 h-3 w-3" />
+              </Button>
+            </div>
+          )}
+
+          {/* Near limit warning with top-up option */}
+          {isNearLimit && !isAtLimit && (
+            <div className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                {t('quota.nearLimit', { count: planLimit ? planLimit - displayCurrent : 0 })}
+              </p>
+              <Button variant="ghost" size="sm" onClick={() => setShowTopupModal(true)}>
+                {t('quota.topup')}
+                <Plus className="ml-1 h-3 w-3" />
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Top-up History */}
+      {topupHistory.length > 0 && <TopupHistory transactions={topupHistory} />}
 
       {/* SMS History */}
       <Card>
@@ -364,7 +478,10 @@ export function SmsContent({
               {t('detail.title')}
             </DialogTitle>
             <DialogDescription>
-              {selectedSms && format(new Date(selectedSms.sentAt), "EEEE d MMMM yyyy 'à' HH:mm", { locale: dateLocale })}
+              {selectedSms &&
+                format(new Date(selectedSms.sentAt), "EEEE d MMMM yyyy 'à' HH:mm", {
+                  locale: dateLocale,
+                })}
             </DialogDescription>
           </DialogHeader>
           {selectedSms && (
@@ -425,6 +542,14 @@ export function SmsContent({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Top-up Modal */}
+      <TopupModal
+        open={showTopupModal}
+        onOpenChange={setShowTopupModal}
+        priceCents={quotaStatus.topupPriceCents ?? 0}
+        planSlug={quotaStatus.planSlug}
+      />
     </div>
   )
 }

@@ -271,7 +271,15 @@
         "titlePastMonth": "SMS-overzicht",
         "descriptionPastMonth": "Geschiedenis voor {month}",
         "smsSentThisMonth": "SMS verzonden",
-        "failed": "{count} mislukt"
+        "failed": "{count} mislukt",
+        "topup": "Opwaarderen",
+        "topupNow": "Nu opwaarderen",
+        "topupMessage": "U heeft uw maandelijkse limiet bereikt. Waardeer op om door te gaan met SMS versturen.",
+        "nearLimit": "Nog maar {count} SMS over",
+        "planIncluded": "In plan inbegrepen",
+        "prepaidCredits": "Prepaid tegoed",
+        "available": "beschikbaar",
+        "totalAvailable": "Totaal beschikbaar"
       },
       "history": {
         "title": "SMS-geschiedenis",
@@ -302,6 +310,60 @@
       "status": {
         "sent": "Verzonden",
         "failed": "Mislukt"
+      },
+      "topup": {
+        "title": "SMS-tegoed opwaarderen",
+        "description": "Tegoed vervalt nooit en wordt toegevoegd aan uw maandelijkse quotum",
+        "yourPrice": "Uw prijs",
+        "perSms": "per SMS",
+        "selectPackage": "Selecteer een pakket",
+        "smsCredits": "{count} SMS-tegoed",
+        "popular": "Populair",
+        "bestValue": "Beste prijs-kwaliteitverhouding",
+        "info": "Tegoed wordt direct na betaling toegevoegd",
+        "cancel": "Annuleren",
+        "pay": "Doorgaan naar betaling",
+        "processing": "Verwerken...",
+        "success": "Opwaardering gelukt! Uw tegoed is toegevoegd.",
+        "cancelled": "Betaling is geannuleerd. Uw tegoed is niet belast.",
+        "notAvailable": "SMS opwaarderen is niet beschikbaar voor het Start-plan. Upgrade naar Pro of Ultra om op te waarderen.",
+        "errors": {
+          "generic": "Er is een fout opgetreden bij het opwaarderen",
+          "notEligible": "Uw plan staat SMS opwaarderen niet toe"
+        },
+        "stripeProductName": "SMS-opwaardering - {quantity} tegoed",
+        "stripeProductDescription": "Pakket van {quantity} SMS voor {price}€/SMS ({plan}-plan)",
+        "upsell": {
+          "didYouKnow": "Wist u dat?",
+          "ultraBenefit": "Met Ultra betaalt u slechts {price} per SMS en krijgt u {count} SMS per maand inbegrepen.",
+          "upgradeToUltra": "Upgrade naar Ultra",
+          "startTitle": "Ontgrendel SMS",
+          "startDescription": "Stuur automatische meldingen naar uw klanten",
+          "upgradeToPro": "Bekijk plannen",
+          "compareTitle": "Kies uw plan",
+          "smsIncluded": "{count} SMS/maand inbegrepen",
+          "topupPrice": "Opwaardering voor {price}/SMS",
+          "currentPlan": "Huidig plan",
+          "recommended": "Aanbevolen",
+          "month": "/maand"
+        }
+      },
+      "topupHistory": {
+        "title": "Opwaardeergeschiedenis",
+        "description": "Uw SMS-tegoed aankopen",
+        "date": "Datum",
+        "quantity": "Hoeveelheid",
+        "unitPrice": "Eenheidsprijs",
+        "total": "Totaal",
+        "statusColumn": "Status",
+        "status": {
+          "completed": "Voltooid",
+          "pending": "In afwachting",
+          "failed": "Mislukt",
+          "refunded": "Terugbetaald"
+        },
+        "totalPurchased": "Totaal gekocht",
+        "totalSpent": "Totaal besteed"
       }
     },
     "navigation": {
@@ -1316,7 +1378,13 @@
       "period": {
         "7d": "7 dagen",
         "30d": "30 dagen",
-        "90d": "90 dagen"
+        "90d": "90 dagen",
+        "6m": "6 maanden",
+        "12m": "12 maanden"
+      },
+      "tabs": {
+        "traffic": "Verkeer",
+        "sales": "Verkopen"
       },
       "refresh": "Vernieuwen",
       "trafficTrend": "Verkeerstrend",

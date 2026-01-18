@@ -3,8 +3,8 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@/lib/db'
-import { subscriptions } from '@/lib/db/schema'
-import { eq } from 'drizzle-orm'
+import { subscriptions, smsCredits, smsTopupTransactions } from '@/lib/db/schema'
+import { eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 
 export async function POST(request: Request) {
@@ -57,6 +57,15 @@ export async function POST(request: Request) {
 }
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  const { type } = session.metadata || {}
+
+  // Handle SMS top-up payment
+  if (type === 'sms_topup' && session.mode === 'payment') {
+    await handleSmsTopupCompleted(session)
+    return
+  }
+
+  // Handle subscription payment
   if (session.mode !== 'subscription') return
 
   const { storeId, planSlug } = session.metadata || {}
@@ -108,6 +117,81 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   console.log(`Subscription created/updated for store ${storeId} with plan ${planSlug}`)
+}
+
+/**
+ * Handle SMS top-up payment completion
+ * Credits the store with purchased SMS credits
+ */
+async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
+  const { storeId, transactionId, quantity } = session.metadata || {}
+
+  if (!storeId || !transactionId || !quantity) {
+    console.error('Missing metadata in SMS top-up checkout session')
+    return
+  }
+
+  const qty = parseInt(quantity, 10)
+  if (isNaN(qty) || qty <= 0) {
+    console.error('Invalid quantity in SMS top-up checkout session')
+    return
+  }
+
+  // Check if transaction exists and is pending
+  const transaction = await db.query.smsTopupTransactions.findFirst({
+    where: eq(smsTopupTransactions.id, transactionId),
+  })
+
+  if (!transaction) {
+    console.error(`SMS top-up transaction not found: ${transactionId}`)
+    return
+  }
+
+  if (transaction.status !== 'pending') {
+    console.log(`SMS top-up transaction already processed: ${transactionId}`)
+    return
+  }
+
+  // Use a transaction to ensure atomicity
+  await db.transaction(async (tx) => {
+    // Check if smsCredits record exists for this store
+    const existingCredits = await tx.query.smsCredits.findFirst({
+      where: eq(smsCredits.storeId, storeId),
+    })
+
+    if (existingCredits) {
+      // Update existing credits
+      await tx
+        .update(smsCredits)
+        .set({
+          balance: sql`${smsCredits.balance} + ${qty}`,
+          totalPurchased: sql`${smsCredits.totalPurchased} + ${qty}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(smsCredits.storeId, storeId))
+    } else {
+      // Create new credits record
+      await tx.insert(smsCredits).values({
+        id: nanoid(),
+        storeId,
+        balance: qty,
+        totalPurchased: qty,
+        totalUsed: 0,
+      })
+    }
+
+    // Update transaction status
+    await tx
+      .update(smsTopupTransactions)
+      .set({
+        status: 'completed',
+        stripePaymentIntentId: session.payment_intent as string,
+        completedAt: new Date(),
+      })
+      .where(eq(smsTopupTransactions.id, transactionId))
+  })
+
+  console.log(`SMS top-up completed for store ${storeId}: ${qty} credits added`)
 }
 
 async function handleSubscriptionUpdated(stripeSubscription: Stripe.Subscription) {

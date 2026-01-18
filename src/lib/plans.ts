@@ -9,6 +9,17 @@ export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   usd: '$',
 }
 
+// SMS top-up pricing per plan (in cents)
+export const SMS_TOPUP_PRICING: Record<string, number | null> = {
+  start: null, // Cannot top-up
+  pro: 15, // 0.15€ per SMS
+  ultra: 7, // 0.07€ per SMS
+}
+
+// Available SMS top-up packages
+export const SMS_TOPUP_PACKAGES = [50, 100, 250, 500] as const
+export type SmsTopupPackage = (typeof SMS_TOPUP_PACKAGES)[number]
+
 export interface PlanPrices {
   monthly?: string
   yearly?: string

@@ -272,7 +272,15 @@
         "titlePastMonth": "Podsumowanie SMS",
         "descriptionPastMonth": "Historia za {month}",
         "smsSentThisMonth": "Wysłane SMS",
-        "failed": "{count} nieudanych"
+        "failed": "{count} nieudanych",
+        "topup": "Doładuj",
+        "topupNow": "Doładuj teraz",
+        "topupMessage": "Osiągnąłeś miesięczny limit. Doładuj, aby kontynuować wysyłanie SMS.",
+        "nearLimit": "Pozostało tylko {count} SMS",
+        "planIncluded": "W ramach planu",
+        "prepaidCredits": "Kredyty prepaid",
+        "available": "dostępne",
+        "totalAvailable": "Łącznie dostępne"
       },
       "history": {
         "title": "Historia SMS",
@@ -303,6 +311,60 @@
       "status": {
         "sent": "Wysłano",
         "failed": "Nie powiodło się"
+      },
+      "topup": {
+        "title": "Doładuj kredyty SMS",
+        "description": "Kredyty nigdy nie wygasają i dodają się do Twojego miesięcznego limitu",
+        "yourPrice": "Twoja cena",
+        "perSms": "za SMS",
+        "selectPackage": "Wybierz pakiet",
+        "smsCredits": "{count} kredytów SMS",
+        "popular": "Popularny",
+        "bestValue": "Najlepsza wartość",
+        "info": "Kredyty są dodawane natychmiast po płatności",
+        "cancel": "Anuluj",
+        "pay": "Przejdź do płatności",
+        "processing": "Przetwarzanie...",
+        "success": "Doładowanie udane! Twoje kredyty zostały dodane.",
+        "cancelled": "Płatność została anulowana. Twoje kredyty nie zostały obciążone.",
+        "notAvailable": "Doładowanie SMS nie jest dostępne dla planu Start. Przejdź na Pro lub Ultra, aby doładować.",
+        "errors": {
+          "generic": "Wystąpił błąd podczas doładowania",
+          "notEligible": "Twój plan nie pozwala na doładowanie SMS"
+        },
+        "stripeProductName": "Doładowanie SMS - {quantity} kredytów",
+        "stripeProductDescription": "Pakiet {quantity} SMS po {price}€/SMS (Plan {plan})",
+        "upsell": {
+          "didYouKnow": "Czy wiesz, że?",
+          "ultraBenefit": "Z Ultra płacisz tylko {price} za SMS i otrzymujesz {count} SMS w pakiecie co miesiąc.",
+          "upgradeToUltra": "Przejdź na Ultra",
+          "startTitle": "Odblokuj SMS",
+          "startDescription": "Wysyłaj automatyczne powiadomienia do swoich klientów",
+          "upgradeToPro": "Zobacz plany",
+          "compareTitle": "Wybierz swój plan",
+          "smsIncluded": "{count} SMS/miesiąc w pakiecie",
+          "topupPrice": "Doładowanie za {price}/SMS",
+          "currentPlan": "Obecny plan",
+          "recommended": "Polecany",
+          "month": "/miesiąc"
+        }
+      },
+      "topupHistory": {
+        "title": "Historia doładowań",
+        "description": "Twoje zakupy kredytów SMS",
+        "date": "Data",
+        "quantity": "Ilość",
+        "unitPrice": "Cena jednostkowa",
+        "total": "Suma",
+        "statusColumn": "Status",
+        "status": {
+          "completed": "Zakończone",
+          "pending": "Oczekujące",
+          "failed": "Nieudane",
+          "refunded": "Zwrócone"
+        },
+        "totalPurchased": "Łącznie zakupione",
+        "totalSpent": "Łącznie wydane"
       }
     },
     "navigation": {
@@ -1317,7 +1379,13 @@
       "period": {
         "7d": "7 dni",
         "30d": "30 dni",
-        "90d": "90 dni"
+        "90d": "90 dni",
+        "6m": "6 miesięcy",
+        "12m": "12 miesięcy"
+      },
+      "tabs": {
+        "traffic": "Ruch",
+        "sales": "Sprzedaż"
       },
       "refresh": "Odśwież",
       "trafficTrend": "Trend ruchu",
