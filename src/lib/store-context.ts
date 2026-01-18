@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { stores, storeMembers } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
-import type { StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings } from '@/types/store'
+import type { StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@/types/store'
 
 const ACTIVE_STORE_COOKIE = 'louez_active_store'
 
@@ -41,6 +41,7 @@ export type StoreWithFullData = {
   notificationSettings: NotificationSettings | null
   discordWebhookUrl: string | null
   ownerPhone: string | null
+  customerNotificationSettings: CustomerNotificationSettings | null
   icsToken: string | null
   onboardingCompleted: boolean | null
   createdAt: Date

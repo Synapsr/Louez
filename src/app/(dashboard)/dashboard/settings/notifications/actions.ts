@@ -15,9 +15,26 @@ import { getSmsQuotaStatus } from '@/lib/plan-limits'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
+  DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   type NotificationSettings,
   type NotificationEventType,
+  type CustomerNotificationSettings,
+  type CustomerNotificationEventType,
+  type CustomerNotificationTemplate,
 } from '@/types/store'
+import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+
+// Language name mapping for display
+const LANGUAGE_NAMES: Record<EmailLocale, string> = {
+  fr: 'Francais',
+  en: 'English',
+  de: 'Deutsch',
+  es: 'Espanol',
+  it: 'Italiano',
+  nl: 'Nederlands',
+  pl: 'Polski',
+  pt: 'Portugues',
+}
 
 export async function getNotificationSettings() {
   const store = await getCurrentStore()
@@ -25,7 +42,12 @@ export async function getNotificationSettings() {
 
   const smsQuota = await getSmsQuotaStatus(store.id)
 
+  // Determine locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const languageName = LANGUAGE_NAMES[locale]
+
   return {
+    // Admin notification settings
     settings: store.notificationSettings || DEFAULT_NOTIFICATION_SETTINGS,
     discordWebhookUrl: store.discordWebhookUrl,
     ownerPhone: store.ownerPhone,
@@ -36,6 +58,10 @@ export async function getNotificationSettings() {
       allowed: smsQuota.allowed,
       totalAvailable: smsQuota.totalAvailable,
     },
+    // Customer notification settings
+    customerSettings: store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
+    storeLocale: locale,
+    storeLanguageName: languageName,
   }
 }
 
@@ -169,4 +195,125 @@ export async function updateOwnerPhone(phone: string | null) {
 
   revalidatePath('/dashboard/settings/notifications')
   return { success: true, phone: normalizedPhone }
+}
+
+// ============================================================================
+// Customer Notification Actions
+// ============================================================================
+
+export async function updateCustomerPreference(data: {
+  eventType: CustomerNotificationEventType
+  channel: 'email' | 'sms'
+  enabled: boolean
+}) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  const { eventType, channel, enabled } = data
+
+  // Get current settings or default
+  const currentSettings: CustomerNotificationSettings =
+    store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
+
+  // Update the specific preference
+  const updatedSettings: CustomerNotificationSettings = {
+    ...currentSettings,
+    [eventType]: {
+      ...currentSettings[eventType],
+      [channel]: enabled,
+      // If enabling a channel, also ensure the event is enabled
+      enabled: enabled ? true : currentSettings[eventType].enabled,
+    },
+  }
+
+  await db
+    .update(stores)
+    .set({
+      customerNotificationSettings: updatedSettings,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/notifications')
+  return { success: true }
+}
+
+export async function updateCustomerEventEnabled(data: {
+  eventType: CustomerNotificationEventType
+  enabled: boolean
+}) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  const { eventType, enabled } = data
+
+  // Get current settings or default
+  const currentSettings: CustomerNotificationSettings =
+    store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
+
+  // Update the enabled state
+  const updatedSettings: CustomerNotificationSettings = {
+    ...currentSettings,
+    [eventType]: {
+      ...currentSettings[eventType],
+      enabled,
+      // If disabling, turn off all channels
+      ...(enabled ? {} : { email: false, sms: false }),
+    },
+  }
+
+  await db
+    .update(stores)
+    .set({
+      customerNotificationSettings: updatedSettings,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/notifications')
+  return { success: true }
+}
+
+export async function updateCustomerTemplate(data: {
+  eventType: CustomerNotificationEventType
+  template: CustomerNotificationTemplate
+}) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  const { eventType, template } = data
+
+  // Get current settings or default
+  const currentSettings: CustomerNotificationSettings =
+    store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
+
+  // Update the template
+  const updatedSettings: CustomerNotificationSettings = {
+    ...currentSettings,
+    templates: {
+      ...currentSettings.templates,
+      [eventType]: template,
+    },
+  }
+
+  await db
+    .update(stores)
+    .set({
+      customerNotificationSettings: updatedSettings,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/notifications')
+  return { success: true }
+}
+
+export async function getCustomerTemplate(eventType: CustomerNotificationEventType) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  const settings = store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
+  const template = settings.templates?.[eventType] || {}
+
+  return { template }
 }

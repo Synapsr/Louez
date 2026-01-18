@@ -1847,7 +1847,59 @@
           "limitReachedMessage": "Osiagnales miesieczny limit SMS.",
           "lowCredits": "Pozostalo Ci {current} z {limit} SMS w tym miesiacu.",
           "buyMore": "Kup wiecej SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Powiadomienia administratora",
+          "description": "Otrzymuj powiadomienia o zdarzeniach"
+        },
+        "customerSection": {
+          "title": "Powiadomienia dla klientow",
+          "description": "E-maile i SMS automatycznie wysylane do klientow"
+        },
+        "customerEvents": {
+          "reservationTitle": "Proces rezerwacji",
+          "reminderTitle": "Automatyczne przypomnienia",
+          "customer_request_received": {
+            "label": "Prosba otrzymana",
+            "description": "Potwierdzenie prosby"
+          },
+          "customer_request_accepted": {
+            "label": "Prosba zaakceptowana",
+            "description": "Gdy akceptujesz prosbe"
+          },
+          "customer_request_rejected": {
+            "label": "Prosba odrzucona",
+            "description": "Gdy odrzucasz prosbe"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Rezerwacja potwierdzona",
+            "description": "Po udanej platnosci"
+          },
+          "customer_reminder_pickup": {
+            "label": "Przypomnienie o odbiorze",
+            "description": "Wyslane dzien wczesniej"
+          },
+          "customer_reminder_return": {
+            "label": "Przypomnienie o zwrocie",
+            "description": "Wyslane dzien wczesniej"
+          }
+        },
+        "customerTemplates": {
+          "title": "Dostosuj szablon",
+          "emailSection": "E-mail",
+          "smsSection": "SMS",
+          "subject": "Temat e-maila",
+          "subjectHint": "Pozostaw puste dla domyslnego tematu",
+          "additionalMessage": "Niestandardowa wiadomosc",
+          "additionalMessagePlaceholder": "Dodaj wiadomosc, ktora pojawi sie w e-mailu",
+          "additionalMessageHint": "Ta wiadomosc zostanie dodana do domyslnej tresci",
+          "smsMessage": "Wiadomosc SMS",
+          "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Resetuj",
+          "cancel": "Anuluj",
+          "save": "Zapisz"
+        },
+        "templateSaved": "Szablon zapisany"
       },
       "businessHours": {
         "title": "Godziny otwarcia",

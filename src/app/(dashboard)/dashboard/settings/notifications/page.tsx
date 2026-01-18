@@ -28,6 +28,9 @@ export default async function NotificationsPage() {
         discordWebhookUrl={data.discordWebhookUrl}
         ownerPhone={data.ownerPhone}
         smsQuota={data.smsQuota}
+        customerSettings={data.customerSettings}
+        storeLocale={data.storeLocale}
+        storeLanguageName={data.storeLanguageName}
       />
     </div>
   )

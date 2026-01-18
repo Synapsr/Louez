@@ -23,6 +23,7 @@ import type {
   ReviewBoosterSettings,
   GoogleReview,
   NotificationSettings,
+  CustomerNotificationSettings,
 } from '@/types'
 
 // Helper for generating IDs
@@ -245,6 +246,9 @@ export const stores = mysqlTable(
     notificationSettings: json('notification_settings').$type<NotificationSettings>(),
     discordWebhookUrl: varchar('discord_webhook_url', { length: 500 }),
     ownerPhone: varchar('owner_phone', { length: 20 }),
+
+    // Customer notification settings (notifications sent to customers)
+    customerNotificationSettings: json('customer_notification_settings').$type<CustomerNotificationSettings>(),
 
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),

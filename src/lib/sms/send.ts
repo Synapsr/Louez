@@ -14,7 +14,161 @@ import {
   determineSmsSource,
   deductPrepaidSmsCredit,
 } from '@/lib/plan-limits'
-import { getEmailMessages, type EmailLocale } from '@/lib/email/i18n'
+import { getEmailMessages, getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+
+/**
+ * Localized SMS templates for customer notifications
+ * Keep messages short - SMS are limited to 160 chars for single segment
+ */
+const SMS_TEMPLATES: Record<EmailLocale, {
+  reservation_confirmation: (vars: { storeName: string; number: string; startDate: string; endDate: string }) => string
+  reminder_pickup: (vars: { storeName: string; number: string; date: string }) => string
+  reminder_return: (vars: { storeName: string; number: string; date: string }) => string
+  request_received: (vars: { storeName: string; number: string }) => string
+  request_accepted: (vars: { storeName: string; number: string }) => string
+  instant_access: (vars: { storeName: string; number: string; url: string }) => string
+}> = {
+  fr: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReservation #${number} confirmee\nDu ${startDate} au ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nRappel: retrait reservation #${number}\nLe ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nRappel: retour reservation #${number}\nLe ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nDemande #${number} recue. Confirmation sous 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nDemande #${number} acceptee! Consultez vos emails.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nVotre reservation #${number}\nAcces: ${url}`,
+  },
+  en: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReservation #${number} confirmed\nFrom ${startDate} to ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nReminder: pickup for #${number}\nOn ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nReminder: return for #${number}\nOn ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nRequest #${number} received. Confirmation within 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nRequest #${number} accepted! Check your email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nYour reservation #${number}\nAccess: ${url}`,
+  },
+  de: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReservierung #${number} bestaetigt\nVom ${startDate} bis ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nErinnerung: Abholung #${number}\nAm ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nErinnerung: Rueckgabe #${number}\nAm ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nAnfrage #${number} erhalten. Bestaetigung in 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nAnfrage #${number} akzeptiert! E-Mail pruefen.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nIhre Reservierung #${number}\nZugang: ${url}`,
+  },
+  es: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReserva #${number} confirmada\nDel ${startDate} al ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nRecordatorio: recogida #${number}\nEl ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nRecordatorio: devolucion #${number}\nEl ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nSolicitud #${number} recibida. Confirmacion en 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nSolicitud #${number} aceptada! Revisa tu email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nTu reserva #${number}\nAcceso: ${url}`,
+  },
+  it: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nPrenotazione #${number} confermata\nDal ${startDate} al ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nPromemoria: ritiro #${number}\nIl ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nPromemoria: restituzione #${number}\nIl ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nRichiesta #${number} ricevuta. Conferma entro 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nRichiesta #${number} accettata! Controlla email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nLa tua prenotazione #${number}\nAccesso: ${url}`,
+  },
+  nl: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReservering #${number} bevestigd\nVan ${startDate} tot ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nHerinnering: ophalen #${number}\nOp ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nHerinnering: terugbrengen #${number}\nOp ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nAanvraag #${number} ontvangen. Bevestiging binnen 24u.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nAanvraag #${number} geaccepteerd! Check je email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nUw reservering #${number}\nToegang: ${url}`,
+  },
+  pl: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nRezerwacja #${number} potwierdzona\nOd ${startDate} do ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nPrzypomnienie: odbior #${number}\nDnia ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nPrzypomnienie: zwrot #${number}\nDnia ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nZamowienie #${number} otrzymane. Potwierdzenie w 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nZamowienie #${number} zaakceptowane! Sprawdz email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nTwoja rezerwacja #${number}\nDostep: ${url}`,
+  },
+  pt: {
+    reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
+      `${storeName}\nReserva #${number} confirmada\nDe ${startDate} a ${endDate}`,
+    reminder_pickup: ({ storeName, number, date }) =>
+      `${storeName}\nLembrete: retirada #${number}\nEm ${date}`,
+    reminder_return: ({ storeName, number, date }) =>
+      `${storeName}\nLembrete: devolucao #${number}\nEm ${date}`,
+    request_received: ({ storeName, number }) =>
+      `${storeName}\nPedido #${number} recebido. Confirmacao em 24h.`,
+    request_accepted: ({ storeName, number }) =>
+      `${storeName}\nPedido #${number} aceito! Verifique seu email.`,
+    instant_access: ({ storeName, number, url }) =>
+      `${storeName}\nSua reserva #${number}\nAcesso: ${url}`,
+  },
+}
+
+/**
+ * Get SMS template for a specific locale, falling back to English
+ */
+function getSmsTemplate(locale: EmailLocale = 'en') {
+  return SMS_TEMPLATES[locale] || SMS_TEMPLATES.en
+}
+
+/**
+ * Format date for SMS based on locale
+ */
+function formatSmsDate(date: Date, locale: EmailLocale): string {
+  const localeMap: Record<EmailLocale, string> = {
+    fr: 'fr-FR',
+    en: 'en-US',
+    de: 'de-DE',
+    es: 'es-ES',
+    it: 'it-IT',
+    nl: 'nl-NL',
+    pl: 'pl-PL',
+    pt: 'pt-BR',
+  }
+
+  return date.toLocaleDateString(localeMap[locale] || 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+  })
+}
 
 /**
  * SMS send result with optional limit info for UI handling
@@ -33,6 +187,9 @@ export interface SmsSendResult {
 interface Store {
   id: string
   name: string
+  settings?: {
+    country?: string
+  } | null
 }
 
 interface Customer {
@@ -175,12 +332,16 @@ export async function sendAccessLinkSms({
   }
   const normalizedPhone = phoneValidation.normalized
 
-  // Build short message (SMS are limited to 160 chars for single segment)
-  const message = buildSmsMessage([
-    `${store.name}`,
-    `Votre reservation #${reservation.number}`,
-    `Acces: ${accessUrl}`,
-  ])
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
+
+  // Build localized message (SMS are limited to 160 chars for single segment)
+  const message = templates.instant_access({
+    storeName: store.name,
+    number: reservation.number,
+    url: accessUrl,
+  })
 
   try {
     const result = await sendSms({
@@ -268,21 +429,20 @@ export async function sendReservationConfirmationSms({
   }
   const normalizedPhone = phoneValidation.normalized
 
-  // Format dates
-  const startDateStr = reservation.startDate.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-  })
-  const endDateStr = reservation.endDate.toLocaleDateString('fr-FR', {
-    day: '2-digit',
-    month: '2-digit',
-  })
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
 
-  const message = buildSmsMessage([
-    `${store.name}`,
-    `Reservation #${reservation.number} confirmee`,
-    `Du ${startDateStr} au ${endDateStr}`,
-  ])
+  // Format dates for locale
+  const startDateStr = formatSmsDate(reservation.startDate, locale)
+  const endDateStr = formatSmsDate(reservation.endDate, locale)
+
+  const message = templates.reservation_confirmation({
+    storeName: store.name,
+    number: reservation.number,
+    startDate: startDateStr,
+    endDate: endDateStr,
+  })
 
   try {
     const result = await sendSms({
@@ -369,17 +529,23 @@ export async function sendReminderPickupSms({
   }
   const normalizedPhone = phoneValidation.normalized
 
-  const startDateStr = reservation.startDate.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-  })
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
 
-  const message = buildSmsMessage([
-    `${store.name}`,
-    `Rappel: retrait reservation #${reservation.number}`,
-    `Le ${startDateStr}`,
-  ])
+  // Format date for locale (with weekday for reminders)
+  const startDateStr = reservation.startDate.toLocaleDateString(
+    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
+    locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
+    locale === 'pt' ? 'pt-BR' : 'en-US',
+    { weekday: 'short', day: '2-digit', month: '2-digit' }
+  )
+
+  const message = templates.reminder_pickup({
+    storeName: store.name,
+    number: reservation.number,
+    date: startDateStr,
+  })
 
   try {
     const result = await sendSms({
@@ -466,17 +632,23 @@ export async function sendReminderReturnSms({
   }
   const normalizedPhone = phoneValidation.normalized
 
-  const endDateStr = reservation.endDate.toLocaleDateString('fr-FR', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-  })
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
 
-  const message = buildSmsMessage([
-    `${store.name}`,
-    `Rappel: retour reservation #${reservation.number}`,
-    `Le ${endDateStr}`,
-  ])
+  // Format date for locale (with weekday for reminders)
+  const endDateStr = reservation.endDate.toLocaleDateString(
+    locale === 'fr' ? 'fr-FR' : locale === 'de' ? 'de-DE' : locale === 'es' ? 'es-ES' :
+    locale === 'it' ? 'it-IT' : locale === 'nl' ? 'nl-NL' : locale === 'pl' ? 'pl-PL' :
+    locale === 'pt' ? 'pt-BR' : 'en-US',
+    { weekday: 'short', day: '2-digit', month: '2-digit' }
+  )
+
+  const message = templates.reminder_return({
+    storeName: store.name,
+    number: reservation.number,
+    date: endDateStr,
+  })
 
   try {
     const result = await sendSms({

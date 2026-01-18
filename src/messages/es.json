@@ -1850,7 +1850,59 @@
           "limitReachedMessage": "Ha alcanzado su limite mensual de SMS.",
           "lowCredits": "Le quedan {current} de {limit} SMS este mes.",
           "buyMore": "Comprar mas SMS"
-        }
+        },
+        "adminSection": {
+          "title": "Notificaciones de administrador",
+          "description": "Reciba alertas cuando ocurran eventos"
+        },
+        "customerSection": {
+          "title": "Notificaciones al cliente",
+          "description": "Emails y SMS enviados automaticamente a sus clientes"
+        },
+        "customerEvents": {
+          "reservationTitle": "Proceso de reserva",
+          "reminderTitle": "Recordatorios automaticos",
+          "customer_request_received": {
+            "label": "Solicitud recibida",
+            "description": "Confirmacion de la solicitud"
+          },
+          "customer_request_accepted": {
+            "label": "Solicitud aceptada",
+            "description": "Cuando acepta una solicitud"
+          },
+          "customer_request_rejected": {
+            "label": "Solicitud rechazada",
+            "description": "Cuando rechaza una solicitud"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reserva confirmada",
+            "description": "Despues del pago exitoso"
+          },
+          "customer_reminder_pickup": {
+            "label": "Recordatorio de recogida",
+            "description": "Enviado el dia anterior"
+          },
+          "customer_reminder_return": {
+            "label": "Recordatorio de devolucion",
+            "description": "Enviado el dia anterior"
+          }
+        },
+        "customerTemplates": {
+          "title": "Personalizar plantilla",
+          "emailSection": "Email",
+          "smsSection": "SMS",
+          "subject": "Asunto del email",
+          "subjectHint": "Dejar vacio para usar el asunto predeterminado",
+          "additionalMessage": "Mensaje personalizado",
+          "additionalMessagePlaceholder": "Agregue un mensaje que aparecera en el email",
+          "additionalMessageHint": "Este mensaje se agregara al contenido predeterminado",
+          "smsMessage": "Mensaje SMS",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Restablecer",
+          "cancel": "Cancelar",
+          "save": "Guardar"
+        },
+        "templateSaved": "Plantilla guardada"
       },
       "businessHours": {
         "title": "Horario comercial",
