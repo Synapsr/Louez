@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@/lib/db'
-import { payments, reservations, stores, reservationActivity } from '@/lib/db/schema'
+import { payments, reservations, stores, reservationActivity, customers } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { fromStripeCents } from '@/lib/stripe'
+import { dispatchNotification } from '@/lib/notifications/dispatcher'
 
 /**
  * Webhook handler for Stripe Connect events
@@ -129,11 +130,12 @@ async function handleCheckoutCompleted(
     return
   }
 
-  // Get reservation
+  // Get reservation with store and customer for notifications
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     with: {
       store: true,
+      customer: true,
     },
   })
 
@@ -262,6 +264,69 @@ async function handleCheckoutCompleted(
         cardSaved: !!stripePaymentMethodId,
       },
       createdAt: new Date(),
+    })
+
+    // Dispatch admin notifications (SMS, Discord) for payment received
+    dispatchNotification('payment_received', {
+      store: {
+        id: reservation.store.id,
+        name: reservation.store.name,
+        email: reservation.store.email,
+        discordWebhookUrl: reservation.store.discordWebhookUrl,
+        ownerPhone: reservation.store.ownerPhone,
+        notificationSettings: reservation.store.notificationSettings,
+        settings: reservation.store.settings,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: Number(reservation.totalAmount),
+      },
+      customer: reservation.customer
+        ? {
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone,
+          }
+        : undefined,
+      payment: {
+        amount: totalAmount,
+      },
+    }).catch((error) => {
+      console.error('Failed to dispatch payment received notification:', error)
+    })
+
+    // Also dispatch confirmation notification
+    dispatchNotification('reservation_confirmed', {
+      store: {
+        id: reservation.store.id,
+        name: reservation.store.name,
+        email: reservation.store.email,
+        discordWebhookUrl: reservation.store.discordWebhookUrl,
+        ownerPhone: reservation.store.ownerPhone,
+        notificationSettings: reservation.store.notificationSettings,
+        settings: reservation.store.settings,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: Number(reservation.totalAmount),
+      },
+      customer: reservation.customer
+        ? {
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone,
+          }
+        : undefined,
+    }).catch((error) => {
+      console.error('Failed to dispatch confirmation notification:', error)
     })
 
     console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
@@ -545,6 +610,15 @@ async function handleDepositFailed(
   const errorMessage = paymentIntent.last_payment_error?.message || 'Unknown error'
   const isDepositHold = paymentIntent.metadata?.type === 'deposit_hold'
 
+  // Get reservation with store and customer for notifications
+  const reservation = await db.query.reservations.findFirst({
+    where: eq(reservations.id, reservationId),
+    with: {
+      store: true,
+      customer: true,
+    },
+  })
+
   if (isDepositHold) {
     // Handle deposit authorization failure
     await db
@@ -604,6 +678,41 @@ async function handleDepositFailed(
     })
 
     console.log(`Payment failed for reservation ${reservationId}: ${errorMessage}`)
+  }
+
+  // Dispatch admin notification for payment failure
+  if (reservation) {
+    dispatchNotification('payment_failed', {
+      store: {
+        id: reservation.store.id,
+        name: reservation.store.name,
+        email: reservation.store.email,
+        discordWebhookUrl: reservation.store.discordWebhookUrl,
+        ownerPhone: reservation.store.ownerPhone,
+        notificationSettings: reservation.store.notificationSettings,
+        settings: reservation.store.settings,
+      },
+      reservation: {
+        id: reservationId,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+        totalAmount: Number(reservation.totalAmount),
+      },
+      customer: reservation.customer
+        ? {
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone,
+          }
+        : undefined,
+      payment: {
+        amount,
+      },
+    }).catch((error) => {
+      console.error('Failed to dispatch payment failed notification:', error)
+    })
   }
 }
 

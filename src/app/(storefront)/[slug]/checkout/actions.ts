@@ -11,6 +11,7 @@ import {
   sendNewRequestLandlordEmail,
 } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
+import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
@@ -437,6 +438,34 @@ export async function createReservation(input: CreateReservationInput) {
           console.error('Failed to send new request landlord email:', error)
         })
       }
+
+      // Dispatch admin notifications (SMS, Discord) for new reservation
+      dispatchNotification('reservation_new', {
+        store: {
+          id: store.id,
+          name: store.name,
+          email: store.email,
+          discordWebhookUrl: store.discordWebhookUrl,
+          ownerPhone: store.ownerPhone,
+          notificationSettings: store.notificationSettings,
+          settings: store.settings,
+        },
+        reservation: {
+          id: reservationId,
+          number: reservationNumber,
+          startDate,
+          endDate,
+          totalAmount: input.totalAmount,
+        },
+        customer: {
+          firstName: input.customer.firstName,
+          lastName: input.customer.lastName,
+          email: input.customer.email,
+          phone: input.customer.phone,
+        },
+      }).catch((error) => {
+        console.error('Failed to dispatch new reservation notification:', error)
+      })
     }
 
     // Check if we should process payment via Stripe
