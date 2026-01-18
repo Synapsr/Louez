@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 import { useAnalytics } from '@/contexts/analytics-context'
 
-type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account'
+type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account' | 'rental'
 
 interface PageTrackerProps {
   page: PageType

@@ -10,9 +10,10 @@ import {
 } from 'react'
 
 // Types for tracking
-type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account'
+type PageType = 'home' | 'catalog' | 'product' | 'cart' | 'checkout' | 'confirmation' | 'account' | 'rental'
 type DeviceType = 'mobile' | 'tablet' | 'desktop'
 type EventType =
+  | 'product_view'
   | 'add_to_cart'
   | 'remove_from_cart'
   | 'update_quantity'

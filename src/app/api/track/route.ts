@@ -12,7 +12,7 @@ const pageViewSchema = z.object({
   type: z.literal('page_view'),
   storeSlug: z.string().min(1),
   sessionId: z.string().uuid(),
-  page: z.enum(['home', 'catalog', 'product', 'cart', 'checkout', 'confirmation', 'account']),
+  page: z.enum(['home', 'catalog', 'product', 'cart', 'checkout', 'confirmation', 'account', 'rental']),
   productId: z.string().length(21).optional(),
   categoryId: z.string().length(21).optional(),
   referrer: z.string().max(500).optional(),
@@ -25,6 +25,7 @@ const eventSchema = z.object({
   sessionId: z.string().uuid(),
   customerId: z.string().length(21).optional(),
   eventType: z.enum([
+    'product_view',
     'add_to_cart',
     'remove_from_cart',
     'update_quantity',
