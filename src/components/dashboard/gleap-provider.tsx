@@ -10,9 +10,13 @@ interface GleapProviderProps {
     email: string
     name?: string | null
   }
+  store?: {
+    id: string
+    name: string
+  }
 }
 
-export function GleapProvider({ children, user }: GleapProviderProps) {
+export function GleapProvider({ children, user, store }: GleapProviderProps) {
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_GLEAP_API_KEY
 
@@ -23,10 +27,17 @@ export function GleapProvider({ children, user }: GleapProviderProps) {
         Gleap.identify(user.id, {
           email: user.email,
           name: user.name || undefined,
+          companyId: store?.id,
+          companyName: store?.name,
+          customData: {
+            storeId: store?.id,
+            storeName: store?.name,
+            emailVerified: true,
+          },
         })
       }
     }
-  }, [user])
+  }, [user, store])
 
   return <>{children}</>
 }

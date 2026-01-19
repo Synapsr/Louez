@@ -2,6 +2,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
+import { getCurrentStore } from '@/lib/store-context'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
 import { GleapProvider } from '@/components/dashboard/gleap-provider'
@@ -18,6 +19,7 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  const store = await getCurrentStore()
   const messages = await getMessages()
 
   return (
@@ -35,6 +37,14 @@ export default async function DashboardLayout({
                   id: session.user.id,
                   email: session.user.email,
                   name: session.user.name,
+                }
+              : undefined
+          }
+          store={
+            store
+              ? {
+                  id: store.id,
+                  name: store.name,
                 }
               : undefined
           }
