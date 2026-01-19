@@ -4,38 +4,24 @@ import { useState, useEffect, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays, type Locale } from 'date-fns'
 import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
-import { Mail, Smartphone, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { Mail, Smartphone } from 'lucide-react'
 
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
 } from '@/components/ui/sheet'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import { EventEmailPreview } from './email-preview'
-import { SmsPreview, replaceSmsVariables } from './sms-preview'
+import { cn } from '@/lib/utils'
+import { SmsPreviewCompact, replaceSmsVariables } from './sms-preview'
+import { EmailPreviewCompact } from './email-preview'
 import type { CustomerNotificationEventType, CustomerNotificationTemplate } from '@/types/store'
 import type { EmailLocale } from '@/lib/email/i18n'
 
-// Re-export defaults from the modal for consistency
 import {
   DEFAULT_SUBJECTS,
   DEFAULT_SMS_TEMPLATES,
@@ -59,7 +45,6 @@ interface NotificationTemplateSheetProps {
   template?: CustomerNotificationTemplate
   onSave: (template: CustomerNotificationTemplate) => void
   locale: EmailLocale
-  // Store info for preview
   store: {
     name: string
     logoUrl?: string | null
@@ -72,7 +57,7 @@ interface NotificationTemplateSheetProps {
   }
 }
 
-// Event type labels for the sheet title
+// Event type labels
 const EVENT_LABELS: Record<string, Record<EmailLocale, string>> = {
   customer_request_received: {
     fr: 'Demande de réservation reçue',
@@ -135,7 +120,7 @@ const EVENT_LABELS: Record<string, Record<EmailLocale, string>> = {
     pt: 'Lembrete de devolução',
   },
   thank_you_review: {
-    fr: 'Demande d\'avis',
+    fr: "Demande d'avis",
     en: 'Review request',
     de: 'Bewertungsanfrage',
     es: 'Solicitud de opinión',
@@ -146,7 +131,6 @@ const EVENT_LABELS: Record<string, Record<EmailLocale, string>> = {
   },
 }
 
-// Default subjects for thank_you_review
 const THANK_YOU_SUBJECTS: Record<EmailLocale, string> = {
   fr: 'Merci pour votre location ! Votre avis compte',
   en: 'Thank you for your rental! Your opinion matters',
@@ -158,7 +142,6 @@ const THANK_YOU_SUBJECTS: Record<EmailLocale, string> = {
   pt: 'Obrigado pelo seu aluguel! Sua opinião é importante',
 }
 
-// Default SMS templates for thank_you_review
 const THANK_YOU_SMS: Record<EmailLocale, string> = {
   fr: '{storeName}\nMerci pour votre location !\nVotre avis nous aiderait beaucoup.\n{reviewUrl}',
   en: '{storeName}\nThank you for your rental!\nYour review would help us a lot.\n{reviewUrl}',
@@ -183,23 +166,26 @@ export function NotificationTemplateSheet({
   const tc = useTranslations('common')
 
   const [activeTab, setActiveTab] = useState<'email' | 'sms'>('email')
-  const [showPreview, setShowPreview] = useState(true)
 
-  // Get defaults for current locale and event type
+  // Get defaults
   const defaultSubject = useMemo(() => {
     if (eventType === 'thank_you_review') {
       return THANK_YOU_SUBJECTS[locale] || THANK_YOU_SUBJECTS['en']
     }
-    return DEFAULT_SUBJECTS[locale]?.[eventType as CustomerNotificationEventType] ||
+    return (
+      DEFAULT_SUBJECTS[locale]?.[eventType as CustomerNotificationEventType] ||
       DEFAULT_SUBJECTS['en'][eventType as CustomerNotificationEventType]
+    )
   }, [locale, eventType])
 
   const defaultSms = useMemo(() => {
     if (eventType === 'thank_you_review') {
       return THANK_YOU_SMS[locale] || THANK_YOU_SMS['en']
     }
-    return DEFAULT_SMS_TEMPLATES[locale]?.[eventType as CustomerNotificationEventType] ||
+    return (
+      DEFAULT_SMS_TEMPLATES[locale]?.[eventType as CustomerNotificationEventType] ||
       DEFAULT_SMS_TEMPLATES['en'][eventType as CustomerNotificationEventType]
+    )
   }, [locale, eventType])
 
   // Form state
@@ -207,36 +193,29 @@ export function NotificationTemplateSheet({
   const [emailMessage, setEmailMessage] = useState('')
   const [smsMessage, setSmsMessage] = useState('')
 
-  // Reset state when sheet opens or eventType changes
+  // Reset state when sheet opens
   useEffect(() => {
     if (open) {
       setSubject(template?.subject || defaultSubject)
       setEmailMessage(template?.emailMessage || '')
       setSmsMessage(template?.smsMessage || defaultSms)
       setActiveTab('email')
-      setShowPreview(true)
     }
   }, [open, eventType, template, defaultSubject, defaultSms])
 
-  // Check if values are customized
+  // Check if customized
   const isSubjectCustomized = subject !== defaultSubject
   const isSmsCustomized = smsMessage !== defaultSms
-  const isEmailMessageCustomized = emailMessage.trim() !== ''
 
   // Handle save
   const handleSave = () => {
     onSave({
       subject: isSubjectCustomized ? subject : undefined,
-      emailMessage: isEmailMessageCustomized ? emailMessage : undefined,
+      emailMessage: emailMessage.trim() || undefined,
       smsMessage: isSmsCustomized ? smsMessage : undefined,
     })
     onOpenChange(false)
   }
-
-  // Reset handlers
-  const handleResetSubject = () => setSubject(defaultSubject)
-  const handleResetSms = () => setSmsMessage(defaultSms)
-  const handleResetEmailMessage = () => setEmailMessage('')
 
   // Preview data
   const dateLocale = DATE_LOCALES[locale] || fr
@@ -254,7 +233,7 @@ export function NotificationTemplateSheet({
     }
   }, [dateLocale])
 
-  // SMS with replaced variables for preview
+  // SMS preview
   const previewSms = useMemo(() => {
     return replaceSmsVariables(smsMessage, {
       storeName: store.name,
@@ -264,240 +243,174 @@ export function NotificationTemplateSheet({
     })
   }, [smsMessage, store.name, previewData])
 
-  // Event label for title
-  const eventLabel = EVENT_LABELS[eventType]?.[locale] || EVENT_LABELS[eventType]?.['en'] || eventType
+  const eventLabel =
+    EVENT_LABELS[eventType]?.[locale] || EVENT_LABELS[eventType]?.['en'] || eventType
 
   return (
-    <TooltipProvider>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader className="pb-4">
-            <SheetTitle className="text-lg">{eventLabel}</SheetTitle>
-          </SheetHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+        <SheetHeader className="px-6 py-4 border-b">
+          <SheetTitle>{eventLabel}</SheetTitle>
+        </SheetHeader>
 
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'email' | 'sms')}>
-            <div className="flex items-center justify-between mb-4">
-              <TabsList className="grid w-fit grid-cols-2">
-                <TabsTrigger value="email" className="gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email
-                </TabsTrigger>
-                <TabsTrigger value="sms" className="gap-2">
-                  <Smartphone className="h-4 w-4" />
-                  SMS
-                </TabsTrigger>
-              </TabsList>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowPreview(!showPreview)}
-                className="gap-2"
-              >
-                {showPreview ? (
-                  <>
-                    <EyeOff className="h-4 w-4" />
-                    {t('hidePreview')}
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    {t('showPreview')}
-                  </>
+        <div className="flex-1 overflow-y-auto">
+          {/* Tab Switcher */}
+          <div className="px-6 pt-6">
+            <div className="inline-flex rounded-lg bg-muted p-1">
+              <button
+                onClick={() => setActiveTab('email')}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  activeTab === 'email'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
                 )}
-              </Button>
+              >
+                <Mail className="h-4 w-4" />
+                Email
+              </button>
+              <button
+                onClick={() => setActiveTab('sms')}
+                className={cn(
+                  'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
+                  activeTab === 'sms'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Smartphone className="h-4 w-4" />
+                SMS
+              </button>
             </div>
+          </div>
 
-            {/* Email Tab */}
-            <TabsContent value="email" className="space-y-6 mt-0">
-              {/* Configuration */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {t('configuration')}
-                </h3>
-
-                {/* Subject field */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">{t('subject')}</Label>
-                    <div className="flex items-center gap-2">
-                      {isSubjectCustomized ? (
-                        <>
-                          <Badge variant="secondary" className="text-xs">
-                            {t('customized')}
-                          </Badge>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={handleResetSubject}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('resetToDefault')}</TooltipContent>
-                          </Tooltip>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                          {t('default')}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Input
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  />
+          {/* Email Tab */}
+          {activeTab === 'email' && (
+            <div className="p-6 space-y-6">
+              {/* Subject */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="subject">{t('subject')}</Label>
+                  {isSubjectCustomized && (
+                    <button
+                      onClick={() => setSubject(defaultSubject)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t('resetToDefault')}
+                    </button>
+                  )}
                 </div>
+                <Input
+                  id="subject"
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                />
+              </div>
 
-                {/* Additional message */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">{t('additionalMessage')}</Label>
-                    {isEmailMessageCustomized && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {t('customized')}
-                        </Badge>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={handleResetEmailMessage}
-                            >
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>{t('clearMessage')}</TooltipContent>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </div>
-                  <Textarea
-                    value={emailMessage}
-                    onChange={(e) => setEmailMessage(e.target.value)}
-                    placeholder={t('additionalMessagePlaceholder')}
-                    rows={3}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t('additionalMessageHint')}
-                  </p>
+              {/* Additional message */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="emailMessage">{t('additionalMessage')}</Label>
+                  {emailMessage && (
+                    <button
+                      onClick={() => setEmailMessage('')}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t('clearMessage')}
+                    </button>
+                  )}
+                </div>
+                <Textarea
+                  id="emailMessage"
+                  value={emailMessage}
+                  onChange={(e) => setEmailMessage(e.target.value)}
+                  placeholder={t('additionalMessagePlaceholder')}
+                  rows={3}
+                  className="resize-none"
+                />
+                <p className="text-xs text-muted-foreground">{t('additionalMessageHint')}</p>
+              </div>
+
+              {/* Preview */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {t('preview')}
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
+                </div>
+                <EmailPreviewCompact
+                  storeName={store.name}
+                  logoUrl={store.logoUrl}
+                  primaryColor={store.theme?.primaryColor}
+                  subject={subject}
+                  additionalMessage={emailMessage || undefined}
+                  locale={locale}
+                  eventType={eventType}
+                  customerName={previewData.customerName}
+                  reservationNumber={previewData.reservationNumber}
+                  startDate={previewData.startDate}
+                  endDate={previewData.endDate}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* SMS Tab */}
+          {activeTab === 'sms' && (
+            <div className="p-6 space-y-6">
+              {/* SMS message */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="smsMessage">{t('smsMessage')}</Label>
+                  {isSmsCustomized && (
+                    <button
+                      onClick={() => setSmsMessage(defaultSms)}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {t('resetToDefault')}
+                    </button>
+                  )}
+                </div>
+                <Textarea
+                  id="smsMessage"
+                  value={smsMessage}
+                  onChange={(e) => setSmsMessage(e.target.value)}
+                  rows={5}
+                  className="font-mono text-sm resize-none"
+                />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{t('smsVariables')}</span>
+                  <span className={smsMessage.length > 160 ? 'text-amber-600 font-medium' : ''}>
+                    {smsMessage.length}/160
+                  </span>
                 </div>
               </div>
 
-              {/* Email Preview */}
-              <Collapsible open={showPreview} onOpenChange={setShowPreview}>
-                <CollapsibleContent>
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                      {t('preview')}
-                    </h3>
-                    <EventEmailPreview
-                      storeName={store.name}
-                      logoUrl={store.logoUrl}
-                      primaryColor={store.theme?.primaryColor}
-                      storeEmail={store.email}
-                      storePhone={store.phone}
-                      storeAddress={store.address}
-                      locale={locale}
-                      customerName={previewData.customerName}
-                      reservationNumber={previewData.reservationNumber}
-                      startDate={previewData.startDate}
-                      endDate={previewData.endDate}
-                      subject={subject}
-                      additionalMessage={emailMessage || undefined}
-                      eventType={eventType}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </TabsContent>
-
-            {/* SMS Tab */}
-            <TabsContent value="sms" className="space-y-6 mt-0">
-              {/* Configuration */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                  {t('configuration')}
-                </h3>
-
-                {/* SMS message */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm">{t('smsMessage')}</Label>
-                    <div className="flex items-center gap-2">
-                      {isSmsCustomized ? (
-                        <>
-                          <Badge variant="secondary" className="text-xs">
-                            {t('customized')}
-                          </Badge>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7"
-                                onClick={handleResetSms}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('resetToDefault')}</TooltipContent>
-                          </Tooltip>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-xs text-muted-foreground">
-                          {t('default')}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Textarea
-                    value={smsMessage}
-                    onChange={(e) => setSmsMessage(e.target.value)}
-                    rows={5}
-                    className="font-mono text-sm"
-                  />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{t('smsVariables')}</span>
-                    <span className={smsMessage.length > 160 ? 'text-amber-600 font-medium' : ''}>
-                      {smsMessage.length}/160
-                    </span>
-                  </div>
+              {/* Preview */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-border" />
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
+                    {t('preview')}
+                  </span>
+                  <div className="h-px flex-1 bg-border" />
                 </div>
+                <SmsPreviewCompact message={previewSms} storeName={store.name} />
               </div>
+            </div>
+          )}
+        </div>
 
-              {/* SMS Preview */}
-              <Collapsible open={showPreview} onOpenChange={setShowPreview}>
-                <CollapsibleContent>
-                  <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-                      {t('preview')}
-                    </h3>
-                    <div className="flex justify-center py-4">
-                      <SmsPreview message={previewSms} storeName={store.name} />
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            </TabsContent>
-          </Tabs>
-
-          <SheetFooter className="mt-6 pt-4 border-t">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              {tc('cancel')}
-            </Button>
-            <Button onClick={handleSave}>
-              {tc('save')}
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-    </TooltipProvider>
+        {/* Footer */}
+        <div className="border-t px-6 py-4 flex justify-end gap-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            {tc('cancel')}
+          </Button>
+          <Button onClick={handleSave}>{tc('save')}</Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
