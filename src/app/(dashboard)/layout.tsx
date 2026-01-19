@@ -28,7 +28,17 @@ export default async function DashboardLayout({
         enableSystem
         disableTransitionOnChange
       >
-        <GleapProvider>
+        <GleapProvider
+          user={
+            session.user?.id && session.user?.email
+              ? {
+                  id: session.user.id,
+                  email: session.user.email,
+                  name: session.user.name,
+                }
+              : undefined
+          }
+        >
           <div className="min-h-screen bg-background">
             {children}
           </div>
