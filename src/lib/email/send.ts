@@ -45,6 +45,7 @@ interface Store {
     pickupReminderContent?: import('@/types/store').EmailCustomContent
     returnReminderContent?: import('@/types/store').EmailCustomContent
     requestAcceptedContent?: import('@/types/store').EmailCustomContent
+    requestReceivedContent?: import('@/types/store').EmailCustomContent
   } | null
 }
 
@@ -260,7 +261,11 @@ export async function sendRequestReceivedEmail({
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
-  const subject = `${t.requestReceived.subject.replace('{number}', reservation.number)} - ${store.name}`
+  const customContent = store.emailSettings?.requestReceivedContent
+  const subject = customContent?.subject
+    ? customContent.subject.replace('{number}', reservation.number)
+    : `${t.requestReceived.subject.replace('{number}', reservation.number)} - ${store.name}`
+
   const html = await render(
     RequestReceivedEmail({
       storeName: store.name,
@@ -273,6 +278,7 @@ export async function sendRequestReceivedEmail({
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
       endDate: reservation.endDate,
+      customContent,
       locale,
     })
   )
