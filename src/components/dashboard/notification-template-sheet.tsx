@@ -7,18 +7,17 @@ import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
 import { Mail, Smartphone } from 'lucide-react'
 
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import { SmsPreviewCompact, replaceSmsVariables } from './sms-preview'
-import { EmailPreviewCompact } from './email-preview'
+import { replaceSmsVariables } from './sms-preview'
 import type { CustomerNotificationEventType, CustomerNotificationTemplate } from '@/types/store'
 import type { EmailLocale } from '@/lib/email/i18n'
 
@@ -60,14 +59,14 @@ interface NotificationTemplateSheetProps {
 // Event type labels
 const EVENT_LABELS: Record<string, Record<EmailLocale, string>> = {
   customer_request_received: {
-    fr: 'Demande de réservation reçue',
-    en: 'Reservation request received',
-    de: 'Reservierungsanfrage erhalten',
-    es: 'Solicitud de reserva recibida',
-    it: 'Richiesta di prenotazione ricevuta',
-    nl: 'Reserveringsaanvraag ontvangen',
-    pl: 'Otrzymano prośbę o rezerwację',
-    pt: 'Pedido de reserva recebido',
+    fr: 'Demande reçue',
+    en: 'Request received',
+    de: 'Anfrage erhalten',
+    es: 'Solicitud recibida',
+    it: 'Richiesta ricevuta',
+    nl: 'Aanvraag ontvangen',
+    pl: 'Prośba otrzymana',
+    pt: 'Pedido recebido',
   },
   customer_request_accepted: {
     fr: 'Demande acceptée',
@@ -193,7 +192,7 @@ export function NotificationTemplateSheet({
   const [emailMessage, setEmailMessage] = useState('')
   const [smsMessage, setSmsMessage] = useState('')
 
-  // Reset state when sheet opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (open) {
       setSubject(template?.subject || defaultSubject)
@@ -226,8 +225,6 @@ export function NotificationTemplateSheet({
     return {
       customerName: 'Jean',
       reservationNumber: '1234',
-      startDate,
-      endDate,
       formattedStartDate: format(startDate, 'PPP', { locale: dateLocale }),
       formattedEndDate: format(endDate, 'PPP', { locale: dateLocale }),
     }
@@ -247,74 +244,75 @@ export function NotificationTemplateSheet({
     EVENT_LABELS[eventType]?.[locale] || EVENT_LABELS[eventType]?.['en'] || eventType
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
-        <SheetHeader className="px-6 py-4 border-b">
-          <SheetTitle>{eventLabel}</SheetTitle>
-        </SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg p-0 gap-0">
+        <DialogHeader className="px-6 py-4 border-b">
+          <DialogTitle className="text-base">{eventLabel}</DialogTitle>
+        </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* Tab Switcher */}
-          <div className="px-6 pt-6">
-            <div className="inline-flex rounded-lg bg-muted p-1">
-              <button
-                onClick={() => setActiveTab('email')}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                  activeTab === 'email'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Mail className="h-4 w-4" />
-                Email
-              </button>
-              <button
-                onClick={() => setActiveTab('sms')}
-                className={cn(
-                  'inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-                  activeTab === 'sms'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Smartphone className="h-4 w-4" />
-                SMS
-              </button>
-            </div>
+        {/* Tab Switcher */}
+        <div className="px-6 pt-5">
+          <div className="inline-flex rounded-lg bg-muted p-1">
+            <button
+              onClick={() => setActiveTab('email')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                activeTab === 'email'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Email
+            </button>
+            <button
+              onClick={() => setActiveTab('sms')}
+              className={cn(
+                'inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                activeTab === 'sms'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Smartphone className="h-3.5 w-3.5" />
+              SMS
+            </button>
           </div>
+        </div>
 
+        {/* Content */}
+        <div className="px-6 py-5 space-y-5">
           {/* Email Tab */}
           {activeTab === 'email' && (
-            <div className="p-6 space-y-6">
+            <>
               {/* Subject */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="subject">{t('subject')}</Label>
+                  <Label htmlFor="subject" className="text-sm">
+                    {t('subject')}
+                  </Label>
                   {isSubjectCustomized && (
                     <button
                       onClick={() => setSubject(defaultSubject)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       {t('resetToDefault')}
                     </button>
                   )}
                 </div>
-                <Input
-                  id="subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
+                <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
               </div>
 
               {/* Additional message */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="emailMessage">{t('additionalMessage')}</Label>
+                  <Label htmlFor="emailMessage" className="text-sm">
+                    {t('additionalMessage')}
+                  </Label>
                   {emailMessage && (
                     <button
                       onClick={() => setEmailMessage('')}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       {t('clearMessage')}
                     </button>
@@ -331,43 +329,53 @@ export function NotificationTemplateSheet({
                 <p className="text-xs text-muted-foreground">{t('additionalMessageHint')}</p>
               </div>
 
-              {/* Preview */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                    {t('preview')}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
+              {/* Email Preview */}
+              <div className="rounded-lg border overflow-hidden">
+                <div className="bg-muted/50 px-3 py-2 border-b">
+                  <p className="text-xs text-muted-foreground truncate">
+                    <span className="font-medium text-foreground">{t('subject')}:</span> {subject}
+                  </p>
                 </div>
-                <EmailPreviewCompact
-                  storeName={store.name}
-                  logoUrl={store.logoUrl}
-                  primaryColor={store.theme?.primaryColor}
-                  subject={subject}
-                  additionalMessage={emailMessage || undefined}
-                  locale={locale}
-                  eventType={eventType}
-                  customerName={previewData.customerName}
-                  reservationNumber={previewData.reservationNumber}
-                  startDate={previewData.startDate}
-                  endDate={previewData.endDate}
-                />
+                <div className="p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    {store.logoUrl ? (
+                      <img src={store.logoUrl} alt="" className="h-5 w-5 object-contain" />
+                    ) : (
+                      <div
+                        className="h-5 w-5 rounded flex items-center justify-center text-[10px] font-bold text-white"
+                        style={{ backgroundColor: store.theme?.primaryColor || '#0066FF' }}
+                      >
+                        {store.name.charAt(0)}
+                      </div>
+                    )}
+                    <span className="text-sm font-medium">{store.name}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Bonjour {previewData.customerName}, ...
+                  </p>
+                  {emailMessage && (
+                    <div className="bg-primary/5 border border-primary/10 rounded px-2 py-1.5">
+                      <p className="text-xs text-foreground line-clamp-2">{emailMessage}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           {/* SMS Tab */}
           {activeTab === 'sms' && (
-            <div className="p-6 space-y-6">
+            <>
               {/* SMS message */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="smsMessage">{t('smsMessage')}</Label>
+                  <Label htmlFor="smsMessage" className="text-sm">
+                    {t('smsMessage')}
+                  </Label>
                   {isSmsCustomized && (
                     <button
                       onClick={() => setSmsMessage(defaultSms)}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       {t('resetToDefault')}
                     </button>
@@ -377,40 +385,53 @@ export function NotificationTemplateSheet({
                   id="smsMessage"
                   value={smsMessage}
                   onChange={(e) => setSmsMessage(e.target.value)}
-                  rows={5}
+                  rows={4}
                   className="font-mono text-sm resize-none"
                 />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{t('smsVariables')}</span>
-                  <span className={smsMessage.length > 160 ? 'text-amber-600 font-medium' : ''}>
+                  <span className={smsMessage.length > 160 ? 'text-amber-500 font-medium' : ''}>
                     {smsMessage.length}/160
                   </span>
                 </div>
               </div>
 
-              {/* Preview */}
-              <div className="space-y-3 pt-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
-                    {t('preview')}
-                  </span>
-                  <div className="h-px flex-1 bg-border" />
+              {/* SMS Preview */}
+              <div className="rounded-lg border overflow-hidden">
+                <div className="bg-muted/50 px-3 py-2 border-b flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-[10px] font-bold text-primary">
+                      {store.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <span className="text-sm font-medium">{store.name}</span>
                 </div>
-                <SmsPreviewCompact message={previewSms} storeName={store.name} />
+                <div className="p-3 bg-muted/20">
+                  <div className="bg-card border rounded-xl rounded-tl px-3 py-2 max-w-[85%]">
+                    <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                      {previewSms}
+                    </p>
+                  </div>
+                </div>
+                <div className="px-3 py-2 border-t bg-muted/30 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{Math.ceil(smsMessage.length / 160) || 1} SMS</span>
+                  <span>{smsMessage.length} caractères</span>
+                </div>
               </div>
-            </div>
+            </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="border-t px-6 py-4 flex justify-end gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="border-t px-6 py-4 flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             {tc('cancel')}
           </Button>
-          <Button onClick={handleSave}>{tc('save')}</Button>
+          <Button size="sm" onClick={handleSave}>
+            {tc('save')}
+          </Button>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   )
 }
