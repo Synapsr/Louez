@@ -40,6 +40,7 @@ export interface CustomerNotificationStore {
     confirmationContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
     rejectionContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
     requestAcceptedContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
+    requestReceivedContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
     pickupReminderContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
     returnReminderContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
   } | null
@@ -100,7 +101,7 @@ function mergeTemplateWithLegacy(
 ): { subject?: string; greeting?: string; message?: string; signature?: string } | undefined {
   // Map new event types to legacy emailSettings keys
   const legacyKeyMap: Record<CustomerNotificationEventType, keyof NonNullable<CustomerNotificationStore['emailSettings']> | null> = {
-    customer_request_received: null, // No legacy equivalent
+    customer_request_received: 'requestReceivedContent',
     customer_request_accepted: 'requestAcceptedContent',
     customer_request_rejected: 'rejectionContent',
     customer_reservation_confirmed: 'confirmationContent',
@@ -209,6 +210,7 @@ async function sendCustomerEmail(
         ? {
             ...ctx.store.emailSettings,
             // Inject custom content for the specific template
+            ...(eventType === 'customer_request_received' && { requestReceivedContent: customContent }),
             ...(eventType === 'customer_request_accepted' && { requestAcceptedContent: customContent }),
             ...(eventType === 'customer_request_rejected' && { rejectionContent: customContent }),
             ...(eventType === 'customer_reservation_confirmed' && { confirmationContent: customContent }),
