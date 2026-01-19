@@ -1,3 +1,14 @@
+/**
+ * Admin Notification Dispatcher
+ *
+ * Handles sending notifications to store owners (admins) via multiple channels:
+ * - Email (handled separately via existing email functions)
+ * - SMS (to owner phone with full i18n support - 8 languages)
+ * - Discord (via webhooks)
+ *
+ * Supports: fr, en, de, es, it, nl, pl, pt
+ */
+
 import { db } from '@/lib/db'
 import { stores, smsLogs } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
@@ -5,8 +16,7 @@ import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@
 import { sendSms, isSmsConfigured } from '@/lib/sms/client'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
 import { formatCurrencyForSms } from '@/lib/utils'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
 import {
   sendNewReservationDiscord,
   sendReservationConfirmedDiscord,
@@ -17,7 +27,11 @@ import {
   sendPaymentReceivedDiscord,
   sendPaymentFailedDiscord,
 } from '@/lib/discord/notifications'
-import type { NotificationEventType, NotificationSettings, DEFAULT_NOTIFICATION_SETTINGS } from '@/types/store'
+import type { NotificationEventType, NotificationSettings } from '@/types/store'
+
+// ============================================================================
+// Types
+// ============================================================================
 
 export interface NotificationContext {
   store: {
@@ -29,6 +43,7 @@ export interface NotificationContext {
     notificationSettings?: NotificationSettings | null
     settings?: {
       currency?: string
+      country?: string
     } | null
   }
   reservation?: {
@@ -55,6 +70,10 @@ export interface NotificationResult {
   discord: { sent: boolean; error?: string }
 }
 
+// ============================================================================
+// Default Settings
+// ============================================================================
+
 const DEFAULT_SETTINGS: NotificationSettings = {
   reservation_new: { email: true, sms: false, discord: false },
   reservation_confirmed: { email: true, sms: false, discord: false },
@@ -66,49 +85,204 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   payment_failed: { email: true, sms: false, discord: false },
 }
 
-function formatDate(date: Date): string {
-  return format(date, 'dd MMM yyyy', { locale: fr })
+// ============================================================================
+// Admin SMS Templates (i18n - 8 languages)
+// ============================================================================
+
+interface AdminSmsTemplateVars {
+  storeName: string
+  number: string
+  customerName: string
+  amount: string
 }
 
+type AdminSmsTemplates = {
+  reservation_new: (vars: AdminSmsTemplateVars) => string
+  reservation_confirmed: (vars: AdminSmsTemplateVars) => string
+  reservation_rejected: (vars: AdminSmsTemplateVars) => string
+  reservation_cancelled: (vars: AdminSmsTemplateVars) => string
+  reservation_picked_up: (vars: AdminSmsTemplateVars) => string
+  reservation_completed: (vars: AdminSmsTemplateVars) => string
+  payment_received: (vars: AdminSmsTemplateVars) => string
+  payment_failed: (vars: AdminSmsTemplateVars) => string
+}
+
+const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
+  fr: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nouvelle demande #${number} de ${customerName}. Montant: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Réservation #${number} confirmée pour ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Réservation #${number} rejetée`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Réservation #${number} annulée`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Équipement récupéré pour #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Réservation #${number} terminée. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Paiement reçu #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Échec paiement #${number}`,
+  },
+  en: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] New request #${number} from ${customerName}. Amount: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Reservation #${number} confirmed for ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Reservation #${number} rejected`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Reservation #${number} cancelled`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Equipment picked up for #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Reservation #${number} completed. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Payment received #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Payment failed #${number}`,
+  },
+  de: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Neue Anfrage #${number} von ${customerName}. Betrag: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Reservierung #${number} bestaetigt fuer ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Reservierung #${number} abgelehnt`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Reservierung #${number} storniert`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Ausruestung abgeholt fuer #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Reservierung #${number} abgeschlossen. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Zahlung erhalten #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Zahlung fehlgeschlagen #${number}`,
+  },
+  es: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nueva solicitud #${number} de ${customerName}. Monto: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Reserva #${number} confirmada para ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Reserva #${number} rechazada`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Reserva #${number} cancelada`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Equipo recogido para #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Reserva #${number} completada. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Pago recibido #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Pago fallido #${number}`,
+  },
+  it: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nuova richiesta #${number} da ${customerName}. Importo: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Prenotazione #${number} confermata per ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Prenotazione #${number} rifiutata`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Prenotazione #${number} annullata`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Attrezzatura ritirata per #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Prenotazione #${number} completata. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento ricevuto #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Pagamento fallito #${number}`,
+  },
+  nl: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nieuwe aanvraag #${number} van ${customerName}. Bedrag: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Reservering #${number} bevestigd voor ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Reservering #${number} afgewezen`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Reservering #${number} geannuleerd`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Apparatuur opgehaald voor #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Reservering #${number} voltooid. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Betaling ontvangen #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Betaling mislukt #${number}`,
+  },
+  pl: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nowe zamowienie #${number} od ${customerName}. Kwota: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Rezerwacja #${number} potwierdzona dla ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Rezerwacja #${number} odrzucona`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Rezerwacja #${number} anulowana`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Sprzet odebrany dla #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Rezerwacja #${number} zakonczona. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Platnosc otrzymana #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Platnosc nieudana #${number}`,
+  },
+  pt: {
+    reservation_new: ({ storeName, number, customerName, amount }) =>
+      `[${storeName}] Nova solicitacao #${number} de ${customerName}. Valor: ${amount}`,
+    reservation_confirmed: ({ storeName, number, customerName }) =>
+      `[${storeName}] Reserva #${number} confirmada para ${customerName}`,
+    reservation_rejected: ({ storeName, number }) =>
+      `[${storeName}] Reserva #${number} rejeitada`,
+    reservation_cancelled: ({ storeName, number }) =>
+      `[${storeName}] Reserva #${number} cancelada`,
+    reservation_picked_up: ({ storeName, number }) =>
+      `[${storeName}] Equipamento retirado para #${number}`,
+    reservation_completed: ({ storeName, number, amount }) =>
+      `[${storeName}] Reserva #${number} concluida. ${amount}`,
+    payment_received: ({ storeName, number, amount }) =>
+      `[${storeName}] Pagamento recebido #${number}: ${amount}`,
+    payment_failed: ({ storeName, number }) =>
+      `[${storeName}] Pagamento falhou #${number}`,
+  },
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
 /**
- * Build SMS message for admin notification
+ * Build localized SMS message for admin notification
  */
 function buildAdminSmsMessage(
   eventType: NotificationEventType,
-  ctx: NotificationContext
+  ctx: NotificationContext,
+  locale: EmailLocale
 ): string {
-  const storeName = ctx.store.name
-  const resNumber = ctx.reservation?.number || ''
-  const customerName = ctx.customer
-    ? `${ctx.customer.firstName} ${ctx.customer.lastName}`
-    : ''
-  const amount = ctx.reservation
-    ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
-    : ''
+  const templates = ADMIN_SMS_TEMPLATES[locale] || ADMIN_SMS_TEMPLATES.en
+  const templateFn = templates[eventType]
 
-  switch (eventType) {
-    case 'reservation_new':
-      return `[${storeName}] Nouvelle demande #${resNumber} de ${customerName}. Montant: ${amount}`
-    case 'reservation_confirmed':
-      return `[${storeName}] Réservation #${resNumber} confirmée pour ${customerName}`
-    case 'reservation_rejected':
-      return `[${storeName}] Réservation #${resNumber} rejetée`
-    case 'reservation_cancelled':
-      return `[${storeName}] Réservation #${resNumber} annulée`
-    case 'reservation_picked_up':
-      return `[${storeName}] Équipement récupéré pour #${resNumber}`
-    case 'reservation_completed':
-      return `[${storeName}] Réservation #${resNumber} terminée. ${amount}`
-    case 'payment_received':
-      const paymentAmount = ctx.payment
-        ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
-        : amount
-      return `[${storeName}] Paiement reçu #${resNumber}: ${paymentAmount}`
-    case 'payment_failed':
-      return `[${storeName}] Échec paiement #${resNumber}`
-    default:
-      return `[${storeName}] Notification: ${eventType}`
+  const vars: AdminSmsTemplateVars = {
+    storeName: ctx.store.name,
+    number: ctx.reservation?.number || '',
+    customerName: ctx.customer
+      ? `${ctx.customer.firstName} ${ctx.customer.lastName}`
+      : '',
+    amount: ctx.payment
+      ? formatCurrencyForSms(ctx.payment.amount, ctx.store.settings?.currency)
+      : ctx.reservation
+        ? formatCurrencyForSms(ctx.reservation.totalAmount, ctx.store.settings?.currency)
+        : '',
   }
+
+  return templateFn(vars)
 }
 
 /**
@@ -173,7 +347,41 @@ async function sendAdminSms(
 }
 
 /**
+ * Get Discord sender function for event type
+ */
+function getDiscordSender(eventType: NotificationEventType) {
+  switch (eventType) {
+    case 'reservation_new':
+      return sendNewReservationDiscord
+    case 'reservation_confirmed':
+      return sendReservationConfirmedDiscord
+    case 'reservation_rejected':
+      return sendReservationRejectedDiscord
+    case 'reservation_cancelled':
+      return sendReservationCancelledDiscord
+    case 'reservation_picked_up':
+      return sendReservationPickedUpDiscord
+    case 'reservation_completed':
+      return sendReservationCompletedDiscord
+    case 'payment_received':
+      return sendPaymentReceivedDiscord
+    case 'payment_failed':
+      return sendPaymentFailedDiscord
+    default:
+      return async () => ({ success: false, error: 'Unknown event type' })
+  }
+}
+
+// ============================================================================
+// Main Dispatch Function
+// ============================================================================
+
+/**
  * Dispatch notification to all enabled channels
+ *
+ * @param eventType - The type of event that triggered the notification
+ * @param ctx - Context containing store, reservation, customer, and payment info
+ * @returns Results for each channel (email, sms, discord)
  */
 export async function dispatchNotification(
   eventType: NotificationEventType,
@@ -189,19 +397,19 @@ export async function dispatchNotification(
   const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
   const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType]
 
+  // Determine locale from store country
+  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+
   // Email notification (for admin, this means sending to store email)
-  // Note: The existing email functions send to customers. For admin notifications,
-  // we'll use the new request landlord email or skip if not applicable
+  // Note: Admin emails are handled by existing functions like sendNewRequestLandlordEmail
+  // which are called separately from the action handlers
   if (prefs.email && ctx.store.email) {
-    // Email notifications for admin are already handled by existing functions
-    // like sendNewRequestLandlordEmail which is called separately
-    // This dispatcher focuses on NEW channels (SMS to owner, Discord)
-    result.email.sent = true // Assume handled elsewhere for now
+    result.email.sent = true // Handled by existing email functions
   }
 
   // SMS notification to store owner
   if (prefs.sms && ctx.store.ownerPhone) {
-    const message = buildAdminSmsMessage(eventType, ctx)
+    const message = buildAdminSmsMessage(eventType, ctx, locale)
     const smsResult = await sendAdminSms(
       ctx.store.id,
       ctx.store.ownerPhone,
@@ -253,28 +461,9 @@ export async function dispatchNotification(
   return result
 }
 
-function getDiscordSender(eventType: NotificationEventType) {
-  switch (eventType) {
-    case 'reservation_new':
-      return sendNewReservationDiscord
-    case 'reservation_confirmed':
-      return sendReservationConfirmedDiscord
-    case 'reservation_rejected':
-      return sendReservationRejectedDiscord
-    case 'reservation_cancelled':
-      return sendReservationCancelledDiscord
-    case 'reservation_picked_up':
-      return sendReservationPickedUpDiscord
-    case 'reservation_completed':
-      return sendReservationCompletedDiscord
-    case 'payment_received':
-      return sendPaymentReceivedDiscord
-    case 'payment_failed':
-      return sendPaymentFailedDiscord
-    default:
-      return async () => ({ success: false, error: 'Unknown event type' })
-  }
-}
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
 /**
  * Helper to get full store data for notifications
