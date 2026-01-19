@@ -87,11 +87,51 @@ export interface StoreTheme {
   heroImages?: string[]
 }
 
+/**
+ * Unified notification template interface.
+ * Used for both email and SMS customization.
+ * @deprecated Use NotificationTemplate instead for new code
+ */
 export interface EmailCustomContent {
   subject?: string
   greeting?: string
   message?: string
   signature?: string
+}
+
+/**
+ * Modern unified notification template.
+ * Supports both email and SMS with consistent field names.
+ */
+export interface NotificationTemplate {
+  /** Email subject line (supports variables: {name}, {number}, {storeName}) */
+  subject?: string
+  /** Custom email message body (supports variables) */
+  emailMessage?: string
+  /** Custom SMS message (supports variables, max 160 chars recommended) */
+  smsMessage?: string
+}
+
+/**
+ * Convert legacy EmailCustomContent to NotificationTemplate
+ */
+export function toNotificationTemplate(legacy: EmailCustomContent | undefined): NotificationTemplate | undefined {
+  if (!legacy) return undefined
+  return {
+    subject: legacy.subject,
+    emailMessage: legacy.message,
+  }
+}
+
+/**
+ * Convert NotificationTemplate to legacy EmailCustomContent (for backward compat)
+ */
+export function toLegacyEmailContent(template: NotificationTemplate | undefined): EmailCustomContent | undefined {
+  if (!template) return undefined
+  return {
+    subject: template.subject,
+    message: template.emailMessage,
+  }
 }
 
 export interface EmailSettings {

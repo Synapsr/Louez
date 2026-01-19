@@ -18,6 +18,9 @@ import {
   sendReservationConfirmationSms,
   sendReminderPickupSms,
   sendReminderReturnSms,
+  sendRequestReceivedSms,
+  sendRequestAcceptedSms,
+  sendRequestRejectedSms,
 } from '@/lib/sms/send'
 import { getSmsQuotaStatus } from '@/lib/plan-limits'
 import type {
@@ -285,6 +288,15 @@ async function sendCustomerSms(
   }
 
   switch (eventType) {
+    case 'customer_request_received':
+      return sendRequestReceivedSms(smsParams)
+
+    case 'customer_request_accepted':
+      return sendRequestAcceptedSms(smsParams)
+
+    case 'customer_request_rejected':
+      return sendRequestRejectedSms(smsParams)
+
     case 'customer_reservation_confirmed':
       return sendReservationConfirmationSms(smsParams)
 
@@ -293,14 +305,6 @@ async function sendCustomerSms(
 
     case 'customer_reminder_return':
       return sendReminderReturnSms(smsParams)
-
-    case 'customer_request_received':
-    case 'customer_request_accepted':
-    case 'customer_request_rejected':
-      // These don't have SMS implementations yet
-      // Could be added in the future
-      console.log(`SMS not implemented for ${eventType}`)
-      return { success: false, error: 'SMS not implemented for this event type' }
 
     default:
       throw new Error(`Unknown customer notification event type: ${eventType}`)
