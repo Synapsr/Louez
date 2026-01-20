@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, products, categories } from '@/lib/db/schema'
-import { eq, desc, and, inArray } from 'drizzle-orm'
+import { eq, desc, asc, and, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { ArrowRight, Calendar, Shield, Truck, Sparkles, ChevronRight, MapPin, Phone, Mail, User, KeyRound, CheckCircle, Star } from 'lucide-react'
 
@@ -99,11 +99,12 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
   // Fetch products in two steps to avoid sort buffer overflow
   // Step 1: Get product IDs (lightweight query with ORDER BY)
+  // Order by displayOrder first (for manual sorting), then by createdAt for new products
   const productIds = await db
     .select({ id: products.id })
     .from(products)
     .where(and(eq(products.storeId, store.id), eq(products.status, 'active')))
-    .orderBy(desc(products.createdAt))
+    .orderBy(asc(products.displayOrder), desc(products.createdAt))
     .limit(8)
 
   // Step 2: Fetch full product data with pricing tiers and category (no ORDER BY needed)

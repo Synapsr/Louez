@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, products, categories } from '@/lib/db/schema'
-import { eq, and, ne } from 'drizzle-orm'
+import { eq, and, ne, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, ImageIcon } from 'lucide-react'
 
@@ -159,6 +159,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         with: {
           pricingTiers: true,
         },
+        orderBy: [asc(products.displayOrder), desc(products.createdAt)],
         limit: 4,
       })
     : []
