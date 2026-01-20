@@ -305,6 +305,8 @@
         "reservationConfirmation": "Potwierdzenie",
         "reminderPickup": "Przypomnienie o odbiorze",
         "reminderReturn": "Przypomnienie o zwrocie",
+        "requestReceived": "Żądanie otrzymane",
+        "requestAccepted": "Żądanie zaakceptowane",
         "custom": "Niestandardowy",
         "thankYouReview": "Prośba o opinię"
       },
@@ -382,41 +384,136 @@
       "store": "Mój sklep"
     },
     "home": {
-      "greeting": "Cześć, {name}!",
-      "subtitle": "Oto przegląd Twojej dzisiejszej aktywności.",
-      "welcome": "Witamy",
-      "todaysDepartures": "Dzisiejsze odbiory",
-      "todaysReturns": "Dzisiejsze zwroty",
-      "pendingRequests": "Oczekujące żądania",
-      "totalRevenue": "Przychód",
-      "monthlyRevenue": "Przychód miesięczny",
-      "activeReservations": "Aktywne rezerwacje",
-      "occupancyRate": "Wskaźnik obłożenia",
-      "noDataYet": "Brak danych",
       "viewAll": "Zobacz wszystko",
-      "markAsPickedUp": "Oznacz jako odebrany",
-      "markAsReturned": "Oznacz jako zwrócony",
-      "noDeparturesTitle": "Brak dzisiejszych odbiorów",
-      "noDeparturesDescription": "Brak wynajmów do wydania dzisiaj",
-      "noReturnsTitle": "Brak dzisiejszych zwrotów",
-      "noReturnsDescription": "Brak sprzętu do odebrania dzisiaj",
-      "noPendingRequests": "Brak oczekujących żądań",
-      "revenueThisMonth": "Ten miesiąc",
-      "revenueVsPrevious": "vs poprzedni miesiąc",
-      "alerts": "Alerty",
-      "toDeliver": "do wydania",
-      "toRecover": "do odebrania",
-      "toProcess": "Do przetworzenia",
-      "departuresDescription": "Rezerwacje do wydania dzisiaj",
-      "returnsDescription": "Rezerwacje do odebrania dzisiaj",
-      "pendingDescription": "Rezerwacje wymagające Twojej akceptacji",
       "products": "Produkty",
-      "quickActions": "Szybkie akcje",
-      "quickActionsDescription": "Zarządzaj swoim sklepem efektywnie",
-      "addProductDescription": "Utwórz nowy produkt do wynajmu",
-      "yourStore": "Twój sklep",
-      "yourStoreDescription": "Udostępnij link swoim klientom",
-      "visit": "Odwiedź"
+
+      "header": {
+        "greeting": {
+          "morning": "Dzień dobry, {name}",
+          "morningAnonymous": "Dzień dobry",
+          "afternoon": "Dzień dobry, {name}",
+          "afternoonAnonymous": "Dzień dobry",
+          "evening": "Dobry wieczór, {name}",
+          "eveningAnonymous": "Dobry wieczór"
+        },
+        "subtitle": {
+          "virgin": "Witamy w Louez. Skonfigurujmy Twój sklep.",
+          "building": "{count, plural, one {# produkt utworzony} few {# produkty utworzone} other {# produktów utworzonych}}. Udostępnij swój sklep!",
+          "pending": "{count, plural, one {# oczekujące żądanie} few {# oczekujące żądania} other {# oczekujących żądań}}",
+          "operations": "{count, plural, one {# operacja dziś} few {# operacje dziś} other {# operacji dziś}}",
+          "calm": "Dziś wszystko spokojnie."
+        },
+        "cta": {
+          "addFirstProduct": "Dodaj mój pierwszy produkt",
+          "handleRequests": "Obsłuż żądania ({count})",
+          "addReservation": "Nowa rezerwacja"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 oczekujące żądanie",
+        "multiplePending": "{count} oczekujących żądań",
+        "description": "Twoi klienci czekają na odpowiedź",
+        "action": "Obsłuż"
+      },
+
+      "setup": {
+        "title": "Pierwsze kroki",
+        "description": "Kilka kroków na początek",
+        "stepsCompleted": "kroków ukończonych",
+        "dismissForNow": "Ukryj na razie",
+        "steps": {
+          "createAccount": "Utwórz konto",
+          "configureStore": "Skonfiguruj sklep",
+          "addFirstProduct": "Dodaj pierwszy produkt",
+          "firstReservation": "Otrzymaj pierwszą rezerwację",
+          "firstCompleted": "Zakończ pierwszy wynajem"
+        },
+        "start": "Rozpocznij",
+        "addProductHint": "Dodaj swój pierwszy produkt, aby klienci mogli rezerwować.",
+        "addFirstProduct": "Dodaj produkt",
+        "shareHint": "Udostępnij swój sklep, aby otrzymać pierwsze rezerwacje.",
+        "viewStore": "Zobacz mój sklep",
+        "createReservation": "Utwórz rezerwację"
+      },
+
+      "stats": {
+        "products": "Produkty",
+        "customers": "Klienci",
+        "drafts": "{count, plural, one {# szkic} few {# szkice} other {# szkiców}}",
+        "todaysDepartures": "Dzisiejsze odbiory",
+        "todaysReturns": "Dzisiejsze zwroty",
+        "pendingRequests": "Oczekujące żądania",
+        "monthlyRevenue": "Przychód miesięczny",
+        "totalReservations": "Rezerwacje",
+        "toDeliver": "do wydania",
+        "toRecover": "do odebrania",
+        "toProcess": "Do przetworzenia",
+        "vsLastMonth": "vs poprzedni miesiąc",
+        "completed": "{count, plural, one {# zakończona} few {# zakończone} other {# zakończonych}}"
+      },
+
+      "activity": {
+        "departures": "Dzisiejsze odbiory",
+        "departuresDescription": "Rezerwacje do wydania dzisiaj",
+        "returns": "Dzisiejsze zwroty",
+        "returnsDescription": "Rezerwacje do odebrania dzisiaj",
+        "noDepartures": "Brak wydań zaplanowanych na dziś",
+        "noReturns": "Brak zwrotów zaplanowanych na dziś",
+        "noActivityTitle": "Spokojny dzień",
+        "noActivityDescription": "Brak operacji zaplanowanych na dziś"
+      },
+
+      "pending": {
+        "title": "Oczekujące żądania",
+        "description": "Rezerwacje wymagające Twojej akceptacji",
+        "empty": "Brak oczekujących żądań"
+      },
+
+      "quickActions": {
+        "title": "Szybkie akcje",
+        "description": "Zarządzaj swoim sklepem efektywnie",
+        "addProduct": {
+          "title": "Dodaj produkt",
+          "description": "Utwórz nowy produkt do wynajmu"
+        },
+        "addReservation": {
+          "title": "Utwórz rezerwację",
+          "description": "Dodaj rezerwację ręcznie"
+        }
+      },
+
+      "storefront": {
+        "title": "Twój sklep",
+        "description": "Udostępnij link swoim klientom",
+        "online": "Online",
+        "publicUrl": "Publiczny adres",
+        "visit": "Odwiedź",
+        "copy": "Kopiuj",
+        "copied": "Skopiowano!",
+        "share": "Udostępnij",
+        "shareTitle": "Mój sklep z wynajmem"
+      },
+
+      "share": {
+        "title": "Udostępnij swój sklep",
+        "description": "Wyślij link do swojego sklepu klientom",
+        "copyLink": "Kopiuj link",
+        "copyLinkDescription": "Skopiuj URL do schowka",
+        "copied": "Skopiowano!",
+        "whatsappDescription": "Wyślij przez WhatsApp",
+        "whatsappMessage": "Odkryj nasz sklep z wynajmem: {url}",
+        "email": "E-mail",
+        "emailDescription": "Wyślij e-mailem",
+        "emailSubject": "Odkryj nasz sklep z wynajmem",
+        "emailBody": "Cześć,\n\nZapraszam do odkrycia naszego sklepu z wynajmem:\n{url}\n\nDo zobaczenia!",
+        "smsDescription": "Wyślij przez SMS",
+        "smsMessage": "Odkryj nasz sklep z wynajmem: {url}",
+        "showQR": "Pokaż kod QR",
+        "hideQR": "Ukryj kod QR",
+        "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu",
+        "downloadQR": "Pobierz"
+      }
     },
     "products": {
       "title": "Produkty",
@@ -1268,7 +1365,8 @@
       "views": {
         "day": "Dzień",
         "week": "Tydzień",
-        "month": "Miesiąc"
+        "month": "Miesiąc",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filtruj według produktu",
       "allProducts": "Wszystkie produkty",
@@ -1279,6 +1377,7 @@
       "today": "Dzisiaj",
       "legend": "Legenda",
       "moreItems": "+{count} więcej",
+      "noCustomer": "Brak klienta",
       "dayNames": {
         "mon": "Pon",
         "tue": "Wt",
@@ -1295,6 +1394,30 @@
         "completed": "Zakończona",
         "cancelled": "Anulowana",
         "rejected": "Odrzucona"
+      },
+      "viewMode": {
+        "label": "Tryb widoku",
+        "calendar": "Kalendarz",
+        "products": "Produkty"
+      },
+      "periods": {
+        "week": "Tydzień",
+        "twoWeeks": "2 tygodnie",
+        "month": "Miesiąc"
+      },
+      "productsView": {
+        "products": "Produkty",
+        "units": "{count, plural, one {# jednostka} few {# jednostki} many {# jednostek} other {# jednostek}}",
+        "unit": "Jednostka",
+        "available": "Dostępny",
+        "noProducts": "Brak produktów do wyświetlenia",
+        "reservationsCount": "{count, plural, one {# rezerwacja} few {# rezerwacje} many {# rezerwacji} other {# rezerwacji}}"
+      },
+      "timeline": {
+        "products": "Produkty",
+        "quantity": "{count, plural, one {# jednostka} few {# jednostki} other {# jednostek}}",
+        "available": "Dostępny",
+        "noProducts": "Brak produktów do wyświetlenia"
       },
       "export": {
         "button": "Eksportuj kalendarz",
@@ -1773,7 +1896,171 @@
           "upgrade": "Przejdź na Pro",
           "featureLocked": "Funkcja zablokowana",
           "upgradeToUnlock": "Przejdź na Pro, aby włączyć tę funkcję"
-        }
+        },
+        "customizeTemplate": "Dostosuj",
+        "templateSaved": "Szablon zapisany"
+      },
+      "notifications": {
+        "title": "Powiadomienia",
+        "description": "Skonfiguruj sposob otrzymywania powiadomien o wydarzeniach w sklepie",
+        "saveError": "Blad podczas zapisywania",
+        "phone": {
+          "title": "Numer telefonu",
+          "description": "Aby otrzymywac powiadomienia SMS",
+          "placeholder": "+48 512 345 678",
+          "configured": "Numer skonfigurowany",
+          "saved": "Numer telefonu zapisany",
+          "invalidNumber": "Nieprawidlowy numer telefonu",
+          "required": "Najpierw skonfiguruj numer telefonu"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Otrzymuj natychmiastowe powiadomienia na serwerze Discord",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Polaczony",
+          "saved": "Webhook Discord zapisany",
+          "invalidUrl": "Nieprawidlowy URL webhooka",
+          "test": "Testuj",
+          "testSuccess": "Powiadomienie testowe wyslane",
+          "testError": "Nie udalo sie wyslac testu",
+          "howTo": "Jak utworzyc webhook Discord?",
+          "required": "Najpierw skonfiguruj Discord"
+        },
+        "events": {
+          "event": "Wydarzenie",
+          "reservation": {
+            "title": "Wydarzenia rezerwacji",
+            "reservation_new": {
+              "label": "Nowe zapytanie",
+              "description": "Gdy klient wysyla nowe zapytanie"
+            },
+            "reservation_confirmed": {
+              "label": "Rezerwacja potwierdzona",
+              "description": "Gdy akceptujesz zapytanie"
+            },
+            "reservation_rejected": {
+              "label": "Rezerwacja odrzucona",
+              "description": "Gdy odrzucasz zapytanie"
+            },
+            "reservation_cancelled": {
+              "label": "Rezerwacja anulowana",
+              "description": "Gdy rezerwacja zostaje anulowana"
+            },
+            "reservation_picked_up": {
+              "label": "Sprzet odebrany",
+              "description": "Gdy klient odbiera sprzet"
+            },
+            "reservation_completed": {
+              "label": "Rezerwacja zakonczona",
+              "description": "Gdy sprzet zostaje zwrocony"
+            }
+          },
+          "payment": {
+            "title": "Wydarzenia platnosci",
+            "payment_received": {
+              "label": "Platnosc otrzymana",
+              "description": "Gdy platnosc sie powiedzie"
+            },
+            "payment_failed": {
+              "label": "Platnosc nieudana",
+              "description": "Gdy platnosc sie nie powiedzie"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "Osiagnieto limit SMS",
+          "limitReachedMessage": "Osiagnales miesieczny limit SMS.",
+          "lowCredits": "Pozostalo Ci {current} z {limit} SMS w tym miesiacu.",
+          "buyMore": "Kup wiecej SMS",
+          "quotaLabel": "Kredyty SMS",
+          "manage": "Zarzadzaj",
+          "noCreditsLeft": "Brak kredytow SMS",
+          "noCreditsDescription": "Kup kredyty, aby wysylac SMS do klientow",
+          "buyCredits": "Kup kredyty",
+          "remaining": "pozostalo",
+          "lowWarning": "Niski poziom kredytow"
+        },
+        "adminSection": {
+          "title": "Powiadomienia administratora",
+          "description": "Otrzymuj powiadomienia o zdarzeniach"
+        },
+        "customerSection": {
+          "title": "Powiadomienia dla klientow",
+          "description": "E-maile i SMS automatycznie wysylane do klientow"
+        },
+        "customerEvents": {
+          "reservationTitle": "Proces rezerwacji",
+          "reminderTitle": "Automatyczne przypomnienia",
+          "customer_request_received": {
+            "label": "Prosba otrzymana",
+            "description": "Potwierdzenie prosby"
+          },
+          "customer_request_accepted": {
+            "label": "Prosba zaakceptowana",
+            "description": "Gdy akceptujesz prosbe"
+          },
+          "customer_request_rejected": {
+            "label": "Prosba odrzucona",
+            "description": "Gdy odrzucasz prosbe"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Rezerwacja potwierdzona",
+            "description": "Po udanej platnosci"
+          },
+          "customer_reminder_pickup": {
+            "label": "Przypomnienie o odbiorze",
+            "description": "Wyslane przed data odbioru"
+          },
+          "customer_reminder_return": {
+            "label": "Przypomnienie o zwrocie",
+            "description": "Wyslane przed data zwrotu"
+          },
+          "reminderDescription": "Skonfiguruj kiedy i jak Twoi klienci otrzymuja przypomnienia"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Wyprzedzenie przypomnienia o odbiorze",
+          "returnLabel": "Wyprzedzenie przypomnienia o zwrocie",
+          "pickupDescription": "Czas przed poczatkiem wynajmu",
+          "returnDescription": "Czas przed koncem wynajmu",
+          "hours": "{count, plural, =1 {1 godzina} =2 {2 godziny} =3 {3 godziny} =4 {4 godziny} other {# godzin}}"
+        },
+        "customerTemplates": {
+          "title": "Dostosuj szablon",
+          "emailSection": "E-mail",
+          "smsSection": "SMS",
+          "subject": "Temat e-maila",
+          "subjectHint": "Pozostaw puste dla domyslnego tematu",
+          "additionalMessage": "Niestandardowa wiadomosc",
+          "additionalMessagePlaceholder": "Dodaj wiadomosc, ktora pojawi sie w e-mailu",
+          "additionalMessageHint": "Ta wiadomosc zostanie dodana do domyslnej tresci",
+          "smsMessage": "Wiadomosc SMS",
+          "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Resetuj",
+          "cancel": "Anuluj",
+          "save": "Zapisz",
+          "customized": "Dostosowany",
+          "default": "Domyślny",
+          "resetToDefault": "Przywróć domyślne",
+          "clearMessage": "Wyczyść wiadomość",
+          "resetAll": "Zresetuj wszystko"
+        },
+        "templateSheet": {
+          "hidePreview": "Ukryj podgląd",
+          "showPreview": "Pokaż podgląd",
+          "configuration": "Konfiguracja",
+          "subject": "Temat",
+          "customized": "Dostosowany",
+          "default": "Domyślny",
+          "resetToDefault": "Przywróć domyślne",
+          "additionalMessage": "Niestandardowa wiadomość",
+          "additionalMessagePlaceholder": "Dodaj wiadomość, która pojawi się w e-mailu...",
+          "additionalMessageHint": "Ta wiadomość zostanie dodana do domyślnej treści e-maila",
+          "preview": "Podgląd",
+          "smsMessage": "Wiadomość SMS",
+          "smsVariables": "Zmienne: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Wyczyść wiadomość"
+        },
+        "templateSaved": "Szablon zapisany"
       },
       "businessHours": {
         "title": "Godziny otwarcia",
@@ -2469,6 +2756,7 @@
         "firstNameRequired": "Imię wymagane",
         "lastNameRequired": "Nazwisko wymagane",
         "phoneRequired": "Telefon wymagany",
+        "invalidPhone": "Nieprawidłowy format telefonu",
         "companyNameRequired": "Proszę podać nazwę firmy",
         "acceptCgv": "Musisz zaakceptować regulamin"
       },
@@ -2924,6 +3212,50 @@
       "paymentPending": "Płatność za tę rezerwację jest oczekująca.",
       "viewAndPay": "Zobacz i zapłać",
       "linkValid": "Ten link jest ważny przez 30 dni."
+    },
+    "reservationCancelled": {
+      "subject": "Rezerwacja #{number} anulowana",
+      "title": "Rezerwacja anulowana",
+      "body": "Twoja rezerwacja #{number} została anulowana.",
+      "cancelledPeriod": "Anulowany okres",
+      "reasonLabel": "Powód",
+      "contactForQuestions": "Jeśli masz pytania, skontaktuj się z nami.",
+      "browseEquipment": "Przeglądaj nasz katalog",
+      "thankYou": "Dziękujemy za zrozumienie."
+    },
+    "reservationCompleted": {
+      "subject": "Rezerwacja #{number} zakończona",
+      "title": "Wynajem zakończony!",
+      "body": "Twoja rezerwacja #{number} została zakończona.",
+      "rentalPeriod": "Okres wynajmu",
+      "depositReturned": "Twoja kaucja w wysokości {amount} zostanie zwrócona.",
+      "depositPending": "Twoja kaucja w wysokości {amount} zostanie zweryfikowana i wkrótce zwrócona.",
+      "thankYouMessage": "Dziękujemy za skorzystanie z naszych usług!",
+      "rentAgain": "Wynajmij ponownie",
+      "seeYouSoon": "Do zobaczenia!"
+    },
+    "paymentConfirmation": {
+      "subject": "Płatność potwierdzona - Rezerwacja #{number}",
+      "title": "Płatność otrzymana!",
+      "body": "Otrzymaliśmy Twoją płatność za rezerwację #{number}.",
+      "paymentDetails": "Szczegóły płatności",
+      "amount": "Kwota",
+      "date": "Data",
+      "method": "Metoda",
+      "reservation": "Rezerwacja",
+      "confirmation": "Twoja płatność została pomyślnie przetworzona.",
+      "keepEmail": "Zachowaj ten e-mail jako potwierdzenie płatności."
+    },
+    "paymentFailed": {
+      "subject": "Płatność nieudana - Rezerwacja #{number}",
+      "title": "Płatność nieudana",
+      "body": "Płatność {amount} za rezerwację #{number} nie mogła zostać przetworzona.",
+      "whatToDo": "Co zrobić?",
+      "tip1": "Sprawdź, czy Twoja karta jest ważna i ma wystarczające środki",
+      "tip2": "Spróbuj inną kartą",
+      "tip3": "Skontaktuj się z bankiem, jeśli problem się powtarza",
+      "retryPayment": "Ponów płatność",
+      "contactSupport": "Potrzebujesz pomocy? Skontaktuj się z nami."
     }
   },
   "contract": {

@@ -4,6 +4,9 @@ import { z } from 'zod'
 export const customerTypeValues = ['individual', 'business'] as const
 export type CustomerType = (typeof customerTypeValues)[number]
 
+// E.164 phone format regex (optional - empty string allowed)
+const phoneRegex = /^\+[1-9]\d{6,14}$/
+
 // Base schema without refinement for form validation
 const baseCustomerFields = {
   customerType: z.enum(customerTypeValues),
@@ -11,7 +14,10 @@ const baseCustomerFields = {
   firstName: z.string().min(1, 'validation.required').max(255),
   lastName: z.string().min(1, 'validation.required').max(255),
   companyName: z.string().max(255).optional(),
-  phone: z.string().optional(),
+  phone: z.string().refine(
+    (val) => !val || phoneRegex.test(val),
+    { message: 'validation.invalidPhone' }
+  ).optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   postalCode: z.string().optional(),
@@ -27,7 +33,10 @@ export const createCustomerSchema = (t: (key: string, params?: Record<string, st
     firstName: z.string().min(1, t('required')).max(255),
     lastName: z.string().min(1, t('required')).max(255),
     companyName: z.string().max(255).optional(),
-    phone: z.string().optional(),
+    phone: z.string().refine(
+      (val) => !val || phoneRegex.test(val),
+      { message: t('invalidPhone') }
+    ).optional(),
     address: z.string().optional(),
     city: z.string().optional(),
     postalCode: z.string().optional(),

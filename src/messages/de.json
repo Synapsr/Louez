@@ -305,6 +305,8 @@
         "reservationConfirmation": "Bestätigung",
         "reminderPickup": "Abholungserinnerung",
         "reminderReturn": "Rückgabeerinnerung",
+        "requestReceived": "Anfrage erhalten",
+        "requestAccepted": "Anfrage akzeptiert",
         "custom": "Benutzerdefiniert",
         "thankYouReview": "Bewertungsanfrage"
       },
@@ -382,41 +384,136 @@
       "store": "Mein Shop"
     },
     "home": {
-      "greeting": "Hallo, {name}!",
-      "subtitle": "Hier ist eine Übersicht Ihrer heutigen Aktivitäten.",
-      "welcome": "Willkommen",
-      "todaysDepartures": "Heutige Abholungen",
-      "todaysReturns": "Heutige Rückgaben",
-      "pendingRequests": "Ausstehende Anfragen",
-      "totalRevenue": "Umsatz",
-      "monthlyRevenue": "Monatsumsatz",
-      "activeReservations": "Aktive Reservierungen",
-      "occupancyRate": "Auslastungsrate",
-      "noDataYet": "Noch keine Daten",
       "viewAll": "Alle ansehen",
-      "markAsPickedUp": "Als abgeholt markieren",
-      "markAsReturned": "Als zurückgegeben markieren",
-      "noDeparturesTitle": "Keine Abholungen heute",
-      "noDeparturesDescription": "Heute keine Vermietungen zu übergeben",
-      "noReturnsTitle": "Keine Rückgaben heute",
-      "noReturnsDescription": "Heute keine Ausrüstung abzuholen",
-      "noPendingRequests": "Keine ausstehenden Anfragen",
-      "revenueThisMonth": "Dieser Monat",
-      "revenueVsPrevious": "vs Vormonat",
-      "alerts": "Warnungen",
-      "toDeliver": "zu übergeben",
-      "toRecover": "abzuholen",
-      "toProcess": "Zu bearbeiten",
-      "departuresDescription": "Heute zu übergebende Reservierungen",
-      "returnsDescription": "Heute abzuholende Reservierungen",
-      "pendingDescription": "Reservierungen, die Ihre Genehmigung erfordern",
       "products": "Produkte",
-      "quickActions": "Schnellaktionen",
-      "quickActionsDescription": "Verwalten Sie Ihren Shop effizient",
-      "addProductDescription": "Neues Produkt zur Vermietung erstellen",
-      "yourStore": "Ihr Shop",
-      "yourStoreDescription": "Teilen Sie Ihren Link mit Ihren Kunden",
-      "visit": "Besuchen"
+
+      "header": {
+        "greeting": {
+          "morning": "Guten Morgen, {name}",
+          "morningAnonymous": "Guten Morgen",
+          "afternoon": "Guten Tag, {name}",
+          "afternoonAnonymous": "Guten Tag",
+          "evening": "Guten Abend, {name}",
+          "eveningAnonymous": "Guten Abend"
+        },
+        "subtitle": {
+          "virgin": "Willkommen bei Louez. Lassen Sie uns Ihren Shop einrichten.",
+          "building": "{count, plural, one {# Produkt erstellt} other {# Produkte erstellt}}. Teilen Sie Ihren Shop!",
+          "pending": "{count, plural, one {# ausstehende Anfrage} other {# ausstehende Anfragen}}",
+          "operations": "{count, plural, one {# Vorgang heute} other {# Vorgänge heute}}",
+          "calm": "Heute ist alles ruhig."
+        },
+        "cta": {
+          "addFirstProduct": "Mein erstes Produkt hinzufügen",
+          "handleRequests": "Anfragen bearbeiten ({count})",
+          "addReservation": "Neue Reservierung"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 ausstehende Anfrage",
+        "multiplePending": "{count} ausstehende Anfragen",
+        "description": "Ihre Kunden warten auf Ihre Antwort",
+        "action": "Bearbeiten"
+      },
+
+      "setup": {
+        "title": "Erste Schritte",
+        "description": "Einige Schritte zum Starten",
+        "stepsCompleted": "Schritte abgeschlossen",
+        "dismissForNow": "Vorerst ausblenden",
+        "steps": {
+          "createAccount": "Konto erstellen",
+          "configureStore": "Shop konfigurieren",
+          "addFirstProduct": "Erstes Produkt hinzufügen",
+          "firstReservation": "Erste Reservierung erhalten",
+          "firstCompleted": "Erste Vermietung abschließen"
+        },
+        "start": "Starten",
+        "addProductHint": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
+        "addFirstProduct": "Produkt hinzufügen",
+        "shareHint": "Teilen Sie Ihren Shop, um Ihre ersten Reservierungen zu erhalten.",
+        "viewStore": "Meinen Shop ansehen",
+        "createReservation": "Reservierung erstellen"
+      },
+
+      "stats": {
+        "products": "Produkte",
+        "customers": "Kunden",
+        "drafts": "{count, plural, one {# Entwurf} other {# Entwürfe}}",
+        "todaysDepartures": "Heutige Abholungen",
+        "todaysReturns": "Heutige Rückgaben",
+        "pendingRequests": "Ausstehende Anfragen",
+        "monthlyRevenue": "Monatsumsatz",
+        "totalReservations": "Reservierungen",
+        "toDeliver": "zu übergeben",
+        "toRecover": "abzuholen",
+        "toProcess": "Zu bearbeiten",
+        "vsLastMonth": "vs letzter Monat",
+        "completed": "{count, plural, one {# abgeschlossen} other {# abgeschlossen}}"
+      },
+
+      "activity": {
+        "departures": "Heutige Abholungen",
+        "departuresDescription": "Heute zu übergebende Reservierungen",
+        "returns": "Heutige Rückgaben",
+        "returnsDescription": "Heute abzuholende Reservierungen",
+        "noDepartures": "Keine Übergaben heute geplant",
+        "noReturns": "Keine Rückgaben heute geplant",
+        "noActivityTitle": "Ruhiger Tag",
+        "noActivityDescription": "Heute keine Vorgänge geplant"
+      },
+
+      "pending": {
+        "title": "Ausstehende Anfragen",
+        "description": "Reservierungen, die Ihre Genehmigung erfordern",
+        "empty": "Keine ausstehenden Anfragen"
+      },
+
+      "quickActions": {
+        "title": "Schnellaktionen",
+        "description": "Verwalten Sie Ihren Shop effizient",
+        "addProduct": {
+          "title": "Produkt hinzufügen",
+          "description": "Neues Produkt zur Vermietung erstellen"
+        },
+        "addReservation": {
+          "title": "Reservierung erstellen",
+          "description": "Reservierung manuell hinzufügen"
+        }
+      },
+
+      "storefront": {
+        "title": "Ihr Shop",
+        "description": "Teilen Sie Ihren Link mit Ihren Kunden",
+        "online": "Online",
+        "publicUrl": "Öffentliche Adresse",
+        "visit": "Besuchen",
+        "copy": "Kopieren",
+        "copied": "Kopiert!",
+        "share": "Teilen",
+        "shareTitle": "Mein Vermietungsshop"
+      },
+
+      "share": {
+        "title": "Shop teilen",
+        "description": "Senden Sie Ihren Shop-Link an Ihre Kunden",
+        "copyLink": "Link kopieren",
+        "copyLinkDescription": "URL in Zwischenablage kopieren",
+        "copied": "Kopiert!",
+        "whatsappDescription": "Über WhatsApp senden",
+        "whatsappMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
+        "email": "E-Mail",
+        "emailDescription": "Per E-Mail senden",
+        "emailSubject": "Entdecken Sie unseren Vermietungsshop",
+        "emailBody": "Hallo,\n\nIch lade Sie ein, unseren Vermietungsshop zu entdecken:\n{url}\n\nBis bald!",
+        "smsDescription": "Per SMS senden",
+        "smsMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
+        "showQR": "QR-Code anzeigen",
+        "hideQR": "QR-Code ausblenden",
+        "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen",
+        "downloadQR": "Herunterladen"
+      }
     },
     "products": {
       "title": "Produkte",
@@ -1269,7 +1366,8 @@
       "views": {
         "day": "Tag",
         "week": "Woche",
-        "month": "Monat"
+        "month": "Monat",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Nach Produkt filtern",
       "allProducts": "Alle Produkte",
@@ -1280,6 +1378,7 @@
       "today": "Heute",
       "legend": "Legende",
       "moreItems": "+{count} weitere",
+      "noCustomer": "Kein Kunde",
       "dayNames": {
         "mon": "Mo",
         "tue": "Di",
@@ -1296,6 +1395,30 @@
         "completed": "Abgeschlossen",
         "cancelled": "Storniert",
         "rejected": "Abgelehnt"
+      },
+      "viewMode": {
+        "label": "Ansichtsmodus",
+        "calendar": "Kalender",
+        "products": "Produkte"
+      },
+      "periods": {
+        "week": "Woche",
+        "twoWeeks": "2 Wochen",
+        "month": "Monat"
+      },
+      "productsView": {
+        "products": "Produkte",
+        "units": "{count, plural, one {# Einheit} other {# Einheiten}}",
+        "unit": "Einheit",
+        "available": "Verfügbar",
+        "noProducts": "Keine Produkte anzuzeigen",
+        "reservationsCount": "{count, plural, one {# Reservierung} other {# Reservierungen}}"
+      },
+      "timeline": {
+        "products": "Produkte",
+        "quantity": "{count, plural, one {# Einheit} other {# Einheiten}}",
+        "available": "Verfügbar",
+        "noProducts": "Keine Produkte anzuzeigen"
       },
       "export": {
         "button": "Kalender exportieren",
@@ -1774,7 +1897,171 @@
           "upgrade": "Auf Pro upgraden",
           "featureLocked": "Funktion gesperrt",
           "upgradeToUnlock": "Upgraden Sie auf Pro, um diese Funktion zu aktivieren"
-        }
+        },
+        "customizeTemplate": "Anpassen",
+        "templateSaved": "Vorlage gespeichert"
+      },
+      "notifications": {
+        "title": "Benachrichtigungen",
+        "description": "Konfigurieren Sie, wie Sie über Shop-Ereignisse benachrichtigt werden",
+        "saveError": "Fehler beim Speichern",
+        "phone": {
+          "title": "Telefonnummer",
+          "description": "Um SMS-Benachrichtigungen zu erhalten",
+          "placeholder": "+49 151 12345678",
+          "configured": "Nummer konfiguriert",
+          "saved": "Telefonnummer gespeichert",
+          "invalidNumber": "Ungültige Telefonnummer",
+          "required": "Konfigurieren Sie zuerst Ihre Telefonnummer"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Erhalten Sie sofortige Benachrichtigungen in Ihrem Discord-Server",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Verbunden",
+          "saved": "Discord-Webhook gespeichert",
+          "invalidUrl": "Ungültige Webhook-URL",
+          "test": "Testen",
+          "testSuccess": "Testbenachrichtigung gesendet",
+          "testError": "Test fehlgeschlagen",
+          "howTo": "Wie erstelle ich einen Discord-Webhook?",
+          "required": "Konfigurieren Sie zuerst Discord"
+        },
+        "events": {
+          "event": "Ereignis",
+          "reservation": {
+            "title": "Reservierungsereignisse",
+            "reservation_new": {
+              "label": "Neue Anfrage",
+              "description": "Wenn ein Kunde eine neue Anfrage sendet"
+            },
+            "reservation_confirmed": {
+              "label": "Reservierung bestätigt",
+              "description": "Wenn Sie eine Anfrage akzeptieren"
+            },
+            "reservation_rejected": {
+              "label": "Reservierung abgelehnt",
+              "description": "Wenn Sie eine Anfrage ablehnen"
+            },
+            "reservation_cancelled": {
+              "label": "Reservierung storniert",
+              "description": "Wenn eine Reservierung storniert wird"
+            },
+            "reservation_picked_up": {
+              "label": "Ausrüstung abgeholt",
+              "description": "Wenn der Kunde die Ausrüstung abholt"
+            },
+            "reservation_completed": {
+              "label": "Reservierung abgeschlossen",
+              "description": "Wenn die Ausrüstung zurückgegeben wird"
+            }
+          },
+          "payment": {
+            "title": "Zahlungsereignisse",
+            "payment_received": {
+              "label": "Zahlung erhalten",
+              "description": "Wenn eine Zahlung erfolgreich ist"
+            },
+            "payment_failed": {
+              "label": "Zahlung fehlgeschlagen",
+              "description": "Wenn eine Zahlung fehlschlägt"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "SMS-Limit erreicht",
+          "limitReachedMessage": "Sie haben Ihr monatliches SMS-Limit erreicht.",
+          "lowCredits": "Sie haben noch {current} von {limit} SMS diesen Monat.",
+          "buyMore": "Mehr SMS kaufen",
+          "quotaLabel": "SMS-Guthaben",
+          "manage": "Verwalten",
+          "noCreditsLeft": "Keine SMS-Guthaben mehr",
+          "noCreditsDescription": "Kaufen Sie Guthaben, um SMS an Ihre Kunden zu senden",
+          "buyCredits": "Guthaben kaufen",
+          "remaining": "verbleibend",
+          "lowWarning": "Niedriges Guthaben"
+        },
+        "adminSection": {
+          "title": "Admin-Benachrichtigungen",
+          "description": "Erhalten Sie Benachrichtigungen bei Ereignissen"
+        },
+        "customerSection": {
+          "title": "Kundenbenachrichtigungen",
+          "description": "E-Mails und SMS automatisch an Ihre Kunden gesendet"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reservierungsverlauf",
+          "reminderTitle": "Automatische Erinnerungen",
+          "customer_request_received": {
+            "label": "Anfrage erhalten",
+            "description": "Bestatigung der Anfrage"
+          },
+          "customer_request_accepted": {
+            "label": "Anfrage akzeptiert",
+            "description": "Wenn Sie eine Anfrage annehmen"
+          },
+          "customer_request_rejected": {
+            "label": "Anfrage abgelehnt",
+            "description": "Wenn Sie eine Anfrage ablehnen"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservierung bestatigt",
+            "description": "Nach erfolgreicher Zahlung"
+          },
+          "customer_reminder_pickup": {
+            "label": "Abholungserinnerung",
+            "description": "Vor dem Abholdatum gesendet"
+          },
+          "customer_reminder_return": {
+            "label": "Ruckgabeerinnerung",
+            "description": "Vor dem Ruckgabedatum gesendet"
+          },
+          "reminderDescription": "Konfigurieren Sie wann und wie Ihre Kunden Erinnerungen erhalten"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Abholungserinnerung Vorlaufzeit",
+          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "pickupDescription": "Zeit vor Mietbeginn",
+          "returnDescription": "Zeit vor Mietende",
+          "hours": "{count, plural, =1 {1 Stunde} other {# Stunden}}"
+        },
+        "customerTemplates": {
+          "title": "Vorlage anpassen",
+          "emailSection": "E-Mail",
+          "smsSection": "SMS",
+          "subject": "E-Mail-Betreff",
+          "subjectHint": "Leer lassen fur Standardbetreff",
+          "additionalMessage": "Benutzerdefinierte Nachricht",
+          "additionalMessagePlaceholder": "Fugen Sie eine Nachricht hinzu",
+          "additionalMessageHint": "Diese Nachricht wird zum Standardinhalt hinzugefugt",
+          "smsMessage": "SMS-Nachricht",
+          "smsVariables": "Variablen: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Zurucksetzen",
+          "cancel": "Abbrechen",
+          "save": "Speichern",
+          "customized": "Angepasst",
+          "default": "Standard",
+          "resetToDefault": "Auf Standard zurücksetzen",
+          "clearMessage": "Nachricht löschen",
+          "resetAll": "Alles zurücksetzen"
+        },
+        "templateSheet": {
+          "hidePreview": "Vorschau ausblenden",
+          "showPreview": "Vorschau anzeigen",
+          "configuration": "Konfiguration",
+          "subject": "Betreff",
+          "customized": "Angepasst",
+          "default": "Standard",
+          "resetToDefault": "Standard wiederherstellen",
+          "additionalMessage": "Benutzerdefinierte Nachricht",
+          "additionalMessagePlaceholder": "Fügen Sie eine Nachricht hinzu, die in der E-Mail erscheint...",
+          "additionalMessageHint": "Diese Nachricht wird zum Standard-E-Mail-Inhalt hinzugefügt",
+          "preview": "Vorschau",
+          "smsMessage": "SMS-Nachricht",
+          "smsVariables": "Variablen: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Nachricht löschen"
+        },
+        "templateSaved": "Vorlage gespeichert"
       },
       "businessHours": {
         "title": "Öffnungszeiten",
@@ -2470,6 +2757,7 @@
         "firstNameRequired": "Vorname erforderlich",
         "lastNameRequired": "Nachname erforderlich",
         "phoneRequired": "Telefon erforderlich",
+        "invalidPhone": "Ungültiges Telefonformat",
         "companyNameRequired": "Bitte geben Sie den Firmennamen ein",
         "acceptCgv": "Sie müssen die AGB akzeptieren"
       },
@@ -2925,6 +3213,55 @@
       "paymentPending": "Eine Zahlung für diese Reservierung steht noch aus.",
       "viewAndPay": "Anzeigen und bezahlen",
       "linkValid": "Dieser Link ist 30 Tage gültig."
+    },
+    "reservationCancelled": {
+      "subject": "Reservierung #{number} storniert",
+      "title": "Reservierung storniert",
+      "body": "Ihre Reservierung #{number} wurde storniert.",
+      "cancelledPeriod": "Stornierter Zeitraum",
+      "reasonLabel": "Grund",
+      "contactForQuestions": "Bei Fragen kontaktieren Sie uns gerne.",
+      "browseEquipment": "Katalog durchsuchen",
+      "thankYou": "Vielen Dank für Ihr Verständnis."
+    },
+    "reservationCompleted": {
+      "subject": "Reservierung #{number} abgeschlossen",
+      "title": "Vermietung abgeschlossen!",
+      "body": "Ihre Reservierung #{number} ist nun abgeschlossen.",
+      "rentalPeriod": "Mietzeitraum",
+      "depositReturned": "Ihre Kaution von {amount} wird erstattet.",
+      "depositPending": "Ihre Kaution von {amount} wird geprüft und in Kürze erstattet.",
+      "thankYouMessage": "Vielen Dank für Ihr Vertrauen!",
+      "rentAgain": "Erneut mieten",
+      "seeYouSoon": "Bis bald!"
+    },
+    "paymentConfirmation": {
+      "subject": "Zahlung bestätigt - Reservierung #{number}",
+      "title": "Zahlung erhalten!",
+      "body": "Wir haben Ihre Zahlung für Reservierung #{number} erhalten.",
+      "paymentDetails": "Zahlungsdetails",
+      "amount": "Betrag",
+      "date": "Datum",
+      "method": "Methode",
+      "reservation": "Reservierung",
+      "confirmation": "Ihre Zahlung wurde erfolgreich verarbeitet.",
+      "keepEmail": "Bewahren Sie diese E-Mail als Zahlungsbeleg auf."
+    },
+    "paymentFailed": {
+      "subject": "Zahlung fehlgeschlagen - Reservierung #{number}",
+      "title": "Zahlung fehlgeschlagen",
+      "body": "Die Zahlung von {amount} für Ihre Reservierung #{number} konnte nicht verarbeitet werden.",
+      "whatToDo": "Was tun?",
+      "tip1": "Überprüfen Sie, ob Ihre Karte gültig ist und ausreichend Guthaben hat",
+      "tip2": "Versuchen Sie es mit einer anderen Karte",
+      "tip3": "Kontaktieren Sie Ihre Bank, wenn das Problem weiterhin besteht",
+      "retryPayment": "Zahlung erneut versuchen",
+      "contactSupport": "Hilfe benötigt? Kontaktieren Sie uns."
+    },
+    "baseLayout": {
+      "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
+      "ignoreIfNotYou": "Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie diese E-Mail bitte.",
+      "poweredBy": "Bereitgestellt von"
     }
   },
   "contract": {

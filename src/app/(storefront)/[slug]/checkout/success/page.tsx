@@ -340,7 +340,7 @@ export default async function CheckoutSuccessPage({
           {/* Actions */}
           <div className="flex flex-col gap-2 pt-2">
             <Button asChild>
-              <Link href={`/${slug}`}>
+              <Link href="/">
                 {t('success.backToStore')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

@@ -15,6 +15,7 @@ import {
   Mail,
   Phone,
   ExternalLink,
+  Pencil,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -36,13 +37,21 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { GooglePlaceSearch } from './google-place-search'
-import { updateReviewBoosterSettings } from './actions'
+import { NotificationTemplateSheet } from '@/components/dashboard/notification-template-sheet'
+import { updateReviewBoosterSettings, updateReviewBoosterTemplate, getReviewBoosterTemplate } from './actions'
 import { defaultReviewBoosterSettings } from '@/lib/validations/review-booster'
-import type { ReviewBoosterSettings } from '@/types'
+import type { ReviewBoosterSettings, StoreTheme, CustomerNotificationTemplate } from '@/types'
+import type { EmailLocale } from '@/lib/email/i18n'
 
 interface Store {
   id: string
   slug: string
+  name: string
+  logoUrl?: string | null
+  email?: string | null
+  phone?: string | null
+  address?: string | null
+  theme?: StoreTheme | null
   reviewBoosterSettings: ReviewBoosterSettings | null
 }
 
@@ -50,6 +59,7 @@ interface ReviewBoosterFormProps {
   store: Store
   hasFeatureAccess: boolean
   planSlug: string
+  storeLocale: EmailLocale
 }
 
 const DELAY_OPTIONS = [
@@ -65,6 +75,7 @@ export function ReviewBoosterForm({
   store,
   hasFeatureAccess,
   planSlug,
+  storeLocale,
 }: ReviewBoosterFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -74,6 +85,10 @@ export function ReviewBoosterForm({
   const initialSettings = store.reviewBoosterSettings || defaultReviewBoosterSettings
 
   const [settings, setSettings] = useState<ReviewBoosterSettings>(initialSettings)
+
+  // Template customization state
+  const [templateSheetOpen, setTemplateSheetOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<CustomerNotificationTemplate | null>(null)
 
   const updateSetting = <K extends keyof ReviewBoosterSettings>(
     key: K,
@@ -128,6 +143,35 @@ export function ReviewBoosterForm({
 
   const handleUpgrade = () => {
     router.push('/dashboard/subscription')
+  }
+
+  const handleOpenTemplateSheet = async () => {
+    const result = await getReviewBoosterTemplate()
+    if (!result.error) {
+      setEditingTemplate(result.template || {})
+    }
+    setTemplateSheetOpen(true)
+  }
+
+  const handleSaveTemplate = async (template: CustomerNotificationTemplate) => {
+    const result = await updateReviewBoosterTemplate(template)
+    if (result.error) {
+      toast.error(t('error'))
+    } else {
+      toast.success(t('templateSaved'))
+    }
+    setTemplateSheetOpen(false)
+    setEditingTemplate(null)
+  }
+
+  // Store info for preview
+  const storeInfo = {
+    name: store.name,
+    logoUrl: store.logoUrl,
+    email: store.email,
+    phone: store.phone,
+    address: store.address,
+    theme: store.theme,
   }
 
   // Locked state for Start plan
@@ -339,7 +383,7 @@ export function ReviewBoosterForm({
                   />
                 </div>
                 {settings.autoSendThankYouEmail && (
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-4 pt-4 border-t space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground">
                         {t('delayHours')}
@@ -366,6 +410,15 @@ export function ReviewBoosterForm({
                         {t('afterReturn')}
                       </span>
                     </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenTemplateSheet}
+                      className="gap-2"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {t('customizeTemplate')}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -400,7 +453,7 @@ export function ReviewBoosterForm({
                   />
                 </div>
                 {settings.autoSendThankYouSms && (
-                  <div className="mt-4 pt-4 border-t">
+                  <div className="mt-4 pt-4 border-t space-y-3">
                     <div className="flex items-center gap-3">
                       <span className="text-sm text-muted-foreground">
                         {t('delayHours')}
@@ -427,9 +480,18 @@ export function ReviewBoosterForm({
                         {t('afterReturn')}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
+                    <p className="text-xs text-muted-foreground">
                       {t('smsLimitNote')}
                     </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleOpenTemplateSheet}
+                      className="gap-2"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      {t('customizeTemplate')}
+                    </Button>
                   </div>
                 )}
               </div>
@@ -445,6 +507,17 @@ export function ReviewBoosterForm({
           {tCommon('save')}
         </Button>
       </div>
+
+      {/* Template Sheet */}
+      <NotificationTemplateSheet
+        open={templateSheetOpen}
+        onOpenChange={setTemplateSheetOpen}
+        eventType="thank_you_review"
+        template={editingTemplate || undefined}
+        onSave={handleSaveTemplate}
+        locale={storeLocale}
+        store={storeInfo}
+      />
     </div>
   )
 }
