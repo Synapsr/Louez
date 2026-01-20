@@ -93,9 +93,9 @@ export function SetupChecklist({
           </div>
         </div>
         {/* Progress bar */}
-        <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-primary transition-all duration-500"
+            className="progress-gradient h-full rounded-full transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>

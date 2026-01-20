@@ -56,32 +56,44 @@ interface AdaptiveStatsProps {
   storeState: StoreState
 }
 
+type IconVariant = 'emerald' | 'blue' | 'orange' | 'purple' | 'primary'
+
 interface StatCardProps {
   title: string
   value: string | number
   icon: React.ElementType
-  iconColor?: string
+  iconVariant?: IconVariant
   subtitle?: string
   badge?: string
   trend?: number | null
+}
+
+const iconTextColors: Record<IconVariant, string> = {
+  emerald: 'text-emerald-600 dark:text-emerald-400',
+  blue: 'text-blue-600 dark:text-blue-400',
+  orange: 'text-orange-600 dark:text-orange-400',
+  purple: 'text-purple-600 dark:text-purple-400',
+  primary: 'text-primary',
 }
 
 function StatCard({
   title,
   value,
   icon: Icon,
-  iconColor = 'text-muted-foreground',
+  iconVariant = 'primary',
   subtitle,
   badge,
   trend,
 }: StatCardProps) {
   return (
-    <Card>
+    <Card className="stat-card">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
         </CardTitle>
-        <Icon className={cn('h-4 w-4', iconColor)} />
+        <div className={cn('stat-icon-bg', `stat-icon-bg--${iconVariant}`)}>
+          <Icon className={cn('h-4 w-4', iconTextColors[iconVariant])} />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2">
@@ -135,7 +147,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           title={t('stats.products')}
           value={metrics.activeProductCount}
           icon={Package}
-          iconColor="text-primary"
+          iconVariant="primary"
           subtitle={
             metrics.draftProductCount > 0
               ? t('stats.drafts', { count: metrics.draftProductCount })
@@ -146,7 +158,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           title={t('stats.customers')}
           value={metrics.customerCount}
           icon={Users}
-          iconColor="text-blue-500"
+          iconVariant="blue"
         />
       </div>
     )
@@ -160,21 +172,21 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           title={t('stats.todaysDepartures')}
           value={metrics.todaysDepartures}
           icon={ArrowUpRight}
-          iconColor="text-emerald-500"
+          iconVariant="emerald"
           subtitle={t('stats.toDeliver')}
         />
         <StatCard
           title={t('stats.todaysReturns')}
           value={metrics.todaysReturns}
           icon={ArrowDownRight}
-          iconColor="text-blue-500"
+          iconVariant="blue"
           subtitle={t('stats.toRecover')}
         />
         <StatCard
           title={t('stats.pendingRequests')}
           value={metrics.pendingReservations}
           icon={Clock}
-          iconColor="text-orange-500"
+          iconVariant="orange"
           badge={
             metrics.pendingReservations > 0 ? t('stats.toProcess') : undefined
           }
@@ -183,7 +195,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           title={t('stats.totalReservations')}
           value={metrics.totalReservations}
           icon={Package}
-          iconColor="text-primary"
+          iconVariant="primary"
           subtitle={t('stats.completed', { count: metrics.completedReservations })}
         />
       </div>
@@ -202,21 +214,21 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         title={t('stats.todaysDepartures')}
         value={metrics.todaysDepartures}
         icon={ArrowUpRight}
-        iconColor="text-emerald-500"
+        iconVariant="emerald"
         subtitle={t('stats.toDeliver')}
       />
       <StatCard
         title={t('stats.todaysReturns')}
         value={metrics.todaysReturns}
         icon={ArrowDownRight}
-        iconColor="text-blue-500"
+        iconVariant="blue"
         subtitle={t('stats.toRecover')}
       />
       <StatCard
         title={t('stats.pendingRequests')}
         value={metrics.pendingReservations}
         icon={Clock}
-        iconColor="text-orange-500"
+        iconVariant="orange"
         badge={
           metrics.pendingReservations > 0 ? t('stats.toProcess') : undefined
         }
@@ -225,6 +237,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         title={t('stats.monthlyRevenue')}
         value={formatCurrency(metrics.monthlyRevenue)}
         icon={Euro}
+        iconVariant="purple"
         trend={revenueGrowth}
         subtitle={t('stats.vsLastMonth')}
       />

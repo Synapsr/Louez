@@ -91,18 +91,27 @@ export function QuickActions({ storeState, className }: QuickActionsProps) {
             key={action.key}
             href={action.href}
             className={cn(
-              'flex items-center gap-3 rounded-lg border p-3 transition-colors',
+              'quick-action-card flex items-center gap-3 rounded-lg border p-3',
               action.primary
-                ? 'border-primary/20 bg-primary/5 hover:bg-primary/10'
-                : 'hover:bg-muted'
+                ? 'quick-action-primary border-primary/20 bg-primary/5 hover:border-primary/30 hover:bg-primary/10'
+                : 'hover:border-border hover:bg-muted/50'
             )}
           >
-            <action.icon
+            <div
               className={cn(
-                'h-5 w-5',
-                action.primary ? 'text-primary' : 'text-muted-foreground'
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                action.primary
+                  ? 'bg-primary/10'
+                  : 'bg-muted'
               )}
-            />
+            >
+              <action.icon
+                className={cn(
+                  'h-5 w-5',
+                  action.primary ? 'text-primary' : 'text-muted-foreground'
+                )}
+              />
+            </div>
             <div className="min-w-0 flex-1">
               <p className={cn('font-medium', action.primary && 'text-primary')}>
                 {t(`quickActions.${action.key}.title`)}
@@ -157,13 +166,13 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
   }
 
   return (
-    <Card className={className}>
+    <Card className={cn('stat-card', className)}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base">{t('storefront.title')}</CardTitle>
         <CardDescription>{t('storefront.description')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3">
+        <div className="flex items-center gap-2 rounded-lg border bg-gradient-to-r from-muted/50 to-muted/30 p-3">
           <span className="min-w-0 flex-1 truncate text-sm font-medium">
             {storeSlug}.{domain}
           </span>
@@ -171,7 +180,7 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
             href={storeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 text-sm font-medium text-primary hover:underline"
+            className="shrink-0 text-sm font-medium text-primary transition-colors hover:text-primary/80 hover:underline"
           >
             {t('storefront.visit')}
           </a>
@@ -180,12 +189,12 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
           <Button
             variant="outline"
             size="sm"
-            className="flex-1"
+            className="flex-1 transition-all hover:border-primary/30"
             onClick={handleCopy}
           >
             {copied ? (
               <>
-                <Check className="mr-2 h-4 w-4" />
+                <Check className="mr-2 h-4 w-4 text-emerald-500" />
                 {t('storefront.copied')}
               </>
             ) : (
@@ -195,7 +204,12 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
               </>
             )}
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={handleShare}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1 transition-all hover:border-primary/30"
+            onClick={handleShare}
+          >
             <Share2 className="mr-2 h-4 w-4" />
             {t('storefront.share')}
           </Button>

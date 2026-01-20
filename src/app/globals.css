@@ -142,3 +142,252 @@
   --sidebar-primary: oklch(0.55 0.22 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
 }
+
+/* =============================================================================
+   Dashboard Home - Animated Gradient Mesh Background
+   ============================================================================= */
+
+@keyframes gradient-shift {
+  0%, 100% {
+    transform: translate(0%, 0%) rotate(0deg);
+  }
+  25% {
+    transform: translate(2%, 2%) rotate(1deg);
+  }
+  50% {
+    transform: translate(-1%, 1%) rotate(-1deg);
+  }
+  75% {
+    transform: translate(1%, -2%) rotate(0.5deg);
+  }
+}
+
+@keyframes gradient-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.dashboard-gradient-mesh {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dashboard-gradient-mesh::before,
+.dashboard-gradient-mesh::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  animation: gradient-shift 20s ease-in-out infinite, gradient-pulse 8s ease-in-out infinite;
+}
+
+.dashboard-gradient-mesh::before {
+  width: 60%;
+  height: 60%;
+  top: -20%;
+  right: -10%;
+  background: radial-gradient(
+    circle at center,
+    oklch(0.7 0.15 280 / 0.08) 0%,
+    oklch(0.6 0.2 260 / 0.05) 40%,
+    transparent 70%
+  );
+  animation-delay: 0s;
+}
+
+.dashboard-gradient-mesh::after {
+  width: 50%;
+  height: 50%;
+  bottom: -10%;
+  left: -5%;
+  background: radial-gradient(
+    circle at center,
+    oklch(0.65 0.12 220 / 0.06) 0%,
+    oklch(0.7 0.18 300 / 0.04) 40%,
+    transparent 70%
+  );
+  animation-delay: -10s;
+}
+
+/* Third gradient orb */
+.dashboard-gradient-mesh .gradient-orb {
+  position: absolute;
+  width: 40%;
+  height: 40%;
+  top: 40%;
+  left: 30%;
+  border-radius: 50%;
+  filter: blur(60px);
+  background: radial-gradient(
+    circle at center,
+    oklch(0.6 0.1 200 / 0.05) 0%,
+    transparent 60%
+  );
+  animation: gradient-shift 25s ease-in-out infinite reverse, gradient-pulse 12s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+/* Dark mode adjustments */
+.dark .dashboard-gradient-mesh::before {
+  background: radial-gradient(
+    circle at center,
+    oklch(0.5 0.2 280 / 0.12) 0%,
+    oklch(0.4 0.25 260 / 0.08) 40%,
+    transparent 70%
+  );
+}
+
+.dark .dashboard-gradient-mesh::after {
+  background: radial-gradient(
+    circle at center,
+    oklch(0.45 0.15 220 / 0.1) 0%,
+    oklch(0.5 0.2 300 / 0.06) 40%,
+    transparent 70%
+  );
+}
+
+.dark .dashboard-gradient-mesh .gradient-orb {
+  background: radial-gradient(
+    circle at center,
+    oklch(0.4 0.15 200 / 0.08) 0%,
+    transparent 60%
+  );
+}
+
+/* =============================================================================
+   Dashboard Cards - Enhanced Styling
+   ============================================================================= */
+
+/* Stat card accent variants */
+.stat-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px -12px oklch(0 0 0 / 0.15);
+}
+
+.dark .stat-card:hover {
+  box-shadow: 0 8px 30px -12px oklch(0 0 0 / 0.4);
+}
+
+/* Gradient icon backgrounds */
+.stat-icon-bg {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover .stat-icon-bg {
+  transform: scale(1.05);
+}
+
+.stat-icon-bg--emerald {
+  background: linear-gradient(135deg, oklch(0.9 0.1 160) 0%, oklch(0.85 0.15 150) 100%);
+}
+
+.stat-icon-bg--blue {
+  background: linear-gradient(135deg, oklch(0.9 0.1 230) 0%, oklch(0.85 0.15 240) 100%);
+}
+
+.stat-icon-bg--orange {
+  background: linear-gradient(135deg, oklch(0.92 0.1 70) 0%, oklch(0.88 0.15 50) 100%);
+}
+
+.stat-icon-bg--purple {
+  background: linear-gradient(135deg, oklch(0.9 0.1 280) 0%, oklch(0.85 0.15 290) 100%);
+}
+
+.stat-icon-bg--primary {
+  background: linear-gradient(135deg, oklch(0.9 0.12 264) 0%, oklch(0.85 0.18 264) 100%);
+}
+
+.dark .stat-icon-bg--emerald {
+  background: linear-gradient(135deg, oklch(0.35 0.12 160) 0%, oklch(0.3 0.15 150) 100%);
+}
+
+.dark .stat-icon-bg--blue {
+  background: linear-gradient(135deg, oklch(0.35 0.12 230) 0%, oklch(0.3 0.15 240) 100%);
+}
+
+.dark .stat-icon-bg--orange {
+  background: linear-gradient(135deg, oklch(0.4 0.12 70) 0%, oklch(0.35 0.15 50) 100%);
+}
+
+.dark .stat-icon-bg--purple {
+  background: linear-gradient(135deg, oklch(0.35 0.12 280) 0%, oklch(0.3 0.15 290) 100%);
+}
+
+.dark .stat-icon-bg--primary {
+  background: linear-gradient(135deg, oklch(0.35 0.15 264) 0%, oklch(0.3 0.2 264) 100%);
+}
+
+/* =============================================================================
+   Setup Checklist - Gradient Progress Bar
+   ============================================================================= */
+
+.progress-gradient {
+  background: linear-gradient(
+    90deg,
+    oklch(0.55 0.22 264) 0%,
+    oklch(0.6 0.2 280) 50%,
+    oklch(0.55 0.18 300) 100%
+  );
+  background-size: 200% 100%;
+  animation: progress-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes progress-shimmer {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* =============================================================================
+   Quick Actions - Hover Effects
+   ============================================================================= */
+
+.quick-action-card {
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.quick-action-card:hover {
+  transform: translateX(4px);
+}
+
+.quick-action-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-action-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    oklch(0.55 0.22 264 / 0.05) 0%,
+    oklch(0.6 0.2 280 / 0.08) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.quick-action-primary:hover::before {
+  opacity: 1;
+}

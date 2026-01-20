@@ -22,6 +22,7 @@ import {
   PendingRequests,
   QuickActions,
   StorefrontWidget,
+  GradientMesh,
 } from '@/components/dashboard/home'
 
 // =============================================================================
@@ -171,38 +172,44 @@ async function DashboardContent({
   const timeOfDay = getTimeOfDay()
 
   return (
-    <div className="space-y-6">
-      {/* Adaptive Header */}
-      <AdaptiveHeader
-        firstName={firstName}
-        timeOfDay={timeOfDay}
-        storeState={storeState}
-        metrics={metrics}
-      />
+    <div className="relative">
+      {/* Animated gradient mesh background */}
+      <GradientMesh />
 
-      {/* Priority Alert for pending requests */}
-      <DashboardAlert pendingCount={metrics.pendingReservations} />
+      {/* Dashboard content */}
+      <div className="relative z-10 space-y-6">
+        {/* Adaptive Header */}
+        <AdaptiveHeader
+          firstName={firstName}
+          timeOfDay={timeOfDay}
+          storeState={storeState}
+          metrics={metrics}
+        />
 
-      {/* Setup Checklist for new stores */}
-      {(storeState === 'virgin' || storeState === 'building') && (
-        <SetupChecklist metrics={metrics} storeSlug={storeSlug} />
-      )}
+        {/* Priority Alert for pending requests */}
+        <DashboardAlert pendingCount={metrics.pendingReservations} />
 
-      {/* Adaptive Stats */}
-      <AdaptiveStats metrics={metrics} storeState={storeState} />
+        {/* Setup Checklist for new stores */}
+        {(storeState === 'virgin' || storeState === 'building') && (
+          <SetupChecklist metrics={metrics} storeSlug={storeSlug} />
+        )}
 
-      {/* Today's Activity - Only show for active stores */}
-      {storeState !== 'virgin' && storeState !== 'building' && (
-        <TodayActivity departures={departures} returns={returns} />
-      )}
+        {/* Adaptive Stats */}
+        <AdaptiveStats metrics={metrics} storeState={storeState} />
 
-      {/* Pending Requests Table - Only if there are pending requests */}
-      {pending.length > 0 && <PendingRequests pending={pending} />}
+        {/* Today's Activity - Only show for active stores */}
+        {storeState !== 'virgin' && storeState !== 'building' && (
+          <TodayActivity departures={departures} returns={returns} />
+        )}
 
-      {/* Bottom Section: Quick Actions + Storefront */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <QuickActions storeState={storeState} />
-        <StorefrontWidget storeSlug={storeSlug} />
+        {/* Pending Requests Table - Only if there are pending requests */}
+        {pending.length > 0 && <PendingRequests pending={pending} />}
+
+        {/* Bottom Section: Quick Actions + Storefront */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <QuickActions storeState={storeState} />
+          <StorefrontWidget storeSlug={storeSlug} />
+        </div>
       </div>
     </div>
   )
@@ -222,17 +229,20 @@ export default async function DashboardHomePage() {
   return (
     <Suspense
       fallback={
-        <div className="space-y-6">
-          {/* Header skeleton */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-4 w-64" />
+        <div className="relative">
+          <GradientMesh />
+          <div className="relative z-10 space-y-6">
+            {/* Header skeleton */}
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-64" />
+              </div>
+              <Skeleton className="h-10 w-40" />
             </div>
-            <Skeleton className="h-10 w-40" />
+            <StatsSkeleton />
+            <ActivitySkeleton />
           </div>
-          <StatsSkeleton />
-          <ActivitySkeleton />
         </div>
       }
     >
