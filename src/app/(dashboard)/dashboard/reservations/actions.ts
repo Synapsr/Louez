@@ -9,8 +9,6 @@ import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import type { ReservationStatus } from '@/lib/validations/reservation'
 import {
-  sendRequestAcceptedEmail,
-  sendRequestRejectedEmail,
   sendReservationConfirmationEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
@@ -18,6 +16,7 @@ import {
 } from '@/lib/email/send'
 import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
+import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import type { NotificationEventType } from '@/types/store'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
@@ -155,50 +154,67 @@ export async function updateReservationStatus(
   const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
   const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
-  // Send appropriate email
-  // TODO: Use customer's stored locale preference when available
-  const customerLocale = 'fr' as const
+  // Build customer notification context
+  const customerNotificationCtx = {
+    store: {
+      id: store.id,
+      name: store.name,
+      email: store.email,
+      logoUrl: store.logoUrl,
+      address: store.address,
+      phone: store.phone,
+      theme: store.theme,
+      settings: store.settings,
+      emailSettings: store.emailSettings,
+      customerNotificationSettings: store.customerNotificationSettings,
+    },
+    customer: {
+      id: reservation.customer.id,
+      firstName: reservation.customer.firstName,
+      lastName: reservation.customer.lastName,
+      email: reservation.customer.email,
+      phone: reservation.customer.phone,
+    },
+    reservation: {
+      id: reservationId,
+      number: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      totalAmount: parseFloat(reservation.totalAmount),
+      subtotalAmount: parseFloat(reservation.subtotalAmount),
+      depositAmount: parseFloat(reservation.depositAmount),
+      taxEnabled: !!reservation.taxRate,
+      taxRate: reservation.taxRate ? parseFloat(reservation.taxRate) : null,
+      subtotalExclTax: reservation.subtotalExclTax ? parseFloat(reservation.subtotalExclTax) : null,
+      taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
+    },
+    reservationUrl,
+  }
 
+  // Dispatch customer notification based on status change
   if (previousStatus === 'pending' && status === 'confirmed') {
-    // Request accepted - send acceptance email with items
+    // Request accepted - build items for email
     const emailItems = reservation.items.map((item) => ({
       name: item.productSnapshot?.name || 'Product',
       quantity: item.quantity,
+      unitPrice: parseFloat(item.unitPrice),
       totalPrice: parseFloat(item.totalPrice),
     }))
 
-    sendRequestAcceptedEmail({
-      to: reservation.customer.email,
-      store: storeData,
-      customer: customerData,
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        totalAmount: parseFloat(reservation.totalAmount),
-      },
+    dispatchCustomerNotification('customer_request_accepted', {
+      ...customerNotificationCtx,
       items: emailItems,
-      reservationUrl,
-      paymentUrl: null, // TODO: Add payment URL when Stripe is integrated
-      locale: customerLocale,
-    }).catch((error) => {
-      console.error('Failed to send request accepted email:', error)
+      paymentUrl: null,
+    }).catch((error: unknown) => {
+      console.error('Failed to dispatch customer request accepted notification:', error)
     })
   } else if (status === 'rejected') {
     // Request rejected
-    sendRequestRejectedEmail({
-      to: reservation.customer.email,
-      store: storeData,
-      customer: customerData,
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-      },
+    dispatchCustomerNotification('customer_request_rejected', {
+      ...customerNotificationCtx,
       reason: rejectionReason,
-      locale: customerLocale,
-    }).catch((error) => {
-      console.error('Failed to send request rejected email:', error)
+    }).catch((error: unknown) => {
+      console.error('Failed to dispatch customer request rejected notification:', error)
     })
   }
 

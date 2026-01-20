@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { fromStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
+import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 
 /**
  * Webhook handler for Stripe Connect events
@@ -130,12 +131,13 @@ async function handleCheckoutCompleted(
     return
   }
 
-  // Get reservation with store and customer for notifications
+  // Get reservation with store, customer, and items for notifications
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     with: {
       store: true,
       customer: true,
+      items: true,
     },
   })
 
@@ -328,6 +330,58 @@ async function handleCheckoutCompleted(
     }).catch((error) => {
       console.error('Failed to dispatch confirmation notification:', error)
     })
+
+    // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
+    if (reservation.customer) {
+      const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+      const reservationUrl = `https://${reservation.store.slug}.${domain}/account/reservations/${reservationId}`
+
+      const emailItems = reservation.items?.map((item) => ({
+        name: item.productSnapshot?.name || 'Product',
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        totalPrice: Number(item.totalPrice),
+      })) || []
+
+      dispatchCustomerNotification('customer_reservation_confirmed', {
+        store: {
+          id: reservation.store.id,
+          name: reservation.store.name,
+          email: reservation.store.email,
+          logoUrl: reservation.store.logoUrl,
+          address: reservation.store.address,
+          phone: reservation.store.phone,
+          theme: reservation.store.theme,
+          settings: reservation.store.settings,
+          emailSettings: reservation.store.emailSettings,
+          customerNotificationSettings: reservation.store.customerNotificationSettings,
+        },
+        customer: {
+          id: reservation.customer.id,
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+        },
+        reservation: {
+          id: reservationId,
+          number: reservation.number,
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          totalAmount: Number(reservation.totalAmount),
+          subtotalAmount: Number(reservation.subtotalAmount),
+          depositAmount: Number(reservation.depositAmount),
+          taxEnabled: !!reservation.taxRate,
+          taxRate: reservation.taxRate ? Number(reservation.taxRate) : null,
+          subtotalExclTax: reservation.subtotalExclTax ? Number(reservation.subtotalExclTax) : null,
+          taxAmount: reservation.taxAmount ? Number(reservation.taxAmount) : null,
+        },
+        items: emailItems,
+        reservationUrl,
+      }).catch((error) => {
+        console.error('Failed to dispatch customer reservation confirmed notification:', error)
+      })
+    }
 
     console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
   } else {
