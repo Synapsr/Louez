@@ -1365,7 +1365,8 @@
       "views": {
         "day": "Dzień",
         "week": "Tydzień",
-        "month": "Miesiąc"
+        "month": "Miesiąc",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filtruj według produktu",
       "allProducts": "Wszystkie produkty",
@@ -1392,6 +1393,12 @@
         "completed": "Zakończona",
         "cancelled": "Anulowana",
         "rejected": "Odrzucona"
+      },
+      "timeline": {
+        "products": "Produkty",
+        "quantity": "{count, plural, one {# jednostka} few {# jednostki} other {# jednostek}}",
+        "available": "Dostępny",
+        "noProducts": "Brak produktów do wyświetlenia"
       },
       "export": {
         "button": "Eksportuj kalendarz",

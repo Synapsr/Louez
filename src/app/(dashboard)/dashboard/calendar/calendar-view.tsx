@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import {
@@ -9,6 +9,8 @@ import {
   Plus,
   Calendar as CalendarIcon,
   Download,
+  LayoutGrid,
+  Rows3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,50 +21,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
 import { cn, formatDateShort } from '@/lib/utils'
 import { CalendarExportModal } from './calendar-export-modal'
+import { WeekView } from './week-view'
+import { TimelineView } from './timeline-view'
+import { MonthView } from './month-view'
+import {
+  createWeekConfig,
+  createTwoWeekConfig,
+  createMonthConfig,
+  getWeekStart,
+  getWeekEnd,
+} from './calendar-utils'
+import type { Reservation, Product, ViewMode, ReservationStatus, TimelineConfig } from './types'
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+// =============================================================================
+// Constants
+// =============================================================================
 
-interface Reservation {
-  id: string
-  number: string
-  status: ReservationStatus | null
-  startDate: Date
-  endDate: Date
-  totalAmount: string
-  customer: {
-    id: string
-    firstName: string
-    lastName: string
-  }
-  items: Array<{
-    id: string
-    quantity: number
-    product: {
-      id: string
-      name: string
-    } | null
-    productSnapshot: {
-      name: string
-    } | null
-  }>
-}
-
-interface Product {
-  id: string
-  name: string
-  quantity: number
-}
-
-interface CalendarViewProps {
-  initialReservations: Reservation[]
-  products: Product[]
-  storeId: string
-}
-
-const statusColors: Record<ReservationStatus, string> = {
+const STATUS_COLORS: Record<ReservationStatus, string> = {
   pending: 'bg-yellow-500',
   confirmed: 'bg-green-500',
   ongoing: 'bg-blue-500',
@@ -71,7 +48,19 @@ const statusColors: Record<ReservationStatus, string> = {
   rejected: 'bg-red-400',
 }
 
-type ViewMode = 'week' | 'month'
+// =============================================================================
+// Types
+// =============================================================================
+
+interface CalendarViewProps {
+  initialReservations: Reservation[]
+  products: Product[]
+  storeId: string
+}
+
+// =============================================================================
+// Component
+// =============================================================================
 
 export function CalendarView({
   initialReservations,
@@ -79,141 +68,103 @@ export function CalendarView({
   storeId,
 }: CalendarViewProps) {
   const t = useTranslations('dashboard.calendar')
+
+  // State
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [selectedProductId, setSelectedProductId] = useState<string>('all')
   const [reservations] = useState(initialReservations)
   const [exportModalOpen, setExportModalOpen] = useState(false)
 
-  const statusLabels: Record<ReservationStatus, string> = {
-    pending: t('status.pending'),
-    confirmed: t('status.confirmed'),
-    ongoing: t('status.ongoing'),
-    completed: t('status.completed'),
-    cancelled: t('status.cancelled'),
-    rejected: t('status.rejected'),
-  }
+  // Status labels for legend
+  const statusLabels: Record<ReservationStatus, string> = useMemo(
+    () => ({
+      pending: t('status.pending'),
+      confirmed: t('status.confirmed'),
+      ongoing: t('status.ongoing'),
+      completed: t('status.completed'),
+      cancelled: t('status.cancelled'),
+      rejected: t('status.rejected'),
+    }),
+    [t]
+  )
 
-  const dayNames = [
-    t('dayNames.mon'),
-    t('dayNames.tue'),
-    t('dayNames.wed'),
-    t('dayNames.thu'),
-    t('dayNames.fri'),
-    t('dayNames.sat'),
-    t('dayNames.sun'),
-  ]
-
-  // Calculate days to display based on view mode
-  const displayDays = useMemo(() => {
-    const days: Date[] = []
-    const start = new Date(currentDate)
-
-    if (viewMode === 'week') {
-      // Get Monday of the week
-      const dayOfWeek = start.getDay()
-      const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-      start.setDate(start.getDate() + diff)
-
-      for (let i = 0; i < 7; i++) {
-        const day = new Date(start)
-        day.setDate(start.getDate() + i)
-        days.push(day)
-      }
-    } else {
-      // Month view
-      const firstDay = new Date(start.getFullYear(), start.getMonth(), 1)
-      const lastDay = new Date(start.getFullYear(), start.getMonth() + 1, 0)
-
-      // Start from Monday of the first week
-      const startDayOfWeek = firstDay.getDay()
-      const startDiff = startDayOfWeek === 0 ? -6 : 1 - startDayOfWeek
-      const viewStart = new Date(firstDay)
-      viewStart.setDate(firstDay.getDate() + startDiff)
-
-      // Generate 5-6 weeks
-      const weeks = Math.ceil((lastDay.getDate() + Math.abs(startDiff)) / 7)
-      for (let i = 0; i < weeks * 7; i++) {
-        const day = new Date(viewStart)
-        day.setDate(viewStart.getDate() + i)
-        days.push(day)
-      }
+  // Timeline configuration
+  const timelineConfig = useMemo((): TimelineConfig => {
+    if (viewMode === 'timeline') {
+      return createTwoWeekConfig(currentDate)
     }
-
-    return days
+    if (viewMode === 'month') {
+      return createMonthConfig(currentDate)
+    }
+    return createWeekConfig(currentDate)
   }, [currentDate, viewMode])
 
   // Filter reservations by product
   const filteredReservations = useMemo(() => {
     if (selectedProductId === 'all') return reservations
-
     return reservations.filter((r) =>
       r.items.some((item) => item.product?.id === selectedProductId)
     )
   }, [reservations, selectedProductId])
 
-  // Get reservations for a specific day
-  const getReservationsForDay = (day: Date) => {
-    return filteredReservations.filter((r) => {
-      const start = new Date(r.startDate)
-      const end = new Date(r.endDate)
-      const dayStart = new Date(day.getFullYear(), day.getMonth(), day.getDate())
-      const dayEnd = new Date(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59)
-
-      return start <= dayEnd && end >= dayStart
+  // Navigation
+  const goToPrevious = useCallback(() => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev)
+      if (viewMode === 'month') {
+        newDate.setMonth(newDate.getMonth() - 1)
+      } else if (viewMode === 'timeline') {
+        newDate.setDate(newDate.getDate() - 14)
+      } else {
+        newDate.setDate(newDate.getDate() - 7)
+      }
+      return newDate
     })
-  }
+  }, [viewMode])
 
-  // Navigation functions
-  const goToPrevious = () => {
-    const newDate = new Date(currentDate)
-    if (viewMode === 'week') {
-      newDate.setDate(newDate.getDate() - 7)
-    } else {
-      newDate.setMonth(newDate.getMonth() - 1)
-    }
-    setCurrentDate(newDate)
-  }
+  const goToNext = useCallback(() => {
+    setCurrentDate((prev) => {
+      const newDate = new Date(prev)
+      if (viewMode === 'month') {
+        newDate.setMonth(newDate.getMonth() + 1)
+      } else if (viewMode === 'timeline') {
+        newDate.setDate(newDate.getDate() + 14)
+      } else {
+        newDate.setDate(newDate.getDate() + 7)
+      }
+      return newDate
+    })
+  }, [viewMode])
 
-  const goToNext = () => {
-    const newDate = new Date(currentDate)
-    if (viewMode === 'week') {
-      newDate.setDate(newDate.getDate() + 7)
-    } else {
-      newDate.setMonth(newDate.getMonth() + 1)
-    }
-    setCurrentDate(newDate)
-  }
-
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     setCurrentDate(new Date())
-  }
+  }, [])
 
-  // Format period label
+  // Period label
   const periodLabel = useMemo(() => {
-    if (viewMode === 'week') {
-      const start = displayDays[0]
-      const end = displayDays[6]
-      return `${formatDateShort(start)} - ${formatDateShort(end)} ${end.getFullYear()}`
-    } else {
+    if (viewMode === 'month') {
       return new Intl.DateTimeFormat('fr-FR', {
         month: 'long',
         year: 'numeric',
       }).format(currentDate)
     }
-  }, [displayDays, currentDate, viewMode])
 
-  const isToday = (day: Date) => {
-    const today = new Date()
-    return (
-      day.getDate() === today.getDate() &&
-      day.getMonth() === today.getMonth() &&
-      day.getFullYear() === today.getFullYear()
-    )
-  }
+    const start = viewMode === 'timeline'
+      ? timelineConfig.startDate
+      : getWeekStart(currentDate)
+    const end = viewMode === 'timeline'
+      ? timelineConfig.endDate
+      : getWeekEnd(currentDate)
 
-  const isCurrentMonth = (day: Date) => {
-    return day.getMonth() === currentDate.getMonth()
+    return `${formatDateShort(start)} - ${formatDateShort(end)} ${end.getFullYear()}`
+  }, [currentDate, viewMode, timelineConfig])
+
+  // View mode icons
+  const viewModeIcons: Record<ViewMode, React.ReactNode> = {
+    week: <CalendarIcon className="h-4 w-4" />,
+    month: <LayoutGrid className="h-4 w-4" />,
+    timeline: <Rows3 className="h-4 w-4" />,
   }
 
   return (
@@ -238,20 +189,44 @@ export function CalendarView({
               </span>
             </div>
 
-            {/* Filters */}
-            <div className="flex items-center gap-2">
-              <Select value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
-                <SelectTrigger className="w-[140px]">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  <SelectValue />
+            {/* Filters and actions */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* View mode selector */}
+              <Select
+                value={viewMode}
+                onValueChange={(v) => setViewMode(v as ViewMode)}
+              >
+                <SelectTrigger className="w-[150px]">
+                  {viewModeIcons[viewMode]}
+                  <SelectValue className="ml-2" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="week">{t('views.week')}</SelectItem>
-                  <SelectItem value="month">{t('views.month')}</SelectItem>
+                  <SelectItem value="week">
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4" />
+                      {t('views.week')}
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="month">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="h-4 w-4" />
+                      {t('views.month')}
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="timeline">
+                    <div className="flex items-center gap-2">
+                      <Rows3 className="h-4 w-4" />
+                      {t('views.timeline')}
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
 
-              <Select value={selectedProductId} onValueChange={setSelectedProductId}>
+              {/* Product filter */}
+              <Select
+                value={selectedProductId}
+                onValueChange={setSelectedProductId}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t('filterByProduct')} />
                 </SelectTrigger>
@@ -265,6 +240,7 @@ export function CalendarView({
                 </SelectContent>
               </Select>
 
+              {/* Export button */}
               <Button
                 variant="outline"
                 size="icon"
@@ -274,6 +250,7 @@ export function CalendarView({
                 <Download className="h-4 w-4" />
               </Button>
 
+              {/* New reservation button */}
               <Button asChild>
                 <Link href="/dashboard/reservations/new">
                   <Plus className="mr-2 h-4 w-4" />
@@ -285,104 +262,31 @@ export function CalendarView({
         </CardContent>
       </Card>
 
-      {/* Calendar Grid */}
-      <Card>
-        <CardContent className="p-0">
-          {/* Day Headers */}
-          <div className="grid grid-cols-7 border-b">
-            {dayNames.map((name, i) => (
-              <div
-                key={name}
-                className={cn(
-                  'p-3 text-center text-sm font-medium text-muted-foreground',
-                  i === 5 || i === 6 ? 'bg-muted/30' : ''
-                )}
-              >
-                {name}
-              </div>
-            ))}
-          </div>
+      {/* Calendar View */}
+      {viewMode === 'week' && (
+        <WeekView
+          reservations={filteredReservations}
+          currentDate={currentDate}
+          selectedProductId={selectedProductId}
+        />
+      )}
 
-          {/* Calendar Days */}
-          <div className={cn(
-            'grid grid-cols-7',
-            viewMode === 'week' ? 'min-h-[500px]' : ''
-          )}>
-            {displayDays.map((day, index) => {
-              const dayReservations = getReservationsForDay(day)
-              const isWeekend = day.getDay() === 0 || day.getDay() === 6
+      {viewMode === 'month' && (
+        <MonthView
+          reservations={filteredReservations}
+          currentDate={currentDate}
+          selectedProductId={selectedProductId}
+        />
+      )}
 
-              return (
-                <div
-                  key={index}
-                  className={cn(
-                    'min-h-[120px] border-b border-r p-2',
-                    viewMode === 'week' ? 'min-h-[140px]' : '',
-                    isWeekend ? 'bg-muted/20' : '',
-                    !isCurrentMonth(day) && viewMode === 'month' ? 'bg-muted/40' : '',
-                    index % 7 === 6 ? 'border-r-0' : ''
-                  )}
-                >
-                  {/* Day Number */}
-                  <div className="mb-1 flex items-center justify-between">
-                    <span
-                      className={cn(
-                        'inline-flex h-7 w-7 items-center justify-center rounded-full text-sm',
-                        isToday(day)
-                          ? 'bg-primary font-semibold text-primary-foreground'
-                          : !isCurrentMonth(day) && viewMode === 'month'
-                          ? 'text-muted-foreground'
-                          : 'font-medium'
-                      )}
-                    >
-                      {day.getDate()}
-                    </span>
-                    {dayReservations.length > 0 && (
-                      <Badge variant="secondary" className="text-xs">
-                        {dayReservations.length}
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Reservations */}
-                  <div className="space-y-1">
-                    {dayReservations.slice(0, viewMode === 'week' ? 5 : 3).map((reservation) => (
-                      <Link
-                        key={reservation.id}
-                        href={`/dashboard/reservations/${reservation.id}`}
-                        className="block"
-                      >
-                        <div
-                          className={cn(
-                            'rounded px-2 py-1 text-xs text-white transition-opacity hover:opacity-80',
-                            statusColors[reservation.status || 'pending']
-                          )}
-                        >
-                          <div className="truncate font-medium">
-                            {reservation.customer.firstName} {reservation.customer.lastName}
-                          </div>
-                          {viewMode === 'week' && (
-                            <div className="truncate text-white/80">
-                              {reservation.items
-                                .map((item) => item.productSnapshot?.name || item.product?.name)
-                                .join(', ')}
-                            </div>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
-                    {dayReservations.length > (viewMode === 'week' ? 5 : 3) && (
-                      <div className="text-xs text-muted-foreground">
-                        {t('moreItems', { count: dayReservations.length - (viewMode === 'week' ? 5 : 3) })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {viewMode === 'timeline' && (
+        <TimelineView
+          reservations={filteredReservations}
+          products={products}
+          config={timelineConfig}
+          selectedProductId={selectedProductId}
+        />
+      )}
 
       {/* Legend */}
       <Card>
@@ -394,9 +298,7 @@ export function CalendarView({
             {(Object.entries(statusLabels) as [ReservationStatus, string][]).map(
               ([status, label]) => (
                 <div key={status} className="flex items-center gap-2">
-                  <div
-                    className={cn('h-3 w-3 rounded', statusColors[status])}
-                  />
+                  <div className={cn('h-3 w-3 rounded', STATUS_COLORS[status])} />
                   <span className="text-sm text-muted-foreground">{label}</span>
                 </div>
               )

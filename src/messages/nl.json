@@ -1364,7 +1364,8 @@
       "views": {
         "day": "Dag",
         "week": "Week",
-        "month": "Maand"
+        "month": "Maand",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filteren op product",
       "allProducts": "Alle producten",
@@ -1391,6 +1392,12 @@
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
         "rejected": "Afgewezen"
+      },
+      "timeline": {
+        "products": "Producten",
+        "quantity": "{count, plural, one {# eenheid} other {# eenheden}}",
+        "available": "Beschikbaar",
+        "noProducts": "Geen producten om weer te geven"
       },
       "export": {
         "button": "Kalender exporteren",
