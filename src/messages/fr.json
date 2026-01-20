@@ -385,41 +385,109 @@
       "store": "Ma boutique"
     },
     "home": {
-      "greeting": "Bonjour, {name} !",
-      "subtitle": "Voici un aperçu de votre activité aujourd'hui.",
-      "welcome": "Bienvenue",
-      "todaysDepartures": "Départs du jour",
-      "todaysReturns": "Retours du jour",
-      "pendingRequests": "Demandes en attente",
-      "totalRevenue": "Chiffre d'affaires",
-      "monthlyRevenue": "CA du mois",
-      "activeReservations": "Réservations actives",
-      "occupancyRate": "Taux d'occupation",
-      "noDataYet": "Pas encore de données",
       "viewAll": "Voir tout",
-      "markAsPickedUp": "Marquer comme parti",
-      "markAsReturned": "Marquer comme rendu",
-      "noDeparturesTitle": "Aucun départ aujourd'hui",
-      "noDeparturesDescription": "Pas de location à remettre aujourd'hui",
-      "noReturnsTitle": "Aucun retour aujourd'hui",
-      "noReturnsDescription": "Pas de matériel à récupérer aujourd'hui",
-      "noPendingRequests": "Aucune demande en attente",
-      "revenueThisMonth": "Ce mois",
-      "revenueVsPrevious": "vs mois précédent",
-      "alerts": "Alertes",
-      "toDeliver": "à remettre",
-      "toRecover": "à récupérer",
-      "toProcess": "À traiter",
-      "departuresDescription": "Réservations à remettre aujourd'hui",
-      "returnsDescription": "Réservations à récupérer aujourd'hui",
-      "pendingDescription": "Réservations nécessitant votre validation",
       "products": "Produits",
-      "quickActions": "Actions rapides",
-      "quickActionsDescription": "Gérez votre boutique efficacement",
-      "addProductDescription": "Créer un nouveau produit à louer",
-      "yourStore": "Votre boutique",
-      "yourStoreDescription": "Partagez votre lien avec vos clients",
-      "visit": "Visiter"
+
+      "header": {
+        "greeting": {
+          "morning": "Bonjour, {name} !",
+          "afternoon": "Bonjour, {name} !",
+          "evening": "Bonsoir, {name} !"
+        },
+        "subtitle": {
+          "virgin": "Bienvenue sur Louez. Configurons votre boutique.",
+          "building": "{count, plural, one {# produit créé} other {# produits créés}}. Partagez votre boutique !",
+          "pending": "{count, plural, one {# demande en attente} other {# demandes en attente}}",
+          "operations": "{count, plural, one {# opération aujourd'hui} other {# opérations aujourd'hui}}",
+          "calm": "Tout roule aujourd'hui."
+        },
+        "cta": {
+          "addFirstProduct": "Ajouter mon premier produit",
+          "handleRequests": "Traiter les demandes ({count})",
+          "addReservation": "Nouvelle réservation"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 demande en attente",
+        "multiplePending": "{count} demandes en attente",
+        "description": "Vos clients attendent votre réponse",
+        "action": "Traiter"
+      },
+
+      "setup": {
+        "title": "Configurez votre boutique",
+        "description": "Quelques étapes pour bien démarrer",
+        "steps": {
+          "createAccount": "Créer votre compte",
+          "configureStore": "Configurer votre boutique",
+          "addFirstProduct": "Ajouter votre premier produit",
+          "firstReservation": "Recevoir votre première réservation",
+          "firstCompleted": "Terminer votre première location"
+        },
+        "start": "Commencer",
+        "addProductHint": "Ajoutez votre premier produit pour que vos clients puissent réserver.",
+        "addFirstProduct": "Ajouter un produit",
+        "shareHint": "Partagez votre boutique pour recevoir vos premières réservations.",
+        "viewStore": "Voir ma boutique",
+        "createReservation": "Créer une réservation"
+      },
+
+      "stats": {
+        "products": "Produits",
+        "customers": "Clients",
+        "drafts": "{count, plural, one {# brouillon} other {# brouillons}}",
+        "todaysDepartures": "Départs du jour",
+        "todaysReturns": "Retours du jour",
+        "pendingRequests": "Demandes en attente",
+        "monthlyRevenue": "CA du mois",
+        "totalReservations": "Réservations",
+        "toDeliver": "à remettre",
+        "toRecover": "à récupérer",
+        "toProcess": "À traiter",
+        "vsLastMonth": "vs mois dernier",
+        "completed": "{count, plural, one {# terminée} other {# terminées}}"
+      },
+
+      "activity": {
+        "departures": "Départs du jour",
+        "departuresDescription": "Réservations à remettre aujourd'hui",
+        "returns": "Retours du jour",
+        "returnsDescription": "Réservations à récupérer aujourd'hui",
+        "noDepartures": "Pas de remise prévue aujourd'hui",
+        "noReturns": "Pas de retour prévu aujourd'hui",
+        "noActivityTitle": "Journée tranquille",
+        "noActivityDescription": "Aucune opération prévue aujourd'hui"
+      },
+
+      "pending": {
+        "title": "Demandes en attente",
+        "description": "Réservations nécessitant votre validation",
+        "empty": "Aucune demande en attente"
+      },
+
+      "quickActions": {
+        "title": "Actions rapides",
+        "description": "Gérez votre boutique efficacement",
+        "addProduct": {
+          "title": "Ajouter un produit",
+          "description": "Créer un nouveau produit à louer"
+        },
+        "addReservation": {
+          "title": "Créer une réservation",
+          "description": "Ajouter manuellement une réservation"
+        }
+      },
+
+      "storefront": {
+        "title": "Votre boutique",
+        "description": "Partagez votre lien avec vos clients",
+        "visit": "Visiter",
+        "copy": "Copier",
+        "copied": "Copié !",
+        "share": "Partager",
+        "shareTitle": "Ma boutique de location"
+      }
     },
     "products": {
       "title": "Produits",
