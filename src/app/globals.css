@@ -372,8 +372,8 @@
    ============================================================================= */
 
 .storefront-header {
-  margin: -1.5rem -1.5rem 0 -1.5rem;
-  padding: 1.5rem 1.5rem 1.25rem 1.5rem;
+  margin: -1.5rem -1.5rem 0 -1.5rem !important;
+  padding: 1.5rem !important;
   border-radius: 0.75rem 0.75rem 0 0;
   background: linear-gradient(
     135deg,
