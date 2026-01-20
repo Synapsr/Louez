@@ -101,14 +101,14 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 255);
+  --chart-1: oklch(0.546 0.228 264);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 255);
+  --sidebar-primary: oklch(0.546 0.228 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
@@ -127,19 +127,19 @@
 
 /* Dashboard theme with primary blue color #2b62ef */
 .dashboard {
-  --primary: oklch(0.52 0.22 255);
+  --primary: oklch(0.546 0.228 264);
   --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.52 0.22 255);
-  --sidebar-primary: oklch(0.52 0.22 255);
+  --ring: oklch(0.546 0.228 264);
+  --sidebar-primary: oklch(0.546 0.228 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
 }
 
 .dashboard.dark,
 .dark .dashboard {
-  --primary: oklch(0.62 0.2 255);
+  --primary: oklch(0.65 0.20 264);
   --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.62 0.2 255);
-  --sidebar-primary: oklch(0.62 0.2 255);
+  --ring: oklch(0.65 0.20 264);
+  --sidebar-primary: oklch(0.65 0.20 264);
   --sidebar-primary-foreground: oklch(0.985 0 0);
 }
 
@@ -195,8 +195,8 @@
   right: 0;
   background: radial-gradient(
     circle at center,
-    oklch(0.75 0.12 250 / 0.07) 0%,
-    oklch(0.65 0.16 255 / 0.04) 40%,
+    oklch(0.75 0.12 264 / 0.07) 0%,
+    oklch(0.65 0.16 264 / 0.04) 40%,
     transparent 70%
   );
   animation-delay: 0s;
@@ -238,8 +238,8 @@
 .dark .dashboard-gradient-mesh::before {
   background: radial-gradient(
     circle at center,
-    oklch(0.45 0.16 250 / 0.1) 0%,
-    oklch(0.35 0.18 255 / 0.06) 40%,
+    oklch(0.45 0.16 264 / 0.1) 0%,
+    oklch(0.35 0.18 264 / 0.06) 40%,
     transparent 70%
   );
 }
@@ -311,7 +311,7 @@
 }
 
 .stat-icon-bg--primary {
-  background: linear-gradient(135deg, oklch(0.9 0.1 250) 0%, oklch(0.85 0.15 255) 100%);
+  background: linear-gradient(135deg, oklch(0.9 0.1 264) 0%, oklch(0.85 0.15 264) 100%);
 }
 
 .dark .stat-icon-bg--emerald {
@@ -331,7 +331,7 @@
 }
 
 .dark .stat-icon-bg--primary {
-  background: linear-gradient(135deg, oklch(0.35 0.12 250) 0%, oklch(0.3 0.15 255) 100%);
+  background: linear-gradient(135deg, oklch(0.35 0.12 264) 0%, oklch(0.3 0.15 264) 100%);
 }
 
 /* =============================================================================
@@ -341,9 +341,9 @@
 .progress-gradient {
   background: linear-gradient(
     90deg,
-    oklch(0.52 0.2 250) 0%,
-    oklch(0.58 0.18 255) 50%,
-    oklch(0.55 0.16 260) 100%
+    oklch(0.52 0.22 264) 0%,
+    oklch(0.58 0.20 264) 50%,
+    oklch(0.55 0.18 264) 100%
   );
   background-size: 200% 100%;
   animation: progress-shimmer 3s ease-in-out infinite;
@@ -372,13 +372,13 @@
    ============================================================================= */
 
 .storefront-header {
-  margin: -1.5rem -1.5rem 0 -1.5rem;
-  padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+  margin: -1.5rem -1.5rem 0.75rem -1.5rem;
+  padding: 1.5rem;
   border-radius: 0.75rem 0.75rem 0 0;
   background: linear-gradient(
     135deg,
-    oklch(0.96 0.03 250 / 0.5) 0%,
-    oklch(0.98 0.015 255 / 0.3) 100%
+    oklch(0.96 0.04 264 / 0.4) 0%,
+    oklch(0.98 0.02 264 / 0.2) 100%
   );
   border-bottom: 1px solid oklch(0 0 0 / 0.04);
 }
@@ -386,8 +386,8 @@
 .dark .storefront-header {
   background: linear-gradient(
     135deg,
-    oklch(0.25 0.04 250 / 0.35) 0%,
-    oklch(0.22 0.025 255 / 0.25) 100%
+    oklch(0.28 0.05 264 / 0.35) 0%,
+    oklch(0.24 0.03 264 / 0.2) 100%
   );
   border-bottom: 1px solid oklch(1 1 1 / 0.04);
 }
@@ -443,11 +443,11 @@
 }
 
 .list-item-link:hover {
-  color: oklch(0.47 0.23 255);
+  color: oklch(0.50 0.20 264);
 }
 
 .dark .list-item-link:hover {
-  color: oklch(0.62 0.2 255);
+  color: oklch(0.65 0.20 264);
 }
 
 /* =============================================================================
@@ -471,9 +471,9 @@
 }
 
 .action-btn:hover {
-  border-color: oklch(0.55 0.2 235 / 0.3);
-  background: oklch(0.55 0.2 235 / 0.08);
-  color: oklch(0.45 0.2 235);
+  border-color: oklch(0.546 0.228 264 / 0.3);
+  background: oklch(0.546 0.228 264 / 0.08);
+  color: oklch(0.50 0.20 264);
 }
 
 .action-btn:active {
@@ -487,32 +487,32 @@
 }
 
 .dark .action-btn:hover {
-  border-color: oklch(0.6 0.18 235 / 0.4);
-  background: oklch(0.6 0.18 235 / 0.15);
-  color: oklch(0.75 0.12 235);
+  border-color: oklch(0.65 0.20 264 / 0.4);
+  background: oklch(0.65 0.20 264 / 0.15);
+  color: oklch(0.70 0.15 264);
 }
 
 /* Action button variants */
 .action-btn--primary {
-  border-color: oklch(0.55 0.2 235 / 0.25);
-  background: oklch(0.55 0.2 235 / 0.1);
-  color: oklch(0.45 0.2 235);
+  border-color: oklch(0.546 0.228 264 / 0.25);
+  background: oklch(0.546 0.228 264 / 0.1);
+  color: oklch(0.50 0.20 264);
 }
 
 .action-btn--primary:hover {
-  border-color: oklch(0.55 0.2 235 / 0.4);
-  background: oklch(0.55 0.2 235 / 0.18);
+  border-color: oklch(0.546 0.228 264 / 0.4);
+  background: oklch(0.546 0.228 264 / 0.18);
 }
 
 .dark .action-btn--primary {
-  border-color: oklch(0.6 0.18 235 / 0.35);
-  background: oklch(0.6 0.18 235 / 0.15);
-  color: oklch(0.75 0.12 235);
+  border-color: oklch(0.65 0.20 264 / 0.35);
+  background: oklch(0.65 0.20 264 / 0.15);
+  color: oklch(0.70 0.15 264);
 }
 
 .dark .action-btn--primary:hover {
-  border-color: oklch(0.6 0.18 235 / 0.5);
-  background: oklch(0.6 0.18 235 / 0.25);
+  border-color: oklch(0.65 0.20 264 / 0.5);
+  background: oklch(0.65 0.20 264 / 0.25);
 }
 
 /* Icon-only action button */
@@ -561,8 +561,8 @@
 }
 
 .share-option-icon--copy {
-  background: linear-gradient(135deg, oklch(0.9 0.1 250) 0%, oklch(0.85 0.15 255) 100%);
-  color: oklch(0.47 0.23 255);
+  background: linear-gradient(135deg, oklch(0.9 0.1 264) 0%, oklch(0.85 0.15 264) 100%);
+  color: oklch(0.50 0.20 264);
 }
 
 .share-option-icon--whatsapp {
@@ -576,8 +576,8 @@
 }
 
 .share-option-icon--sms {
-  background: linear-gradient(135deg, oklch(0.9 0.1 250) 0%, oklch(0.85 0.15 255) 100%);
-  color: oklch(0.5 0.2 255);
+  background: linear-gradient(135deg, oklch(0.9 0.1 264) 0%, oklch(0.85 0.15 264) 100%);
+  color: oklch(0.50 0.20 264);
 }
 
 .share-option-icon--qr {
@@ -586,8 +586,8 @@
 }
 
 .dark .share-option-icon--copy {
-  background: linear-gradient(135deg, oklch(0.35 0.15 250) 0%, oklch(0.3 0.2 255) 100%);
-  color: oklch(0.7 0.15 255);
+  background: linear-gradient(135deg, oklch(0.35 0.15 264) 0%, oklch(0.3 0.2 264) 100%);
+  color: oklch(0.70 0.15 264);
 }
 
 .dark .share-option-icon--whatsapp {
@@ -601,8 +601,8 @@
 }
 
 .dark .share-option-icon--sms {
-  background: linear-gradient(135deg, oklch(0.35 0.12 250) 0%, oklch(0.3 0.15 255) 100%);
-  color: oklch(0.7 0.15 255);
+  background: linear-gradient(135deg, oklch(0.35 0.12 264) 0%, oklch(0.3 0.15 264) 100%);
+  color: oklch(0.70 0.15 264);
 }
 
 .dark .share-option-icon--qr {
