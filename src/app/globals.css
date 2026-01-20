@@ -172,7 +172,7 @@
 }
 
 .dashboard-gradient-mesh {
-  position: absolute;
+  position: fixed;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
@@ -189,45 +189,45 @@
 }
 
 .dashboard-gradient-mesh::before {
-  width: 60%;
-  height: 60%;
-  top: -20%;
-  right: -10%;
+  width: 50vw;
+  height: 50vh;
+  top: -5%;
+  right: 0;
   background: radial-gradient(
     circle at center,
-    oklch(0.7 0.15 280 / 0.08) 0%,
-    oklch(0.6 0.2 260 / 0.05) 40%,
+    oklch(0.75 0.12 280 / 0.07) 0%,
+    oklch(0.65 0.18 260 / 0.04) 40%,
     transparent 70%
   );
   animation-delay: 0s;
 }
 
 .dashboard-gradient-mesh::after {
-  width: 50%;
-  height: 50%;
-  bottom: -10%;
-  left: -5%;
+  width: 45vw;
+  height: 45vh;
+  bottom: 10%;
+  left: 0;
   background: radial-gradient(
     circle at center,
-    oklch(0.65 0.12 220 / 0.06) 0%,
-    oklch(0.7 0.18 300 / 0.04) 40%,
+    oklch(0.7 0.1 220 / 0.05) 0%,
+    oklch(0.75 0.15 300 / 0.03) 40%,
     transparent 70%
   );
   animation-delay: -10s;
 }
 
-/* Third gradient orb */
+/* Third gradient orb - center */
 .dashboard-gradient-mesh .gradient-orb {
   position: absolute;
-  width: 40%;
-  height: 40%;
-  top: 40%;
-  left: 30%;
+  width: 35vw;
+  height: 35vh;
+  top: 35%;
+  left: 25%;
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(80px);
   background: radial-gradient(
     circle at center,
-    oklch(0.6 0.1 200 / 0.05) 0%,
+    oklch(0.65 0.08 200 / 0.04) 0%,
     transparent 60%
   );
   animation: gradient-shift 25s ease-in-out infinite reverse, gradient-pulse 12s ease-in-out infinite;
@@ -238,8 +238,8 @@
 .dark .dashboard-gradient-mesh::before {
   background: radial-gradient(
     circle at center,
-    oklch(0.5 0.2 280 / 0.12) 0%,
-    oklch(0.4 0.25 260 / 0.08) 40%,
+    oklch(0.45 0.18 280 / 0.1) 0%,
+    oklch(0.35 0.22 260 / 0.06) 40%,
     transparent 70%
   );
 }
@@ -247,8 +247,8 @@
 .dark .dashboard-gradient-mesh::after {
   background: radial-gradient(
     circle at center,
-    oklch(0.45 0.15 220 / 0.1) 0%,
-    oklch(0.5 0.2 300 / 0.06) 40%,
+    oklch(0.4 0.12 220 / 0.08) 0%,
+    oklch(0.45 0.18 300 / 0.05) 40%,
     transparent 70%
   );
 }
@@ -256,7 +256,7 @@
 .dark .dashboard-gradient-mesh .gradient-orb {
   background: radial-gradient(
     circle at center,
-    oklch(0.4 0.15 200 / 0.08) 0%,
+    oklch(0.35 0.12 200 / 0.06) 0%,
     transparent 60%
   );
 }
@@ -389,5 +389,57 @@
 }
 
 .quick-action-primary:hover::before {
+  opacity: 1;
+}
+
+/* =============================================================================
+   Storefront Widget - Enhanced Styling
+   ============================================================================= */
+
+.storefront-header {
+  background: linear-gradient(
+    135deg,
+    oklch(0.97 0.01 264 / 0.5) 0%,
+    oklch(0.98 0.005 280 / 0.3) 100%
+  );
+  border-bottom: 1px solid oklch(0 0 0 / 0.04);
+}
+
+.dark .storefront-header {
+  background: linear-gradient(
+    135deg,
+    oklch(0.25 0.02 264 / 0.3) 0%,
+    oklch(0.22 0.015 280 / 0.2) 100%
+  );
+  border-bottom: 1px solid oklch(1 1 1 / 0.04);
+}
+
+/* =============================================================================
+   Quick Actions - Card Enhancements
+   ============================================================================= */
+
+.quick-actions-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.quick-actions-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    oklch(0.55 0.22 264) 0%,
+    oklch(0.6 0.2 280) 50%,
+    oklch(0.55 0.18 300) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.quick-actions-card:hover::before {
   opacity: 1;
 }
