@@ -1984,12 +1984,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Abholungserinnerung",
-            "description": "Am Tag vor der Abholung"
+            "description": "Vor dem Abholdatum gesendet"
           },
           "customer_reminder_return": {
             "label": "Ruckgabeerinnerung",
-            "description": "Am Tag vor der Ruckgabe"
-          }
+            "description": "Vor dem Ruckgabedatum gesendet"
+          },
+          "reminderDescription": "Konfigurieren Sie wann und wie Ihre Kunden Erinnerungen erhalten"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Abholungserinnerung Vorlaufzeit",
+          "returnLabel": "Ruckgabeerinnerung Vorlaufzeit",
+          "pickupDescription": "Zeit vor Mietbeginn",
+          "returnDescription": "Zeit vor Mietende",
+          "hours": "{count, plural, =1 {1 Stunde} other {# Stunden}}"
         },
         "customerTemplates": {
           "title": "Vorlage anpassen",

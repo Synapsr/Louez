@@ -1983,12 +1983,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Promemoria ritiro",
-            "description": "Inviato il giorno prima"
+            "description": "Inviato prima della data di ritiro"
           },
           "customer_reminder_return": {
             "label": "Promemoria restituzione",
-            "description": "Inviato il giorno prima"
-          }
+            "description": "Inviato prima della data di restituzione"
+          },
+          "reminderDescription": "Configura quando e come i tuoi clienti ricevono i promemoria"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Anticipo promemoria ritiro",
+          "returnLabel": "Anticipo promemoria restituzione",
+          "pickupDescription": "Tempo prima dell'inizio del noleggio",
+          "returnDescription": "Tempo prima della fine del noleggio",
+          "hours": "{count, plural, =1 {1 ora} other {# ore}}"
         },
         "customerTemplates": {
           "title": "Personalizza modello",

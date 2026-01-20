@@ -353,6 +353,14 @@ export interface CustomerNotificationSettings {
     customer_reminder_pickup?: CustomerNotificationTemplate
     customer_reminder_return?: CustomerNotificationTemplate
   }
+
+  // Automatic reminder settings
+  reminderSettings?: {
+    // Pickup reminder: hours before startDate to send reminder (default: 24)
+    pickupReminderHours: number
+    // Return reminder: hours before endDate to send reminder (default: 24)
+    returnReminderHours: number
+  }
 }
 
 export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSettings = {
@@ -368,4 +376,10 @@ export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSetting
 
   // No custom templates by default
   templates: {},
+
+  // Default reminder timing: 24 hours before event
+  reminderSettings: {
+    pickupReminderHours: 24,
+    returnReminderHours: 24,
+  },
 }

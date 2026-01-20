@@ -1986,12 +1986,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Recordatorio de recogida",
-            "description": "Enviado el dia anterior"
+            "description": "Enviado antes de la fecha de recogida"
           },
           "customer_reminder_return": {
             "label": "Recordatorio de devolucion",
-            "description": "Enviado el dia anterior"
-          }
+            "description": "Enviado antes de la fecha de devolucion"
+          },
+          "reminderDescription": "Configure cuando y como reciben recordatorios sus clientes"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Anticipacion recordatorio recogida",
+          "returnLabel": "Anticipacion recordatorio devolucion",
+          "pickupDescription": "Tiempo antes del inicio del alquiler",
+          "returnDescription": "Tiempo antes del fin del alquiler",
+          "hours": "{count, plural, =1 {1 hora} other {# horas}}"
         },
         "customerTemplates": {
           "title": "Personalizar plantilla",

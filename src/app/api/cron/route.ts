@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { processReviewRequests } from '@/lib/review-booster/automation'
+import { processReminders } from '@/lib/reminders/automation'
 import { refreshAllStoresCache, cleanExpiredCache } from '@/lib/google-places/cache'
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytics/aggregation'
 
@@ -8,6 +9,7 @@ import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytic
  *
  * Tasks and their frequencies:
  * - Review requests: every minute (checks for eligible reservations)
+ * - Automatic reminders: every minute (checks for upcoming pickups/returns)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
  * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM UTC)
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
@@ -44,6 +46,10 @@ export async function GET(request: Request) {
     // Review requests: every minute
     tasks.push('review-requests')
     results.reviewRequests = await processReviewRequests()
+
+    // Automatic reminders: every minute
+    tasks.push('reminders')
+    results.reminders = await processReminders()
 
     // Analytics aggregation: daily at 2:00 AM
     if (hour === 2 && minute === 0) {

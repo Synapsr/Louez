@@ -16,6 +16,7 @@ import {
   Bell,
   Pencil,
   Globe,
+  Clock,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,13 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Tooltip,
   TooltipContent,
@@ -39,6 +47,7 @@ import {
   updateCustomerPreference,
   updateCustomerTemplate,
   getCustomerTemplate,
+  updateReminderSettings,
 } from './actions'
 import type {
   NotificationSettings,
@@ -136,6 +145,15 @@ export function NotificationsForm({
     null
   )
   const [editingTemplate, setEditingTemplate] = useState<CustomerNotificationTemplate | null>(null)
+
+  // Reminder timing state
+  const [pickupReminderHours, setPickupReminderHours] = useState(
+    initialCustomerSettings.reminderSettings?.pickupReminderHours ?? 24
+  )
+  const [returnReminderHours, setReturnReminderHours] = useState(
+    initialCustomerSettings.reminderSettings?.returnReminderHours ?? 24
+  )
+  const [savingReminderSettings, setSavingReminderSettings] = useState(false)
 
   const smsLimitReached = !smsQuota.allowed
   const smsLow = smsQuota.limit !== null && smsQuota.current >= smsQuota.limit * 0.8
@@ -272,6 +290,31 @@ export function NotificationsForm({
     setTemplateModalOpen(false)
     setEditingEventType(null)
     setEditingTemplate(null)
+  }
+
+  // Handler for reminder timing changes
+  const handleReminderTimingChange = async (
+    type: 'pickup' | 'return',
+    hours: number
+  ) => {
+    if (type === 'pickup') {
+      setPickupReminderHours(hours)
+    } else {
+      setReturnReminderHours(hours)
+    }
+
+    setSavingReminderSettings(true)
+    const result = await updateReminderSettings({
+      pickupReminderHours: type === 'pickup' ? hours : pickupReminderHours,
+      returnReminderHours: type === 'return' ? hours : returnReminderHours,
+    })
+
+    if (result.error) {
+      toast.error(t('saveError'))
+    } else {
+      toast.success(t('saved'))
+    }
+    setSavingReminderSettings(false)
   }
 
   const reservationEvents = NOTIFICATION_EVENTS.filter((e) => e.category === 'reservation')
@@ -575,11 +618,82 @@ export function NotificationsForm({
           {/* Customer Reminder Events */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">
-                {t('customerEvents.reminderTitle')}
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">
+                  {t('customerEvents.reminderTitle')}
+                </CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                {t('customerEvents.reminderDescription')}
+              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
+              {/* Reminder Timing Configuration */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t('reminderTiming.pickupLabel')}
+                  </label>
+                  <Select
+                    value={pickupReminderHours.toString()}
+                    onValueChange={(value) =>
+                      handleReminderTimingChange('pickup', parseInt(value, 10))
+                    }
+                    disabled={savingReminderSettings}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2">{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4">{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6">{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12">{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24">{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48">{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72">{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('reminderTiming.pickupDescription')}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {t('reminderTiming.returnLabel')}
+                  </label>
+                  <Select
+                    value={returnReminderHours.toString()}
+                    onValueChange={(value) =>
+                      handleReminderTimingChange('return', parseInt(value, 10))
+                    }
+                    disabled={savingReminderSettings}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2">{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4">{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6">{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12">{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24">{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48">{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72">{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {t('reminderTiming.returnDescription')}
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Reminder Channel Configuration */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between py-2 text-xs text-muted-foreground border-b">
                   <span>{t('events.event')}</span>

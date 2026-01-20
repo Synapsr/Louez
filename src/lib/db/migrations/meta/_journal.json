@@ -85,6 +85,13 @@
       "when": 1768736509569,
       "tag": "0011_massive_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1768913745155,
+      "tag": "0012_bored_scarlet_spider",
+      "breakpoints": true
     }
   ]
 }
