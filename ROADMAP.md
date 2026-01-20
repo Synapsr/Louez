@@ -147,6 +147,23 @@ Reach customers directly on their phones.
 
 ---
 
+### ⏸️ Subscription Pause
+
+**Status**: 📋 Planned
+
+Flexible subscription management for seasonal businesses.
+
+| Feature | Description |
+|---------|-------------|
+| **Pause subscription** | Put your monthly subscription on hold anytime |
+| **Data preservation** | Keep all products, customers, and reservation history intact |
+| **Storefront message** | Display a custom message to visitors when your store is paused |
+| **Easy reactivation** | Resume your subscription and reopen bookings instantly |
+
+> Useful for: Seasonal rental businesses (ski equipment, beach gear, event rentals, etc.) who don't need the tool year-round but want to keep their setup ready for the next season.
+
+---
+
 ### 📅 Calendar Export
 
 **Status**: ✅ Available (January 16, 2026)

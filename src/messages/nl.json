@@ -304,6 +304,8 @@
         "reservationConfirmation": "Bevestiging",
         "reminderPickup": "Ophaalherinnering",
         "reminderReturn": "Retourherinnering",
+        "requestReceived": "Aanvraag ontvangen",
+        "requestAccepted": "Aanvraag geaccepteerd",
         "custom": "Aangepast",
         "thankYouReview": "Reviewverzoek"
       },
@@ -381,41 +383,136 @@
       "store": "Mijn winkel"
     },
     "home": {
-      "greeting": "Hallo, {name}!",
-      "subtitle": "Hier is een overzicht van uw activiteiten vandaag.",
-      "welcome": "Welkom",
-      "todaysDepartures": "Vertrekken vandaag",
-      "todaysReturns": "Retours vandaag",
-      "pendingRequests": "Openstaande aanvragen",
-      "totalRevenue": "Omzet",
-      "monthlyRevenue": "Maandelijkse omzet",
-      "activeReservations": "Actieve reserveringen",
-      "occupancyRate": "Bezettingsgraad",
-      "noDataYet": "Nog geen gegevens",
       "viewAll": "Alles bekijken",
-      "markAsPickedUp": "Markeer als opgehaald",
-      "markAsReturned": "Markeer als geretourneerd",
-      "noDeparturesTitle": "Geen vertrekken vandaag",
-      "noDeparturesDescription": "Geen verhuur om vandaag te overhandigen",
-      "noReturnsTitle": "Geen retours vandaag",
-      "noReturnsDescription": "Geen materiaal om vandaag op te halen",
-      "noPendingRequests": "Geen openstaande aanvragen",
-      "revenueThisMonth": "Deze maand",
-      "revenueVsPrevious": "vs vorige maand",
-      "alerts": "Meldingen",
-      "toDeliver": "te overhandigen",
-      "toRecover": "op te halen",
-      "toProcess": "Te verwerken",
-      "departuresDescription": "Reserveringen om vandaag te overhandigen",
-      "returnsDescription": "Reserveringen om vandaag op te halen",
-      "pendingDescription": "Reserveringen die uw goedkeuring nodig hebben",
       "products": "Producten",
-      "quickActions": "Snelle acties",
-      "quickActionsDescription": "Beheer uw winkel efficiënt",
-      "addProductDescription": "Maak een nieuw product aan voor verhuur",
-      "yourStore": "Uw winkel",
-      "yourStoreDescription": "Deel uw link met uw klanten",
-      "visit": "Bezoeken"
+
+      "header": {
+        "greeting": {
+          "morning": "Goedemorgen, {name}",
+          "morningAnonymous": "Goedemorgen",
+          "afternoon": "Goedemiddag, {name}",
+          "afternoonAnonymous": "Goedemiddag",
+          "evening": "Goedenavond, {name}",
+          "eveningAnonymous": "Goedenavond"
+        },
+        "subtitle": {
+          "virgin": "Welkom bij Louez. Laten we uw winkel instellen.",
+          "building": "{count, plural, one {# product aangemaakt} other {# producten aangemaakt}}. Deel uw winkel!",
+          "pending": "{count, plural, one {# openstaande aanvraag} other {# openstaande aanvragen}}",
+          "operations": "{count, plural, one {# operatie vandaag} other {# operaties vandaag}}",
+          "calm": "Alles rustig vandaag."
+        },
+        "cta": {
+          "addFirstProduct": "Mijn eerste product toevoegen",
+          "handleRequests": "Aanvragen afhandelen ({count})",
+          "addReservation": "Nieuwe reservering"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 openstaande aanvraag",
+        "multiplePending": "{count} openstaande aanvragen",
+        "description": "Uw klanten wachten op uw reactie",
+        "action": "Afhandelen"
+      },
+
+      "setup": {
+        "title": "Aan de slag",
+        "description": "Enkele stappen om te beginnen",
+        "stepsCompleted": "stappen voltooid",
+        "dismissForNow": "Voorlopig verbergen",
+        "steps": {
+          "createAccount": "Account aanmaken",
+          "configureStore": "Winkel configureren",
+          "addFirstProduct": "Eerste product toevoegen",
+          "firstReservation": "Eerste reservering ontvangen",
+          "firstCompleted": "Eerste verhuur voltooien"
+        },
+        "start": "Starten",
+        "addProductHint": "Voeg uw eerste product toe zodat klanten kunnen boeken.",
+        "addFirstProduct": "Product toevoegen",
+        "shareHint": "Deel uw winkel om uw eerste reserveringen te ontvangen.",
+        "viewStore": "Mijn winkel bekijken",
+        "createReservation": "Reservering aanmaken"
+      },
+
+      "stats": {
+        "products": "Producten",
+        "customers": "Klanten",
+        "drafts": "{count, plural, one {# concept} other {# concepten}}",
+        "todaysDepartures": "Vertrekken vandaag",
+        "todaysReturns": "Retours vandaag",
+        "pendingRequests": "Openstaande aanvragen",
+        "monthlyRevenue": "Maandelijkse omzet",
+        "totalReservations": "Reserveringen",
+        "toDeliver": "te overhandigen",
+        "toRecover": "op te halen",
+        "toProcess": "Te verwerken",
+        "vsLastMonth": "vs vorige maand",
+        "completed": "{count, plural, one {# voltooid} other {# voltooid}}"
+      },
+
+      "activity": {
+        "departures": "Vertrekken vandaag",
+        "departuresDescription": "Reserveringen om vandaag te overhandigen",
+        "returns": "Retours vandaag",
+        "returnsDescription": "Reserveringen om vandaag op te halen",
+        "noDepartures": "Geen overdrachten gepland vandaag",
+        "noReturns": "Geen retours gepland vandaag",
+        "noActivityTitle": "Rustige dag",
+        "noActivityDescription": "Geen operaties gepland vandaag"
+      },
+
+      "pending": {
+        "title": "Openstaande aanvragen",
+        "description": "Reserveringen die uw goedkeuring nodig hebben",
+        "empty": "Geen openstaande aanvragen"
+      },
+
+      "quickActions": {
+        "title": "Snelle acties",
+        "description": "Beheer uw winkel efficiënt",
+        "addProduct": {
+          "title": "Product toevoegen",
+          "description": "Nieuw product voor verhuur aanmaken"
+        },
+        "addReservation": {
+          "title": "Reservering aanmaken",
+          "description": "Handmatig een reservering toevoegen"
+        }
+      },
+
+      "storefront": {
+        "title": "Uw winkel",
+        "description": "Deel uw link met uw klanten",
+        "online": "Online",
+        "publicUrl": "Openbaar adres",
+        "visit": "Bezoeken",
+        "copy": "Kopiëren",
+        "copied": "Gekopieerd!",
+        "share": "Delen",
+        "shareTitle": "Mijn verhuurwinkel"
+      },
+
+      "share": {
+        "title": "Deel uw winkel",
+        "description": "Stuur uw winkellink naar uw klanten",
+        "copyLink": "Link kopiëren",
+        "copyLinkDescription": "URL naar klembord kopiëren",
+        "copied": "Gekopieerd!",
+        "whatsappDescription": "Verstuur via WhatsApp",
+        "whatsappMessage": "Ontdek onze verhuurwinkel: {url}",
+        "email": "E-mail",
+        "emailDescription": "Verstuur via e-mail",
+        "emailSubject": "Ontdek onze verhuurwinkel",
+        "emailBody": "Hallo,\n\nIk nodig u uit om onze verhuurwinkel te ontdekken:\n{url}\n\nTot snel!",
+        "smsDescription": "Verstuur via SMS",
+        "smsMessage": "Ontdek onze verhuurwinkel: {url}",
+        "showQR": "QR-code tonen",
+        "hideQR": "QR-code verbergen",
+        "qrDescription": "Scan deze code om de winkel te bezoeken",
+        "downloadQR": "Downloaden"
+      }
     },
     "products": {
       "title": "Producten",
@@ -1267,7 +1364,8 @@
       "views": {
         "day": "Dag",
         "week": "Week",
-        "month": "Maand"
+        "month": "Maand",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filteren op product",
       "allProducts": "Alle producten",
@@ -1278,6 +1376,7 @@
       "today": "Vandaag",
       "legend": "Legenda",
       "moreItems": "+{count} meer",
+      "noCustomer": "Geen klant",
       "dayNames": {
         "mon": "Ma",
         "tue": "Di",
@@ -1294,6 +1393,30 @@
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
         "rejected": "Afgewezen"
+      },
+      "viewMode": {
+        "label": "Weergavemodus",
+        "calendar": "Kalender",
+        "products": "Producten"
+      },
+      "periods": {
+        "week": "Week",
+        "twoWeeks": "2 weken",
+        "month": "Maand"
+      },
+      "productsView": {
+        "products": "Producten",
+        "units": "{count, plural, one {# eenheid} other {# eenheden}}",
+        "unit": "Eenheid",
+        "available": "Beschikbaar",
+        "noProducts": "Geen producten om weer te geven",
+        "reservationsCount": "{count, plural, one {# reservering} other {# reserveringen}}"
+      },
+      "timeline": {
+        "products": "Producten",
+        "quantity": "{count, plural, one {# eenheid} other {# eenheden}}",
+        "available": "Beschikbaar",
+        "noProducts": "Geen producten om weer te geven"
       },
       "export": {
         "button": "Kalender exporteren",
@@ -1772,7 +1895,171 @@
           "upgrade": "Upgrade naar Pro",
           "featureLocked": "Functie vergrendeld",
           "upgradeToUnlock": "Upgrade naar Pro om deze functie in te schakelen"
-        }
+        },
+        "customizeTemplate": "Aanpassen",
+        "templateSaved": "Sjabloon opgeslagen"
+      },
+      "notifications": {
+        "title": "Meldingen",
+        "description": "Configureer hoe u meldingen over winkelgebeurtenissen ontvangt",
+        "saveError": "Fout bij opslaan",
+        "phone": {
+          "title": "Telefoonnummer",
+          "description": "Om SMS-meldingen te ontvangen",
+          "placeholder": "+31 6 12345678",
+          "configured": "Nummer geconfigureerd",
+          "saved": "Telefoonnummer opgeslagen",
+          "invalidNumber": "Ongeldig telefoonnummer",
+          "required": "Configureer eerst uw telefoonnummer"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Ontvang directe meldingen in uw Discord-server",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Verbonden",
+          "saved": "Discord-webhook opgeslagen",
+          "invalidUrl": "Ongeldige webhook-URL",
+          "test": "Testen",
+          "testSuccess": "Testmelding verzonden",
+          "testError": "Test verzenden mislukt",
+          "howTo": "Hoe maak ik een Discord-webhook?",
+          "required": "Configureer eerst Discord"
+        },
+        "events": {
+          "event": "Gebeurtenis",
+          "reservation": {
+            "title": "Reserveringsgebeurtenissen",
+            "reservation_new": {
+              "label": "Nieuwe aanvraag",
+              "description": "Wanneer een klant een nieuwe aanvraag indient"
+            },
+            "reservation_confirmed": {
+              "label": "Reservering bevestigd",
+              "description": "Wanneer u een aanvraag accepteert"
+            },
+            "reservation_rejected": {
+              "label": "Reservering afgewezen",
+              "description": "Wanneer u een aanvraag afwijst"
+            },
+            "reservation_cancelled": {
+              "label": "Reservering geannuleerd",
+              "description": "Wanneer een reservering wordt geannuleerd"
+            },
+            "reservation_picked_up": {
+              "label": "Apparatuur opgehaald",
+              "description": "Wanneer de klant de apparatuur ophaalt"
+            },
+            "reservation_completed": {
+              "label": "Reservering voltooid",
+              "description": "Wanneer de apparatuur wordt teruggebracht"
+            }
+          },
+          "payment": {
+            "title": "Betalingsgebeurtenissen",
+            "payment_received": {
+              "label": "Betaling ontvangen",
+              "description": "Wanneer een betaling slaagt"
+            },
+            "payment_failed": {
+              "label": "Betaling mislukt",
+              "description": "Wanneer een betaling mislukt"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "SMS-limiet bereikt",
+          "limitReachedMessage": "U heeft uw maandelijkse SMS-limiet bereikt.",
+          "lowCredits": "U heeft nog {current} van {limit} SMS over deze maand.",
+          "buyMore": "Meer SMS kopen",
+          "quotaLabel": "SMS-tegoed",
+          "manage": "Beheren",
+          "noCreditsLeft": "Geen SMS-tegoed meer",
+          "noCreditsDescription": "Koop tegoed om SMS naar uw klanten te sturen",
+          "buyCredits": "Tegoed kopen",
+          "remaining": "resterend",
+          "lowWarning": "Laag tegoedsaldo"
+        },
+        "adminSection": {
+          "title": "Beheerdersmeldingen",
+          "description": "Ontvang meldingen wanneer er gebeurtenissen plaatsvinden"
+        },
+        "customerSection": {
+          "title": "Klantmeldingen",
+          "description": "E-mails en SMS automatisch verzonden naar uw klanten"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reserveringsproces",
+          "reminderTitle": "Automatische herinneringen",
+          "customer_request_received": {
+            "label": "Aanvraag ontvangen",
+            "description": "Bevestiging van de aanvraag"
+          },
+          "customer_request_accepted": {
+            "label": "Aanvraag geaccepteerd",
+            "description": "Wanneer u een aanvraag accepteert"
+          },
+          "customer_request_rejected": {
+            "label": "Aanvraag geweigerd",
+            "description": "Wanneer u een aanvraag weigert"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservering bevestigd",
+            "description": "Na succesvolle betaling"
+          },
+          "customer_reminder_pickup": {
+            "label": "Ophaalherinnering",
+            "description": "Verzonden voor de ophaaldatum"
+          },
+          "customer_reminder_return": {
+            "label": "Terugbrengherinnering",
+            "description": "Verzonden voor de terugbrengdatum"
+          },
+          "reminderDescription": "Configureer wanneer en hoe uw klanten herinneringen ontvangen"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Ophaalherinnering voorlooptijd",
+          "returnLabel": "Terugbrengherinnering voorlooptijd",
+          "pickupDescription": "Tijd voor aanvang verhuur",
+          "returnDescription": "Tijd voor einde verhuur",
+          "hours": "{count, plural, =1 {1 uur} other {# uur}}"
+        },
+        "customerTemplates": {
+          "title": "Sjabloon aanpassen",
+          "emailSection": "E-mail",
+          "smsSection": "SMS",
+          "subject": "E-mail onderwerp",
+          "subjectHint": "Laat leeg voor standaard onderwerp",
+          "additionalMessage": "Aangepast bericht",
+          "additionalMessagePlaceholder": "Voeg een bericht toe dat in de e-mail verschijnt",
+          "additionalMessageHint": "Dit bericht wordt toegevoegd aan de standaardinhoud",
+          "smsMessage": "SMS-bericht",
+          "smsVariables": "Variabelen: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Resetten",
+          "cancel": "Annuleren",
+          "save": "Opslaan",
+          "customized": "Aangepast",
+          "default": "Standaard",
+          "resetToDefault": "Standaard herstellen",
+          "clearMessage": "Bericht wissen",
+          "resetAll": "Alles resetten"
+        },
+        "templateSheet": {
+          "hidePreview": "Voorbeeld verbergen",
+          "showPreview": "Voorbeeld tonen",
+          "configuration": "Configuratie",
+          "subject": "Onderwerp",
+          "customized": "Aangepast",
+          "default": "Standaard",
+          "resetToDefault": "Standaard herstellen",
+          "additionalMessage": "Aangepast bericht",
+          "additionalMessagePlaceholder": "Voeg een bericht toe dat in de e-mail verschijnt...",
+          "additionalMessageHint": "Dit bericht wordt toegevoegd aan de standaard e-mailinhoud",
+          "preview": "Voorbeeld",
+          "smsMessage": "SMS-bericht",
+          "smsVariables": "Variabelen: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Bericht wissen"
+        },
+        "templateSaved": "Sjabloon opgeslagen"
       },
       "businessHours": {
         "title": "Openingstijden",
@@ -2468,6 +2755,7 @@
         "firstNameRequired": "Voornaam vereist",
         "lastNameRequired": "Achternaam vereist",
         "phoneRequired": "Telefoon vereist",
+        "invalidPhone": "Ongeldig telefoonformaat",
         "companyNameRequired": "Vul de bedrijfsnaam in",
         "acceptCgv": "U moet de algemene voorwaarden accepteren"
       },
@@ -2923,6 +3211,55 @@
       "paymentPending": "De betaling voor deze reservering is in afwachting.",
       "viewAndPay": "Bekijken en betalen",
       "linkValid": "Deze link is 30 dagen geldig."
+    },
+    "reservationCancelled": {
+      "subject": "Reservering #{number} geannuleerd",
+      "title": "Reservering geannuleerd",
+      "body": "Uw reservering #{number} is geannuleerd.",
+      "cancelledPeriod": "Geannuleerde periode",
+      "reasonLabel": "Reden",
+      "contactForQuestions": "Als u vragen heeft, neem dan gerust contact met ons op.",
+      "browseEquipment": "Bekijk onze catalogus",
+      "thankYou": "Bedankt voor uw begrip."
+    },
+    "reservationCompleted": {
+      "subject": "Reservering #{number} voltooid",
+      "title": "Verhuur voltooid!",
+      "body": "Uw reservering #{number} is nu voltooid.",
+      "rentalPeriod": "Huurperiode",
+      "depositReturned": "Uw borg van {amount} wordt teruggestort.",
+      "depositPending": "Uw borg van {amount} wordt gecontroleerd en binnenkort teruggestort.",
+      "thankYouMessage": "Bedankt dat u voor onze diensten heeft gekozen!",
+      "rentAgain": "Opnieuw huren",
+      "seeYouSoon": "Tot ziens!"
+    },
+    "paymentConfirmation": {
+      "subject": "Betaling bevestigd - Reservering #{number}",
+      "title": "Betaling ontvangen!",
+      "body": "We hebben uw betaling voor reservering #{number} ontvangen.",
+      "paymentDetails": "Betalingsgegevens",
+      "amount": "Bedrag",
+      "date": "Datum",
+      "method": "Methode",
+      "reservation": "Reservering",
+      "confirmation": "Uw betaling is succesvol verwerkt.",
+      "keepEmail": "Bewaar deze e-mail als betalingsbewijs."
+    },
+    "paymentFailed": {
+      "subject": "Betaling mislukt - Reservering #{number}",
+      "title": "Betaling mislukt",
+      "body": "De betaling van {amount} voor uw reservering #{number} kon niet worden verwerkt.",
+      "whatToDo": "Wat te doen?",
+      "tip1": "Controleer of uw kaart geldig is en voldoende saldo heeft",
+      "tip2": "Probeer een andere kaart",
+      "tip3": "Neem contact op met uw bank als het probleem aanhoudt",
+      "retryPayment": "Betaling opnieuw proberen",
+      "contactSupport": "Hulp nodig? Neem contact met ons op."
+    },
+    "baseLayout": {
+      "sentBy": "Deze e-mail is verzonden door {storeName}",
+      "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
+      "poweredBy": "Powered by"
     }
   },
   "contract": {

@@ -89,6 +89,8 @@ const TEMPLATE_TYPE_LABELS: Record<string, string> = {
   reservation_confirmation: 'reservationConfirmation',
   reminder_pickup: 'reminderPickup',
   reminder_return: 'reminderReturn',
+  request_received: 'requestReceived',
+  request_accepted: 'requestAccepted',
   custom: 'custom',
   thank_you_review: 'thankYouReview',
 }

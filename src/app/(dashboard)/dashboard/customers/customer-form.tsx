@@ -10,6 +10,7 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Switch } from '@/components/ui/switch'
 import {
   Card,
@@ -221,7 +222,11 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   <FormItem>
                     <FormLabel>{t('phone')}</FormLabel>
                     <FormControl>
-                      <Input placeholder={t('phonePlaceholder')} {...field} />
+                      <PhoneInput
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        placeholder={t('phonePlaceholder')}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

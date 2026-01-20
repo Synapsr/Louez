@@ -6,6 +6,8 @@ import { getEmailTranslations, type EmailLocale } from './i18n'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
+  ReservationCancelledEmail,
+  ReservationCompletedEmail,
   RequestReceivedEmail,
   RequestAcceptedEmail,
   RequestRejectedEmail,
@@ -15,6 +17,8 @@ import {
   TeamInvitationEmail,
   InstantAccessEmail,
   ThankYouReviewEmail,
+  PaymentConfirmationEmail,
+  PaymentFailedEmail,
 } from './templates'
 
 interface Store {
@@ -41,6 +45,7 @@ interface Store {
     pickupReminderContent?: import('@/types/store').EmailCustomContent
     returnReminderContent?: import('@/types/store').EmailCustomContent
     requestAcceptedContent?: import('@/types/store').EmailCustomContent
+    requestReceivedContent?: import('@/types/store').EmailCustomContent
   } | null
 }
 
@@ -256,7 +261,11 @@ export async function sendRequestReceivedEmail({
   locale?: EmailLocale
 }) {
   const t = getEmailTranslations(locale)
-  const subject = `${t.requestReceived.subject.replace('{number}', reservation.number)} - ${store.name}`
+  const customContent = store.emailSettings?.requestReceivedContent
+  const subject = customContent?.subject
+    ? customContent.subject.replace('{number}', reservation.number)
+    : `${t.requestReceived.subject.replace('{number}', reservation.number)} - ${store.name}`
+
   const html = await render(
     RequestReceivedEmail({
       storeName: store.name,
@@ -269,6 +278,7 @@ export async function sendRequestReceivedEmail({
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
       endDate: reservation.endDate,
+      customContent,
       locale,
     })
   )
@@ -826,6 +836,293 @@ export async function sendThankYouReviewEmail({
       to,
       subject,
       templateType: 'thank_you_review',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Reservation Cancelled Email
+export async function sendReservationCancelledEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  reason,
+  storefrontUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+  }
+  reason?: string | null
+  storefrontUrl?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.reservationCancelled.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const html = await render(
+    ReservationCancelledEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      reason,
+      storefrontUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_cancelled',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_cancelled',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Reservation Completed Email
+export async function sendReservationCompletedEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  depositAmount,
+  depositReturned,
+  storefrontUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+  }
+  depositAmount?: number | null
+  depositReturned?: boolean
+  storefrontUrl?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.reservationCompleted.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const html = await render(
+    ReservationCompletedEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      depositAmount,
+      depositReturned,
+      storefrontUrl,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_completed',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_completed',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Payment Confirmation Email
+export async function sendPaymentConfirmationEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  paymentAmount,
+  paymentDate,
+  paymentMethod,
+  reservationUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  paymentAmount: number
+  paymentDate: Date
+  paymentMethod?: string | null
+  reservationUrl?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.paymentConfirmation.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const html = await render(
+    PaymentConfirmationEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      paymentAmount,
+      paymentDate,
+      paymentMethod,
+      reservationUrl,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_confirmation',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_confirmation',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Payment Failed Email
+export async function sendPaymentFailedEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  paymentAmount,
+  errorMessage,
+  paymentUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  paymentAmount: number
+  errorMessage?: string | null
+  paymentUrl?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.paymentFailed.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const html = await render(
+    PaymentFailedEmail({
+      storeName: store.name,
+      logoUrl: store.logoUrl,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      paymentAmount,
+      errorMessage,
+      paymentUrl,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_failed',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_failed',
       status: 'failed',
       error: String(error),
     })

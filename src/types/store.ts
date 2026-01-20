@@ -87,11 +87,51 @@ export interface StoreTheme {
   heroImages?: string[]
 }
 
+/**
+ * Unified notification template interface.
+ * Used for both email and SMS customization.
+ * @deprecated Use NotificationTemplate instead for new code
+ */
 export interface EmailCustomContent {
   subject?: string
   greeting?: string
   message?: string
   signature?: string
+}
+
+/**
+ * Modern unified notification template.
+ * Supports both email and SMS with consistent field names.
+ */
+export interface NotificationTemplate {
+  /** Email subject line (supports variables: {name}, {number}, {storeName}) */
+  subject?: string
+  /** Custom email message body (supports variables) */
+  emailMessage?: string
+  /** Custom SMS message (supports variables, max 160 chars recommended) */
+  smsMessage?: string
+}
+
+/**
+ * Convert legacy EmailCustomContent to NotificationTemplate
+ */
+export function toNotificationTemplate(legacy: EmailCustomContent | undefined): NotificationTemplate | undefined {
+  if (!legacy) return undefined
+  return {
+    subject: legacy.subject,
+    emailMessage: legacy.message,
+  }
+}
+
+/**
+ * Convert NotificationTemplate to legacy EmailCustomContent (for backward compat)
+ */
+export function toLegacyEmailContent(template: NotificationTemplate | undefined): EmailCustomContent | undefined {
+  if (!template) return undefined
+  return {
+    subject: template.subject,
+    message: template.emailMessage,
+  }
 }
 
 export interface EmailSettings {
@@ -183,6 +223,12 @@ export interface GoogleReview {
   time: number // Unix timestamp
 }
 
+export interface ReviewBoosterTemplate {
+  subject?: string
+  emailMessage?: string
+  smsMessage?: string
+}
+
 export interface ReviewBoosterSettings {
   enabled: boolean
   // Google Place info
@@ -199,4 +245,141 @@ export interface ReviewBoosterSettings {
   autoSendThankYouSms: boolean
   emailDelayHours: number
   smsDelayHours: number
+  // Custom template
+  template?: ReviewBoosterTemplate
+}
+
+// ============================================================================
+// Notification Settings (Admin notifications)
+// ============================================================================
+
+export type NotificationEventType =
+  | 'reservation_new'
+  | 'reservation_confirmed'
+  | 'reservation_rejected'
+  | 'reservation_cancelled'
+  | 'reservation_picked_up'
+  | 'reservation_completed'
+  | 'payment_received'
+  | 'payment_failed'
+
+export const NOTIFICATION_EVENT_TYPES: NotificationEventType[] = [
+  'reservation_new',
+  'reservation_confirmed',
+  'reservation_rejected',
+  'reservation_cancelled',
+  'reservation_picked_up',
+  'reservation_completed',
+  'payment_received',
+  'payment_failed',
+]
+
+export interface NotificationChannelConfig {
+  email: boolean
+  sms: boolean
+  discord: boolean
+}
+
+export interface NotificationSettings {
+  reservation_new: NotificationChannelConfig
+  reservation_confirmed: NotificationChannelConfig
+  reservation_rejected: NotificationChannelConfig
+  reservation_cancelled: NotificationChannelConfig
+  reservation_picked_up: NotificationChannelConfig
+  reservation_completed: NotificationChannelConfig
+  payment_received: NotificationChannelConfig
+  payment_failed: NotificationChannelConfig
+}
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  reservation_new: { email: true, sms: false, discord: false },
+  reservation_confirmed: { email: true, sms: false, discord: false },
+  reservation_rejected: { email: true, sms: false, discord: false },
+  reservation_cancelled: { email: true, sms: false, discord: false },
+  reservation_picked_up: { email: false, sms: false, discord: false },
+  reservation_completed: { email: false, sms: false, discord: false },
+  payment_received: { email: true, sms: false, discord: false },
+  payment_failed: { email: true, sms: false, discord: false },
+}
+
+// ============================================================================
+// Customer Notification Settings (Notifications sent to customers)
+// ============================================================================
+
+export type CustomerNotificationEventType =
+  | 'customer_request_received'
+  | 'customer_request_accepted'
+  | 'customer_request_rejected'
+  | 'customer_reservation_confirmed'
+  | 'customer_reminder_pickup'
+  | 'customer_reminder_return'
+
+export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] = [
+  'customer_request_received',
+  'customer_request_accepted',
+  'customer_request_rejected',
+  'customer_reservation_confirmed',
+  'customer_reminder_pickup',
+  'customer_reminder_return',
+]
+
+export interface CustomerNotificationChannelConfig {
+  enabled: boolean
+  email: boolean
+  sms: boolean
+}
+
+export interface CustomerNotificationTemplate {
+  subject?: string
+  emailMessage?: string
+  smsMessage?: string
+}
+
+export interface CustomerNotificationSettings {
+  // Preferences per event type
+  customer_request_received: CustomerNotificationChannelConfig
+  customer_request_accepted: CustomerNotificationChannelConfig
+  customer_request_rejected: CustomerNotificationChannelConfig
+  customer_reservation_confirmed: CustomerNotificationChannelConfig
+  customer_reminder_pickup: CustomerNotificationChannelConfig
+  customer_reminder_return: CustomerNotificationChannelConfig
+
+  // Custom templates
+  templates: {
+    customer_request_received?: CustomerNotificationTemplate
+    customer_request_accepted?: CustomerNotificationTemplate
+    customer_request_rejected?: CustomerNotificationTemplate
+    customer_reservation_confirmed?: CustomerNotificationTemplate
+    customer_reminder_pickup?: CustomerNotificationTemplate
+    customer_reminder_return?: CustomerNotificationTemplate
+  }
+
+  // Automatic reminder settings
+  reminderSettings?: {
+    // Pickup reminder: hours before startDate to send reminder (default: 24)
+    pickupReminderHours: number
+    // Return reminder: hours before endDate to send reminder (default: 24)
+    returnReminderHours: number
+  }
+}
+
+export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSettings = {
+  // Reservation journey - email enabled by default
+  customer_request_received: { enabled: true, email: true, sms: false },
+  customer_request_accepted: { enabled: true, email: true, sms: false },
+  customer_request_rejected: { enabled: true, email: true, sms: false },
+  customer_reservation_confirmed: { enabled: true, email: true, sms: false },
+
+  // Reminders - email enabled by default (SMS disabled due to cost)
+  customer_reminder_pickup: { enabled: true, email: true, sms: false },
+  customer_reminder_return: { enabled: true, email: true, sms: false },
+
+  // No custom templates by default
+  templates: {},
+
+  // Default reminder timing: 24 hours before event
+  reminderSettings: {
+    pickupReminderHours: 24,
+    returnReminderHours: 24,
+  },
 }

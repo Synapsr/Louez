@@ -13,6 +13,26 @@ import { validateAndNormalizePhone } from '../phone'
 
 const API_ENDPOINT = 'https://api.smspartner.fr/v1/send'
 
+/**
+ * GSM 7-bit character set (basic + extended)
+ * Characters outside this set require Unicode encoding
+ */
+const GSM_BASIC_CHARS = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ !"#¤%&\'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà'
+const GSM_EXTENDED_CHARS = '^{}\\[~]|€'
+
+/**
+ * Check if message contains characters that require Unicode encoding
+ */
+function requiresUnicode(message: string): boolean {
+  const allGsmChars = GSM_BASIC_CHARS + GSM_EXTENDED_CHARS
+  for (const char of message) {
+    if (!allGsmChars.includes(char)) {
+      return true
+    }
+  }
+  return false
+}
+
 interface SmsPartnerResponse {
   success: boolean
   code: number
@@ -96,11 +116,17 @@ export class SmsPartnerProvider implements SmsProvider {
       payload.sandbox = 1
     }
 
+    // Enable Unicode for messages with special characters (€, accents, etc.)
+    // Unicode SMS are limited to 70 chars (vs 160 for GSM-7)
+    if (requiresUnicode(options.message)) {
+      payload.isUnicode = 1
+    }
+
     try {
       const response = await fetch(API_ENDPOINT, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
         },
         body: JSON.stringify(payload),
       })

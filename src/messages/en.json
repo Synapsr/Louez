@@ -305,6 +305,8 @@
         "reservationConfirmation": "Confirmation",
         "reminderPickup": "Pickup reminder",
         "reminderReturn": "Return reminder",
+        "requestReceived": "Request received",
+        "requestAccepted": "Request accepted",
         "custom": "Custom",
         "thankYouReview": "Review request"
       },
@@ -383,41 +385,136 @@
       "store": "My store"
     },
     "home": {
-      "greeting": "Hello, {name}!",
-      "subtitle": "Here's an overview of your activity today.",
-      "welcome": "Welcome",
-      "todaysDepartures": "Today's departures",
-      "todaysReturns": "Today's returns",
-      "pendingRequests": "Pending requests",
-      "totalRevenue": "Revenue",
-      "monthlyRevenue": "Monthly revenue",
-      "activeReservations": "Active reservations",
-      "occupancyRate": "Occupancy rate",
-      "noDataYet": "No data yet",
       "viewAll": "View all",
-      "markAsPickedUp": "Mark as picked up",
-      "markAsReturned": "Mark as returned",
-      "noDeparturesTitle": "No departures today",
-      "noDeparturesDescription": "No rentals to hand over today",
-      "noReturnsTitle": "No returns today",
-      "noReturnsDescription": "No equipment to collect today",
-      "noPendingRequests": "No pending requests",
-      "revenueThisMonth": "This month",
-      "revenueVsPrevious": "vs previous month",
-      "alerts": "Alerts",
-      "toDeliver": "to hand over",
-      "toRecover": "to collect",
-      "toProcess": "To process",
-      "departuresDescription": "Reservations to hand over today",
-      "returnsDescription": "Reservations to collect today",
-      "pendingDescription": "Reservations requiring your approval",
       "products": "Products",
-      "quickActions": "Quick actions",
-      "quickActionsDescription": "Manage your store efficiently",
-      "addProductDescription": "Create a new product for rent",
-      "yourStore": "Your store",
-      "yourStoreDescription": "Share your link with your customers",
-      "visit": "Visit"
+
+      "header": {
+        "greeting": {
+          "morning": "Good morning, {name}",
+          "morningAnonymous": "Good morning",
+          "afternoon": "Good afternoon, {name}",
+          "afternoonAnonymous": "Good afternoon",
+          "evening": "Good evening, {name}",
+          "eveningAnonymous": "Good evening"
+        },
+        "subtitle": {
+          "virgin": "Welcome to Louez. Let's set up your store.",
+          "building": "{count, plural, one {# product created} other {# products created}}. Share your store!",
+          "pending": "{count, plural, one {# pending request} other {# pending requests}}",
+          "operations": "{count, plural, one {# operation today} other {# operations today}}",
+          "calm": "All quiet today."
+        },
+        "cta": {
+          "addFirstProduct": "Add my first product",
+          "handleRequests": "Handle requests ({count})",
+          "addReservation": "New reservation"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 pending request",
+        "multiplePending": "{count} pending requests",
+        "description": "Your customers are waiting for your response",
+        "action": "Handle"
+      },
+
+      "setup": {
+        "title": "Getting started",
+        "description": "A few steps to get started",
+        "stepsCompleted": "steps completed",
+        "dismissForNow": "Hide for now",
+        "steps": {
+          "createAccount": "Create your account",
+          "configureStore": "Configure your store",
+          "addFirstProduct": "Add your first product",
+          "firstReservation": "Receive your first reservation",
+          "firstCompleted": "Complete your first rental"
+        },
+        "start": "Start",
+        "addProductHint": "Add your first product so customers can start booking.",
+        "addFirstProduct": "Add a product",
+        "shareHint": "Share your store to receive your first reservations.",
+        "viewStore": "View my store",
+        "createReservation": "Create a reservation"
+      },
+
+      "stats": {
+        "products": "Products",
+        "customers": "Customers",
+        "drafts": "{count, plural, one {# draft} other {# drafts}}",
+        "todaysDepartures": "Today's departures",
+        "todaysReturns": "Today's returns",
+        "pendingRequests": "Pending requests",
+        "monthlyRevenue": "Monthly revenue",
+        "totalReservations": "Reservations",
+        "toDeliver": "to hand over",
+        "toRecover": "to collect",
+        "toProcess": "To process",
+        "vsLastMonth": "vs last month",
+        "completed": "{count, plural, one {# completed} other {# completed}}"
+      },
+
+      "activity": {
+        "departures": "Today's departures",
+        "departuresDescription": "Reservations to hand over today",
+        "returns": "Today's returns",
+        "returnsDescription": "Reservations to collect today",
+        "noDepartures": "No handovers scheduled today",
+        "noReturns": "No returns scheduled today",
+        "noActivityTitle": "Quiet day",
+        "noActivityDescription": "No operations scheduled today"
+      },
+
+      "pending": {
+        "title": "Pending requests",
+        "description": "Reservations requiring your approval",
+        "empty": "No pending requests"
+      },
+
+      "quickActions": {
+        "title": "Quick actions",
+        "description": "Manage your store efficiently",
+        "addProduct": {
+          "title": "Add a product",
+          "description": "Create a new product for rent"
+        },
+        "addReservation": {
+          "title": "Create a reservation",
+          "description": "Manually add a reservation"
+        }
+      },
+
+      "storefront": {
+        "title": "Your store",
+        "description": "Share your link with your customers",
+        "online": "Online",
+        "publicUrl": "Public address",
+        "visit": "Visit",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "share": "Share",
+        "shareTitle": "My rental store"
+      },
+
+      "share": {
+        "title": "Share your store",
+        "description": "Send your store link to your customers",
+        "copyLink": "Copy link",
+        "copyLinkDescription": "Copy URL to clipboard",
+        "copied": "Copied!",
+        "whatsappDescription": "Send via WhatsApp",
+        "whatsappMessage": "Check out our rental store: {url}",
+        "email": "Email",
+        "emailDescription": "Send via email",
+        "emailSubject": "Discover our rental store",
+        "emailBody": "Hello,\n\nI invite you to discover our rental store:\n{url}\n\nSee you soon!",
+        "smsDescription": "Send via SMS",
+        "smsMessage": "Check out our rental store: {url}",
+        "showQR": "Show QR code",
+        "hideQR": "Hide QR code",
+        "qrDescription": "Scan this code to access the store",
+        "downloadQR": "Download"
+      }
     },
     "products": {
       "title": "Products",
@@ -1268,7 +1365,8 @@
       "views": {
         "day": "Day",
         "week": "Week",
-        "month": "Month"
+        "month": "Month",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filter by product",
       "allProducts": "All products",
@@ -1279,6 +1377,7 @@
       "today": "Today",
       "legend": "Legend",
       "moreItems": "+{count} more",
+      "noCustomer": "No customer",
       "dayNames": {
         "mon": "Mon",
         "tue": "Tue",
@@ -1295,6 +1394,30 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "rejected": "Rejected"
+      },
+      "viewMode": {
+        "label": "View mode",
+        "calendar": "Calendar",
+        "products": "Products"
+      },
+      "periods": {
+        "week": "Week",
+        "twoWeeks": "2 weeks",
+        "month": "Month"
+      },
+      "productsView": {
+        "products": "Products",
+        "units": "{count, plural, one {# unit} other {# units}}",
+        "unit": "Unit",
+        "available": "Available",
+        "noProducts": "No products to display",
+        "reservationsCount": "{count, plural, one {# reservation} other {# reservations}}"
+      },
+      "timeline": {
+        "products": "Products",
+        "quantity": "{count, plural, one {# unit} other {# units}}",
+        "available": "Available",
+        "noProducts": "No products to display"
       },
       "export": {
         "button": "Export calendar",
@@ -1773,7 +1896,171 @@
           "upgrade": "Upgrade to Pro",
           "featureLocked": "Feature locked",
           "upgradeToUnlock": "Upgrade to Pro to enable this feature"
-        }
+        },
+        "customizeTemplate": "Customize",
+        "templateSaved": "Template saved"
+      },
+      "notifications": {
+        "title": "Notifications",
+        "description": "Configure how you receive store event notifications",
+        "saveError": "Error saving settings",
+        "phone": {
+          "title": "Phone number",
+          "description": "To receive SMS notifications",
+          "placeholder": "+1 555 123 4567",
+          "configured": "Number configured",
+          "saved": "Phone number saved",
+          "invalidNumber": "Invalid phone number",
+          "required": "Configure your phone number first"
+        },
+        "discord": {
+          "title": "Discord",
+          "description": "Receive instant notifications in your Discord server",
+          "placeholder": "https://discord.com/api/webhooks/...",
+          "connected": "Connected",
+          "saved": "Discord webhook saved",
+          "invalidUrl": "Invalid webhook URL",
+          "test": "Test",
+          "testSuccess": "Test notification sent",
+          "testError": "Failed to send test",
+          "howTo": "How to create a Discord webhook?",
+          "required": "Configure Discord first"
+        },
+        "events": {
+          "event": "Event",
+          "reservation": {
+            "title": "Reservation events",
+            "reservation_new": {
+              "label": "New request",
+              "description": "When a customer submits a new request"
+            },
+            "reservation_confirmed": {
+              "label": "Reservation confirmed",
+              "description": "When you accept a request"
+            },
+            "reservation_rejected": {
+              "label": "Reservation rejected",
+              "description": "When you decline a request"
+            },
+            "reservation_cancelled": {
+              "label": "Reservation cancelled",
+              "description": "When a reservation is cancelled"
+            },
+            "reservation_picked_up": {
+              "label": "Equipment picked up",
+              "description": "When the customer picks up the equipment"
+            },
+            "reservation_completed": {
+              "label": "Reservation completed",
+              "description": "When the equipment is returned"
+            }
+          },
+          "payment": {
+            "title": "Payment events",
+            "payment_received": {
+              "label": "Payment received",
+              "description": "When a payment succeeds"
+            },
+            "payment_failed": {
+              "label": "Payment failed",
+              "description": "When a payment fails"
+            }
+          }
+        },
+        "sms": {
+          "limitReached": "SMS limit reached",
+          "limitReachedMessage": "You have reached your monthly SMS limit.",
+          "lowCredits": "You have {current} out of {limit} SMS remaining this month.",
+          "buyMore": "Buy more SMS",
+          "quotaLabel": "SMS Credits",
+          "manage": "Manage",
+          "noCreditsLeft": "No SMS credits left",
+          "noCreditsDescription": "Buy credits to send SMS to your customers",
+          "buyCredits": "Buy credits",
+          "remaining": "remaining",
+          "lowWarning": "Low credit balance"
+        },
+        "adminSection": {
+          "title": "Admin notifications",
+          "description": "Get alerts when events occur in your store"
+        },
+        "customerSection": {
+          "title": "Customer notifications",
+          "description": "Emails and SMS automatically sent to your customers"
+        },
+        "customerEvents": {
+          "reservationTitle": "Reservation journey",
+          "reminderTitle": "Automatic reminders",
+          "customer_request_received": {
+            "label": "Request received",
+            "description": "Acknowledgment of the request"
+          },
+          "customer_request_accepted": {
+            "label": "Request accepted",
+            "description": "When you accept a request"
+          },
+          "customer_request_rejected": {
+            "label": "Request rejected",
+            "description": "When you decline a request"
+          },
+          "customer_reservation_confirmed": {
+            "label": "Reservation confirmed",
+            "description": "After successful payment"
+          },
+          "customer_reminder_pickup": {
+            "label": "Pickup reminder",
+            "description": "Sent before pickup date"
+          },
+          "customer_reminder_return": {
+            "label": "Return reminder",
+            "description": "Sent before return date"
+          },
+          "reminderDescription": "Configure when and how your customers receive reminders"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Pickup reminder delay",
+          "returnLabel": "Return reminder delay",
+          "pickupDescription": "Time before rental starts",
+          "returnDescription": "Time before rental ends",
+          "hours": "{count, plural, =1 {1 hour} other {# hours}}"
+        },
+        "customerTemplates": {
+          "title": "Customize template",
+          "emailSection": "Email",
+          "smsSection": "SMS",
+          "subject": "Email subject",
+          "subjectHint": "Leave empty to use the default subject",
+          "additionalMessage": "Custom message",
+          "additionalMessagePlaceholder": "Add a message that will appear in the email",
+          "additionalMessageHint": "This message will be added to the default content",
+          "smsMessage": "SMS message",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}",
+          "reset": "Reset",
+          "cancel": "Cancel",
+          "save": "Save",
+          "customized": "Customized",
+          "default": "Default",
+          "resetToDefault": "Reset to default",
+          "clearMessage": "Clear message",
+          "resetAll": "Reset all"
+        },
+        "templateSheet": {
+          "hidePreview": "Hide preview",
+          "showPreview": "Show preview",
+          "configuration": "Configuration",
+          "subject": "Subject",
+          "customized": "Customized",
+          "default": "Default",
+          "resetToDefault": "Reset to default",
+          "additionalMessage": "Custom message",
+          "additionalMessagePlaceholder": "Add a message that will appear in the email...",
+          "additionalMessageHint": "This message will be added to the default email content",
+          "preview": "Preview",
+          "smsMessage": "SMS message",
+          "smsVariables": "Variables: {storeName}, {number}, {startDate}, {endDate}, {reviewUrl}",
+          "clearMessage": "Clear message"
+        },
+        "templateSaved": "Template saved"
       },
       "businessHours": {
         "title": "Business hours",
@@ -2469,6 +2756,7 @@
         "firstNameRequired": "First name required",
         "lastNameRequired": "Last name required",
         "phoneRequired": "Phone required",
+        "invalidPhone": "Invalid phone format",
         "companyNameRequired": "Please enter the company name",
         "acceptCgv": "You must accept the terms and conditions"
       },
@@ -2925,6 +3213,55 @@
       "paymentPending": "Payment is pending for this reservation.",
       "viewAndPay": "View and pay",
       "linkValid": "This link is valid for 30 days."
+    },
+    "reservationCancelled": {
+      "subject": "Reservation #{number} cancelled",
+      "title": "Reservation cancelled",
+      "body": "Your reservation #{number} has been cancelled.",
+      "cancelledPeriod": "Cancelled period",
+      "reasonLabel": "Reason",
+      "contactForQuestions": "If you have any questions, please don't hesitate to contact us.",
+      "browseEquipment": "Browse our catalog",
+      "thankYou": "Thank you for your understanding."
+    },
+    "reservationCompleted": {
+      "subject": "Reservation #{number} completed",
+      "title": "Rental completed!",
+      "body": "Your reservation #{number} is now complete.",
+      "rentalPeriod": "Rental period",
+      "depositReturned": "Your deposit of {amount} will be refunded.",
+      "depositPending": "Your deposit of {amount} will be verified and refunded shortly.",
+      "thankYouMessage": "Thank you for choosing our services!",
+      "rentAgain": "Rent again",
+      "seeYouSoon": "See you soon!"
+    },
+    "paymentConfirmation": {
+      "subject": "Payment confirmed - Reservation #{number}",
+      "title": "Payment received!",
+      "body": "We have received your payment for reservation #{number}.",
+      "paymentDetails": "Payment details",
+      "amount": "Amount",
+      "date": "Date",
+      "method": "Method",
+      "reservation": "Reservation",
+      "confirmation": "Your payment has been successfully processed.",
+      "keepEmail": "Keep this email as proof of payment."
+    },
+    "paymentFailed": {
+      "subject": "Payment failed - Reservation #{number}",
+      "title": "Payment failed",
+      "body": "The payment of {amount} for your reservation #{number} could not be processed.",
+      "whatToDo": "What to do?",
+      "tip1": "Check that your card is valid and has sufficient funds",
+      "tip2": "Try with a different card",
+      "tip3": "Contact your bank if the problem persists",
+      "retryPayment": "Retry payment",
+      "contactSupport": "Need help? Contact us."
+    },
+    "baseLayout": {
+      "sentBy": "This email was sent by {storeName}",
+      "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
+      "poweredBy": "Powered by"
     }
   },
   "contract": {
