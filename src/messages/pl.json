@@ -550,6 +550,12 @@
       "publish": "Opublikuj",
       "unpublish": "Ustaw jako szkic",
       "archive": "Archiwizuj",
+      "reorder": "Zmień kolejność",
+      "orderUpdated": "Kolejność produktów zaktualizowana",
+      "orderDialog": {
+        "title": "Zmień kolejność produktów",
+        "description": "Przeciągnij i upuść produkty, aby ustawić kolejność wyświetlania w sklepie"
+      },
       "categoryCreated": "Kategoria utworzona",
       "createCategory": "Utwórz kategorię",
       "newCategoryDescription": "Utwórz nową kategorię, aby uporządkować produkty",

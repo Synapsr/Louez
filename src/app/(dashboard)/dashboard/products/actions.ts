@@ -449,3 +449,36 @@ export async function getCategories() {
     orderBy: [categories.order],
   })
 }
+
+export async function updateProductsOrder(productIds: string[]) {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  // Verify all products belong to this store
+  const storeProducts = await db.query.products.findMany({
+    where: eq(products.storeId, store.id),
+    columns: { id: true },
+  })
+  const storeProductIds = new Set(storeProducts.map((p) => p.id))
+
+  // Filter to only include valid product IDs
+  const validProductIds = productIds.filter((id) => storeProductIds.has(id))
+
+  // Update display order for each product
+  await Promise.all(
+    validProductIds.map((productId, index) =>
+      db
+        .update(products)
+        .set({
+          displayOrder: index,
+          updatedAt: new Date(),
+        })
+        .where(eq(products.id, productId))
+    )
+  )
+
+  revalidatePath('/dashboard/products')
+  return { success: true }
+}

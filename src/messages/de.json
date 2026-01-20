@@ -550,6 +550,12 @@
       "publish": "Veröffentlichen",
       "unpublish": "Als Entwurf speichern",
       "archive": "Archivieren",
+      "reorder": "Neu ordnen",
+      "orderUpdated": "Produktreihenfolge aktualisiert",
+      "orderDialog": {
+        "title": "Produkte neu ordnen",
+        "description": "Ziehen Sie Produkte per Drag-and-Drop, um die Anzeigereihenfolge in Ihrem Shop festzulegen"
+      },
       "categoryCreated": "Kategorie erstellt",
       "createCategory": "Kategorie erstellen",
       "newCategoryDescription": "Erstellen Sie eine neue Kategorie, um Ihre Produkte zu organisieren",

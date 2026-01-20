@@ -549,6 +549,12 @@
       "publish": "Publiceren",
       "unpublish": "Op concept zetten",
       "archive": "Archiveren",
+      "reorder": "Herschikken",
+      "orderUpdated": "Productvolgorde bijgewerkt",
+      "orderDialog": {
+        "title": "Producten herschikken",
+        "description": "Sleep producten om de weergavevolgorde in uw winkel in te stellen"
+      },
       "categoryCreated": "Categorie aangemaakt",
       "createCategory": "Categorie aanmaken",
       "newCategoryDescription": "Maak een nieuwe categorie aan om uw producten te organiseren",

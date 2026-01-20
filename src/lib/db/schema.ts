@@ -314,6 +314,9 @@ export const products = mysqlTable(
     // Stock
     quantity: int('quantity').notNull().default(1),
 
+    // Display order (for manual sorting)
+    displayOrder: int('display_order').default(0),
+
     // Status
     status: productStatus.default('active'),
 

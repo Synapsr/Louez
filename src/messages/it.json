@@ -550,6 +550,12 @@
       "publish": "Pubblica",
       "unpublish": "Imposta come bozza",
       "archive": "Archivia",
+      "reorder": "Riordina",
+      "orderUpdated": "Ordine dei prodotti aggiornato",
+      "orderDialog": {
+        "title": "Riordina prodotti",
+        "description": "Trascina e rilascia i prodotti per impostare l'ordine di visualizzazione nel tuo negozio"
+      },
       "categoryCreated": "Categoria creata",
       "createCategory": "Crea una categoria",
       "newCategoryDescription": "Crea una nuova categoria per organizzare i tuoi prodotti",
