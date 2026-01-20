@@ -136,10 +136,10 @@
 
 .dashboard.dark,
 .dark .dashboard {
-  --primary: oklch(0.65 0.20 264);
+  --primary: oklch(0.65 0.22 258);
   --primary-foreground: oklch(0.985 0 0);
-  --ring: oklch(0.65 0.20 264);
-  --sidebar-primary: oklch(0.65 0.20 264);
+  --ring: oklch(0.65 0.22 258);
+  --sidebar-primary: oklch(0.65 0.22 258);
   --sidebar-primary-foreground: oklch(0.985 0 0);
 }
 
@@ -238,8 +238,8 @@
 .dark .dashboard-gradient-mesh::before {
   background: radial-gradient(
     circle at center,
-    oklch(0.45 0.16 264 / 0.1) 0%,
-    oklch(0.35 0.18 264 / 0.06) 40%,
+    oklch(0.45 0.16 258 / 0.1) 0%,
+    oklch(0.35 0.18 258 / 0.06) 40%,
     transparent 70%
   );
 }
@@ -331,7 +331,7 @@
 }
 
 .dark .stat-icon-bg--primary {
-  background: linear-gradient(135deg, oklch(0.35 0.12 264) 0%, oklch(0.3 0.15 264) 100%);
+  background: linear-gradient(135deg, oklch(0.35 0.12 258) 0%, oklch(0.3 0.15 258) 100%);
 }
 
 /* =============================================================================
@@ -372,8 +372,8 @@
    ============================================================================= */
 
 .storefront-header {
-  margin: -1.5rem -1.5rem 0.75rem -1.5rem;
-  padding: 1.5rem;
+  margin: -1.5rem -1.5rem 0 -1.5rem;
+  padding: 1.5rem 1.5rem 1.25rem 1.5rem;
   border-radius: 0.75rem 0.75rem 0 0;
   background: linear-gradient(
     135deg,
@@ -386,8 +386,8 @@
 .dark .storefront-header {
   background: linear-gradient(
     135deg,
-    oklch(0.28 0.05 264 / 0.35) 0%,
-    oklch(0.24 0.03 264 / 0.2) 100%
+    oklch(0.28 0.05 258 / 0.35) 0%,
+    oklch(0.24 0.03 258 / 0.2) 100%
   );
   border-bottom: 1px solid oklch(1 1 1 / 0.04);
 }
@@ -447,7 +447,7 @@
 }
 
 .dark .list-item-link:hover {
-  color: oklch(0.65 0.20 264);
+  color: oklch(0.65 0.22 258);
 }
 
 /* =============================================================================
@@ -487,9 +487,9 @@
 }
 
 .dark .action-btn:hover {
-  border-color: oklch(0.65 0.20 264 / 0.4);
-  background: oklch(0.65 0.20 264 / 0.15);
-  color: oklch(0.70 0.15 264);
+  border-color: oklch(0.65 0.22 258 / 0.4);
+  background: oklch(0.65 0.22 258 / 0.15);
+  color: oklch(0.70 0.18 258);
 }
 
 /* Action button variants */
@@ -505,14 +505,14 @@
 }
 
 .dark .action-btn--primary {
-  border-color: oklch(0.65 0.20 264 / 0.35);
-  background: oklch(0.65 0.20 264 / 0.15);
-  color: oklch(0.70 0.15 264);
+  border-color: oklch(0.65 0.22 258 / 0.35);
+  background: oklch(0.65 0.22 258 / 0.15);
+  color: oklch(0.70 0.18 258);
 }
 
 .dark .action-btn--primary:hover {
-  border-color: oklch(0.65 0.20 264 / 0.5);
-  background: oklch(0.65 0.20 264 / 0.25);
+  border-color: oklch(0.65 0.22 258 / 0.5);
+  background: oklch(0.65 0.22 258 / 0.25);
 }
 
 /* Icon-only action button */
@@ -586,8 +586,8 @@
 }
 
 .dark .share-option-icon--copy {
-  background: linear-gradient(135deg, oklch(0.35 0.15 264) 0%, oklch(0.3 0.2 264) 100%);
-  color: oklch(0.70 0.15 264);
+  background: linear-gradient(135deg, oklch(0.35 0.15 258) 0%, oklch(0.3 0.2 258) 100%);
+  color: oklch(0.70 0.18 258);
 }
 
 .dark .share-option-icon--whatsapp {
@@ -601,8 +601,8 @@
 }
 
 .dark .share-option-icon--sms {
-  background: linear-gradient(135deg, oklch(0.35 0.12 264) 0%, oklch(0.3 0.15 264) 100%);
-  color: oklch(0.70 0.15 264);
+  background: linear-gradient(135deg, oklch(0.35 0.12 258) 0%, oklch(0.3 0.15 258) 100%);
+  color: oklch(0.70 0.18 258);
 }
 
 .dark .share-option-icon--qr {
