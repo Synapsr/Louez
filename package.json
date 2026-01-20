@@ -34,8 +34,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "start:prod": "pnpm db:migrate:run && next start",
+    "start": "pnpm db:migrate:run && next start",
     "lint": "eslint",
     "format": "prettier --write .",
     "db:generate": "drizzle-kit generate",
