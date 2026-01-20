@@ -388,9 +388,12 @@
 
       "header": {
         "greeting": {
-          "morning": "Goedemorgen, {name}!",
-          "afternoon": "Goedemiddag, {name}!",
-          "evening": "Goedenavond, {name}!"
+          "morning": "Goedemorgen, {name}",
+          "morningAnonymous": "Goedemorgen",
+          "afternoon": "Goedemiddag, {name}",
+          "afternoonAnonymous": "Goedemiddag",
+          "evening": "Goedenavond, {name}",
+          "eveningAnonymous": "Goedenavond"
         },
         "subtitle": {
           "virgin": "Welkom bij Louez. Laten we uw winkel instellen.",

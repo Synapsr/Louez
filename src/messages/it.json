@@ -389,9 +389,12 @@
 
       "header": {
         "greeting": {
-          "morning": "Buongiorno, {name}!",
-          "afternoon": "Buon pomeriggio, {name}!",
-          "evening": "Buonasera, {name}!"
+          "morning": "Buongiorno, {name}",
+          "morningAnonymous": "Buongiorno",
+          "afternoon": "Buon pomeriggio, {name}",
+          "afternoonAnonymous": "Buon pomeriggio",
+          "evening": "Buonasera, {name}",
+          "eveningAnonymous": "Buonasera"
         },
         "subtitle": {
           "virgin": "Benvenuto su Louez. Configuriamo il tuo negozio.",

@@ -389,9 +389,12 @@
 
       "header": {
         "greeting": {
-          "morning": "Bom dia, {name}!",
-          "afternoon": "Boa tarde, {name}!",
-          "evening": "Boa noite, {name}!"
+          "morning": "Bom dia, {name}",
+          "morningAnonymous": "Bom dia",
+          "afternoon": "Boa tarde, {name}",
+          "afternoonAnonymous": "Boa tarde",
+          "evening": "Boa noite, {name}",
+          "eveningAnonymous": "Boa noite"
         },
         "subtitle": {
           "virgin": "Bem-vindo ao Louez. Vamos configurar sua loja.",
