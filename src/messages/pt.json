@@ -1984,12 +1984,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Lembrete de retirada",
-            "description": "Enviado no dia anterior"
+            "description": "Enviado antes da data de retirada"
           },
           "customer_reminder_return": {
             "label": "Lembrete de devolucao",
-            "description": "Enviado no dia anterior"
-          }
+            "description": "Enviado antes da data de devolucao"
+          },
+          "reminderDescription": "Configure quando e como seus clientes recebem lembretes"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Antecedencia lembrete retirada",
+          "returnLabel": "Antecedencia lembrete devolucao",
+          "pickupDescription": "Tempo antes do inicio do aluguel",
+          "returnDescription": "Tempo antes do fim do aluguel",
+          "hours": "{count, plural, =1 {1 hora} other {# horas}}"
         },
         "customerTemplates": {
           "title": "Personalizar modelo",

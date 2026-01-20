@@ -1983,12 +1983,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Przypomnienie o odbiorze",
-            "description": "Wyslane dzien wczesniej"
+            "description": "Wyslane przed data odbioru"
           },
           "customer_reminder_return": {
             "label": "Przypomnienie o zwrocie",
-            "description": "Wyslane dzien wczesniej"
-          }
+            "description": "Wyslane przed data zwrotu"
+          },
+          "reminderDescription": "Skonfiguruj kiedy i jak Twoi klienci otrzymuja przypomnienia"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Wyprzedzenie przypomnienia o odbiorze",
+          "returnLabel": "Wyprzedzenie przypomnienia o zwrocie",
+          "pickupDescription": "Czas przed poczatkiem wynajmu",
+          "returnDescription": "Czas przed koncem wynajmu",
+          "hours": "{count, plural, =1 {1 godzina} =2 {2 godziny} =3 {3 godziny} =4 {4 godziny} other {# godzin}}"
         },
         "customerTemplates": {
           "title": "Dostosuj szablon",

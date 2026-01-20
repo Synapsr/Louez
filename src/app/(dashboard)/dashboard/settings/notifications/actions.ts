@@ -317,3 +317,44 @@ export async function getCustomerTemplate(eventType: CustomerNotificationEventTy
 
   return { template }
 }
+
+export async function updateReminderSettings(data: {
+  pickupReminderHours: number
+  returnReminderHours: number
+}) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  // Validate hours (must be between 1 and 168 = 1 week)
+  const { pickupReminderHours, returnReminderHours } = data
+  if (pickupReminderHours < 1 || pickupReminderHours > 168) {
+    return { error: 'errors.invalidReminderHours' }
+  }
+  if (returnReminderHours < 1 || returnReminderHours > 168) {
+    return { error: 'errors.invalidReminderHours' }
+  }
+
+  // Get current settings or default
+  const currentSettings: CustomerNotificationSettings =
+    store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
+
+  // Update the reminder settings
+  const updatedSettings: CustomerNotificationSettings = {
+    ...currentSettings,
+    reminderSettings: {
+      pickupReminderHours,
+      returnReminderHours,
+    },
+  }
+
+  await db
+    .update(stores)
+    .set({
+      customerNotificationSettings: updatedSettings,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/notifications')
+  return { success: true }
+}

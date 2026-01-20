@@ -819,6 +819,36 @@ export const reviewRequestLogs = mysqlTable(
   })
 )
 
+// ============================================================================
+// Reminder Logs (Automatic pickup/return reminders)
+// ============================================================================
+
+export const reminderType = mysqlEnum('reminder_type', ['pickup', 'return'])
+export const reminderChannel = mysqlEnum('reminder_channel', ['email', 'sms'])
+
+export const reminderLogs = mysqlTable(
+  'reminder_logs',
+  {
+    id: id(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    customerId: varchar('customer_id', { length: 21 }).notNull(),
+    type: reminderType.notNull(),
+    channel: reminderChannel.notNull(),
+    sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationIdx: index('reminder_logs_reservation_idx').on(table.reservationId),
+    storeIdx: index('reminder_logs_store_idx').on(table.storeId),
+    // Prevent duplicate reminders
+    uniqueReminder: unique('reminder_logs_unique').on(
+      table.reservationId,
+      table.type,
+      table.channel
+    ),
+  })
+)
+
 export const googlePlacesCache = mysqlTable(
   'google_places_cache',
   {
@@ -1115,6 +1145,21 @@ export const reviewRequestLogsRelations = relations(reviewRequestLogs, ({ one })
   }),
   customer: one(customers, {
     fields: [reviewRequestLogs.customerId],
+    references: [customers.id],
+  }),
+}))
+
+export const reminderLogsRelations = relations(reminderLogs, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [reminderLogs.reservationId],
+    references: [reservations.id],
+  }),
+  store: one(stores, {
+    fields: [reminderLogs.storeId],
+    references: [stores.id],
+  }),
+  customer: one(customers, {
+    fields: [reminderLogs.customerId],
     references: [customers.id],
   }),
 }))

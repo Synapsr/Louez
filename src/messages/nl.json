@@ -1982,12 +1982,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Ophaalherinnering",
-            "description": "Verzonden de dag ervoor"
+            "description": "Verzonden voor de ophaaldatum"
           },
           "customer_reminder_return": {
             "label": "Terugbrengherinnering",
-            "description": "Verzonden de dag ervoor"
-          }
+            "description": "Verzonden voor de terugbrengdatum"
+          },
+          "reminderDescription": "Configureer wanneer en hoe uw klanten herinneringen ontvangen"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Ophaalherinnering voorlooptijd",
+          "returnLabel": "Terugbrengherinnering voorlooptijd",
+          "pickupDescription": "Tijd voor aanvang verhuur",
+          "returnDescription": "Tijd voor einde verhuur",
+          "hours": "{count, plural, =1 {1 uur} other {# uur}}"
         },
         "customerTemplates": {
           "title": "Sjabloon aanpassen",

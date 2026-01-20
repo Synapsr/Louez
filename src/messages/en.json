@@ -1983,12 +1983,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Pickup reminder",
-            "description": "Sent the day before pickup"
+            "description": "Sent before pickup date"
           },
           "customer_reminder_return": {
             "label": "Return reminder",
-            "description": "Sent the day before return"
-          }
+            "description": "Sent before return date"
+          },
+          "reminderDescription": "Configure when and how your customers receive reminders"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Pickup reminder delay",
+          "returnLabel": "Return reminder delay",
+          "pickupDescription": "Time before rental starts",
+          "returnDescription": "Time before rental ends",
+          "hours": "{count, plural, =1 {1 hour} other {# hours}}"
         },
         "customerTemplates": {
           "title": "Customize template",

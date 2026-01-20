@@ -1983,12 +1983,20 @@
           },
           "customer_reminder_pickup": {
             "label": "Rappel retrait",
-            "description": "Envoyé la veille du retrait"
+            "description": "Envoyé avant la date de retrait"
           },
           "customer_reminder_return": {
             "label": "Rappel retour",
-            "description": "Envoyé la veille du retour"
-          }
+            "description": "Envoyé avant la date de retour"
+          },
+          "reminderDescription": "Configurez quand et comment vos clients reçoivent leurs rappels"
+        },
+        "reminderTiming": {
+          "pickupLabel": "Délai rappel retrait",
+          "returnLabel": "Délai rappel retour",
+          "pickupDescription": "Temps avant le début de la location",
+          "returnDescription": "Temps avant la fin de la location",
+          "hours": "{count, plural, =1 {1 heure} other {# heures}}"
         },
         "customerTemplates": {
           "title": "Personnaliser le modèle",
