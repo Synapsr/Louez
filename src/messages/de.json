@@ -415,8 +415,10 @@
       },
 
       "setup": {
-        "title": "Richten Sie Ihren Shop ein",
+        "title": "Erste Schritte",
         "description": "Einige Schritte zum Starten",
+        "stepsCompleted": "Schritte abgeschlossen",
+        "dismissForNow": "Vorerst ausblenden",
         "steps": {
           "createAccount": "Konto erstellen",
           "configureStore": "Shop konfigurieren",

@@ -416,8 +416,10 @@
       },
 
       "setup": {
-        "title": "Configurez votre boutique",
+        "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
+        "stepsCompleted": "étapes terminées",
+        "dismissForNow": "Masquer pour l'instant",
         "steps": {
           "createAccount": "Créer votre compte",
           "configureStore": "Configurer votre boutique",
