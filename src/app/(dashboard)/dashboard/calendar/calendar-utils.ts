@@ -448,3 +448,178 @@ export function shiftConfig(
     endDate: newEnd,
   }
 }
+
+// =============================================================================
+// Products View - Slot Assignment Algorithm
+// =============================================================================
+
+/**
+ * Represents a reservation assigned to a specific unit slot of a product
+ */
+export interface SlotAssignment {
+  reservation: Reservation
+  /** The quantity reserved for this specific slot assignment */
+  quantityInSlot: number
+  /** Slot index (0-based, represents which "unit" of the product) */
+  slotIndex: number
+  /** Start position as percentage of the visible range */
+  startPercent: number
+  /** Width as percentage of the visible range */
+  widthPercent: number
+  /** Whether it continues before the visible range */
+  continuesBefore: boolean
+  /** Whether it continues after the visible range */
+  continuesAfter: boolean
+}
+
+/**
+ * Represents a product with its unit slots and assigned reservations
+ */
+export interface ProductSlotGroup {
+  product: Product
+  /** Total units available (product.quantity) */
+  totalUnits: number
+  /** Assignments organized by slot index */
+  slots: SlotAssignment[][]
+  /** Whether any slot has reservations in the visible range */
+  hasReservations: boolean
+}
+
+/**
+ * Checks if two reservations overlap in time
+ */
+export function reservationsOverlap(
+  resA: Reservation,
+  resB: Reservation
+): boolean {
+  const startA = startOfDay(new Date(resA.startDate))
+  const endA = endOfDay(new Date(resA.endDate))
+  const startB = startOfDay(new Date(resB.startDate))
+  const endB = endOfDay(new Date(resB.endDate))
+
+  return startA <= endB && endA >= startB
+}
+
+/**
+ * Assigns reservations to product unit slots using a greedy bin-packing algorithm
+ *
+ * For each product:
+ * 1. Get all reservations that include this product
+ * 2. For each reservation, get the quantity reserved
+ * 3. Assign reservation to available slots (1 unit per slot assignment)
+ * 4. A slot is available if no existing reservation in that slot overlaps
+ *
+ * Example: Product "Bike" with 2 units
+ * - Reservation A: Jan 15-17, quantity 1 → Slot 0
+ * - Reservation B: Jan 16-18, quantity 1 → Slot 1 (Slot 0 is occupied on Jan 16-17)
+ * - Reservation C: Jan 19-20, quantity 2 → Slot 0 + Slot 1
+ */
+export function assignReservationsToSlots(
+  reservations: Reservation[],
+  products: Product[],
+  config: TimelineConfig
+): ProductSlotGroup[] {
+  const { startDate: rangeStart, endDate: rangeEnd, daysCount } = config
+
+  return products.map((product) => {
+    const totalUnits = product.quantity || 1
+
+    // Initialize slots array (one array per unit)
+    const slots: SlotAssignment[][] = Array.from(
+      { length: totalUnits },
+      () => []
+    )
+
+    // Get reservations that include this product and overlap with visible range
+    const productReservations = reservations
+      .filter((r) => {
+        const hasProduct = r.items.some((item) => item.product?.id === product.id)
+        const overlaps = reservationOverlapsRange(r, rangeStart, rangeEnd)
+        return hasProduct && overlaps
+      })
+      .sort((a, b) => {
+        // Sort by start date (earlier first)
+        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      })
+
+    // Assign each reservation to slots
+    productReservations.forEach((reservation) => {
+      // Find quantity reserved for this product
+      const item = reservation.items.find((i) => i.product?.id === product.id)
+      const quantityReserved = item?.quantity || 1
+
+      // Calculate position for this reservation
+      const resStart = startOfDay(new Date(reservation.startDate))
+      const resEnd = endOfDay(new Date(reservation.endDate))
+      const configStart = startOfDay(rangeStart)
+      const configEnd = endOfDay(rangeEnd)
+
+      const startDiff = daysBetween(configStart, resStart)
+      const startPercent = Math.max(0, (startDiff / daysCount) * 100)
+
+      const endDiff = daysBetween(configStart, resEnd)
+      const endPercent = Math.min(100, ((endDiff + 1) / daysCount) * 100)
+
+      const widthPercent = Math.max(0, endPercent - Math.max(0, startPercent))
+      const continuesBefore = resStart < configStart
+      const continuesAfter = resEnd > configEnd
+
+      // Assign to available slots (one unit per slot)
+      let assignedCount = 0
+      for (let slotIndex = 0; slotIndex < totalUnits && assignedCount < quantityReserved; slotIndex++) {
+        // Check if this slot is available (no overlapping reservations)
+        const slotOccupied = slots[slotIndex].some((existing) =>
+          reservationsOverlap(existing.reservation, reservation)
+        )
+
+        if (!slotOccupied) {
+          slots[slotIndex].push({
+            reservation,
+            quantityInSlot: 1,
+            slotIndex,
+            startPercent,
+            widthPercent,
+            continuesBefore,
+            continuesAfter,
+          })
+          assignedCount++
+        }
+      }
+
+      // If we couldn't assign all units (overbooking), still show them in available slots
+      // This handles edge cases where availability wasn't checked properly at booking time
+      if (assignedCount < quantityReserved) {
+        for (let slotIndex = 0; slotIndex < totalUnits && assignedCount < quantityReserved; slotIndex++) {
+          // Force assign to first slots even if occupied (visual indicator of overbooking)
+          slots[slotIndex].push({
+            reservation,
+            quantityInSlot: 1,
+            slotIndex,
+            startPercent,
+            widthPercent,
+            continuesBefore,
+            continuesAfter,
+          })
+          assignedCount++
+        }
+      }
+    })
+
+    return {
+      product,
+      totalUnits,
+      slots,
+      hasReservations: productReservations.length > 0,
+    }
+  })
+}
+
+/**
+ * Gets the display label for a product unit slot
+ */
+export function getSlotLabel(product: Product, slotIndex: number): string {
+  if (product.quantity === 1) {
+    return product.name
+  }
+  return `${product.name} #${slotIndex + 1}`
+}

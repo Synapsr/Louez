@@ -1377,6 +1377,7 @@
       "today": "Today",
       "legend": "Legend",
       "moreItems": "+{count} more",
+      "noCustomer": "No customer",
       "dayNames": {
         "mon": "Mon",
         "tue": "Tue",
@@ -1393,6 +1394,24 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "rejected": "Rejected"
+      },
+      "viewMode": {
+        "label": "View mode",
+        "calendar": "Calendar",
+        "products": "Products"
+      },
+      "periods": {
+        "week": "Week",
+        "twoWeeks": "2 weeks",
+        "month": "Month"
+      },
+      "productsView": {
+        "products": "Products",
+        "units": "{count, plural, one {# unit} other {# units}}",
+        "unit": "Unit",
+        "available": "Available",
+        "noProducts": "No products to display",
+        "reservationsCount": "{count, plural, one {# reservation} other {# reservations}}"
       },
       "timeline": {
         "products": "Products",

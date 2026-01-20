@@ -1378,6 +1378,7 @@
       "today": "Hoje",
       "legend": "Legenda",
       "moreItems": "+{count} mais",
+      "noCustomer": "Sem cliente",
       "dayNames": {
         "mon": "Seg",
         "tue": "Ter",
@@ -1394,6 +1395,24 @@
         "completed": "Concluida",
         "cancelled": "Cancelada",
         "rejected": "Rejeitada"
+      },
+      "viewMode": {
+        "label": "Modo de visualização",
+        "calendar": "Calendário",
+        "products": "Produtos"
+      },
+      "periods": {
+        "week": "Semana",
+        "twoWeeks": "2 semanas",
+        "month": "Mês"
+      },
+      "productsView": {
+        "products": "Produtos",
+        "units": "{count, plural, one {# unidade} other {# unidades}}",
+        "unit": "Unidade",
+        "available": "Disponível",
+        "noProducts": "Nenhum produto para exibir",
+        "reservationsCount": "{count, plural, one {# reserva} other {# reservas}}"
       },
       "timeline": {
         "products": "Produtos",

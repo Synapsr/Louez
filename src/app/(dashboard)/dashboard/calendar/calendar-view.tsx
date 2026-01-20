@@ -10,7 +10,6 @@ import {
   Calendar as CalendarIcon,
   Download,
   LayoutGrid,
-  Rows3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,9 +22,10 @@ import {
 } from '@/components/ui/select'
 import { cn, formatDateShort } from '@/lib/utils'
 import { CalendarExportModal } from './calendar-export-modal'
+import { ViewModeToggle, type CalendarViewMode } from './view-mode-toggle'
 import { WeekView } from './week-view'
-import { TimelineView } from './timeline-view'
 import { MonthView } from './month-view'
+import { ProductsView } from './products-view'
 import {
   createWeekConfig,
   createTwoWeekConfig,
@@ -33,7 +33,7 @@ import {
   getWeekStart,
   getWeekEnd,
 } from './calendar-utils'
-import type { Reservation, Product, ViewMode, ReservationStatus, TimelineConfig } from './types'
+import type { Reservation, Product, ReservationStatus, TimelineConfig } from './types'
 
 // =============================================================================
 // Constants
@@ -47,6 +47,10 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
   cancelled: 'bg-red-300',
   rejected: 'bg-red-400',
 }
+
+// Calendar sub-view options
+type CalendarPeriod = 'week' | 'month'
+type ProductsPeriod = 'week' | 'twoWeeks' | 'month'
 
 // =============================================================================
 // Types
@@ -69,11 +73,23 @@ export function CalendarView({
 }: CalendarViewProps) {
   const t = useTranslations('dashboard.calendar')
 
-  // State
+  // Main view mode: calendar vs products
+  const [viewMode, setViewMode] = useState<CalendarViewMode>('calendar')
+
+  // Sub-view options
+  const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>('week')
+  const [productsPeriod, setProductsPeriod] = useState<ProductsPeriod>('week')
+
+  // Date navigation
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [viewMode, setViewMode] = useState<ViewMode>('week')
+
+  // Filters
   const [selectedProductId, setSelectedProductId] = useState<string>('all')
+
+  // Data
   const [reservations] = useState(initialReservations)
+
+  // Modals
   const [exportModalOpen, setExportModalOpen] = useState(false)
 
   // Status labels for legend
@@ -89,18 +105,18 @@ export function CalendarView({
     [t]
   )
 
-  // Timeline configuration
-  const timelineConfig = useMemo((): TimelineConfig => {
-    if (viewMode === 'timeline') {
-      return createTwoWeekConfig(currentDate)
-    }
-    if (viewMode === 'month') {
+  // Timeline configuration for products view
+  const productsConfig = useMemo((): TimelineConfig => {
+    if (productsPeriod === 'month') {
       return createMonthConfig(currentDate)
     }
+    if (productsPeriod === 'twoWeeks') {
+      return createTwoWeekConfig(currentDate)
+    }
     return createWeekConfig(currentDate)
-  }, [currentDate, viewMode])
+  }, [currentDate, productsPeriod])
 
-  // Filter reservations by product
+  // Filter reservations by product (only for calendar mode)
   const filteredReservations = useMemo(() => {
     if (selectedProductId === 'all') return reservations
     return reservations.filter((r) =>
@@ -108,34 +124,49 @@ export function CalendarView({
     )
   }, [reservations, selectedProductId])
 
+  // Filter products (for products view when a specific product is selected)
+  const displayProducts = useMemo(() => {
+    if (selectedProductId === 'all') return products
+    return products.filter((p) => p.id === selectedProductId)
+  }, [products, selectedProductId])
+
+  // Navigation step based on current view
+  const getNavigationStep = useCallback(() => {
+    if (viewMode === 'products') {
+      if (productsPeriod === 'month') return { type: 'month' as const }
+      if (productsPeriod === 'twoWeeks') return { type: 'days' as const, days: 14 }
+      return { type: 'days' as const, days: 7 }
+    }
+    if (calendarPeriod === 'month') return { type: 'month' as const }
+    return { type: 'days' as const, days: 7 }
+  }, [viewMode, calendarPeriod, productsPeriod])
+
   // Navigation
   const goToPrevious = useCallback(() => {
+    const step = getNavigationStep()
     setCurrentDate((prev) => {
       const newDate = new Date(prev)
-      if (viewMode === 'month') {
+      if (step.type === 'month') {
         newDate.setMonth(newDate.getMonth() - 1)
-      } else if (viewMode === 'timeline') {
-        newDate.setDate(newDate.getDate() - 14)
       } else {
-        newDate.setDate(newDate.getDate() - 7)
+        newDate.setDate(newDate.getDate() - step.days)
       }
       return newDate
     })
-  }, [viewMode])
+  }, [getNavigationStep])
 
   const goToNext = useCallback(() => {
+    const step = getNavigationStep()
     setCurrentDate((prev) => {
       const newDate = new Date(prev)
-      if (viewMode === 'month') {
+      if (step.type === 'month') {
         newDate.setMonth(newDate.getMonth() + 1)
-      } else if (viewMode === 'timeline') {
-        newDate.setDate(newDate.getDate() + 14)
       } else {
-        newDate.setDate(newDate.getDate() + 7)
+        newDate.setDate(newDate.getDate() + step.days)
       }
       return newDate
     })
-  }, [viewMode])
+  }, [getNavigationStep])
 
   const goToToday = useCallback(() => {
     setCurrentDate(new Date())
@@ -143,28 +174,35 @@ export function CalendarView({
 
   // Period label
   const periodLabel = useMemo(() => {
-    if (viewMode === 'month') {
+    // For month view
+    const isMonthView =
+      (viewMode === 'calendar' && calendarPeriod === 'month') ||
+      (viewMode === 'products' && productsPeriod === 'month')
+
+    if (isMonthView) {
       return new Intl.DateTimeFormat('fr-FR', {
         month: 'long',
         year: 'numeric',
       }).format(currentDate)
     }
 
-    const start = viewMode === 'timeline'
-      ? timelineConfig.startDate
-      : getWeekStart(currentDate)
-    const end = viewMode === 'timeline'
-      ? timelineConfig.endDate
-      : getWeekEnd(currentDate)
+    // For week/twoWeeks view
+    const config =
+      viewMode === 'products' ? productsConfig : createWeekConfig(currentDate)
 
-    return `${formatDateShort(start)} - ${formatDateShort(end)} ${end.getFullYear()}`
-  }, [currentDate, viewMode, timelineConfig])
+    return `${formatDateShort(config.startDate)} - ${formatDateShort(config.endDate)} ${config.endDate.getFullYear()}`
+  }, [currentDate, viewMode, calendarPeriod, productsPeriod, productsConfig])
 
-  // View mode icons
-  const viewModeIcons: Record<ViewMode, React.ReactNode> = {
-    week: <CalendarIcon className="h-4 w-4" />,
-    month: <LayoutGrid className="h-4 w-4" />,
-    timeline: <Rows3 className="h-4 w-4" />,
+  // Current period selector value
+  const currentPeriod = viewMode === 'calendar' ? calendarPeriod : productsPeriod
+
+  // Handle period change
+  const handlePeriodChange = (value: string) => {
+    if (viewMode === 'calendar') {
+      setCalendarPeriod(value as CalendarPeriod)
+    } else {
+      setProductsPeriod(value as ProductsPeriod)
+    }
   }
 
   return (
@@ -172,57 +210,77 @@ export function CalendarView({
       {/* Controls */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            {/* Navigation */}
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={goToPrevious}>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" onClick={goToNext}>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="sm" onClick={goToToday}>
-                {t('today')}
-              </Button>
-              <span className="ml-2 text-lg font-semibold capitalize">
-                {periodLabel}
-              </span>
+          <div className="flex flex-col gap-4">
+            {/* Top row: Navigation + Period label */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="icon" onClick={goToPrevious}>
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={goToNext}>
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="sm" onClick={goToToday}>
+                  {t('today')}
+                </Button>
+                <span className="ml-2 text-lg font-semibold capitalize">
+                  {periodLabel}
+                </span>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setExportModalOpen(true)}
+                  title={t('export.button')}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+
+                <Button asChild>
+                  <Link href="/dashboard/reservations/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    {t('new')}
+                  </Link>
+                </Button>
+              </div>
             </div>
 
-            {/* Filters and actions */}
-            <div className="flex flex-wrap items-center gap-2">
-              {/* View mode selector */}
-              <Select
-                value={viewMode}
-                onValueChange={(v) => setViewMode(v as ViewMode)}
-              >
-                <SelectTrigger className="w-[150px]">
-                  {viewModeIcons[viewMode]}
-                  <SelectValue className="ml-2" />
+            {/* Bottom row: View toggle (centered) + Filters */}
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
+              {/* Left side: Period selector */}
+              <Select value={currentPeriod} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="w-[160px]">
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="week">
                     <div className="flex items-center gap-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      {t('views.week')}
+                      {t('periods.week')}
                     </div>
                   </SelectItem>
+                  {viewMode === 'products' && (
+                    <SelectItem value="twoWeeks">
+                      <div className="flex items-center gap-2">
+                        {t('periods.twoWeeks')}
+                      </div>
+                    </SelectItem>
+                  )}
                   <SelectItem value="month">
                     <div className="flex items-center gap-2">
-                      <LayoutGrid className="h-4 w-4" />
-                      {t('views.month')}
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="timeline">
-                    <div className="flex items-center gap-2">
-                      <Rows3 className="h-4 w-4" />
-                      {t('views.timeline')}
+                      {t('periods.month')}
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
 
-              {/* Product filter */}
+              {/* Center: View mode toggle */}
+              <ViewModeToggle value={viewMode} onChange={setViewMode} />
+
+              {/* Right side: Product filter */}
               <Select
                 value={selectedProductId}
                 onValueChange={setSelectedProductId}
@@ -239,31 +297,13 @@ export function CalendarView({
                   ))}
                 </SelectContent>
               </Select>
-
-              {/* Export button */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setExportModalOpen(true)}
-                title={t('export.button')}
-              >
-                <Download className="h-4 w-4" />
-              </Button>
-
-              {/* New reservation button */}
-              <Button asChild>
-                <Link href="/dashboard/reservations/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('new')}
-                </Link>
-              </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Calendar View */}
-      {viewMode === 'week' && (
+      {/* Main View */}
+      {viewMode === 'calendar' && calendarPeriod === 'week' && (
         <WeekView
           reservations={filteredReservations}
           currentDate={currentDate}
@@ -271,7 +311,7 @@ export function CalendarView({
         />
       )}
 
-      {viewMode === 'month' && (
+      {viewMode === 'calendar' && calendarPeriod === 'month' && (
         <MonthView
           reservations={filteredReservations}
           currentDate={currentDate}
@@ -279,12 +319,11 @@ export function CalendarView({
         />
       )}
 
-      {viewMode === 'timeline' && (
-        <TimelineView
-          reservations={filteredReservations}
-          products={products}
-          config={timelineConfig}
-          selectedProductId={selectedProductId}
+      {viewMode === 'products' && (
+        <ProductsView
+          reservations={reservations}
+          products={displayProducts}
+          config={productsConfig}
         />
       )}
 
