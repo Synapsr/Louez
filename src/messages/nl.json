@@ -1376,6 +1376,7 @@
       "today": "Vandaag",
       "legend": "Legenda",
       "moreItems": "+{count} meer",
+      "noCustomer": "Geen klant",
       "dayNames": {
         "mon": "Ma",
         "tue": "Di",
@@ -1392,6 +1393,24 @@
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
         "rejected": "Afgewezen"
+      },
+      "viewMode": {
+        "label": "Weergavemodus",
+        "calendar": "Kalender",
+        "products": "Producten"
+      },
+      "periods": {
+        "week": "Week",
+        "twoWeeks": "2 weken",
+        "month": "Maand"
+      },
+      "productsView": {
+        "products": "Producten",
+        "units": "{count, plural, one {# eenheid} other {# eenheden}}",
+        "unit": "Eenheid",
+        "available": "Beschikbaar",
+        "noProducts": "Geen producten om weer te geven",
+        "reservationsCount": "{count, plural, one {# reservering} other {# reserveringen}}"
       },
       "timeline": {
         "products": "Producten",

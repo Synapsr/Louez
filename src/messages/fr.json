@@ -1377,6 +1377,7 @@
       "today": "Aujourd'hui",
       "legend": "Légende",
       "moreItems": "+{count} autres",
+      "noCustomer": "Sans client",
       "dayNames": {
         "mon": "Lun",
         "tue": "Mar",
@@ -1393,6 +1394,24 @@
         "completed": "Terminée",
         "cancelled": "Annulée",
         "rejected": "Refusée"
+      },
+      "viewMode": {
+        "label": "Mode d'affichage",
+        "calendar": "Calendrier",
+        "products": "Produits"
+      },
+      "periods": {
+        "week": "Semaine",
+        "twoWeeks": "2 semaines",
+        "month": "Mois"
+      },
+      "productsView": {
+        "products": "Produits",
+        "units": "{count, plural, one {# unité} other {# unités}}",
+        "unit": "Unité",
+        "available": "Disponible",
+        "noProducts": "Aucun produit à afficher",
+        "reservationsCount": "{count, plural, one {# réservation} other {# réservations}}"
       },
       "timeline": {
         "products": "Produits",
