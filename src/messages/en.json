@@ -1365,7 +1365,8 @@
       "views": {
         "day": "Day",
         "week": "Week",
-        "month": "Month"
+        "month": "Month",
+        "timeline": "Timeline"
       },
       "filterByProduct": "Filter by product",
       "allProducts": "All products",
@@ -1392,6 +1393,12 @@
         "completed": "Completed",
         "cancelled": "Cancelled",
         "rejected": "Rejected"
+      },
+      "timeline": {
+        "products": "Products",
+        "quantity": "{count, plural, one {# unit} other {# units}}",
+        "available": "Available",
+        "noProducts": "No products to display"
       },
       "export": {
         "button": "Export calendar",
