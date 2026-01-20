@@ -6,6 +6,53 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [1.4.0] - January 20, 2026
+
+### 🔔 Notification Center
+
+A unified hub to manage all your customer communications.
+
+- 📬 **Multi-channel** — Send via Email, SMS, or Discord from one place
+- ✏️ **Custom templates** — Personalize messages for every event
+- 👁️ **Live preview** — See exactly what customers will receive
+- 🌍 **Full i18n** — Templates adapt to customer language
+
+### ⏰ Smart Reminders
+
+Never let a customer forget their booking.
+
+- 📤 **Pickup reminders** — Automatic notifications before rental starts
+- 📥 **Return reminders** — Gentle nudges before items are due back
+- ⚙️ **Configurable timing** — Set hours in advance per event type
+
+### 📅 Calendar Superpowers
+
+New views to manage your fleet at a glance.
+
+- 📊 **Timeline view** — See all reservations on a horizontal timeline
+- 📦 **Products view** — Track each unit's availability individually
+- 🗓️ **Better month view** — Multi-day reservations display beautifully
+- 🎨 **Visual polish** — Color-coded bars and smooth interactions
+
+### 🏠 Redesigned Dashboard
+
+A smarter home that adapts to your business.
+
+- ✨ **Adaptive UX** — Different layouts for new, growing, and active stores
+- 📋 **Floating checklist** — Setup progress always visible
+- 📱 **QR code & sharing** — One-click share your storefront
+- 👋 **Personal greetings** — Time-aware welcome messages
+- 🎨 **Animated gradient** — Subtle, modern visual touch
+
+### ✨ Other Improvements
+
+- 🎨 **New favicon** — Fresh blue icon for browser tabs
+- 🔵 **Updated brand color** — Refined primary blue (#2b62ef)
+- 📊 **Better analytics** — Improved Umami & Gleap integration
+- 💬 **SMS fixes** — Proper accents and special characters
+
+---
+
 ## [1.3.0] - January 17, 2026
 
 ### 💳 Online Payments
@@ -173,6 +220,53 @@ The first public release of Louez!
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [1.4.0] - 20 janvier 2026
+
+### 🔔 Centre de Notifications
+
+Un hub unifié pour gérer toutes vos communications clients.
+
+- 📬 **Multi-canal** — Envoyez par Email, SMS ou Discord depuis un seul endroit
+- ✏️ **Templates personnalisables** — Personnalisez les messages pour chaque événement
+- 👁️ **Aperçu en direct** — Visualisez exactement ce que vos clients recevront
+- 🌍 **i18n complet** — Les templates s'adaptent à la langue du client
+
+### ⏰ Rappels Automatiques
+
+Ne laissez plus vos clients oublier leur réservation.
+
+- 📤 **Rappels de retrait** — Notifications automatiques avant le début de location
+- 📥 **Rappels de retour** — Rappels avant la date de retour prévue
+- ⚙️ **Timing configurable** — Définissez le délai en heures par type d'événement
+
+### 📅 Calendrier Enrichi
+
+De nouvelles vues pour gérer votre flotte d'un coup d'œil.
+
+- 📊 **Vue Timeline** — Visualisez toutes les réservations sur une frise horizontale
+- 📦 **Vue Produits** — Suivez la disponibilité de chaque unité individuellement
+- 🗓️ **Vue mois améliorée** — Les réservations multi-jours s'affichent élégamment
+- 🎨 **Polish visuel** — Barres colorées et interactions fluides
+
+### 🏠 Dashboard Repensé
+
+Une page d'accueil intelligente qui s'adapte à votre activité.
+
+- ✨ **UX adaptative** — Layouts différents pour boutiques nouvelles, en croissance et actives
+- 📋 **Checklist flottante** — Progression de configuration toujours visible
+- 📱 **QR code & partage** — Partagez votre vitrine en un clic
+- 👋 **Salutations personnalisées** — Messages de bienvenue selon l'heure
+- 🎨 **Gradient animé** — Touche visuelle subtile et moderne
+
+### ✨ Autres améliorations
+
+- 🎨 **Nouveau favicon** — Icône bleue rafraîchie pour les onglets
+- 🔵 **Couleur de marque mise à jour** — Bleu primaire affiné (#2b62ef)
+- 📊 **Analytics améliorés** — Meilleure intégration Umami & Gleap
+- 💬 **Corrections SMS** — Accents et caractères spéciaux fonctionnels
 
 ---
 
