@@ -169,16 +169,16 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
 
   return (
     <>
-      <Card className={cn('stat-card overflow-hidden', className)}>
-        {/* Header with gradient background */}
-        <CardHeader className="storefront-header">
+      <Card className={cn('stat-card overflow-hidden !pt-0', className)}>
+        {/* Header with gradient background - custom div instead of CardHeader for full control */}
+        <div className="storefront-header-wrapper">
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1.5">
-              <CardTitle className="text-base">{t('storefront.title')}</CardTitle>
-              <CardDescription>{t('storefront.description')}</CardDescription>
+            <div className="space-y-1">
+              <h3 className="text-base font-semibold leading-none">{t('storefront.title')}</h3>
+              <p className="text-sm text-muted-foreground">{t('storefront.description')}</p>
             </div>
             {/* Online status indicator */}
-            <div className="mt-0.5 flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 dark:bg-emerald-900/30">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 dark:bg-emerald-900/30">
               <span className="relative flex h-2 w-2">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
@@ -188,7 +188,7 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
               </span>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
         <CardContent className="space-y-4">
           {/* URL Display with icon */}

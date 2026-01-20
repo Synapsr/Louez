@@ -371,9 +371,9 @@
    Storefront Widget - Enhanced Styling
    ============================================================================= */
 
-.storefront-header {
-  margin: -1.5rem -1.5rem 0 -1.5rem !important;
-  padding: 1.5rem !important;
+/* Custom header wrapper - doesn't use CardHeader to avoid Tailwind class conflicts */
+.storefront-header-wrapper {
+  padding: 1.5rem;
   border-radius: 0.75rem 0.75rem 0 0;
   background: linear-gradient(
     135deg,
@@ -383,7 +383,7 @@
   border-bottom: 1px solid oklch(0 0 0 / 0.04);
 }
 
-.dark .storefront-header {
+.dark .storefront-header-wrapper {
   background: linear-gradient(
     135deg,
     oklch(0.28 0.05 258 / 0.35) 0%,
