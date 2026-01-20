@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useTranslations } from 'next-intl'
+import { QRCodeSVG } from 'qrcode.react'
 import {
   Copy,
   Check,
@@ -10,6 +11,9 @@ import {
   QrCode,
   Link2,
   Smartphone,
+  Download,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -36,6 +40,7 @@ export function ShareModal({
   const t = useTranslations('dashboard.home.share')
   const [copied, setCopied] = useState(false)
   const [showQR, setShowQR] = useState(false)
+  const qrRef = useRef<HTMLDivElement>(null)
 
   const handleCopy = async () => {
     try {
@@ -70,6 +75,44 @@ export function ShareModal({
     const message = t('smsMessage', { url: storeUrl })
     window.open(`sms:?body=${encodeURIComponent(message)}`, '_blank')
     onOpenChange(false)
+  }
+
+  const handleDownloadQR = () => {
+    if (!qrRef.current) return
+
+    const svg = qrRef.current.querySelector('svg')
+    if (!svg) return
+
+    // Create a canvas to convert SVG to PNG
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const img = new Image()
+
+    // Set canvas size with padding
+    const size = 400
+    const padding = 40
+    canvas.width = size + padding * 2
+    canvas.height = size + padding * 2
+
+    img.onload = () => {
+      if (!ctx) return
+
+      // White background
+      ctx.fillStyle = 'white'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Draw QR code centered
+      ctx.drawImage(img, padding, padding, size, size)
+
+      // Download
+      const link = document.createElement('a')
+      link.download = 'qr-code.png'
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    }
+
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
   }
 
   const shareOptions = [
@@ -140,7 +183,7 @@ export function ShareModal({
               <div className={cn('share-option-icon', option.iconClass)}>
                 <option.icon className="h-5 w-5" />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 text-left">
                 <p
                   className={cn(
                     'font-medium',
@@ -166,17 +209,45 @@ export function ShareModal({
           <span className="text-sm font-medium">
             {showQR ? t('hideQR') : t('showQR')}
           </span>
+          {showQR ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          )}
         </button>
 
         {showQR && (
-          <div className="flex flex-col items-center gap-3 rounded-xl border bg-white p-6 dark:bg-muted/30">
-            {/* Simple QR placeholder - in real app you'd use a QR library */}
-            <div className="flex h-32 w-32 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20">
-              <QrCode className="h-12 w-12 text-muted-foreground/40" />
+          <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex flex-col items-center gap-4 rounded-xl border bg-white p-6 dark:bg-muted/30">
+              {/* QR Code */}
+              <div
+                ref={qrRef}
+                className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+              >
+                <QRCodeSVG
+                  value={storeUrl}
+                  size={160}
+                  level="H"
+                  includeMargin={false}
+                  bgColor="white"
+                  fgColor="black"
+                />
+              </div>
+
+              {/* Description */}
+              <p className="text-center text-xs text-muted-foreground">
+                {t('qrDescription')}
+              </p>
+
+              {/* Download Button */}
+              <button
+                onClick={handleDownloadQR}
+                className="action-btn action-btn--primary gap-2"
+              >
+                <Download className="h-4 w-4" />
+                {t('downloadQR')}
+              </button>
             </div>
-            <p className="text-center text-xs text-muted-foreground">
-              {t('qrDescription')}
-            </p>
           </div>
         )}
       </DialogContent>

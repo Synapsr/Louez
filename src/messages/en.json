@@ -507,7 +507,8 @@
         "smsMessage": "Check out our rental store: {url}",
         "showQR": "Show QR code",
         "hideQR": "Hide QR code",
-        "qrDescription": "Scan this code to access the store"
+        "qrDescription": "Scan this code to access the store",
+        "downloadQR": "Download"
       }
     },
     "products": {

@@ -507,7 +507,8 @@
         "smsMessage": "Découvrez notre boutique de location : {url}",
         "showQR": "Afficher le QR code",
         "hideQR": "Masquer le QR code",
-        "qrDescription": "Scannez ce code pour accéder à la boutique"
+        "qrDescription": "Scannez ce code pour accéder à la boutique",
+        "downloadQR": "Télécharger"
       }
     },
     "products": {

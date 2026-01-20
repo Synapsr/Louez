@@ -506,7 +506,8 @@
         "smsMessage": "Scopri il nostro negozio di noleggio: {url}",
         "showQR": "Mostra codice QR",
         "hideQR": "Nascondi codice QR",
-        "qrDescription": "Scansiona questo codice per accedere al negozio"
+        "qrDescription": "Scansiona questo codice per accedere al negozio",
+        "downloadQR": "Scarica"
       }
     },
     "products": {

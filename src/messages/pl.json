@@ -506,7 +506,8 @@
         "smsMessage": "Odkryj nasz sklep z wynajmem: {url}",
         "showQR": "Pokaż kod QR",
         "hideQR": "Ukryj kod QR",
-        "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu"
+        "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu",
+        "downloadQR": "Pobierz"
       }
     },
     "products": {
