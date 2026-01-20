@@ -489,6 +489,25 @@
         "copied": "Copied!",
         "share": "Share",
         "shareTitle": "My rental store"
+      },
+
+      "share": {
+        "title": "Share your store",
+        "description": "Send your store link to your customers",
+        "copyLink": "Copy link",
+        "copyLinkDescription": "Copy URL to clipboard",
+        "copied": "Copied!",
+        "whatsappDescription": "Send via WhatsApp",
+        "whatsappMessage": "Check out our rental store: {url}",
+        "email": "Email",
+        "emailDescription": "Send via email",
+        "emailSubject": "Discover our rental store",
+        "emailBody": "Hello,\n\nI invite you to discover our rental store:\n{url}\n\nSee you soon!",
+        "smsDescription": "Send via SMS",
+        "smsMessage": "Check out our rental store: {url}",
+        "showQR": "Show QR code",
+        "hideQR": "Hide QR code",
+        "qrDescription": "Scan this code to access the store"
       }
     },
     "products": {

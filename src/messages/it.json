@@ -488,6 +488,25 @@
         "copied": "Copiato!",
         "share": "Condividi",
         "shareTitle": "Il mio negozio di noleggio"
+      },
+
+      "share": {
+        "title": "Condividi il tuo negozio",
+        "description": "Invia il link del tuo negozio ai tuoi clienti",
+        "copyLink": "Copia link",
+        "copyLinkDescription": "Copia l'URL negli appunti",
+        "copied": "Copiato!",
+        "whatsappDescription": "Invia tramite WhatsApp",
+        "whatsappMessage": "Scopri il nostro negozio di noleggio: {url}",
+        "email": "Email",
+        "emailDescription": "Invia via email",
+        "emailSubject": "Scopri il nostro negozio di noleggio",
+        "emailBody": "Ciao,\n\nTi invito a scoprire il nostro negozio di noleggio:\n{url}\n\nA presto!",
+        "smsDescription": "Invia tramite SMS",
+        "smsMessage": "Scopri il nostro negozio di noleggio: {url}",
+        "showQR": "Mostra codice QR",
+        "hideQR": "Nascondi codice QR",
+        "qrDescription": "Scansiona questo codice per accedere al negozio"
       }
     },
     "products": {

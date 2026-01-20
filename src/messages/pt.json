@@ -488,6 +488,25 @@
         "copied": "Copiado!",
         "share": "Compartilhar",
         "shareTitle": "Minha loja de aluguel"
+      },
+
+      "share": {
+        "title": "Compartilhar sua loja",
+        "description": "Envie o link da sua loja para seus clientes",
+        "copyLink": "Copiar link",
+        "copyLinkDescription": "Copiar URL para a área de transferência",
+        "copied": "Copiado!",
+        "whatsappDescription": "Enviar pelo WhatsApp",
+        "whatsappMessage": "Descubra nossa loja de aluguel: {url}",
+        "email": "E-mail",
+        "emailDescription": "Enviar por e-mail",
+        "emailSubject": "Descubra nossa loja de aluguel",
+        "emailBody": "Olá,\n\nConvido você a descobrir nossa loja de aluguel:\n{url}\n\nAté breve!",
+        "smsDescription": "Enviar por SMS",
+        "smsMessage": "Descubra nossa loja de aluguel: {url}",
+        "showQR": "Mostrar código QR",
+        "hideQR": "Ocultar código QR",
+        "qrDescription": "Escaneie este código para acessar a loja"
       }
     },
     "products": {

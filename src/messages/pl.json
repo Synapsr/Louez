@@ -488,6 +488,25 @@
         "copied": "Skopiowano!",
         "share": "Udostępnij",
         "shareTitle": "Mój sklep z wynajmem"
+      },
+
+      "share": {
+        "title": "Udostępnij swój sklep",
+        "description": "Wyślij link do swojego sklepu klientom",
+        "copyLink": "Kopiuj link",
+        "copyLinkDescription": "Skopiuj URL do schowka",
+        "copied": "Skopiowano!",
+        "whatsappDescription": "Wyślij przez WhatsApp",
+        "whatsappMessage": "Odkryj nasz sklep z wynajmem: {url}",
+        "email": "E-mail",
+        "emailDescription": "Wyślij e-mailem",
+        "emailSubject": "Odkryj nasz sklep z wynajmem",
+        "emailBody": "Cześć,\n\nZapraszam do odkrycia naszego sklepu z wynajmem:\n{url}\n\nDo zobaczenia!",
+        "smsDescription": "Wyślij przez SMS",
+        "smsMessage": "Odkryj nasz sklep z wynajmem: {url}",
+        "showQR": "Pokaż kod QR",
+        "hideQR": "Ukryj kod QR",
+        "qrDescription": "Zeskanuj ten kod, aby uzyskać dostęp do sklepu"
       }
     },
     "products": {

@@ -443,3 +443,213 @@
 .quick-actions-card:hover::before {
   opacity: 1;
 }
+
+/* =============================================================================
+   Unified List Item - Hover with Reveal Action
+   ============================================================================= */
+
+.list-item-hover {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  transition: background-color 0.15s ease;
+}
+
+.list-item-hover:hover {
+  background-color: oklch(0 0 0 / 0.02);
+}
+
+.dark .list-item-hover:hover {
+  background-color: oklch(1 1 1 / 0.02);
+}
+
+/* Reveal action button from right */
+.list-item-hover .reveal-action {
+  position: absolute;
+  right: 0.75rem;
+  opacity: 0;
+  transform: translateX(8px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.list-item-hover:hover .reveal-action {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Clickable text links within list items */
+.list-item-link {
+  color: inherit;
+  transition: color 0.15s ease;
+}
+
+.list-item-link:hover {
+  color: oklch(0.47 0.23 264);
+}
+
+.dark .list-item-link:hover {
+  color: oklch(0.55 0.22 264);
+}
+
+/* =============================================================================
+   Modern Action Buttons - Clean and Minimal
+   ============================================================================= */
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.625rem;
+  border: 1px solid oklch(0 0 0 / 0.08);
+  background: oklch(1 0 0);
+  color: oklch(0.3 0 0);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  border-color: oklch(0.47 0.23 264 / 0.3);
+  background: oklch(0.47 0.23 264 / 0.05);
+  color: oklch(0.47 0.23 264);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+.dark .action-btn {
+  border-color: oklch(1 1 1 / 0.1);
+  background: oklch(0.2 0 0);
+  color: oklch(0.9 0 0);
+}
+
+.dark .action-btn:hover {
+  border-color: oklch(0.55 0.22 264 / 0.4);
+  background: oklch(0.55 0.22 264 / 0.1);
+  color: oklch(0.7 0.15 264);
+}
+
+/* Action button variants */
+.action-btn--primary {
+  border-color: oklch(0.47 0.23 264 / 0.2);
+  background: oklch(0.47 0.23 264 / 0.08);
+  color: oklch(0.47 0.23 264);
+}
+
+.action-btn--primary:hover {
+  border-color: oklch(0.47 0.23 264 / 0.4);
+  background: oklch(0.47 0.23 264 / 0.15);
+}
+
+.dark .action-btn--primary {
+  border-color: oklch(0.55 0.22 264 / 0.3);
+  background: oklch(0.55 0.22 264 / 0.1);
+  color: oklch(0.7 0.15 264);
+}
+
+.dark .action-btn--primary:hover {
+  border-color: oklch(0.55 0.22 264 / 0.5);
+  background: oklch(0.55 0.22 264 / 0.2);
+}
+
+/* Icon-only action button */
+.action-btn--icon {
+  padding: 0.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+/* =============================================================================
+   Share Modal Styles
+   ============================================================================= */
+
+.share-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.share-option:hover {
+  background: oklch(0 0 0 / 0.03);
+  border-color: oklch(0 0 0 / 0.06);
+}
+
+.dark .share-option:hover {
+  background: oklch(1 1 1 / 0.03);
+  border-color: oklch(1 1 1 / 0.06);
+}
+
+.share-option-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.625rem;
+  flex-shrink: 0;
+}
+
+.share-option-icon--copy {
+  background: linear-gradient(135deg, oklch(0.9 0.1 264) 0%, oklch(0.85 0.15 264) 100%);
+  color: oklch(0.47 0.23 264);
+}
+
+.share-option-icon--whatsapp {
+  background: linear-gradient(135deg, oklch(0.88 0.15 150) 0%, oklch(0.82 0.2 145) 100%);
+  color: oklch(0.45 0.2 145);
+}
+
+.share-option-icon--email {
+  background: linear-gradient(135deg, oklch(0.9 0.1 230) 0%, oklch(0.85 0.15 235) 100%);
+  color: oklch(0.5 0.2 230);
+}
+
+.share-option-icon--sms {
+  background: linear-gradient(135deg, oklch(0.9 0.1 280) 0%, oklch(0.85 0.15 285) 100%);
+  color: oklch(0.5 0.2 280);
+}
+
+.share-option-icon--qr {
+  background: linear-gradient(135deg, oklch(0.92 0.05 0) 0%, oklch(0.88 0.08 0) 100%);
+  color: oklch(0.3 0 0);
+}
+
+.dark .share-option-icon--copy {
+  background: linear-gradient(135deg, oklch(0.35 0.15 264) 0%, oklch(0.3 0.2 264) 100%);
+  color: oklch(0.7 0.15 264);
+}
+
+.dark .share-option-icon--whatsapp {
+  background: linear-gradient(135deg, oklch(0.35 0.15 150) 0%, oklch(0.3 0.2 145) 100%);
+  color: oklch(0.7 0.15 145);
+}
+
+.dark .share-option-icon--email {
+  background: linear-gradient(135deg, oklch(0.35 0.12 230) 0%, oklch(0.3 0.15 235) 100%);
+  color: oklch(0.7 0.15 230);
+}
+
+.dark .share-option-icon--sms {
+  background: linear-gradient(135deg, oklch(0.35 0.12 280) 0%, oklch(0.3 0.15 285) 100%);
+  color: oklch(0.7 0.15 280);
+}
+
+.dark .share-option-icon--qr {
+  background: linear-gradient(135deg, oklch(0.3 0 0) 0%, oklch(0.25 0 0) 100%);
+  color: oklch(0.8 0 0);
+}

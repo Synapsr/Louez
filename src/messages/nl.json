@@ -487,6 +487,25 @@
         "copied": "Gekopieerd!",
         "share": "Delen",
         "shareTitle": "Mijn verhuurwinkel"
+      },
+
+      "share": {
+        "title": "Deel uw winkel",
+        "description": "Stuur uw winkellink naar uw klanten",
+        "copyLink": "Link kopiëren",
+        "copyLinkDescription": "URL naar klembord kopiëren",
+        "copied": "Gekopieerd!",
+        "whatsappDescription": "Verstuur via WhatsApp",
+        "whatsappMessage": "Ontdek onze verhuurwinkel: {url}",
+        "email": "E-mail",
+        "emailDescription": "Verstuur via e-mail",
+        "emailSubject": "Ontdek onze verhuurwinkel",
+        "emailBody": "Hallo,\n\nIk nodig u uit om onze verhuurwinkel te ontdekken:\n{url}\n\nTot snel!",
+        "smsDescription": "Verstuur via SMS",
+        "smsMessage": "Ontdek onze verhuurwinkel: {url}",
+        "showQR": "QR-code tonen",
+        "hideQR": "QR-code verbergen",
+        "qrDescription": "Scan deze code om de winkel te bezoeken"
       }
     },
     "products": {
