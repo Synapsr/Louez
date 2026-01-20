@@ -480,6 +480,8 @@
       "storefront": {
         "title": "Uw winkel",
         "description": "Deel uw link met uw klanten",
+        "online": "Online",
+        "publicUrl": "Openbaar adres",
         "visit": "Bezoeken",
         "copy": "Kopiëren",
         "copied": "Gekopieerd!",

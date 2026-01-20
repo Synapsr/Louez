@@ -481,6 +481,8 @@
       "storefront": {
         "title": "Twój sklep",
         "description": "Udostępnij link swoim klientom",
+        "online": "Online",
+        "publicUrl": "Publiczny adres",
         "visit": "Odwiedź",
         "copy": "Kopiuj",
         "copied": "Skopiowano!",

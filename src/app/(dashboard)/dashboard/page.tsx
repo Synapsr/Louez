@@ -172,8 +172,8 @@ async function DashboardContent({
   const timeOfDay = getTimeOfDay()
 
   return (
-    <div className="relative">
-      {/* Animated gradient mesh background */}
+    <>
+      {/* Animated gradient mesh background (fixed to viewport) */}
       <GradientMesh />
 
       {/* Dashboard content */}
@@ -211,7 +211,7 @@ async function DashboardContent({
           <StorefrontWidget storeSlug={storeSlug} />
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -229,7 +229,7 @@ export default async function DashboardHomePage() {
   return (
     <Suspense
       fallback={
-        <div className="relative">
+        <>
           <GradientMesh />
           <div className="relative z-10 space-y-6">
             {/* Header skeleton */}
@@ -243,7 +243,7 @@ export default async function DashboardHomePage() {
             <StatsSkeleton />
             <ActivitySkeleton />
           </div>
-        </div>
+        </>
       }
     >
       <DashboardContent
