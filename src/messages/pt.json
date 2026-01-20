@@ -384,41 +384,109 @@
       "store": "Minha loja"
     },
     "home": {
-      "greeting": "Ola, {name}!",
-      "subtitle": "Aqui esta uma visao geral da sua atividade hoje.",
-      "welcome": "Bem-vindo",
-      "todaysDepartures": "Saidas de hoje",
-      "todaysReturns": "Devolucoes de hoje",
-      "pendingRequests": "Solicitacoes pendentes",
-      "totalRevenue": "Receita",
-      "monthlyRevenue": "Receita mensal",
-      "activeReservations": "Reservas ativas",
-      "occupancyRate": "Taxa de ocupacao",
-      "noDataYet": "Sem dados ainda",
       "viewAll": "Ver tudo",
-      "markAsPickedUp": "Marcar como retirado",
-      "markAsReturned": "Marcar como devolvido",
-      "noDeparturesTitle": "Nenhuma saida hoje",
-      "noDeparturesDescription": "Nenhum aluguel para entregar hoje",
-      "noReturnsTitle": "Nenhuma devolucao hoje",
-      "noReturnsDescription": "Nenhum equipamento para recolher hoje",
-      "noPendingRequests": "Nenhuma solicitacao pendente",
-      "revenueThisMonth": "Este mes",
-      "revenueVsPrevious": "vs mes anterior",
-      "alerts": "Alertas",
-      "toDeliver": "para entregar",
-      "toRecover": "para recolher",
-      "toProcess": "Para processar",
-      "departuresDescription": "Reservas para entregar hoje",
-      "returnsDescription": "Reservas para recolher hoje",
-      "pendingDescription": "Reservas aguardando sua aprovacao",
       "products": "Produtos",
-      "quickActions": "Acoes rapidas",
-      "quickActionsDescription": "Gerencie sua loja de forma eficiente",
-      "addProductDescription": "Criar um novo produto para aluguel",
-      "yourStore": "Sua loja",
-      "yourStoreDescription": "Compartilhe seu link com seus clientes",
-      "visit": "Visitar"
+
+      "header": {
+        "greeting": {
+          "morning": "Bom dia, {name}!",
+          "afternoon": "Boa tarde, {name}!",
+          "evening": "Boa noite, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Bem-vindo ao Louez. Vamos configurar sua loja.",
+          "building": "{count, plural, one {# produto criado} other {# produtos criados}}. Compartilhe sua loja!",
+          "pending": "{count, plural, one {# solicitacao pendente} other {# solicitacoes pendentes}}",
+          "operations": "{count, plural, one {# operacao hoje} other {# operacoes hoje}}",
+          "calm": "Tudo tranquilo hoje."
+        },
+        "cta": {
+          "addFirstProduct": "Adicionar meu primeiro produto",
+          "handleRequests": "Gerenciar solicitacoes ({count})",
+          "addReservation": "Nova reserva"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 solicitacao pendente",
+        "multiplePending": "{count} solicitacoes pendentes",
+        "description": "Seus clientes aguardam sua resposta",
+        "action": "Gerenciar"
+      },
+
+      "setup": {
+        "title": "Configure sua loja",
+        "description": "Alguns passos para comecar",
+        "steps": {
+          "createAccount": "Criar sua conta",
+          "configureStore": "Configurar sua loja",
+          "addFirstProduct": "Adicionar seu primeiro produto",
+          "firstReservation": "Receber sua primeira reserva",
+          "firstCompleted": "Completar seu primeiro aluguel"
+        },
+        "start": "Iniciar",
+        "addProductHint": "Adicione seu primeiro produto para que os clientes possam reservar.",
+        "addFirstProduct": "Adicionar um produto",
+        "shareHint": "Compartilhe sua loja para receber suas primeiras reservas.",
+        "viewStore": "Ver minha loja",
+        "createReservation": "Criar uma reserva"
+      },
+
+      "stats": {
+        "products": "Produtos",
+        "customers": "Clientes",
+        "drafts": "{count, plural, one {# rascunho} other {# rascunhos}}",
+        "todaysDepartures": "Saidas de hoje",
+        "todaysReturns": "Devolucoes de hoje",
+        "pendingRequests": "Solicitacoes pendentes",
+        "monthlyRevenue": "Receita mensal",
+        "totalReservations": "Reservas",
+        "toDeliver": "para entregar",
+        "toRecover": "para recolher",
+        "toProcess": "Para processar",
+        "vsLastMonth": "vs mes anterior",
+        "completed": "{count, plural, one {# concluida} other {# concluidas}}"
+      },
+
+      "activity": {
+        "departures": "Saidas de hoje",
+        "departuresDescription": "Reservas para entregar hoje",
+        "returns": "Devolucoes de hoje",
+        "returnsDescription": "Reservas para recolher hoje",
+        "noDepartures": "Nenhuma entrega agendada para hoje",
+        "noReturns": "Nenhuma devolucao agendada para hoje",
+        "noActivityTitle": "Dia tranquilo",
+        "noActivityDescription": "Nenhuma operacao agendada para hoje"
+      },
+
+      "pending": {
+        "title": "Solicitacoes pendentes",
+        "description": "Reservas aguardando sua aprovacao",
+        "empty": "Nenhuma solicitacao pendente"
+      },
+
+      "quickActions": {
+        "title": "Acoes rapidas",
+        "description": "Gerencie sua loja de forma eficiente",
+        "addProduct": {
+          "title": "Adicionar um produto",
+          "description": "Criar um novo produto para aluguel"
+        },
+        "addReservation": {
+          "title": "Criar uma reserva",
+          "description": "Adicionar manualmente uma reserva"
+        }
+      },
+
+      "storefront": {
+        "title": "Sua loja",
+        "description": "Compartilhe seu link com seus clientes",
+        "visit": "Visitar",
+        "copy": "Copiar",
+        "copied": "Copiado!",
+        "share": "Compartilhar",
+        "shareTitle": "Minha loja de aluguel"
+      }
     },
     "products": {
       "title": "Produtos",

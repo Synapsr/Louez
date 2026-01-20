@@ -384,41 +384,109 @@
       "store": "Mi tienda"
     },
     "home": {
-      "greeting": "Hola, {name}!",
-      "subtitle": "Aqui tiene un resumen de su actividad de hoy.",
-      "welcome": "Bienvenido",
-      "todaysDepartures": "Salidas de hoy",
-      "todaysReturns": "Devoluciones de hoy",
-      "pendingRequests": "Solicitudes pendientes",
-      "totalRevenue": "Ingresos",
-      "monthlyRevenue": "Ingresos mensuales",
-      "activeReservations": "Reservas activas",
-      "occupancyRate": "Tasa de ocupacion",
-      "noDataYet": "Aun no hay datos",
       "viewAll": "Ver todo",
-      "markAsPickedUp": "Marcar como recogido",
-      "markAsReturned": "Marcar como devuelto",
-      "noDeparturesTitle": "No hay salidas hoy",
-      "noDeparturesDescription": "No hay alquileres para entregar hoy",
-      "noReturnsTitle": "No hay devoluciones hoy",
-      "noReturnsDescription": "No hay equipos para recoger hoy",
-      "noPendingRequests": "No hay solicitudes pendientes",
-      "revenueThisMonth": "Este mes",
-      "revenueVsPrevious": "vs mes anterior",
-      "alerts": "Alertas",
-      "toDeliver": "para entregar",
-      "toRecover": "para recoger",
-      "toProcess": "Por procesar",
-      "departuresDescription": "Reservas para entregar hoy",
-      "returnsDescription": "Reservas para recoger hoy",
-      "pendingDescription": "Reservas que requieren su aprobacion",
       "products": "Productos",
-      "quickActions": "Acciones rapidas",
-      "quickActionsDescription": "Gestione su tienda eficientemente",
-      "addProductDescription": "Crear un nuevo producto para alquilar",
-      "yourStore": "Su tienda",
-      "yourStoreDescription": "Comparta su enlace con sus clientes",
-      "visit": "Visitar"
+
+      "header": {
+        "greeting": {
+          "morning": "Buenos dias, {name}!",
+          "afternoon": "Buenas tardes, {name}!",
+          "evening": "Buenas noches, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Bienvenido a Louez. Configuremos su tienda.",
+          "building": "{count, plural, one {# producto creado} other {# productos creados}}. Comparta su tienda!",
+          "pending": "{count, plural, one {# solicitud pendiente} other {# solicitudes pendientes}}",
+          "operations": "{count, plural, one {# operacion hoy} other {# operaciones hoy}}",
+          "calm": "Todo tranquilo hoy."
+        },
+        "cta": {
+          "addFirstProduct": "Agregar mi primer producto",
+          "handleRequests": "Gestionar solicitudes ({count})",
+          "addReservation": "Nueva reserva"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 solicitud pendiente",
+        "multiplePending": "{count} solicitudes pendientes",
+        "description": "Sus clientes esperan su respuesta",
+        "action": "Gestionar"
+      },
+
+      "setup": {
+        "title": "Configure su tienda",
+        "description": "Algunos pasos para comenzar",
+        "steps": {
+          "createAccount": "Crear su cuenta",
+          "configureStore": "Configurar su tienda",
+          "addFirstProduct": "Agregar su primer producto",
+          "firstReservation": "Recibir su primera reserva",
+          "firstCompleted": "Completar su primer alquiler"
+        },
+        "start": "Comenzar",
+        "addProductHint": "Agregue su primer producto para que los clientes puedan reservar.",
+        "addFirstProduct": "Agregar un producto",
+        "shareHint": "Comparta su tienda para recibir sus primeras reservas.",
+        "viewStore": "Ver mi tienda",
+        "createReservation": "Crear una reserva"
+      },
+
+      "stats": {
+        "products": "Productos",
+        "customers": "Clientes",
+        "drafts": "{count, plural, one {# borrador} other {# borradores}}",
+        "todaysDepartures": "Salidas de hoy",
+        "todaysReturns": "Devoluciones de hoy",
+        "pendingRequests": "Solicitudes pendientes",
+        "monthlyRevenue": "Ingresos mensuales",
+        "totalReservations": "Reservas",
+        "toDeliver": "para entregar",
+        "toRecover": "para recoger",
+        "toProcess": "Por procesar",
+        "vsLastMonth": "vs mes anterior",
+        "completed": "{count, plural, one {# completada} other {# completadas}}"
+      },
+
+      "activity": {
+        "departures": "Salidas de hoy",
+        "departuresDescription": "Reservas para entregar hoy",
+        "returns": "Devoluciones de hoy",
+        "returnsDescription": "Reservas para recoger hoy",
+        "noDepartures": "No hay entregas programadas hoy",
+        "noReturns": "No hay devoluciones programadas hoy",
+        "noActivityTitle": "Dia tranquilo",
+        "noActivityDescription": "No hay operaciones programadas hoy"
+      },
+
+      "pending": {
+        "title": "Solicitudes pendientes",
+        "description": "Reservas que requieren su aprobacion",
+        "empty": "No hay solicitudes pendientes"
+      },
+
+      "quickActions": {
+        "title": "Acciones rapidas",
+        "description": "Gestione su tienda eficientemente",
+        "addProduct": {
+          "title": "Agregar un producto",
+          "description": "Crear un nuevo producto para alquilar"
+        },
+        "addReservation": {
+          "title": "Crear una reserva",
+          "description": "Agregar manualmente una reserva"
+        }
+      },
+
+      "storefront": {
+        "title": "Su tienda",
+        "description": "Comparta su enlace con sus clientes",
+        "visit": "Visitar",
+        "copy": "Copiar",
+        "copied": "Copiado!",
+        "share": "Compartir",
+        "shareTitle": "Mi tienda de alquiler"
+      }
     },
     "products": {
       "title": "Productos",

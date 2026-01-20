@@ -384,41 +384,109 @@
       "store": "Mein Shop"
     },
     "home": {
-      "greeting": "Hallo, {name}!",
-      "subtitle": "Hier ist eine Übersicht Ihrer heutigen Aktivitäten.",
-      "welcome": "Willkommen",
-      "todaysDepartures": "Heutige Abholungen",
-      "todaysReturns": "Heutige Rückgaben",
-      "pendingRequests": "Ausstehende Anfragen",
-      "totalRevenue": "Umsatz",
-      "monthlyRevenue": "Monatsumsatz",
-      "activeReservations": "Aktive Reservierungen",
-      "occupancyRate": "Auslastungsrate",
-      "noDataYet": "Noch keine Daten",
       "viewAll": "Alle ansehen",
-      "markAsPickedUp": "Als abgeholt markieren",
-      "markAsReturned": "Als zurückgegeben markieren",
-      "noDeparturesTitle": "Keine Abholungen heute",
-      "noDeparturesDescription": "Heute keine Vermietungen zu übergeben",
-      "noReturnsTitle": "Keine Rückgaben heute",
-      "noReturnsDescription": "Heute keine Ausrüstung abzuholen",
-      "noPendingRequests": "Keine ausstehenden Anfragen",
-      "revenueThisMonth": "Dieser Monat",
-      "revenueVsPrevious": "vs Vormonat",
-      "alerts": "Warnungen",
-      "toDeliver": "zu übergeben",
-      "toRecover": "abzuholen",
-      "toProcess": "Zu bearbeiten",
-      "departuresDescription": "Heute zu übergebende Reservierungen",
-      "returnsDescription": "Heute abzuholende Reservierungen",
-      "pendingDescription": "Reservierungen, die Ihre Genehmigung erfordern",
       "products": "Produkte",
-      "quickActions": "Schnellaktionen",
-      "quickActionsDescription": "Verwalten Sie Ihren Shop effizient",
-      "addProductDescription": "Neues Produkt zur Vermietung erstellen",
-      "yourStore": "Ihr Shop",
-      "yourStoreDescription": "Teilen Sie Ihren Link mit Ihren Kunden",
-      "visit": "Besuchen"
+
+      "header": {
+        "greeting": {
+          "morning": "Guten Morgen, {name}!",
+          "afternoon": "Guten Tag, {name}!",
+          "evening": "Guten Abend, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Willkommen bei Louez. Lassen Sie uns Ihren Shop einrichten.",
+          "building": "{count, plural, one {# Produkt erstellt} other {# Produkte erstellt}}. Teilen Sie Ihren Shop!",
+          "pending": "{count, plural, one {# ausstehende Anfrage} other {# ausstehende Anfragen}}",
+          "operations": "{count, plural, one {# Vorgang heute} other {# Vorgänge heute}}",
+          "calm": "Heute ist alles ruhig."
+        },
+        "cta": {
+          "addFirstProduct": "Mein erstes Produkt hinzufügen",
+          "handleRequests": "Anfragen bearbeiten ({count})",
+          "addReservation": "Neue Reservierung"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 ausstehende Anfrage",
+        "multiplePending": "{count} ausstehende Anfragen",
+        "description": "Ihre Kunden warten auf Ihre Antwort",
+        "action": "Bearbeiten"
+      },
+
+      "setup": {
+        "title": "Richten Sie Ihren Shop ein",
+        "description": "Einige Schritte zum Starten",
+        "steps": {
+          "createAccount": "Konto erstellen",
+          "configureStore": "Shop konfigurieren",
+          "addFirstProduct": "Erstes Produkt hinzufügen",
+          "firstReservation": "Erste Reservierung erhalten",
+          "firstCompleted": "Erste Vermietung abschließen"
+        },
+        "start": "Starten",
+        "addProductHint": "Fügen Sie Ihr erstes Produkt hinzu, damit Kunden buchen können.",
+        "addFirstProduct": "Produkt hinzufügen",
+        "shareHint": "Teilen Sie Ihren Shop, um Ihre ersten Reservierungen zu erhalten.",
+        "viewStore": "Meinen Shop ansehen",
+        "createReservation": "Reservierung erstellen"
+      },
+
+      "stats": {
+        "products": "Produkte",
+        "customers": "Kunden",
+        "drafts": "{count, plural, one {# Entwurf} other {# Entwürfe}}",
+        "todaysDepartures": "Heutige Abholungen",
+        "todaysReturns": "Heutige Rückgaben",
+        "pendingRequests": "Ausstehende Anfragen",
+        "monthlyRevenue": "Monatsumsatz",
+        "totalReservations": "Reservierungen",
+        "toDeliver": "zu übergeben",
+        "toRecover": "abzuholen",
+        "toProcess": "Zu bearbeiten",
+        "vsLastMonth": "vs letzter Monat",
+        "completed": "{count, plural, one {# abgeschlossen} other {# abgeschlossen}}"
+      },
+
+      "activity": {
+        "departures": "Heutige Abholungen",
+        "departuresDescription": "Heute zu übergebende Reservierungen",
+        "returns": "Heutige Rückgaben",
+        "returnsDescription": "Heute abzuholende Reservierungen",
+        "noDepartures": "Keine Übergaben heute geplant",
+        "noReturns": "Keine Rückgaben heute geplant",
+        "noActivityTitle": "Ruhiger Tag",
+        "noActivityDescription": "Heute keine Vorgänge geplant"
+      },
+
+      "pending": {
+        "title": "Ausstehende Anfragen",
+        "description": "Reservierungen, die Ihre Genehmigung erfordern",
+        "empty": "Keine ausstehenden Anfragen"
+      },
+
+      "quickActions": {
+        "title": "Schnellaktionen",
+        "description": "Verwalten Sie Ihren Shop effizient",
+        "addProduct": {
+          "title": "Produkt hinzufügen",
+          "description": "Neues Produkt zur Vermietung erstellen"
+        },
+        "addReservation": {
+          "title": "Reservierung erstellen",
+          "description": "Reservierung manuell hinzufügen"
+        }
+      },
+
+      "storefront": {
+        "title": "Ihr Shop",
+        "description": "Teilen Sie Ihren Link mit Ihren Kunden",
+        "visit": "Besuchen",
+        "copy": "Kopieren",
+        "copied": "Kopiert!",
+        "share": "Teilen",
+        "shareTitle": "Mein Vermietungsshop"
+      }
     },
     "products": {
       "title": "Produkte",

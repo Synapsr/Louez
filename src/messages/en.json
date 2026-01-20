@@ -385,41 +385,109 @@
       "store": "My store"
     },
     "home": {
-      "greeting": "Hello, {name}!",
-      "subtitle": "Here's an overview of your activity today.",
-      "welcome": "Welcome",
-      "todaysDepartures": "Today's departures",
-      "todaysReturns": "Today's returns",
-      "pendingRequests": "Pending requests",
-      "totalRevenue": "Revenue",
-      "monthlyRevenue": "Monthly revenue",
-      "activeReservations": "Active reservations",
-      "occupancyRate": "Occupancy rate",
-      "noDataYet": "No data yet",
       "viewAll": "View all",
-      "markAsPickedUp": "Mark as picked up",
-      "markAsReturned": "Mark as returned",
-      "noDeparturesTitle": "No departures today",
-      "noDeparturesDescription": "No rentals to hand over today",
-      "noReturnsTitle": "No returns today",
-      "noReturnsDescription": "No equipment to collect today",
-      "noPendingRequests": "No pending requests",
-      "revenueThisMonth": "This month",
-      "revenueVsPrevious": "vs previous month",
-      "alerts": "Alerts",
-      "toDeliver": "to hand over",
-      "toRecover": "to collect",
-      "toProcess": "To process",
-      "departuresDescription": "Reservations to hand over today",
-      "returnsDescription": "Reservations to collect today",
-      "pendingDescription": "Reservations requiring your approval",
       "products": "Products",
-      "quickActions": "Quick actions",
-      "quickActionsDescription": "Manage your store efficiently",
-      "addProductDescription": "Create a new product for rent",
-      "yourStore": "Your store",
-      "yourStoreDescription": "Share your link with your customers",
-      "visit": "Visit"
+
+      "header": {
+        "greeting": {
+          "morning": "Good morning, {name}!",
+          "afternoon": "Good afternoon, {name}!",
+          "evening": "Good evening, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Welcome to Louez. Let's set up your store.",
+          "building": "{count, plural, one {# product created} other {# products created}}. Share your store!",
+          "pending": "{count, plural, one {# pending request} other {# pending requests}}",
+          "operations": "{count, plural, one {# operation today} other {# operations today}}",
+          "calm": "All quiet today."
+        },
+        "cta": {
+          "addFirstProduct": "Add my first product",
+          "handleRequests": "Handle requests ({count})",
+          "addReservation": "New reservation"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 pending request",
+        "multiplePending": "{count} pending requests",
+        "description": "Your customers are waiting for your response",
+        "action": "Handle"
+      },
+
+      "setup": {
+        "title": "Set up your store",
+        "description": "A few steps to get started",
+        "steps": {
+          "createAccount": "Create your account",
+          "configureStore": "Configure your store",
+          "addFirstProduct": "Add your first product",
+          "firstReservation": "Receive your first reservation",
+          "firstCompleted": "Complete your first rental"
+        },
+        "start": "Start",
+        "addProductHint": "Add your first product so customers can start booking.",
+        "addFirstProduct": "Add a product",
+        "shareHint": "Share your store to receive your first reservations.",
+        "viewStore": "View my store",
+        "createReservation": "Create a reservation"
+      },
+
+      "stats": {
+        "products": "Products",
+        "customers": "Customers",
+        "drafts": "{count, plural, one {# draft} other {# drafts}}",
+        "todaysDepartures": "Today's departures",
+        "todaysReturns": "Today's returns",
+        "pendingRequests": "Pending requests",
+        "monthlyRevenue": "Monthly revenue",
+        "totalReservations": "Reservations",
+        "toDeliver": "to hand over",
+        "toRecover": "to collect",
+        "toProcess": "To process",
+        "vsLastMonth": "vs last month",
+        "completed": "{count, plural, one {# completed} other {# completed}}"
+      },
+
+      "activity": {
+        "departures": "Today's departures",
+        "departuresDescription": "Reservations to hand over today",
+        "returns": "Today's returns",
+        "returnsDescription": "Reservations to collect today",
+        "noDepartures": "No handovers scheduled today",
+        "noReturns": "No returns scheduled today",
+        "noActivityTitle": "Quiet day",
+        "noActivityDescription": "No operations scheduled today"
+      },
+
+      "pending": {
+        "title": "Pending requests",
+        "description": "Reservations requiring your approval",
+        "empty": "No pending requests"
+      },
+
+      "quickActions": {
+        "title": "Quick actions",
+        "description": "Manage your store efficiently",
+        "addProduct": {
+          "title": "Add a product",
+          "description": "Create a new product for rent"
+        },
+        "addReservation": {
+          "title": "Create a reservation",
+          "description": "Manually add a reservation"
+        }
+      },
+
+      "storefront": {
+        "title": "Your store",
+        "description": "Share your link with your customers",
+        "visit": "Visit",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "share": "Share",
+        "shareTitle": "My rental store"
+      }
     },
     "products": {
       "title": "Products",

@@ -384,41 +384,109 @@
       "store": "Il mio negozio"
     },
     "home": {
-      "greeting": "Ciao, {name}!",
-      "subtitle": "Ecco una panoramica della tua attivita di oggi.",
-      "welcome": "Benvenuto",
-      "todaysDepartures": "Partenze di oggi",
-      "todaysReturns": "Ritorni di oggi",
-      "pendingRequests": "Richieste in attesa",
-      "totalRevenue": "Fatturato",
-      "monthlyRevenue": "Fatturato mensile",
-      "activeReservations": "Prenotazioni attive",
-      "occupancyRate": "Tasso di occupazione",
-      "noDataYet": "Ancora nessun dato",
       "viewAll": "Vedi tutto",
-      "markAsPickedUp": "Segna come ritirato",
-      "markAsReturned": "Segna come restituito",
-      "noDeparturesTitle": "Nessuna partenza oggi",
-      "noDeparturesDescription": "Nessun noleggio da consegnare oggi",
-      "noReturnsTitle": "Nessun ritorno oggi",
-      "noReturnsDescription": "Nessuna attrezzatura da ritirare oggi",
-      "noPendingRequests": "Nessuna richiesta in attesa",
-      "revenueThisMonth": "Questo mese",
-      "revenueVsPrevious": "vs mese precedente",
-      "alerts": "Avvisi",
-      "toDeliver": "da consegnare",
-      "toRecover": "da ritirare",
-      "toProcess": "Da elaborare",
-      "departuresDescription": "Prenotazioni da consegnare oggi",
-      "returnsDescription": "Prenotazioni da ritirare oggi",
-      "pendingDescription": "Prenotazioni che richiedono la tua approvazione",
       "products": "Prodotti",
-      "quickActions": "Azioni rapide",
-      "quickActionsDescription": "Gestisci il tuo negozio in modo efficiente",
-      "addProductDescription": "Crea un nuovo prodotto a noleggio",
-      "yourStore": "Il tuo negozio",
-      "yourStoreDescription": "Condividi il tuo link con i tuoi clienti",
-      "visit": "Visita"
+
+      "header": {
+        "greeting": {
+          "morning": "Buongiorno, {name}!",
+          "afternoon": "Buon pomeriggio, {name}!",
+          "evening": "Buonasera, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Benvenuto su Louez. Configuriamo il tuo negozio.",
+          "building": "{count, plural, one {# prodotto creato} other {# prodotti creati}}. Condividi il tuo negozio!",
+          "pending": "{count, plural, one {# richiesta in attesa} other {# richieste in attesa}}",
+          "operations": "{count, plural, one {# operazione oggi} other {# operazioni oggi}}",
+          "calm": "Tutto tranquillo oggi."
+        },
+        "cta": {
+          "addFirstProduct": "Aggiungi il mio primo prodotto",
+          "handleRequests": "Gestisci richieste ({count})",
+          "addReservation": "Nuova prenotazione"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 richiesta in attesa",
+        "multiplePending": "{count} richieste in attesa",
+        "description": "I tuoi clienti attendono una risposta",
+        "action": "Gestisci"
+      },
+
+      "setup": {
+        "title": "Configura il tuo negozio",
+        "description": "Alcuni passaggi per iniziare",
+        "steps": {
+          "createAccount": "Crea il tuo account",
+          "configureStore": "Configura il tuo negozio",
+          "addFirstProduct": "Aggiungi il tuo primo prodotto",
+          "firstReservation": "Ricevi la tua prima prenotazione",
+          "firstCompleted": "Completa il tuo primo noleggio"
+        },
+        "start": "Inizia",
+        "addProductHint": "Aggiungi il tuo primo prodotto per permettere ai clienti di prenotare.",
+        "addFirstProduct": "Aggiungi un prodotto",
+        "shareHint": "Condividi il tuo negozio per ricevere le tue prime prenotazioni.",
+        "viewStore": "Vedi il mio negozio",
+        "createReservation": "Crea una prenotazione"
+      },
+
+      "stats": {
+        "products": "Prodotti",
+        "customers": "Clienti",
+        "drafts": "{count, plural, one {# bozza} other {# bozze}}",
+        "todaysDepartures": "Partenze di oggi",
+        "todaysReturns": "Ritorni di oggi",
+        "pendingRequests": "Richieste in attesa",
+        "monthlyRevenue": "Fatturato mensile",
+        "totalReservations": "Prenotazioni",
+        "toDeliver": "da consegnare",
+        "toRecover": "da ritirare",
+        "toProcess": "Da elaborare",
+        "vsLastMonth": "vs mese scorso",
+        "completed": "{count, plural, one {# completata} other {# completate}}"
+      },
+
+      "activity": {
+        "departures": "Partenze di oggi",
+        "departuresDescription": "Prenotazioni da consegnare oggi",
+        "returns": "Ritorni di oggi",
+        "returnsDescription": "Prenotazioni da ritirare oggi",
+        "noDepartures": "Nessuna consegna prevista oggi",
+        "noReturns": "Nessun ritorno previsto oggi",
+        "noActivityTitle": "Giornata tranquilla",
+        "noActivityDescription": "Nessuna operazione prevista oggi"
+      },
+
+      "pending": {
+        "title": "Richieste in attesa",
+        "description": "Prenotazioni che richiedono la tua approvazione",
+        "empty": "Nessuna richiesta in attesa"
+      },
+
+      "quickActions": {
+        "title": "Azioni rapide",
+        "description": "Gestisci il tuo negozio in modo efficiente",
+        "addProduct": {
+          "title": "Aggiungi un prodotto",
+          "description": "Crea un nuovo prodotto a noleggio"
+        },
+        "addReservation": {
+          "title": "Crea una prenotazione",
+          "description": "Aggiungi manualmente una prenotazione"
+        }
+      },
+
+      "storefront": {
+        "title": "Il tuo negozio",
+        "description": "Condividi il tuo link con i tuoi clienti",
+        "visit": "Visita",
+        "copy": "Copia",
+        "copied": "Copiato!",
+        "share": "Condividi",
+        "shareTitle": "Il mio negozio di noleggio"
+      }
     },
     "products": {
       "title": "Prodotti",

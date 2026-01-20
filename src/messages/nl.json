@@ -383,41 +383,109 @@
       "store": "Mijn winkel"
     },
     "home": {
-      "greeting": "Hallo, {name}!",
-      "subtitle": "Hier is een overzicht van uw activiteiten vandaag.",
-      "welcome": "Welkom",
-      "todaysDepartures": "Vertrekken vandaag",
-      "todaysReturns": "Retours vandaag",
-      "pendingRequests": "Openstaande aanvragen",
-      "totalRevenue": "Omzet",
-      "monthlyRevenue": "Maandelijkse omzet",
-      "activeReservations": "Actieve reserveringen",
-      "occupancyRate": "Bezettingsgraad",
-      "noDataYet": "Nog geen gegevens",
       "viewAll": "Alles bekijken",
-      "markAsPickedUp": "Markeer als opgehaald",
-      "markAsReturned": "Markeer als geretourneerd",
-      "noDeparturesTitle": "Geen vertrekken vandaag",
-      "noDeparturesDescription": "Geen verhuur om vandaag te overhandigen",
-      "noReturnsTitle": "Geen retours vandaag",
-      "noReturnsDescription": "Geen materiaal om vandaag op te halen",
-      "noPendingRequests": "Geen openstaande aanvragen",
-      "revenueThisMonth": "Deze maand",
-      "revenueVsPrevious": "vs vorige maand",
-      "alerts": "Meldingen",
-      "toDeliver": "te overhandigen",
-      "toRecover": "op te halen",
-      "toProcess": "Te verwerken",
-      "departuresDescription": "Reserveringen om vandaag te overhandigen",
-      "returnsDescription": "Reserveringen om vandaag op te halen",
-      "pendingDescription": "Reserveringen die uw goedkeuring nodig hebben",
       "products": "Producten",
-      "quickActions": "Snelle acties",
-      "quickActionsDescription": "Beheer uw winkel efficiënt",
-      "addProductDescription": "Maak een nieuw product aan voor verhuur",
-      "yourStore": "Uw winkel",
-      "yourStoreDescription": "Deel uw link met uw klanten",
-      "visit": "Bezoeken"
+
+      "header": {
+        "greeting": {
+          "morning": "Goedemorgen, {name}!",
+          "afternoon": "Goedemiddag, {name}!",
+          "evening": "Goedenavond, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Welkom bij Louez. Laten we uw winkel instellen.",
+          "building": "{count, plural, one {# product aangemaakt} other {# producten aangemaakt}}. Deel uw winkel!",
+          "pending": "{count, plural, one {# openstaande aanvraag} other {# openstaande aanvragen}}",
+          "operations": "{count, plural, one {# operatie vandaag} other {# operaties vandaag}}",
+          "calm": "Alles rustig vandaag."
+        },
+        "cta": {
+          "addFirstProduct": "Mijn eerste product toevoegen",
+          "handleRequests": "Aanvragen afhandelen ({count})",
+          "addReservation": "Nieuwe reservering"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 openstaande aanvraag",
+        "multiplePending": "{count} openstaande aanvragen",
+        "description": "Uw klanten wachten op uw reactie",
+        "action": "Afhandelen"
+      },
+
+      "setup": {
+        "title": "Stel uw winkel in",
+        "description": "Enkele stappen om te beginnen",
+        "steps": {
+          "createAccount": "Account aanmaken",
+          "configureStore": "Winkel configureren",
+          "addFirstProduct": "Eerste product toevoegen",
+          "firstReservation": "Eerste reservering ontvangen",
+          "firstCompleted": "Eerste verhuur voltooien"
+        },
+        "start": "Starten",
+        "addProductHint": "Voeg uw eerste product toe zodat klanten kunnen boeken.",
+        "addFirstProduct": "Product toevoegen",
+        "shareHint": "Deel uw winkel om uw eerste reserveringen te ontvangen.",
+        "viewStore": "Mijn winkel bekijken",
+        "createReservation": "Reservering aanmaken"
+      },
+
+      "stats": {
+        "products": "Producten",
+        "customers": "Klanten",
+        "drafts": "{count, plural, one {# concept} other {# concepten}}",
+        "todaysDepartures": "Vertrekken vandaag",
+        "todaysReturns": "Retours vandaag",
+        "pendingRequests": "Openstaande aanvragen",
+        "monthlyRevenue": "Maandelijkse omzet",
+        "totalReservations": "Reserveringen",
+        "toDeliver": "te overhandigen",
+        "toRecover": "op te halen",
+        "toProcess": "Te verwerken",
+        "vsLastMonth": "vs vorige maand",
+        "completed": "{count, plural, one {# voltooid} other {# voltooid}}"
+      },
+
+      "activity": {
+        "departures": "Vertrekken vandaag",
+        "departuresDescription": "Reserveringen om vandaag te overhandigen",
+        "returns": "Retours vandaag",
+        "returnsDescription": "Reserveringen om vandaag op te halen",
+        "noDepartures": "Geen overdrachten gepland vandaag",
+        "noReturns": "Geen retours gepland vandaag",
+        "noActivityTitle": "Rustige dag",
+        "noActivityDescription": "Geen operaties gepland vandaag"
+      },
+
+      "pending": {
+        "title": "Openstaande aanvragen",
+        "description": "Reserveringen die uw goedkeuring nodig hebben",
+        "empty": "Geen openstaande aanvragen"
+      },
+
+      "quickActions": {
+        "title": "Snelle acties",
+        "description": "Beheer uw winkel efficiënt",
+        "addProduct": {
+          "title": "Product toevoegen",
+          "description": "Nieuw product voor verhuur aanmaken"
+        },
+        "addReservation": {
+          "title": "Reservering aanmaken",
+          "description": "Handmatig een reservering toevoegen"
+        }
+      },
+
+      "storefront": {
+        "title": "Uw winkel",
+        "description": "Deel uw link met uw klanten",
+        "visit": "Bezoeken",
+        "copy": "Kopiëren",
+        "copied": "Gekopieerd!",
+        "share": "Delen",
+        "shareTitle": "Mijn verhuurwinkel"
+      }
     },
     "products": {
       "title": "Producten",

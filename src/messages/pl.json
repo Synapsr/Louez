@@ -384,41 +384,109 @@
       "store": "Mój sklep"
     },
     "home": {
-      "greeting": "Cześć, {name}!",
-      "subtitle": "Oto przegląd Twojej dzisiejszej aktywności.",
-      "welcome": "Witamy",
-      "todaysDepartures": "Dzisiejsze odbiory",
-      "todaysReturns": "Dzisiejsze zwroty",
-      "pendingRequests": "Oczekujące żądania",
-      "totalRevenue": "Przychód",
-      "monthlyRevenue": "Przychód miesięczny",
-      "activeReservations": "Aktywne rezerwacje",
-      "occupancyRate": "Wskaźnik obłożenia",
-      "noDataYet": "Brak danych",
       "viewAll": "Zobacz wszystko",
-      "markAsPickedUp": "Oznacz jako odebrany",
-      "markAsReturned": "Oznacz jako zwrócony",
-      "noDeparturesTitle": "Brak dzisiejszych odbiorów",
-      "noDeparturesDescription": "Brak wynajmów do wydania dzisiaj",
-      "noReturnsTitle": "Brak dzisiejszych zwrotów",
-      "noReturnsDescription": "Brak sprzętu do odebrania dzisiaj",
-      "noPendingRequests": "Brak oczekujących żądań",
-      "revenueThisMonth": "Ten miesiąc",
-      "revenueVsPrevious": "vs poprzedni miesiąc",
-      "alerts": "Alerty",
-      "toDeliver": "do wydania",
-      "toRecover": "do odebrania",
-      "toProcess": "Do przetworzenia",
-      "departuresDescription": "Rezerwacje do wydania dzisiaj",
-      "returnsDescription": "Rezerwacje do odebrania dzisiaj",
-      "pendingDescription": "Rezerwacje wymagające Twojej akceptacji",
       "products": "Produkty",
-      "quickActions": "Szybkie akcje",
-      "quickActionsDescription": "Zarządzaj swoim sklepem efektywnie",
-      "addProductDescription": "Utwórz nowy produkt do wynajmu",
-      "yourStore": "Twój sklep",
-      "yourStoreDescription": "Udostępnij link swoim klientom",
-      "visit": "Odwiedź"
+
+      "header": {
+        "greeting": {
+          "morning": "Dzień dobry, {name}!",
+          "afternoon": "Dzień dobry, {name}!",
+          "evening": "Dobry wieczór, {name}!"
+        },
+        "subtitle": {
+          "virgin": "Witamy w Louez. Skonfigurujmy Twój sklep.",
+          "building": "{count, plural, one {# produkt utworzony} few {# produkty utworzone} other {# produktów utworzonych}}. Udostępnij swój sklep!",
+          "pending": "{count, plural, one {# oczekujące żądanie} few {# oczekujące żądania} other {# oczekujących żądań}}",
+          "operations": "{count, plural, one {# operacja dziś} few {# operacje dziś} other {# operacji dziś}}",
+          "calm": "Dziś wszystko spokojnie."
+        },
+        "cta": {
+          "addFirstProduct": "Dodaj mój pierwszy produkt",
+          "handleRequests": "Obsłuż żądania ({count})",
+          "addReservation": "Nowa rezerwacja"
+        }
+      },
+
+      "alert": {
+        "singlePending": "1 oczekujące żądanie",
+        "multiplePending": "{count} oczekujących żądań",
+        "description": "Twoi klienci czekają na odpowiedź",
+        "action": "Obsłuż"
+      },
+
+      "setup": {
+        "title": "Skonfiguruj swój sklep",
+        "description": "Kilka kroków na początek",
+        "steps": {
+          "createAccount": "Utwórz konto",
+          "configureStore": "Skonfiguruj sklep",
+          "addFirstProduct": "Dodaj pierwszy produkt",
+          "firstReservation": "Otrzymaj pierwszą rezerwację",
+          "firstCompleted": "Zakończ pierwszy wynajem"
+        },
+        "start": "Rozpocznij",
+        "addProductHint": "Dodaj swój pierwszy produkt, aby klienci mogli rezerwować.",
+        "addFirstProduct": "Dodaj produkt",
+        "shareHint": "Udostępnij swój sklep, aby otrzymać pierwsze rezerwacje.",
+        "viewStore": "Zobacz mój sklep",
+        "createReservation": "Utwórz rezerwację"
+      },
+
+      "stats": {
+        "products": "Produkty",
+        "customers": "Klienci",
+        "drafts": "{count, plural, one {# szkic} few {# szkice} other {# szkiców}}",
+        "todaysDepartures": "Dzisiejsze odbiory",
+        "todaysReturns": "Dzisiejsze zwroty",
+        "pendingRequests": "Oczekujące żądania",
+        "monthlyRevenue": "Przychód miesięczny",
+        "totalReservations": "Rezerwacje",
+        "toDeliver": "do wydania",
+        "toRecover": "do odebrania",
+        "toProcess": "Do przetworzenia",
+        "vsLastMonth": "vs poprzedni miesiąc",
+        "completed": "{count, plural, one {# zakończona} few {# zakończone} other {# zakończonych}}"
+      },
+
+      "activity": {
+        "departures": "Dzisiejsze odbiory",
+        "departuresDescription": "Rezerwacje do wydania dzisiaj",
+        "returns": "Dzisiejsze zwroty",
+        "returnsDescription": "Rezerwacje do odebrania dzisiaj",
+        "noDepartures": "Brak wydań zaplanowanych na dziś",
+        "noReturns": "Brak zwrotów zaplanowanych na dziś",
+        "noActivityTitle": "Spokojny dzień",
+        "noActivityDescription": "Brak operacji zaplanowanych na dziś"
+      },
+
+      "pending": {
+        "title": "Oczekujące żądania",
+        "description": "Rezerwacje wymagające Twojej akceptacji",
+        "empty": "Brak oczekujących żądań"
+      },
+
+      "quickActions": {
+        "title": "Szybkie akcje",
+        "description": "Zarządzaj swoim sklepem efektywnie",
+        "addProduct": {
+          "title": "Dodaj produkt",
+          "description": "Utwórz nowy produkt do wynajmu"
+        },
+        "addReservation": {
+          "title": "Utwórz rezerwację",
+          "description": "Dodaj rezerwację ręcznie"
+        }
+      },
+
+      "storefront": {
+        "title": "Twój sklep",
+        "description": "Udostępnij link swoim klientom",
+        "visit": "Odwiedź",
+        "copy": "Kopiuj",
+        "copied": "Skopiowano!",
+        "share": "Udostępnij",
+        "shareTitle": "Mój sklep z wynajmem"
+      }
     },
     "products": {
       "title": "Produkty",
