@@ -9,7 +9,6 @@ import {
   ArrowDownRight,
   CheckCircle,
   ArrowRight,
-  User,
   Package,
   Clock,
 } from 'lucide-react'
@@ -59,25 +58,30 @@ function ActivityListItem({
 
   const remainingCount = reservation.items.length - 2
 
+  // Get customer initials
+  const initials = `${reservation.customer.firstName.charAt(0)}${reservation.customer.lastName.charAt(0)}`.toUpperCase()
+
   return (
     <Link
       href={`/dashboard/reservations/${reservation.id}`}
       className="list-item-hover group border-b border-transparent pr-12 last:border-b-0 hover:border-border/50"
     >
-      {/* Reservation Number Badge */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-        <span className="text-xs font-semibold text-primary">
-          #{reservation.number}
+      {/* Customer Avatar with Initials */}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 ring-2 ring-primary/5">
+        <span className="text-sm font-semibold text-primary">
+          {initials}
         </span>
       </div>
 
       {/* Main Content */}
-      <div className="min-w-0 flex-1 space-y-1">
-        {/* Customer Name */}
+      <div className="min-w-0 flex-1 space-y-0.5">
+        {/* Customer Name & Reservation Number */}
         <div className="flex items-center gap-2">
-          <User className="h-3.5 w-3.5 text-muted-foreground/70" />
           <span className="font-medium">
             {reservation.customer.firstName} {reservation.customer.lastName}
+          </span>
+          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            #{reservation.number}
           </span>
         </div>
 

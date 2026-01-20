@@ -359,37 +359,12 @@
 }
 
 /* =============================================================================
-   Quick Actions - Hover Effects
+   Quick Actions - Hover Effects (removed card-level hover)
    ============================================================================= */
-
-.quick-action-card {
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.quick-action-card:hover {
-  transform: translateX(4px);
-}
 
 .quick-action-primary {
   position: relative;
   overflow: hidden;
-}
-
-.quick-action-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    oklch(0.55 0.22 264 / 0.05) 0%,
-    oklch(0.6 0.2 280 / 0.08) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.quick-action-primary:hover::before {
-  opacity: 1;
 }
 
 /* =============================================================================
@@ -397,10 +372,13 @@
    ============================================================================= */
 
 .storefront-header {
+  margin: -1.5rem -1.5rem 0 -1.5rem;
+  padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+  border-radius: 0.75rem 0.75rem 0 0;
   background: linear-gradient(
     135deg,
-    oklch(0.97 0.01 264 / 0.5) 0%,
-    oklch(0.98 0.005 280 / 0.3) 100%
+    oklch(0.97 0.02 230 / 0.6) 0%,
+    oklch(0.98 0.01 240 / 0.4) 100%
   );
   border-bottom: 1px solid oklch(0 0 0 / 0.04);
 }
@@ -408,40 +386,18 @@
 .dark .storefront-header {
   background: linear-gradient(
     135deg,
-    oklch(0.25 0.02 264 / 0.3) 0%,
-    oklch(0.22 0.015 280 / 0.2) 100%
+    oklch(0.25 0.03 230 / 0.4) 0%,
+    oklch(0.22 0.02 240 / 0.3) 100%
   );
   border-bottom: 1px solid oklch(1 1 1 / 0.04);
 }
 
 /* =============================================================================
-   Quick Actions - Card Enhancements
+   Quick Actions - Card Enhancements (no hover bar)
    ============================================================================= */
 
 .quick-actions-card {
   position: relative;
-  overflow: hidden;
-}
-
-.quick-actions-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(
-    90deg,
-    oklch(0.55 0.22 264) 0%,
-    oklch(0.6 0.2 280) 50%,
-    oklch(0.55 0.18 300) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.quick-actions-card:hover::before {
-  opacity: 1;
 }
 
 /* =============================================================================
@@ -507,17 +463,17 @@
   font-size: 0.875rem;
   font-weight: 500;
   border-radius: 0.625rem;
-  border: 1px solid oklch(0 0 0 / 0.08);
-  background: oklch(1 0 0);
-  color: oklch(0.3 0 0);
+  border: 1px solid transparent;
+  background: oklch(0.96 0 0);
+  color: oklch(0.35 0 0);
   transition: all 0.15s ease;
   cursor: pointer;
 }
 
 .action-btn:hover {
-  border-color: oklch(0.47 0.23 264 / 0.3);
-  background: oklch(0.47 0.23 264 / 0.05);
-  color: oklch(0.47 0.23 264);
+  border-color: oklch(0.55 0.2 235 / 0.3);
+  background: oklch(0.55 0.2 235 / 0.08);
+  color: oklch(0.45 0.2 235);
 }
 
 .action-btn:active {
@@ -525,38 +481,38 @@
 }
 
 .dark .action-btn {
-  border-color: oklch(1 1 1 / 0.1);
-  background: oklch(0.2 0 0);
-  color: oklch(0.9 0 0);
+  border-color: transparent;
+  background: oklch(0.25 0 0);
+  color: oklch(0.85 0 0);
 }
 
 .dark .action-btn:hover {
-  border-color: oklch(0.55 0.22 264 / 0.4);
-  background: oklch(0.55 0.22 264 / 0.1);
-  color: oklch(0.7 0.15 264);
+  border-color: oklch(0.6 0.18 235 / 0.4);
+  background: oklch(0.6 0.18 235 / 0.15);
+  color: oklch(0.75 0.12 235);
 }
 
 /* Action button variants */
 .action-btn--primary {
-  border-color: oklch(0.47 0.23 264 / 0.2);
-  background: oklch(0.47 0.23 264 / 0.08);
-  color: oklch(0.47 0.23 264);
+  border-color: oklch(0.55 0.2 235 / 0.25);
+  background: oklch(0.55 0.2 235 / 0.1);
+  color: oklch(0.45 0.2 235);
 }
 
 .action-btn--primary:hover {
-  border-color: oklch(0.47 0.23 264 / 0.4);
-  background: oklch(0.47 0.23 264 / 0.15);
+  border-color: oklch(0.55 0.2 235 / 0.4);
+  background: oklch(0.55 0.2 235 / 0.18);
 }
 
 .dark .action-btn--primary {
-  border-color: oklch(0.55 0.22 264 / 0.3);
-  background: oklch(0.55 0.22 264 / 0.1);
-  color: oklch(0.7 0.15 264);
+  border-color: oklch(0.6 0.18 235 / 0.35);
+  background: oklch(0.6 0.18 235 / 0.15);
+  color: oklch(0.75 0.12 235);
 }
 
 .dark .action-btn--primary:hover {
-  border-color: oklch(0.55 0.22 264 / 0.5);
-  background: oklch(0.55 0.22 264 / 0.2);
+  border-color: oklch(0.6 0.18 235 / 0.5);
+  background: oklch(0.6 0.18 235 / 0.25);
 }
 
 /* Icon-only action button */

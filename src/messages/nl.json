@@ -505,7 +505,8 @@
         "smsMessage": "Ontdek onze verhuurwinkel: {url}",
         "showQR": "QR-code tonen",
         "hideQR": "QR-code verbergen",
-        "qrDescription": "Scan deze code om de winkel te bezoeken"
+        "qrDescription": "Scan deze code om de winkel te bezoeken",
+        "downloadQR": "Downloaden"
       }
     },
     "products": {

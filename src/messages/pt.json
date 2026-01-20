@@ -506,7 +506,8 @@
         "smsMessage": "Descubra nossa loja de aluguel: {url}",
         "showQR": "Mostrar código QR",
         "hideQR": "Ocultar código QR",
-        "qrDescription": "Escaneie este código para acessar a loja"
+        "qrDescription": "Escaneie este código para acessar a loja",
+        "downloadQR": "Baixar"
       }
     },
     "products": {

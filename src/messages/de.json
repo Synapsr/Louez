@@ -506,7 +506,8 @@
         "smsMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
         "showQR": "QR-Code anzeigen",
         "hideQR": "QR-Code ausblenden",
-        "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen"
+        "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen",
+        "downloadQR": "Herunterladen"
       }
     },
     "products": {
