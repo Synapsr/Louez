@@ -1,17 +1,21 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { Check, Package, Calendar, Star, ArrowRight } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+  Check,
+  Package,
+  Calendar,
+  Star,
+  ArrowRight,
+  ChevronUp,
+  ChevronDown,
+  Sparkles,
+  X,
+  Rocket,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Types defined inline to avoid server-only module import
 interface StoreMetrics {
@@ -31,36 +35,103 @@ interface ChecklistItem {
   icon: React.ElementType
   completed: boolean
   href?: string
+  action?: string
+}
+
+// Circular progress component
+function CircularProgress({
+  progress,
+  size = 48,
+  strokeWidth = 4,
+}: {
+  progress: number
+  size?: number
+  strokeWidth?: number
+}) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = radius * 2 * Math.PI
+  const offset = circumference - (progress / 100) * circumference
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      {/* Background circle */}
+      <svg className="absolute inset-0 -rotate-90" width={size} height={size}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          className="text-muted/50"
+        />
+        {/* Progress circle */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          className="text-primary transition-all duration-500"
+        />
+      </svg>
+      {/* Center content */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-xs font-bold text-primary">{progress}%</span>
+      </div>
+    </div>
+  )
 }
 
 export function SetupChecklist({
   metrics,
   storeSlug,
-  className,
 }: SetupChecklistProps) {
   const t = useTranslations('dashboard.home')
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
+
+  // Check if dismissed in this session
+  useEffect(() => {
+    const dismissed = sessionStorage.getItem('setup-checklist-dismissed')
+    if (dismissed === 'true') {
+      setIsDismissed(true)
+    }
+  }, [])
+
+  const handleDismiss = () => {
+    setIsDismissed(true)
+    sessionStorage.setItem('setup-checklist-dismissed', 'true')
+  }
 
   const items: ChecklistItem[] = [
     {
       key: 'createAccount',
       icon: Check,
-      completed: true, // Always done if viewing dashboard
+      completed: true,
     },
     {
       key: 'configureStore',
       icon: Check,
-      completed: true, // Always done after onboarding
+      completed: true,
     },
     {
       key: 'addFirstProduct',
       icon: Package,
       completed: metrics.activeProductCount > 0,
       href: '/dashboard/products/new',
+      action: 'setup.addFirstProduct',
     },
     {
       key: 'firstReservation',
       icon: Calendar,
       completed: metrics.totalReservations > 0,
+      href: '/dashboard/reservations/new',
+      action: 'setup.createReservation',
     },
     {
       key: 'firstCompleted',
@@ -76,120 +147,119 @@ export function SetupChecklist({
   // Find the next uncompleted step
   const nextStep = items.find((item) => !item.completed)
 
-  if (allCompleted) {
+  // Don't render if all completed or dismissed
+  if (allCompleted || isDismissed) {
     return null
   }
 
   return (
-    <Card className={cn('overflow-hidden', className)}>
-      <CardHeader className="border-b bg-muted/30">
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-lg">{t('setup.title')}</CardTitle>
-            <CardDescription>{t('setup.description')}</CardDescription>
-          </div>
-          <div className="text-right">
-            <span className="text-2xl font-bold text-primary">{progress}%</span>
-          </div>
-        </div>
-        {/* Progress bar */}
-        <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className="progress-gradient h-full rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <ul className="divide-y">
-          {items.map((item) => (
-            <li
-              key={item.key}
-              className={cn(
-                'flex items-center gap-3 px-6 py-4 transition-colors',
-                item.completed
-                  ? 'bg-muted/20'
-                  : 'bg-background hover:bg-muted/10'
-              )}
-            >
-              <div
-                className={cn(
-                  'flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
-                  item.completed
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground'
-                )}
-              >
-                {item.completed ? (
-                  <Check className="h-4 w-4" />
-                ) : (
-                  <item.icon className="h-4 w-4" />
-                )}
+    <div className="setup-widget-container">
+      <div
+        className={cn(
+          'setup-widget',
+          isExpanded && 'setup-widget--expanded'
+        )}
+      >
+        {/* Header - Always visible */}
+        <div className="setup-widget-header">
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex flex-1 items-center gap-3"
+          >
+            <CircularProgress progress={progress} size={44} strokeWidth={3} />
+            <div className="min-w-0 flex-1 text-left">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold">
+                  {t('setup.title')}
+                </span>
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
               </div>
-              <span
-                className={cn(
-                  'flex-1 text-sm',
-                  item.completed
-                    ? 'text-muted-foreground line-through'
-                    : 'font-medium'
-                )}
-              >
-                {t(`setup.steps.${item.key}`)}
-              </span>
-              {!item.completed && item.href && (
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href={item.href}>
-                    {t('setup.start')}
-                    <ArrowRight className="ml-1 h-3 w-3" />
-                  </Link>
-                </Button>
+              <p className="text-xs text-muted-foreground">
+                {completedCount}/{items.length} {t('setup.stepsCompleted')}
+              </p>
+            </div>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-muted/80">
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
               )}
-            </li>
-          ))}
-        </ul>
+            </div>
+          </button>
+          <button
+            onClick={handleDismiss}
+            className="ml-1 flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+            title={t('setup.dismissForNow')}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
 
-        {/* CTA section */}
-        {nextStep && (
-          <div className="border-t bg-muted/20 px-6 py-4">
-            {metrics.activeProductCount === 0 ? (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t('setup.addProductHint')}
-                </p>
-                <Button asChild>
-                  <Link href="/dashboard/products/new">
-                    <Package className="mr-2 h-4 w-4" />
-                    {t('setup.addFirstProduct')}
-                  </Link>
-                </Button>
-              </div>
-            ) : metrics.totalReservations === 0 ? (
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t('setup.shareHint')}
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" asChild>
-                    <a
-                      href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {t('setup.viewStore')}
-                    </a>
-                  </Button>
-                  <Button asChild>
-                    <Link href="/dashboard/reservations/new">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {t('setup.createReservation')}
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+        {/* Expanded content */}
+        {isExpanded && (
+          <div className="setup-widget-content">
+            {/* Checklist items */}
+            <ul className="space-y-1">
+              {items.map((item, index) => (
+                <li
+                  key={item.key}
+                  className={cn(
+                    'setup-widget-item',
+                    item.completed && 'setup-widget-item--completed',
+                    !item.completed && nextStep?.key === item.key && 'setup-widget-item--current'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'setup-widget-item-icon',
+                      item.completed && 'setup-widget-item-icon--completed'
+                    )}
+                  >
+                    {item.completed ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <span className="text-[10px] font-bold">{index + 1}</span>
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      'flex-1 text-sm',
+                      item.completed && 'text-muted-foreground line-through'
+                    )}
+                  >
+                    {t(`setup.steps.${item.key}`)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Next step CTA */}
+            {nextStep && nextStep.href && (
+              <Link
+                href={nextStep.href}
+                className="setup-widget-cta"
+              >
+                <Rocket className="h-4 w-4" />
+                <span>{t(nextStep.action || 'setup.start')}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            )}
           </div>
         )}
-      </CardContent>
-    </Card>
+
+        {/* Collapsed: Quick CTA */}
+        {!isExpanded && nextStep && nextStep.href && (
+          <Link
+            href={nextStep.href}
+            className="setup-widget-quick-cta"
+          >
+            <span className="truncate text-xs">
+              {t(`setup.steps.${nextStep.key}`)}
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+          </Link>
+        )}
+      </div>
+    </div>
   )
 }

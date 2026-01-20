@@ -415,8 +415,10 @@
       },
 
       "setup": {
-        "title": "Configura il tuo negozio",
+        "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
+        "stepsCompleted": "passaggi completati",
+        "dismissForNow": "Nascondi per ora",
         "steps": {
           "createAccount": "Crea il tuo account",
           "configureStore": "Configura il tuo negozio",

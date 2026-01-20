@@ -416,8 +416,10 @@
       },
 
       "setup": {
-        "title": "Set up your store",
+        "title": "Getting started",
         "description": "A few steps to get started",
+        "stepsCompleted": "steps completed",
+        "dismissForNow": "Hide for now",
         "steps": {
           "createAccount": "Create your account",
           "configureStore": "Configure your store",

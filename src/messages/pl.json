@@ -415,8 +415,10 @@
       },
 
       "setup": {
-        "title": "Skonfiguruj swój sklep",
+        "title": "Pierwsze kroki",
         "description": "Kilka kroków na początek",
+        "stepsCompleted": "kroków ukończonych",
+        "dismissForNow": "Ukryj na razie",
         "steps": {
           "createAccount": "Utwórz konto",
           "configureStore": "Skonfiguruj sklep",

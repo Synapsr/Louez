@@ -414,8 +414,10 @@
       },
 
       "setup": {
-        "title": "Stel uw winkel in",
+        "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
+        "stepsCompleted": "stappen voltooid",
+        "dismissForNow": "Voorlopig verbergen",
         "steps": {
           "createAccount": "Account aanmaken",
           "configureStore": "Winkel configureren",
