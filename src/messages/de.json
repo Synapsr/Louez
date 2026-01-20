@@ -488,6 +488,25 @@
         "copied": "Kopiert!",
         "share": "Teilen",
         "shareTitle": "Mein Vermietungsshop"
+      },
+
+      "share": {
+        "title": "Shop teilen",
+        "description": "Senden Sie Ihren Shop-Link an Ihre Kunden",
+        "copyLink": "Link kopieren",
+        "copyLinkDescription": "URL in Zwischenablage kopieren",
+        "copied": "Kopiert!",
+        "whatsappDescription": "Über WhatsApp senden",
+        "whatsappMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
+        "email": "E-Mail",
+        "emailDescription": "Per E-Mail senden",
+        "emailSubject": "Entdecken Sie unseren Vermietungsshop",
+        "emailBody": "Hallo,\n\nIch lade Sie ein, unseren Vermietungsshop zu entdecken:\n{url}\n\nBis bald!",
+        "smsDescription": "Per SMS senden",
+        "smsMessage": "Entdecken Sie unseren Vermietungsshop: {url}",
+        "showQR": "QR-Code anzeigen",
+        "hideQR": "QR-Code ausblenden",
+        "qrDescription": "Scannen Sie diesen Code, um auf den Shop zuzugreifen"
       }
     },
     "products": {

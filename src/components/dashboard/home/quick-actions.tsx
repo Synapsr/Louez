@@ -11,10 +11,10 @@ import {
   Globe,
   ExternalLink,
   Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ShareModal } from './share-modal'
 
 // Type defined inline to avoid server-only module import
 type StoreState = 'virgin' | 'building' | 'starting' | 'active' | 'established'
@@ -99,15 +100,15 @@ export function QuickActions({ storeState, className }: QuickActionsProps) {
             key={action.key}
             href={action.href}
             className={cn(
-              'quick-action-card flex items-center gap-3 rounded-xl border p-3.5',
+              'list-item-hover border pr-12',
               action.primary
-                ? 'quick-action-primary border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:border-primary/30'
-                : 'hover:border-muted-foreground/20 hover:bg-muted/50'
+                ? 'border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:border-primary/30 hover:from-primary/8 hover:to-primary/15'
+                : 'border-transparent hover:border-muted-foreground/10 hover:bg-muted/50'
             )}
           >
             <div
               className={cn(
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-transform group-hover:scale-105',
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
                 action.primary
                   ? 'bg-primary/15'
                   : 'bg-muted'
@@ -128,6 +129,14 @@ export function QuickActions({ storeState, className }: QuickActionsProps) {
                 {t(`quickActions.${action.key}.description`)}
               </p>
             </div>
+            <div className={cn(
+              'reveal-action flex h-8 w-8 items-center justify-center rounded-lg',
+              action.primary
+                ? 'bg-primary/10 text-primary'
+                : 'bg-muted text-muted-foreground'
+            )}>
+              <ArrowRight className="h-4 w-4" />
+            </div>
           </Link>
         ))}
       </CardContent>
@@ -143,6 +152,7 @@ interface StorefrontWidgetProps {
 export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps) {
   const t = useTranslations('dashboard.home')
   const [copied, setCopied] = useState(false)
+  const [shareModalOpen, setShareModalOpen] = useState(false)
 
   const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
   const storeUrl = `https://${storeSlug}.${domain}`
@@ -157,106 +167,88 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
     }
   }
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: t('storefront.shareTitle'),
-          url: storeUrl,
-        })
-      } catch (err) {
-        // User cancelled or error
-        console.error('Share failed:', err)
-      }
-    } else {
-      handleCopy()
-    }
-  }
-
   return (
-    <Card className={cn('stat-card overflow-hidden', className)}>
-      {/* Header with gradient background */}
-      <CardHeader className="storefront-header pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{t('storefront.title')}</CardTitle>
-            <CardDescription>{t('storefront.description')}</CardDescription>
+    <>
+      <Card className={cn('stat-card overflow-hidden', className)}>
+        {/* Header with gradient background */}
+        <CardHeader className="storefront-header pb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-base">{t('storefront.title')}</CardTitle>
+              <CardDescription>{t('storefront.description')}</CardDescription>
+            </div>
+            {/* Online status indicator */}
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 dark:bg-emerald-900/30">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              </span>
+              <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                {t('storefront.online')}
+              </span>
+            </div>
           </div>
-          {/* Online status indicator */}
-          <div className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 dark:bg-emerald-900/30">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">
-              {t('storefront.online')}
-            </span>
-          </div>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* URL Display with icon */}
-        <div className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-muted/40 via-muted/20 to-transparent p-4 transition-all hover:border-primary/20 hover:shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <Globe className="h-5 w-5 text-primary" />
+        <CardContent className="space-y-4">
+          {/* URL Display with icon */}
+          <div className="group relative overflow-hidden rounded-xl border bg-gradient-to-br from-muted/40 via-muted/20 to-transparent p-4 transition-all hover:border-primary/20 hover:shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium">
+                  {storeSlug}.{domain}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {t('storefront.publicUrl')}
+                </p>
+              </div>
+              <a
+                href={storeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+              >
+                <ExternalLink className="h-4 w-4" />
+              </a>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">
-                {storeSlug}.{domain}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {t('storefront.publicUrl')}
-              </p>
-            </div>
-            <a
-              href={storeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
+          </div>
+
+          {/* Action buttons - Cleaner design */}
+          <div className="flex gap-2">
+            <button
+              className={cn(
+                'action-btn flex-1',
+                copied && 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
+              )}
+              onClick={handleCopy}
             >
-              <ExternalLink className="h-4 w-4" />
-            </a>
+              {copied ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Copy className="h-4 w-4" />
+              )}
+              {copied ? t('storefront.copied') : t('storefront.copy')}
+            </button>
+            <button
+              className="action-btn action-btn--primary flex-1"
+              onClick={() => setShareModalOpen(true)}
+            >
+              <Share2 className="h-4 w-4" />
+              {t('storefront.share')}
+            </button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'flex-1 transition-all',
-              copied
-                ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400'
-                : 'hover:border-primary/30 hover:bg-primary/5'
-            )}
-            onClick={handleCopy}
-          >
-            {copied ? (
-              <>
-                <Check className="mr-2 h-4 w-4" />
-                {t('storefront.copied')}
-              </>
-            ) : (
-              <>
-                <Copy className="mr-2 h-4 w-4" />
-                {t('storefront.copy')}
-              </>
-            )}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1 transition-all hover:border-primary/30 hover:bg-primary/5"
-            onClick={handleShare}
-          >
-            <Share2 className="mr-2 h-4 w-4" />
-            {t('storefront.share')}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Share Modal */}
+      <ShareModal
+        open={shareModalOpen}
+        onOpenChange={setShareModalOpen}
+        storeUrl={storeUrl}
+      />
+    </>
   )
 }

@@ -9,6 +9,9 @@ import {
   ArrowDownRight,
   CheckCircle,
   ArrowRight,
+  User,
+  Package,
+  Clock,
 } from 'lucide-react'
 import { cn, formatCurrency } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -19,14 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 interface ReservationWithDetails {
   id: string
@@ -46,11 +41,94 @@ interface ReservationWithDetails {
   }>
 }
 
+interface ActivityListItemProps {
+  reservation: ReservationWithDetails
+  showPeriod?: boolean
+  showAmount?: boolean
+}
+
+function ActivityListItem({
+  reservation,
+  showPeriod = false,
+  showAmount = false,
+}: ActivityListItemProps) {
+  const productNames = reservation.items
+    .map((item) => item.product?.name)
+    .filter(Boolean)
+    .slice(0, 2)
+
+  const remainingCount = reservation.items.length - 2
+
+  return (
+    <Link
+      href={`/dashboard/reservations/${reservation.id}`}
+      className="list-item-hover group border-b border-transparent pr-12 last:border-b-0 hover:border-border/50"
+    >
+      {/* Reservation Number Badge */}
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+        <span className="text-xs font-semibold text-primary">
+          #{reservation.number}
+        </span>
+      </div>
+
+      {/* Main Content */}
+      <div className="min-w-0 flex-1 space-y-1">
+        {/* Customer Name */}
+        <div className="flex items-center gap-2">
+          <User className="h-3.5 w-3.5 text-muted-foreground/70" />
+          <span className="font-medium">
+            {reservation.customer.firstName} {reservation.customer.lastName}
+          </span>
+        </div>
+
+        {/* Products or Period/Amount */}
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {showPeriod ? (
+            <>
+              <Clock className="h-3.5 w-3.5" />
+              <span>
+                {format(reservation.startDate, 'dd/MM', { locale: fr })} -{' '}
+                {format(reservation.endDate, 'dd/MM', { locale: fr })}
+              </span>
+              {showAmount && (
+                <>
+                  <span className="text-muted-foreground/40">•</span>
+                  <span className="font-medium text-foreground">
+                    {formatCurrency(parseFloat(reservation.totalAmount))}
+                  </span>
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              <Package className="h-3.5 w-3.5" />
+              <span className="truncate">
+                {productNames.join(', ')}
+                {remainingCount > 0 && (
+                  <span className="text-muted-foreground/60">
+                    {' '}+{remainingCount}
+                  </span>
+                )}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Reveal Action Button */}
+      <div className="reveal-action flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+        <ArrowRight className="h-4 w-4" />
+      </div>
+    </Link>
+  )
+}
+
 interface ActivityCardProps {
   title: string
   description: string
   icon: React.ElementType
   iconColor: string
+  iconBgColor: string
   reservations: ReservationWithDetails[]
   emptyMessage: string
   viewAllHref: string
@@ -64,6 +142,7 @@ function ActivityCard({
   description,
   icon: Icon,
   iconColor,
+  iconBgColor,
   reservations,
   emptyMessage,
   viewAllHref,
@@ -72,26 +151,27 @@ function ActivityCard({
   className,
 }: ActivityCardProps) {
   const t = useTranslations('dashboard.home')
-  const tRes = useTranslations('dashboard.reservations')
 
   return (
-    <Card className={cn('flex flex-col', className)}>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <div className="space-y-1">
-          <CardTitle className="flex items-center gap-2 text-base">
+    <Card className={cn('stat-card flex flex-col', className)}>
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <div className="flex items-center gap-3">
+          <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', iconBgColor)}>
             <Icon className={cn('h-5 w-5', iconColor)} />
-            {title}
-          </CardTitle>
-          <CardDescription className="text-sm">{description}</CardDescription>
+          </div>
+          <div>
+            <CardTitle className="text-base">{title}</CardTitle>
+            <CardDescription className="text-sm">{description}</CardDescription>
+          </div>
         </div>
-        <Button variant="ghost" size="sm" asChild className="shrink-0">
+        <Button variant="ghost" size="sm" asChild className="shrink-0 text-muted-foreground hover:text-foreground">
           <Link href={viewAllHref}>
             {t('viewAll')}
             <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
         </Button>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 pt-0">
         {reservations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="rounded-full bg-muted p-3">
@@ -100,58 +180,16 @@ function ActivityCard({
             <p className="mt-3 text-sm text-muted-foreground">{emptyMessage}</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">{tRes('number')}</TableHead>
-                <TableHead>{tRes('customer')}</TableHead>
-                {showPeriod && <TableHead>{tRes('period')}</TableHead>}
-                {showAmount && (
-                  <TableHead className="text-right">{tRes('total')}</TableHead>
-                )}
-                {!showPeriod && !showAmount && (
-                  <TableHead>{t('products')}</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {reservations.map((reservation) => (
-                <TableRow key={reservation.id}>
-                  <TableCell>
-                    <Link
-                      href={`/dashboard/reservations/${reservation.id}`}
-                      className="font-medium text-primary hover:underline"
-                    >
-                      #{reservation.number}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    {reservation.customer.firstName}{' '}
-                    {reservation.customer.lastName}
-                  </TableCell>
-                  {showPeriod && (
-                    <TableCell className="text-sm text-muted-foreground">
-                      {format(reservation.startDate, 'dd/MM', { locale: fr })} -{' '}
-                      {format(reservation.endDate, 'dd/MM', { locale: fr })}
-                    </TableCell>
-                  )}
-                  {showAmount && (
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(parseFloat(reservation.totalAmount))}
-                    </TableCell>
-                  )}
-                  {!showPeriod && !showAmount && (
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {reservation.items
-                        .map((item) => item.product?.name)
-                        .filter(Boolean)
-                        .join(', ')}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="-mx-1 space-y-0.5">
+            {reservations.map((reservation) => (
+              <ActivityListItem
+                key={reservation.id}
+                reservation={reservation}
+                showPeriod={showPeriod}
+                showAmount={showAmount}
+              />
+            ))}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -174,7 +212,7 @@ export function TodayActivity({
   // If no activity today, show a simpler view
   if (departures.length === 0 && returns.length === 0) {
     return (
-      <Card className={className}>
+      <Card className={cn('stat-card', className)}>
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
           <div className="rounded-full bg-muted p-4">
             <CheckCircle className="h-8 w-8 text-muted-foreground/50" />
@@ -194,7 +232,8 @@ export function TodayActivity({
         title={t('activity.departures')}
         description={t('activity.departuresDescription')}
         icon={ArrowUpRight}
-        iconColor="text-emerald-500"
+        iconColor="text-emerald-600 dark:text-emerald-400"
+        iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
         reservations={departures}
         emptyMessage={t('activity.noDepartures')}
         viewAllHref="/dashboard/reservations?status=confirmed"
@@ -203,7 +242,8 @@ export function TodayActivity({
         title={t('activity.returns')}
         description={t('activity.returnsDescription')}
         icon={ArrowDownRight}
-        iconColor="text-blue-500"
+        iconColor="text-blue-600 dark:text-blue-400"
+        iconBgColor="bg-blue-100 dark:bg-blue-900/30"
         reservations={returns}
         emptyMessage={t('activity.noReturns')}
         viewAllHref="/dashboard/reservations?status=ongoing"
@@ -229,8 +269,9 @@ export function PendingRequests({ pending, className }: PendingRequestsProps) {
     <ActivityCard
       title={t('pending.title')}
       description={t('pending.description')}
-      icon={CheckCircle}
-      iconColor="text-orange-500"
+      icon={Clock}
+      iconColor="text-amber-600 dark:text-amber-400"
+      iconBgColor="bg-amber-100 dark:bg-amber-900/30"
       reservations={pending}
       emptyMessage={t('pending.empty')}
       viewAllHref="/dashboard/reservations?status=pending"

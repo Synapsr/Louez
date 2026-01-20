@@ -489,6 +489,25 @@
         "copied": "Copié !",
         "share": "Partager",
         "shareTitle": "Ma boutique de location"
+      },
+
+      "share": {
+        "title": "Partager votre boutique",
+        "description": "Envoyez le lien de votre boutique à vos clients",
+        "copyLink": "Copier le lien",
+        "copyLinkDescription": "Copier l'URL dans le presse-papier",
+        "copied": "Copié !",
+        "whatsappDescription": "Envoyer par WhatsApp",
+        "whatsappMessage": "Découvrez notre boutique de location : {url}",
+        "email": "Email",
+        "emailDescription": "Envoyer par email",
+        "emailSubject": "Découvrez notre boutique de location",
+        "emailBody": "Bonjour,\n\nJe vous invite à découvrir notre boutique de location :\n{url}\n\nÀ bientôt !",
+        "smsDescription": "Envoyer par SMS",
+        "smsMessage": "Découvrez notre boutique de location : {url}",
+        "showQR": "Afficher le QR code",
+        "hideQR": "Masquer le QR code",
+        "qrDescription": "Scannez ce code pour accéder à la boutique"
       }
     },
     "products": {
