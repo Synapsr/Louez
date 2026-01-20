@@ -115,6 +115,65 @@ async function runMigrations() {
       }
     }
 
+    // Check if pending migrations would fail due to existing tables (partial baseline case)
+    // This handles cases where db:push was used after some migrations were already recorded
+    if (pendingMigrations.length > 0) {
+      const existingTableNames = userTables.map((t) => t.TABLE_NAME.toLowerCase())
+
+      // Check if any pending migration tries to CREATE TABLE for an existing table
+      const migrationsToSkip: typeof pendingMigrations = []
+      for (const migration of pendingMigrations) {
+        // Look for CREATE TABLE statements in the migration SQL
+        // migration.sql is an array of SQL statements
+        const sqlStatements = Array.isArray(migration.sql) ? migration.sql.join('\n') : migration.sql
+        const createTableMatches = sqlStatements.matchAll(/CREATE TABLE [`"]?(\w+)[`"]?/gi)
+        for (const match of createTableMatches) {
+          const tableName = match[1].toLowerCase()
+          if (existingTableNames.includes(tableName)) {
+            migrationsToSkip.push(migration)
+            console.log(`⚠️  Skipping migration (table '${match[1]}' already exists): ${migration.hash.substring(0, 8)}...`)
+            break
+          }
+        }
+      }
+
+      // Mark skipped migrations as applied without running them
+      if (migrationsToSkip.length > 0) {
+        console.log(`📝 Marking ${migrationsToSkip.length} migration(s) as applied (tables already exist)...`)
+
+        // Ensure migrations table exists
+        await connection.query(`
+          CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
+            \`id\` SERIAL PRIMARY KEY,
+            \`hash\` text NOT NULL,
+            \`created_at\` bigint
+          )
+        `)
+
+        const now = Date.now()
+        for (const migration of migrationsToSkip) {
+          await connection.query(
+            `INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES (?, ?)`,
+            [migration.hash, now]
+          )
+        }
+
+        // Recalculate pending migrations
+        const [newApplied] = await connection.query<mysql.RowDataPacket[]>(
+          `SELECT hash FROM \`${MIGRATIONS_TABLE}\``
+        )
+        const newAppliedHashes = newApplied.map((row) => row.hash)
+        const remainingPending = allMigrations.filter((m) => !newAppliedHashes.includes(m.hash))
+
+        if (remainingPending.length === 0) {
+          console.log('✅ Database is up to date.')
+          return
+        }
+
+        console.log(`🚀 Running ${remainingPending.length} remaining migration(s)...`)
+      }
+    }
+
     // Run pending migrations
     if (pendingMigrations.length === 0) {
       console.log('✅ Database is up to date. No pending migrations.')
