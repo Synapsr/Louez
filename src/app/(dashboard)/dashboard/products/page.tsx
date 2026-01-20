@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { db } from '@/lib/db'
 import { products, categories } from '@/lib/db/schema'
-import { eq, desc, and, count, inArray } from 'drizzle-orm'
+import { eq, desc, asc, and, count, inArray } from 'drizzle-orm'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
@@ -25,13 +25,14 @@ async function getProducts(storeId: string, searchParams: { status?: string; cat
   }
 
   // Step 1: Get product IDs with lightweight columns (excludes images to avoid sort buffer overflow)
+  // Order by displayOrder first (for manual sorting), then by createdAt for new products
   const productIds = await db
     .select({
       id: products.id,
     })
     .from(products)
     .where(and(...conditions))
-    .orderBy(desc(products.createdAt))
+    .orderBy(asc(products.displayOrder), desc(products.createdAt))
     .limit(100)
 
   if (productIds.length === 0) {

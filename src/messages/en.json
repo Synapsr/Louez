@@ -551,6 +551,12 @@
       "publish": "Publish",
       "unpublish": "Set to draft",
       "archive": "Archive",
+      "reorder": "Reorder",
+      "orderUpdated": "Product order updated",
+      "orderDialog": {
+        "title": "Reorder products",
+        "description": "Drag and drop products to set their display order on your storefront"
+      },
       "categoryCreated": "Category created",
       "createCategory": "Create a category",
       "newCategoryDescription": "Create a new category to organize your products",

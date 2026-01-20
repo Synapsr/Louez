@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { Plus, FolderOpen, Lock } from 'lucide-react'
+import { Plus, FolderOpen, Lock, ArrowUpDown } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ProductsTable } from './products-table'
 import { ProductsFilters } from './products-filters'
+import { ProductsOrderDialog } from './products-order-dialog'
 import {
   UpgradeModal,
   LimitBanner,
@@ -66,6 +67,7 @@ export function ProductsPageContent({
 }: ProductsPageContentProps) {
   const t = useTranslations('dashboard.products')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showOrderDialog, setShowOrderDialog] = useState(false)
 
   // Determine which products to show vs blur
   const displayLimit = limits.limit
@@ -131,12 +133,24 @@ export function ProductsPageContent({
       )}
 
       {/* Filters */}
-      <ProductsFilters
-        categories={categories}
-        counts={counts}
-        currentStatus={currentStatus}
-        currentCategory={currentCategory}
-      />
+      <div className="flex items-center justify-between gap-4">
+        <ProductsFilters
+          categories={categories}
+          counts={counts}
+          currentStatus={currentStatus}
+          currentCategory={currentCategory}
+        />
+        {products.length > 1 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowOrderDialog(true)}
+          >
+            <ArrowUpDown className="mr-2 h-4 w-4" />
+            {t('reorder')}
+          </Button>
+        )}
+      </div>
 
       {/* Products Table - Visible */}
       <ProductsTable products={visibleProducts} currency={currency} />
@@ -166,6 +180,13 @@ export function ProductsPageContent({
         currentCount={limits.current}
         limit={limits.limit || 5}
         currentPlan={planSlug}
+      />
+
+      {/* Products Order Dialog */}
+      <ProductsOrderDialog
+        open={showOrderDialog}
+        onOpenChange={setShowOrderDialog}
+        products={products}
       />
     </div>
   )

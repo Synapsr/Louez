@@ -117,11 +117,12 @@ export default async function RentalPage({
   }
 
   // Fetch product IDs first (lightweight query)
+  // Order by displayOrder first (for manual sorting), then by createdAt for new products
   const productIds = await db
     .select({ id: products.id })
     .from(products)
     .where(and(...conditions))
-    .orderBy(desc(products.createdAt))
+    .orderBy(asc(products.displayOrder), desc(products.createdAt))
 
   // Fetch full product data
   interface PricingTier {
@@ -159,6 +160,7 @@ export default async function RentalPage({
         videoUrl: products.videoUrl,
         quantity: products.quantity,
         status: products.status,
+        displayOrder: products.displayOrder,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         taxSettings: products.taxSettings,
@@ -306,6 +308,7 @@ export default async function RentalPage({
         videoUrl: row.videoUrl,
         quantity: row.quantity,
         status: row.status,
+        displayOrder: row.displayOrder,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         taxSettings: row.taxSettings,

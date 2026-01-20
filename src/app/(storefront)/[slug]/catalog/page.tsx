@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, products, categories, productPricingTiers } from '@/lib/db/schema'
-import { eq, and, desc, inArray } from 'drizzle-orm'
+import { eq, and, desc, asc, inArray } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { Calendar, ArrowRight } from 'lucide-react'
 
@@ -115,11 +115,12 @@ export default async function CatalogPage({
   }
 
   // Step 1: Get product IDs (lightweight query with ORDER BY)
+  // Order by displayOrder first (for manual sorting), then by createdAt for new products
   const productIds = await db
     .select({ id: products.id })
     .from(products)
     .where(and(...conditions))
-    .orderBy(desc(products.createdAt))
+    .orderBy(asc(products.displayOrder), desc(products.createdAt))
 
   // Step 2: Fetch full product data (no ORDER BY needed)
   interface PricingTier {
@@ -147,6 +148,7 @@ export default async function CatalogPage({
         videoUrl: products.videoUrl,
         quantity: products.quantity,
         status: products.status,
+        displayOrder: products.displayOrder,
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         taxSettings: products.taxSettings,
@@ -200,6 +202,7 @@ export default async function CatalogPage({
         videoUrl: row.videoUrl,
         quantity: row.quantity,
         status: row.status,
+        displayOrder: row.displayOrder,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         taxSettings: row.taxSettings,
