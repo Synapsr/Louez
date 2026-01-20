@@ -30,8 +30,10 @@ export function AdaptiveHeader({
 }: AdaptiveHeaderProps) {
   const t = useTranslations('dashboard.home')
 
-  // Determine greeting based on time of day
-  const greeting = t(`header.greeting.${timeOfDay}`, { name: firstName })
+  // Determine greeting based on time of day and whether we have a name
+  const greeting = firstName
+    ? t(`header.greeting.${timeOfDay}`, { name: firstName })
+    : t(`header.greeting.${timeOfDay}Anonymous`)
 
   // Determine subtitle based on store state and metrics
   const getSubtitle = () => {

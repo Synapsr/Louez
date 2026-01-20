@@ -390,9 +390,12 @@
 
       "header": {
         "greeting": {
-          "morning": "Good morning, {name}!",
-          "afternoon": "Good afternoon, {name}!",
-          "evening": "Good evening, {name}!"
+          "morning": "Good morning, {name}",
+          "morningAnonymous": "Good morning",
+          "afternoon": "Good afternoon, {name}",
+          "afternoonAnonymous": "Good afternoon",
+          "evening": "Good evening, {name}",
+          "eveningAnonymous": "Good evening"
         },
         "subtitle": {
           "virgin": "Welcome to Louez. Let's set up your store.",
