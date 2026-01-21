@@ -33,13 +33,18 @@ import { Label } from '@/components/ui/label'
 import { storeInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
 import { createStore } from './actions'
 
-function slugify(text: string): string {
+/**
+ * Sanitize input to valid slug format in real-time
+ * Only allows: lowercase letters, numbers, hyphens
+ */
+function sanitizeSlug(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9-]/g, '')      // Remove invalid characters
+    .replace(/-+/g, '-')              // Collapse multiple hyphens
+    .replace(/^-/, '')                // Remove leading hyphen
 }
 
 export default function OnboardingStorePage() {
@@ -63,15 +68,11 @@ export default function OnboardingStorePage() {
     },
   })
 
-  const watchName = form.watch('name')
-
-  const handleNameChange = (value: string) => {
-    form.setValue('name', value)
-    const currentSlug = form.getValues('slug')
-    const expectedSlug = slugify(form.getValues('name').slice(0, -1) || '')
-    if (currentSlug === '' || currentSlug === expectedSlug) {
-      form.setValue('slug', slugify(value))
-    }
+  /**
+   * Handle slug input - sanitize in real-time to only allow valid characters
+   */
+  const handleSlugChange = (value: string) => {
+    form.setValue('slug', sanitizeSlug(value), { shouldValidate: true })
   }
 
   async function onSubmit(data: StoreInfoInput) {
@@ -114,7 +115,6 @@ export default function OnboardingStorePage() {
                     <Input
                       placeholder={t('namePlaceholder')}
                       {...field}
-                      onChange={(e) => handleNameChange(e.target.value)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -133,7 +133,11 @@ export default function OnboardingStorePage() {
                       <Input
                         placeholder={t('slugPlaceholder')}
                         className="rounded-r-none"
-                        {...field}
+                        value={field.value}
+                        onChange={(e) => handleSlugChange(e.target.value)}
+                        onBlur={field.onBlur}
+                        name={field.name}
+                        ref={field.ref}
                       />
                       <span className="bg-muted text-muted-foreground flex h-9 items-center rounded-r-md border border-l-0 px-3 text-sm">
                         .{process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}
