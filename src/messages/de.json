@@ -214,7 +214,8 @@
       "createNewStore": "Neuen Shop erstellen",
       "roles": {
         "owner": "Inhaber",
-        "member": "Teammitglied"
+        "member": "Teammitglied",
+        "platform_admin": "Admin"
       }
     },
     "team": {

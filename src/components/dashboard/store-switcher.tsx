@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, Shield } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -68,12 +68,35 @@ interface StoreWithRole {
   name: string
   slug: string
   logoUrl: string | null
-  role: 'owner' | 'member'
+  role: 'owner' | 'member' | 'platform_admin'
 }
 
 interface StoreSwitcherProps {
   stores: StoreWithRole[]
   currentStoreId: string
+}
+
+function RoleBadge({
+  role,
+  t,
+}: {
+  role: StoreWithRole['role']
+  t: ReturnType<typeof useTranslations<'dashboard.storeSwitcher'>>
+}) {
+  if (role === 'platform_admin') {
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500">
+        <Shield className="h-3 w-3" />
+        {t('roles.platform_admin')}
+      </span>
+    )
+  }
+
+  return (
+    <span className="text-xs text-muted-foreground capitalize">
+      {t(`roles.${role}`)}
+    </span>
+  )
 }
 
 export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
@@ -125,9 +148,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
               <span className="truncate font-medium text-sm">
                 {currentStore?.name || t('selectStore')}
               </span>
-              <span className="text-xs text-muted-foreground capitalize">
-                {currentStore && t(`roles.${currentStore.role}`)}
-              </span>
+              {currentStore && <RoleBadge role={currentStore.role} t={t} />}
             </div>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -153,9 +174,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="truncate text-sm">{store.name}</span>
-                    <span className="text-xs text-muted-foreground capitalize">
-                      {t(`roles.${store.role}`)}
-                    </span>
+                    <RoleBadge role={store.role} t={t} />
                   </div>
                   {store.id === currentStoreId && (
                     <Check className="ml-2 h-4 w-4 text-primary shrink-0" />

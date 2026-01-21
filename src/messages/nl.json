@@ -213,7 +213,8 @@
       "createNewStore": "Nieuwe winkel aanmaken",
       "roles": {
         "owner": "Eigenaar",
-        "member": "Teamlid"
+        "member": "Teamlid",
+        "platform_admin": "Admin"
       }
     },
     "team": {
