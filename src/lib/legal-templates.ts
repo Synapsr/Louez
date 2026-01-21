@@ -37,7 +37,7 @@ const frenchTemplates: LegalTemplates = {
 <h2>Directeur de la publication</h2>
 <p>[Nom du directeur de publication]</p>
 <h2>Hébergement</h2>
-<p>Ce site est hébergé par :<br>Vercel Inc.<br>340 S Lemon Ave #4133<br>Walnut, CA 91789<br>USA</p>
+<p>Ce site est hébergé par :<br>LumyCloud<br>Quai de la Douane, LE GRAND LARGE<br>29200 BREST<br>France</p>
 <h2>Propriété intellectuelle</h2>
 <p>L'ensemble du contenu de ce site (textes, images, logos) est protégé par le droit d'auteur. Toute reproduction est interdite sans autorisation préalable.</p>
 <h2>Données personnelles</h2>
@@ -72,7 +72,7 @@ const englishTemplates: LegalTemplates = {
 <h2>Publication Director</h2>
 <p>[Name of Publication Director]</p>
 <h2>Hosting</h2>
-<p>This website is hosted by:<br>Vercel Inc.<br>340 S Lemon Ave #4133<br>Walnut, CA 91789<br>USA</p>
+<p>This website is hosted by:<br>LumyCloud<br>Quai de la Douane, LE GRAND LARGE<br>29200 BREST<br>France</p>
 <h2>Intellectual Property</h2>
 <p>All content on this website (text, images, logos) is protected by copyright. Any reproduction is prohibited without prior authorization.</p>
 <h2>Personal Data</h2>
