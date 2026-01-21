@@ -3,6 +3,7 @@ import {
   mysqlEnum,
   varchar,
   text,
+  longtext,
   timestamp,
   boolean,
   int,
@@ -205,7 +206,7 @@ export const stores = mysqlTable(
     longitude: decimal('longitude', { precision: 10, scale: 7 }),
 
     // Branding
-    logoUrl: text('logo_url'),
+    logoUrl: longtext('logo_url'),
 
     // Configuration
     settings: json('settings').$type<StoreSettings>().default({

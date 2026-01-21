@@ -99,6 +99,13 @@
       "when": 1768924887540,
       "tag": "0013_products_display_order",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "5",
+      "when": 1768986279353,
+      "tag": "0014_logo_url_longtext",
+      "breakpoints": true
     }
   ]
 }

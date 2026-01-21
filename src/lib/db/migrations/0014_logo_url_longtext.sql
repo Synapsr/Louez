@@ -1,0 +1,1 @@
+ALTER TABLE `stores` MODIFY COLUMN `logo_url` longtext;
