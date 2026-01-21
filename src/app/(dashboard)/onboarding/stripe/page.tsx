@@ -58,7 +58,9 @@ export default function OnboardingStripePage() {
         return
       }
       toast.success(t('configComplete'))
-      router.push('/dashboard?welcome=1')
+      // Signal the welcome animation via sessionStorage (more reliable than URL params)
+      sessionStorage.setItem('louez-show-welcome', '1')
+      router.push('/dashboard')
     } catch {
       toast.error(tErrors('generic'))
     } finally {

@@ -3507,5 +3507,10 @@
     "smsLimitReached": "Limite de SMS alcanzado. Actualiza a un plan superior para seguir enviando SMS.",
     "customerNoPhone": "El cliente no tiene numero de telefono",
     "smsSendFailed": "Error al enviar SMS"
+  },
+  "welcome": {
+    "greeting": "Bienvenido a Louez.io",
+    "tagline": "Tu tienda está lista",
+    "skip": "Presione para continuar"
   }
 }
