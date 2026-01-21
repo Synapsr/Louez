@@ -796,3 +796,191 @@
 .dark .setup-widget-quick-cta:hover {
   background: oklch(0.6 0.18 235 / 0.2);
 }
+
+/* =============================================================================
+   Welcome Overlay - Premium Onboarding Animation
+   Inspired by Apple's "Hello" first-boot experience
+   ============================================================================= */
+
+/* Main overlay container */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #000000;
+  cursor: pointer;
+  overflow: hidden;
+
+  /* GPU acceleration */
+  will-change: opacity;
+  contain: strict;
+
+  /* Smooth fade in */
+  opacity: 0;
+  animation: welcomeOverlayEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.welcome-overlay--exiting {
+  animation: welcomeOverlayExit 1s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+}
+
+@keyframes welcomeOverlayEnter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes welcomeOverlayExit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Content wrapper */
+.welcome-overlay__content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  max-width: 90vw;
+}
+
+/* Main title - "Bienvenue sur Louez.io" */
+.welcome-overlay__title {
+  font-family: 'Cabinet Grotesk', var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-size: clamp(2rem, 9vw, 5.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: #ffffff;
+  margin: 0;
+
+  /* Initial hidden state */
+  opacity: 0;
+  transform: scale(1.06);
+
+  /* GPU acceleration */
+  will-change: opacity, transform;
+
+  /* Smooth transition */
+  transition:
+    opacity 1.2s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-overlay__title--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.welcome-overlay__title--exiting {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 0.8s cubic-bezier(0.45, 0, 0.55, 1),
+    transform 0.8s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* Subtitle / Tagline */
+.welcome-overlay__subtitle {
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-size: clamp(1rem, 3.5vw, 1.75rem);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 1.5rem 0 0 0;
+  max-width: 600px;
+
+  /* Initial hidden state */
+  opacity: 0;
+  transform: translateY(16px);
+
+  /* GPU acceleration */
+  will-change: opacity, transform;
+
+  /* Smooth transition */
+  transition:
+    opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-overlay__subtitle--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.welcome-overlay__subtitle--exiting {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition:
+    opacity 0.6s cubic-bezier(0.45, 0, 0.55, 1),
+    transform 0.6s cubic-bezier(0.45, 0, 0.55, 1);
+}
+
+/* Skip hint at the bottom */
+.welcome-overlay__skip {
+  position: absolute;
+  bottom: 2.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.25);
+
+  /* Initial hidden state */
+  opacity: 0;
+
+  /* Smooth transition */
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.welcome-overlay__skip--visible {
+  opacity: 1;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-overlay,
+  .welcome-overlay__title,
+  .welcome-overlay__subtitle,
+  .welcome-overlay__skip {
+    animation: none;
+    transition: none;
+  }
+
+  .welcome-overlay__title,
+  .welcome-overlay__subtitle {
+    transform: none;
+  }
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .welcome-overlay__content {
+    padding: 1.5rem;
+  }
+
+  .welcome-overlay__subtitle {
+    margin-top: 1rem;
+  }
+
+  .welcome-overlay__skip {
+    bottom: 2rem;
+    font-size: 0.75rem;
+  }
+}

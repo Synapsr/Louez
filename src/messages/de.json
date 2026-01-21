@@ -3510,5 +3510,10 @@
     "smsLimitReached": "SMS-Limit erreicht. Upgraden Sie auf einen höheren Plan, um weiter SMS zu senden.",
     "customerNoPhone": "Kunde hat keine Telefonnummer",
     "smsSendFailed": "Fehler beim Senden der SMS"
+  },
+  "welcome": {
+    "greeting": "Willkommen bei Louez.io",
+    "tagline": "Ihr Shop ist bereit",
+    "skip": "Drücken Sie, um fortzufahren"
   }
 }

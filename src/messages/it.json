@@ -3504,5 +3504,10 @@
     "smsLimitReached": "Limite SMS raggiunto. Aggiorna a un piano superiore per continuare a inviare SMS.",
     "customerNoPhone": "Il cliente non ha un numero di telefono",
     "smsSendFailed": "Errore nell'invio dell'SMS"
+  },
+  "welcome": {
+    "greeting": "Benvenuto su Louez.io",
+    "tagline": "Il tuo negozio è pronto",
+    "skip": "Premi per continuare"
   }
 }

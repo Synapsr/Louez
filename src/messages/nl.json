@@ -3508,5 +3508,10 @@
     "smsLimitReached": "SMS-limiet bereikt. Upgrade naar een hoger plan om SMS te blijven versturen.",
     "customerNoPhone": "Klant heeft geen telefoonnummer",
     "smsSendFailed": "Fout bij verzenden SMS"
+  },
+  "welcome": {
+    "greeting": "Welkom bij Louez.io",
+    "tagline": "Uw winkel is klaar",
+    "skip": "Druk om door te gaan"
   }
 }

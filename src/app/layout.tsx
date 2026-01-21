@@ -34,6 +34,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className={`${inter.variable} font-sans antialiased`}>
         <UmamiAnalytics />
         {children}

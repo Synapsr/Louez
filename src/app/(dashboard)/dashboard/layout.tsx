@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { getCurrentStore, getUserStores } from '@/lib/store-context'
 import { Sidebar, MobileHeader } from '@/components/dashboard/sidebar'
 import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider'
-import { OnboardingCelebration } from '@/components/dashboard/onboarding-celebration'
+import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay'
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions'
 
 export default async function DashboardMainLayout({
@@ -60,7 +60,7 @@ export default async function DashboardMainLayout({
           <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
         </main>
         <Suspense fallback={null}>
-          <OnboardingCelebration />
+          <WelcomeOverlay />
         </Suspense>
       </div>
     </ReservationPollingProvider>

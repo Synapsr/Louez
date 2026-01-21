@@ -3516,5 +3516,10 @@
     "smsLimitReached": "Limite de SMS atteinte. Passez à un plan supérieur pour continuer à envoyer des SMS.",
     "customerNoPhone": "Le client n'a pas de numéro de téléphone",
     "smsSendFailed": "Erreur lors de l'envoi du SMS"
+  },
+  "welcome": {
+    "greeting": "Bienvenue sur Louez.io",
+    "tagline": "Votre boutique est prête",
+    "skip": "Appuyez pour continuer"
   }
 }
