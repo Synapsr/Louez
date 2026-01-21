@@ -48,7 +48,7 @@ interface StoreWithRole {
   name: string
   slug: string
   logoUrl: string | null
-  role: 'owner' | 'member'
+  role: 'owner' | 'member' | 'platform_admin'
 }
 
 interface SidebarProps {

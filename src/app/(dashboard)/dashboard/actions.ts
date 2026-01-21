@@ -1,10 +1,7 @@
 'use server'
 
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
-import { storeMembers } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
-import { setActiveStoreId } from '@/lib/store-context'
+import { setActiveStoreId, verifyStoreAccess } from '@/lib/store-context'
 import { revalidatePath } from 'next/cache'
 
 export async function switchStore(storeId: string) {
@@ -13,15 +10,10 @@ export async function switchStore(storeId: string) {
     return { error: 'errors.unauthenticated' }
   }
 
-  // Verify user has access to this store
-  const membership = await db.query.storeMembers.findFirst({
-    where: and(
-      eq(storeMembers.storeId, storeId),
-      eq(storeMembers.userId, session.user.id)
-    ),
-  })
+  // Verify user has access to this store (includes platform admin check)
+  const role = await verifyStoreAccess(storeId)
 
-  if (!membership) {
+  if (!role) {
     return { error: 'errors.unauthorized' }
   }
 
