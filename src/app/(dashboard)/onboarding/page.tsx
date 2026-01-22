@@ -31,7 +31,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-import { storeInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
+import { createStoreInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
 import { createStore } from './actions'
 
 /**
@@ -66,10 +66,13 @@ export default function OnboardingStorePage() {
   const t = useTranslations('onboarding.store')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
   const [isLoading, setIsLoading] = useState(false)
   const [isEditingSlug, setIsEditingSlug] = useState(false)
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
   const slugInputRef = useRef<HTMLInputElement>(null)
+
+  const storeInfoSchema = createStoreInfoSchema(tValidation)
 
   const form = useForm<StoreInfoInput>({
     resolver: zodResolver(storeInfoSchema),
