@@ -15,7 +15,7 @@ const cspDirectives = {
   // Default: only allow from same origin
   'default-src': ["'self'"],
 
-  // Scripts: self + Stripe + Google + PostHog + development requirements
+  // Scripts: self + Stripe + Google + PostHog + Leaflet + Gleap + development requirements
   'script-src': [
     "'self'",
     // Stripe.js for payments
@@ -25,6 +25,11 @@ const cspDirectives = {
     'https://maps.gstatic.com',
     // PostHog analytics
     'https://eu-assets.i.posthog.com',
+    // Gleap feedback widget
+    'https://gleapjs.com',
+    'https://api.gleap.io',
+    // Leaflet maps
+    'https://unpkg.com',
     // Development: Next.js hot reload requires eval
     ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
     // Production: Next.js uses inline scripts with nonces, but we allow unsafe-inline as fallback
@@ -33,7 +38,7 @@ const cspDirectives = {
   ],
 
   // Styles: self + inline (required for Tailwind and component libraries)
-  'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+  'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://api.fontshare.com', 'https://unpkg.com', 'https://gleapjs.com'],
 
   // Images: self + data URIs + blob + all allowed image providers
   'img-src': [
@@ -45,6 +50,13 @@ const cspDirectives = {
     // Google Maps
     'https://maps.googleapis.com',
     'https://maps.gstatic.com',
+    // Leaflet map tiles (CartoDB)
+    'https://*.basemaps.cartocdn.com',
+    // OpenStreetMap tiles (fallback)
+    'https://*.tile.openstreetmap.org',
+    // Gleap
+    'https://gleapjs.com',
+    'https://api.gleap.io',
     // YouTube thumbnails
     'https://img.youtube.com',
     'https://i.ytimg.com',
@@ -69,8 +81,8 @@ const cspDirectives = {
     'https://*.linodeobjects.com',
   ],
 
-  // Fonts: self + Google Fonts
-  'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
+  // Fonts: self + Google Fonts + Fontshare
+  'font-src': ["'self'", 'https://fonts.gstatic.com', 'https://cdn.fontshare.com', 'data:'],
 
   // Connect: API calls and WebSocket
   'connect-src': [
@@ -82,12 +94,23 @@ const cspDirectives = {
     'https://places.googleapis.com',
     // PostHog analytics
     'https://eu.i.posthog.com',
+    'https://eu-assets.i.posthog.com',
+    // Gleap feedback
+    'https://api.gleap.io',
+    // Leaflet resources
+    'https://unpkg.com',
+    // Map tiles
+    'https://*.basemaps.cartocdn.com',
+    'https://*.tile.openstreetmap.org',
+    // Fontshare fonts
+    'https://api.fontshare.com',
+    'https://cdn.fontshare.com',
     // Development: Next.js WebSocket for hot reload
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
   ],
 
-  // Frames: only allow Stripe for 3D Secure
-  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com'],
+  // Frames: Stripe for 3D Secure + Gleap
+  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com'],
 
   // Workers: only from self
   'worker-src': ["'self'", 'blob:'],
