@@ -26,14 +26,13 @@ interface UploadOptions {
 }
 
 export async function uploadFile({ key, body, contentType }: UploadOptions) {
-  // Note: ACL is not used - bucket should be configured with public-read policy
-  // This is the modern S3 best practice (ACLs are deprecated by most providers)
   await s3Client.send(
     new PutObjectCommand({
       Bucket: BUCKET,
       Key: key,
       Body: body,
       ContentType: contentType,
+      ACL: 'public-read',
     })
   )
 
