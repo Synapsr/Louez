@@ -24,8 +24,9 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
     },
     // Respect user privacy settings
     respect_dnt: true,
-    // Capture pageviews automatically
-    capture_pageview: true,
+    // Disable automatic pageview capture - handled by PostHogProvider
+    // for proper SPA navigation tracking in Next.js App Router
+    capture_pageview: false,
     // Capture pageleaves for session duration
     capture_pageleave: true,
   })

@@ -12,6 +12,7 @@ import { ThemeWrapper } from '@/components/storefront/theme-wrapper'
 import { CartProvider } from '@/contexts/cart-context'
 import { StoreProvider } from '@/contexts/store-context'
 import { AnalyticsProvider } from '@/contexts/analytics-context'
+import { PostHogProvider } from '@/components/posthog-provider'
 import { generateStoreMetadata, getCanonicalUrl, stripHtml } from '@/lib/seo'
 import type { StoreTheme, StoreSettings } from '@/types/store'
 
@@ -98,30 +99,32 @@ export default async function StorefrontLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name}>
-        <CartProvider>
-          <AnalyticsProvider storeSlug={store.slug}>
-            <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-              <div className="flex min-h-screen flex-col bg-background">
-                <StoreHeaderWrapper
-                  storeName={store.name}
-                  storeSlug={store.slug}
-                  logoUrl={store.logoUrl}
-                />
-                <main className="flex-1 pt-20 md:pt-24">{children}</main>
-                <StoreFooter
-                  storeName={store.name}
-                  storeSlug={store.slug}
-                  email={store.email}
-                  phone={store.phone}
-                  address={store.address}
-                />
-              </div>
-              <Toaster />
-            </ThemeWrapper>
-          </AnalyticsProvider>
-        </CartProvider>
-      </StoreProvider>
+      <PostHogProvider>
+        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name}>
+          <CartProvider>
+            <AnalyticsProvider storeSlug={store.slug}>
+              <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
+                <div className="flex min-h-screen flex-col bg-background">
+                  <StoreHeaderWrapper
+                    storeName={store.name}
+                    storeSlug={store.slug}
+                    logoUrl={store.logoUrl}
+                  />
+                  <main className="flex-1 pt-20 md:pt-24">{children}</main>
+                  <StoreFooter
+                    storeName={store.name}
+                    storeSlug={store.slug}
+                    email={store.email}
+                    phone={store.phone}
+                    address={store.address}
+                  />
+                </div>
+                <Toaster />
+              </ThemeWrapper>
+            </AnalyticsProvider>
+          </CartProvider>
+        </StoreProvider>
+      </PostHogProvider>
     </NextIntlClientProvider>
   )
 }
