@@ -2908,7 +2908,8 @@
           "rental": "Wynajem",
           "deposit": "Kaucja",
           "deposit_return": "Zwrot kaucji",
-          "damage": "Uszkodzenia"
+          "damage": "Uszkodzenia",
+          "adjustment": "Korekta"
         },
         "methods": {
           "stripe": "Karta online",
@@ -3472,6 +3473,8 @@
     "invalidOrExpiredCode": "Nieprawidłowy lub wygasły kod",
     "verificationError": "Błąd weryfikacji",
     "logoutError": "Błąd wylogowania",
+    "tooManyRequests": "Zbyt wiele żądań. Poczekaj przed ponowną próbą.",
+    "tooManyAttempts": "Zbyt wiele prób. Poczekaj przed ponowną próbą.",
     "copy": "(kopia)",
     "forbidden": "Dostęp zabroniony",
     "serverError": "Błąd serwera",

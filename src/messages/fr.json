@@ -2909,7 +2909,8 @@
           "rental": "Location",
           "deposit": "Caution",
           "deposit_return": "Remboursement caution",
-          "damage": "Dommages"
+          "damage": "Dommages",
+          "adjustment": "Ajustement"
         },
         "methods": {
           "stripe": "Carte en ligne",
@@ -3356,6 +3357,7 @@
     "maxValue": "La valeur maximum est {max}",
     "url": "URL invalide",
     "slug": "L'URL ne peut contenir que des lettres minuscules, chiffres et tirets",
+    "slugReserved": "Cette URL est réservée et ne peut pas être utilisée",
     "positive": "La valeur doit être positive",
     "integer": "La valeur doit être un nombre entier",
     "date": "Date invalide",
@@ -3475,6 +3477,8 @@
     "invalidOrExpiredCode": "Code invalide ou expiré",
     "verificationError": "Erreur lors de la vérification",
     "logoutError": "Erreur lors de la déconnexion",
+    "tooManyRequests": "Trop de demandes. Veuillez patienter avant de réessayer.",
+    "tooManyAttempts": "Trop de tentatives. Veuillez patienter avant de réessayer.",
     "copy": "(copie)",
     "forbidden": "Accès interdit",
     "serverError": "Erreur serveur",

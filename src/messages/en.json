@@ -2909,7 +2909,8 @@
           "rental": "Rental",
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",
-          "damage": "Damages"
+          "damage": "Damages",
+          "adjustment": "Adjustment"
         },
         "methods": {
           "stripe": "Online card",
@@ -3361,6 +3362,7 @@
     "maxValue": "Maximum value is {max}",
     "url": "Invalid URL",
     "slug": "URL can only contain lowercase letters, numbers and hyphens",
+    "slugReserved": "This URL is reserved and cannot be used",
     "positive": "Value must be positive",
     "integer": "Value must be a whole number",
     "date": "Invalid date",
@@ -3480,6 +3482,8 @@
     "invalidOrExpiredCode": "Invalid or expired code",
     "verificationError": "Verification error",
     "logoutError": "Logout error",
+    "tooManyRequests": "Too many requests. Please wait before trying again.",
+    "tooManyAttempts": "Too many attempts. Please wait before trying again.",
     "copy": "(copy)",
     "forbidden": "Access forbidden",
     "serverError": "Server error",

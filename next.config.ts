@@ -3,6 +3,156 @@ import createNextIntlPlugin from 'next-intl/plugin'
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts')
 
+// ===== SECURITY HEADERS & CSP =====
+// Comprehensive Content Security Policy to prevent XSS and other injection attacks
+// Designed for production use with Next.js, Stripe, and various S3 providers
+// Note: Next.js requires 'unsafe-eval' in development mode for hot reload
+
+const isDev = process.env.NODE_ENV === 'development'
+
+// CSP Directives
+const cspDirectives = {
+  // Default: only allow from same origin
+  'default-src': ["'self'"],
+
+  // Scripts: self + Stripe + Google + development requirements
+  'script-src': [
+    "'self'",
+    // Stripe.js for payments
+    'https://js.stripe.com',
+    'https://maps.googleapis.com',
+    // Google Maps
+    'https://maps.gstatic.com',
+    // Development: Next.js hot reload requires eval
+    ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
+    // Production: Next.js uses inline scripts with nonces, but we allow unsafe-inline as fallback
+    // For stricter CSP in production, implement nonce-based CSP via middleware
+    ...(!isDev ? ["'unsafe-inline'"] : []),
+  ],
+
+  // Styles: self + inline (required for Tailwind and component libraries)
+  'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+
+  // Images: self + data URIs + blob + all allowed image providers
+  'img-src': [
+    "'self'",
+    'data:',
+    'blob:',
+    // Google profile pictures
+    'https://lh3.googleusercontent.com',
+    // Google Maps
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    // YouTube thumbnails
+    'https://img.youtube.com',
+    'https://i.ytimg.com',
+    // AWS S3
+    'https://*.s3.amazonaws.com',
+    'https://*.s3.*.amazonaws.com',
+    'https://s3.*.amazonaws.com',
+    // Scaleway
+    'https://*.scw.cloud',
+    // OVH
+    'https://*.cloud.ovh.net',
+    'https://*.s3.*.cloud.ovh.net',
+    // DigitalOcean
+    'https://*.digitaloceanspaces.com',
+    // Cloudflare R2
+    'https://*.r2.cloudflarestorage.com',
+    // Backblaze
+    'https://*.backblazeb2.com',
+    // Wasabi
+    'https://*.wasabisys.com',
+    // Linode
+    'https://*.linodeobjects.com',
+  ],
+
+  // Fonts: self + Google Fonts
+  'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
+
+  // Connect: API calls and WebSocket
+  'connect-src': [
+    "'self'",
+    // Stripe
+    'https://api.stripe.com',
+    'https://maps.googleapis.com',
+    // Google Places API
+    'https://places.googleapis.com',
+    // Development: Next.js WebSocket for hot reload
+    ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
+  ],
+
+  // Frames: only allow Stripe for 3D Secure
+  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com'],
+
+  // Workers: only from self
+  'worker-src': ["'self'", 'blob:'],
+
+  // Media: self + YouTube embeds
+  'media-src': ["'self'", 'https://www.youtube.com', 'https://youtube.com'],
+
+  // Object: none (no plugins)
+  'object-src': ["'none'"],
+
+  // Base URI: restrict to self (prevents base tag hijacking)
+  'base-uri': ["'self'"],
+
+  // Form action: restrict to self
+  'form-action': ["'self'"],
+
+  // Frame ancestors: prevent clickjacking (replaces X-Frame-Options)
+  'frame-ancestors': ["'self'"],
+
+  // Upgrade insecure requests in production
+  ...(!isDev ? { 'upgrade-insecure-requests': [] } : {}),
+}
+
+// Build CSP string
+const cspString = Object.entries(cspDirectives)
+  .map(([directive, sources]) => {
+    if (sources.length === 0) return directive
+    return `${directive} ${sources.join(' ')}`
+  })
+  .join('; ')
+
+const securityHeaders = [
+  {
+    // Content Security Policy - Main XSS protection
+    key: 'Content-Security-Policy',
+    value: cspString,
+  },
+  {
+    // Prevent clickjacking attacks (legacy, superseded by CSP frame-ancestors)
+    key: 'X-Frame-Options',
+    value: 'SAMEORIGIN',
+  },
+  {
+    // Prevent MIME type sniffing
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    // Enable XSS filter in older browsers
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    // Control referrer information
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    // Restrict browser features
+    key: 'Permissions-Policy',
+    value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
+  },
+  {
+    // Enforce HTTPS (enable in production with proper SSL)
+    key: 'Strict-Transport-Security',
+    value: 'max-age=31536000; includeSubDomains',
+  },
+]
+
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: 'standalone',
@@ -11,6 +161,16 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb',
     },
+  },
+  // Security headers for all routes
+  async headers() {
+    return [
+      {
+        // Apply to all routes
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+    ]
   },
   images: {
     remotePatterns: [

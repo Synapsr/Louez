@@ -2909,7 +2909,8 @@
           "rental": "Miete",
           "deposit": "Kaution",
           "deposit_return": "Kautionsrückerstattung",
-          "damage": "Schäden"
+          "damage": "Schäden",
+          "adjustment": "Anpassung"
         },
         "methods": {
           "stripe": "Online-Karte",
@@ -3478,6 +3479,8 @@
     "invalidOrExpiredCode": "Ungültiger oder abgelaufener Code",
     "verificationError": "Verifizierungsfehler",
     "logoutError": "Abmeldefehler",
+    "tooManyRequests": "Zu viele Anfragen. Bitte warten Sie, bevor Sie es erneut versuchen.",
+    "tooManyAttempts": "Zu viele Versuche. Bitte warten Sie, bevor Sie es erneut versuchen.",
     "copy": "(Kopie)",
     "forbidden": "Zugriff verboten",
     "serverError": "Serverfehler",

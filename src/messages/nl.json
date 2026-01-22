@@ -2907,7 +2907,8 @@
           "rental": "Huur",
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",
-          "damage": "Schade"
+          "damage": "Schade",
+          "adjustment": "Aanpassing"
         },
         "methods": {
           "stripe": "Online kaart",
@@ -3476,6 +3477,8 @@
     "invalidOrExpiredCode": "Ongeldige of verlopen code",
     "verificationError": "Verificatiefout",
     "logoutError": "Uitlogfout",
+    "tooManyRequests": "Te veel verzoeken. Wacht even voordat u het opnieuw probeert.",
+    "tooManyAttempts": "Te veel pogingen. Wacht even voordat u het opnieuw probeert.",
     "copy": "(kopie)",
     "forbidden": "Toegang verboden",
     "serverError": "Serverfout",
