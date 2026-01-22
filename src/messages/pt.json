@@ -2909,7 +2909,8 @@
           "rental": "Aluguel",
           "deposit": "Deposito",
           "deposit_return": "Devolucao de deposito",
-          "damage": "Danos"
+          "damage": "Danos",
+          "adjustment": "Ajuste"
         },
         "methods": {
           "stripe": "Cartao online",
@@ -3473,6 +3474,8 @@
     "invalidOrExpiredCode": "Codigo invalido ou expirado",
     "verificationError": "Erro de verificacao",
     "logoutError": "Erro ao sair",
+    "tooManyRequests": "Muitas solicitações. Aguarde antes de tentar novamente.",
+    "tooManyAttempts": "Muitas tentativas. Aguarde antes de tentar novamente.",
     "copy": "(copia)",
     "forbidden": "Acesso proibido",
     "serverError": "Erro do servidor",

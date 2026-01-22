@@ -2908,7 +2908,8 @@
           "rental": "Noleggio",
           "deposit": "Deposito",
           "deposit_return": "Rimborso deposito",
-          "damage": "Danni"
+          "damage": "Danni",
+          "adjustment": "Aggiustamento"
         },
         "methods": {
           "stripe": "Carta online",
@@ -3472,6 +3473,8 @@
     "invalidOrExpiredCode": "Codice non valido o scaduto",
     "verificationError": "Errore di verifica",
     "logoutError": "Errore di disconnessione",
+    "tooManyRequests": "Troppe richieste. Attendere prima di riprovare.",
+    "tooManyAttempts": "Troppi tentativi. Attendere prima di riprovare.",
     "copy": "(copia)",
     "forbidden": "Accesso vietato",
     "serverError": "Errore del server",

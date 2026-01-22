@@ -120,8 +120,12 @@ export async function createStore(data: StoreInfoInput) {
       role: 'owner',
     })
 
-    // Set as active store
-    await setActiveStoreId(newStore.id)
+    // Set as active store (will succeed since we just created ownership above)
+    const setStoreResult = await setActiveStoreId(newStore.id)
+    if (!setStoreResult.success) {
+      // This should not happen since we just created the store and membership
+      console.error('[SECURITY] Failed to set active store after creation:', setStoreResult.error)
+    }
   }
 
   revalidatePath('/onboarding')

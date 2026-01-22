@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { pageViews, storefrontEvents, stores } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { getClientIp } from '@/lib/request'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -43,21 +44,67 @@ const eventSchema = z.object({
 
 const trackingSchema = z.discriminatedUnion('type', [pageViewSchema, eventSchema])
 
-// Simple in-memory rate limiting (per session)
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
-const RATE_LIMIT = 100 // requests per minute
-const RATE_WINDOW = 60 * 1000 // 1 minute
+// ===== RATE LIMITING =====
+// Dual-layer rate limiting to prevent analytics abuse
+// Layer 1: IP-based (primary) - prevents one attacker from flooding the API
+// Layer 2: Session-based (secondary) - prevents session abuse within limits
 
-function checkRateLimit(sessionId: string): boolean {
+interface RateLimitEntry {
+  count: number
+  resetAt: number
+}
+
+// IP-based rate limiting (primary defense)
+const ipRateLimitMap = new Map<string, RateLimitEntry>()
+const IP_RATE_LIMIT = 200 // requests per minute per IP (covers multiple tabs/sessions)
+const IP_RATE_WINDOW = 60 * 1000 // 1 minute
+
+// Session-based rate limiting (secondary)
+const sessionRateLimitMap = new Map<string, RateLimitEntry>()
+const SESSION_RATE_LIMIT = 50 // requests per minute per session
+const SESSION_RATE_WINDOW = 60 * 1000 // 1 minute
+
+// Maximum entries to prevent memory exhaustion
+const MAX_IP_ENTRIES = 10000
+const MAX_SESSION_ENTRIES = 50000
+
+/**
+ * Check rate limit for a given map
+ */
+function checkMapRateLimit(
+  map: Map<string, RateLimitEntry>,
+  key: string,
+  limit: number,
+  window: number,
+  maxEntries: number
+): boolean {
   const now = Date.now()
-  const record = rateLimitMap.get(sessionId)
+  const record = map.get(key)
+
+  // Prevent memory exhaustion - if at capacity, do aggressive cleanup first
+  if (map.size >= maxEntries && !record) {
+    const cutoff = now - window
+    let cleaned = 0
+    for (const [k, v] of map.entries()) {
+      if (v.resetAt < cutoff || cleaned < map.size - maxEntries * 0.9) {
+        map.delete(k)
+        cleaned++
+      }
+      if (map.size < maxEntries * 0.9) break
+    }
+    // If still at capacity after cleanup, reject new entries
+    if (map.size >= maxEntries) {
+      console.warn(`[SECURITY] Rate limit map at capacity (${maxEntries}), rejecting request`)
+      return false
+    }
+  }
 
   if (!record || now > record.resetAt) {
-    rateLimitMap.set(sessionId, { count: 1, resetAt: now + RATE_WINDOW })
+    map.set(key, { count: 1, resetAt: now + window })
     return true
   }
 
-  if (record.count >= RATE_LIMIT) {
+  if (record.count >= limit) {
     return false
   }
 
@@ -65,15 +112,43 @@ function checkRateLimit(sessionId: string): boolean {
   return true
 }
 
+/**
+ * Dual-layer rate limit check
+ * Returns true if allowed, false if rate limited
+ */
+function checkRateLimit(ip: string, sessionId: string): { allowed: boolean; reason?: string } {
+  // Layer 1: IP-based check (primary)
+  if (!checkMapRateLimit(ipRateLimitMap, ip, IP_RATE_LIMIT, IP_RATE_WINDOW, MAX_IP_ENTRIES)) {
+    return { allowed: false, reason: 'ip' }
+  }
+
+  // Layer 2: Session-based check (secondary)
+  if (!checkMapRateLimit(sessionRateLimitMap, sessionId, SESSION_RATE_LIMIT, SESSION_RATE_WINDOW, MAX_SESSION_ENTRIES)) {
+    return { allowed: false, reason: 'session' }
+  }
+
+  return { allowed: true }
+}
+
 // Cleanup old rate limit entries periodically
-setInterval(() => {
+let lastCleanup = Date.now()
+function cleanupRateLimits() {
   const now = Date.now()
-  for (const [key, value] of rateLimitMap.entries()) {
+  // Only cleanup every minute
+  if (now - lastCleanup < 60 * 1000) return
+  lastCleanup = now
+
+  for (const [key, value] of ipRateLimitMap.entries()) {
     if (now > value.resetAt) {
-      rateLimitMap.delete(key)
+      ipRateLimitMap.delete(key)
     }
   }
-}, 60 * 1000) // Every minute
+  for (const [key, value] of sessionRateLimitMap.entries()) {
+    if (now > value.resetAt) {
+      sessionRateLimitMap.delete(key)
+    }
+  }
+}
 
 // Store ID cache to avoid repeated lookups
 const storeIdCache = new Map<string, { id: string; expiresAt: number }>()
@@ -100,6 +175,9 @@ async function getStoreId(slug: string): Promise<string | null> {
 
 export async function POST(request: NextRequest) {
   try {
+    // Cleanup rate limits periodically (called at beginning of requests)
+    cleanupRateLimits()
+
     const body = await request.json()
     const parsed = trackingSchema.safeParse(body)
 
@@ -109,9 +187,23 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data
 
-    // Rate limiting
-    if (!checkRateLimit(data.sessionId)) {
-      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    // Get client IP for rate limiting (supports Cloudflare, Traefik, nginx, etc.)
+    const clientIp = getClientIp(request.headers)
+
+    // Dual-layer rate limiting (IP + session)
+    const rateCheck = checkRateLimit(clientIp, data.sessionId)
+    if (!rateCheck.allowed) {
+      // Log rate limit hits for monitoring
+      console.warn(`[RATE_LIMIT] /api/track blocked: ip=${clientIp}, session=${data.sessionId.substring(0, 8)}..., reason=${rateCheck.reason}`)
+      return NextResponse.json(
+        { error: 'Rate limit exceeded' },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': '60',
+          },
+        }
+      )
     }
 
     // Get store ID

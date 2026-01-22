@@ -2911,7 +2911,8 @@
           "rental": "Alquiler",
           "deposit": "Deposito",
           "deposit_return": "Devolucion de deposito",
-          "damage": "Danos"
+          "damage": "Danos",
+          "adjustment": "Ajuste"
         },
         "methods": {
           "stripe": "Tarjeta en linea",
@@ -3475,6 +3476,8 @@
     "invalidOrExpiredCode": "Codigo invalido o expirado",
     "verificationError": "Error de verificacion",
     "logoutError": "Error al cerrar sesion",
+    "tooManyRequests": "Demasiadas solicitudes. Por favor, espere antes de intentarlo de nuevo.",
+    "tooManyAttempts": "Demasiados intentos. Por favor, espere antes de intentarlo de nuevo.",
     "copy": "(copia)",
     "forbidden": "Acceso prohibido",
     "serverError": "Error del servidor",

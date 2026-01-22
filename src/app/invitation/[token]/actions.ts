@@ -72,8 +72,12 @@ export async function acceptInvitation(token: string) {
     })
     .where(eq(storeInvitations.id, invitation.id))
 
-  // Set as active store
-  await setActiveStoreId(invitation.storeId)
+  // Set as active store (will succeed since we just added membership above)
+  const setStoreResult = await setActiveStoreId(invitation.storeId)
+  if (!setStoreResult.success) {
+    // This should not happen since we just added the membership
+    console.error('[SECURITY] Failed to set active store after accepting invitation:', setStoreResult.error)
+  }
 
   return { success: true }
 }

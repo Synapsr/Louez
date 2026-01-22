@@ -22,10 +22,44 @@ const features = [
   { icon: BarChart3, labelKey: 'featureStats' },
 ]
 
+/**
+ * Validates redirect URLs to prevent open redirect attacks
+ * Only allows relative paths or URLs pointing to the same domain/subdomains
+ */
+function isValidRedirectUrl(url: string | null): string {
+  const defaultUrl = '/dashboard'
+
+  if (!url) return defaultUrl
+
+  // Allow relative paths that start with / but not //
+  // The regex ensures: starts with /, followed by alphanumeric, hyphen, underscore, or /
+  // This prevents protocol-relative URLs like //evil.com
+  if (/^\/(?!\/)[a-zA-Z0-9\-_/?&=#%]*$/.test(url)) {
+    return url
+  }
+
+  // For absolute URLs, validate they point to our domain
+  try {
+    const parsed = new URL(url)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appDomain = new URL(appUrl).hostname
+
+    // Check if the redirect URL is for our domain (or subdomains)
+    if (parsed.hostname === appDomain || parsed.hostname.endsWith(`.${appDomain}`)) {
+      return url
+    }
+  } catch {
+    // Invalid URL format - fall through to default
+  }
+
+  // Reject any other URLs (external domains, invalid formats)
+  return defaultUrl
+}
+
 function LoginForm() {
   const t = useTranslations('auth')
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const callbackUrl = isValidRedirectUrl(searchParams.get('callbackUrl'))
   const error = searchParams.get('error')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)

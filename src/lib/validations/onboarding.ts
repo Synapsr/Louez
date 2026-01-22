@@ -1,6 +1,113 @@
 import { z } from 'zod'
+import { isValidImageUrl } from './image'
 
-// Schema factories that accept translation function
+// ===== RESERVED SLUGS =====
+// These slugs are reserved to prevent namespace conflicts and potential phishing
+
+export const RESERVED_SLUGS = [
+  // System routes
+  'api',
+  'app',
+  'admin',
+  'dashboard',
+  'login',
+  'logout',
+  'register',
+  'signup',
+  'signin',
+  'auth',
+  'oauth',
+  'callback',
+  'verify',
+  'reset',
+  'password',
+  'settings',
+  'account',
+  'profile',
+  'user',
+  'users',
+  'onboarding',
+  'invitation',
+  'invite',
+  'webhook',
+  'webhooks',
+
+  // Brand protection
+  'louez',
+  'louez-io',
+  'louezio',
+  'www',
+  'mail',
+  'email',
+  'ftp',
+  'cdn',
+  'static',
+  'assets',
+  'images',
+  'img',
+  'files',
+  'uploads',
+  'media',
+
+  // Reserved for future use
+  'blog',
+  'docs',
+  'documentation',
+  'help',
+  'support',
+  'status',
+  'health',
+  'terms',
+  'privacy',
+  'legal',
+  'about',
+  'contact',
+  'pricing',
+  'plans',
+  'billing',
+  'checkout',
+  'cart',
+  'store',
+  'stores',
+  'shop',
+  'marketplace',
+
+  // Common abuse patterns
+  'test',
+  'demo',
+  'example',
+  'sample',
+  'null',
+  'undefined',
+  'true',
+  'false',
+  'admin1',
+  'administrator',
+  'root',
+  'system',
+  'localhost',
+
+  // Internationalization
+  'fr',
+  'en',
+  'de',
+  'es',
+  'it',
+  'nl',
+  'pl',
+  'pt',
+] as const
+
+/**
+ * Check if a slug is reserved
+ */
+export function isReservedSlug(slug: string): boolean {
+  return RESERVED_SLUGS.includes(slug.toLowerCase() as typeof RESERVED_SLUGS[number])
+}
+
+// ===== SCHEMA FACTORIES =====
+// These schemas accept a translation function for client-side validation with i18n
+
 export const createStoreInfoSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
   z.object({
     name: z
@@ -11,7 +118,8 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
       .string()
       .min(3, t('minLength', { min: 3 }))
       .max(50, t('maxLength', { max: 50 }))
-      .regex(/^[a-z0-9-]+$/, t('slug')),
+      .regex(/^[a-z0-9-]+$/, t('slug'))
+      .refine((val) => !isReservedSlug(val), t('slugReserved')),
     pricingMode: z.enum(['day', 'hour']),
     address: z.string().optional().or(z.literal('')),
     latitude: z.number().nullable().optional(),
@@ -22,7 +130,14 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
 
 export const createBrandingSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
   z.object({
-    logoUrl: z.string().url().optional().or(z.literal('')),
+    // Validate image URL to prevent malicious uploads
+    logoUrl: z
+      .string()
+      .refine((val) => !val || val === '' || isValidImageUrl(val), {
+        message: t('url'),
+      })
+      .optional()
+      .or(z.literal('')),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('url')),
     theme: z.enum(['light', 'dark']),
   })
@@ -41,10 +156,20 @@ export const createFirstProductSchema = (t: (key: string, params?: Record<string
       .optional()
       .or(z.literal('')),
     quantity: z.string().regex(/^\d+$/, t('integer')),
-    images: z.array(z.string()).optional(),
+    // SECURITY: Validate image URLs to prevent malicious uploads
+    images: z
+      .array(
+        z.string().refine((val) => !val || isValidImageUrl(val), {
+          message: t('url'),
+        })
+      )
+      .max(10)
+      .optional(),
   })
 
-// Default schemas for server-side validation
+// ===== SERVER-SIDE SCHEMAS =====
+// Default schemas for server-side validation without i18n
+
 export const storeInfoSchema = z.object({
   name: z
     .string()
@@ -54,7 +179,8 @@ export const storeInfoSchema = z.object({
     .string()
     .min(3, 'validation.minLength')
     .max(50, 'validation.maxLength')
-    .regex(/^[a-z0-9-]+$/, 'validation.slug'),
+    .regex(/^[a-z0-9-]+$/, 'validation.slug')
+    .refine((val) => !isReservedSlug(val), 'validation.slugReserved'),
   pricingMode: z.enum(['day', 'hour']),
   address: z.string().optional().or(z.literal('')),
   latitude: z.number().nullable().optional(),
@@ -64,7 +190,14 @@ export const storeInfoSchema = z.object({
 })
 
 export const brandingSchema = z.object({
-  logoUrl: z.string().url().optional().or(z.literal('')),
+  // SECURITY: Validate image URL to prevent malicious uploads
+  logoUrl: z
+    .string()
+    .refine((val) => !val || val === '' || isValidImageUrl(val), {
+      message: 'validation.invalidImageUrl',
+    })
+    .optional()
+    .or(z.literal('')),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.url'),
   theme: z.enum(['light', 'dark']),
 })
@@ -82,7 +215,15 @@ export const firstProductSchema = z.object({
     .optional()
     .or(z.literal('')),
   quantity: z.string().regex(/^\d+$/, 'validation.integer'),
-  images: z.array(z.string()).optional(),
+  // SECURITY: Validate image URLs to prevent malicious uploads
+  images: z
+    .array(
+      z.string().refine((val) => !val || isValidImageUrl(val), {
+        message: 'validation.invalidImageUrl',
+      })
+    )
+    .max(10)
+    .optional(),
 })
 
 export const stripeSetupSchema = z.object({
