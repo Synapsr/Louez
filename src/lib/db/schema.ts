@@ -671,8 +671,8 @@ export const documents = mysqlTable('documents', {
   type: documentType.notNull(),
   number: varchar('number', { length: 50 }).notNull(),
 
-  // File
-  fileUrl: text('file_url').notNull(),
+  // File (longtext to support base64-encoded PDFs with embedded images)
+  fileUrl: longtext('file_url').notNull(),
   fileName: varchar('file_name', { length: 255 }).notNull(),
 
   // Metadata
