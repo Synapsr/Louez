@@ -115,24 +115,51 @@ async function runMigrations() {
       }
     }
 
-    // Check if pending migrations would fail due to existing tables (partial baseline case)
+    // Check if pending migrations would fail due to existing tables/columns (partial baseline case)
     // This handles cases where db:push was used after some migrations were already recorded
     if (pendingMigrations.length > 0) {
       const existingTableNames = userTables.map((t) => t.TABLE_NAME.toLowerCase())
 
-      // Check if any pending migration tries to CREATE TABLE for an existing table
+      // Get all existing columns for conflict detection
+      const [existingColumns] = await connection.query<mysql.RowDataPacket[]>(
+        `SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`
+      )
+      const existingColumnSet = new Set(
+        existingColumns.map((c) => `${c.TABLE_NAME.toLowerCase()}.${c.COLUMN_NAME.toLowerCase()}`)
+      )
+
+      // Check if any pending migration tries to CREATE TABLE or ADD COLUMN for existing schema
       const migrationsToSkip: typeof pendingMigrations = []
       for (const migration of pendingMigrations) {
-        // Look for CREATE TABLE statements in the migration SQL
         // migration.sql is an array of SQL statements
         const sqlStatements = Array.isArray(migration.sql) ? migration.sql.join('\n') : migration.sql
+        let shouldSkip = false
+
+        // Check for CREATE TABLE statements
         const createTableMatches = sqlStatements.matchAll(/CREATE TABLE [`"]?(\w+)[`"]?/gi)
         for (const match of createTableMatches) {
           const tableName = match[1].toLowerCase()
           if (existingTableNames.includes(tableName)) {
             migrationsToSkip.push(migration)
             console.log(`⚠️  Skipping migration (table '${match[1]}' already exists): ${migration.hash.substring(0, 8)}...`)
+            shouldSkip = true
             break
+          }
+        }
+
+        // Check for ALTER TABLE ADD COLUMN statements
+        if (!shouldSkip) {
+          const alterTableMatches = sqlStatements.matchAll(/ALTER TABLE [`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?/gi)
+          for (const match of alterTableMatches) {
+            const tableName = match[1].toLowerCase()
+            const columnName = match[2].toLowerCase()
+            const key = `${tableName}.${columnName}`
+            if (existingColumnSet.has(key)) {
+              migrationsToSkip.push(migration)
+              console.log(`⚠️  Skipping migration (column '${match[1]}.${match[2]}' already exists): ${migration.hash.substring(0, 8)}...`)
+              shouldSkip = true
+              break
+            }
           }
         }
       }
