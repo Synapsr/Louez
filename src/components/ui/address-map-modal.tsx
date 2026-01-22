@@ -18,17 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
-
-interface AddressResult {
-  label: string
-  housenumber?: string
-  street?: string
-  postcode?: string
-  city?: string
-  context?: string
-  latitude: number
-  longitude: number
-}
+import type { AddressSuggestion } from '@/types/address'
 
 interface AddressMapModalProps {
   open: boolean
@@ -62,7 +52,7 @@ export function AddressMapModal({
 
   // Local state
   const [searchQuery, setSearchQuery] = useState('')
-  const [suggestions, setSuggestions] = useState<AddressResult[]>([])
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
@@ -297,33 +287,11 @@ export function AddressMapModal({
     setIsSearching(true)
     try {
       const response = await fetch(
-        `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&limit=5`
+        `/api/address/autocomplete?query=${encodeURIComponent(query)}`
       )
       const data = await response.json()
-
-      const results: AddressResult[] = data.features.map((feature: {
-        properties: {
-          label: string
-          housenumber?: string
-          street?: string
-          postcode?: string
-          city?: string
-          context?: string
-        }
-        geometry: { coordinates: [number, number] }
-      }) => ({
-        label: feature.properties.label,
-        housenumber: feature.properties.housenumber,
-        street: feature.properties.street,
-        postcode: feature.properties.postcode,
-        city: feature.properties.city,
-        context: feature.properties.context,
-        longitude: feature.geometry.coordinates[0],
-        latitude: feature.geometry.coordinates[1],
-      }))
-
-      setSuggestions(results)
-      setShowSuggestions(results.length > 0)
+      setSuggestions(data.suggestions || [])
+      setShowSuggestions((data.suggestions || []).length > 0)
     } catch (error) {
       console.error('Address search error:', error)
       setSuggestions([])
@@ -339,13 +307,30 @@ export function AddressMapModal({
     debouncedSearch(value)
   }
 
-  const handleSelectSuggestion = (result: AddressResult) => {
-    setDisplayAddress(result.label)
-    setLatitude(result.latitude)
-    setLongitude(result.longitude)
-    setSearchQuery('')
-    setSuggestions([])
-    setShowSuggestions(false)
+  const handleSelectSuggestion = async (suggestion: AddressSuggestion) => {
+    setIsSearching(true)
+    try {
+      const response = await fetch(
+        `/api/address/details?placeId=${encodeURIComponent(suggestion.placeId)}`
+      )
+      const data = await response.json()
+
+      if (data.details) {
+        setDisplayAddress(data.details.formattedAddress)
+        setLatitude(data.details.latitude)
+        setLongitude(data.details.longitude)
+      } else {
+        setDisplayAddress(suggestion.description)
+      }
+    } catch (error) {
+      console.error('Error fetching address details:', error)
+      setDisplayAddress(suggestion.description)
+    } finally {
+      setSearchQuery('')
+      setSuggestions([])
+      setShowSuggestions(false)
+      setIsSearching(false)
+    }
   }
 
   const handleSave = () => {
@@ -385,7 +370,12 @@ export function AddressMapModal({
                 onChange={(e) => handleSearchChange(e.target.value)}
                 placeholder={t('searchPlaceholder')}
                 className="pl-9"
-                autoComplete="off"
+                autoComplete="one-time-code"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                data-form-type="other"
+                data-lpignore="true"
               />
               {isSearching && (
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
@@ -395,19 +385,19 @@ export function AddressMapModal({
             {/* Suggestions dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
-                {suggestions.map((result, index) => (
+                {suggestions.map((suggestion) => (
                   <button
-                    key={`${result.latitude}-${result.longitude}-${index}`}
+                    key={suggestion.placeId}
                     type="button"
-                    onClick={() => handleSelectSuggestion(result)}
+                    onClick={() => handleSelectSuggestion(suggestion)}
                     className="flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <Navigation className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate">{result.label}</p>
-                      {result.context && (
+                      <p className="font-medium truncate">{suggestion.mainText}</p>
+                      {suggestion.secondaryText && (
                         <p className="text-xs text-muted-foreground truncate">
-                          {result.context}
+                          {suggestion.secondaryText}
                         </p>
                       )}
                     </div>
