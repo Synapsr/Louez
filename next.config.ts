@@ -15,7 +15,7 @@ const cspDirectives = {
   // Default: only allow from same origin
   'default-src': ["'self'"],
 
-  // Scripts: self + Stripe + Google + development requirements
+  // Scripts: self + Stripe + Google + PostHog + development requirements
   'script-src': [
     "'self'",
     // Stripe.js for payments
@@ -23,6 +23,8 @@ const cspDirectives = {
     'https://maps.googleapis.com',
     // Google Maps
     'https://maps.gstatic.com',
+    // PostHog analytics
+    'https://eu-assets.i.posthog.com',
     // Development: Next.js hot reload requires eval
     ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
     // Production: Next.js uses inline scripts with nonces, but we allow unsafe-inline as fallback
@@ -78,6 +80,8 @@ const cspDirectives = {
     'https://maps.googleapis.com',
     // Google Places API
     'https://places.googleapis.com',
+    // PostHog analytics
+    'https://eu.i.posthog.com',
     // Development: Next.js WebSocket for hot reload
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
   ],
