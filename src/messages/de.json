@@ -3019,6 +3019,7 @@
       "logoHelp": "Empfohlenes Format: PNG oder SVG, 512x512px",
       "logoError": "Bitte wählen Sie ein Bild aus",
       "logoSizeError": "Bild darf 2 MB nicht überschreiten",
+      "logoUploadError": "Logo-Upload fehlgeschlagen. Bitte versuchen Sie es erneut.",
       "primaryColor": "Primärfarbe",
       "theme": "Design",
       "themeLight": "Hell",

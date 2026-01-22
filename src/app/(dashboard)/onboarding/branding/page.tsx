@@ -49,6 +49,7 @@ export default function OnboardingBrandingPage() {
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
   const form = useForm<BrandingInput>({
@@ -75,13 +76,40 @@ export default function OnboardingBrandingPage() {
         return
       }
 
-      // For now, create a local preview
-      // TODO: Implement actual file upload to S3
+      // Convert to base64 for upload
       const reader = new FileReader()
-      reader.onload = (event) => {
-        const url = event.target?.result as string
-        setLogoPreview(url)
-        form.setValue('logoUrl', url)
+      reader.onload = async (event) => {
+        const dataUri = event.target?.result as string
+        setLogoPreview(dataUri)
+        setIsUploading(true)
+
+        try {
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: dataUri,
+              type: 'logo',
+              filename: 'store-logo',
+            }),
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Upload failed')
+          }
+
+          const { url } = await response.json()
+          form.setValue('logoUrl', url)
+          setLogoPreview(url)
+        } catch (error) {
+          console.error('Logo upload error:', error)
+          toast.error(t('logoUploadError'))
+          setLogoPreview(null)
+          form.setValue('logoUrl', '')
+        } finally {
+          setIsUploading(false)
+        }
       }
       reader.readAsDataURL(file)
     },
@@ -139,15 +167,22 @@ export default function OnboardingBrandingPage() {
                             alt="Logo preview"
                             className="h-24 w-24 rounded-lg object-contain border"
                           />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -right-2 -top-2 h-6 w-6"
-                            onClick={removeLogo}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                          )}
+                          {!isUploading && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -right-2 -top-2 h-6 w-6"
+                              onClick={removeLogo}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors">
