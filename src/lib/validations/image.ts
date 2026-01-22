@@ -18,15 +18,25 @@ export const ALLOWED_IMAGE_TYPES = [
 export type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number]
 
 /**
- * Maximum image size in bytes (5MB)
+ * Maximum image size in bytes (15MB)
  */
-export const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+export const MAX_IMAGE_SIZE = 15 * 1024 * 1024
 
 /**
- * Maximum data URI length (roughly 7MB to account for base64 encoding overhead)
- * Base64 increases size by ~33%, so 5MB image → ~6.7MB data URI
+ * Maximum data URI length (roughly 20MB to account for base64 encoding overhead)
+ * Base64 increases size by ~33%, so 15MB image → ~20MB data URI
  */
-export const MAX_DATA_URI_LENGTH = 7 * 1024 * 1024
+export const MAX_DATA_URI_LENGTH = 20 * 1024 * 1024
+
+/**
+ * Maximum logo size in bytes (2MB - logos should be smaller)
+ */
+export const MAX_LOGO_SIZE = 2 * 1024 * 1024
+
+/**
+ * Maximum hero image size in bytes (5MB)
+ */
+export const MAX_HERO_SIZE = 5 * 1024 * 1024
 
 /**
  * Pattern to extract MIME type from data URI
@@ -35,9 +45,9 @@ export const MAX_DATA_URI_LENGTH = 7 * 1024 * 1024
 const DATA_URI_PATTERN = /^data:(image\/(?:jpeg|jpg|png|gif|webp|svg\+xml));base64,/i
 
 /**
- * Validates that a URL is a secure image URL
+ * Validates that a URL is a secure image URL stored in S3
+ * SECURITY: Base64 data URIs are NOT allowed - images must be uploaded to S3
  * Accepts:
- * - Data URIs with allowed image types
  * - URLs from our S3 bucket (S3_PUBLIC_URL)
  * - Empty string (optional field)
  */
@@ -45,20 +55,9 @@ export function isValidImageUrl(url: string): boolean {
   // Empty is valid (optional)
   if (!url || url === '') return true
 
-  // Check for data URI
+  // SECURITY: Reject data URIs (base64) - must be uploaded to S3
   if (url.startsWith('data:')) {
-    // Validate MIME type
-    const match = url.match(DATA_URI_PATTERN)
-    if (!match) {
-      return false
-    }
-
-    // Check size (data URIs can be very large)
-    if (url.length > MAX_DATA_URI_LENGTH) {
-      return false
-    }
-
-    return true
+    return false
   }
 
   // Check for S3 URLs
@@ -148,7 +147,8 @@ export function sanitizeImageUrl(url: string | undefined | null): string {
 
 /**
  * Zod schema for validating image URLs (logo, product images)
- * Accepts empty string, data URIs, or S3 URLs
+ * SECURITY: Only accepts S3 URLs - base64 data URIs are rejected
+ * Accepts empty string or S3 URLs only
  */
 export const imageUrlSchema = z
   .string()
@@ -158,7 +158,7 @@ export const imageUrlSchema = z
       return isValidImageUrl(val)
     },
     {
-      message: 'Invalid image URL. Must be a valid data URI or uploaded file.',
+      message: 'Invalid image URL. Base64 images are not allowed. Please upload to S3.',
     }
   )
   .transform((val) => sanitizeImageUrl(val))
@@ -175,6 +175,7 @@ export const imageUrlArraySchema = z
 
 /**
  * Validates image data before storage
+ * SECURITY: Only S3 URLs are allowed for storage - base64 data URIs are rejected
  * Use this on the server side before saving to DB
  */
 export function validateImageForStorage(url: string): {
@@ -186,36 +187,13 @@ export function validateImageForStorage(url: string): {
     return { valid: true, sanitized: '' }
   }
 
-  // Data URI validation
+  // SECURITY: Reject data URIs (base64) - must be uploaded to S3
   if (url.startsWith('data:')) {
-    const mimeType = validateDataUri(url)
-    if (!mimeType) {
-      return {
-        valid: false,
-        error: 'Invalid image type. Allowed: JPEG, PNG, GIF, WebP, SVG',
-        sanitized: '',
-      }
+    return {
+      valid: false,
+      error: 'Base64 images are not allowed. Please upload images to S3.',
+      sanitized: '',
     }
-
-    if (url.length > MAX_DATA_URI_LENGTH) {
-      return {
-        valid: false,
-        error: 'Image too large. Maximum size is 5MB.',
-        sanitized: '',
-      }
-    }
-
-    // Validate actual size
-    const base64 = extractBase64(url)
-    if (base64 && estimateBase64Size(base64) > MAX_IMAGE_SIZE) {
-      return {
-        valid: false,
-        error: 'Image too large. Maximum size is 5MB.',
-        sanitized: '',
-      }
-    }
-
-    return { valid: true, sanitized: url }
   }
 
   // S3 URL validation

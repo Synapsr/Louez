@@ -138,6 +138,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   const [newCategoryName, setNewCategoryName] = useState('')
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false)
   const [isCreatingCategory, setIsCreatingCategory] = useState(false)
+  const [isUploadingImages, setIsUploadingImages] = useState(false)
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: PricingTierInput[] = product?.pricingTiers?.map((tier) => ({
@@ -166,42 +167,67 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   })
 
   const processFiles = useCallback(
-    (files: FileList | File[]) => {
+    async (files: FileList | File[]) => {
       const fileArray = Array.from(files)
-      const newPreviews: string[] = []
-      let processed = 0
       const filesToProcess = Math.min(fileArray.length, 5 - imagesPreviews.length)
 
       if (filesToProcess === 0) return
 
-      for (let i = 0; i < filesToProcess; i++) {
-        const file = fileArray[i]
+      setIsUploadingImages(true)
+      const uploadedUrls: string[] = []
 
-        if (!file.type.startsWith('image/')) {
-          toast.error(t('imageError'))
-          processed++
-          continue
-        }
+      try {
+        for (let i = 0; i < filesToProcess; i++) {
+          const file = fileArray[i]
 
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error(t('imageSizeError'))
-          processed++
-          continue
-        }
-
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          const url = event.target?.result as string
-          newPreviews.push(url)
-          processed++
-
-          if (processed === filesToProcess && newPreviews.length > 0) {
-            const updatedPreviews = [...imagesPreviews, ...newPreviews]
-            setImagesPreviews(updatedPreviews)
-            form.setValue('images', updatedPreviews)
+          if (!file.type.startsWith('image/')) {
+            toast.error(t('imageError'))
+            continue
           }
+
+          if (file.size > 15 * 1024 * 1024) {
+            toast.error(t('imageSizeError'))
+            continue
+          }
+
+          // Convert file to base64 for API upload
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.onerror = reject
+            reader.readAsDataURL(file)
+          })
+
+          // Upload to S3 via API
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: base64,
+              type: 'product',
+              filename: `product-${Date.now()}`,
+            }),
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Upload failed')
+          }
+
+          const { url } = await response.json()
+          uploadedUrls.push(url)
         }
-        reader.readAsDataURL(file)
+
+        if (uploadedUrls.length > 0) {
+          const updatedPreviews = [...imagesPreviews, ...uploadedUrls]
+          setImagesPreviews(updatedPreviews)
+          form.setValue('images', updatedPreviews)
+        }
+      } catch (error) {
+        console.error('Image upload error:', error)
+        toast.error(t('imageUploadError'))
+      } finally {
+        setIsUploadingImages(false)
       }
     },
     [form, imagesPreviews, t]
@@ -368,26 +394,38 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               {imagesPreviews.length === 0 && (
                 <label
                   className={`flex h-48 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors bg-muted/20 ${
-                    isDragging
-                      ? 'border-primary bg-primary/10'
-                      : 'border-muted-foreground/25 hover:border-primary/50'
+                    isUploadingImages
+                      ? 'border-primary bg-primary/10 cursor-wait'
+                      : isDragging
+                        ? 'border-primary bg-primary/10'
+                        : 'border-muted-foreground/25 hover:border-primary/50'
                   }`}
                   onDragOver={handleDragOver}
                   onDragEnter={handleDragEnter}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                 >
-                  <Upload className={`h-10 w-10 mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-                  <span className="text-sm font-medium">{t('addImage')}</span>
-                  <span className="text-xs text-muted-foreground mt-1">
-                    {t('dragImages')}
-                  </span>
+                  {isUploadingImages ? (
+                    <>
+                      <Loader2 className="h-10 w-10 mb-3 text-primary animate-spin" />
+                      <span className="text-sm font-medium">{t('uploading')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className={`h-10 w-10 mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+                      <span className="text-sm font-medium">{t('addImage')}</span>
+                      <span className="text-xs text-muted-foreground mt-1">
+                        {t('dragImages')}
+                      </span>
+                    </>
+                  )}
                   <input
                     type="file"
                     accept="image/*"
                     multiple
                     className="sr-only"
                     onChange={handleImageUpload}
+                    disabled={isUploadingImages}
                   />
                 </label>
               )}
@@ -439,25 +477,34 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   {imagesPreviews.length < 5 && (
                     <label
                       className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
-                        isDragging
-                          ? 'border-primary bg-primary/10'
-                          : 'border-muted-foreground/25 hover:border-primary/50'
+                        isUploadingImages
+                          ? 'border-primary bg-primary/10 cursor-wait'
+                          : isDragging
+                            ? 'border-primary bg-primary/10'
+                            : 'border-muted-foreground/25 hover:border-primary/50'
                       }`}
                       onDragOver={handleDragOver}
                       onDragEnter={handleDragEnter}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
                     >
-                      <Plus className={`h-6 w-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-                      <span className="mt-1 text-xs text-muted-foreground">
-                        {t('addImage')}
-                      </span>
+                      {isUploadingImages ? (
+                        <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className={`h-6 w-6 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+                          <span className="mt-1 text-xs text-muted-foreground">
+                            {t('addImage')}
+                          </span>
+                        </>
+                      )}
                       <input
                         type="file"
                         accept="image/*"
                         multiple
                         className="sr-only"
                         onChange={handleImageUpload}
+                        disabled={isUploadingImages}
                       />
                     </label>
                   )}

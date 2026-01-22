@@ -3019,6 +3019,7 @@
       "logoHelp": "Formato recomendado: PNG ou SVG, 512x512px",
       "logoError": "Por favor, selecione uma imagem",
       "logoSizeError": "A imagem nao deve exceder 2 MB",
+      "logoUploadError": "Falha ao carregar o logo. Por favor, tente novamente.",
       "primaryColor": "Cor primaria",
       "theme": "Tema",
       "themeLight": "Claro",

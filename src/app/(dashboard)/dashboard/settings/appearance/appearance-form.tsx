@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock } from 'lucide-react'
+import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
@@ -80,6 +80,8 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
   ]
 
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [isUploadingHero, setIsUploadingHero] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(store.logoUrl)
   const [primaryColor, setPrimaryColor] = useState(store.theme?.primaryColor || '#2563eb')
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(
@@ -91,23 +93,56 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
   // Get contrast color for buttons
   const buttonTextColor = getContrastColor(primaryColor)
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error(t('fileTooLarge'))
-        return
+  const uploadImage = async (dataUri: string, type: 'logo' | 'hero', filename: string): Promise<string | null> => {
+    try {
+      const response = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: dataUri, type, filename }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Upload failed')
       }
-      if (!file.type.startsWith('image/')) {
-        toast.error(t('fileNotImage'))
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setLogoPreview(reader.result as string)
-      }
-      reader.readAsDataURL(file)
+
+      const { url } = await response.json()
+      return url
+    } catch (error) {
+      console.error('Image upload error:', error)
+      return null
     }
+  }
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(t('fileTooLarge'))
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('fileNotImage'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      const dataUri = reader.result as string
+      setLogoPreview(dataUri)
+      setIsUploadingLogo(true)
+
+      const url = await uploadImage(dataUri, 'logo', 'store-logo')
+      if (url) {
+        setLogoPreview(url)
+      } else {
+        toast.error(tErrors('generic'))
+        setLogoPreview(store.logoUrl)
+      }
+      setIsUploadingLogo(false)
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleRemoveLogo = () => {
@@ -115,13 +150,16 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
   }
 
   const handleHeroImageUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files
       if (!files) return
 
-      const newImages: string[] = []
-      let processed = 0
       const maxNew = Math.min(files.length, 5 - heroImages.length)
+      if (maxNew <= 0) return
+
+      setIsUploadingHero(true)
+
+      const uploadPromises: Promise<string | null>[] = []
 
       for (let i = 0; i < maxNew; i++) {
         const file = files[i]
@@ -134,18 +172,33 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
           continue
         }
 
-        const reader = new FileReader()
-        reader.onload = (event) => {
-          newImages.push(event.target?.result as string)
-          processed++
-          if (processed === maxNew) {
-            setHeroImages(prev => [...prev, ...newImages])
+        const promise = new Promise<string | null>((resolve) => {
+          const reader = new FileReader()
+          reader.onload = async (event) => {
+            const dataUri = event.target?.result as string
+            const url = await uploadImage(dataUri, 'hero', `hero-${Date.now()}-${i}`)
+            resolve(url)
           }
-        }
-        reader.readAsDataURL(file)
+          reader.onerror = () => resolve(null)
+          reader.readAsDataURL(file)
+        })
+
+        uploadPromises.push(promise)
       }
+
+      const results = await Promise.all(uploadPromises)
+      const successfulUploads = results.filter((url): url is string => url !== null)
+
+      if (successfulUploads.length > 0) {
+        setHeroImages(prev => [...prev, ...successfulUploads])
+      }
+      if (successfulUploads.length < uploadPromises.length) {
+        toast.error(tErrors('generic'))
+      }
+
+      setIsUploadingHero(false)
     },
-    [heroImages.length, t]
+    [heroImages.length, t, tErrors]
   )
 
   const removeHeroImage = (index: number) => {
@@ -228,15 +281,22 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
                     alt="Logo"
                     className="h-14 w-auto max-w-[100px] rounded-lg border object-contain bg-muted/50 p-2"
                   />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    className="absolute -right-2 -top-2 h-5 w-5"
-                    onClick={handleRemoveLogo}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
+                  {isUploadingLogo && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    </div>
+                  )}
+                  {!isUploadingLogo && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -right-2 -top-2 h-5 w-5"
+                      onClick={handleRemoveLogo}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="flex h-14 w-14 items-center justify-center rounded-lg border-2 border-dashed bg-muted/20">
@@ -246,7 +306,10 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
               <div>
                 <Label
                   htmlFor="logo-upload"
-                  className="cursor-pointer inline-flex items-center text-sm font-medium text-primary hover:underline"
+                  className={cn(
+                    "inline-flex items-center text-sm font-medium text-primary hover:underline",
+                    isUploadingLogo ? "pointer-events-none opacity-50" : "cursor-pointer"
+                  )}
                 >
                   {logoPreview ? t('changeLogo') : t('uploadLogo')}
                 </Label>
@@ -256,6 +319,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
                   accept="image/*"
                   className="hidden"
                   onChange={handleLogoChange}
+                  disabled={isUploadingLogo}
                 />
                 <p className="text-xs text-muted-foreground">PNG, JPG (max 2MB)</p>
               </div>
@@ -366,7 +430,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
               <Label className="text-sm font-medium">{t('heroImages')}</Label>
               <p className="text-xs text-muted-foreground mt-0.5">{t('heroImagesDescription')}</p>
             </div>
-            {heroImages.length === 0 ? (
+            {heroImages.length === 0 && !isUploadingHero ? (
               <label className="flex h-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors bg-muted/10">
                 <ImageIcon className="h-6 w-6 text-muted-foreground mb-1" />
                 <span className="text-sm font-medium">{t('addHeroImages')}</span>
@@ -399,7 +463,12 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
                     </Button>
                   </div>
                 ))}
-                {heroImages.length < 5 && (
+                {isUploadingHero && (
+                  <div className="flex aspect-[4/3] items-center justify-center rounded-lg border-2 border-dashed border-primary/50 bg-primary/5">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                )}
+                {heroImages.length < 5 && !isUploadingHero && (
                   <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-primary/50 transition-colors">
                     <Plus className="h-4 w-4 text-muted-foreground" />
                     <input
@@ -421,7 +490,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
             <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 lg:flex-none">
               {tCommon('cancel')}
             </Button>
-            <Button type="submit" disabled={isLoading} className="flex-1 lg:flex-none">
+            <Button type="submit" disabled={isLoading || isUploadingLogo || isUploadingHero} className="flex-1 lg:flex-none">
               {isLoading ? tCommon('loading') : tCommon('save')}
             </Button>
           </div>
