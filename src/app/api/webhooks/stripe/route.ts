@@ -9,6 +9,7 @@ import { nanoid } from 'nanoid'
 import {
   notifySubscriptionActivated,
   notifySubscriptionCancelled,
+  notifySmsCreditsTopup,
 } from '@/lib/discord/platform-notifications'
 
 export async function POST(request: Request) {
@@ -205,6 +206,12 @@ async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
       })
       .where(eq(smsTopupTransactions.id, transactionId))
   })
+
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
+  if (store) {
+    notifySmsCreditsTopup({ id: store.id, name: store.name, slug: store.slug }, qty).catch(() => {})
+  }
 
   console.log(`SMS top-up completed for store ${storeId}: ${qty} credits added`)
 }

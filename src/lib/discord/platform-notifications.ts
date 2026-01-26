@@ -278,3 +278,24 @@ export async function notifyStripeConnected(store: StoreInfo): Promise<void> {
   const prefix = await storePrefix(store)
   await send(`💳 ${prefix} connected Stripe account`)
 }
+
+export async function notifyStoreSettingsUpdated(store: StoreInfo): Promise<void> {
+  if (!isEnabled()) return
+  const prefix = await storePrefix(store)
+  await send(`⚙️ ${prefix} updated store settings`)
+}
+
+export async function notifyNotificationSettingsUpdated(store: StoreInfo): Promise<void> {
+  if (!isEnabled()) return
+  const prefix = await storePrefix(store)
+  await send(`🔔 ${prefix} updated notification settings`)
+}
+
+export async function notifySmsCreditsTopup(
+  store: StoreInfo,
+  quantity: number
+): Promise<void> {
+  if (!isEnabled()) return
+  const prefix = await storePrefix(store)
+  await send(`📱 ${prefix} purchased ${quantity} SMS credits`)
+}
