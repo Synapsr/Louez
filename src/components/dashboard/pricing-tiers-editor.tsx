@@ -61,6 +61,7 @@ export function PricingTiersEditor({
 }: PricingTiersEditorProps) {
   const t = useTranslations('dashboard.products.form.pricingTiers')
   const [isEnabled, setIsEnabled] = useState(tiers.length > 0)
+  const [editingPrices, setEditingPrices] = useState<Record<number, string>>({})
 
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelSingular = getUnitLabel(pricingMode, 'singular')
@@ -281,13 +282,62 @@ export function PricingTiersEditor({
                       <div className="flex items-center gap-4">
                         {basePrice > 0 && (
                           <div className="text-right">
-                            <p className="text-sm font-medium">
-                              {formatCurrency(
-                                basePrice * (1 - tier.discountPercent / 100)
-                              )}
-                              /{getUnitLabel(pricingMode, 'short')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
+                            <div className="flex items-center justify-end gap-1">
+                              <Input
+                                type="number"
+                                step={0.01}
+                                min={0.01}
+                                value={
+                                  editingPrices[originalIndex] ??
+                                  parseFloat(
+                                    (basePrice * (1 - tier.discountPercent / 100)).toFixed(2)
+                                  )
+                                }
+                                onFocus={(e) =>
+                                  setEditingPrices((prev) => ({
+                                    ...prev,
+                                    [originalIndex]: e.target.value,
+                                  }))
+                                }
+                                onChange={(e) => {
+                                  const raw = e.target.value
+                                  setEditingPrices((prev) => ({
+                                    ...prev,
+                                    [originalIndex]: raw,
+                                  }))
+                                  const targetPrice = parseFloat(raw)
+                                  if (
+                                    !isNaN(targetPrice) &&
+                                    targetPrice > 0 &&
+                                    targetPrice < basePrice
+                                  ) {
+                                    const discount =
+                                      Math.round(
+                                        ((basePrice - targetPrice) / basePrice) * 100 * 100
+                                      ) / 100
+                                    updateTier(
+                                      originalIndex,
+                                      'discountPercent',
+                                      Math.min(99, Math.max(1, discount))
+                                    )
+                                  }
+                                }}
+                                onBlur={() =>
+                                  setEditingPrices((prev) => {
+                                    const next = { ...prev }
+                                    delete next[originalIndex]
+                                    return next
+                                  })
+                                }
+                                className="w-24 h-8 text-right text-sm font-medium"
+                                disabled={disabled}
+                                aria-label={t('targetPrice')}
+                              />
+                              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                                /{getUnitLabel(pricingMode, 'short')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
                               {t('insteadOf')} {formatCurrency(basePrice)}
                             </p>
                           </div>
