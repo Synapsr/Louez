@@ -655,7 +655,8 @@
           "duration": "Dauer",
           "pricePerUnit": "Stückpreis",
           "total": "Gesamt",
-          "savings": "Ersparnis"
+          "savings": "Ersparnis",
+          "targetPrice": "Zielpreis"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",

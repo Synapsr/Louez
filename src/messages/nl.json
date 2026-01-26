@@ -656,7 +656,8 @@
           "duration": "Duur",
           "pricePerUnit": "Eenheidsprijs",
           "total": "Totaal",
-          "savings": "Besparing"
+          "savings": "Besparing",
+          "targetPrice": "Doelprijs"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",

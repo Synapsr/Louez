@@ -655,7 +655,8 @@
           "duration": "Czas trwania",
           "pricePerUnit": "Cena jednostkowa",
           "total": "Suma",
-          "savings": "Oszczędności"
+          "savings": "Oszczędności",
+          "targetPrice": "Cena docelowa"
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",

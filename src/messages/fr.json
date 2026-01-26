@@ -658,7 +658,8 @@
           "duration": "Durée",
           "pricePerUnit": "Prix unitaire",
           "total": "Total",
-          "savings": "Économie"
+          "savings": "Économie",
+          "targetPrice": "Prix cible"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
