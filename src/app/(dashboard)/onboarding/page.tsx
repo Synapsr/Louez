@@ -141,7 +141,7 @@ export default function OnboardingStorePage() {
     try {
       const result = await createStore(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       router.push('/onboarding/branding')
