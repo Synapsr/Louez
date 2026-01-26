@@ -62,6 +62,7 @@ export function PricingTiersEditor({
   const t = useTranslations('dashboard.products.form.pricingTiers')
   const [isEnabled, setIsEnabled] = useState(tiers.length > 0)
   const [editingPrices, setEditingPrices] = useState<Record<number, string>>({})
+  const [editingTotals, setEditingTotals] = useState<Record<number, string>>({})
 
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelSingular = getUnitLabel(pricingMode, 'singular')
@@ -337,8 +338,73 @@ export function PricingTiersEditor({
                                 /{getUnitLabel(pricingMode, 'short')}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {t('insteadOf')} {formatCurrency(basePrice)}
+                            <div className="flex items-center justify-end gap-1 mt-1">
+                              <Input
+                                type="number"
+                                step={0.01}
+                                min={0.01}
+                                value={
+                                  editingTotals[originalIndex] ??
+                                  parseFloat(
+                                    (
+                                      basePrice *
+                                      (1 - tier.discountPercent / 100) *
+                                      tier.minDuration
+                                    ).toFixed(2)
+                                  )
+                                }
+                                onFocus={(e) =>
+                                  setEditingTotals((prev) => ({
+                                    ...prev,
+                                    [originalIndex]: e.target.value,
+                                  }))
+                                }
+                                onChange={(e) => {
+                                  const raw = e.target.value
+                                  setEditingTotals((prev) => ({
+                                    ...prev,
+                                    [originalIndex]: raw,
+                                  }))
+                                  const totalCost = parseFloat(raw)
+                                  if (
+                                    !isNaN(totalCost) &&
+                                    totalCost > 0 &&
+                                    tier.minDuration > 0
+                                  ) {
+                                    const pricePerUnit = totalCost / tier.minDuration
+                                    if (pricePerUnit < basePrice) {
+                                      const discount =
+                                        Math.round(
+                                          ((basePrice - pricePerUnit) / basePrice) *
+                                            100 *
+                                            100
+                                        ) / 100
+                                      updateTier(
+                                        originalIndex,
+                                        'discountPercent',
+                                        Math.min(99, Math.max(1, discount))
+                                      )
+                                    }
+                                  }
+                                }}
+                                onBlur={() =>
+                                  setEditingTotals((prev) => {
+                                    const next = { ...prev }
+                                    delete next[originalIndex]
+                                    return next
+                                  })
+                                }
+                                className="w-24 h-7 text-right text-xs"
+                                disabled={disabled}
+                                aria-label={t('tierTotal')}
+                              />
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                                {t('tierTotal')}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+                              {t('insteadOf')}{' '}
+                              {formatCurrency(basePrice * tier.minDuration)}
                             </p>
                           </div>
                         )}

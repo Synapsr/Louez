@@ -656,7 +656,8 @@
           "pricePerUnit": "Stückpreis",
           "total": "Gesamt",
           "savings": "Ersparnis",
-          "targetPrice": "Zielpreis"
+          "targetPrice": "Zielpreis",
+          "tierTotal": "gesamt"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",

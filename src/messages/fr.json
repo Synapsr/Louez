@@ -659,7 +659,8 @@
           "pricePerUnit": "Prix unitaire",
           "total": "Total",
           "savings": "Économie",
-          "targetPrice": "Prix cible"
+          "targetPrice": "Prix cible",
+          "tierTotal": "total"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",

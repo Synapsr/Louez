@@ -656,7 +656,8 @@
           "pricePerUnit": "Cena jednostkowa",
           "total": "Suma",
           "savings": "Oszczędności",
-          "targetPrice": "Cena docelowa"
+          "targetPrice": "Cena docelowa",
+          "tierTotal": "łącznie"
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",

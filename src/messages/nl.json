@@ -657,7 +657,8 @@
           "pricePerUnit": "Eenheidsprijs",
           "total": "Totaal",
           "savings": "Besparing",
-          "targetPrice": "Doelprijs"
+          "targetPrice": "Doelprijs",
+          "tierTotal": "totaal"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
