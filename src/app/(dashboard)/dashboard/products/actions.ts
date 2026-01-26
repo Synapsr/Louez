@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { productSchema, categorySchema, type ProductInput, type CategoryInput } from '@/lib/validations/product'
 import { nanoid } from 'nanoid'
 import { validatePricingTiers } from '@/lib/pricing'
+import { notifyProductCreated } from '@/lib/discord/platform-notifications'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -69,6 +70,11 @@ export async function createProduct(data: ProductInput) {
       }))
     )
   }
+
+  notifyProductCreated(
+    { id: store.id, name: store.name, slug: store.slug },
+    validated.data.name
+  ).catch(() => {})
 
   revalidatePath('/dashboard/products')
   return { success: true, productId }

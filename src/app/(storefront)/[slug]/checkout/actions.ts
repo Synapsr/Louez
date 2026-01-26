@@ -10,6 +10,7 @@ import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import { notifyNewReservation } from '@/lib/discord/platform-notifications'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
@@ -590,6 +591,17 @@ export async function createReservation(input: CreateReservationInput) {
       }).catch((error) => {
         console.error('Failed to dispatch new reservation notification:', error)
       })
+
+      // Platform admin notification
+      notifyNewReservation(
+        { id: store.id, name: store.name, slug: store.slug },
+        {
+          number: reservationNumber,
+          customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+          totalAmount: finalTotal,
+          currency: store.settings?.currency,
+        }
+      ).catch(() => {})
     }
 
     // Check if we should process payment via Stripe
