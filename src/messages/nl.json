@@ -3023,8 +3023,7 @@
       "primaryColor": "Primaire kleur",
       "theme": "Thema",
       "themeLight": "Licht",
-      "themeDark": "Donker",
-      "themeAuto": "Auto"
+      "themeDark": "Donker"
     },
     "product": {
       "title": "Eerste product",

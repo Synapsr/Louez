@@ -139,7 +139,7 @@ export const createBrandingSchema = (t: (key: string, params?: Record<string, st
       .optional()
       .or(z.literal('')),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('color')),
-    theme: z.enum(['light', 'dark', 'system']),
+    theme: z.enum(['light', 'dark']),
   })
 
 export const createFirstProductSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -199,7 +199,7 @@ export const brandingSchema = z.object({
     .optional()
     .or(z.literal('')),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.color'),
-  theme: z.enum(['light', 'dark', 'system']),
+  theme: z.enum(['light', 'dark']),
 })
 
 export const firstProductSchema = z.object({

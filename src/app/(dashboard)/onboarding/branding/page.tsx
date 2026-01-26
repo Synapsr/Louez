@@ -263,7 +263,7 @@ export default function OnboardingBrandingPage() {
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-2 gap-4"
                     >
                       <div>
                         <RadioGroupItem
@@ -273,10 +273,10 @@ export default function OnboardingBrandingPage() {
                         />
                         <Label
                           htmlFor="light"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
+                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-4"
                         >
-                          <div className="mb-2 h-6 w-10 rounded bg-white border" />
-                          <span className="text-sm">{t('themeLight')}</span>
+                          <div className="mb-2 h-8 w-12 rounded bg-white border" />
+                          <span className="text-sm font-medium">{t('themeLight')}</span>
                         </Label>
                       </div>
                       <div>
@@ -287,27 +287,10 @@ export default function OnboardingBrandingPage() {
                         />
                         <Label
                           htmlFor="dark"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
+                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-4"
                         >
-                          <div className="mb-2 h-6 w-10 rounded bg-zinc-900 border" />
-                          <span className="text-sm">{t('themeDark')}</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="system"
-                          id="system"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="system"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
-                        >
-                          <div className="mb-2 flex h-6 w-10 overflow-hidden rounded border">
-                            <div className="w-1/2 bg-white" />
-                            <div className="w-1/2 bg-zinc-900" />
-                          </div>
-                          <span className="text-sm">{t('themeAuto')}</span>
+                          <div className="mb-2 h-8 w-12 rounded bg-zinc-900 border" />
+                          <span className="text-sm font-medium">{t('themeDark')}</span>
                         </Label>
                       </div>
                     </RadioGroup>

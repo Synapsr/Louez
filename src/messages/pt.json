@@ -3023,8 +3023,7 @@
       "primaryColor": "Cor primaria",
       "theme": "Tema",
       "themeLight": "Claro",
-      "themeDark": "Escuro",
-      "themeAuto": "Auto"
+      "themeDark": "Escuro"
     },
     "product": {
       "title": "Primeiro produto",
