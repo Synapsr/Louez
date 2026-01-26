@@ -11,6 +11,7 @@ import { sendTeamInvitationEmail } from '@/lib/email/send'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { z } from 'zod'
 import { canAddTeamMember } from '@/lib/plan-limits'
+import { notifyTeamMemberInvited } from '@/lib/discord/platform-notifications'
 
 const addMemberSchema = z.object({
   email: z.string().email(),
@@ -75,6 +76,11 @@ export async function addTeamMember(formData: FormData) {
       addedBy: session.user.id,
     })
 
+    notifyTeamMemberInvited(
+      { id: store.id, name: store.name, slug: store.slug },
+      email
+    ).catch(() => {})
+
     revalidatePath('/dashboard/team')
     return { success: true, type: 'added' }
   }
@@ -124,6 +130,11 @@ export async function addTeamMember(formData: FormData) {
     console.error('Failed to send invitation email:', error)
     // Don't fail the action if email fails
   }
+
+  notifyTeamMemberInvited(
+    { id: store.id, name: store.name, slug: store.slug },
+    email
+  ).catch(() => {})
 
   revalidatePath('/dashboard/team')
   return { success: true, type: 'invited' }

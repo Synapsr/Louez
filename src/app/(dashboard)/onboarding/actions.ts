@@ -18,6 +18,7 @@ import {
 } from '@/lib/validations/onboarding'
 import { defaultBusinessHours } from '@/lib/validations/business-hours'
 import { getTimezoneForCountry } from '@/lib/utils/countries'
+import { notifyStoreCreated } from '@/lib/discord/platform-notifications'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -292,6 +293,8 @@ export async function completeOnboarding(data: StripeSetupInput) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, activeStoreId))
+
+  notifyStoreCreated({ id: activeStoreId, name: store.name, slug: store.slug }).catch(() => {})
 
   revalidatePath('/onboarding/stripe')
   return { success: true }

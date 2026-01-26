@@ -3,9 +3,13 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@/lib/db'
-import { subscriptions, smsCredits, smsTopupTransactions } from '@/lib/db/schema'
+import { subscriptions, smsCredits, smsTopupTransactions, stores } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import {
+  notifySubscriptionActivated,
+  notifySubscriptionCancelled,
+} from '@/lib/discord/platform-notifications'
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -114,6 +118,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       status: 'active',
       currentPeriodEnd,
     })
+  }
+
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
+  if (store) {
+    const interval = (session.metadata?.interval as 'monthly' | 'yearly') || 'monthly'
+    notifySubscriptionActivated(
+      { id: store.id, name: store.name, slug: store.slug },
+      planSlug,
+      interval
+    ).catch(() => {})
   }
 
   console.log(`Subscription created/updated for store ${storeId} with plan ${planSlug}`)
@@ -253,6 +268,12 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
       updatedAt: new Date(),
     })
     .where(eq(subscriptions.id, subscription.id))
+
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, subscription.storeId) })
+  if (store) {
+    notifySubscriptionCancelled({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+  }
 
   console.log(`Subscription cancelled: ${stripeSubscription.id}`)
 }

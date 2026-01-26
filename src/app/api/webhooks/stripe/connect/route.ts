@@ -10,6 +10,12 @@ import { fromStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import type { NotificationSettings, StoreSettings } from '@/types/store'
+import {
+  notifyPaymentReceived,
+  notifyReservationConfirmed,
+  notifyPaymentFailed,
+  notifyStripeConnected,
+} from '@/lib/discord/platform-notifications'
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -18,6 +24,7 @@ import type { NotificationSettings, StoreSettings } from '@/types/store'
 type ReservationStore = {
   id: string
   name: string
+  slug: string
   email: string | null
   stripeAccountId: string | null
   discordWebhookUrl: string | null
@@ -494,6 +501,11 @@ async function handleCheckoutCompleted(
       })
     }
 
+    // Platform admin notifications
+    const storeInfo = { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug }
+    notifyPaymentReceived(storeInfo, reservation.number, totalAmount, currency).catch(() => {})
+    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {})
+
     console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
   } else {
     console.log(`Reservation ${reservationId} already processed, payment record updated`)
@@ -918,6 +930,12 @@ async function handleDepositFailed(
     }).catch((error) => {
       console.error('Failed to dispatch payment failed notification:', error)
     })
+
+    // Platform admin notification
+    notifyPaymentFailed(
+      { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug },
+      reservation.number
+    ).catch(() => {})
   }
 }
 
@@ -989,6 +1007,11 @@ async function handleAccountUpdated(account: Stripe.Account) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))
+
+  // Platform admin notification (only on first successful onboarding)
+  if (chargesEnabled && detailsSubmitted && !store.stripeOnboardingComplete) {
+    notifyStripeConnected({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+  }
 
   console.log(`Store ${store.id} Stripe status updated: charges=${chargesEnabled}`)
 }
