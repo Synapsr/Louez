@@ -255,6 +255,15 @@ export async function notifyProductCreated(
   await send(`🏷️ ${prefix} new product: ${productName}`)
 }
 
+export async function notifyProductUpdated(
+  store: StoreInfo,
+  productName: string
+): Promise<void> {
+  if (!isEnabled()) return
+  const prefix = await storePrefix(store)
+  await send(`📝 ${prefix} updated product: ${productName}`)
+}
+
 export async function notifyCustomerCreated(
   store: StoreInfo,
   customer: { firstName: string; lastName: string; email: string }
