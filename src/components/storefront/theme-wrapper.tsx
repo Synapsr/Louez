@@ -3,7 +3,7 @@
 import { useEffect } from 'react'
 
 interface ThemeWrapperProps {
-  mode: 'light' | 'dark' | 'system'
+  mode: 'light' | 'dark'
   primaryColor: string
   children: React.ReactNode
 }
@@ -78,33 +78,11 @@ export function ThemeWrapper({ mode, primaryColor, children }: ThemeWrapperProps
     // Calculate and apply contrasting foreground color
     root.style.setProperty('--primary-foreground', getContrastForeground(primaryColor))
 
-    // Determine the actual theme to apply
-    let isDark = false
+    // Apply dark class based on store theme choice
     if (mode === 'dark') {
-      isDark = true
-    } else if (mode === 'system') {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    }
-
-    // Apply or remove dark class
-    if (isDark) {
       root.classList.add('dark')
     } else {
       root.classList.remove('dark')
-    }
-
-    // Listen for system theme changes if mode is 'system'
-    if (mode === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      const handleChange = (e: MediaQueryListEvent) => {
-        if (e.matches) {
-          root.classList.add('dark')
-        } else {
-          root.classList.remove('dark')
-        }
-      }
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
     }
   }, [mode, primaryColor])
 

@@ -3022,8 +3022,7 @@
       "primaryColor": "Kolor główny",
       "theme": "Motyw",
       "themeLight": "Jasny",
-      "themeDark": "Ciemny",
-      "themeAuto": "Auto"
+      "themeDark": "Ciemny"
     },
     "product": {
       "title": "Pierwszy produkt",
