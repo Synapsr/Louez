@@ -3368,7 +3368,9 @@
     "date": "Ongeldige datum",
     "dateRange": "Einddatum moet na startdatum zijn",
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
-    "invalidYoutubeUrl": "De YouTube URL is niet geldig"
+    "invalidYoutubeUrl": "De YouTube URL is niet geldig",
+    "invalidImageUrl": "De afbeeldings-URL is niet geldig",
+    "color": "Ongeldig kleurformaat"
   },
   "upgradeModal": {
     "upgradeNow": "Nu upgraden",

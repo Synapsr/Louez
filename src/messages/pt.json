@@ -3363,7 +3363,9 @@
     "date": "Data invalida",
     "dateRange": "A data de fim deve ser apos a data de inicio",
     "endDateBeforeStart": "A data de fim deve ser apos ou igual a data de inicio",
-    "invalidYoutubeUrl": "A URL do YouTube nao e valida"
+    "invalidYoutubeUrl": "A URL do YouTube nao e valida",
+    "invalidImageUrl": "A URL da imagem não é válida",
+    "color": "Formato de cor inválido"
   },
   "upgradeModal": {
     "upgradeNow": "Atualizar agora",

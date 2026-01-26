@@ -82,7 +82,7 @@ export interface StoreSettings {
 }
 
 export interface StoreTheme {
-  mode: 'light' | 'dark'
+  mode: 'light' | 'dark' | 'system'
   primaryColor: string
   heroImages?: string[]
 }
