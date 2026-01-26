@@ -121,6 +121,8 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
       .regex(/^[a-z0-9-]+$/, t('slug'))
       .refine((val) => !isReservedSlug(val), t('slugReserved')),
     pricingMode: z.enum(['day', 'hour']),
+    country: z.string().length(2),
+    currency: z.string().min(3).max(3),
     address: z.string().optional().or(z.literal('')),
     latitude: z.number().nullable().optional(),
     longitude: z.number().nullable().optional(),
@@ -182,6 +184,8 @@ export const storeInfoSchema = z.object({
     .regex(/^[a-z0-9-]+$/, 'validation.slug')
     .refine((val) => !isReservedSlug(val), 'validation.slugReserved'),
   pricingMode: z.enum(['day', 'hour']),
+  country: z.string().length(2),
+  currency: z.string().min(3).max(3),
   address: z.string().optional().or(z.literal('')),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

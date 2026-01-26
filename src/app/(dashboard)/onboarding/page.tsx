@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Store, Loader2, MapPin, Mail, Phone, Pencil, Check, X } from 'lucide-react'
+import { Store, Loader2, Globe, Mail, Phone, Pencil, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
@@ -29,10 +29,36 @@ import {
 } from '@/components/ui/form'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
+import { getCountriesSortedByName, getCountryName, getCountryByCode } from '@/lib/utils/countries'
+import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from '@/lib/utils/currency'
 
 import { createStoreInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
 import { createStore } from './actions'
+
+/**
+ * Detect the user's country from browser locale (e.g. "fr-FR" -> "FR")
+ */
+function detectCountryFromBrowser(): string {
+  if (typeof navigator === 'undefined') return 'FR'
+  const locale = navigator.language || 'en'
+  const parts = locale.split('-')
+  const regionCode = parts.length > 1 ? parts[1].toUpperCase() : null
+  if (regionCode && getCountryByCode(regionCode)) return regionCode
+  const langToCountry: Record<string, string> = {
+    fr: 'FR', en: 'US', de: 'DE', es: 'ES',
+    it: 'IT', nl: 'NL', pl: 'PL', pt: 'PT',
+    ja: 'JP', zh: 'CN', ko: 'KR',
+  }
+  return langToCountry[parts[0].toLowerCase()] || 'FR'
+}
 
 /**
  * Convert store name to a valid URL slug
@@ -74,12 +100,15 @@ export default function OnboardingStorePage() {
 
   const storeInfoSchema = createStoreInfoSchema(tValidation)
 
+  const detectedCountry = detectCountryFromBrowser()
   const form = useForm<StoreInfoInput>({
     resolver: zodResolver(storeInfoSchema),
     defaultValues: {
       name: '',
       slug: '',
       pricingMode: 'day',
+      country: detectedCountry,
+      currency: getDefaultCurrencyForCountry(detectedCountry),
       address: '',
       latitude: null,
       longitude: null,
@@ -135,6 +164,15 @@ export default function OnboardingStorePage() {
     const currentName = form.getValues('name')
     form.setValue('slug', slugify(currentName), { shouldValidate: true })
   }
+
+  const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
+    onChange(newCountry)
+    form.setValue('currency', getDefaultCurrencyForCountry(newCountry))
+  }
+
+  const locale = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'fr'
+  const sortedCountries = getCountriesSortedByName(locale)
+  const sortedCurrencies = SUPPORTED_CURRENCIES.slice().sort((a, b) => a.name.localeCompare(b.name))
 
   async function onSubmit(data: StoreInfoInput) {
     setIsLoading(true)
@@ -325,11 +363,66 @@ export default function OnboardingStorePage() {
               )}
             />
 
-            {/* Contact & Address Section */}
+            {/* Location & Contact Section */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {t('contactSection')}
+                <Globe className="h-4 w-4" />
+                {t('locationSection')}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('country')}</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('countryPlaceholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sortedCountries.map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                              {country.flag} {getCountryName(country.code, locale)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('currency')}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('currencyPlaceholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sortedCurrencies.map((currency) => (
+                            <SelectItem key={currency.code} value={currency.code}>
+                              {currency.symbol} {currency.name} ({currency.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField

@@ -10,6 +10,7 @@ import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
@@ -308,7 +309,7 @@ export async function createReservation(input: CreateReservationInput) {
           address: input.customer.address || null,
           city: input.customer.city || null,
           postalCode: input.customer.postalCode || null,
-          country: 'FR',
+          country: store.settings?.country || 'FR',
         })
         .$returningId()
 
@@ -556,7 +557,7 @@ export async function createReservation(input: CreateReservationInput) {
           customer: customerData,
           reservation: reservationData,
           dashboardUrl,
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         }).catch((error) => {
           console.error('Failed to send new request landlord email:', error)
         })

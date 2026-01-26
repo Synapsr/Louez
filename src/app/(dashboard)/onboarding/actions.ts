@@ -17,6 +17,7 @@ import {
   type StripeSetupInput,
 } from '@/lib/validations/onboarding'
 import { defaultBusinessHours } from '@/lib/validations/business-hours'
+import { getTimezoneForCountry } from '@/lib/utils/countries'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -85,6 +86,9 @@ export async function createStore(data: StoreInfoInput) {
           maxDuration: null,
           advanceNotice: 24,
           businessHours: existingBusinessHours,
+          country: validated.data.country,
+          timezone: getTimezoneForCountry(validated.data.country),
+          currency: validated.data.currency,
         },
         updatedAt: new Date(),
       })
@@ -109,6 +113,9 @@ export async function createStore(data: StoreInfoInput) {
           maxDuration: null,
           advanceNotice: 24,
           businessHours: defaultBusinessHours,
+          country: validated.data.country,
+          timezone: getTimezoneForCountry(validated.data.country),
+          currency: validated.data.currency,
         },
       })
       .$returningId()
