@@ -100,7 +100,7 @@ export default function OnboardingProductPage() {
     try {
       const result = await createFirstProduct(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       router.push('/onboarding/stripe')

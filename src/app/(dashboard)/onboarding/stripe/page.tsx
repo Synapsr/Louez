@@ -54,7 +54,7 @@ export default function OnboardingStripePage() {
     try {
       const result = await completeOnboarding(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       toast.success(t('configComplete'))

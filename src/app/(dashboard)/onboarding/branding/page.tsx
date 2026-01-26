@@ -128,7 +128,7 @@ export default function OnboardingBrandingPage() {
     try {
       const result = await updateBranding(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       router.push('/onboarding/stripe')
