@@ -11,7 +11,10 @@ import posthog from 'posthog-js'
 
 if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_POSTHOG_KEY) {
   posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+    // Route analytics through our reverse proxy to avoid CORS and ad blockers
+    // The proxy is configured in next.config.ts rewrites
+    api_host: '/ingest',
+    ui_host: 'https://eu.posthog.com',
     // Use recommended defaults for new projects (2025-11-30)
     defaults: '2025-11-30',
     // Only load in production to avoid polluting analytics with dev data
