@@ -32,9 +32,9 @@ const cspDirectives = {
     'https://unpkg.com',
     // Development: Next.js hot reload requires eval
     ...(isDev ? ["'unsafe-eval'", "'unsafe-inline'"] : []),
-    // Production: Next.js uses inline scripts with nonces, but we allow unsafe-inline as fallback
-    // For stricter CSP in production, implement nonce-based CSP via middleware
-    ...(!isDev ? ["'unsafe-inline'"] : []),
+    // Production: unsafe-inline needed for Next.js inline scripts (nonce-based CSP is the next step)
+    // unsafe-eval required by PostHog JS SDK (eval/new Function for feature flags & config)
+    ...(!isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
   ],
 
   // Styles: self + inline (required for Tailwind and component libraries)
@@ -199,6 +199,22 @@ const nextConfig: NextConfig = {
       },
     ]
   },
+  // PostHog reverse proxy: route analytics through our domain to avoid CORS
+  // issues and ad blockers. See https://posthog.com/docs/advanced/proxy/nextjs
+  async rewrites() {
+    return [
+      {
+        source: '/ingest/static/:path*',
+        destination: 'https://eu-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://eu.i.posthog.com/:path*',
+      },
+    ]
+  },
+  // Required for PostHog proxy to work with middleware
+  skipTrailingSlashRedirect: true,
   images: {
     remotePatterns: [
       // Google (OAuth profile pictures)
