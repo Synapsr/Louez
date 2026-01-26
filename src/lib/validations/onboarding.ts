@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isValidImageUrl } from './image'
+import { isValidImageUrl, isValidImageUrlClient } from './image'
 
 // ===== RESERVED SLUGS =====
 // These slugs are reserved to prevent namespace conflicts and potential phishing
@@ -130,16 +130,16 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
 
 export const createBrandingSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
   z.object({
-    // Validate image URL to prevent malicious uploads
+    // Client-safe validation: strict S3 check happens server-side in the action
     logoUrl: z
       .string()
-      .refine((val) => !val || val === '' || isValidImageUrl(val), {
-        message: t('url'),
+      .refine((val) => !val || val === '' || isValidImageUrlClient(val), {
+        message: t('invalidImageUrl'),
       })
       .optional()
       .or(z.literal('')),
-    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('url')),
-    theme: z.enum(['light', 'dark']),
+    primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('color')),
+    theme: z.enum(['light', 'dark', 'system']),
   })
 
 export const createFirstProductSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -156,11 +156,11 @@ export const createFirstProductSchema = (t: (key: string, params?: Record<string
       .optional()
       .or(z.literal('')),
     quantity: z.string().regex(/^\d+$/, t('integer')),
-    // SECURITY: Validate image URLs to prevent malicious uploads
+    // Client-safe validation: strict S3 check happens server-side in the action
     images: z
       .array(
-        z.string().refine((val) => !val || isValidImageUrl(val), {
-          message: t('url'),
+        z.string().refine((val) => !val || isValidImageUrlClient(val), {
+          message: t('invalidImageUrl'),
         })
       )
       .max(10)
@@ -198,8 +198,8 @@ export const brandingSchema = z.object({
     })
     .optional()
     .or(z.literal('')),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.url'),
-  theme: z.enum(['light', 'dark']),
+  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.color'),
+  theme: z.enum(['light', 'dark', 'system']),
 })
 
 export const firstProductSchema = z.object({

@@ -45,6 +45,35 @@ export const MAX_HERO_SIZE = 5 * 1024 * 1024
 const DATA_URI_PATTERN = /^data:(image\/(?:jpeg|jpg|png|gif|webp|svg\+xml));base64,/i
 
 /**
+ * Client-safe image URL validation for use in browser-side Zod schemas.
+ * Does NOT depend on server-only env variables (S3_PUBLIC_URL).
+ *
+ * Accepts:
+ * - Empty string (optional field)
+ * - Any valid HTTP(S) URL (the upload API already ensures S3 URLs)
+ *
+ * Rejects:
+ * - Data URIs (base64) — images must be uploaded to S3
+ * - Invalid URLs
+ *
+ * NOTE: This is a UX-level check. The server action re-validates with
+ * isValidImageUrl() which enforces the strict S3 origin check.
+ */
+export function isValidImageUrlClient(url: string): boolean {
+  if (!url || url === '') return true
+
+  // SECURITY: Reject data URIs — must be uploaded to S3
+  if (url.startsWith('data:')) return false
+
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Validates that a URL is a secure image URL stored in S3
  * SECURITY: Base64 data URIs are NOT allowed - images must be uploaded to S3
  * Accepts:

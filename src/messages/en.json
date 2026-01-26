@@ -3371,7 +3371,9 @@
     "date": "Invalid date",
     "dateRange": "End date must be after start date",
     "endDateBeforeStart": "End date must be after or equal to start date",
-    "invalidYoutubeUrl": "The YouTube URL is not valid"
+    "invalidYoutubeUrl": "The YouTube URL is not valid",
+    "invalidImageUrl": "The image URL is not valid",
+    "color": "Invalid color format"
   },
   "upgradeModal": {
     "upgradeNow": "Upgrade now",

@@ -29,7 +29,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 
-import { brandingSchema, type BrandingInput } from '@/lib/validations/onboarding'
+import { createBrandingSchema, type BrandingInput } from '@/lib/validations/onboarding'
 import { updateBranding } from '../actions'
 
 const PRESET_COLORS = [
@@ -48,10 +48,12 @@ export default function OnboardingBrandingPage() {
   const t = useTranslations('onboarding.branding')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
+  const brandingSchema = createBrandingSchema(tValidation)
   const form = useForm<BrandingInput>({
     resolver: zodResolver(brandingSchema),
     defaultValues: {

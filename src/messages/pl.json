@@ -3362,7 +3362,9 @@
     "date": "Nieprawidłowa data",
     "dateRange": "Data zakończenia musi być po dacie rozpoczęcia",
     "endDateBeforeStart": "Data zakończenia musi być po lub równa dacie rozpoczęcia",
-    "invalidYoutubeUrl": "URL YouTube jest nieprawidłowy"
+    "invalidYoutubeUrl": "URL YouTube jest nieprawidłowy",
+    "invalidImageUrl": "Adres URL obrazu jest nieprawidłowy",
+    "color": "Nieprawidłowy format koloru"
   },
   "upgradeModal": {
     "upgradeNow": "Ulepsz teraz",

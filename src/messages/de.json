@@ -3368,7 +3368,9 @@
     "date": "Ungültiges Datum",
     "dateRange": "Enddatum muss nach Startdatum liegen",
     "endDateBeforeStart": "Enddatum muss nach oder gleich dem Startdatum sein",
-    "invalidYoutubeUrl": "Die YouTube-URL ist ungültig"
+    "invalidYoutubeUrl": "Die YouTube-URL ist ungültig",
+    "invalidImageUrl": "Die Bild-URL ist ungültig",
+    "color": "Ungültiges Farbformat"
   },
   "upgradeModal": {
     "upgradeNow": "Jetzt upgraden",
