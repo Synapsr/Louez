@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { getCurrentStore, currentUserHasPermission } from '@/lib/store-context'
 import { nanoid } from 'nanoid'
 import { sendTeamInvitationEmail } from '@/lib/email/send'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { z } from 'zod'
 import { canAddTeamMember } from '@/lib/plan-limits'
 
@@ -117,7 +118,7 @@ export async function addTeamMember(formData: FormData) {
       storeLogoUrl: store.logoUrl,
       inviterName: inviter?.name || inviter?.email || 'Un membre',
       invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invitation/${token}`,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     })
   } catch (error) {
     console.error('Failed to send invitation email:', error)
@@ -251,7 +252,7 @@ export async function resendInvitation(invitationId: string) {
       storeLogoUrl: store.logoUrl,
       inviterName: inviter?.name || inviter?.email || 'Un membre',
       invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invitation/${newToken}`,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     })
   } catch (error) {
     console.error('Failed to resend invitation email:', error)

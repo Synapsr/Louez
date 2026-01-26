@@ -18,6 +18,7 @@ import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import type { NotificationEventType } from '@/types/store'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import { getCurrencySymbol } from '@/lib/utils'
@@ -657,7 +658,7 @@ export async function createManualReservation(data: CreateReservationData) {
       },
       items: emailItems,
       reservationUrl,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     }).catch((error) => {
       console.error('Failed to send reservation confirmation email:', error)
     })
@@ -1817,7 +1818,7 @@ export async function sendReservationEmail(
             startDate: reservation.startDate,
           },
           reservationUrl,
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         })
         break
       }
@@ -1833,7 +1834,7 @@ export async function sendReservationEmail(
             number: reservation.number,
             endDate: reservation.endDate,
           },
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         })
         break
       }
@@ -1968,7 +1969,7 @@ export async function sendAccessLink(reservationId: string) {
       items,
       accessUrl,
       showPaymentCta: !isPaid && !!isStripeEnabled,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     })
 
     // Log activity
