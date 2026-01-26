@@ -49,7 +49,7 @@ async function send(message: string): Promise<void> {
     await fetch(webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: message, username: 'Louez' }),
+      body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
     })
   } catch {
     // Best-effort monitoring — never block the calling action
