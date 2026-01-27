@@ -1,6 +1,7 @@
 import { getTranslations } from 'next-intl/server'
 
 import { SettingsNav } from '@/components/dashboard/settings-nav'
+import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
 
 export default async function SettingsLayout({
   children,
@@ -8,6 +9,7 @@ export default async function SettingsLayout({
   children: React.ReactNode
 }) {
   const t = await getTranslations('dashboard.settings')
+  const isPlatformAdmin = await isCurrentUserPlatformAdmin()
 
   return (
     <div className="space-y-6">
@@ -16,7 +18,7 @@ export default async function SettingsLayout({
       </div>
 
       <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[220px_1fr] xl:gap-10">
-        <SettingsNav />
+        <SettingsNav isPlatformAdmin={isPlatformAdmin} />
         <main className="min-w-0">{children}</main>
       </div>
     </div>

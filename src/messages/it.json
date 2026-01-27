@@ -2442,6 +2442,16 @@
         "deleteAccountWarning": "Questa azione e irreversibile. Tutti i tuoi dati saranno eliminati.",
         "signOut": "Esci",
         "comingSoon": "Prossimamente"
+      },
+      "admin": {
+        "title": "Admin piattaforma",
+        "description": "Impostazioni di piattaforma per questo negozio. Visibile solo agli amministratori della piattaforma.",
+        "trialSection": "Periodo di prova",
+        "trialSectionDescription": "Configura un periodo di prova gratuito per l'abbonamento di questo negozio.",
+        "trialDays": "Giorni di prova",
+        "trialDaysDescription": "Numero di giorni di prova gratuiti quando questo negozio sottoscrive un piano a pagamento. Imposta 0 per nessuna prova (pagamento immediato).",
+        "days": "giorni",
+        "saved": "Impostazioni admin salvate"
       }
     }
   },

@@ -2442,6 +2442,16 @@
         "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront supprimées.",
         "signOut": "Se déconnecter",
         "comingSoon": "Bientôt"
+      },
+      "admin": {
+        "title": "Administration",
+        "description": "Paramètres de la plateforme pour cette boutique. Visible uniquement par les administrateurs.",
+        "trialSection": "Période d'essai",
+        "trialSectionDescription": "Configurez une période d'essai gratuite pour l'abonnement de cette boutique.",
+        "trialDays": "Jours d'essai",
+        "trialDaysDescription": "Nombre de jours d'essai gratuits lorsque cette boutique souscrit à un plan payant. Mettez 0 pour aucun essai (paiement immédiat).",
+        "days": "jours",
+        "saved": "Paramètres admin enregistrés"
       }
     }
   },

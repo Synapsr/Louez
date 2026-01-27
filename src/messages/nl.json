@@ -2441,6 +2441,16 @@
         "deleteAccountWarning": "Deze actie is onomkeerbaar. Al uw gegevens worden verwijderd.",
         "signOut": "Uitloggen",
         "comingSoon": "Binnenkort"
+      },
+      "admin": {
+        "title": "Platform Admin",
+        "description": "Platforminstellingen voor deze winkel. Alleen zichtbaar voor platformbeheerders.",
+        "trialSection": "Proefperiode abonnement",
+        "trialSectionDescription": "Configureer een gratis proefperiode voor het abonnement van deze winkel.",
+        "trialDays": "Proefdagen",
+        "trialDaysDescription": "Aantal gratis proefdagen wanneer deze winkel een betaald abonnement afsluit. Stel 0 in voor geen proefperiode (directe betaling).",
+        "days": "dagen",
+        "saved": "Admininstellingen opgeslagen"
       }
     }
   },

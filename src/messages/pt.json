@@ -2441,6 +2441,16 @@
         "deleteAccountWarning": "Esta acao e irreversivel. Todos os seus dados serao excluidos.",
         "signOut": "Sair",
         "comingSoon": "Em breve"
+      },
+      "admin": {
+        "title": "Admin plataforma",
+        "description": "Configurações da plataforma para esta loja. Visível apenas para administradores da plataforma.",
+        "trialSection": "Período de teste",
+        "trialSectionDescription": "Configure um período de teste gratuito para a assinatura desta loja.",
+        "trialDays": "Dias de teste",
+        "trialDaysDescription": "Número de dias de teste gratuitos quando esta loja assina um plano pago. Defina 0 para nenhum teste (pagamento imediato).",
+        "days": "dias",
+        "saved": "Configurações admin salvas"
       }
     }
   },

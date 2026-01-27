@@ -2440,6 +2440,16 @@
         "deleteAccountWarning": "Ta akcja jest nieodwracalna. Wszystkie Twoje dane zostaną usunięte.",
         "signOut": "Wyloguj się",
         "comingSoon": "Wkrótce"
+      },
+      "admin": {
+        "title": "Admin platformy",
+        "description": "Ustawienia platformy dla tego sklepu. Widoczne tylko dla administratorów platformy.",
+        "trialSection": "Okres próbny subskrypcji",
+        "trialSectionDescription": "Skonfiguruj bezpłatny okres próbny dla subskrypcji tego sklepu.",
+        "trialDays": "Dni próbne",
+        "trialDaysDescription": "Liczba bezpłatnych dni próbnych, gdy ten sklep wykupi płatny plan. Ustaw 0, aby nie oferować okresu próbnego (natychmiastowa płatność).",
+        "days": "dni",
+        "saved": "Ustawienia admina zapisane"
       }
     }
   },
