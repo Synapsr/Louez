@@ -7,6 +7,7 @@ import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft,
+  Building2,
   Mail,
   FileText,
   MoreHorizontal,
@@ -47,6 +48,8 @@ interface Customer {
   lastName: string
   email: string
   phone?: string | null
+  customerType?: 'individual' | 'business'
+  companyName?: string | null
 }
 
 interface ReservationHeaderProps {
@@ -232,9 +235,21 @@ export function ReservationHeader({
 
               {/* Meta info */}
               <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                <span className="font-medium text-foreground">
-                  {customer.firstName} {customer.lastName}
-                </span>
+                {customer.customerType === 'business' && customer.companyName ? (
+                  <>
+                    <span className="font-medium text-foreground inline-flex items-center gap-1.5">
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      {customer.companyName}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {customer.firstName} {customer.lastName}
+                    </span>
+                  </>
+                ) : (
+                  <span className="font-medium text-foreground">
+                    {customer.firstName} {customer.lastName}
+                  </span>
+                )}
                 <span className="text-muted-foreground/50">•</span>
                 <span>{formatDateRange()}</span>
                 <span className="text-muted-foreground/50">•</span>
