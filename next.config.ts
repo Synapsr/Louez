@@ -57,6 +57,7 @@ const cspDirectives = {
     // Gleap
     'https://gleapjs.com',
     'https://api.gleap.io',
+    'https://staticfiles.gleap.io',
     // YouTube thumbnails
     'https://img.youtube.com',
     'https://i.ytimg.com',
