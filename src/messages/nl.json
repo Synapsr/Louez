@@ -658,7 +658,10 @@
           "total": "Totaal",
           "savings": "Besparing",
           "targetPrice": "Doelprijs",
-          "tierTotal": "Totale kosten"
+          "tierTotal": "Totale kosten",
+          "enforceStrictTiers": "Alleen deze duur aanbieden",
+          "enforceStrictTiersDescription": "Klanten kunnen alleen boeken voor de exacte duur van uw niveaus. Tussenliggende duur wordt niet aangeboden.",
+          "enforceStrictTiersTooltip": "Als een klant een tussenliggende duur kiest, wordt deze automatisch afgerond naar het volgende niveau. Bijvoorbeeld: met niveaus van 3 en 7 dagen wordt een huur van 5 dagen gefactureerd tegen het tarief van 7 dagen."
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -677,6 +680,8 @@
         "customTaxRateDescription": "Een ander tarief instellen voor dit product",
         "accessories": "Accessoires",
         "accessoriesDescription": "Stel complementaire producten voor aan uw klanten",
+        "noAccessoriesAvailable": "Geen accessoires beschikbaar",
+        "noAccessoriesHint": "Voeg meer actieve producten toe aan uw catalogus om ze als accessoire voor te stellen.",
         "addAccessory": "Accessoire toevoegen",
         "selectAccessories": "Accessoires selecteren",
         "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",

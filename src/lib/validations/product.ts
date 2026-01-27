@@ -53,6 +53,7 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
     images: z.array(imageUrlSchema).optional(),
     pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
     pricingTiers: z.array(pricingTierSchema).optional(),
+    enforceStrictTiers: z.boolean().optional(),
     taxSettings: productTaxSettingsSchema.optional(),
     videoUrl: z
       .string()
@@ -89,6 +90,7 @@ export const productSchema = z.object({
   images: z.array(imageUrlSchema).optional(),
   pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
   pricingTiers: z.array(pricingTierSchema).optional(),
+  enforceStrictTiers: z.boolean().optional(),
   taxSettings: productTaxSettingsSchema.optional(),
   videoUrl: z
     .string()

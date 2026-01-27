@@ -69,7 +69,7 @@ import { createProduct, updateProduct, createCategory } from './actions'
 import type { TaxSettings, ProductTaxSettings } from '@/types/store'
 import { Switch } from '@/components/ui/switch'
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
-import { Link2 } from 'lucide-react'
+import { Link2, Puzzle } from 'lucide-react'
 
 interface Category {
   id: string
@@ -97,6 +97,7 @@ interface Product {
   images: string[] | null
   videoUrl: string | null
   taxSettings?: ProductTaxSettings | null
+  enforceStrictTiers?: boolean
   accessoryIds?: string[]
 }
 
@@ -160,6 +161,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       images: product?.images ?? [],
       pricingMode: product?.pricingMode || null,
       pricingTiers: initialPricingTiers,
+      enforceStrictTiers: product?.enforceStrictTiers || false,
       taxSettings: product?.taxSettings || { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
       accessoryIds: product?.accessoryIds || [],
@@ -731,7 +733,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                               className="pr-8 text-lg font-semibold"
                               {...field}
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                               {currencySymbol}
                             </span>
                           </div>
@@ -754,7 +756,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                               className="pr-8"
                               {...field}
                             />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                               {currencySymbol}
                             </span>
                           </div>
@@ -812,7 +814,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                                     value={field.value ?? ''}
                                     onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                                   />
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                                     %
                                   </span>
                                 </div>
@@ -854,10 +856,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
           </div>
 
           {/* Progressive Discounts & Accessories - Side by side on large screens */}
-          <div className={cn(
-            "grid gap-6",
-            availableAccessories.length > 0 ? "xl:grid-cols-2" : "grid-cols-1"
-          )}>
+          <div className="grid gap-6 xl:grid-cols-2">
             {/* Progressive Discounts */}
             <Card>
               <CardContent className="pt-6">
@@ -872,6 +871,8 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                           pricingMode={effectivePricingMode}
                           tiers={field.value || []}
                           onChange={field.onChange}
+                          enforceStrictTiers={form.watch('enforceStrictTiers') || false}
+                          onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value)}
                           disabled={isLoading}
                         />
                       </FormControl>
@@ -883,16 +884,16 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             </Card>
 
             {/* Accessories */}
-            {availableAccessories.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Link2 className="h-5 w-5" />
-                    {t('accessories')}
-                  </CardTitle>
-                  <CardDescription>{t('accessoriesDescription')}</CardDescription>
-                </CardHeader>
-                <CardContent>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link2 className="h-5 w-5" />
+                  {t('accessories')}
+                </CardTitle>
+                <CardDescription>{t('accessoriesDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {availableAccessories.length > 0 ? (
                   <FormField
                     control={form.control}
                     name="accessoryIds"
@@ -911,9 +912,21 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
-            )}
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="mb-3 rounded-full bg-muted p-3">
+                      <Puzzle className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium">
+                      {t('noAccessoriesAvailable')}
+                    </p>
+                    <p className="mt-1 max-w-[260px] text-sm text-muted-foreground">
+                      {t('noAccessoriesHint')}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Status */}
@@ -1231,7 +1244,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                                   className="pr-8 text-lg font-semibold"
                                   {...field}
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                                   {currencySymbol}
                                 </span>
                               </div>
@@ -1254,7 +1267,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                                   className="pr-8"
                                   {...field}
                                 />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                                   {currencySymbol}
                                 </span>
                               </div>
@@ -1312,7 +1325,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                                         value={field.value ?? ''}
                                         onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
                                       />
-                                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
                                         %
                                       </span>
                                     </div>
@@ -1367,6 +1380,8 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                             pricingMode={effectivePricingMode}
                             tiers={field.value || []}
                             onChange={field.onChange}
+                            enforceStrictTiers={form.watch('enforceStrictTiers') || false}
+                            onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value)}
                             disabled={isLoading}
                           />
                         </FormControl>

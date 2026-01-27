@@ -315,6 +315,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 minDuration: tier.minDuration,
                 discountPercent: parseFloat(tier.discountPercent),
               }))}
+              enforceStrictTiers={product.enforceStrictTiers ?? false}
               productPricingMode={product.pricingMode}
               advanceNotice={storeSettings.advanceNotice || 0}
               accessories={availableAccessories}

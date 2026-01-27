@@ -660,7 +660,10 @@
           "total": "Total",
           "savings": "Économie",
           "targetPrice": "Prix cible",
-          "tierTotal": "Coût total"
+          "tierTotal": "Coût total",
+          "enforceStrictTiers": "Proposer uniquement ces durées",
+          "enforceStrictTiersDescription": "Les clients ne pourront réserver que pour les durées exactes de vos paliers. Les durées intermédiaires ne seront pas proposées.",
+          "enforceStrictTiersTooltip": "Si un client choisit une durée intermédiaire, elle sera automatiquement arrondie au palier supérieur. Par exemple, avec des paliers à 3 et 7 jours, une location de 5 jours sera facturée au tarif de 7 jours."
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -679,6 +682,8 @@
         "customTaxRateDescription": "Définir un taux différent pour ce produit",
         "accessories": "Accessoires",
         "accessoriesDescription": "Suggérez des produits complémentaires à vos clients",
+        "noAccessoriesAvailable": "Aucun accessoire disponible",
+        "noAccessoriesHint": "Ajoutez d'autres produits actifs à votre catalogue pour pouvoir les proposer en accessoire.",
         "addAccessory": "Ajouter un accessoire",
         "selectAccessories": "Sélectionner des accessoires",
         "selectAccessoriesDescription": "Choisissez les produits à suggérer avec ce produit",

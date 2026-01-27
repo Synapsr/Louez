@@ -207,6 +207,7 @@ export const stores = mysqlTable(
 
     // Branding
     logoUrl: longtext('logo_url'),
+    darkLogoUrl: longtext('dark_logo_url'),
 
     // Configuration
     settings: json('settings').$type<StoreSettings>().default({
@@ -311,6 +312,10 @@ export const products = mysqlTable(
 
     // Tax settings (product-specific)
     taxSettings: json('tax_settings').$type<ProductTaxSettings>(),
+
+    // Pricing tier enforcement: when true, customers can only book
+    // for the exact durations defined by pricing tiers (package pricing)
+    enforceStrictTiers: boolean('enforce_strict_tiers').notNull().default(false),
 
     // Stock
     quantity: int('quantity').notNull().default(1),
