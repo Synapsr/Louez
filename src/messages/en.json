@@ -257,6 +257,40 @@
       "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
       "upgradeForMore": "Add more"
     },
+    "referrals": {
+      "title": "Referrals",
+      "description": "Invite other rental businesses and track your referrals.",
+      "stats": {
+        "totalReferrals": "Total referrals",
+        "activePaid": "Paid referrals",
+        "thisMonth": "This month"
+      },
+      "link": {
+        "title": "Refer & earn",
+        "description": "Share your link and invite other rental businesses to join Louez.",
+        "reward": "For each referred rental business, get 3 free months on the Ultra plan.",
+        "copyLink": "Copy link",
+        "linkCopied": "Link copied!"
+      },
+      "list": {
+        "title": "Your referrals",
+        "count": "{count, plural, =0 {No referrals} one {1 referral} other {# referrals}}",
+        "empty": "No referrals yet",
+        "emptyDescription": "Share your referral link to get started. Businesses that sign up using your link will appear here.",
+        "columns": {
+          "store": "Store",
+          "joined": "Joined",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Active",
+          "cancelled": "Cancelled",
+          "past_due": "Past due",
+          "trialing": "Trial"
+        }
+      }
+    },
     "sms": {
       "title": "SMS Credits",
       "description": "Track your monthly SMS usage",
@@ -380,6 +414,7 @@
       "statistics": "Statistics",
       "analytics": "Analytics",
       "team": "Team",
+      "referrals": "Referrals",
       "sms": "SMS",
       "subscription": "Subscription",
       "settings": "Settings",
@@ -2407,6 +2442,16 @@
         "deleteAccountWarning": "This action is irreversible. All your data will be deleted.",
         "signOut": "Sign out",
         "comingSoon": "Coming soon"
+      },
+      "admin": {
+        "title": "Platform Admin",
+        "description": "Platform-level settings for this store. Only visible to platform administrators.",
+        "trialSection": "Subscription trial",
+        "trialSectionDescription": "Configure a free trial period for this store's subscription.",
+        "trialDays": "Trial days",
+        "trialDaysDescription": "Number of free trial days when this store subscribes to a paid plan. Set to 0 for no trial (immediate payment).",
+        "days": "days",
+        "saved": "Admin settings saved"
       }
     }
   },

@@ -257,6 +257,40 @@
       "limitReachedDescription": "Sie nutzen {current} von {limit} Teammitgliedern. Upgraden Sie, um mehr hinzuzufügen.",
       "upgradeForMore": "Mehr hinzufügen"
     },
+    "referrals": {
+      "title": "Empfehlungen",
+      "description": "Laden Sie andere Vermieter ein und verfolgen Sie Ihre Empfehlungen.",
+      "stats": {
+        "totalReferrals": "Empfehlungen gesamt",
+        "activePaid": "Zahlende Empfehlungen",
+        "thisMonth": "Diesen Monat"
+      },
+      "link": {
+        "title": "Empfehlen & profitieren",
+        "description": "Teilen Sie Ihren Link und laden Sie andere Vermieter zu Louez ein.",
+        "reward": "Für jeden geworbenen Vermieter erhalten Sie 3 kostenlose Monate im Ultra-Plan.",
+        "copyLink": "Link kopieren",
+        "linkCopied": "Link kopiert!"
+      },
+      "list": {
+        "title": "Ihre Empfehlungen",
+        "count": "{count, plural, =0 {Keine Empfehlungen} one {1 Empfehlung} other {# Empfehlungen}}",
+        "empty": "Noch keine Empfehlungen",
+        "emptyDescription": "Teilen Sie Ihren Empfehlungslink, um loszulegen. Geschäfte, die sich über Ihren Link anmelden, erscheinen hier.",
+        "columns": {
+          "store": "Geschäft",
+          "joined": "Beigetreten",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Aktiv",
+          "cancelled": "Gekündigt",
+          "past_due": "Überfällig",
+          "trialing": "Testphase"
+        }
+      }
+    },
     "sms": {
       "title": "SMS-Guthaben",
       "description": "Verfolgen Sie Ihren monatlichen SMS-Verbrauch",
@@ -379,6 +413,7 @@
       "categories": "Kategorien",
       "statistics": "Statistiken",
       "team": "Team",
+      "referrals": "Empfehlungen",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Einstellungen",

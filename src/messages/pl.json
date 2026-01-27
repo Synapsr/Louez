@@ -257,6 +257,40 @@
       "limitReachedDescription": "Używasz {current} z {limit} członków. Ulepsz, aby dodać więcej.",
       "upgradeForMore": "Dodaj więcej"
     },
+    "referrals": {
+      "title": "Polecenia",
+      "description": "Zaproś innych wynajmujących i śledź swoje polecenia.",
+      "stats": {
+        "totalReferrals": "Łączne polecenia",
+        "activePaid": "Płatne polecenia",
+        "thisMonth": "W tym miesiącu"
+      },
+      "link": {
+        "title": "Polecaj i zyskuj",
+        "description": "Udostępnij swój link i zaproś innych wynajmujących do Louez.",
+        "reward": "Za każdego poleconego wynajmującego otrzymasz 3 darmowe miesiące planu Ultra.",
+        "copyLink": "Kopiuj link",
+        "linkCopied": "Link skopiowany!"
+      },
+      "list": {
+        "title": "Twoje polecenia",
+        "count": "{count, plural, =0 {Brak poleceń} one {1 polecenie} few {# polecenia} other {# poleceń}}",
+        "empty": "Brak poleceń",
+        "emptyDescription": "Udostępnij swój link polecający, aby rozpocząć. Sklepy, które zarejestrują się za pomocą Twojego linku, pojawią się tutaj.",
+        "columns": {
+          "store": "Sklep",
+          "joined": "Dołączenie",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Aktywny",
+          "cancelled": "Anulowany",
+          "past_due": "Zaległy",
+          "trialing": "Okres próbny"
+        }
+      }
+    },
     "sms": {
       "title": "Kredyty SMS",
       "description": "Śledź miesięczne zużycie SMS",
@@ -379,6 +413,7 @@
       "categories": "Kategorie",
       "statistics": "Statystyki",
       "team": "Zespół",
+      "referrals": "Polecenia",
       "sms": "SMS",
       "subscription": "Subskrypcja",
       "settings": "Ustawienia",

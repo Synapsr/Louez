@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -64,6 +64,14 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+
+  // Persist referral code in a cookie so it survives OAuth/magic-link redirects
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref && /^LOUEZ[A-HJ-NP-Z2-9]{7}$/.test(ref)) {
+      document.cookie = `louez_referral=${ref}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`
+    }
+  }, [searchParams])
 
   // Map OAuth errors to user-friendly messages
   const getErrorMessage = (errorCode: string | null) => {

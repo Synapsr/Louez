@@ -257,6 +257,40 @@
       "limitReachedDescription": "Estás usando {current} de {limit} miembros. Actualiza para agregar más.",
       "upgradeForMore": "Agregar más"
     },
+    "referrals": {
+      "title": "Referencias",
+      "description": "Invite a otros arrendadores y siga sus referencias.",
+      "stats": {
+        "totalReferrals": "Total referencias",
+        "activePaid": "Referencias de pago",
+        "thisMonth": "Este mes"
+      },
+      "link": {
+        "title": "Recomiende y gane",
+        "description": "Comparta su enlace e invite a otros arrendadores a unirse a Louez.",
+        "reward": "Por cada arrendador referido, obtenga 3 meses gratis en el plan Ultra.",
+        "copyLink": "Copiar enlace",
+        "linkCopied": "¡Enlace copiado!"
+      },
+      "list": {
+        "title": "Sus referencias",
+        "count": "{count, plural, =0 {Sin referencias} one {1 referencia} other {# referencias}}",
+        "empty": "Aún sin referencias",
+        "emptyDescription": "Comparta su enlace de referencia para comenzar. Las tiendas que se registren con su enlace aparecerán aquí.",
+        "columns": {
+          "store": "Tienda",
+          "joined": "Registro",
+          "plan": "Plan",
+          "status": "Estado"
+        },
+        "status": {
+          "active": "Activo",
+          "cancelled": "Cancelado",
+          "past_due": "Vencido",
+          "trialing": "Prueba"
+        }
+      }
+    },
     "sms": {
       "title": "Créditos SMS",
       "description": "Sigue tu consumo mensual de SMS",
@@ -379,6 +413,7 @@
       "categories": "Categorias",
       "statistics": "Estadisticas",
       "team": "Equipo",
+      "referrals": "Referencias",
       "sms": "SMS",
       "subscription": "Suscripcion",
       "settings": "Configuracion",

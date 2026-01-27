@@ -255,6 +255,14 @@ export const stores = mysqlTable(
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),
 
+    // Referral system
+    referralCode: varchar('referral_code', { length: 12 }).unique(),
+    referredByUserId: varchar('referred_by_user_id', { length: 21 }),
+    referredByStoreId: varchar('referred_by_store_id', { length: 21 }),
+
+    // Trial period (platform admin only)
+    trialDays: int('trial_days').default(0).notNull(),
+
     // Metadata
     onboardingCompleted: boolean('onboarding_completed').default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -263,6 +271,7 @@ export const stores = mysqlTable(
   (table) => ({
     slugIdx: index('stores_slug_idx').on(table.slug),
     userIdx: index('stores_user_idx').on(table.userId),
+    referralCodeIdx: index('stores_referral_code_idx').on(table.referralCode),
   })
 )
 
@@ -947,6 +956,14 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   subscription: one(subscriptions, {
     fields: [stores.id],
     references: [subscriptions.storeId],
+  }),
+  referredByStore: one(stores, {
+    fields: [stores.referredByStoreId],
+    references: [stores.id],
+    relationName: 'referrals',
+  }),
+  referrals: many(stores, {
+    relationName: 'referrals',
   }),
   categories: many(categories),
   products: many(products),

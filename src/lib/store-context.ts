@@ -45,6 +45,8 @@ export type StoreWithFullData = {
   ownerPhone: string | null
   customerNotificationSettings: CustomerNotificationSettings | null
   icsToken: string | null
+  referralCode: string | null
+  trialDays: number
   onboardingCompleted: boolean | null
   createdAt: Date
   updatedAt: Date

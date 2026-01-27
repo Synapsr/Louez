@@ -256,6 +256,40 @@
       "limitReachedDescription": "Je gebruikt {current} van {limit} teamleden. Upgrade om meer toe te voegen.",
       "upgradeForMore": "Meer toevoegen"
     },
+    "referrals": {
+      "title": "Verwijzingen",
+      "description": "Nodig andere verhuurders uit en volg uw verwijzingen.",
+      "stats": {
+        "totalReferrals": "Totaal verwijzingen",
+        "activePaid": "Betalende verwijzingen",
+        "thisMonth": "Deze maand"
+      },
+      "link": {
+        "title": "Verwijs & verdien",
+        "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
+        "reward": "Voor elke doorverwezen verhuurder ontvangt u 3 gratis maanden op het Ultra-plan.",
+        "copyLink": "Link kopiëren",
+        "linkCopied": "Link gekopieerd!"
+      },
+      "list": {
+        "title": "Uw verwijzingen",
+        "count": "{count, plural, =0 {Geen verwijzingen} one {1 verwijzing} other {# verwijzingen}}",
+        "empty": "Nog geen verwijzingen",
+        "emptyDescription": "Deel uw verwijzingslink om te beginnen. Winkels die zich aanmelden via uw link verschijnen hier.",
+        "columns": {
+          "store": "Winkel",
+          "joined": "Aangemeld",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Actief",
+          "cancelled": "Geannuleerd",
+          "past_due": "Achterstallig",
+          "trialing": "Proefperiode"
+        }
+      }
+    },
     "sms": {
       "title": "SMS-tegoed",
       "description": "Volg uw maandelijks SMS-verbruik",
@@ -378,6 +412,7 @@
       "categories": "Categorieën",
       "statistics": "Statistieken",
       "team": "Team",
+      "referrals": "Verwijzingen",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Instellingen",
