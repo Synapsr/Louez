@@ -97,6 +97,7 @@ const cspDirectives = {
     'https://eu-assets.i.posthog.com',
     // Gleap feedback
     'https://api.gleap.io',
+    'wss://ws.gleap.io',
     // Leaflet resources
     'https://unpkg.com',
     // Map tiles
