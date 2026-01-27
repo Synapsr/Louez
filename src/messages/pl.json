@@ -657,7 +657,10 @@
           "total": "Suma",
           "savings": "Oszczędności",
           "targetPrice": "Cena docelowa",
-          "tierTotal": "Koszt całkowity"
+          "tierTotal": "Koszt całkowity",
+          "enforceStrictTiers": "Oferuj tylko te okresy",
+          "enforceStrictTiersDescription": "Klienci będą mogli rezerwować tylko na dokładne okresy zdefiniowane w progach. Pośrednie okresy nie będą dostępne.",
+          "enforceStrictTiersTooltip": "Jeśli klient wybierze pośredni okres, zostanie on automatycznie zaokrąglony w górę do najbliższego progu. Na przykład, przy progach 3 i 7 dni, wynajem na 5 dni będzie rozliczony według stawki za 7 dni."
         },
         "previewTitle": "Podgląd",
         "previewDescription": "Zobacz jak produkt będzie wyglądał w katalogu",
@@ -676,6 +679,8 @@
         "customTaxRateDescription": "Ustaw inną stawkę dla tego produktu",
         "accessories": "Akcesoria",
         "accessoriesDescription": "Zaproponuj klientom produkty uzupełniające",
+        "noAccessoriesAvailable": "Brak dostępnych akcesoriów",
+        "noAccessoriesHint": "Dodaj więcej aktywnych produktów do katalogu, aby móc je zaproponować jako akcesoria.",
         "addAccessory": "Dodaj akcesorium",
         "selectAccessories": "Wybierz akcesoria",
         "selectAccessoriesDescription": "Wybierz produkty do zaproponowania z tym produktem",

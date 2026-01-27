@@ -659,7 +659,10 @@
           "total": "Totale",
           "savings": "Risparmio",
           "targetPrice": "Prezzo obiettivo",
-          "tierTotal": "Costo totale"
+          "tierTotal": "Costo totale",
+          "enforceStrictTiers": "Offrire solo queste durate",
+          "enforceStrictTiersDescription": "I clienti potranno prenotare solo per le durate esatte dei tuoi livelli. Le durate intermedie non saranno disponibili.",
+          "enforceStrictTiersTooltip": "Se un cliente sceglie una durata intermedia, verrà automaticamente arrotondata al livello superiore. Ad esempio, con livelli a 3 e 7 giorni, un noleggio di 5 giorni verrà fatturato alla tariffa di 7 giorni."
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -678,6 +681,8 @@
         "customTaxRateDescription": "Imposta un'aliquota diversa per questo prodotto",
         "accessories": "Accessori",
         "accessoriesDescription": "Suggerisci prodotti complementari ai tuoi clienti",
+        "noAccessoriesAvailable": "Nessun accessorio disponibile",
+        "noAccessoriesHint": "Aggiungi altri prodotti attivi al tuo catalogo per proporli come accessori.",
         "addAccessory": "Aggiungi accessorio",
         "selectAccessories": "Seleziona accessori",
         "selectAccessoriesDescription": "Scegli i prodotti da suggerire con questo prodotto",

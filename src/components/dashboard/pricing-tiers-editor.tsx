@@ -49,6 +49,8 @@ interface PricingTiersEditorProps {
   pricingMode: PricingMode
   tiers: PricingTierInput[]
   onChange: (tiers: PricingTierInput[]) => void
+  enforceStrictTiers: boolean
+  onEnforceStrictTiersChange: (value: boolean) => void
   disabled?: boolean
 }
 
@@ -57,6 +59,8 @@ export function PricingTiersEditor({
   pricingMode,
   tiers,
   onChange,
+  enforceStrictTiers,
+  onEnforceStrictTiersChange,
   disabled = false,
 }: PricingTiersEditorProps) {
   const t = useTranslations('dashboard.products.form.pricingTiers')
@@ -67,8 +71,14 @@ export function PricingTiersEditor({
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelSingular = getUnitLabel(pricingMode, 'singular')
 
-  // Preview durations based on pricing mode
+  // Preview durations: when strict tiers are enforced, show only the exact
+  // durations customers will be able to book (tier brackets + base unit)
   const previewDurations = useMemo(() => {
+    if (enforceStrictTiers && tiers.length > 0) {
+      const durations = new Set([1, ...tiers.map((t) => t.minDuration)])
+      return [...durations].sort((a, b) => a - b)
+    }
+
     switch (pricingMode) {
       case 'hour':
         return [1, 2, 4, 8, 24]
@@ -78,7 +88,7 @@ export function PricingTiersEditor({
       default:
         return [1, 3, 7, 14, 30]
     }
-  }, [pricingMode])
+  }, [pricingMode, enforceStrictTiers, tiers])
 
   // Calculate previews
   const previews = useMemo(() => {
@@ -112,6 +122,7 @@ export function PricingTiersEditor({
     setIsEnabled(enabled)
     if (!enabled) {
       onChange([])
+      onEnforceStrictTiersChange(false)
     } else if (tiers.length === 0) {
       // Add a default tier when enabling
       const defaultMinDuration = pricingMode === 'hour' ? 4 : pricingMode === 'week' ? 2 : 3
@@ -144,6 +155,7 @@ export function PricingTiersEditor({
     onChange(newTiers)
     if (newTiers.length === 0) {
       setIsEnabled(false)
+      onEnforceStrictTiersChange(false)
     }
   }
 
@@ -269,6 +281,7 @@ export function PricingTiersEditor({
                             <span className="text-sm text-muted-foreground">-</span>
                             <Input
                               type="number"
+                              step="any"
                               min={1}
                               max={99}
                               value={tier.discountPercent}
@@ -276,7 +289,7 @@ export function PricingTiersEditor({
                                 updateTier(
                                   originalIndex,
                                   'discountPercent',
-                                  Math.min(99, Math.max(1, parseInt(e.target.value) || 1))
+                                  Math.min(99, Math.max(1, parseFloat(e.target.value) || 1))
                                 )
                               }
                               className="w-20"
@@ -328,8 +341,8 @@ export function PricingTiersEditor({
                                       Math.round(
                                         ((basePrice - targetPrice) / basePrice) *
                                           100 *
-                                          1e6
-                                      ) / 1e6
+                                          100
+                                      ) / 100
                                     updateTier(
                                       originalIndex,
                                       'discountPercent',
@@ -402,8 +415,8 @@ export function PricingTiersEditor({
                                           ((basePrice - pricePerUnit) /
                                             basePrice) *
                                             100 *
-                                            1e6
-                                        ) / 1e6
+                                            100
+                                        ) / 100
                                       updateTier(
                                         originalIndex,
                                         'discountPercent',
@@ -466,6 +479,41 @@ export function PricingTiersEditor({
               )}
             </div>
           </div>
+
+          {/* Strict tiers toggle — only visible when tiers are defined */}
+          {tiers.length > 0 && (
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor="enforce-strict-tiers-toggle"
+                    className="text-base font-medium"
+                  >
+                    {t('enforceStrictTiers')}
+                  </Label>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p>{t('enforceStrictTiersTooltip')}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {t('enforceStrictTiersDescription')}
+                </p>
+              </div>
+              <Switch
+                id="enforce-strict-tiers-toggle"
+                checked={enforceStrictTiers}
+                onCheckedChange={onEnforceStrictTiersChange}
+                disabled={disabled}
+              />
+            </div>
+          )}
 
           {/* Preview Table */}
           {basePrice > 0 && tiers.length > 0 && (

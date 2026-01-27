@@ -12,6 +12,8 @@ export {
   getPricingModeLabel,
   validatePricingTiers,
   sortTiersByDuration,
+  getAvailableDurations,
+  snapToNearestTier,
   getEffectivePricingMode,
 } from './calculate'
 

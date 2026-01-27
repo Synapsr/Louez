@@ -56,6 +56,7 @@ export async function createProduct(data: ProductInput) {
     images: validated.data.images || [],
     videoUrl: validated.data.videoUrl || null,
     taxSettings: validated.data.taxSettings || null,
+    enforceStrictTiers: validated.data.enforceStrictTiers || false,
   })
 
   // Create pricing tiers if provided
@@ -129,6 +130,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       images: validated.data.images || [],
       videoUrl: validated.data.videoUrl || null,
       taxSettings: validated.data.taxSettings || null,
+      enforceStrictTiers: validated.data.enforceStrictTiers || false,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))

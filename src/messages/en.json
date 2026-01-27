@@ -660,7 +660,10 @@
           "total": "Total",
           "savings": "Savings",
           "targetPrice": "Target price",
-          "tierTotal": "Total cost"
+          "tierTotal": "Total cost",
+          "enforceStrictTiers": "Only offer these durations",
+          "enforceStrictTiersDescription": "Customers will only be able to book for the exact durations defined by your tiers. Intermediate durations will not be available.",
+          "enforceStrictTiersTooltip": "If a customer selects an intermediate duration, it will be automatically rounded up to the next tier. For example, with tiers at 3 and 7 days, a 5-day rental will be billed at the 7-day rate."
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -679,6 +682,8 @@
         "customTaxRateDescription": "Set a different rate for this product",
         "accessories": "Accessories",
         "accessoriesDescription": "Suggest complementary products to your customers",
+        "noAccessoriesAvailable": "No accessories available",
+        "noAccessoriesHint": "Add more active products to your catalog to suggest them as accessories.",
         "addAccessory": "Add an accessory",
         "selectAccessories": "Select accessories",
         "selectAccessoriesDescription": "Choose products to suggest with this product",

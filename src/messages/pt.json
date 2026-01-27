@@ -657,7 +657,10 @@
           "total": "Total",
           "savings": "Economia",
           "targetPrice": "Preço alvo",
-          "tierTotal": "Custo total"
+          "tierTotal": "Custo total",
+          "enforceStrictTiers": "Oferecer apenas estas durações",
+          "enforceStrictTiersDescription": "Os clientes só poderão reservar pelas durações exatas dos seus níveis. Durações intermediárias não estarão disponíveis.",
+          "enforceStrictTiersTooltip": "Se um cliente escolher uma duração intermediária, ela será automaticamente arredondada para o nível superior. Por exemplo, com níveis de 3 e 7 dias, um aluguel de 5 dias será cobrado pela tarifa de 7 dias."
         },
         "previewTitle": "Previa",
         "previewDescription": "Veja como seu produto aparecera no catalogo",
@@ -676,6 +679,8 @@
         "customTaxRateDescription": "Definir uma taxa diferente para este produto",
         "accessories": "Acessórios",
         "accessoriesDescription": "Sugira produtos complementares aos seus clientes",
+        "noAccessoriesAvailable": "Nenhum acessório disponível",
+        "noAccessoriesHint": "Adicione mais produtos ativos ao seu catálogo para sugeri-los como acessórios.",
         "addAccessory": "Adicionar acessório",
         "selectAccessories": "Selecionar acessórios",
         "selectAccessoriesDescription": "Escolha os produtos a sugerir com este produto",

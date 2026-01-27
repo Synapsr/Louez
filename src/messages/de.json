@@ -657,7 +657,10 @@
           "total": "Gesamt",
           "savings": "Ersparnis",
           "targetPrice": "Zielpreis",
-          "tierTotal": "Gesamtkosten"
+          "tierTotal": "Gesamtkosten",
+          "enforceStrictTiers": "Nur diese Dauern anbieten",
+          "enforceStrictTiersDescription": "Kunden können nur für die genauen Dauern Ihrer Stufen buchen. Zwischenliegende Dauern werden nicht angeboten.",
+          "enforceStrictTiersTooltip": "Wenn ein Kunde eine Zwischendauer wählt, wird sie automatisch auf die nächste Stufe aufgerundet. Beispiel: Bei Stufen von 3 und 7 Tagen wird eine 5-tägige Miete zum Tarif von 7 Tagen berechnet."
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -676,6 +679,8 @@
         "customTaxRateDescription": "Einen anderen Satz für dieses Produkt festlegen",
         "accessories": "Zubehör",
         "accessoriesDescription": "Ergänzende Produkte für Ihre Kunden vorschlagen",
+        "noAccessoriesAvailable": "Kein Zubehör verfügbar",
+        "noAccessoriesHint": "Fügen Sie weitere aktive Produkte zu Ihrem Katalog hinzu, um sie als Zubehör vorzuschlagen.",
         "addAccessory": "Zubehör hinzufügen",
         "selectAccessories": "Zubehör auswählen",
         "selectAccessoriesDescription": "Wählen Sie Produkte aus, die mit diesem Produkt vorgeschlagen werden sollen",
