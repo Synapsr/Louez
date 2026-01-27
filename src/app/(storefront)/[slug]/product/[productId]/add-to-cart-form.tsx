@@ -25,6 +25,7 @@ import {
   type PricingTier,
 } from '@/lib/pricing'
 import { getMinStartDate } from '@/lib/utils/duration'
+import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
 import type { PricingMode } from '@/types'
 
 interface Accessory {
@@ -56,6 +57,7 @@ interface AddToCartFormProps {
   enforceStrictTiers?: boolean
   productPricingMode?: PricingMode | null
   advanceNotice?: number
+  minRentalHours?: number
   accessories?: Accessory[]
 }
 
@@ -73,6 +75,7 @@ export function AddToCartForm({
   enforceStrictTiers = false,
   productPricingMode,
   advanceNotice = 0,
+  minRentalHours = 0,
   accessories = [],
 }: AddToCartFormProps) {
   const router = useRouter()
@@ -136,6 +139,15 @@ export function AddToCartForm({
     if (!startDate || !endDate) {
       toast.error(t('selectDates'))
       return
+    }
+
+    // Validate minimum rental duration
+    if (minRentalHours > 0) {
+      const check = validateMinRentalDuration(startDate, endDate, minRentalHours)
+      if (!check.valid) {
+        toast.error(t('minDurationError', { hours: minRentalHours }))
+        return
+      }
     }
 
     addItem(

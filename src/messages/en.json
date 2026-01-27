@@ -1807,9 +1807,11 @@
         "pricingDay": "Per day",
         "pricingHour": "Per hour",
         "pricingWeek": "Per week",
-        "minDuration": "Minimum duration",
-        "maxDuration": "Maximum duration",
-        "leadTime": "Minimum notice (hours)",
+        "minRentalHours": "Minimum rental duration",
+        "maxRentalHours": "Maximum rental duration",
+        "minRentalHoursHelp": "Minimum duration a customer must book. Set to 0 for no restriction.",
+        "maxRentalHoursHelp": "In hours. Leave empty for no limit.",
+        "leadTime": "Minimum notice",
         "leadTimeHelp": "Time before the first available date",
         "durationUnit": {
           "day": "In days",
@@ -2508,6 +2510,7 @@
       "addedToCart": "{name} added to cart",
       "goToCheckout": "Checkout",
       "selectDates": "Book",
+      "minDurationError": "The minimum rental duration is {hours} hours",
       "selectQuantity": "Quantity",
       "quantity": "Quantity",
       "availableCount": "{count, plural, one {# available} other {# available}}",
@@ -2583,6 +2586,7 @@
       "startDate": "Pickup",
       "endDate": "Return",
       "viewAvailability": "Check availability",
+      "minDurationWarning": "Minimum duration: {hours}h",
       "search": "Search",
       "duration": "{count} {unit}",
       "durationDay": "day",
@@ -3543,7 +3547,9 @@
     "smsNotConfigured": "SMS is not configured",
     "smsLimitReached": "SMS limit reached. Upgrade to a higher plan to continue sending SMS.",
     "customerNoPhone": "Customer has no phone number",
-    "smsSendFailed": "Failed to send SMS"
+    "smsSendFailed": "Failed to send SMS",
+    "minRentalDurationViolation": "The rental duration must be at least {hours} hours",
+    "maxRentalDurationViolation": "The rental duration cannot exceed {hours} hours"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

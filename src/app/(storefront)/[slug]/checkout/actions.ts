@@ -14,6 +14,7 @@ import { notifyNewReservation } from '@/lib/discord/platform-notifications'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
+import { getMinRentalHours, getMaxRentalHours, validateMinRentalDuration, validateMaxRentalDuration } from '@/lib/utils/rental-duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
 import {
   calculateRentalPrice,
@@ -124,6 +125,30 @@ export async function createReservation(input: CreateReservationInput) {
         return {
           error: 'errors.advanceNoticeViolation',
           errorParams: { hours: advanceNoticeHours },
+        }
+      }
+    }
+
+    // Validate minimum rental duration
+    const minRentalHours = getMinRentalHours(store.settings as StoreSettings | null)
+    if (minRentalHours > 0) {
+      const durationCheck = validateMinRentalDuration(rentalStartDate, rentalEndDate, minRentalHours)
+      if (!durationCheck.valid) {
+        return {
+          error: 'errors.minRentalDurationViolation',
+          errorParams: { hours: minRentalHours },
+        }
+      }
+    }
+
+    // Validate maximum rental duration
+    const maxRentalHours = getMaxRentalHours(store.settings as StoreSettings | null)
+    if (maxRentalHours !== null) {
+      const maxCheck = validateMaxRentalDuration(rentalStartDate, rentalEndDate, maxRentalHours)
+      if (!maxCheck.valid) {
+        return {
+          error: 'errors.maxRentalDurationViolation',
+          errorParams: { hours: maxRentalHours },
         }
       }
     }

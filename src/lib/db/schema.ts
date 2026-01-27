@@ -213,8 +213,8 @@ export const stores = mysqlTable(
     settings: json('settings').$type<StoreSettings>().default({
       pricingMode: 'day',
       reservationMode: 'payment',
-      minDuration: 1,
-      maxDuration: null,
+      minRentalHours: 1,
+      maxRentalHours: null,
       advanceNotice: 24,
     }),
 

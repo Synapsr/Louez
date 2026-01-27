@@ -1806,9 +1806,11 @@
         "pricingDay": "Per dag",
         "pricingHour": "Per uur",
         "pricingWeek": "Per week",
-        "minDuration": "Minimale duur",
-        "maxDuration": "Maximale duur",
-        "leadTime": "Minimale vooraankondiging (uren)",
+        "minRentalHours": "Minimale huurduur",
+        "maxRentalHours": "Maximale huurduur",
+        "minRentalHoursHelp": "Minimale duur die een klant moet boeken. Stel in op 0 voor geen beperking.",
+        "maxRentalHoursHelp": "In uren. Leeg laten voor geen limiet.",
+        "leadTime": "Minimale vooraankondiging",
         "leadTimeHelp": "Tijd voor de eerste beschikbare datum",
         "durationUnit": {
           "day": "In dagen",
@@ -2507,6 +2509,7 @@
       "addedToCart": "{name} toegevoegd aan winkelwagen",
       "goToCheckout": "Afrekenen",
       "selectDates": "Boeken",
+      "minDurationError": "De minimale huurduur is {hours} uur",
       "selectQuantity": "Aantal",
       "quantity": "Aantal",
       "availableCount": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
@@ -2582,6 +2585,7 @@
       "startDate": "Ophalen",
       "endDate": "Retour",
       "viewAvailability": "Beschikbaarheid controleren",
+      "minDurationWarning": "Minimumduur: {hours}u",
       "search": "Zoeken",
       "duration": "{count} {unit}",
       "durationDay": "dag",
@@ -3529,7 +3533,9 @@
     "smsNotConfigured": "SMS is niet geconfigureerd",
     "smsLimitReached": "SMS-limiet bereikt. Upgrade naar een hoger plan om SMS te blijven versturen.",
     "customerNoPhone": "Klant heeft geen telefoonnummer",
-    "smsSendFailed": "Fout bij verzenden SMS"
+    "smsSendFailed": "Fout bij verzenden SMS",
+    "minRentalDurationViolation": "De huurduur moet minstens {hours} uur zijn",
+    "maxRentalDurationViolation": "De huurduur mag niet meer dan {hours} uur zijn"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",
