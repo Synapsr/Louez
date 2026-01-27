@@ -4,7 +4,8 @@ import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, products, categories, productPricingTiers, productAccessories } from '@/lib/db/schema'
 import { eq, and, inArray, desc, asc } from 'drizzle-orm'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import { storefrontRedirect } from '@/lib/storefront-url'
 
 import { RentalContent } from './rental-content'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -82,14 +83,14 @@ export default async function RentalPage({
 
   // Redirect to homepage if no dates
   if (!startDate || !endDate) {
-    redirect('/')
+    storefrontRedirect(slug, '/')
   }
 
   // Validate dates
   const start = new Date(startDate)
   const end = new Date(endDate)
   if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
-    redirect('/')
+    storefrontRedirect(slug, '/')
   }
 
   // Fetch store

@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, reservations } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { storefrontRedirect } from '@/lib/storefront-url'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -66,7 +66,7 @@ export default async function ReservationDetailPage({
   const session = await getCustomerSession(slug)
 
   if (!session) {
-    redirect('/account/login')
+    storefrontRedirect(slug, '/account/login')
   }
 
   type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'

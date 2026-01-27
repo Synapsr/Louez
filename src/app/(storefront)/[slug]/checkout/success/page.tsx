@@ -1,4 +1,5 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
+import { storefrontRedirect } from '@/lib/storefront-url'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
 import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Loader2 } from 'lucide-react'
@@ -191,7 +192,7 @@ export default async function CheckoutSuccessPage({
   const { reservation: reservationId, session_id: sessionId } = await searchParams
 
   if (!reservationId) {
-    redirect(`/${slug}`)
+    storefrontRedirect(slug, '/')
   }
 
   const t = await getTranslations('storefront.checkout')
@@ -218,7 +219,7 @@ export default async function CheckoutSuccessPage({
   })
 
   if (!reservation) {
-    redirect(`/${slug}`)
+    storefrontRedirect(slug, '/')
   }
 
   // If reservation is pending and we have a session_id, verify payment with Stripe
@@ -240,7 +241,7 @@ export default async function CheckoutSuccessPage({
       })
 
       if (!reservation) {
-        redirect(`/${slug}`)
+        storefrontRedirect(slug, '/')
       }
     }
   }
