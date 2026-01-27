@@ -348,7 +348,7 @@ export const productPricingTiers = mysqlTable(
     minDuration: int('min_duration').notNull(),
 
     // Discount
-    discountPercent: decimal('discount_percent', { precision: 5, scale: 2 }).notNull(),
+    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }).notNull(),
 
     // Display order
     displayOrder: int('display_order').default(0),

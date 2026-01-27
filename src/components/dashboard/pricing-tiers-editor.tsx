@@ -30,7 +30,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import type { PricingMode, PricingTier } from '@/types'
 import {
   calculateRentalPrice,
@@ -225,9 +225,16 @@ export function PricingTiersEditor({
                   return (
                     <div
                       key={originalIndex}
-                      className="flex items-center gap-4 rounded-lg border bg-card p-4"
+                      className="flex items-start gap-3 rounded-lg border bg-card p-4"
                     >
-                      <div className="flex-1 grid grid-cols-2 gap-4">
+                      <div
+                        className={cn(
+                          'flex-1 grid gap-x-4 gap-y-3',
+                          basePrice > 0
+                            ? 'grid-cols-2 sm:grid-cols-4'
+                            : 'grid-cols-2'
+                        )}
+                      >
                         <div className="space-y-2">
                           <Label className="text-xs text-muted-foreground">
                             {t('fromDuration')}
@@ -278,12 +285,14 @@ export function PricingTiersEditor({
                             <span className="text-sm text-muted-foreground">%</span>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-4">
+                        {/* Column 3: Target unit price */}
                         {basePrice > 0 && (
-                          <div className="text-right">
-                            <div className="flex items-center justify-end gap-1">
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              {t('targetPrice')}
+                            </Label>
+                            <div className="flex items-center gap-1">
                               <Input
                                 type="number"
                                 step={0.01}
@@ -291,7 +300,10 @@ export function PricingTiersEditor({
                                 value={
                                   editingPrices[originalIndex] ??
                                   parseFloat(
-                                    (basePrice * (1 - tier.discountPercent / 100)).toFixed(2)
+                                    (
+                                      basePrice *
+                                      (1 - tier.discountPercent / 100)
+                                    ).toFixed(2)
                                   )
                                 }
                                 onFocus={(e) =>
@@ -314,8 +326,10 @@ export function PricingTiersEditor({
                                   ) {
                                     const discount =
                                       Math.round(
-                                        ((basePrice - targetPrice) / basePrice) * 100 * 100
-                                      ) / 100
+                                        ((basePrice - targetPrice) / basePrice) *
+                                          100 *
+                                          1e6
+                                      ) / 1e6
                                     updateTier(
                                       originalIndex,
                                       'discountPercent',
@@ -330,7 +344,7 @@ export function PricingTiersEditor({
                                     return next
                                   })
                                 }
-                                className="w-24 h-8 text-right text-sm font-medium"
+                                className="w-24"
                                 disabled={disabled}
                                 aria-label={t('targetPrice')}
                               />
@@ -338,7 +352,16 @@ export function PricingTiersEditor({
                                 /{getUnitLabel(pricingMode, 'short')}
                               </span>
                             </div>
-                            <div className="flex items-center justify-end gap-1 mt-1">
+                          </div>
+                        )}
+
+                        {/* Column 4: Total cost */}
+                        {basePrice > 0 && (
+                          <div className="space-y-2">
+                            <Label className="text-xs text-muted-foreground">
+                              {t('tierTotal')}
+                            </Label>
+                            <div className="flex items-center gap-1">
                               <Input
                                 type="number"
                                 step={0.01}
@@ -371,14 +394,16 @@ export function PricingTiersEditor({
                                     totalCost > 0 &&
                                     tier.minDuration > 0
                                   ) {
-                                    const pricePerUnit = totalCost / tier.minDuration
+                                    const pricePerUnit =
+                                      totalCost / tier.minDuration
                                     if (pricePerUnit < basePrice) {
                                       const discount =
                                         Math.round(
-                                          ((basePrice - pricePerUnit) / basePrice) *
+                                          ((basePrice - pricePerUnit) /
+                                            basePrice) *
                                             100 *
-                                            100
-                                        ) / 100
+                                            1e6
+                                        ) / 1e6
                                       updateTier(
                                         originalIndex,
                                         'discountPercent',
@@ -394,32 +419,29 @@ export function PricingTiersEditor({
                                     return next
                                   })
                                 }
-                                className="w-24 h-7 text-right text-xs"
+                                className="w-24"
                                 disabled={disabled}
                                 aria-label={t('tierTotal')}
                               />
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {t('tierTotal')}
-                              </span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
+                            <p className="text-xs text-muted-foreground tabular-nums">
                               {t('insteadOf')}{' '}
                               {formatCurrency(basePrice * tier.minDuration)}
                             </p>
                           </div>
                         )}
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeTier(originalIndex)}
-                          disabled={disabled}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
                       </div>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeTier(originalIndex)}
+                        disabled={disabled}
+                        className="mt-6 shrink-0 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   )
                 })}
