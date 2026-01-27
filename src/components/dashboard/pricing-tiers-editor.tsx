@@ -341,8 +341,8 @@ export function PricingTiersEditor({
                                       Math.round(
                                         ((basePrice - targetPrice) / basePrice) *
                                           100 *
-                                          100
-                                      ) / 100
+                                          1e6
+                                      ) / 1e6
                                     updateTier(
                                       originalIndex,
                                       'discountPercent',
@@ -415,8 +415,8 @@ export function PricingTiersEditor({
                                           ((basePrice - pricePerUnit) /
                                             basePrice) *
                                             100 *
-                                            100
-                                        ) / 100
+                                            1e6
+                                        ) / 1e6
                                       updateTier(
                                         originalIndex,
                                         'discountPercent',
@@ -557,7 +557,7 @@ export function PricingTiersEditor({
                               variant="secondary"
                               className="ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                             >
-                              -{preview.discountPercent}%
+                              -{parseFloat(preview.discountPercent.toFixed(2))}%
                             </Badge>
                           )}
                         </TableCell>
