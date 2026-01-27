@@ -89,6 +89,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const firstItem = stripeSubscription.items.data[0]
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
 
+  // Determine status from Stripe (may be 'trialing' if trial days were set)
+  const status: 'active' | 'trialing' =
+    stripeSubscription.status === 'trialing' ? 'trialing' : 'active'
+
   // Check if subscription already exists
   const existingSubscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
@@ -102,7 +106,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         planSlug,
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: session.customer as string,
-        status: 'active',
+        status,
         currentPeriodEnd,
         cancelAtPeriodEnd: false,
         updatedAt: new Date(),
@@ -116,7 +120,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       planSlug,
       stripeSubscriptionId: stripeSubscription.id,
       stripeCustomerId: session.customer as string,
-      status: 'active',
+      status,
       currentPeriodEnd,
     })
   }

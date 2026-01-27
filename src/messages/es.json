@@ -2443,6 +2443,16 @@
         "deleteAccountWarning": "Esta accion es irreversible. Todos sus datos seran eliminados.",
         "signOut": "Cerrar sesion",
         "comingSoon": "Proximamente"
+      },
+      "admin": {
+        "title": "Admin plataforma",
+        "description": "Configuración de plataforma para esta tienda. Solo visible para administradores de plataforma.",
+        "trialSection": "Periodo de prueba",
+        "trialSectionDescription": "Configure un periodo de prueba gratuito para la suscripción de esta tienda.",
+        "trialDays": "Días de prueba",
+        "trialDaysDescription": "Número de días de prueba gratuitos cuando esta tienda se suscribe a un plan de pago. Establezca 0 para no ofrecer prueba (pago inmediato).",
+        "days": "días",
+        "saved": "Configuración admin guardada"
       }
     }
   },

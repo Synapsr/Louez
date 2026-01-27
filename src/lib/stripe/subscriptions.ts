@@ -10,6 +10,7 @@ interface CreateCheckoutSessionOptions {
   planSlug: string
   interval: 'monthly' | 'yearly'
   currency: Currency
+  trialDays?: number
   successUrl: string
   cancelUrl: string
 }
@@ -19,6 +20,7 @@ export async function createSubscriptionCheckoutSession({
   planSlug,
   interval,
   currency,
+  trialDays,
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionOptions) {
@@ -92,6 +94,7 @@ export async function createSubscriptionCheckoutSession({
         storeId: store.id,
         planSlug: plan.slug,
       },
+      ...(trialDays && trialDays > 0 ? { trial_period_days: trialDays } : {}),
     },
     metadata: {
       storeId: store.id,

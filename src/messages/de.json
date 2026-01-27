@@ -2441,6 +2441,16 @@
         "deleteAccountWarning": "Diese Aktion ist unwiderruflich. Alle Ihre Daten werden gelöscht.",
         "signOut": "Abmelden",
         "comingSoon": "Demnächst"
+      },
+      "admin": {
+        "title": "Plattform-Admin",
+        "description": "Plattform-Einstellungen für diesen Shop. Nur für Plattform-Administratoren sichtbar.",
+        "trialSection": "Abo-Testphase",
+        "trialSectionDescription": "Konfigurieren Sie eine kostenlose Testphase für das Abonnement dieses Shops.",
+        "trialDays": "Testtage",
+        "trialDaysDescription": "Anzahl der kostenlosen Testtage, wenn dieser Shop ein kostenpflichtiges Abo abschließt. 0 für keine Testphase (sofortige Zahlung).",
+        "days": "Tage",
+        "saved": "Admin-Einstellungen gespeichert"
       }
     }
   },
