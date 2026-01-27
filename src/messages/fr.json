@@ -257,6 +257,40 @@
       "limitReachedDescription": "Vous utilisez {current} collaborateurs sur {limit}. Passez à un plan supérieur pour en ajouter davantage.",
       "upgradeForMore": "Ajouter plus"
     },
+    "referrals": {
+      "title": "Parrainage",
+      "description": "Invitez d'autres loueurs et suivez vos filleuls.",
+      "stats": {
+        "totalReferrals": "Total filleuls",
+        "activePaid": "Filleuls payants",
+        "thisMonth": "Ce mois-ci"
+      },
+      "link": {
+        "title": "Parrainez et gagnez",
+        "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
+        "reward": "Pour chaque loueur parrainé, recevez 3 mois offerts sur le plan Ultra.",
+        "copyLink": "Copier le lien",
+        "linkCopied": "Lien copié !"
+      },
+      "list": {
+        "title": "Vos filleuls",
+        "count": "{count, plural, =0 {Aucun filleul} one {1 filleul} other {# filleuls}}",
+        "empty": "Aucun filleul",
+        "emptyDescription": "Partagez votre lien de parrainage pour commencer. Les boutiques qui s'inscrivent via votre lien apparaîtront ici.",
+        "columns": {
+          "store": "Boutique",
+          "joined": "Inscription",
+          "plan": "Plan",
+          "status": "Statut"
+        },
+        "status": {
+          "active": "Actif",
+          "cancelled": "Annulé",
+          "past_due": "Impayé",
+          "trialing": "Essai"
+        }
+      }
+    },
     "sms": {
       "title": "Crédits SMS",
       "description": "Suivez votre consommation SMS mensuelle",
@@ -380,6 +414,7 @@
       "statistics": "Statistiques",
       "analytics": "Analyses",
       "team": "Équipe",
+      "referrals": "Parrainage",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Paramètres",
@@ -592,7 +627,9 @@
         "setAsMain": "Définir comme image principale",
         "mainBadge": "Principal",
         "imageError": "Veuillez sélectionner une image",
-        "imageSizeError": "L'image ne doit pas dépasser 5 Mo",
+        "imageSizeError": "L'image ne doit pas dépasser 15 Mo",
+        "uploading": "Téléchargement...",
+        "imageUploadError": "Échec du téléchargement",
         "information": "Informations",
         "name": "Nom du produit",
         "namePlaceholder": "Ex: VTT Rockrider XC 500",
@@ -656,7 +693,12 @@
           "duration": "Durée",
           "pricePerUnit": "Prix unitaire",
           "total": "Total",
-          "savings": "Économie"
+          "savings": "Économie",
+          "targetPrice": "Prix cible",
+          "tierTotal": "Coût total",
+          "enforceStrictTiers": "Proposer uniquement ces durées",
+          "enforceStrictTiersDescription": "Les clients ne pourront réserver que pour les durées exactes de vos paliers. Les durées intermédiaires ne seront pas proposées.",
+          "enforceStrictTiersTooltip": "Si un client choisit une durée intermédiaire, elle sera automatiquement arrondie au palier supérieur. Par exemple, avec des paliers à 3 et 7 jours, une location de 5 jours sera facturée au tarif de 7 jours."
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -675,6 +717,8 @@
         "customTaxRateDescription": "Définir un taux différent pour ce produit",
         "accessories": "Accessoires",
         "accessoriesDescription": "Suggérez des produits complémentaires à vos clients",
+        "noAccessoriesAvailable": "Aucun accessoire disponible",
+        "noAccessoriesHint": "Ajoutez d'autres produits actifs à votre catalogue pour pouvoir les proposer en accessoire.",
         "addAccessory": "Ajouter un accessoire",
         "selectAccessories": "Sélectionner des accessoires",
         "selectAccessoriesDescription": "Choisissez les produits à suggérer avec ce produit",
@@ -1721,6 +1765,9 @@
         "brandingDescription": "Logo et couleurs de votre boutique",
         "logo": "Logo",
         "logoDescription": "Le logo de votre boutique (affiché dans le header)",
+        "logoDescriptionDark": "Logo clair pour votre boutique (visible sur fond sombre)",
+        "darkLogo": "Logo pour documents et emails",
+        "darkLogoDescription": "Version sombre de votre logo pour les PDF et emails (fond blanc). Sans ce logo, la version claire sera utilisée.",
         "logoFormats": "PNG, JPG ou SVG. Max 2MB.",
         "uploadLogo": "Télécharger",
         "changeLogo": "Modifier",
@@ -1795,9 +1842,11 @@
         "pricingDay": "Par jour",
         "pricingHour": "Par heure",
         "pricingWeek": "Par semaine",
-        "minDuration": "Durée minimum",
-        "maxDuration": "Durée maximum",
-        "leadTime": "Préavis minimum (heures)",
+        "minRentalHours": "Durée minimale de location",
+        "maxRentalHours": "Durée maximale de location",
+        "minRentalHoursHelp": "Durée minimale qu'un client doit réserver. Mettre 0 pour aucune restriction.",
+        "maxRentalHoursHelp": "En heures. Laisser vide pour aucune limite.",
+        "leadTime": "Préavis minimum",
         "leadTimeHelp": "Délai avant la première date disponible",
         "durationUnit": {
           "day": "En jours",
@@ -2393,6 +2442,16 @@
         "deleteAccountWarning": "Cette action est irréversible. Toutes vos données seront supprimées.",
         "signOut": "Se déconnecter",
         "comingSoon": "Bientôt"
+      },
+      "admin": {
+        "title": "Administration",
+        "description": "Paramètres de la plateforme pour cette boutique. Visible uniquement par les administrateurs.",
+        "trialSection": "Période d'essai",
+        "trialSectionDescription": "Configurez une période d'essai gratuite pour l'abonnement de cette boutique.",
+        "trialDays": "Jours d'essai",
+        "trialDaysDescription": "Nombre de jours d'essai gratuits lorsque cette boutique souscrit à un plan payant. Mettez 0 pour aucun essai (paiement immédiat).",
+        "days": "jours",
+        "saved": "Paramètres admin enregistrés"
       }
     }
   },
@@ -2496,6 +2555,7 @@
       "addedToCart": "{name} ajouté au panier",
       "goToCheckout": "Finaliser",
       "selectDates": "Réserver",
+      "minDurationError": "La durée minimale de location est de {hours} heures",
       "selectQuantity": "Quantité",
       "quantity": "Quantité",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
@@ -2571,6 +2631,7 @@
       "startDate": "Retrait",
       "endDate": "Retour",
       "viewAvailability": "Voir les disponibilités",
+      "minDurationWarning": "Durée minimum : {hours}h",
       "search": "Rechercher",
       "duration": "{count} {unit}",
       "durationDay": "jour",
@@ -2909,7 +2970,8 @@
           "rental": "Location",
           "deposit": "Caution",
           "deposit_return": "Remboursement caution",
-          "damage": "Dommages"
+          "damage": "Dommages",
+          "adjustment": "Ajustement"
         },
         "methods": {
           "stripe": "Carte en ligne",
@@ -3002,6 +3064,11 @@
       "pricingHourDesc": "Prix par heure",
       "pricingModeHelp": "Vous pourrez modifier ce paramètre plus tard",
       "contactSection": "Coordonnées (optionnel)",
+      "locationSection": "Localisation et contact",
+      "country": "Pays",
+      "countryPlaceholder": "Sélectionnez un pays",
+      "currency": "Devise",
+      "currencyPlaceholder": "Sélectionnez une devise",
       "address": "Adresse",
       "addressPlaceholder": "123 rue de la Location, 75001 Paris",
       "addressHelp": "Adresse où les clients viendront récupérer les produits",
@@ -3018,11 +3085,11 @@
       "logoHelp": "Format recommandé: PNG ou SVG, 512x512px",
       "logoError": "Veuillez sélectionner une image",
       "logoSizeError": "L'image ne doit pas dépasser 2 Mo",
+      "logoUploadError": "Échec du téléchargement du logo. Veuillez réessayer.",
       "primaryColor": "Couleur principale",
       "theme": "Thème",
       "themeLight": "Clair",
-      "themeDark": "Sombre",
-      "themeAuto": "Auto"
+      "themeDark": "Sombre"
     },
     "product": {
       "title": "Premier produit",
@@ -3356,12 +3423,15 @@
     "maxValue": "La valeur maximum est {max}",
     "url": "URL invalide",
     "slug": "L'URL ne peut contenir que des lettres minuscules, chiffres et tirets",
+    "slugReserved": "Cette URL est réservée et ne peut pas être utilisée",
     "positive": "La valeur doit être positive",
     "integer": "La valeur doit être un nombre entier",
     "date": "Date invalide",
     "dateRange": "La date de fin doit être après la date de début",
     "endDateBeforeStart": "La date de fin doit être après ou égale à la date de début",
-    "invalidYoutubeUrl": "L'URL YouTube n'est pas valide"
+    "invalidYoutubeUrl": "L'URL YouTube n'est pas valide",
+    "invalidImageUrl": "L'URL de l'image n'est pas valide",
+    "color": "Format de couleur invalide"
   },
   "upgradeModal": {
     "upgradeNow": "Passer au plan supérieur",
@@ -3475,6 +3545,8 @@
     "invalidOrExpiredCode": "Code invalide ou expiré",
     "verificationError": "Erreur lors de la vérification",
     "logoutError": "Erreur lors de la déconnexion",
+    "tooManyRequests": "Trop de demandes. Veuillez patienter avant de réessayer.",
+    "tooManyAttempts": "Trop de tentatives. Veuillez patienter avant de réessayer.",
     "copy": "(copie)",
     "forbidden": "Accès interdit",
     "serverError": "Erreur serveur",
@@ -3515,7 +3587,9 @@
     "smsNotConfigured": "Les SMS ne sont pas configurés",
     "smsLimitReached": "Limite de SMS atteinte. Passez à un plan supérieur pour continuer à envoyer des SMS.",
     "customerNoPhone": "Le client n'a pas de numéro de téléphone",
-    "smsSendFailed": "Erreur lors de l'envoi du SMS"
+    "smsSendFailed": "Erreur lors de l'envoi du SMS",
+    "minRentalDurationViolation": "La durée de location doit être d'au moins {hours} heures",
+    "maxRentalDurationViolation": "La durée de location ne peut pas dépasser {hours} heures"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

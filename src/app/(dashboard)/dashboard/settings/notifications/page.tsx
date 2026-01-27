@@ -1,7 +1,6 @@
 import { getTranslations } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { getCurrentStore } from '@/lib/store-context'
-import { SettingsNav } from '@/components/dashboard/settings-nav'
 import { NotificationsForm } from './notifications-form'
 import { getNotificationSettings } from './actions'
 
@@ -18,6 +17,7 @@ export default async function NotificationsPage() {
   const storeInfo = {
     name: store.name,
     logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
     email: store.email,
     phone: store.phone,
     address: store.address,
@@ -25,13 +25,8 @@ export default async function NotificationsPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t('notifications.title')}</h1>
-        <p className="text-muted-foreground">{t('notifications.description')}</p>
-      </div>
-
-      <SettingsNav />
+    <div className="mx-auto max-w-4xl space-y-6">
+      <p className="text-muted-foreground">{t('notifications.description')}</p>
 
       <NotificationsForm
         settings={data.settings}

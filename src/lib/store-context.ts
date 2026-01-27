@@ -30,6 +30,7 @@ export type StoreWithFullData = {
   latitude: string | null
   longitude: string | null
   logoUrl: string | null
+  darkLogoUrl: string | null
   settings: StoreSettings | null
   theme: StoreTheme | null
   cgv: string | null
@@ -44,6 +45,8 @@ export type StoreWithFullData = {
   ownerPhone: string | null
   customerNotificationSettings: CustomerNotificationSettings | null
   icsToken: string | null
+  referralCode: string | null
+  trialDays: number
   onboardingCompleted: boolean | null
   createdAt: Date
   updatedAt: Date
@@ -135,8 +138,31 @@ export async function getActiveStoreId(): Promise<string | null> {
 
 /**
  * Set the active store ID in cookie
+ * Validates that the user has access to the store before setting (defense in depth)
  */
-export async function setActiveStoreId(storeId: string): Promise<void> {
+export async function setActiveStoreId(storeId: string): Promise<{ success: boolean; error?: string }> {
+  // Validate storeId format (21-char nanoid)
+  if (!storeId || typeof storeId !== 'string' || storeId.length !== 21) {
+    console.warn('[SECURITY] setActiveStoreId called with invalid storeId format:', storeId?.substring(0, 30))
+    return { success: false, error: 'errors.invalidStoreId' }
+  }
+
+  // Verify user is authenticated and has access to this store
+  const session = await auth()
+  if (!session?.user?.id) {
+    return { success: false, error: 'errors.unauthenticated' }
+  }
+
+  // Use verifyStoreAccess which handles both regular members and platform admins
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    // Log attempted unauthorized access for security monitoring
+    console.warn(
+      `[SECURITY] User ${session.user.id} attempted to set active store to ${storeId} without access`
+    )
+    return { success: false, error: 'errors.unauthorized' }
+  }
+
   const cookieStore = await cookies()
   cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
     httpOnly: true,
@@ -145,6 +171,8 @@ export async function setActiveStoreId(storeId: string): Promise<void> {
     maxAge: 60 * 60 * 24 * 365, // 1 year
     path: '/',
   })
+
+  return { success: true }
 }
 
 /**

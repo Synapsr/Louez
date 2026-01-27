@@ -257,6 +257,40 @@
       "limitReachedDescription": "Voce esta usando {current} de {limit} membros. Faca upgrade para adicionar mais.",
       "upgradeForMore": "Adicionar mais"
     },
+    "referrals": {
+      "title": "Referências",
+      "description": "Convide outros locadores e acompanhe suas referências.",
+      "stats": {
+        "totalReferrals": "Total de referências",
+        "activePaid": "Referências pagas",
+        "thisMonth": "Este mês"
+      },
+      "link": {
+        "title": "Indique e ganhe",
+        "description": "Compartilhe seu link e convide outros locadores a se juntar ao Louez.",
+        "reward": "Para cada locador indicado, ganhe 3 meses grátis no plano Ultra.",
+        "copyLink": "Copiar link",
+        "linkCopied": "Link copiado!"
+      },
+      "list": {
+        "title": "Suas referências",
+        "count": "{count, plural, =0 {Nenhuma referência} one {1 referência} other {# referências}}",
+        "empty": "Nenhuma referência ainda",
+        "emptyDescription": "Compartilhe seu link de referência para começar. As lojas que se inscreverem usando seu link aparecerão aqui.",
+        "columns": {
+          "store": "Loja",
+          "joined": "Inscrição",
+          "plan": "Plano",
+          "status": "Estado"
+        },
+        "status": {
+          "active": "Ativo",
+          "cancelled": "Cancelado",
+          "past_due": "Atrasado",
+          "trialing": "Teste"
+        }
+      }
+    },
     "sms": {
       "title": "Creditos SMS",
       "description": "Acompanhe o seu consumo mensal de SMS",
@@ -379,6 +413,7 @@
       "categories": "Categorias",
       "statistics": "Estatisticas",
       "team": "Equipe",
+      "referrals": "Referências",
       "sms": "SMS",
       "subscription": "Assinatura",
       "settings": "Configuracoes",
@@ -655,7 +690,12 @@
           "duration": "Duracao",
           "pricePerUnit": "Preco unitario",
           "total": "Total",
-          "savings": "Economia"
+          "savings": "Economia",
+          "targetPrice": "Preço alvo",
+          "tierTotal": "Custo total",
+          "enforceStrictTiers": "Oferecer apenas estas durações",
+          "enforceStrictTiersDescription": "Os clientes só poderão reservar pelas durações exatas dos seus níveis. Durações intermediárias não estarão disponíveis.",
+          "enforceStrictTiersTooltip": "Se um cliente escolher uma duração intermediária, ela será automaticamente arredondada para o nível superior. Por exemplo, com níveis de 3 e 7 dias, um aluguel de 5 dias será cobrado pela tarifa de 7 dias."
         },
         "previewTitle": "Previa",
         "previewDescription": "Veja como seu produto aparecera no catalogo",
@@ -674,6 +714,8 @@
         "customTaxRateDescription": "Definir uma taxa diferente para este produto",
         "accessories": "Acessórios",
         "accessoriesDescription": "Sugira produtos complementares aos seus clientes",
+        "noAccessoriesAvailable": "Nenhum acessório disponível",
+        "noAccessoriesHint": "Adicione mais produtos ativos ao seu catálogo para sugeri-los como acessórios.",
         "addAccessory": "Adicionar acessório",
         "selectAccessories": "Selecionar acessórios",
         "selectAccessoriesDescription": "Escolha os produtos a sugerir com este produto",
@@ -1722,6 +1764,9 @@
         "brandingDescription": "Logo e cores da sua loja",
         "logo": "Logo",
         "logoDescription": "O logo da sua loja (exibido no cabecalho)",
+        "logoDescriptionDark": "Logo claro para a sua loja (visível em fundos escuros)",
+        "darkLogo": "Logo para documentos e e-mails",
+        "darkLogoDescription": "Versão escura do seu logo para PDFs e e-mails (fundo branco). Sem este, a versão clara será utilizada.",
         "logoFormats": "PNG, JPG ou SVG. Max 2MB.",
         "uploadLogo": "Enviar",
         "changeLogo": "Alterar",
@@ -1796,9 +1841,11 @@
         "pricingDay": "Por dia",
         "pricingHour": "Por hora",
         "pricingWeek": "Por semana",
-        "minDuration": "Duracao minima",
-        "maxDuration": "Duracao maxima",
-        "leadTime": "Aviso minimo (horas)",
+        "minRentalHours": "Duração mínima do aluguer",
+        "maxRentalHours": "Duração máxima do aluguer",
+        "minRentalHoursHelp": "Duração mínima que um cliente deve reservar. Definir 0 para sem restrição.",
+        "maxRentalHoursHelp": "Em horas. Deixar vazio para sem limite.",
+        "leadTime": "Aviso mínimo",
         "leadTimeHelp": "Tempo antes da primeira data disponivel",
         "durationUnit": {
           "day": "Em dias",
@@ -2394,6 +2441,16 @@
         "deleteAccountWarning": "Esta acao e irreversivel. Todos os seus dados serao excluidos.",
         "signOut": "Sair",
         "comingSoon": "Em breve"
+      },
+      "admin": {
+        "title": "Admin plataforma",
+        "description": "Configurações da plataforma para esta loja. Visível apenas para administradores da plataforma.",
+        "trialSection": "Período de teste",
+        "trialSectionDescription": "Configure um período de teste gratuito para a assinatura desta loja.",
+        "trialDays": "Dias de teste",
+        "trialDaysDescription": "Número de dias de teste gratuitos quando esta loja assina um plano pago. Defina 0 para nenhum teste (pagamento imediato).",
+        "days": "dias",
+        "saved": "Configurações admin salvas"
       }
     }
   },
@@ -2497,6 +2554,7 @@
       "addedToCart": "{name} adicionado ao carrinho",
       "goToCheckout": "Finalizar",
       "selectDates": "Reservar",
+      "minDurationError": "A duração mínima do aluguer é de {hours} horas",
       "selectQuantity": "Quantidade",
       "quantity": "Quantidade",
       "availableCount": "{count, plural, one {# disponivel} other {# disponiveis}}",
@@ -2572,6 +2630,7 @@
       "startDate": "Retirada",
       "endDate": "Devolucao",
       "viewAvailability": "Verificar disponibilidade",
+      "minDurationWarning": "Duração mínima: {hours}h",
       "search": "Pesquisar",
       "duration": "{count} {unit}",
       "durationDay": "dia",
@@ -2909,7 +2968,8 @@
           "rental": "Aluguel",
           "deposit": "Deposito",
           "deposit_return": "Devolucao de deposito",
-          "damage": "Danos"
+          "damage": "Danos",
+          "adjustment": "Ajuste"
         },
         "methods": {
           "stripe": "Cartao online",
@@ -3002,6 +3062,11 @@
       "pricingHourDesc": "Preco por hora",
       "pricingModeHelp": "Voce pode alterar esta configuracao depois",
       "contactSection": "Dados de contato (opcional)",
+      "locationSection": "Localizacao e contato",
+      "country": "Pais",
+      "countryPlaceholder": "Selecione um pais",
+      "currency": "Moeda",
+      "currencyPlaceholder": "Selecione uma moeda",
       "address": "Endereco",
       "addressPlaceholder": "Rua do Aluguel, 123, Lisboa 1000-001",
       "addressHelp": "Endereco onde os clientes retirarao os produtos",
@@ -3018,11 +3083,11 @@
       "logoHelp": "Formato recomendado: PNG ou SVG, 512x512px",
       "logoError": "Por favor, selecione uma imagem",
       "logoSizeError": "A imagem nao deve exceder 2 MB",
+      "logoUploadError": "Falha ao carregar o logo. Por favor, tente novamente.",
       "primaryColor": "Cor primaria",
       "theme": "Tema",
       "themeLight": "Claro",
-      "themeDark": "Escuro",
-      "themeAuto": "Auto"
+      "themeDark": "Escuro"
     },
     "product": {
       "title": "Primeiro produto",
@@ -3361,7 +3426,9 @@
     "date": "Data invalida",
     "dateRange": "A data de fim deve ser apos a data de inicio",
     "endDateBeforeStart": "A data de fim deve ser apos ou igual a data de inicio",
-    "invalidYoutubeUrl": "A URL do YouTube nao e valida"
+    "invalidYoutubeUrl": "A URL do YouTube nao e valida",
+    "invalidImageUrl": "A URL da imagem não é válida",
+    "color": "Formato de cor inválido"
   },
   "upgradeModal": {
     "upgradeNow": "Atualizar agora",
@@ -3473,6 +3540,8 @@
     "invalidOrExpiredCode": "Codigo invalido ou expirado",
     "verificationError": "Erro de verificacao",
     "logoutError": "Erro ao sair",
+    "tooManyRequests": "Muitas solicitações. Aguarde antes de tentar novamente.",
+    "tooManyAttempts": "Muitas tentativas. Aguarde antes de tentar novamente.",
     "copy": "(copia)",
     "forbidden": "Acesso proibido",
     "serverError": "Erro do servidor",
@@ -3504,7 +3573,9 @@
     "smsNotConfigured": "SMS nao esta configurado",
     "smsLimitReached": "Limite de SMS atingido. Atualize para um plano superior para continuar enviando SMS.",
     "customerNoPhone": "Cliente nao tem numero de telefone",
-    "smsSendFailed": "Erro ao enviar SMS"
+    "smsSendFailed": "Erro ao enviar SMS",
+    "minRentalDurationViolation": "A duração do aluguer deve ser de pelo menos {hours} horas",
+    "maxRentalDurationViolation": "A duração do aluguer não pode exceder {hours} horas"
   },
   "welcome": {
     "greeting": "Bem-vindo ao Louez.io",

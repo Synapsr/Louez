@@ -22,6 +22,7 @@ import {
   Plus,
   Crown,
   Sparkles,
+  Gift,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -77,6 +78,7 @@ const analyticsNavigation = [
 
 const managementNavigation = [
   { key: 'team', href: '/dashboard/team', icon: Users },
+  { key: 'referrals', href: '/dashboard/referrals', icon: Gift },
   { key: 'subscription', href: '/dashboard/subscription', icon: CreditCard },
   { key: 'settings', href: '/dashboard/settings', icon: Settings },
 ]

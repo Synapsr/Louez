@@ -9,6 +9,107 @@ import { nanoid } from 'nanoid'
 import { fromStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import type { NotificationSettings, StoreSettings } from '@/types/store'
+import {
+  notifyPaymentReceived,
+  notifyReservationConfirmed,
+  notifyPaymentFailed,
+  notifyStripeConnected,
+} from '@/lib/discord/platform-notifications'
+
+// ===== TYPE DEFINITIONS =====
+// Define explicit type for reservation with relations to ensure proper typing
+// Only includes fields we actually use in webhook handlers
+
+type ReservationStore = {
+  id: string
+  name: string
+  slug: string
+  email: string | null
+  stripeAccountId: string | null
+  discordWebhookUrl: string | null
+  ownerPhone: string | null
+  notificationSettings: NotificationSettings | null
+  settings: StoreSettings | null
+}
+
+type ReservationCustomer = {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone: string | null
+}
+
+type ReservationWithRelations = {
+  id: string
+  number: string
+  storeId: string
+  customerId: string | null
+  status: string
+  startDate: Date
+  endDate: Date
+  totalAmount: string
+  depositAmount: string | null
+  depositStatus: string | null
+  store: ReservationStore
+  customer: ReservationCustomer | null
+  items: Array<{
+    id: string
+    productId: string
+    quantity: number
+    unitPrice: string
+    totalPrice: string
+  }>
+}
+
+// ===== VALIDATION HELPERS =====
+// Validates Stripe metadata to prevent manipulation attacks
+
+/**
+ * Validates that a reservationId from Stripe metadata is properly formatted
+ * @returns true if valid, false otherwise
+ */
+function isValidReservationId(reservationId: string | undefined): reservationId is string {
+  return typeof reservationId === 'string' && reservationId.length === 21
+}
+
+/**
+ * Validates that the connected account matches the reservation's store
+ * Prevents attacks where metadata is manipulated
+ */
+async function validateConnectedAccountForReservation(
+  reservationId: string,
+  connectedAccountId: string | undefined,
+  eventType: string
+): Promise<{ valid: boolean; reservation?: ReservationWithRelations }> {
+  const reservation = await db.query.reservations.findFirst({
+    where: eq(reservations.id, reservationId),
+    with: {
+      store: true,
+      customer: true,
+      items: true,
+    },
+  })
+
+  if (!reservation) {
+    console.error(`[${eventType}] Reservation ${reservationId} not found`)
+    return { valid: false }
+  }
+
+  // If we have a connected account, validate it matches the store
+  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+    console.error(`[SECURITY] [${eventType}] Connected account mismatch - possible attack`, {
+      expected: reservation.store.stripeAccountId,
+      received: connectedAccountId,
+      reservationId,
+    })
+    return { valid: false }
+  }
+
+  // Type assertion safe: Drizzle returns matching structure from 'with' clause
+  return { valid: true, reservation: reservation as ReservationWithRelations }
+}
 
 /**
  * Webhook handler for Stripe Connect events
@@ -121,6 +222,12 @@ async function handleCheckoutCompleted(
     return
   }
 
+  // SECURITY: Validate reservationId format (nanoid 21 chars)
+  if (reservationId.length !== 21) {
+    console.error('[SECURITY] Invalid reservationId format in metadata', { reservationId })
+    return
+  }
+
   // Check idempotence: if payment already completed for this session, skip
   const existingPayment = await db.query.payments.findFirst({
     where: eq(payments.stripeCheckoutSessionId, session.id),
@@ -143,6 +250,17 @@ async function handleCheckoutCompleted(
 
   if (!reservation) {
     console.error(`Reservation ${reservationId} not found`)
+    return
+  }
+
+  // Validate connected account matches store to prevent metadata manipulation
+  if (connectedAccountId && reservation.store.stripeAccountId !== connectedAccountId) {
+    console.error('[SECURITY] Connected account mismatch - possible attack detected', {
+      expected: reservation.store.stripeAccountId,
+      received: connectedAccountId,
+      reservationId,
+      sessionId: session.id,
+    })
     return
   }
 
@@ -383,6 +501,11 @@ async function handleCheckoutCompleted(
       })
     }
 
+    // Platform admin notifications
+    const storeInfo = { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug }
+    notifyPaymentReceived(storeInfo, reservation.number, totalAmount, currency).catch(() => {})
+    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {})
+
     console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
   } else {
     console.log(`Reservation ${reservationId} already processed, payment record updated`)
@@ -445,10 +568,20 @@ async function handleDepositAuthorized(
   if (paymentIntent.metadata?.type !== 'deposit_hold') return
 
   const reservationId = paymentIntent.metadata?.reservationId
-  if (!reservationId) {
-    console.error('No reservationId in deposit PaymentIntent metadata')
+
+  // SECURITY: Validate reservationId format
+  if (!isValidReservationId(reservationId)) {
+    console.error('[SECURITY] Invalid reservationId in deposit PaymentIntent metadata', { reservationId })
     return
   }
+
+  // SECURITY: Validate connected account matches store
+  const { valid, reservation } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    'deposit_authorized'
+  )
+  if (!valid) return
 
   // Check idempotence
   const existingPayment = await db.query.payments.findFirst({
@@ -523,7 +656,20 @@ async function handleDepositReleased(
   if (paymentIntent.metadata?.type !== 'deposit_hold') return
 
   const reservationId = paymentIntent.metadata?.reservationId
-  if (!reservationId) return
+
+  // SECURITY: Validate reservationId format
+  if (!isValidReservationId(reservationId)) {
+    console.error('[SECURITY] Invalid reservationId in deposit release metadata', { reservationId })
+    return
+  }
+
+  // SECURITY: Validate connected account matches store
+  const { valid } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    'deposit_released'
+  )
+  if (!valid) return
 
   // Find and update the deposit hold payment
   const depositPayment = await db.query.payments.findFirst({
@@ -580,7 +726,20 @@ async function handleDepositCaptured(
   if (paymentIntent.metadata?.type !== 'deposit_hold') return
 
   const reservationId = paymentIntent.metadata?.reservationId
-  if (!reservationId) return
+
+  // SECURITY: Validate reservationId format
+  if (!isValidReservationId(reservationId)) {
+    console.error('[SECURITY] Invalid reservationId in deposit capture metadata', { reservationId })
+    return
+  }
+
+  // SECURITY: Validate connected account matches store
+  const { valid } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    'deposit_captured'
+  )
+  if (!valid) return
 
   const currency = paymentIntent.currency.toUpperCase()
   const capturedAmount = fromStripeCents(paymentIntent.amount_received, currency)
@@ -657,21 +816,25 @@ async function handleDepositFailed(
   connectedAccountId?: string
 ) {
   const reservationId = paymentIntent.metadata?.reservationId
-  if (!reservationId) return
+
+  // SECURITY: Validate reservationId format
+  if (!isValidReservationId(reservationId)) {
+    console.error('[SECURITY] Invalid reservationId in payment failed metadata', { reservationId })
+    return
+  }
+
+  // SECURITY: Validate connected account matches store
+  const { valid, reservation } = await validateConnectedAccountForReservation(
+    reservationId,
+    connectedAccountId,
+    'payment_failed'
+  )
+  if (!valid || !reservation) return
 
   const currency = paymentIntent.currency.toUpperCase()
   const amount = fromStripeCents(paymentIntent.amount, currency)
   const errorMessage = paymentIntent.last_payment_error?.message || 'Unknown error'
   const isDepositHold = paymentIntent.metadata?.type === 'deposit_hold'
-
-  // Get reservation with store and customer for notifications
-  const reservation = await db.query.reservations.findFirst({
-    where: eq(reservations.id, reservationId),
-    with: {
-      store: true,
-      customer: true,
-    },
-  })
 
   if (isDepositHold) {
     // Handle deposit authorization failure
@@ -767,6 +930,12 @@ async function handleDepositFailed(
     }).catch((error) => {
       console.error('Failed to dispatch payment failed notification:', error)
     })
+
+    // Platform admin notification
+    notifyPaymentFailed(
+      { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug },
+      reservation.number
+    ).catch(() => {})
   }
 }
 
@@ -838,6 +1007,11 @@ async function handleAccountUpdated(account: Stripe.Account) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))
+
+  // Platform admin notification (only on first successful onboarding)
+  if (chargesEnabled && detailsSubmitted && !store.stripeOnboardingComplete) {
+    notifyStripeConnected({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+  }
 
   console.log(`Store ${store.id} Stripe status updated: charges=${chargesEnabled}`)
 }

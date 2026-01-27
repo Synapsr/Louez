@@ -19,6 +19,7 @@ import {
   JsonLd,
 } from '@/lib/seo'
 import type { StoreSettings, StoreTheme } from '@/types/store'
+import { getMinRentalHours } from '@/lib/utils/rental-duration'
 import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface CatalogPageProps {
@@ -152,6 +153,7 @@ export default async function CatalogPage({
         createdAt: products.createdAt,
         updatedAt: products.updatedAt,
         taxSettings: products.taxSettings,
+        enforceStrictTiers: products.enforceStrictTiers,
         categoryName: categories.name,
         categoryStoreId: categories.storeId,
         categoryDescription: categories.description,
@@ -206,6 +208,7 @@ export default async function CatalogPage({
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
         taxSettings: row.taxSettings,
+        enforceStrictTiers: row.enforceStrictTiers,
         category: row.categoryId && row.categoryName
           ? {
               id: row.categoryId,
@@ -236,6 +239,7 @@ export default async function CatalogPage({
   const settings = (store.settings as StoreSettings) || {}
   const businessHours = settings.businessHours
   const advanceNotice = settings.advanceNotice || 0
+  const minRentalHours = getMinRentalHours(settings)
 
   // Prepare data for JSON-LD
   const storeForSchema = {
@@ -304,6 +308,7 @@ export default async function CatalogPage({
               pricingMode={pricingMode}
               businessHours={businessHours}
               advanceNotice={advanceNotice}
+              minRentalHours={minRentalHours}
             />
           </div>
 

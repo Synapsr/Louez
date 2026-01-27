@@ -207,13 +207,14 @@ export const stores = mysqlTable(
 
     // Branding
     logoUrl: longtext('logo_url'),
+    darkLogoUrl: longtext('dark_logo_url'),
 
     // Configuration
     settings: json('settings').$type<StoreSettings>().default({
       pricingMode: 'day',
       reservationMode: 'payment',
-      minDuration: 1,
-      maxDuration: null,
+      minRentalHours: 1,
+      maxRentalHours: null,
       advanceNotice: 24,
     }),
 
@@ -254,6 +255,14 @@ export const stores = mysqlTable(
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),
 
+    // Referral system
+    referralCode: varchar('referral_code', { length: 12 }).unique(),
+    referredByUserId: varchar('referred_by_user_id', { length: 21 }),
+    referredByStoreId: varchar('referred_by_store_id', { length: 21 }),
+
+    // Trial period (platform admin only)
+    trialDays: int('trial_days').default(0).notNull(),
+
     // Metadata
     onboardingCompleted: boolean('onboarding_completed').default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -262,6 +271,7 @@ export const stores = mysqlTable(
   (table) => ({
     slugIdx: index('stores_slug_idx').on(table.slug),
     userIdx: index('stores_user_idx').on(table.userId),
+    referralCodeIdx: index('stores_referral_code_idx').on(table.referralCode),
   })
 )
 
@@ -312,6 +322,10 @@ export const products = mysqlTable(
     // Tax settings (product-specific)
     taxSettings: json('tax_settings').$type<ProductTaxSettings>(),
 
+    // Pricing tier enforcement: when true, customers can only book
+    // for the exact durations defined by pricing tiers (package pricing)
+    enforceStrictTiers: boolean('enforce_strict_tiers').notNull().default(false),
+
     // Stock
     quantity: int('quantity').notNull().default(1),
 
@@ -348,7 +362,7 @@ export const productPricingTiers = mysqlTable(
     minDuration: int('min_duration').notNull(),
 
     // Discount
-    discountPercent: decimal('discount_percent', { precision: 5, scale: 2 }).notNull(),
+    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }).notNull(),
 
     // Display order
     displayOrder: int('display_order').default(0),
@@ -671,8 +685,8 @@ export const documents = mysqlTable('documents', {
   type: documentType.notNull(),
   number: varchar('number', { length: 50 }).notNull(),
 
-  // File
-  fileUrl: text('file_url').notNull(),
+  // File (longtext to support base64-encoded PDFs with embedded images)
+  fileUrl: longtext('file_url').notNull(),
   fileName: varchar('file_name', { length: 255 }).notNull(),
 
   // Metadata
@@ -942,6 +956,14 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   subscription: one(subscriptions, {
     fields: [stores.id],
     references: [subscriptions.storeId],
+  }),
+  referredByStore: one(stores, {
+    fields: [stores.referredByStoreId],
+    references: [stores.id],
+    relationName: 'referrals',
+  }),
+  referrals: many(stores, {
+    relationName: 'referrals',
   }),
   categories: many(categories),
   products: many(products),

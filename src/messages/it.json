@@ -257,6 +257,40 @@
       "limitReachedDescription": "Stai usando {current} su {limit} membri. Aggiorna per aggiungerne altri.",
       "upgradeForMore": "Aggiungi altri"
     },
+    "referrals": {
+      "title": "Referenze",
+      "description": "Invita altri noleggiatori e monitora le tue referenze.",
+      "stats": {
+        "totalReferrals": "Referenze totali",
+        "activePaid": "Referenze a pagamento",
+        "thisMonth": "Questo mese"
+      },
+      "link": {
+        "title": "Invita e guadagna",
+        "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
+        "reward": "Per ogni noleggiatore invitato, ottieni 3 mesi gratuiti sul piano Ultra.",
+        "copyLink": "Copia link",
+        "linkCopied": "Link copiato!"
+      },
+      "list": {
+        "title": "Le tue referenze",
+        "count": "{count, plural, =0 {Nessuna referenza} one {1 referenza} other {# referenze}}",
+        "empty": "Nessuna referenza",
+        "emptyDescription": "Condividi il tuo link di referenza per iniziare. I negozi che si registrano tramite il tuo link appariranno qui.",
+        "columns": {
+          "store": "Negozio",
+          "joined": "Iscrizione",
+          "plan": "Piano",
+          "status": "Stato"
+        },
+        "status": {
+          "active": "Attivo",
+          "cancelled": "Annullato",
+          "past_due": "Scaduto",
+          "trialing": "Prova"
+        }
+      }
+    },
     "sms": {
       "title": "Crediti SMS",
       "description": "Monitora il tuo consumo mensile di SMS",
@@ -379,6 +413,7 @@
       "categories": "Categorie",
       "statistics": "Statistiche",
       "team": "Team",
+      "referrals": "Referenze",
       "sms": "SMS",
       "subscription": "Abbonamento",
       "settings": "Impostazioni",
@@ -591,7 +626,9 @@
         "setAsMain": "Imposta come immagine principale",
         "mainBadge": "Principale",
         "imageError": "Seleziona un'immagine",
-        "imageSizeError": "L'immagine non deve superare 5 MB",
+        "imageSizeError": "L'immagine non deve superare 15 MB",
+        "uploading": "Caricamento...",
+        "imageUploadError": "Caricamento fallito",
         "information": "Informazioni",
         "name": "Nome prodotto",
         "namePlaceholder": "Es: Mountain Bike XC 500",
@@ -655,7 +692,12 @@
           "duration": "Durata",
           "pricePerUnit": "Prezzo unitario",
           "total": "Totale",
-          "savings": "Risparmio"
+          "savings": "Risparmio",
+          "targetPrice": "Prezzo obiettivo",
+          "tierTotal": "Costo totale",
+          "enforceStrictTiers": "Offrire solo queste durate",
+          "enforceStrictTiersDescription": "I clienti potranno prenotare solo per le durate esatte dei tuoi livelli. Le durate intermedie non saranno disponibili.",
+          "enforceStrictTiersTooltip": "Se un cliente sceglie una durata intermedia, verrà automaticamente arrotondata al livello superiore. Ad esempio, con livelli a 3 e 7 giorni, un noleggio di 5 giorni verrà fatturato alla tariffa di 7 giorni."
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -674,6 +716,8 @@
         "customTaxRateDescription": "Imposta un'aliquota diversa per questo prodotto",
         "accessories": "Accessori",
         "accessoriesDescription": "Suggerisci prodotti complementari ai tuoi clienti",
+        "noAccessoriesAvailable": "Nessun accessorio disponibile",
+        "noAccessoriesHint": "Aggiungi altri prodotti attivi al tuo catalogo per proporli come accessori.",
         "addAccessory": "Aggiungi accessorio",
         "selectAccessories": "Seleziona accessori",
         "selectAccessoriesDescription": "Scegli i prodotti da suggerire con questo prodotto",
@@ -1721,6 +1765,9 @@
         "brandingDescription": "Logo e colori per il tuo negozio",
         "logo": "Logo",
         "logoDescription": "Il logo del tuo negozio (mostrato nell'header)",
+        "logoDescriptionDark": "Logo chiaro per il tuo negozio (visibile su sfondi scuri)",
+        "darkLogo": "Logo per documenti ed email",
+        "darkLogoDescription": "Versione scura del logo per PDF ed email (sfondo bianco). Senza questo, verrà utilizzata la versione chiara.",
         "logoFormats": "PNG, JPG o SVG. Max 2MB.",
         "uploadLogo": "Carica",
         "changeLogo": "Cambia",
@@ -1795,9 +1842,11 @@
         "pricingDay": "Al giorno",
         "pricingHour": "All'ora",
         "pricingWeek": "A settimana",
-        "minDuration": "Durata minima",
-        "maxDuration": "Durata massima",
-        "leadTime": "Preavviso minimo (ore)",
+        "minRentalHours": "Durata minima del noleggio",
+        "maxRentalHours": "Durata massima del noleggio",
+        "minRentalHoursHelp": "Durata minima che un cliente deve prenotare. Impostare 0 per nessuna restrizione.",
+        "maxRentalHoursHelp": "In ore. Lasciare vuoto per nessun limite.",
+        "leadTime": "Preavviso minimo",
         "leadTimeHelp": "Tempo prima della prima data disponibile",
         "durationUnit": {
           "day": "In giorni",
@@ -2393,6 +2442,16 @@
         "deleteAccountWarning": "Questa azione e irreversibile. Tutti i tuoi dati saranno eliminati.",
         "signOut": "Esci",
         "comingSoon": "Prossimamente"
+      },
+      "admin": {
+        "title": "Admin piattaforma",
+        "description": "Impostazioni di piattaforma per questo negozio. Visibile solo agli amministratori della piattaforma.",
+        "trialSection": "Periodo di prova",
+        "trialSectionDescription": "Configura un periodo di prova gratuito per l'abbonamento di questo negozio.",
+        "trialDays": "Giorni di prova",
+        "trialDaysDescription": "Numero di giorni di prova gratuiti quando questo negozio sottoscrive un piano a pagamento. Imposta 0 per nessuna prova (pagamento immediato).",
+        "days": "giorni",
+        "saved": "Impostazioni admin salvate"
       }
     }
   },
@@ -2496,6 +2555,7 @@
       "addedToCart": "{name} aggiunto al carrello",
       "goToCheckout": "Finalizza",
       "selectDates": "Prenota",
+      "minDurationError": "La durata minima del noleggio è di {hours} ore",
       "selectQuantity": "Quantita",
       "quantity": "Quantita",
       "availableCount": "{count, plural, one {# disponibile} other {# disponibili}}",
@@ -2571,6 +2631,7 @@
       "startDate": "Ritiro",
       "endDate": "Ritorno",
       "viewAvailability": "Verifica disponibilita",
+      "minDurationWarning": "Durata minima: {hours}h",
       "search": "Cerca",
       "duration": "{count} {unit}",
       "durationDay": "giorno",
@@ -2908,7 +2969,8 @@
           "rental": "Noleggio",
           "deposit": "Deposito",
           "deposit_return": "Rimborso deposito",
-          "damage": "Danni"
+          "damage": "Danni",
+          "adjustment": "Aggiustamento"
         },
         "methods": {
           "stripe": "Carta online",
@@ -3001,6 +3063,11 @@
       "pricingHourDesc": "Prezzo all'ora",
       "pricingModeHelp": "Puoi modificare questa impostazione in seguito",
       "contactSection": "Dettagli contatto (opzionale)",
+      "locationSection": "Posizione e contatto",
+      "country": "Paese",
+      "countryPlaceholder": "Seleziona un paese",
+      "currency": "Valuta",
+      "currencyPlaceholder": "Seleziona una valuta",
       "address": "Indirizzo",
       "addressPlaceholder": "Via del Noleggio 123, 20100 Milano",
       "addressHelp": "Indirizzo dove i clienti ritireranno i prodotti",
@@ -3017,11 +3084,11 @@
       "logoHelp": "Formato consigliato: PNG o SVG, 512x512px",
       "logoError": "Seleziona un'immagine",
       "logoSizeError": "L'immagine non deve superare 2 MB",
+      "logoUploadError": "Caricamento del logo fallito. Riprova.",
       "primaryColor": "Colore primario",
       "theme": "Tema",
       "themeLight": "Chiaro",
-      "themeDark": "Scuro",
-      "themeAuto": "Auto"
+      "themeDark": "Scuro"
     },
     "product": {
       "title": "Primo prodotto",
@@ -3360,7 +3427,9 @@
     "date": "Data non valida",
     "dateRange": "La data di fine deve essere dopo la data di inizio",
     "endDateBeforeStart": "La data di fine deve essere uguale o successiva alla data di inizio",
-    "invalidYoutubeUrl": "L'URL di YouTube non e valido"
+    "invalidYoutubeUrl": "L'URL di YouTube non e valido",
+    "invalidImageUrl": "L'URL dell'immagine non è valida",
+    "color": "Formato colore non valido"
   },
   "upgradeModal": {
     "upgradeNow": "Aggiorna ora",
@@ -3472,6 +3541,8 @@
     "invalidOrExpiredCode": "Codice non valido o scaduto",
     "verificationError": "Errore di verifica",
     "logoutError": "Errore di disconnessione",
+    "tooManyRequests": "Troppe richieste. Attendere prima di riprovare.",
+    "tooManyAttempts": "Troppi tentativi. Attendere prima di riprovare.",
     "copy": "(copia)",
     "forbidden": "Accesso vietato",
     "serverError": "Errore del server",
@@ -3503,7 +3574,9 @@
     "smsNotConfigured": "SMS non configurato",
     "smsLimitReached": "Limite SMS raggiunto. Aggiorna a un piano superiore per continuare a inviare SMS.",
     "customerNoPhone": "Il cliente non ha un numero di telefono",
-    "smsSendFailed": "Errore nell'invio dell'SMS"
+    "smsSendFailed": "Errore nell'invio dell'SMS",
+    "minRentalDurationViolation": "La durata del noleggio deve essere di almeno {hours} ore",
+    "maxRentalDurationViolation": "La durata del noleggio non può superare le {hours} ore"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

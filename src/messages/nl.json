@@ -256,6 +256,40 @@
       "limitReachedDescription": "Je gebruikt {current} van {limit} teamleden. Upgrade om meer toe te voegen.",
       "upgradeForMore": "Meer toevoegen"
     },
+    "referrals": {
+      "title": "Verwijzingen",
+      "description": "Nodig andere verhuurders uit en volg uw verwijzingen.",
+      "stats": {
+        "totalReferrals": "Totaal verwijzingen",
+        "activePaid": "Betalende verwijzingen",
+        "thisMonth": "Deze maand"
+      },
+      "link": {
+        "title": "Verwijs & verdien",
+        "description": "Deel uw link en nodig andere verhuurders uit om zich aan te sluiten bij Louez.",
+        "reward": "Voor elke doorverwezen verhuurder ontvangt u 3 gratis maanden op het Ultra-plan.",
+        "copyLink": "Link kopiëren",
+        "linkCopied": "Link gekopieerd!"
+      },
+      "list": {
+        "title": "Uw verwijzingen",
+        "count": "{count, plural, =0 {Geen verwijzingen} one {1 verwijzing} other {# verwijzingen}}",
+        "empty": "Nog geen verwijzingen",
+        "emptyDescription": "Deel uw verwijzingslink om te beginnen. Winkels die zich aanmelden via uw link verschijnen hier.",
+        "columns": {
+          "store": "Winkel",
+          "joined": "Aangemeld",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Actief",
+          "cancelled": "Geannuleerd",
+          "past_due": "Achterstallig",
+          "trialing": "Proefperiode"
+        }
+      }
+    },
     "sms": {
       "title": "SMS-tegoed",
       "description": "Volg uw maandelijks SMS-verbruik",
@@ -378,6 +412,7 @@
       "categories": "Categorieën",
       "statistics": "Statistieken",
       "team": "Team",
+      "referrals": "Verwijzingen",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Instellingen",
@@ -590,7 +625,9 @@
         "setAsMain": "Instellen als hoofdafbeelding",
         "mainBadge": "Hoofd",
         "imageError": "Selecteer een afbeelding",
-        "imageSizeError": "Afbeelding mag niet groter zijn dan 5 MB",
+        "imageSizeError": "Afbeelding mag niet groter zijn dan 15 MB",
+        "uploading": "Uploaden...",
+        "imageUploadError": "Upload mislukt",
         "information": "Informatie",
         "name": "Productnaam",
         "namePlaceholder": "Bijv. Mountainbike XC 500",
@@ -654,7 +691,12 @@
           "duration": "Duur",
           "pricePerUnit": "Eenheidsprijs",
           "total": "Totaal",
-          "savings": "Besparing"
+          "savings": "Besparing",
+          "targetPrice": "Doelprijs",
+          "tierTotal": "Totale kosten",
+          "enforceStrictTiers": "Alleen deze duur aanbieden",
+          "enforceStrictTiersDescription": "Klanten kunnen alleen boeken voor de exacte duur van uw niveaus. Tussenliggende duur wordt niet aangeboden.",
+          "enforceStrictTiersTooltip": "Als een klant een tussenliggende duur kiest, wordt deze automatisch afgerond naar het volgende niveau. Bijvoorbeeld: met niveaus van 3 en 7 dagen wordt een huur van 5 dagen gefactureerd tegen het tarief van 7 dagen."
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -673,6 +715,8 @@
         "customTaxRateDescription": "Een ander tarief instellen voor dit product",
         "accessories": "Accessoires",
         "accessoriesDescription": "Stel complementaire producten voor aan uw klanten",
+        "noAccessoriesAvailable": "Geen accessoires beschikbaar",
+        "noAccessoriesHint": "Voeg meer actieve producten toe aan uw catalogus om ze als accessoire voor te stellen.",
         "addAccessory": "Accessoire toevoegen",
         "selectAccessories": "Accessoires selecteren",
         "selectAccessoriesDescription": "Kies producten om bij dit product voor te stellen",
@@ -1720,6 +1764,9 @@
         "brandingDescription": "Logo en kleuren voor uw winkel",
         "logo": "Logo",
         "logoDescription": "Uw winkellogo (weergegeven in de header)",
+        "logoDescriptionDark": "Licht logo voor uw winkel (zichtbaar op donkere achtergronden)",
+        "darkLogo": "Logo voor documenten & e-mails",
+        "darkLogoDescription": "Donkere versie van uw logo voor PDF's en e-mails (witte achtergrond). Zonder dit wordt de lichte versie gebruikt.",
         "logoFormats": "PNG, JPG of SVG. Max 2MB.",
         "uploadLogo": "Uploaden",
         "changeLogo": "Wijzigen",
@@ -1794,9 +1841,11 @@
         "pricingDay": "Per dag",
         "pricingHour": "Per uur",
         "pricingWeek": "Per week",
-        "minDuration": "Minimale duur",
-        "maxDuration": "Maximale duur",
-        "leadTime": "Minimale vooraankondiging (uren)",
+        "minRentalHours": "Minimale huurduur",
+        "maxRentalHours": "Maximale huurduur",
+        "minRentalHoursHelp": "Minimale duur die een klant moet boeken. Stel in op 0 voor geen beperking.",
+        "maxRentalHoursHelp": "In uren. Leeg laten voor geen limiet.",
+        "leadTime": "Minimale vooraankondiging",
         "leadTimeHelp": "Tijd voor de eerste beschikbare datum",
         "durationUnit": {
           "day": "In dagen",
@@ -2392,6 +2441,16 @@
         "deleteAccountWarning": "Deze actie is onomkeerbaar. Al uw gegevens worden verwijderd.",
         "signOut": "Uitloggen",
         "comingSoon": "Binnenkort"
+      },
+      "admin": {
+        "title": "Platform Admin",
+        "description": "Platforminstellingen voor deze winkel. Alleen zichtbaar voor platformbeheerders.",
+        "trialSection": "Proefperiode abonnement",
+        "trialSectionDescription": "Configureer een gratis proefperiode voor het abonnement van deze winkel.",
+        "trialDays": "Proefdagen",
+        "trialDaysDescription": "Aantal gratis proefdagen wanneer deze winkel een betaald abonnement afsluit. Stel 0 in voor geen proefperiode (directe betaling).",
+        "days": "dagen",
+        "saved": "Admininstellingen opgeslagen"
       }
     }
   },
@@ -2495,6 +2554,7 @@
       "addedToCart": "{name} toegevoegd aan winkelwagen",
       "goToCheckout": "Afrekenen",
       "selectDates": "Boeken",
+      "minDurationError": "De minimale huurduur is {hours} uur",
       "selectQuantity": "Aantal",
       "quantity": "Aantal",
       "availableCount": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
@@ -2570,6 +2630,7 @@
       "startDate": "Ophalen",
       "endDate": "Retour",
       "viewAvailability": "Beschikbaarheid controleren",
+      "minDurationWarning": "Minimumduur: {hours}u",
       "search": "Zoeken",
       "duration": "{count} {unit}",
       "durationDay": "dag",
@@ -2907,7 +2968,8 @@
           "rental": "Huur",
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",
-          "damage": "Schade"
+          "damage": "Schade",
+          "adjustment": "Aanpassing"
         },
         "methods": {
           "stripe": "Online kaart",
@@ -3000,6 +3062,11 @@
       "pricingHourDesc": "Prijs per uur",
       "pricingModeHelp": "U kunt deze instelling later wijzigen",
       "contactSection": "Contactgegevens (optioneel)",
+      "locationSection": "Locatie en contact",
+      "country": "Land",
+      "countryPlaceholder": "Selecteer een land",
+      "currency": "Valuta",
+      "currencyPlaceholder": "Selecteer een valuta",
       "address": "Adres",
       "addressPlaceholder": "Keizersgracht 123, 1015 CJ Amsterdam",
       "addressHelp": "Adres waar klanten producten ophalen",
@@ -3016,11 +3083,11 @@
       "logoHelp": "Aanbevolen formaat: PNG of SVG, 512x512px",
       "logoError": "Selecteer een afbeelding",
       "logoSizeError": "Afbeelding mag niet groter zijn dan 2 MB",
+      "logoUploadError": "Logo uploaden mislukt. Probeer het opnieuw.",
       "primaryColor": "Primaire kleur",
       "theme": "Thema",
       "themeLight": "Licht",
-      "themeDark": "Donker",
-      "themeAuto": "Auto"
+      "themeDark": "Donker"
     },
     "product": {
       "title": "Eerste product",
@@ -3364,7 +3431,9 @@
     "date": "Ongeldige datum",
     "dateRange": "Einddatum moet na startdatum zijn",
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
-    "invalidYoutubeUrl": "De YouTube URL is niet geldig"
+    "invalidYoutubeUrl": "De YouTube URL is niet geldig",
+    "invalidImageUrl": "De afbeeldings-URL is niet geldig",
+    "color": "Ongeldig kleurformaat"
   },
   "upgradeModal": {
     "upgradeNow": "Nu upgraden",
@@ -3476,6 +3545,8 @@
     "invalidOrExpiredCode": "Ongeldige of verlopen code",
     "verificationError": "Verificatiefout",
     "logoutError": "Uitlogfout",
+    "tooManyRequests": "Te veel verzoeken. Wacht even voordat u het opnieuw probeert.",
+    "tooManyAttempts": "Te veel pogingen. Wacht even voordat u het opnieuw probeert.",
     "copy": "(kopie)",
     "forbidden": "Toegang verboden",
     "serverError": "Serverfout",
@@ -3507,7 +3578,9 @@
     "smsNotConfigured": "SMS is niet geconfigureerd",
     "smsLimitReached": "SMS-limiet bereikt. Upgrade naar een hoger plan om SMS te blijven versturen.",
     "customerNoPhone": "Klant heeft geen telefoonnummer",
-    "smsSendFailed": "Fout bij verzenden SMS"
+    "smsSendFailed": "Fout bij verzenden SMS",
+    "minRentalDurationViolation": "De huurduur moet minstens {hours} uur zijn",
+    "maxRentalDurationViolation": "De huurduur mag niet meer dan {hours} uur zijn"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

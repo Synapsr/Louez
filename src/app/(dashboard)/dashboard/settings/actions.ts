@@ -6,6 +6,7 @@ import { stores } from '@/lib/db/schema'
 import { eq, and, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { getTimezoneForCountry } from '@/lib/utils/countries'
+import { notifyStoreSettingsUpdated } from '@/lib/discord/platform-notifications'
 import { z } from 'zod'
 
 // Slug validation schema
@@ -36,8 +37,8 @@ interface StoreSettingsInput {
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
   pendingBlocksAvailability: boolean
-  minDuration: number
-  maxDuration: number | null
+  minRentalHours: number
+  maxRentalHours: number | null
   advanceNotice: number
   requireCustomerAddress: boolean
 }
@@ -64,8 +65,8 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           pricingMode: data.pricingMode,
           reservationMode: data.reservationMode,
           pendingBlocksAvailability: data.pendingBlocksAvailability,
-          minDuration: data.minDuration,
-          maxDuration: data.maxDuration,
+          minRentalHours: data.minRentalHours,
+          maxRentalHours: data.maxRentalHours,
           advanceNotice: data.advanceNotice,
           requireCustomerAddress: data.requireCustomerAddress,
           businessHours: store.settings?.businessHours,
@@ -84,6 +85,8 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
         updatedAt: new Date(),
       })
       .where(eq(stores.id, store.id))
+
+    notifyStoreSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
 
     revalidatePath('/dashboard/settings')
     revalidatePath('/dashboard')

@@ -1,5 +1,17 @@
 import { z } from 'zod'
 
+// Image URL validation - only allows http/https URLs, blocks base64 data URIs
+const imageUrlSchema = z
+  .string()
+  .refine(
+    (url) => !url.startsWith('data:'),
+    'Base64 images are not allowed. Please upload images to S3.'
+  )
+  .refine(
+    (url) => url.startsWith('http://') || url.startsWith('https://'),
+    'Invalid image URL. Must be a valid HTTP(S) URL.'
+  )
+
 // Pricing tier schema
 export const pricingTierSchema = z.object({
   id: z.string().optional(),
@@ -38,9 +50,10 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
       .or(z.literal('')),
     quantity: z.string().regex(/^\d+$/, t('integer')),
     status: z.enum(['draft', 'active', 'archived']),
-    images: z.array(z.string()).optional(),
+    images: z.array(imageUrlSchema).optional(),
     pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
     pricingTiers: z.array(pricingTierSchema).optional(),
+    enforceStrictTiers: z.boolean().optional(),
     taxSettings: productTaxSettingsSchema.optional(),
     videoUrl: z
       .string()
@@ -74,9 +87,10 @@ export const productSchema = z.object({
     .or(z.literal('')),
   quantity: z.string().regex(/^\d+$/, 'validation.integer'),
   status: z.enum(['draft', 'active', 'archived']),
-  images: z.array(z.string()).optional(),
+  images: z.array(imageUrlSchema).optional(),
   pricingMode: z.enum(['hour', 'day', 'week']).nullable().optional(),
   pricingTiers: z.array(pricingTierSchema).optional(),
+  enforceStrictTiers: z.boolean().optional(),
   taxSettings: productTaxSettingsSchema.optional(),
   videoUrl: z
     .string()

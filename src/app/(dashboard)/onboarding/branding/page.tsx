@@ -29,7 +29,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 
-import { brandingSchema, type BrandingInput } from '@/lib/validations/onboarding'
+import { createBrandingSchema, type BrandingInput } from '@/lib/validations/onboarding'
 import { updateBranding } from '../actions'
 
 const PRESET_COLORS = [
@@ -48,9 +48,12 @@ export default function OnboardingBrandingPage() {
   const t = useTranslations('onboarding.branding')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
   const [isLoading, setIsLoading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(null)
 
+  const brandingSchema = createBrandingSchema(tValidation)
   const form = useForm<BrandingInput>({
     resolver: zodResolver(brandingSchema),
     defaultValues: {
@@ -75,13 +78,40 @@ export default function OnboardingBrandingPage() {
         return
       }
 
-      // For now, create a local preview
-      // TODO: Implement actual file upload to S3
+      // Convert to base64 for upload
       const reader = new FileReader()
-      reader.onload = (event) => {
-        const url = event.target?.result as string
-        setLogoPreview(url)
-        form.setValue('logoUrl', url)
+      reader.onload = async (event) => {
+        const dataUri = event.target?.result as string
+        setLogoPreview(dataUri)
+        setIsUploading(true)
+
+        try {
+          const response = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              image: dataUri,
+              type: 'logo',
+              filename: 'store-logo',
+            }),
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.error || 'Upload failed')
+          }
+
+          const { url } = await response.json()
+          form.setValue('logoUrl', url)
+          setLogoPreview(url)
+        } catch (error) {
+          console.error('Logo upload error:', error)
+          toast.error(t('logoUploadError'))
+          setLogoPreview(null)
+          form.setValue('logoUrl', '')
+        } finally {
+          setIsUploading(false)
+        }
       }
       reader.readAsDataURL(file)
     },
@@ -98,7 +128,7 @@ export default function OnboardingBrandingPage() {
     try {
       const result = await updateBranding(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       router.push('/onboarding/stripe')
@@ -139,15 +169,22 @@ export default function OnboardingBrandingPage() {
                             alt="Logo preview"
                             className="h-24 w-24 rounded-lg object-contain border"
                           />
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="absolute -right-2 -top-2 h-6 w-6"
-                            onClick={removeLogo}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {isUploading && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+                              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                          )}
+                          {!isUploading && (
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute -right-2 -top-2 h-6 w-6"
+                              onClick={removeLogo}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       ) : (
                         <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/25 hover:border-muted-foreground/50 transition-colors">
@@ -226,7 +263,7 @@ export default function OnboardingBrandingPage() {
                     <RadioGroup
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="grid grid-cols-3 gap-4"
+                      className="grid grid-cols-2 gap-4"
                     >
                       <div>
                         <RadioGroupItem
@@ -236,10 +273,10 @@ export default function OnboardingBrandingPage() {
                         />
                         <Label
                           htmlFor="light"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
+                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-4"
                         >
-                          <div className="mb-2 h-6 w-10 rounded bg-white border" />
-                          <span className="text-sm">{t('themeLight')}</span>
+                          <div className="mb-2 h-8 w-12 rounded bg-white border" />
+                          <span className="text-sm font-medium">{t('themeLight')}</span>
                         </Label>
                       </div>
                       <div>
@@ -250,27 +287,10 @@ export default function OnboardingBrandingPage() {
                         />
                         <Label
                           htmlFor="dark"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
+                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-4"
                         >
-                          <div className="mb-2 h-6 w-10 rounded bg-zinc-900 border" />
-                          <span className="text-sm">{t('themeDark')}</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="system"
-                          id="system"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="system"
-                          className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-center rounded-md border-2 p-3"
-                        >
-                          <div className="mb-2 flex h-6 w-10 overflow-hidden rounded border">
-                            <div className="w-1/2 bg-white" />
-                            <div className="w-1/2 bg-zinc-900" />
-                          </div>
-                          <span className="text-sm">{t('themeAuto')}</span>
+                          <div className="mb-2 h-8 w-12 rounded bg-zinc-900 border" />
+                          <span className="text-sm font-medium">{t('themeDark')}</span>
                         </Label>
                       </div>
                     </RadioGroup>

@@ -58,5 +58,6 @@ export async function updateTaxSettings(data: TaxSettingsInput) {
     .where(eq(stores.id, store.id))
 
   revalidatePath('/dashboard/settings/taxes')
+  revalidatePath('/dashboard/products', 'layout')
   return { success: true }
 }

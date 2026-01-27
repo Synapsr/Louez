@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentStore } from '@/lib/store-context'
 import { getStorePlan } from '@/lib/plan-limits'
-import { SettingsNav } from '@/components/dashboard/settings-nav'
 import { ReviewBoosterForm } from './review-booster-form'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 
@@ -19,13 +18,8 @@ export default async function ReviewBoosterPage() {
   const storeLocale = getLocaleFromCountry(store.settings?.country)
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-        <p className="text-muted-foreground">{t('reviewBooster.description')}</p>
-      </div>
-
-      <SettingsNav />
+    <div className="mx-auto max-w-4xl space-y-6">
+      <p className="text-muted-foreground">{t('reviewBooster.description')}</p>
 
       <ReviewBoosterForm
         store={store}
