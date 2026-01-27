@@ -21,8 +21,6 @@ import { config } from 'dotenv'
 config({ path: '.env.local' })
 config({ path: '.env' })
 
-import { drizzle } from 'drizzle-orm/mysql2'
-import { migrate } from 'drizzle-orm/mysql2/migrator'
 import mysql from 'mysql2/promise'
 import { readMigrationFiles, type MigrationConfig } from 'drizzle-orm/migrator'
 import path from 'path'
@@ -201,14 +199,56 @@ async function runMigrations() {
       }
     }
 
-    // Run pending migrations
-    if (pendingMigrations.length === 0) {
+    // Recalculate truly pending migrations (after any skips above)
+    const [latestApplied] = await connection.query<mysql.RowDataPacket[]>(
+      `SELECT hash FROM \`${MIGRATIONS_TABLE}\``
+    )
+    const latestAppliedHashes = new Set(latestApplied.map((row) => row.hash))
+    const trulyPending = allMigrations.filter((m) => !latestAppliedHashes.has(m.hash))
+
+    // Run pending migrations directly (bypasses Drizzle's migrate() which can silently skip migrations)
+    if (trulyPending.length === 0) {
       console.log('✅ Database is up to date. No pending migrations.')
     } else {
-      console.log(`🚀 Running ${pendingMigrations.length} pending migration(s)...`)
+      console.log(`🚀 Running ${trulyPending.length} pending migration(s)...`)
 
-      const db = drizzle(connection)
-      await migrate(db, migrationConfig)
+      // Ensure migrations table exists
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (
+          \`id\` SERIAL PRIMARY KEY,
+          \`hash\` text NOT NULL,
+          \`created_at\` bigint
+        )
+      `)
+
+      const now = Date.now()
+      for (const migration of trulyPending) {
+        const statements: string[] = Array.isArray(migration.sql) ? migration.sql : [migration.sql]
+
+        for (const sql of statements) {
+          const trimmed = sql.trim()
+          if (trimmed.length === 0) continue
+
+          try {
+            await connection.query(trimmed)
+          } catch (error) {
+            // Handle idempotent cases gracefully
+            const err = error as { code?: string; sqlMessage?: string }
+            if (err.code === 'ER_DUP_FIELDNAME' || err.code === 'ER_DUP_KEYNAME' || err.code === 'ER_TABLE_EXISTS_ERROR') {
+              console.log(`   ⚠️  Skipped (already exists): ${err.sqlMessage}`)
+            } else {
+              throw error
+            }
+          }
+        }
+
+        // Record the migration hash
+        await connection.query(
+          `INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES (?, ?)`,
+          [migration.hash, now]
+        )
+        console.log(`   ✅ Applied: ${migration.hash.substring(0, 16)}...`)
+      }
 
       console.log('✅ All migrations completed successfully!')
     }
