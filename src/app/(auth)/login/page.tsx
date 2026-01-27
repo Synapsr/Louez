@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -22,14 +22,56 @@ const features = [
   { icon: BarChart3, labelKey: 'featureStats' },
 ]
 
+/**
+ * Validates redirect URLs to prevent open redirect attacks
+ * Only allows relative paths or URLs pointing to the same domain/subdomains
+ */
+function isValidRedirectUrl(url: string | null): string {
+  const defaultUrl = '/dashboard'
+
+  if (!url) return defaultUrl
+
+  // Allow relative paths that start with / but not //
+  // The regex ensures: starts with /, followed by alphanumeric, hyphen, underscore, or /
+  // This prevents protocol-relative URLs like //evil.com
+  if (/^\/(?!\/)[a-zA-Z0-9\-_/?&=#%]*$/.test(url)) {
+    return url
+  }
+
+  // For absolute URLs, validate they point to our domain
+  try {
+    const parsed = new URL(url)
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appDomain = new URL(appUrl).hostname
+
+    // Check if the redirect URL is for our domain (or subdomains)
+    if (parsed.hostname === appDomain || parsed.hostname.endsWith(`.${appDomain}`)) {
+      return url
+    }
+  } catch {
+    // Invalid URL format - fall through to default
+  }
+
+  // Reject any other URLs (external domains, invalid formats)
+  return defaultUrl
+}
+
 function LoginForm() {
   const t = useTranslations('auth')
   const searchParams = useSearchParams()
-  const callbackUrl = searchParams.get('callbackUrl') || '/'
+  const callbackUrl = isValidRedirectUrl(searchParams.get('callbackUrl'))
   const error = searchParams.get('error')
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+
+  // Persist referral code in a cookie so it survives OAuth/magic-link redirects
+  useEffect(() => {
+    const ref = searchParams.get('ref')
+    if (ref && /^LOUEZ[A-HJ-NP-Z2-9]{7}$/.test(ref)) {
+      document.cookie = `louez_referral=${ref}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`
+    }
+  }, [searchParams])
 
   // Map OAuth errors to user-friendly messages
   const getErrorMessage = (errorCode: string | null) => {

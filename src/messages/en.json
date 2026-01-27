@@ -257,6 +257,40 @@
       "limitReachedDescription": "You are using {current} out of {limit} team members. Upgrade to add more.",
       "upgradeForMore": "Add more"
     },
+    "referrals": {
+      "title": "Referrals",
+      "description": "Invite other rental businesses and track your referrals.",
+      "stats": {
+        "totalReferrals": "Total referrals",
+        "activePaid": "Paid referrals",
+        "thisMonth": "This month"
+      },
+      "link": {
+        "title": "Refer & earn",
+        "description": "Share your link and invite other rental businesses to join Louez.",
+        "reward": "For each referred rental business, get 3 free months on the Ultra plan.",
+        "copyLink": "Copy link",
+        "linkCopied": "Link copied!"
+      },
+      "list": {
+        "title": "Your referrals",
+        "count": "{count, plural, =0 {No referrals} one {1 referral} other {# referrals}}",
+        "empty": "No referrals yet",
+        "emptyDescription": "Share your referral link to get started. Businesses that sign up using your link will appear here.",
+        "columns": {
+          "store": "Store",
+          "joined": "Joined",
+          "plan": "Plan",
+          "status": "Status"
+        },
+        "status": {
+          "active": "Active",
+          "cancelled": "Cancelled",
+          "past_due": "Past due",
+          "trialing": "Trial"
+        }
+      }
+    },
     "sms": {
       "title": "SMS Credits",
       "description": "Track your monthly SMS usage",
@@ -380,6 +414,7 @@
       "statistics": "Statistics",
       "analytics": "Analytics",
       "team": "Team",
+      "referrals": "Referrals",
       "sms": "SMS",
       "subscription": "Subscription",
       "settings": "Settings",
@@ -592,7 +627,9 @@
         "setAsMain": "Set as main image",
         "mainBadge": "Main",
         "imageError": "Please select an image",
-        "imageSizeError": "Image must not exceed 5 MB",
+        "imageSizeError": "Image must not exceed 15 MB",
+        "uploading": "Uploading...",
+        "imageUploadError": "Failed to upload image",
         "information": "Information",
         "name": "Product name",
         "namePlaceholder": "E.g., Mountain Bike XC 500",
@@ -656,7 +693,12 @@
           "duration": "Duration",
           "pricePerUnit": "Unit price",
           "total": "Total",
-          "savings": "Savings"
+          "savings": "Savings",
+          "targetPrice": "Target price",
+          "tierTotal": "Total cost",
+          "enforceStrictTiers": "Only offer these durations",
+          "enforceStrictTiersDescription": "Customers will only be able to book for the exact durations defined by your tiers. Intermediate durations will not be available.",
+          "enforceStrictTiersTooltip": "If a customer selects an intermediate duration, it will be automatically rounded up to the next tier. For example, with tiers at 3 and 7 days, a 5-day rental will be billed at the 7-day rate."
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -675,6 +717,8 @@
         "customTaxRateDescription": "Set a different rate for this product",
         "accessories": "Accessories",
         "accessoriesDescription": "Suggest complementary products to your customers",
+        "noAccessoriesAvailable": "No accessories available",
+        "noAccessoriesHint": "Add more active products to your catalog to suggest them as accessories.",
         "addAccessory": "Add an accessory",
         "selectAccessories": "Select accessories",
         "selectAccessoriesDescription": "Choose products to suggest with this product",
@@ -1721,6 +1765,9 @@
         "brandingDescription": "Logo and colors for your store",
         "logo": "Logo",
         "logoDescription": "Your store logo (displayed in the header)",
+        "logoDescriptionDark": "Light logo for your store (visible on dark backgrounds)",
+        "darkLogo": "Logo for documents & emails",
+        "darkLogoDescription": "Dark version of your logo for PDFs and emails (white background). Without this, the light version will be used.",
         "logoFormats": "PNG, JPG or SVG. Max 2MB.",
         "uploadLogo": "Upload",
         "changeLogo": "Change",
@@ -1795,9 +1842,11 @@
         "pricingDay": "Per day",
         "pricingHour": "Per hour",
         "pricingWeek": "Per week",
-        "minDuration": "Minimum duration",
-        "maxDuration": "Maximum duration",
-        "leadTime": "Minimum notice (hours)",
+        "minRentalHours": "Minimum rental duration",
+        "maxRentalHours": "Maximum rental duration",
+        "minRentalHoursHelp": "Minimum duration a customer must book. Set to 0 for no restriction.",
+        "maxRentalHoursHelp": "In hours. Leave empty for no limit.",
+        "leadTime": "Minimum notice",
         "leadTimeHelp": "Time before the first available date",
         "durationUnit": {
           "day": "In days",
@@ -2393,6 +2442,16 @@
         "deleteAccountWarning": "This action is irreversible. All your data will be deleted.",
         "signOut": "Sign out",
         "comingSoon": "Coming soon"
+      },
+      "admin": {
+        "title": "Platform Admin",
+        "description": "Platform-level settings for this store. Only visible to platform administrators.",
+        "trialSection": "Subscription trial",
+        "trialSectionDescription": "Configure a free trial period for this store's subscription.",
+        "trialDays": "Trial days",
+        "trialDaysDescription": "Number of free trial days when this store subscribes to a paid plan. Set to 0 for no trial (immediate payment).",
+        "days": "days",
+        "saved": "Admin settings saved"
       }
     }
   },
@@ -2496,6 +2555,7 @@
       "addedToCart": "{name} added to cart",
       "goToCheckout": "Checkout",
       "selectDates": "Book",
+      "minDurationError": "The minimum rental duration is {hours} hours",
       "selectQuantity": "Quantity",
       "quantity": "Quantity",
       "availableCount": "{count, plural, one {# available} other {# available}}",
@@ -2571,6 +2631,7 @@
       "startDate": "Pickup",
       "endDate": "Return",
       "viewAvailability": "Check availability",
+      "minDurationWarning": "Minimum duration: {hours}h",
       "search": "Search",
       "duration": "{count} {unit}",
       "durationDay": "day",
@@ -2909,7 +2970,8 @@
           "rental": "Rental",
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",
-          "damage": "Damages"
+          "damage": "Damages",
+          "adjustment": "Adjustment"
         },
         "methods": {
           "stripe": "Online card",
@@ -3002,6 +3064,11 @@
       "pricingHourDesc": "Price per hour",
       "pricingModeHelp": "You can change this setting later",
       "contactSection": "Contact details (optional)",
+      "locationSection": "Location and contact",
+      "country": "Country",
+      "countryPlaceholder": "Select a country",
+      "currency": "Currency",
+      "currencyPlaceholder": "Select a currency",
       "address": "Address",
       "addressPlaceholder": "123 Rental Street, New York, NY 10001",
       "addressHelp": "Address where customers will pick up products",
@@ -3018,11 +3085,11 @@
       "logoHelp": "Recommended format: PNG or SVG, 512x512px",
       "logoError": "Please select an image",
       "logoSizeError": "Image must not exceed 2 MB",
+      "logoUploadError": "Failed to upload logo. Please try again.",
       "primaryColor": "Primary color",
       "theme": "Theme",
       "themeLight": "Light",
-      "themeDark": "Dark",
-      "themeAuto": "Auto"
+      "themeDark": "Dark"
     },
     "product": {
       "title": "First product",
@@ -3361,12 +3428,15 @@
     "maxValue": "Maximum value is {max}",
     "url": "Invalid URL",
     "slug": "URL can only contain lowercase letters, numbers and hyphens",
+    "slugReserved": "This URL is reserved and cannot be used",
     "positive": "Value must be positive",
     "integer": "Value must be a whole number",
     "date": "Invalid date",
     "dateRange": "End date must be after start date",
     "endDateBeforeStart": "End date must be after or equal to start date",
-    "invalidYoutubeUrl": "The YouTube URL is not valid"
+    "invalidYoutubeUrl": "The YouTube URL is not valid",
+    "invalidImageUrl": "The image URL is not valid",
+    "color": "Invalid color format"
   },
   "upgradeModal": {
     "upgradeNow": "Upgrade now",
@@ -3480,6 +3550,8 @@
     "invalidOrExpiredCode": "Invalid or expired code",
     "verificationError": "Verification error",
     "logoutError": "Logout error",
+    "tooManyRequests": "Too many requests. Please wait before trying again.",
+    "tooManyAttempts": "Too many attempts. Please wait before trying again.",
     "copy": "(copy)",
     "forbidden": "Access forbidden",
     "serverError": "Server error",
@@ -3520,7 +3592,9 @@
     "smsNotConfigured": "SMS is not configured",
     "smsLimitReached": "SMS limit reached. Upgrade to a higher plan to continue sending SMS.",
     "customerNoPhone": "Customer has no phone number",
-    "smsSendFailed": "Failed to send SMS"
+    "smsSendFailed": "Failed to send SMS",
+    "minRentalDurationViolation": "The rental duration must be at least {hours} hours",
+    "maxRentalDurationViolation": "The rental duration cannot exceed {hours} hours"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

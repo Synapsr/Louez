@@ -17,8 +17,15 @@ import { useStoreCurrency } from '@/contexts/store-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
 import { AccessoriesModal } from '@/components/storefront/accessories-modal'
-import { calculateRentalPrice, type ProductPricing, type PricingTier } from '@/lib/pricing'
+import {
+  calculateRentalPrice,
+  getAvailableDurations,
+  snapToNearestTier,
+  type ProductPricing,
+  type PricingTier,
+} from '@/lib/pricing'
 import { getMinStartDate } from '@/lib/utils/duration'
+import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
 import type { PricingMode } from '@/types'
 
 interface Accessory {
@@ -47,8 +54,10 @@ interface AddToCartFormProps {
   storePricingMode: 'day' | 'hour' | 'week'
   storeSlug: string
   pricingTiers?: { id: string; minDuration: number; discountPercent: number }[]
+  enforceStrictTiers?: boolean
   productPricingMode?: PricingMode | null
   advanceNotice?: number
+  minRentalHours?: number
   accessories?: Accessory[]
 }
 
@@ -63,8 +72,10 @@ export function AddToCartForm({
   storePricingMode,
   storeSlug,
   pricingTiers,
+  enforceStrictTiers = false,
   productPricingMode,
   advanceNotice = 0,
+  minRentalHours = 0,
   accessories = [],
 }: AddToCartFormProps) {
   const router = useRouter()
@@ -90,7 +101,16 @@ export function AddToCartForm({
     }
   }
 
-  const duration = calculateDuration()
+  const rawDuration = calculateDuration()
+
+  // When strict tiers are enforced, snap to the nearest valid tier bracket.
+  // Example: with tiers at [3, 7] days, selecting 5 days → customer pays for 7 days.
+  const availableDurations = enforceStrictTiers && pricingTiers?.length
+    ? getAvailableDurations(pricingTiers, true)
+    : null
+  const duration = availableDurations && rawDuration > 0
+    ? snapToNearestTier(rawDuration, availableDurations)
+    : rawDuration
 
   // Calculate pricing with tiers
   const pricing: ProductPricing = {
@@ -119,6 +139,15 @@ export function AddToCartForm({
     if (!startDate || !endDate) {
       toast.error(t('selectDates'))
       return
+    }
+
+    // Validate minimum rental duration
+    if (minRentalHours > 0) {
+      const check = validateMinRentalDuration(startDate, endDate, minRentalHours)
+      if (!check.valid) {
+        toast.error(t('minDurationError', { hours: minRentalHours }))
+        return
+      }
     }
 
     addItem(

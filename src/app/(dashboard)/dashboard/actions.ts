@@ -10,14 +10,19 @@ export async function switchStore(storeId: string) {
     return { error: 'errors.unauthenticated' }
   }
 
-  // Verify user has access to this store (includes platform admin check)
+  // setActiveStoreId now validates access internally (defense in depth)
+  // but we keep verifyStoreAccess for the explicit role check
   const role = await verifyStoreAccess(storeId)
 
   if (!role) {
     return { error: 'errors.unauthorized' }
   }
 
-  await setActiveStoreId(storeId)
+  const result = await setActiveStoreId(storeId)
+  if (!result.success) {
+    return { error: result.error || 'errors.unauthorized' }
+  }
+
   revalidatePath('/dashboard')
   return { success: true }
 }

@@ -12,6 +12,7 @@ import {
   ownerPhoneSchema,
 } from '@/lib/validations/notifications'
 import { getSmsQuotaStatus } from '@/lib/plan-limits'
+import { notifyNotificationSettingsUpdated } from '@/lib/discord/platform-notifications'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
 import {
   DEFAULT_NOTIFICATION_SETTINGS,
@@ -117,6 +118,8 @@ export async function updateDiscordWebhook(webhookUrl: string | null) {
       })
       .where(eq(stores.id, store.id))
 
+    notifyNotificationSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+
     revalidatePath('/dashboard/settings/notifications')
     return { success: true }
   }
@@ -140,6 +143,8 @@ export async function updateDiscordWebhook(webhookUrl: string | null) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))
+
+  notifyNotificationSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
 
   revalidatePath('/dashboard/settings/notifications')
   return { success: true }
@@ -173,6 +178,8 @@ export async function updateOwnerPhone(phone: string | null) {
       })
       .where(eq(stores.id, store.id))
 
+    notifyNotificationSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+
     revalidatePath('/dashboard/settings/notifications')
     return { success: true, phone: null }
   }
@@ -192,6 +199,8 @@ export async function updateOwnerPhone(phone: string | null) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))
+
+  notifyNotificationSettingsUpdated({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
 
   revalidatePath('/dashboard/settings/notifications')
   return { success: true, phone: normalizedPhone }

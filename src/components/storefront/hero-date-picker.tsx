@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
+import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
 import type { BusinessHours } from '@/types/store'
 import {
   isDateAvailable,
@@ -32,6 +33,7 @@ interface HeroDatePickerProps {
   pricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
+  minRentalHours?: number
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
@@ -43,6 +45,7 @@ export function HeroDatePicker({
   pricingMode,
   businessHours,
   advanceNotice = 0,
+  minRentalHours = 0,
 }: HeroDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -247,8 +250,28 @@ export function HeroDatePicker({
     if (!startDate || !endDate || !startTime || !endTime) return false
     // For same day, ensure end time is after start time
     if (isSameDay && endTime <= startTime) return false
+    // Validate minimum rental duration
+    if (minRentalHours > 0) {
+      const [sH, sM] = startTime.split(':').map(Number)
+      const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
+      const [eH, eM] = endTime.split(':').map(Number)
+      const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+      if (!validateMinRentalDuration(fullStart, fullEnd, minRentalHours).valid) return false
+    }
     return true
-  }, [startDate, endDate, startTime, endTime, isSameDay])
+  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalHours])
+
+  const durationWarning = useMemo(() => {
+    if (!startDate || !endDate || !startTime || !endTime) return null
+    if (minRentalHours <= 0) return null
+    const [sH, sM] = startTime.split(':').map(Number)
+    const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
+    const [eH, eM] = endTime.split(':').map(Number)
+    const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+    const check = validateMinRentalDuration(fullStart, fullEnd, minRentalHours)
+    if (check.valid) return null
+    return t('minDurationWarning', { hours: minRentalHours })
+  }, [startDate, endDate, startTime, endTime, minRentalHours, t])
 
   const handleSubmit = () => {
     if (!canSubmit) return
@@ -420,6 +443,11 @@ export function HeroDatePicker({
               </div>
             </div>
           </div>
+
+          {/* Duration warning */}
+          {durationWarning && (
+            <p className="text-sm text-destructive text-center">{durationWarning}</p>
+          )}
 
           {/* Search Button - full width */}
           <Button

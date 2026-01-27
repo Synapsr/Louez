@@ -48,6 +48,7 @@ interface Store {
   slug: string
   name: string
   logoUrl?: string | null
+  darkLogoUrl?: string | null
   email?: string | null
   phone?: string | null
   address?: string | null
@@ -168,6 +169,7 @@ export function ReviewBoosterForm({
   const storeInfo = {
     name: store.name,
     logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
     email: store.email,
     phone: store.phone,
     address: store.address,

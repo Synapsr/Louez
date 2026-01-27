@@ -17,7 +17,17 @@ import {
 import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import {
+  notifyNewReservation,
+  notifyReservationConfirmed,
+  notifyReservationRejected,
+  notifyReservationCancelled,
+  notifyEquipmentPickedUp,
+  notifyReservationCompleted,
+  notifyPaymentReceived,
+} from '@/lib/discord/platform-notifications'
 import type { NotificationEventType } from '@/types/store'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import { getCurrencySymbol } from '@/lib/utils'
@@ -139,6 +149,7 @@ export async function updateReservationStatus(
     id: store.id,
     name: store.name,
     logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
     email: store.email,
     phone: store.phone,
     address: store.address,
@@ -161,6 +172,7 @@ export async function updateReservationStatus(
       name: store.name,
       email: store.email,
       logoUrl: store.logoUrl,
+      darkLogoUrl: store.darkLogoUrl,
       address: store.address,
       phone: store.phone,
       theme: store.theme,
@@ -256,6 +268,19 @@ export async function updateReservationStatus(
     })
   }
 
+  // Platform admin notification
+  const storeInfo = { id: store.id, name: store.name, slug: store.slug }
+  const currency = store.settings?.currency
+  if (status === 'confirmed') {
+    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {})
+  } else if (status === 'rejected') {
+    notifyReservationRejected(storeInfo, reservation.number).catch(() => {})
+  } else if (status === 'ongoing') {
+    notifyEquipmentPickedUp(storeInfo, reservation.number).catch(() => {})
+  } else if (status === 'completed') {
+    notifyReservationCompleted(storeInfo, reservation.number, parseFloat(reservation.totalAmount), currency).catch(() => {})
+  }
+
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
   return { success: true }
@@ -328,6 +353,12 @@ export async function cancelReservation(reservationId: string) {
   }).catch((error) => {
     console.error('Failed to dispatch cancellation notification:', error)
   })
+
+  // Platform admin notification
+  notifyReservationCancelled(
+    { id: store.id, name: store.name, slug: store.slug },
+    reservation.number
+  ).catch(() => {})
 
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
@@ -610,6 +641,7 @@ export async function createManualReservation(data: CreateReservationData) {
       id: store.id,
       name: store.name,
       logoUrl: store.logoUrl,
+      darkLogoUrl: store.darkLogoUrl,
       email: store.email,
       phone: store.phone,
       address: store.address,
@@ -657,11 +689,27 @@ export async function createManualReservation(data: CreateReservationData) {
       },
       items: emailItems,
       reservationUrl,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     }).catch((error) => {
       console.error('Failed to send reservation confirmation email:', error)
     })
   }
+
+  // Platform admin notification
+  const customerName = customer
+    ? `${customer.firstName} ${customer.lastName}`
+    : data.newCustomer
+      ? `${data.newCustomer.firstName} ${data.newCustomer.lastName}`
+      : 'Unknown'
+  notifyNewReservation(
+    { id: store.id, name: store.name, slug: store.slug },
+    {
+      number: reservationNumber,
+      customerName,
+      totalAmount: subtotalAmount,
+      currency: store.settings?.currency,
+    }
+  ).catch(() => {})
 
   revalidatePath('/dashboard/reservations')
   revalidatePath('/dashboard')
@@ -1067,6 +1115,14 @@ export async function recordPayment(
     `${typeLabels[data.type]}: ${formattedAmount} (${data.method})`,
     { paymentId, type: data.type, amount: data.amount, method: data.method }
   )
+
+  // Platform admin notification
+  notifyPaymentReceived(
+    { id: store.id, name: store.name, slug: store.slug },
+    reservation.number,
+    data.amount,
+    store.settings?.currency
+  ).catch(() => {})
 
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
@@ -1746,6 +1802,7 @@ export async function sendReservationEmail(
     id: store.id,
     name: store.name,
     logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
     email: store.email,
     phone: store.phone,
     address: store.address,
@@ -1817,7 +1874,7 @@ export async function sendReservationEmail(
             startDate: reservation.startDate,
           },
           reservationUrl,
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         })
         break
       }
@@ -1833,7 +1890,7 @@ export async function sendReservationEmail(
             number: reservation.number,
             endDate: reservation.endDate,
           },
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         })
         break
       }
@@ -1933,6 +1990,7 @@ export async function sendAccessLink(reservationId: string) {
       id: store.id,
       name: store.name,
       logoUrl: store.logoUrl,
+      darkLogoUrl: store.darkLogoUrl,
       email: store.email,
       phone: store.phone,
       address: store.address,
@@ -1968,7 +2026,7 @@ export async function sendAccessLink(reservationId: string) {
       items,
       accessUrl,
       showPaymentCta: !isPaid && !!isStripeEnabled,
-      locale: 'fr',
+      locale: getLocaleFromCountry(store.settings?.country),
     })
 
     // Log activity

@@ -206,6 +206,35 @@ export function sortTiersByDuration<T extends { minDuration: number }>(
 }
 
 /**
+ * Get available durations when strict tiers are enforced (package pricing).
+ * Returns null for progressive pricing (any duration allowed).
+ * Always includes "1" (base unit price) plus all tier-defined durations.
+ */
+export function getAvailableDurations(
+  tiers: { minDuration: number }[],
+  enforceStrictTiers: boolean
+): number[] | null {
+  if (!enforceStrictTiers || tiers.length === 0) return null
+  const durations = new Set([1, ...tiers.map((t) => t.minDuration)])
+  return [...durations].sort((a, b) => a - b)
+}
+
+/**
+ * Snap a duration to the nearest valid tier bracket (round up).
+ * Used when enforceStrictTiers is true and a customer selects
+ * a duration that falls between two defined brackets.
+ */
+export function snapToNearestTier(
+  duration: number,
+  availableDurations: number[]
+): number {
+  return (
+    availableDurations.find((d) => d >= duration) ??
+    availableDurations[availableDurations.length - 1]
+  )
+}
+
+/**
  * Get effective pricing mode for a product (product-specific or store default)
  */
 export function getEffectivePricingMode(

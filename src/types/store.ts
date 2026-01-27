@@ -62,8 +62,14 @@ export interface BillingAddress {
 export interface StoreSettings {
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
-  minDuration: number
-  maxDuration: number | null
+  /** @deprecated Use minRentalHours instead. Kept for backward compat reading. */
+  minDuration?: number
+  /** @deprecated Use maxRentalHours instead. Kept for backward compat reading. */
+  maxDuration?: number | null
+  /** Minimum rental duration in hours. 0 = no restriction. Default: 1. */
+  minRentalHours?: number
+  /** Maximum rental duration in hours. null = no limit. */
+  maxRentalHours?: number | null
   advanceNotice: number
   requireCustomerAddress?: boolean
   /**

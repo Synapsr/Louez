@@ -5,14 +5,23 @@ import { customers, reservations, reservationItems, products, stores, storeMembe
 import { eq, and, inArray, lt, gt } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { ProductSnapshot } from '@/types'
-import type { TaxSettings, ProductTaxSettings } from '@/types/store'
+import type { TaxSettings, ProductTaxSettings, StoreSettings } from '@/types/store'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
+import { notifyNewReservation } from '@/lib/discord/platform-notifications'
+import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
+import { getMinRentalHours, getMaxRentalHours, validateMinRentalDuration, validateMaxRentalDuration } from '@/lib/utils/rental-duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
+import {
+  calculateRentalPrice,
+  calculateDuration as calcDuration,
+  getEffectivePricingMode,
+} from '@/lib/pricing/calculate'
+import type { PricingMode } from '@/lib/pricing/types'
 
 interface ReservationItem {
   productId: string
@@ -120,7 +129,51 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    // Validate products exist and check stock
+    // Validate minimum rental duration
+    const minRentalHours = getMinRentalHours(store.settings as StoreSettings | null)
+    if (minRentalHours > 0) {
+      const durationCheck = validateMinRentalDuration(rentalStartDate, rentalEndDate, minRentalHours)
+      if (!durationCheck.valid) {
+        return {
+          error: 'errors.minRentalDurationViolation',
+          errorParams: { hours: minRentalHours },
+        }
+      }
+    }
+
+    // Validate maximum rental duration
+    const maxRentalHours = getMaxRentalHours(store.settings as StoreSettings | null)
+    if (maxRentalHours !== null) {
+      const maxCheck = validateMaxRentalDuration(rentalStartDate, rentalEndDate, maxRentalHours)
+      if (!maxCheck.valid) {
+        return {
+          error: 'errors.maxRentalDurationViolation',
+          errorParams: { hours: maxRentalHours },
+        }
+      }
+    }
+
+    // ===== SERVER-SIDE PRICE CALCULATION =====
+    // Never trust client-provided prices - always recalculate from database
+
+    // Get store pricing mode
+    const storeSettings = store.settings as StoreSettings | null
+    const storePricingMode: PricingMode = storeSettings?.pricingMode || 'day'
+
+    // Structure to hold server-calculated prices
+    interface ServerCalculatedItem {
+      productId: string
+      quantity: number
+      unitPrice: number // Server-calculated effective price per unit
+      depositPerUnit: number // Server-calculated deposit
+      subtotal: number // Server-calculated subtotal
+      totalDeposit: number // Server-calculated total deposit
+    }
+    const serverCalculatedItems: ServerCalculatedItem[] = []
+    let serverSubtotal = 0
+    let serverTotalDeposit = 0
+
+    // Validate products exist, check stock, and calculate prices from DB
     for (const item of input.items) {
       const product = await db.query.products.findFirst({
         where: and(
@@ -128,6 +181,9 @@ export async function createReservation(input: CreateReservationInput) {
           eq(products.storeId, input.storeId),
           eq(products.status, 'active')
         ),
+        with: {
+          pricingTiers: true, // Get pricing tiers for this product
+        },
       })
 
       if (!product) {
@@ -140,7 +196,72 @@ export async function createReservation(input: CreateReservationInput) {
           errorParams: { name: item.productSnapshot.name, count: product.quantity },
         }
       }
+
+      // Calculate price from database values (NOT from client input)
+      const productPricingMode = getEffectivePricingMode(
+        product.pricingMode as PricingMode | null,
+        storePricingMode
+      )
+      const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
+
+      const pricingResult = calculateRentalPrice(
+        {
+          basePrice: Number(product.price),
+          deposit: Number(product.deposit || 0),
+          pricingMode: productPricingMode,
+          tiers: product.pricingTiers?.map((t) => ({
+            id: t.id,
+            minDuration: t.minDuration,
+            discountPercent: Number(t.discountPercent),
+            displayOrder: t.displayOrder || 0,
+          })) || [],
+        },
+        duration,
+        item.quantity
+      )
+
+      serverCalculatedItems.push({
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: pricingResult.effectivePricePerUnit,
+        depositPerUnit: Number(product.deposit || 0),
+        subtotal: pricingResult.subtotal,
+        totalDeposit: pricingResult.deposit,
+      })
+
+      serverSubtotal += pricingResult.subtotal
+      serverTotalDeposit += pricingResult.deposit
+
+      // Log price mismatch for monitoring (potential fraud attempt)
+      const clientItemSubtotal = item.unitPrice * item.quantity * calculateDuration(item.startDate, item.endDate)
+      if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
+        console.warn('[SECURITY] Price mismatch detected', {
+          productId: item.productId,
+          clientSubtotal: clientItemSubtotal,
+          serverSubtotal: pricingResult.subtotal,
+          difference: clientItemSubtotal - pricingResult.subtotal,
+        })
+      }
     }
+
+    const serverTotalAmount = serverSubtotal + serverTotalDeposit
+
+    // Log total mismatch for monitoring
+    if (Math.abs(input.totalAmount - serverTotalAmount) > 0.01) {
+      console.warn('[SECURITY] Total amount mismatch detected', {
+        clientTotal: input.totalAmount,
+        serverTotal: serverTotalAmount,
+        clientSubtotal: input.subtotalAmount,
+        serverSubtotal,
+        clientDeposit: input.depositAmount,
+        serverDeposit: serverTotalDeposit,
+      })
+    }
+
+    // Use server-calculated values for all monetary operations
+    const finalSubtotal = serverSubtotal
+    const finalDeposit = serverTotalDeposit
+    const finalTotal = serverTotalAmount
 
     // Check for date conflicts with existing reservations
     // This prevents race conditions where availability was checked earlier but changed since
@@ -214,7 +335,7 @@ export async function createReservation(input: CreateReservationInput) {
           address: input.customer.address || null,
           city: input.customer.city || null,
           postalCode: input.customer.postalCode || null,
-          country: 'FR',
+          country: store.settings?.country || 'FR',
         })
         .$returningId()
 
@@ -255,7 +376,7 @@ export async function createReservation(input: CreateReservationInput) {
     const storeTaxRate = storeTaxSettings?.defaultRate ?? 0
     const displayMode = storeTaxSettings?.displayMode ?? 'inclusive'
 
-    // Calculate tax amounts for the reservation
+    // Calculate tax amounts for the reservation (using SERVER-CALCULATED values)
     let subtotalExclTax: number | null = null
     let taxAmount: number | null = null
     let taxRate: number | null = null
@@ -264,16 +385,16 @@ export async function createReservation(input: CreateReservationInput) {
       taxRate = storeTaxRate
       if (displayMode === 'inclusive') {
         // Prices are TTC, extract HT
-        subtotalExclTax = extractExclusiveFromInclusive(input.subtotalAmount, storeTaxRate)
-        taxAmount = input.subtotalAmount - subtotalExclTax
+        subtotalExclTax = extractExclusiveFromInclusive(finalSubtotal, storeTaxRate)
+        taxAmount = finalSubtotal - subtotalExclTax
       } else {
         // Prices are HT, calculate TVA
-        subtotalExclTax = input.subtotalAmount
-        taxAmount = calculateTaxFromExclusive(input.subtotalAmount, storeTaxRate)
+        subtotalExclTax = finalSubtotal
+        taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate)
       }
     }
 
-    // Create reservation
+    // Create reservation with SERVER-CALCULATED amounts (never trust client)
     const reservationId = nanoid()
     const reservationNumber = await generateUniqueReservationNumber(input.storeId)
 
@@ -285,9 +406,9 @@ export async function createReservation(input: CreateReservationInput) {
       status: 'pending',
       startDate,
       endDate,
-      subtotalAmount: input.subtotalAmount.toFixed(2),
-      depositAmount: input.depositAmount.toFixed(2),
-      totalAmount: input.totalAmount.toFixed(2),
+      subtotalAmount: finalSubtotal.toFixed(2),
+      depositAmount: finalDeposit.toFixed(2),
+      totalAmount: finalTotal.toFixed(2),
       subtotalExclTax: subtotalExclTax?.toFixed(2) ?? null,
       taxAmount: taxAmount?.toFixed(2) ?? null,
       taxRate: taxRate?.toFixed(2) ?? null,
@@ -295,10 +416,12 @@ export async function createReservation(input: CreateReservationInput) {
       source: 'online',
     })
 
-    // Create reservation items with tax calculations
-    for (const item of input.items) {
-      const duration = calculateDuration(item.startDate, item.endDate)
-      const totalPrice = item.unitPrice * item.quantity * duration
+    // Create reservation items with tax calculations (using SERVER-CALCULATED prices)
+    for (let i = 0; i < input.items.length; i++) {
+      const item = input.items[i]
+      const serverItem = serverCalculatedItems[i]
+      // Use server-calculated subtotal, not client-provided
+      const totalPrice = serverItem.subtotal
 
       // Get product tax settings
       const product = await db.query.products.findFirst({
@@ -306,7 +429,7 @@ export async function createReservation(input: CreateReservationInput) {
       })
       const productTaxSettings = product?.taxSettings as ProductTaxSettings | undefined
 
-      // Calculate item-level tax
+      // Calculate item-level tax (using server-calculated prices)
       let itemTaxRate: number | null = null
       let itemTaxAmount: number | null = null
       let itemPriceExclTax: number | null = null
@@ -322,25 +445,26 @@ export async function createReservation(input: CreateReservationInput) {
         if (effectiveRate !== null && effectiveRate > 0) {
           itemTaxRate = effectiveRate
           if (displayMode === 'inclusive') {
-            // Prices are TTC, extract HT
-            itemPriceExclTax = extractExclusiveFromInclusive(item.unitPrice, effectiveRate)
+            // Prices are TTC, extract HT (using server-calculated prices)
+            itemPriceExclTax = extractExclusiveFromInclusive(serverItem.unitPrice, effectiveRate)
             itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate)
             itemTaxAmount = totalPrice - itemTotalExclTax
           } else {
-            // Prices are HT, calculate TVA
-            itemPriceExclTax = item.unitPrice
+            // Prices are HT, calculate TVA (using server-calculated prices)
+            itemPriceExclTax = serverItem.unitPrice
             itemTotalExclTax = totalPrice
             itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate)
           }
         }
       }
 
+      // Use SERVER-CALCULATED prices, not client-provided
       await db.insert(reservationItems).values({
         reservationId,
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: item.unitPrice.toFixed(2),
-        depositPerUnit: item.depositPerUnit.toFixed(2),
+        unitPrice: serverItem.unitPrice.toFixed(2),
+        depositPerUnit: serverItem.depositPerUnit.toFixed(2),
         totalPrice: totalPrice.toFixed(2),
         productSnapshot: item.productSnapshot,
         taxRate: itemTaxRate?.toFixed(2) ?? null,
@@ -383,6 +507,7 @@ export async function createReservation(input: CreateReservationInput) {
         id: store.id,
         name: store.name,
         logoUrl: store.logoUrl,
+        darkLogoUrl: store.darkLogoUrl,
         email: store.email,
         phone: store.phone,
         address: store.address,
@@ -397,12 +522,13 @@ export async function createReservation(input: CreateReservationInput) {
         companyName: input.customer.companyName || null,
       }
 
+      // Use SERVER-CALCULATED amounts for all notifications
       const reservationData = {
         id: reservationId,
         number: reservationNumber,
         startDate,
         endDate,
-        totalAmount: input.totalAmount,
+        totalAmount: finalTotal,
         // Tax info for emails
         taxEnabled,
         taxRate,
@@ -417,6 +543,7 @@ export async function createReservation(input: CreateReservationInput) {
           name: store.name,
           email: store.email,
           logoUrl: store.logoUrl,
+          darkLogoUrl: store.darkLogoUrl,
           address: store.address,
           phone: store.phone,
           theme: store.theme,
@@ -436,9 +563,9 @@ export async function createReservation(input: CreateReservationInput) {
           number: reservationNumber,
           startDate,
           endDate,
-          totalAmount: input.totalAmount,
-          subtotalAmount: input.subtotalAmount,
-          depositAmount: input.depositAmount,
+          totalAmount: finalTotal,
+          subtotalAmount: finalSubtotal,
+          depositAmount: finalDeposit,
           taxEnabled,
           taxRate,
           subtotalExclTax,
@@ -458,7 +585,7 @@ export async function createReservation(input: CreateReservationInput) {
           customer: customerData,
           reservation: reservationData,
           dashboardUrl,
-          locale: 'fr',
+          locale: getLocaleFromCountry(store.settings?.country),
         }).catch((error) => {
           console.error('Failed to send new request landlord email:', error)
         })
@@ -480,7 +607,7 @@ export async function createReservation(input: CreateReservationInput) {
           number: reservationNumber,
           startDate,
           endDate,
-          totalAmount: input.totalAmount,
+          totalAmount: finalTotal,
         },
         customer: {
           firstName: input.customer.firstName,
@@ -491,6 +618,17 @@ export async function createReservation(input: CreateReservationInput) {
       }).catch((error) => {
         console.error('Failed to dispatch new reservation notification:', error)
       })
+
+      // Platform admin notification
+      notifyNewReservation(
+        { id: store.id, name: store.name, slug: store.slug },
+        {
+          number: reservationNumber,
+          customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+          totalAmount: finalTotal,
+          currency: store.settings?.currency,
+        }
+      ).catch(() => {})
     }
 
     // Check if we should process payment via Stripe
@@ -508,22 +646,26 @@ export async function createReservation(input: CreateReservationInput) {
         const protocol = domain.includes('localhost') ? 'http' : 'https'
         const baseUrl = `${protocol}://${store.slug}.${domain}`
 
-        // Build line items for Stripe
-        const lineItems = input.items.map((item) => ({
-          name: item.productSnapshot.name,
-          description: item.productSnapshot.description || undefined,
-          quantity: item.quantity,
-          unitAmount: toStripeCents(item.unitPrice * calculateDuration(item.startDate, item.endDate), currency),
-        }))
+        // Build line items for Stripe using SERVER-CALCULATED prices
+        const lineItems = input.items.map((item, idx) => {
+          const serverItem = serverCalculatedItems[idx]
+          return {
+            name: item.productSnapshot.name,
+            description: item.productSnapshot.description || undefined,
+            quantity: item.quantity,
+            // Use server-calculated subtotal for Stripe (not client-provided unitPrice)
+            unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
+          }
+        })
 
-        // Create checkout session
+        // Create checkout session with SERVER-CALCULATED deposit
         const { url, sessionId } = await createCheckoutSession({
           stripeAccountId: store.stripeAccountId!,
           reservationId,
           reservationNumber,
           customerEmail: customer.email,
           lineItems,
-          depositAmount: toStripeCents(input.depositAmount, currency),
+          depositAmount: toStripeCents(finalDeposit, currency),
           currency,
           successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
           cancelUrl: `${baseUrl}/checkout?cancelled=true`,
@@ -532,12 +674,11 @@ export async function createReservation(input: CreateReservationInput) {
 
         paymentUrl = url
 
-        // Create a pending payment record to track the checkout session
-        // This will be updated to 'completed' by the webhook when payment succeeds
+        // Create a pending payment record with SERVER-CALCULATED amount
         await db.insert(payments).values({
           id: nanoid(),
           reservationId,
-          amount: input.subtotalAmount.toFixed(2),
+          amount: finalSubtotal.toFixed(2),
           type: 'rental',
           method: 'stripe',
           status: 'pending',
@@ -547,7 +688,7 @@ export async function createReservation(input: CreateReservationInput) {
           updatedAt: new Date(),
         })
 
-        // Log payment initiated activity
+        // Log payment initiated activity with SERVER-CALCULATED amount
         await db.insert(reservationActivity).values({
           id: nanoid(),
           reservationId,
@@ -555,7 +696,7 @@ export async function createReservation(input: CreateReservationInput) {
           description: null,
           metadata: {
             checkoutSessionId: sessionId,
-            amount: input.subtotalAmount,
+            amount: finalSubtotal,
             currency,
             method: 'stripe',
           },

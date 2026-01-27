@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Store, Loader2, MapPin, Mail, Phone } from 'lucide-react'
+import { Store, Loader2, Globe, Mail, Phone, Pencil, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 
@@ -29,22 +29,62 @@ import {
 } from '@/components/ui/form'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { cn } from '@/lib/utils'
+import { getCountriesSortedByName, getCountryName, getCountryByCode } from '@/lib/utils/countries'
+import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from '@/lib/utils/currency'
 
-import { storeInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
+import { createStoreInfoSchema, type StoreInfoInput } from '@/lib/validations/onboarding'
 import { createStore } from './actions'
 
 /**
- * Sanitize input to valid slug format in real-time
- * Only allows: lowercase letters, numbers, hyphens
+ * Detect the user's country from browser locale (e.g. "fr-FR" -> "FR")
+ */
+function detectCountryFromBrowser(): string {
+  if (typeof navigator === 'undefined') return 'FR'
+  const locale = navigator.language || 'en'
+  const parts = locale.split('-')
+  const regionCode = parts.length > 1 ? parts[1].toUpperCase() : null
+  if (regionCode && getCountryByCode(regionCode)) return regionCode
+  const langToCountry: Record<string, string> = {
+    fr: 'FR', en: 'US', de: 'DE', es: 'ES',
+    it: 'IT', nl: 'NL', pl: 'PL', pt: 'PT',
+    ja: 'JP', zh: 'CN', ko: 'KR',
+  }
+  return langToCountry[parts[0].toLowerCase()] || 'FR'
+}
+
+/**
+ * Convert store name to a valid URL slug
+ */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents
+    .replace(/[^a-z0-9\s-]/g, '')    // Remove invalid characters
+    .replace(/\s+/g, '-')            // Replace spaces with hyphens
+    .replace(/-+/g, '-')             // Collapse multiple hyphens
+    .replace(/^-|-$/g, '')           // Remove leading/trailing hyphens
+}
+
+/**
+ * Sanitize slug input - only valid characters
  */
 function sanitizeSlug(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/[^a-z0-9-]/g, '')      // Remove invalid characters
-    .replace(/-+/g, '-')              // Collapse multiple hyphens
-    .replace(/^-/, '')                // Remove leading hyphen
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-/, '')
 }
 
 export default function OnboardingStorePage() {
@@ -52,14 +92,23 @@ export default function OnboardingStorePage() {
   const t = useTranslations('onboarding.store')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
   const [isLoading, setIsLoading] = useState(false)
+  const [isEditingSlug, setIsEditingSlug] = useState(false)
+  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
+  const slugInputRef = useRef<HTMLInputElement>(null)
 
+  const storeInfoSchema = createStoreInfoSchema(tValidation)
+
+  const detectedCountry = detectCountryFromBrowser()
   const form = useForm<StoreInfoInput>({
     resolver: zodResolver(storeInfoSchema),
     defaultValues: {
       name: '',
       slug: '',
       pricingMode: 'day',
+      country: detectedCountry,
+      currency: getDefaultCurrencyForCountry(detectedCountry),
       address: '',
       latitude: null,
       longitude: null,
@@ -68,19 +117,69 @@ export default function OnboardingStorePage() {
     },
   })
 
+  const currentSlug = form.watch('slug')
+  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
+
   /**
-   * Handle slug input - sanitize in real-time to only allow valid characters
+   * Auto-focus slug input when entering edit mode
    */
-  const handleSlugChange = (value: string) => {
-    form.setValue('slug', sanitizeSlug(value), { shouldValidate: true })
+  useEffect(() => {
+    if (isEditingSlug && slugInputRef.current) {
+      slugInputRef.current.focus()
+      slugInputRef.current.select()
+    }
+  }, [isEditingSlug])
+
+  /**
+   * Handle store name change - auto-generate slug if not manually edited
+   */
+  const handleNameChange = (value: string, onChange: (value: string) => void) => {
+    onChange(value)
+    if (!slugManuallyEdited) {
+      form.setValue('slug', slugify(value), { shouldValidate: true })
+    }
   }
+
+  /**
+   * Handle slug edit - sanitize and mark as manually edited
+   */
+  const handleSlugEdit = (value: string) => {
+    form.setValue('slug', sanitizeSlug(value), { shouldValidate: true })
+    setSlugManuallyEdited(true)
+  }
+
+  /**
+   * Confirm slug edit
+   */
+  const confirmSlugEdit = () => {
+    setIsEditingSlug(false)
+  }
+
+  /**
+   * Cancel slug edit - revert to auto-generated
+   */
+  const cancelSlugEdit = () => {
+    setIsEditingSlug(false)
+    setSlugManuallyEdited(false)
+    const currentName = form.getValues('name')
+    form.setValue('slug', slugify(currentName), { shouldValidate: true })
+  }
+
+  const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
+    onChange(newCountry)
+    form.setValue('currency', getDefaultCurrencyForCountry(newCountry))
+  }
+
+  const locale = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'fr'
+  const sortedCountries = getCountriesSortedByName(locale)
+  const sortedCurrencies = SUPPORTED_CURRENCIES.slice().sort((a, b) => a.name.localeCompare(b.name))
 
   async function onSubmit(data: StoreInfoInput) {
     setIsLoading(true)
     try {
       const result = await createStore(data)
       if (result.error) {
-        toast.error(result.error)
+        toast.error(tErrors(result.error.replace('errors.', '')))
         return
       }
       router.push('/onboarding/branding')
@@ -105,6 +204,7 @@ export default function OnboardingStorePage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Store Name with inline URL preview */}
             <FormField
               control={form.control}
               name="name"
@@ -115,39 +215,96 @@ export default function OnboardingStorePage() {
                     <Input
                       placeholder={t('namePlaceholder')}
                       {...field}
+                      onChange={(e) => handleNameChange(e.target.value, field.onChange)}
                     />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
-            <FormField
-              control={form.control}
-              name="slug"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('slug')}</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center">
-                      <Input
-                        placeholder={t('slugPlaceholder')}
-                        className="rounded-r-none"
-                        value={field.value}
-                        onChange={(e) => handleSlugChange(e.target.value)}
-                        onBlur={field.onBlur}
-                        name={field.name}
-                        ref={field.ref}
-                      />
-                      <span className="bg-muted text-muted-foreground flex h-9 items-center rounded-r-md border border-l-0 px-3 text-sm">
-                        .{process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}
-                      </span>
+                  {/* URL Preview - appears when name has content */}
+                  {(currentSlug || field.value) && (
+                    <div className="pt-1">
+                      {isEditingSlug ? (
+                        /* Edit mode - inline slug input */
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center flex-1 rounded-md border bg-muted/50 px-3 py-1.5">
+                            <input
+                              ref={slugInputRef}
+                              type="text"
+                              value={currentSlug}
+                              onChange={(e) => handleSlugEdit(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  confirmSlugEdit()
+                                }
+                                if (e.key === 'Escape') {
+                                  cancelSlugEdit()
+                                }
+                              }}
+                              className="bg-transparent text-sm font-medium outline-none min-w-0 flex-1"
+                              placeholder={t('slugPlaceholder')}
+                            />
+                            <span className="text-muted-foreground text-sm">.{domain}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={confirmSlugEdit}
+                            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={tCommon('confirm')}
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelSlugEdit}
+                            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={tCommon('cancel')}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        /* Display mode - URL preview with edit button on hover */
+                        <div
+                          className="group flex items-center gap-2 cursor-pointer"
+                          onClick={() => setIsEditingSlug(true)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              setIsEditingSlug(true)
+                            }
+                          }}
+                        >
+                          <span className="text-sm text-muted-foreground">
+                            <span className={cn(
+                              "font-medium transition-colors",
+                              "group-hover:text-primary"
+                            )}>
+                              {currentSlug || slugify(field.value) || t('slugDefault')}
+                            </span>
+                            <span>.{domain}</span>
+                          </span>
+                          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      )}
                     </div>
-                  </FormControl>
-                  <FormDescription>
-                    {t('slugHelp', { slug: field.value || t('slugDefault'), domain: process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost' })}
-                  </FormDescription>
+                  )}
+
                   <FormMessage />
+
+                  {/* Hidden slug field for form validation */}
+                  <FormField
+                    control={form.control}
+                    name="slug"
+                    render={({ field: slugField }) => (
+                      <input type="hidden" {...slugField} />
+                    )}
+                  />
+                  {form.formState.errors.slug && (
+                    <p className="text-sm font-medium text-destructive">
+                      {form.formState.errors.slug.message}
+                    </p>
+                  )}
                 </FormItem>
               )}
             />
@@ -206,11 +363,66 @@ export default function OnboardingStorePage() {
               )}
             />
 
-            {/* Contact & Address Section */}
+            {/* Location & Contact Section */}
             <div className="space-y-4 pt-4 border-t">
               <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                {t('contactSection')}
+                <Globe className="h-4 w-4" />
+                {t('locationSection')}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('country')}</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('countryPlaceholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sortedCountries.map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                              {country.flag} {getCountryName(country.code, locale)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="currency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('currency')}</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('currencyPlaceholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sortedCurrencies.map((currency) => (
+                            <SelectItem key={currency.code} value={currency.code}>
+                              {currency.symbol} {currency.name} ({currency.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
               <FormField

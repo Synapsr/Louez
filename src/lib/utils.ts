@@ -255,3 +255,19 @@ export function formatAmountWithSymbol(
   const symbol = getCurrencySymbol(currency)
   return `${amount.toFixed(decimals)}${symbol}`
 }
+
+/**
+ * Resolves the logo URL to use for light-background contexts (PDFs, emails).
+ * When a store uses dark theme and has a dedicated dark logo, use it.
+ * Otherwise, fall back to the regular logo.
+ */
+export function getLogoForLightBackground(store: {
+  logoUrl?: string | null
+  darkLogoUrl?: string | null
+  theme?: { mode?: 'light' | 'dark' } | null
+}): string | null {
+  if (store.theme?.mode === 'dark' && store.darkLogoUrl) {
+    return store.darkLogoUrl
+  }
+  return store.logoUrl ?? null
+}

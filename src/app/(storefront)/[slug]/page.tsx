@@ -24,6 +24,7 @@ import {
   stripHtml,
 } from '@/lib/seo'
 import type { StoreTheme, StoreSettings, ReviewBoosterSettings } from '@/types/store'
+import { getMinRentalHours } from '@/lib/utils/rental-duration'
 import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface StorefrontPageProps {
@@ -138,6 +139,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const primaryColor = storeWithRelations.theme?.primaryColor || '#0066FF'
   const businessHours = storeWithRelations.settings?.businessHours
   const advanceNotice = storeWithRelations.settings?.advanceNotice || 0
+  const minRentalHours = getMinRentalHours(storeWithRelations.settings as StoreSettings | null)
   const heroImages = storeWithRelations.theme?.heroImages || []
   const hasHeroImages = heroImages.length > 0
   const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
@@ -261,6 +263,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       pricingMode={pricingMode}
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
+                      minRentalHours={minRentalHours}
                     />
                   </Suspense>
                 </div>
@@ -329,6 +332,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       pricingMode={pricingMode}
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
+                      minRentalHours={minRentalHours}
                     />
                   </Suspense>
                 </div>

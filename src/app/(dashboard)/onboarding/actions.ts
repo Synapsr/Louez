@@ -5,6 +5,7 @@ import { db } from '@/lib/db'
 import { stores, products, storeMembers } from '@/lib/db/schema'
 import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { cookies } from 'next/headers'
 import { setActiveStoreId, getActiveStoreId } from '@/lib/store-context'
 import {
   storeInfoSchema,
@@ -17,6 +18,9 @@ import {
   type StripeSetupInput,
 } from '@/lib/validations/onboarding'
 import { defaultBusinessHours } from '@/lib/validations/business-hours'
+import { getTimezoneForCountry } from '@/lib/utils/countries'
+import { notifyStoreCreated } from '@/lib/discord/platform-notifications'
+import { generateReferralCode, isValidReferralCode } from '@/lib/utils/referral'
 
 export async function createStore(data: StoreInfoInput) {
   const session = await auth()
@@ -81,15 +85,46 @@ export async function createStore(data: StoreInfoInput) {
         settings: {
           pricingMode: validated.data.pricingMode,
           reservationMode: 'payment',
-          minDuration: 1,
-          maxDuration: null,
+          minRentalHours: 1,
+          maxRentalHours: null,
           advanceNotice: 24,
           businessHours: existingBusinessHours,
+          country: validated.data.country,
+          timezone: getTimezoneForCountry(validated.data.country),
+          currency: validated.data.currency,
         },
         updatedAt: new Date(),
       })
       .where(eq(stores.id, storeToUpdate.id))
   } else {
+    // Resolve referral code from cookie (set during login with ?ref= param)
+    const cookieStore = await cookies()
+    const referralCookie = cookieStore.get('louez_referral')?.value
+    let referredByUserId: string | null = null
+    let referredByStoreId: string | null = null
+
+    if (referralCookie && isValidReferralCode(referralCookie)) {
+      const referrerStore = await db.query.stores.findFirst({
+        where: eq(stores.referralCode, referralCookie),
+      })
+      if (referrerStore && referrerStore.userId !== session.user.id) {
+        referredByUserId = referrerStore.userId
+        referredByStoreId = referrerStore.id
+      }
+      // Clear the cookie regardless of validity
+      cookieStore.delete('louez_referral')
+    }
+
+    // Generate a unique referral code for this new store
+    let newReferralCode = generateReferralCode()
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const exists = await db.query.stores.findFirst({
+        where: eq(stores.referralCode, newReferralCode),
+      })
+      if (!exists) break
+      newReferralCode = generateReferralCode()
+    }
+
     // Create new store
     const [newStore] = await db
       .insert(stores)
@@ -102,13 +137,19 @@ export async function createStore(data: StoreInfoInput) {
         longitude: validated.data.longitude?.toString() || null,
         email: validated.data.email || null,
         phone: validated.data.phone || null,
+        referralCode: newReferralCode,
+        referredByUserId,
+        referredByStoreId,
         settings: {
           pricingMode: validated.data.pricingMode,
           reservationMode: 'payment',
-          minDuration: 1,
-          maxDuration: null,
+          minRentalHours: 1,
+          maxRentalHours: null,
           advanceNotice: 24,
           businessHours: defaultBusinessHours,
+          country: validated.data.country,
+          timezone: getTimezoneForCountry(validated.data.country),
+          currency: validated.data.currency,
         },
       })
       .$returningId()
@@ -120,8 +161,12 @@ export async function createStore(data: StoreInfoInput) {
       role: 'owner',
     })
 
-    // Set as active store
-    await setActiveStoreId(newStore.id)
+    // Set as active store (will succeed since we just created ownership above)
+    const setStoreResult = await setActiveStoreId(newStore.id)
+    if (!setStoreResult.success) {
+      // This should not happen since we just created the store and membership
+      console.error('[SECURITY] Failed to set active store after creation:', setStoreResult.error)
+    }
   }
 
   revalidatePath('/onboarding')
@@ -264,8 +309,8 @@ export async function completeOnboarding(data: StripeSetupInput) {
 
   const currentSettings = store.settings || {
     pricingMode: 'day' as const,
-    minDuration: 1,
-    maxDuration: null,
+    minRentalHours: 1,
+    maxRentalHours: null,
     advanceNotice: 24,
     openingHours: null,
   }
@@ -281,6 +326,8 @@ export async function completeOnboarding(data: StripeSetupInput) {
       updatedAt: new Date(),
     })
     .where(eq(stores.id, activeStoreId))
+
+  notifyStoreCreated({ id: activeStoreId, name: store.name, slug: store.slug }).catch(() => {})
 
   revalidatePath('/onboarding/stripe')
   return { success: true }

@@ -13,6 +13,10 @@ import {
 import { sendEmail } from '@/lib/email/client'
 import { MagicLinkEmail } from '@/lib/email/templates'
 import type { EmailLocale } from '@/lib/email/i18n'
+import {
+  notifyVerificationEmailSent,
+  notifyUserSignedIn,
+} from '@/lib/discord/platform-notifications'
 
 // Get locale from Accept-Language header
 function getLocaleFromRequest(request?: Request): EmailLocale {
@@ -44,8 +48,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
-      // Allow linking Google account to existing email account
-      allowDangerousEmailAccountLinking: true,
+      // Account linking disabled to prevent account takeover attacks
+      // Users must sign in with the same method they originally registered with
     }),
     Nodemailer({
       server: {
@@ -73,6 +77,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           subject,
           html,
         })
+
+        notifyVerificationEmailSent(email).catch(() => {})
       },
     }),
   ],
@@ -82,6 +88,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verifyRequest: '/verify-request',
   },
   callbacks: {
+    signIn({ user, account }) {
+      if (user.id && user.email) {
+        const method = account?.provider === 'google' ? 'google' : 'magic link'
+        notifyUserSignedIn(user.id, user.email, method).catch(() => {})
+      }
+      return true
+    },
     session({ session, user }) {
       if (session.user) {
         session.user.id = user.id

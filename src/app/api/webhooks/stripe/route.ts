@@ -3,9 +3,14 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@/lib/db'
-import { subscriptions, smsCredits, smsTopupTransactions } from '@/lib/db/schema'
+import { subscriptions, smsCredits, smsTopupTransactions, stores } from '@/lib/db/schema'
 import { eq, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
+import {
+  notifySubscriptionActivated,
+  notifySubscriptionCancelled,
+  notifySmsCreditsTopup,
+} from '@/lib/discord/platform-notifications'
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -84,6 +89,10 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const firstItem = stripeSubscription.items.data[0]
   const currentPeriodEnd = new Date(firstItem.current_period_end * 1000)
 
+  // Determine status from Stripe (may be 'trialing' if trial days were set)
+  const status: 'active' | 'trialing' =
+    stripeSubscription.status === 'trialing' ? 'trialing' : 'active'
+
   // Check if subscription already exists
   const existingSubscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
@@ -97,7 +106,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         planSlug,
         stripeSubscriptionId: stripeSubscription.id,
         stripeCustomerId: session.customer as string,
-        status: 'active',
+        status,
         currentPeriodEnd,
         cancelAtPeriodEnd: false,
         updatedAt: new Date(),
@@ -111,9 +120,20 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       planSlug,
       stripeSubscriptionId: stripeSubscription.id,
       stripeCustomerId: session.customer as string,
-      status: 'active',
+      status,
       currentPeriodEnd,
     })
+  }
+
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
+  if (store) {
+    const interval = (session.metadata?.interval as 'monthly' | 'yearly') || 'monthly'
+    notifySubscriptionActivated(
+      { id: store.id, name: store.name, slug: store.slug },
+      planSlug,
+      interval
+    ).catch(() => {})
   }
 
   console.log(`Subscription created/updated for store ${storeId} with plan ${planSlug}`)
@@ -191,6 +211,12 @@ async function handleSmsTopupCompleted(session: Stripe.Checkout.Session) {
       .where(eq(smsTopupTransactions.id, transactionId))
   })
 
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, storeId) })
+  if (store) {
+    notifySmsCreditsTopup({ id: store.id, name: store.name, slug: store.slug }, qty).catch(() => {})
+  }
+
   console.log(`SMS top-up completed for store ${storeId}: ${qty} credits added`)
 }
 
@@ -253,6 +279,12 @@ async function handleSubscriptionDeleted(stripeSubscription: Stripe.Subscription
       updatedAt: new Date(),
     })
     .where(eq(subscriptions.id, subscription.id))
+
+  // Platform admin notification
+  const store = await db.query.stores.findFirst({ where: eq(stores.id, subscription.storeId) })
+  if (store) {
+    notifySubscriptionCancelled({ id: store.id, name: store.name, slug: store.slug }).catch(() => {})
+  }
 
   console.log(`Subscription cancelled: ${stripeSubscription.id}`)
 }

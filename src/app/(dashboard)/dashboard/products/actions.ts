@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache'
 import { productSchema, categorySchema, type ProductInput, type CategoryInput } from '@/lib/validations/product'
 import { nanoid } from 'nanoid'
 import { validatePricingTiers } from '@/lib/pricing'
+import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -55,6 +56,7 @@ export async function createProduct(data: ProductInput) {
     images: validated.data.images || [],
     videoUrl: validated.data.videoUrl || null,
     taxSettings: validated.data.taxSettings || null,
+    enforceStrictTiers: validated.data.enforceStrictTiers || false,
   })
 
   // Create pricing tiers if provided
@@ -64,11 +66,16 @@ export async function createProduct(data: ProductInput) {
         id: nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(2),
+        discountPercent: tier.discountPercent.toFixed(6),
         displayOrder: index,
       }))
     )
   }
+
+  notifyProductCreated(
+    { id: store.id, name: store.name, slug: store.slug },
+    validated.data.name
+  ).catch(() => {})
 
   revalidatePath('/dashboard/products')
   return { success: true, productId }
@@ -123,6 +130,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       images: validated.data.images || [],
       videoUrl: validated.data.videoUrl || null,
       taxSettings: validated.data.taxSettings || null,
+      enforceStrictTiers: validated.data.enforceStrictTiers || false,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))
@@ -136,7 +144,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         id: tier.id || nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(2),
+        discountPercent: tier.discountPercent.toFixed(6),
         displayOrder: index,
       }))
     )
@@ -170,6 +178,11 @@ export async function updateProduct(productId: string, data: ProductInput) {
       )
     }
   }
+
+  notifyProductUpdated(
+    { id: store.id, name: store.name, slug: store.slug },
+    validated.data.name
+  ).catch(() => {})
 
   revalidatePath('/dashboard/products')
   revalidatePath(`/dashboard/products/${productId}`)

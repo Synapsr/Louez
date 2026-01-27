@@ -3,9 +3,39 @@
 import { db } from '@/lib/db'
 import { smsLogs, customers, smsTopupTransactions } from '@/lib/db/schema'
 import { eq, desc, and, gte, lt, count } from 'drizzle-orm'
-import { getCurrentStore } from '@/lib/store-context'
+import { getCurrentStore, verifyStoreAccess } from '@/lib/store-context'
 import { createSmsTopupCheckoutSession, getSmsTopupPrice } from '@/lib/stripe/sms-topup'
 import { SMS_TOPUP_PACKAGES, type SmsTopupPackage } from '@/lib/plans'
+
+// ===== INPUT VALIDATION HELPERS =====
+// Validate inputs to prevent unauthorized access and parameter manipulation
+
+/**
+ * Validate storeId format (21-char nanoid)
+ */
+function isValidStoreId(storeId: unknown): storeId is string {
+  return typeof storeId === 'string' && storeId.length === 21
+}
+
+/**
+ * Validate year is a reasonable integer (1970-2100)
+ */
+function isValidYear(year: unknown): year is number {
+  return typeof year === 'number' &&
+    Number.isInteger(year) &&
+    year >= 1970 &&
+    year <= 2100
+}
+
+/**
+ * Validate month is 0-11 (JavaScript Date month)
+ */
+function isValidMonth(month: unknown): month is number {
+  return typeof month === 'number' &&
+    Number.isInteger(month) &&
+    month >= 0 &&
+    month <= 11
+}
 
 export interface SmsLog {
   id: string
@@ -29,6 +59,19 @@ export async function getSmsLogs(
   year: number,
   month: number
 ): Promise<SmsLog[]> {
+  // SECURITY: Validate all inputs
+  if (!isValidStoreId(storeId) || !isValidYear(year) || !isValidMonth(month)) {
+    console.warn('[SECURITY] getSmsLogs called with invalid parameters:', { storeId: storeId?.substring(0, 30), year, month })
+    return []
+  }
+
+  // SECURITY: Verify user has access to this store
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    console.warn('[SECURITY] getSmsLogs: unauthorized access attempt to store:', storeId)
+    return []
+  }
+
   // Get start and end of the selected month
   const startOfMonth = new Date(year, month, 1)
   const endOfMonth = new Date(year, month + 1, 1)
@@ -96,6 +139,18 @@ export async function getSmsMonthStats(
   year: number,
   month: number
 ): Promise<SmsMonthStats> {
+  // SECURITY: Validate all inputs
+  if (!isValidStoreId(storeId) || !isValidYear(year) || !isValidMonth(month)) {
+    console.warn('[SECURITY] getSmsMonthStats called with invalid parameters')
+    return { sent: 0, failed: 0, total: 0 }
+  }
+
+  // SECURITY: Verify user has access to this store
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    return { sent: 0, failed: 0, total: 0 }
+  }
+
   const startOfMonth = new Date(year, month, 1)
   const endOfMonth = new Date(year, month + 1, 1)
 
@@ -125,6 +180,17 @@ export async function getSmsMonthStats(
 }
 
 export async function getAvailableMonths(storeId: string): Promise<{ year: number; month: number }[]> {
+  // SECURITY: Validate storeId
+  if (!isValidStoreId(storeId)) {
+    return []
+  }
+
+  // SECURITY: Verify user has access to this store
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    return []
+  }
+
   // Get all distinct months that have SMS logs
   const result = await db
     .selectDistinct({
@@ -192,6 +258,17 @@ export async function getTopupPriceInfo(): Promise<{
  * Get top-up transaction history for a store
  */
 export async function getTopupHistory(storeId: string): Promise<TopupTransaction[]> {
+  // SECURITY: Validate storeId
+  if (!isValidStoreId(storeId)) {
+    return []
+  }
+
+  // SECURITY: Verify user has access to this store
+  const role = await verifyStoreAccess(storeId)
+  if (!role) {
+    return []
+  }
+
   const transactions = await db
     .select({
       id: smsTopupTransactions.id,

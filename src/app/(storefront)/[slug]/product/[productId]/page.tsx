@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings, StoreTheme } from '@/types/store'
+import { getMinRentalHours } from '@/lib/utils/rental-duration'
 import { ProductCard } from '@/components/storefront/product-card'
 import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
 import { ProductGallery } from './product-gallery'
@@ -315,8 +316,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 minDuration: tier.minDuration,
                 discountPercent: parseFloat(tier.discountPercent),
               }))}
+              enforceStrictTiers={product.enforceStrictTiers ?? false}
               productPricingMode={product.pricingMode}
               advanceNotice={storeSettings.advanceNotice || 0}
+              minRentalHours={getMinRentalHours(storeSettings as StoreSettings)}
               accessories={availableAccessories}
             />
           )}

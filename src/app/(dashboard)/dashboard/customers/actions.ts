@@ -6,6 +6,7 @@ import { customers, reservations } from '@/lib/db/schema'
 import { eq, and, count } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { customerSchema, type CustomerInput } from '@/lib/validations/customer'
+import { notifyCustomerCreated } from '@/lib/discord/platform-notifications'
 
 async function getStoreId() {
   const store = await getCurrentStore()
@@ -19,13 +20,15 @@ async function getStoreId() {
 
 export async function createCustomer(data: CustomerInput) {
   try {
-    const storeId = await getStoreId()
+    const store = await getCurrentStore()
+    if (!store) return { error: 'errors.storeNotFound' }
+
     const validated = customerSchema.parse(data)
 
     // Check if customer with same email already exists
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
-        eq(customers.storeId, storeId),
+        eq(customers.storeId, store.id),
         eq(customers.email, validated.email)
       ),
     })
@@ -37,10 +40,15 @@ export async function createCustomer(data: CustomerInput) {
     const [customer] = await db
       .insert(customers)
       .values({
-        storeId,
+        storeId: store.id,
         ...validated,
       })
       .$returningId()
+
+    notifyCustomerCreated(
+      { id: store.id, name: store.name, slug: store.slug },
+      { firstName: validated.firstName, lastName: validated.lastName, email: validated.email }
+    ).catch(() => {})
 
     revalidatePath('/dashboard/customers')
     return { success: true, customerId: customer.id }
