@@ -30,6 +30,7 @@ export type StoreWithFullData = {
   latitude: string | null
   longitude: string | null
   logoUrl: string | null
+  darkLogoUrl: string | null
   settings: StoreSettings | null
   theme: StoreTheme | null
   cgv: string | null
