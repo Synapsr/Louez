@@ -11,6 +11,7 @@ import { getCurrencySymbol } from '@/lib/utils'
 import { isSmsConfigured } from '@/lib/sms'
 import {
   User,
+  Building2,
   MapPin,
   Calendar,
   Package,
@@ -138,6 +139,8 @@ export default async function ReservationDetailPage({
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
           phone: reservation.customer.phone,
+          customerType: reservation.customer.customerType,
+          companyName: reservation.customer.companyName,
         }}
         storeSlug={store.slug}
         rentalAmount={rental}
@@ -158,13 +161,28 @@ export default async function ReservationDetailPage({
           <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <User className="h-5 w-5 text-primary" />
+                {reservation.customer.customerType === 'business' ? (
+                  <Building2 className="h-5 w-5 text-primary" />
+                ) : (
+                  <User className="h-5 w-5 text-primary" />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">
-                    {reservation.customer.firstName} {reservation.customer.lastName}
-                  </span>
+                  {reservation.customer.customerType === 'business' && reservation.customer.companyName ? (
+                    <>
+                      <span className="font-medium">
+                        {reservation.customer.companyName}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {reservation.customer.firstName} {reservation.customer.lastName}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-medium">
+                      {reservation.customer.firstName} {reservation.customer.lastName}
+                    </span>
+                  )}
                   <span className="text-muted-foreground">•</span>
                   <a
                     href={`mailto:${reservation.customer.email}`}
