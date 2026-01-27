@@ -4,6 +4,7 @@ import { db } from '@/lib/db'
 import { emailLogs } from '@/lib/db/schema'
 import { getEmailTranslations, type EmailLocale } from './i18n'
 import { getLogoForLightBackground } from '@/lib/utils'
+import { isSvgUrl, convertSvgToPng } from '@/lib/image-utils'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
@@ -65,6 +66,19 @@ interface ReservationItem {
   totalPrice: number
 }
 
+/**
+ * Returns an email-safe logo URL.
+ * SVG images are converted to PNG because most email clients
+ * (Gmail, Outlook, Yahoo, etc.) don't support SVG rendering.
+ */
+async function getEmailSafeLogoUrl(
+  logoUrl: string | null | undefined
+): Promise<string | null> {
+  if (!logoUrl) return null
+  if (!isSvgUrl(logoUrl)) return logoUrl
+  return convertSvgToPng(logoUrl, 200)
+}
+
 // Log email in database
 async function logEmail({
   storeId,
@@ -121,7 +135,7 @@ export async function sendVerificationCodeEmail({
   const html = await render(
     VerificationCodeEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -194,7 +208,7 @@ export async function sendReservationConfirmationEmail({
   const html = await render(
     ReservationConfirmationEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -272,7 +286,7 @@ export async function sendRequestReceivedEmail({
   const html = await render(
     RequestReceivedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -347,7 +361,7 @@ export async function sendRequestAcceptedEmail({
   const html = await render(
     RequestAcceptedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -420,7 +434,7 @@ export async function sendRequestRejectedEmail({
   const html = await render(
     RequestRejectedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -486,7 +500,7 @@ export async function sendReminderPickupEmail({
   const html = await render(
     ReminderPickupEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -551,7 +565,7 @@ export async function sendReminderReturnEmail({
   const html = await render(
     ReminderReturnEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -617,7 +631,7 @@ export async function sendNewRequestLandlordEmail({
   const html = await render(
     NewRequestLandlordEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       customerFirstName: customer.firstName,
       customerLastName: customer.lastName,
@@ -679,7 +693,7 @@ export async function sendTeamInvitationEmail({
   const html = await render(
     TeamInvitationEmail({
       storeName,
-      storeLogoUrl,
+      storeLogoUrl: await getEmailSafeLogoUrl(storeLogoUrl),
       inviterName,
       invitationUrl,
       locale,
@@ -727,7 +741,7 @@ export async function sendInstantAccessEmail({
   const html = await render(
     InstantAccessEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -807,7 +821,7 @@ export async function sendThankYouReviewEmail({
   const html = await render(
     ThankYouReviewEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -876,7 +890,7 @@ export async function sendReservationCancelledEmail({
   const html = await render(
     ReservationCancelledEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -948,7 +962,7 @@ export async function sendReservationCompletedEmail({
   const html = await render(
     ReservationCompletedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -1022,7 +1036,7 @@ export async function sendPaymentConfirmationEmail({
   const html = await render(
     PaymentConfirmationEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -1093,7 +1107,7 @@ export async function sendPaymentFailedEmail({
   const html = await render(
     PaymentFailedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: await getEmailSafeLogoUrl(getLogoForLightBackground(store)),
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
