@@ -15,7 +15,7 @@ export default async function TaxSettingsPage() {
   const t = await getTranslations('dashboard.settings')
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground">

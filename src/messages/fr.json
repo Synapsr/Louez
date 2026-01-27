@@ -1807,9 +1807,11 @@
         "pricingDay": "Par jour",
         "pricingHour": "Par heure",
         "pricingWeek": "Par semaine",
-        "minDuration": "Durée minimum",
-        "maxDuration": "Durée maximum",
-        "leadTime": "Préavis minimum (heures)",
+        "minRentalHours": "Durée minimale de location",
+        "maxRentalHours": "Durée maximale de location",
+        "minRentalHoursHelp": "Durée minimale qu'un client doit réserver. Mettre 0 pour aucune restriction.",
+        "maxRentalHoursHelp": "En heures. Laisser vide pour aucune limite.",
+        "leadTime": "Préavis minimum",
         "leadTimeHelp": "Délai avant la première date disponible",
         "durationUnit": {
           "day": "En jours",
@@ -2508,6 +2510,7 @@
       "addedToCart": "{name} ajouté au panier",
       "goToCheckout": "Finaliser",
       "selectDates": "Réserver",
+      "minDurationError": "La durée minimale de location est de {hours} heures",
       "selectQuantity": "Quantité",
       "quantity": "Quantité",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
@@ -2583,6 +2586,7 @@
       "startDate": "Retrait",
       "endDate": "Retour",
       "viewAvailability": "Voir les disponibilités",
+      "minDurationWarning": "Durée minimum : {hours}h",
       "search": "Rechercher",
       "duration": "{count} {unit}",
       "durationDay": "jour",
@@ -3538,7 +3542,9 @@
     "smsNotConfigured": "Les SMS ne sont pas configurés",
     "smsLimitReached": "Limite de SMS atteinte. Passez à un plan supérieur pour continuer à envoyer des SMS.",
     "customerNoPhone": "Le client n'a pas de numéro de téléphone",
-    "smsSendFailed": "Erreur lors de l'envoi du SMS"
+    "smsSendFailed": "Erreur lors de l'envoi du SMS",
+    "minRentalDurationViolation": "La durée de location doit être d'au moins {hours} heures",
+    "maxRentalDurationViolation": "La durée de location ne peut pas dépasser {hours} heures"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

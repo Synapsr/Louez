@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight } from 'lucide-react'
+import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -49,10 +49,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { updateStoreSettings } from './actions'
 import type { StoreSettings } from '@/types'
 import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry, getCurrencyByCode, type CurrencyCode } from '@/lib/utils/currency'
+import { getMinRentalHours, getMaxRentalHours } from '@/lib/utils/rental-duration'
 
 const createStoreSettingsSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) => z.object({
   name: z.string().min(2, t('minLength', { min: 2 })).max(255),
@@ -76,8 +83,8 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   pricingMode: z.enum(['day', 'hour', 'week']),
   reservationMode: z.enum(['payment', 'request']),
   pendingBlocksAvailability: z.boolean(),
-  minDuration: z.number().min(1),
-  maxDuration: z.number().nullable(),
+  minRentalHours: z.number().int().min(0),
+  maxRentalHours: z.number().int().min(1).nullable(),
   advanceNotice: z.number().min(0),
   requireCustomerAddress: z.boolean(),
 })
@@ -107,6 +114,14 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
   const [isPending, startTransition] = useTransition()
   const [isSlugModalOpen, setIsSlugModalOpen] = useState(false)
   const [isStripeRequiredDialogOpen, setIsStripeRequiredDialogOpen] = useState(false)
+  const minRentalHoursInit = getMinRentalHours(store.settings as StoreSettings | null)
+  const advanceNoticeInit = (store.settings as StoreSettings | null)?.advanceNotice ?? 0
+  const [minDurationUnit, setMinDurationUnit] = useState<'hours' | 'days'>(
+    minRentalHoursInit > 0 && minRentalHoursInit % 24 === 0 ? 'days' : 'hours'
+  )
+  const [advanceNoticeUnit, setAdvanceNoticeUnit] = useState<'hours' | 'days'>(
+    advanceNoticeInit > 0 && advanceNoticeInit % 24 === 0 ? 'days' : 'hours'
+  )
   const t = useTranslations('dashboard.settings')
 
   const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
@@ -118,8 +133,8 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
   const settings = store.settings || {
     pricingMode: 'day',
     reservationMode: 'payment',
-    minDuration: 1,
-    maxDuration: null,
+    minRentalHours: 1,
+    maxRentalHours: null,
     advanceNotice: 24,
   }
 
@@ -148,8 +163,8 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
       pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
-      minDuration: settings.minDuration,
-      maxDuration: settings.maxDuration,
+      minRentalHours: getMinRentalHours(settings as StoreSettings),
+      maxRentalHours: getMaxRentalHours(settings as StoreSettings),
       advanceNotice: settings.advanceNotice,
       requireCustomerAddress: settings.requireCustomerAddress ?? false,
     },
@@ -652,46 +667,118 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="minDuration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('reservationSettings.minDuration')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={1}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t(`reservationSettings.durationUnit.${form.watch('pricingMode')}`)}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  name="minRentalHours"
+                  render={({ field }) => {
+                    const displayValue = minDurationUnit === 'days'
+                      ? Math.round(field.value / 24)
+                      : field.value
+                    return (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel>{t('reservationSettings.minRentalHours')}</FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p>{t('reservationSettings.minRentalHoursHelp')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="flex h-9 rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 has-[:focus]:ring-[3px]">
+                          <FormControl>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              className="flex-1 min-w-0 rounded-l-md bg-transparent px-3 text-base outline-none md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={displayValue}
+                              onChange={(e) => {
+                                const raw = parseInt(e.target.value) || 0
+                                field.onChange(minDurationUnit === 'days' ? raw * 24 : raw)
+                              }}
+                            />
+                          </FormControl>
+                          <select
+                            className="h-full border-l border-input bg-muted/50 rounded-r-md px-2.5 text-sm text-muted-foreground outline-none cursor-pointer"
+                            value={minDurationUnit}
+                            onChange={(e) => {
+                              const unit = e.target.value as 'hours' | 'days'
+                              if (unit === 'days') {
+                                const days = Math.round(field.value / 24)
+                                field.onChange(days * 24)
+                              }
+                              setMinDurationUnit(unit)
+                            }}
+                          >
+                            <option value="hours">{tCommon('hourUnit', { count: 2 })}</option>
+                            <option value="days">{tCommon('dayUnit', { count: 2 })}</option>
+                          </select>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
 
                 <FormField
                   control={form.control}
                   name="advanceNotice"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('reservationSettings.leadTime')}</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min={0}
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t('reservationSettings.leadTimeHelp')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  render={({ field }) => {
+                    const displayValue = advanceNoticeUnit === 'days'
+                      ? Math.round(field.value / 24)
+                      : field.value
+                    return (
+                      <FormItem>
+                        <div className="flex items-center gap-1.5">
+                          <FormLabel>{t('reservationSettings.leadTime')}</FormLabel>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p>{t('reservationSettings.leadTimeHelp')}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                        <div className="flex h-9 rounded-md border border-input bg-transparent shadow-xs dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 has-[:focus]:ring-[3px]">
+                          <FormControl>
+                            <input
+                              type="number"
+                              min={0}
+                              step={1}
+                              className="flex-1 min-w-0 rounded-l-md bg-transparent px-3 text-base outline-none md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                              value={displayValue}
+                              onChange={(e) => {
+                                const raw = parseInt(e.target.value) || 0
+                                field.onChange(advanceNoticeUnit === 'days' ? raw * 24 : raw)
+                              }}
+                            />
+                          </FormControl>
+                          <select
+                            className="h-full border-l border-input bg-muted/50 rounded-r-md px-2.5 text-sm text-muted-foreground outline-none cursor-pointer"
+                            value={advanceNoticeUnit}
+                            onChange={(e) => {
+                              const unit = e.target.value as 'hours' | 'days'
+                              if (unit === 'days') {
+                                const days = Math.round(field.value / 24)
+                                field.onChange(days * 24)
+                              }
+                              setAdvanceNoticeUnit(unit)
+                            }}
+                          >
+                            <option value="hours">{tCommon('hourUnit', { count: 2 })}</option>
+                            <option value="days">{tCommon('dayUnit', { count: 2 })}</option>
+                          </select>
+                        </div>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
                 />
               </div>
 

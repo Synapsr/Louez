@@ -37,8 +37,8 @@ interface StoreSettingsInput {
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
   pendingBlocksAvailability: boolean
-  minDuration: number
-  maxDuration: number | null
+  minRentalHours: number
+  maxRentalHours: number | null
   advanceNotice: number
   requireCustomerAddress: boolean
 }
@@ -65,8 +65,8 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           pricingMode: data.pricingMode,
           reservationMode: data.reservationMode,
           pendingBlocksAvailability: data.pendingBlocksAvailability,
-          minDuration: data.minDuration,
-          maxDuration: data.maxDuration,
+          minRentalHours: data.minRentalHours,
+          maxRentalHours: data.maxRentalHours,
           advanceNotice: data.advanceNotice,
           requireCustomerAddress: data.requireCustomerAddress,
           businessHours: store.settings?.businessHours,

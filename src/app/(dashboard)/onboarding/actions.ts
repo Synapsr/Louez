@@ -83,8 +83,8 @@ export async function createStore(data: StoreInfoInput) {
         settings: {
           pricingMode: validated.data.pricingMode,
           reservationMode: 'payment',
-          minDuration: 1,
-          maxDuration: null,
+          minRentalHours: 1,
+          maxRentalHours: null,
           advanceNotice: 24,
           businessHours: existingBusinessHours,
           country: validated.data.country,
@@ -110,8 +110,8 @@ export async function createStore(data: StoreInfoInput) {
         settings: {
           pricingMode: validated.data.pricingMode,
           reservationMode: 'payment',
-          minDuration: 1,
-          maxDuration: null,
+          minRentalHours: 1,
+          maxRentalHours: null,
           advanceNotice: 24,
           businessHours: defaultBusinessHours,
           country: validated.data.country,
@@ -276,8 +276,8 @@ export async function completeOnboarding(data: StripeSetupInput) {
 
   const currentSettings = store.settings || {
     pricingMode: 'day' as const,
-    minDuration: 1,
-    maxDuration: null,
+    minRentalHours: 1,
+    maxRentalHours: null,
     advanceNotice: 24,
     openingHours: null,
   }
