@@ -6,6 +6,108 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [1.5.0] - January 27, 2026
+
+### 🔒 Security Hardening
+
+Comprehensive fixes from a full security audit.
+
+- 🛡️ **Content Security Policy** — Strict CSP headers for all external services
+- 🚫 **Open redirect protection** — Login callback URL validation
+- 🔍 **Input validation** — IP extraction, validation, and anonymization utilities
+- 🖼️ **Image whitelisting** — MIME type checks, size limits, path traversal prevention
+- 🔐 **Action hardening** — Parameter validation across all server actions
+
+### 📦 S3 Image Uploads
+
+Secure, scalable image storage replacing base64.
+
+- ☁️ **S3 upload endpoint** — Authenticated, validated, sanitized file uploads
+- 🚫 **Base64 blocked** — All schemas reject data URIs, accept only S3 URLs
+- 📊 **Progress indicators** — Real-time upload feedback in all forms
+- 🔒 **Defense in depth** — Store membership verification, MIME whitelisting
+
+### 📊 PostHog Analytics
+
+Product analytics for data-driven decisions.
+
+- 📈 **Server-side tracking** — Event utilities for backend operations
+- 🖥️ **Client-side SPA tracking** — Automatic pageview capture
+- 🏪 **Full coverage** — Dashboard and storefront instrumented
+- 🔒 **CSP compatible** — Reverse proxy support for strict environments
+
+### 📍 Google Places API
+
+Smart address autocomplete for store locations.
+
+- 🔍 **Autocomplete** — Real-time address suggestions via Places API
+- 🗺️ **Geocoding** — Automatic lat/lng extraction from selected address
+- 🧩 **Integrated components** — Updated AddressInput and AddressMapModal
+
+### 🚀 Onboarding Overhaul
+
+A smoother, localized first-run experience.
+
+- 🌍 **Country & currency** — Auto-detected from browser locale
+- 🕐 **Timezone derivation** — Automatically calculated from country
+- 📧 **Dynamic email locale** — Replaces hardcoded French locale
+- ✏️ **Slug editing** — Improved generation and editing UX
+- 🎨 **Theme simplification** — Light/dark only
+- ✅ **Validation fixes** — Translated schemas, error translation, logo upload fix
+
+### 🔔 Discord Admin Notifications
+
+Real-time platform monitoring for operators.
+
+- 📡 **17 event types** — Auth, subscriptions, payments, stores, reservations, settings
+- ⚡ **Fire-and-forget** — Never blocks caller operations
+- 🏷️ **Rich formatting** — Store links, plan badges, event context
+- 🔇 **Clean messages** — Link embed suppression
+
+### 💰 Pricing Tiers Editor
+
+More intuitive pricing configuration.
+
+- 🎯 **Target price input** — Set desired price, auto-calculate discount
+- 💵 **Total cost input** — Set total cost, derive per-unit price
+- 📐 **Strict tier enforcement** — Snap durations to defined tiers
+- 🔢 **6-decimal precision** — Accurate discount calculations
+- 👁️ **Price preview** — See prices at common durations (1, 3, 7, 14, 30 days)
+
+### 🎁 Referral System
+
+Word-of-mouth growth with tracking and rewards.
+
+- 🔗 **Unique codes** — `LOUEZ-{nanoid}` per store, cookie-persisted
+- 📊 **Dashboard page** — Stats cards, referrals table with plan/status badges
+- 🔄 **Tracking** — Referred stores linked to referrer during onboarding
+- 🎁 **Rewards** — 3 free Ultra months for successful referrals
+
+### ⚙️ Settings Redesign
+
+Unified settings experience with vertical navigation.
+
+- 📋 **Sidebar navigation** — Desktop sidebar with icons, mobile dropdown
+- 🛡️ **Admin settings** — Trial days configuration (platform admins only)
+- ⏱️ **minRentalHours** — Clear hours-based minimum rental duration
+
+### 🎨 Dark Logo
+
+Theme-aware branding for documents.
+
+- 🌓 **Dark logo upload** — Separate logo for light backgrounds
+- 🧠 **Smart resolution** — Automatic logo selection per context
+- 📄 **Applied everywhere** — 14 email templates, PDF contracts, reminders
+
+### ✨ Other Improvements
+
+- 🔒 **CSP updates** — Rules for Gleap, PostHog, Google, S3 providers
+- 🗃️ **Database migrations** — Discount precision, strict tiers, trial days, referrals
+- 🌍 **8 languages updated** — All new features translated (fr, en, de, es, it, nl, pl, pt)
+- 🐛 **Bug fixes** — Decimal input on Firefox, currency symbol alignment, tax cache
+
+---
+
 ## [1.4.0] - January 20, 2026
 
 ### 🔔 Notification Center
@@ -220,6 +322,108 @@ The first public release of Louez!
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [1.5.0] - 27 janvier 2026
+
+### 🔒 Renforcement Sécurité
+
+Corrections complètes suite à un audit de sécurité.
+
+- 🛡️ **Content Security Policy** — En-têtes CSP stricts pour tous les services externes
+- 🚫 **Protection redirections** — Validation des URL de callback login
+- 🔍 **Validation des entrées** — Extraction, validation et anonymisation des IP
+- 🖼️ **Whitelist images** — Vérification MIME, limites de taille, prévention path traversal
+- 🔐 **Actions renforcées** — Validation des paramètres sur toutes les actions serveur
+
+### 📦 Upload S3
+
+Stockage d'images sécurisé et scalable, remplaçant le base64.
+
+- ☁️ **Endpoint d'upload S3** — Uploads authentifiés, validés et nettoyés
+- 🚫 **Base64 bloqué** — Tous les schémas rejettent les data URIs, acceptent uniquement les URLs S3
+- 📊 **Indicateurs de progression** — Feedback en temps réel dans tous les formulaires
+- 🔒 **Défense en profondeur** — Vérification d'appartenance au store, whitelist MIME
+
+### 📊 Analytics PostHog
+
+Analytics produit pour des décisions data-driven.
+
+- 📈 **Tracking côté serveur** — Utilitaires d'événements backend
+- 🖥️ **Tracking SPA côté client** — Capture automatique des pages vues
+- 🏪 **Couverture complète** — Dashboard et vitrine instrumentés
+- 🔒 **Compatible CSP** — Support reverse proxy pour environnements stricts
+
+### 📍 Google Places API
+
+Autocomplétion d'adresses intelligente pour les boutiques.
+
+- 🔍 **Autocomplétion** — Suggestions d'adresses en temps réel via Places API
+- 🗺️ **Géocodage** — Extraction automatique lat/lng depuis l'adresse sélectionnée
+- 🧩 **Composants intégrés** — AddressInput et AddressMapModal mis à jour
+
+### 🚀 Onboarding Repensé
+
+Une première expérience plus fluide et localisée.
+
+- 🌍 **Pays & devise** — Détection automatique depuis la locale du navigateur
+- 🕐 **Fuseau horaire** — Calculé automatiquement depuis le pays
+- 📧 **Locale email dynamique** — Remplace la locale française codée en dur
+- ✏️ **Édition du slug** — Génération et édition améliorées
+- 🎨 **Thèmes simplifiés** — Clair/sombre uniquement
+- ✅ **Corrections validation** — Schémas traduits, traduction des erreurs, fix upload logo
+
+### 🔔 Notifications Discord Admin
+
+Monitoring plateforme en temps réel pour les opérateurs.
+
+- 📡 **17 types d'événements** — Auth, abonnements, paiements, boutiques, réservations, paramètres
+- ⚡ **Fire-and-forget** — Ne bloque jamais l'appelant
+- 🏷️ **Formatage riche** — Liens boutique, badges plan, contexte événement
+- 🔇 **Messages propres** — Suppression des previews de liens
+
+### 💰 Éditeur de Paliers Tarifaires
+
+Configuration des prix plus intuitive.
+
+- 🎯 **Prix cible** — Définissez le prix souhaité, calcul auto de la remise
+- 💵 **Coût total** — Définissez le coût total, déduction du prix unitaire
+- 📐 **Paliers stricts** — Arrondissement des durées aux paliers définis
+- 🔢 **Précision 6 décimales** — Calculs de remise précis
+- 👁️ **Aperçu des prix** — Visualisez les prix aux durées courantes (1, 3, 7, 14, 30 jours)
+
+### 🎁 Système de Parrainage
+
+Croissance par le bouche-à-oreille avec suivi et récompenses.
+
+- 🔗 **Codes uniques** — `LOUEZ-{nanoid}` par boutique, persisté par cookie
+- 📊 **Page dashboard** — Cartes stats, tableau des filleuls avec badges plan/statut
+- 🔄 **Tracking** — Boutiques parrainées liées au parrain lors de l'inscription
+- 🎁 **Récompenses** — 3 mois Ultra gratuits pour les parrainages réussis
+
+### ⚙️ Paramètres Repensés
+
+Expérience unifiée avec navigation verticale.
+
+- 📋 **Navigation sidebar** — Barre latérale avec icônes en desktop, dropdown en mobile
+- 🛡️ **Paramètres admin** — Configuration des jours d'essai (admins plateforme uniquement)
+- ⏱️ **minRentalHours** — Durée minimale de location en heures, claire et explicite
+
+### 🎨 Logo Sombre
+
+Branding adapté au thème pour les documents.
+
+- 🌓 **Upload logo sombre** — Logo séparé pour les fonds clairs
+- 🧠 **Résolution intelligente** — Sélection automatique du logo selon le contexte
+- 📄 **Appliqué partout** — 14 templates email, contrats PDF, rappels
+
+### ✨ Autres améliorations
+
+- 🔒 **Mises à jour CSP** — Règles pour Gleap, PostHog, Google, fournisseurs S3
+- 🗃️ **Migrations BDD** — Précision remises, paliers stricts, jours d'essai, parrainages
+- 🌍 **8 langues mises à jour** — Toutes les fonctionnalités traduites (fr, en, de, es, it, nl, pl, pt)
+- 🐛 **Corrections de bugs** — Input décimal Firefox, alignement symbole devise, cache taxes
 
 ---
 
