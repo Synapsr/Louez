@@ -65,7 +65,7 @@ export async function createProduct(data: ProductInput) {
         id: nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(2),
+        discountPercent: tier.discountPercent.toFixed(6),
         displayOrder: index,
       }))
     )
@@ -142,7 +142,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
         id: tier.id || nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(2),
+        discountPercent: tier.discountPercent.toFixed(6),
         displayOrder: index,
       }))
     )
