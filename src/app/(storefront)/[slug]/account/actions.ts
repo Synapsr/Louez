@@ -164,6 +164,8 @@ export async function sendVerificationCode(storeId: string, email: string, local
           id: store.id,
           name: store.name,
           logoUrl: store.logoUrl,
+          darkLogoUrl: store.darkLogoUrl,
+          theme: store.theme,
         },
         code,
         locale: locale || 'fr',

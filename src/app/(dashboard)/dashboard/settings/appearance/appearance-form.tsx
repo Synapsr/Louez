@@ -15,6 +15,7 @@ interface Store {
   name: string
   slug: string
   logoUrl: string | null
+  darkLogoUrl: string | null
   theme: StoreTheme | null
 }
 
@@ -81,8 +82,10 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
 
   const [isLoading, setIsLoading] = useState(false)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [isUploadingDarkLogo, setIsUploadingDarkLogo] = useState(false)
   const [isUploadingHero, setIsUploadingHero] = useState(false)
   const [logoPreview, setLogoPreview] = useState<string | null>(store.logoUrl)
+  const [darkLogoPreview, setDarkLogoPreview] = useState<string | null>(store.darkLogoUrl)
   const [primaryColor, setPrimaryColor] = useState(store.theme?.primaryColor || '#2563eb')
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(
     store.theme?.mode === 'dark' ? 'dark' : 'light'
@@ -147,6 +150,41 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
 
   const handleRemoveLogo = () => {
     setLogoPreview(null)
+  }
+
+  const handleDarkLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error(t('fileTooLarge'))
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.error(t('fileNotImage'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onloadend = async () => {
+      const dataUri = reader.result as string
+      setDarkLogoPreview(dataUri)
+      setIsUploadingDarkLogo(true)
+
+      const url = await uploadImage(dataUri, 'logo', 'store-dark-logo')
+      if (url) {
+        setDarkLogoPreview(url)
+      } else {
+        toast.error(tErrors('generic'))
+        setDarkLogoPreview(store.darkLogoUrl)
+      }
+      setIsUploadingDarkLogo(false)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveDarkLogo = () => {
+    setDarkLogoPreview(null)
   }
 
   const handleHeroImageUpload = useCallback(
@@ -241,6 +279,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           logoUrl: logoPreview,
+          darkLogoUrl: themeMode === 'dark' ? darkLogoPreview : null,
           theme: {
             mode: themeMode,
             primaryColor,
@@ -271,7 +310,9 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
           <section className="space-y-3">
             <div>
               <Label className="text-sm font-medium">{t('logo')}</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">{t('logoDescription')}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {themeMode === 'dark' ? t('logoDescriptionDark') : t('logoDescription')}
+              </p>
             </div>
             <div className="flex items-center gap-4">
               {logoPreview ? (
@@ -325,6 +366,67 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
               </div>
             </div>
           </section>
+
+          {/* Dark Logo Section - Only visible when dark theme selected */}
+          {themeMode === 'dark' && (
+            <section className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium">{t('darkLogo')}</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">{t('darkLogoDescription')}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                {darkLogoPreview ? (
+                  <div className="relative">
+                    <img
+                      src={darkLogoPreview}
+                      alt="Dark Logo"
+                      className="h-14 w-auto max-w-[100px] rounded-lg border object-contain bg-white p-2"
+                    />
+                    {isUploadingDarkLogo && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg">
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      </div>
+                    )}
+                    {!isUploadingDarkLogo && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -right-2 -top-2 h-5 w-5"
+                        onClick={handleRemoveDarkLogo}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-lg border-2 border-dashed bg-white">
+                    <Upload className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <Label
+                    htmlFor="dark-logo-upload"
+                    className={cn(
+                      "inline-flex items-center text-sm font-medium text-primary hover:underline",
+                      isUploadingDarkLogo ? "pointer-events-none opacity-50" : "cursor-pointer"
+                    )}
+                  >
+                    {darkLogoPreview ? t('changeLogo') : t('uploadLogo')}
+                  </Label>
+                  <input
+                    id="dark-logo-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleDarkLogoChange}
+                    disabled={isUploadingDarkLogo}
+                  />
+                  <p className="text-xs text-muted-foreground">PNG, JPG (max 2MB)</p>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Divider */}
           <div className="border-t" />
@@ -392,7 +494,10 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setThemeMode('light')}
+                onClick={() => {
+                  setThemeMode('light')
+                  setDarkLogoPreview(null)
+                }}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 rounded-lg border-2 py-2.5 px-3 transition-all',
                   themeMode === 'light'
@@ -490,7 +595,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
             <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 lg:flex-none">
               {tCommon('cancel')}
             </Button>
-            <Button type="submit" disabled={isLoading || isUploadingLogo || isUploadingHero} className="flex-1 lg:flex-none">
+            <Button type="submit" disabled={isLoading || isUploadingLogo || isUploadingDarkLogo || isUploadingHero} className="flex-1 lg:flex-none">
               {isLoading ? tCommon('loading') : tCommon('save')}
             </Button>
           </div>

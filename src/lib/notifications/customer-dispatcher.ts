@@ -35,9 +35,10 @@ export interface CustomerNotificationStore {
   name: string
   email?: string | null
   logoUrl?: string | null
+  darkLogoUrl?: string | null
   address?: string | null
   phone?: string | null
-  theme?: { primaryColor?: string } | null
+  theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
   settings?: { country?: string; currency?: string } | null
   emailSettings?: {
     confirmationContent?: { subject?: string; greeting?: string; message?: string; signature?: string }

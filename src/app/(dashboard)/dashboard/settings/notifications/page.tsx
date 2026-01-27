@@ -18,6 +18,7 @@ export default async function NotificationsPage() {
   const storeInfo = {
     name: store.name,
     logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
     email: store.email,
     phone: store.phone,
     address: store.address,

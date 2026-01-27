@@ -21,6 +21,7 @@ const s3UrlSchema = z
 // Validation schema for appearance data
 const appearanceSchema = z.object({
   logoUrl: z.union([s3UrlSchema, z.literal(''), z.null()]).optional(),
+  darkLogoUrl: z.union([s3UrlSchema, z.literal(''), z.null()]).optional(),
   theme: z
     .object({
       mode: z.enum(['light', 'dark']),
@@ -49,7 +50,7 @@ export async function PATCH(request: Request) {
       )
     }
 
-    const { logoUrl, theme } = validated.data
+    const { logoUrl, darkLogoUrl, theme } = validated.data
 
     const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
@@ -57,6 +58,10 @@ export async function PATCH(request: Request) {
 
     if (logoUrl !== undefined) {
       updateData.logoUrl = logoUrl
+    }
+
+    if (darkLogoUrl !== undefined) {
+      updateData.darkLogoUrl = darkLogoUrl
     }
 
     if (theme) {

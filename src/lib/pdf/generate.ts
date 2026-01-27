@@ -5,6 +5,7 @@ import { documents, reservations, stores } from '@/lib/db/schema'
 import { eq, and, sql, desc } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { convertImageForPdf } from './image-utils'
+import { getLogoForLightBackground } from '@/lib/utils'
 
 // Import translations
 import frMessages from '@/messages/fr.json'
@@ -75,7 +76,8 @@ export async function generateContract({
   const translations = getTranslations(locale)
 
   // Convert store logo to PDF-compatible format (handles SVG conversion)
-  const pdfLogoUrl = await convertImageForPdf(store.logoUrl)
+  // Use dark logo for PDFs (light background) when store has dark theme
+  const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store))
 
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
