@@ -694,10 +694,16 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                               min={0}
                               step={1}
                               className="flex-1 min-w-0 rounded-l-md bg-transparent px-3 text-base outline-none md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={displayValue}
+                              value={displayValue || ''}
                               onChange={(e) => {
-                                const raw = parseInt(e.target.value) || 0
-                                field.onChange(minDurationUnit === 'days' ? raw * 24 : raw)
+                                if (e.target.value === '') {
+                                  field.onChange(0)
+                                  return
+                                }
+                                const raw = parseInt(e.target.value)
+                                if (!isNaN(raw)) {
+                                  field.onChange(minDurationUnit === 'days' ? raw * 24 : raw)
+                                }
                               }}
                             />
                           </FormControl>
@@ -752,10 +758,16 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                               min={0}
                               step={1}
                               className="flex-1 min-w-0 rounded-l-md bg-transparent px-3 text-base outline-none md:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                              value={displayValue}
+                              value={displayValue || ''}
                               onChange={(e) => {
-                                const raw = parseInt(e.target.value) || 0
-                                field.onChange(advanceNoticeUnit === 'days' ? raw * 24 : raw)
+                                if (e.target.value === '') {
+                                  field.onChange(0)
+                                  return
+                                }
+                                const raw = parseInt(e.target.value)
+                                if (!isNaN(raw)) {
+                                  field.onChange(advanceNoticeUnit === 'days' ? raw * 24 : raw)
+                                }
                               }}
                             />
                           </FormControl>
