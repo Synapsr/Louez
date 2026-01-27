@@ -10,11 +10,12 @@
 
 import { stripe } from './client'
 import { db } from '@/lib/db'
-import { stores, subscriptions, users, storeMembers, smsTopupTransactions } from '@/lib/db/schema'
-import { eq, and } from 'drizzle-orm'
+import { stores, smsTopupTransactions } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { SMS_TOPUP_PRICING, type SmsTopupPackage } from '@/lib/plans'
 import { getStorePlan } from '@/lib/plan-limits'
+import { getOrCreateStripeCustomer } from './subscriptions'
 
 export interface CreateSmsTopupCheckoutOptions {
   storeId: string
@@ -61,7 +62,7 @@ export async function createSmsTopupCheckoutSession({
   cancelUrl,
   translations,
 }: CreateSmsTopupCheckoutOptions): Promise<SmsTopupCheckoutResult> {
-  // Get the store with owner info
+  // Validate store exists
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
   })
@@ -80,41 +81,8 @@ export async function createSmsTopupCheckoutSession({
   // Calculate total
   const totalAmountCents = quantity * priceCents
 
-  // Get owner email for Stripe customer
-  const ownerMember = await db
-    .select({ email: users.email })
-    .from(storeMembers)
-    .innerJoin(users, eq(storeMembers.userId, users.id))
-    .where(and(eq(storeMembers.storeId, storeId), eq(storeMembers.role, 'owner')))
-    .limit(1)
-    .then((res) => res[0])
-
-  // Get or create Stripe customer
-  const existingSubscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-  })
-
-  let stripeCustomerId = existingSubscription?.stripeCustomerId
-
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: store.email || ownerMember?.email || undefined,
-      name: store.name,
-      metadata: {
-        storeId: store.id,
-        userId: store.userId,
-      },
-    })
-    stripeCustomerId = customer.id
-
-    // Update subscription record with customer ID if exists
-    if (existingSubscription) {
-      await db
-        .update(subscriptions)
-        .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
-        .where(eq(subscriptions.id, existingSubscription.id))
-    }
-  }
+  // Get or create Stripe customer (persisted to DB to avoid duplicates on abandoned checkouts)
+  const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
 
   // Create pending transaction record
   const transactionId = nanoid()
