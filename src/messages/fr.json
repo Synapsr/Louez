@@ -257,6 +257,40 @@
       "limitReachedDescription": "Vous utilisez {current} collaborateurs sur {limit}. Passez à un plan supérieur pour en ajouter davantage.",
       "upgradeForMore": "Ajouter plus"
     },
+    "referrals": {
+      "title": "Parrainage",
+      "description": "Invitez d'autres loueurs et suivez vos filleuls.",
+      "stats": {
+        "totalReferrals": "Total filleuls",
+        "activePaid": "Filleuls payants",
+        "thisMonth": "Ce mois-ci"
+      },
+      "link": {
+        "title": "Parrainez et gagnez",
+        "description": "Partagez votre lien et invitez d'autres loueurs à rejoindre Louez.",
+        "reward": "Pour chaque loueur parrainé, recevez 3 mois offerts sur le plan Ultra.",
+        "copyLink": "Copier le lien",
+        "linkCopied": "Lien copié !"
+      },
+      "list": {
+        "title": "Vos filleuls",
+        "count": "{count, plural, =0 {Aucun filleul} one {1 filleul} other {# filleuls}}",
+        "empty": "Aucun filleul",
+        "emptyDescription": "Partagez votre lien de parrainage pour commencer. Les boutiques qui s'inscrivent via votre lien apparaîtront ici.",
+        "columns": {
+          "store": "Boutique",
+          "joined": "Inscription",
+          "plan": "Plan",
+          "status": "Statut"
+        },
+        "status": {
+          "active": "Actif",
+          "cancelled": "Annulé",
+          "past_due": "Impayé",
+          "trialing": "Essai"
+        }
+      }
+    },
     "sms": {
       "title": "Crédits SMS",
       "description": "Suivez votre consommation SMS mensuelle",
@@ -380,6 +414,7 @@
       "statistics": "Statistiques",
       "analytics": "Analyses",
       "team": "Équipe",
+      "referrals": "Parrainage",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Paramètres",

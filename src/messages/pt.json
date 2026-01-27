@@ -257,6 +257,40 @@
       "limitReachedDescription": "Voce esta usando {current} de {limit} membros. Faca upgrade para adicionar mais.",
       "upgradeForMore": "Adicionar mais"
     },
+    "referrals": {
+      "title": "Referências",
+      "description": "Convide outros locadores e acompanhe suas referências.",
+      "stats": {
+        "totalReferrals": "Total de referências",
+        "activePaid": "Referências pagas",
+        "thisMonth": "Este mês"
+      },
+      "link": {
+        "title": "Indique e ganhe",
+        "description": "Compartilhe seu link e convide outros locadores a se juntar ao Louez.",
+        "reward": "Para cada locador indicado, ganhe 3 meses grátis no plano Ultra.",
+        "copyLink": "Copiar link",
+        "linkCopied": "Link copiado!"
+      },
+      "list": {
+        "title": "Suas referências",
+        "count": "{count, plural, =0 {Nenhuma referência} one {1 referência} other {# referências}}",
+        "empty": "Nenhuma referência ainda",
+        "emptyDescription": "Compartilhe seu link de referência para começar. As lojas que se inscreverem usando seu link aparecerão aqui.",
+        "columns": {
+          "store": "Loja",
+          "joined": "Inscrição",
+          "plan": "Plano",
+          "status": "Estado"
+        },
+        "status": {
+          "active": "Ativo",
+          "cancelled": "Cancelado",
+          "past_due": "Atrasado",
+          "trialing": "Teste"
+        }
+      }
+    },
     "sms": {
       "title": "Creditos SMS",
       "description": "Acompanhe o seu consumo mensal de SMS",
@@ -379,6 +413,7 @@
       "categories": "Categorias",
       "statistics": "Estatisticas",
       "team": "Equipe",
+      "referrals": "Referências",
       "sms": "SMS",
       "subscription": "Assinatura",
       "settings": "Configuracoes",

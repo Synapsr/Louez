@@ -257,6 +257,40 @@
       "limitReachedDescription": "Stai usando {current} su {limit} membri. Aggiorna per aggiungerne altri.",
       "upgradeForMore": "Aggiungi altri"
     },
+    "referrals": {
+      "title": "Referenze",
+      "description": "Invita altri noleggiatori e monitora le tue referenze.",
+      "stats": {
+        "totalReferrals": "Referenze totali",
+        "activePaid": "Referenze a pagamento",
+        "thisMonth": "Questo mese"
+      },
+      "link": {
+        "title": "Invita e guadagna",
+        "description": "Condividi il tuo link e invita altri noleggiatori a unirsi a Louez.",
+        "reward": "Per ogni noleggiatore invitato, ottieni 3 mesi gratuiti sul piano Ultra.",
+        "copyLink": "Copia link",
+        "linkCopied": "Link copiato!"
+      },
+      "list": {
+        "title": "Le tue referenze",
+        "count": "{count, plural, =0 {Nessuna referenza} one {1 referenza} other {# referenze}}",
+        "empty": "Nessuna referenza",
+        "emptyDescription": "Condividi il tuo link di referenza per iniziare. I negozi che si registrano tramite il tuo link appariranno qui.",
+        "columns": {
+          "store": "Negozio",
+          "joined": "Iscrizione",
+          "plan": "Piano",
+          "status": "Stato"
+        },
+        "status": {
+          "active": "Attivo",
+          "cancelled": "Annullato",
+          "past_due": "Scaduto",
+          "trialing": "Prova"
+        }
+      }
+    },
     "sms": {
       "title": "Crediti SMS",
       "description": "Monitora il tuo consumo mensile di SMS",
@@ -379,6 +413,7 @@
       "categories": "Categorie",
       "statistics": "Statistiche",
       "team": "Team",
+      "referrals": "Referenze",
       "sms": "SMS",
       "subscription": "Abbonamento",
       "settings": "Impostazioni",
