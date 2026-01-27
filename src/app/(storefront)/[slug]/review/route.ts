@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { stores } from '@/lib/db/schema'
 import { eq } from 'drizzle-orm'
 import { buildReviewUrl } from '@/lib/google-places'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import type { ReviewBoosterSettings } from '@/types'
 
 /**
@@ -23,14 +24,14 @@ export async function GET(
   })
 
   if (!store) {
-    return NextResponse.redirect(new URL('/', request.url))
+    return NextResponse.redirect(getStorefrontUrl(slug, '/'))
   }
 
   const settings = store.reviewBoosterSettings as ReviewBoosterSettings | null
 
   if (!settings?.googlePlaceId) {
     // Redirect to store homepage if no Google Place configured
-    return NextResponse.redirect(new URL(`/${slug}`, request.url))
+    return NextResponse.redirect(getStorefrontUrl(slug, '/'))
   }
 
   const reviewUrl = buildReviewUrl(settings.googlePlaceId)
