@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Autorizzato",
         "statusRefunded": "Rimborsato",
-        "statusCancelled": "Annullato"
+        "statusCancelled": "Annullato",
+        "requestPayment": "Richiedi pagamento"
+      },
+      "requestPaymentModal": {
+        "title": "Richiedi pagamento",
+        "description": "Invia richiesta di pagamento a {name}",
+        "paymentType": "Tipo di pagamento",
+        "types": {
+          "rental": {
+            "name": "Saldo noleggio",
+            "description": "Richiedi il pagamento rimanente del noleggio"
+          },
+          "deposit": {
+            "name": "Cauzione (autorizzazione carta)",
+            "description": "Richiedi autorizzazione carta per la cauzione"
+          },
+          "custom": {
+            "name": "Importo personalizzato",
+            "description": "Richiedi un importo specifico"
+          }
+        },
+        "customAmount": "Importo",
+        "minAmount": "Importo minimo: {amount}",
+        "sendVia": "Invia tramite",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "nessun numero di telefono",
+        "selectChannel": "Seleziona almeno un canale di invio",
+        "customMessage": "Messaggio personalizzato",
+        "customMessagePlaceholder": "Aggiungi un messaggio per il tuo cliente...",
+        "amountToRequest": "Importo richiesto",
+        "send": "Invia richiesta",
+        "success": "Richiesta di pagamento inviata",
+        "successTitle": "Richiesta inviata!",
+        "successDescription": "Il cliente riceverà un link di pagamento via {channel}",
+        "error": "Errore durante l'invio",
+        "paymentLink": "Link di pagamento",
+        "linkCopied": "Link copiato",
+        "copyFailed": "Copia fallita",
+        "stripeNotConfigured": "Stripe non configurato",
+        "stripeNotConfiguredDescription": "Configura Stripe nelle impostazioni per inviare richieste di pagamento online."
       },
       "onlinePayment": {
         "title": "Pagamento online",
@@ -2891,6 +2931,48 @@
       "viewMyReservations": "Vedi i miei noleggi",
       "viewReservation": "Vedi la mia prenotazione"
     },
+    "authorizeDeposit": {
+      "title": "Autorizzazione cauzione",
+      "subtitle": "Prenotazione #{number}",
+      "description": "Il noleggiatore richiede un'autorizzazione cauzione di {amount}.",
+      "howItWorks": "Come funziona",
+      "step1": "La tua carta viene verificata e l'importo viene temporaneamente bloccato",
+      "step2": "L'importo non viene addebitato sul tuo conto",
+      "step3": "Alla fine del noleggio, l'autorizzazione viene annullata automaticamente",
+      "step4": "In caso di danni, può essere addebitato in parte o totalmente",
+      "depositAmount": "Importo cauzione",
+      "cardDetails": "Dati della carta",
+      "authorizeButton": "Autorizza {amount}",
+      "authorizing": "Autorizzazione in corso...",
+      "securePayment": "Pagamento sicuro con Stripe",
+      "infoBox": "Questo importo non verrà addebitato. Verrà temporaneamente bloccato sulla tua carta e rilasciato quando restituirai l'attrezzatura in buone condizioni.",
+      "processing": "Elaborazione...",
+      "redirecting": "Reindirizzamento...",
+      "paymentInitError": "Impossibile inizializzare il pagamento. Riprova più tardi.",
+      "confirmationError": "Impossibile confermare l'autorizzazione",
+      "unexpectedStatus": "Stato del pagamento imprevisto",
+      "unexpectedError": "Si è verificato un errore imprevisto",
+      "success": {
+        "title": "Cauzione autorizzata!",
+        "description": "L'importo di {amount} è stato temporaneamente bloccato sulla tua carta.",
+        "whatHappensNext": "Cosa succede ora?",
+        "willBeReleased": "Questo importo verrà rilasciato automaticamente alla fine del noleggio se l'attrezzatura viene restituita in buone condizioni. Non verrà effettuato alcun addebito a meno che non vi siano danni.",
+        "viewReservations": "Vedi le mie prenotazioni",
+        "backToStore": "Torna al negozio"
+      },
+      "errors": {
+        "notFound": "Prenotazione non trovata",
+        "alreadyAuthorized": "La cauzione è già autorizzata",
+        "invalidToken": "Link di accesso non valido o scaduto. Richiedine uno nuovo.",
+        "stripeNotConfigured": "I pagamenti online non sono disponibili per questo negozio.",
+        "noDepositRequired": "Nessuna cauzione richiesta per questa prenotazione.",
+        "generic": "Si è verificato un errore. Riprova.",
+        "cardDeclined": "Carta rifiutata. Verifica i dati o prova con un'altra carta.",
+        "insufficientFunds": "Fondi insufficienti. L'importo non può essere bloccato.",
+        "invalidCard": "Carta non valida. Verifica i dati inseriti."
+      },
+      "backToStore": "Torna al negozio"
+    },
     "account": {
       "title": "Il mio account",
       "accessAccount": "Accedi al mio account",
@@ -3343,6 +3425,31 @@
       "tip3": "Contatta la tua banca se il problema persiste",
       "retryPayment": "Riprova pagamento",
       "contactSupport": "Hai bisogno di aiuto? Contattaci."
+    },
+    "paymentRequest": {
+      "subject": "Richiesta di pagamento per prenotazione #{number}",
+      "title": "Richiesta di pagamento",
+      "body": "{storeName} richiede un pagamento di {amount} per la tua prenotazione #{number}.",
+      "paymentDetails": "Dettagli pagamento",
+      "reservation": "Prenotazione",
+      "description": "Descrizione",
+      "amountDue": "Importo dovuto",
+      "payNow": "Paga {amount}",
+      "linkFallback": "Oppure copia questo link nel tuo browser:",
+      "securePayment": "Questo pagamento è protetto da Stripe. I tuoi dati di pagamento non vengono mai condivisi con il noleggiatore."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorizzazione cauzione per prenotazione #{number}",
+      "title": "Autorizzazione cauzione richiesta",
+      "body": "{storeName} richiede un'autorizzazione cauzione di {amount} per la tua prenotazione #{number}.",
+      "howItWorks": "Come funziona",
+      "step1": "Autorizzi l'importo della cauzione sulla tua carta",
+      "step2": "L'importo viene temporaneamente bloccato (non addebitato)",
+      "step3": "Alla fine del noleggio, l'autorizzazione viene rilasciata automaticamente",
+      "step4": "In caso di danni, può essere addebitato in parte o totalmente",
+      "authorizeNow": "Autorizza cauzione",
+      "linkFallback": "Oppure copia questo link nel tuo browser:",
+      "securePayment": "Questa autorizzazione è protetta da Stripe. L'importo non verrà addebitato immediatamente."
     }
   },
   "contract": {

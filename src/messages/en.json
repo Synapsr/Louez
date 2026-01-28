@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
-        "statusCancelled": "Cancelled"
+        "statusCancelled": "Cancelled",
+        "requestPayment": "Request payment"
+      },
+      "requestPaymentModal": {
+        "title": "Request payment",
+        "description": "Send a payment request to {name}",
+        "paymentType": "Payment type",
+        "types": {
+          "rental": {
+            "name": "Rental balance",
+            "description": "Request remaining rental payment"
+          },
+          "deposit": {
+            "name": "Deposit (card authorization)",
+            "description": "Request card authorization for deposit"
+          },
+          "custom": {
+            "name": "Custom amount",
+            "description": "Request a specific amount"
+          }
+        },
+        "customAmount": "Amount",
+        "minAmount": "Minimum amount: {amount}",
+        "sendVia": "Send via",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "no phone number",
+        "selectChannel": "Select at least one delivery channel",
+        "customMessage": "Custom message",
+        "customMessagePlaceholder": "Add a message for your customer...",
+        "amountToRequest": "Amount requested",
+        "send": "Send request",
+        "success": "Payment request sent",
+        "successTitle": "Request sent!",
+        "successDescription": "Customer will receive a payment link via {channel}",
+        "error": "Error sending request",
+        "paymentLink": "Payment link",
+        "linkCopied": "Link copied",
+        "copyFailed": "Failed to copy",
+        "stripeNotConfigured": "Stripe not configured",
+        "stripeNotConfiguredDescription": "Configure Stripe in settings to send online payment requests."
       },
       "onlinePayment": {
         "title": "Online Payment",
@@ -2890,6 +2930,48 @@
       "viewMyReservations": "View my rentals",
       "viewReservation": "View my reservation"
     },
+    "authorizeDeposit": {
+      "title": "Deposit authorization",
+      "subtitle": "Reservation #{number}",
+      "description": "The rental provider is requesting a deposit authorization of {amount}.",
+      "howItWorks": "How it works",
+      "step1": "Your card is verified and the amount is temporarily held",
+      "step2": "The amount is not charged to your account",
+      "step3": "At the end of the rental, the authorization is automatically cancelled",
+      "step4": "In case of damage, part or all may be charged",
+      "depositAmount": "Deposit amount",
+      "cardDetails": "Card details",
+      "authorizeButton": "Authorize {amount}",
+      "authorizing": "Authorizing...",
+      "securePayment": "Secure payment by Stripe",
+      "infoBox": "This amount will not be charged. It will be temporarily held on your card and released when you return the equipment in good condition.",
+      "processing": "Processing...",
+      "redirecting": "Redirecting...",
+      "paymentInitError": "Unable to initialize payment. Please try again later.",
+      "confirmationError": "Failed to confirm authorization",
+      "unexpectedStatus": "Unexpected payment status",
+      "unexpectedError": "An unexpected error occurred",
+      "success": {
+        "title": "Deposit authorized!",
+        "description": "The amount of {amount} has been temporarily held on your card.",
+        "whatHappensNext": "What happens next?",
+        "willBeReleased": "This amount will be automatically released at the end of your rental if the equipment is returned in good condition. No charge will be made unless there is damage.",
+        "viewReservations": "View my reservations",
+        "backToStore": "Back to store"
+      },
+      "errors": {
+        "notFound": "Reservation not found",
+        "alreadyAuthorized": "Deposit is already authorized",
+        "invalidToken": "Invalid or expired access link. Please request a new one.",
+        "stripeNotConfigured": "Online payments are not available for this store.",
+        "noDepositRequired": "No deposit is required for this reservation.",
+        "generic": "An error occurred. Please try again.",
+        "cardDeclined": "Card declined. Check your information or try another card.",
+        "insufficientFunds": "Insufficient funds. The amount could not be held.",
+        "invalidCard": "Invalid card. Please check the information entered."
+      },
+      "backToStore": "Back to store"
+    },
     "account": {
       "title": "My account",
       "accessAccount": "Access my account",
@@ -3342,6 +3424,31 @@
       "tip3": "Contact your bank if the problem persists",
       "retryPayment": "Retry payment",
       "contactSupport": "Need help? Contact us."
+    },
+    "paymentRequest": {
+      "subject": "Payment requested for reservation #{number}",
+      "title": "Payment request",
+      "body": "{storeName} is requesting a payment of {amount} for your reservation #{number}.",
+      "paymentDetails": "Payment details",
+      "reservation": "Reservation",
+      "description": "Description",
+      "amountDue": "Amount due",
+      "payNow": "Pay {amount}",
+      "linkFallback": "Or copy this link into your browser:",
+      "securePayment": "This payment is secured by Stripe. Your payment information is never shared with the rental provider."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Deposit authorization for reservation #{number}",
+      "title": "Deposit authorization required",
+      "body": "{storeName} is requesting a deposit authorization of {amount} for your reservation #{number}.",
+      "howItWorks": "How it works",
+      "step1": "You authorize the deposit amount on your card",
+      "step2": "The amount is temporarily held (not charged)",
+      "step3": "At the end of the rental, the authorization is automatically released",
+      "step4": "In case of damage, part or all may be charged",
+      "authorizeNow": "Authorize deposit",
+      "linkFallback": "Or copy this link into your browser:",
+      "securePayment": "This authorization is secured by Stripe. The amount will not be charged immediately."
     },
     "baseLayout": {
       "sentBy": "This email was sent by {storeName}",

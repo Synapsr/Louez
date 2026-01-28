@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Autorizado",
         "statusRefunded": "Reembolsado",
-        "statusCancelled": "Cancelado"
+        "statusCancelled": "Cancelado",
+        "requestPayment": "Solicitar pago"
+      },
+      "requestPaymentModal": {
+        "title": "Solicitar pago",
+        "description": "Enviar solicitud de pago a {name}",
+        "paymentType": "Tipo de pago",
+        "types": {
+          "rental": {
+            "name": "Saldo de alquiler",
+            "description": "Solicitar el pago restante del alquiler"
+          },
+          "deposit": {
+            "name": "Depósito (autorización de tarjeta)",
+            "description": "Solicitar autorización de tarjeta para el depósito"
+          },
+          "custom": {
+            "name": "Monto personalizado",
+            "description": "Solicitar un monto específico"
+          }
+        },
+        "customAmount": "Monto",
+        "minAmount": "Monto mínimo: {amount}",
+        "sendVia": "Enviar por",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "sin número de teléfono",
+        "selectChannel": "Seleccione al menos un canal de envío",
+        "customMessage": "Mensaje personalizado",
+        "customMessagePlaceholder": "Añadir un mensaje para su cliente...",
+        "amountToRequest": "Monto solicitado",
+        "send": "Enviar solicitud",
+        "success": "Solicitud de pago enviada",
+        "successTitle": "¡Solicitud enviada!",
+        "successDescription": "El cliente recibirá un enlace de pago por {channel}",
+        "error": "Error al enviar",
+        "paymentLink": "Enlace de pago",
+        "linkCopied": "Enlace copiado",
+        "copyFailed": "Error al copiar",
+        "stripeNotConfigured": "Stripe no configurado",
+        "stripeNotConfiguredDescription": "Configure Stripe en los ajustes para enviar solicitudes de pago en línea."
       },
       "onlinePayment": {
         "title": "Pago en línea",
@@ -2894,6 +2934,48 @@
       "viewMyReservations": "Ver mis alquileres",
       "viewReservation": "Ver mi reserva"
     },
+    "authorizeDeposit": {
+      "title": "Autorización de depósito",
+      "subtitle": "Reserva #{number}",
+      "description": "El arrendador solicita una autorización de depósito de {amount}.",
+      "howItWorks": "Cómo funciona",
+      "step1": "Su tarjeta se verifica y el monto se retiene temporalmente",
+      "step2": "El monto no se cobra de su cuenta",
+      "step3": "Al final del alquiler, la autorización se cancela automáticamente",
+      "step4": "En caso de daños, se puede cobrar parte o todo",
+      "depositAmount": "Monto del depósito",
+      "cardDetails": "Datos de la tarjeta",
+      "authorizeButton": "Autorizar {amount}",
+      "authorizing": "Autorizando...",
+      "securePayment": "Pago seguro con Stripe",
+      "infoBox": "Este monto no será cobrado. Se retendrá temporalmente en su tarjeta y se liberará cuando devuelva el equipo en buen estado.",
+      "processing": "Procesando...",
+      "redirecting": "Redirigiendo...",
+      "paymentInitError": "No se pudo inicializar el pago. Por favor, inténtelo más tarde.",
+      "confirmationError": "No se pudo confirmar la autorización",
+      "unexpectedStatus": "Estado de pago inesperado",
+      "unexpectedError": "Ocurrió un error inesperado",
+      "success": {
+        "title": "¡Depósito autorizado!",
+        "description": "El monto de {amount} ha sido retenido temporalmente en su tarjeta.",
+        "whatHappensNext": "¿Qué sucede ahora?",
+        "willBeReleased": "Este monto se liberará automáticamente al final de su alquiler si el equipo se devuelve en buen estado. No se realizará ningún cargo a menos que haya daños.",
+        "viewReservations": "Ver mis reservas",
+        "backToStore": "Volver a la tienda"
+      },
+      "errors": {
+        "notFound": "Reserva no encontrada",
+        "alreadyAuthorized": "El depósito ya está autorizado",
+        "invalidToken": "Enlace de acceso inválido o expirado. Por favor solicite uno nuevo.",
+        "stripeNotConfigured": "Los pagos en línea no están disponibles para esta tienda.",
+        "noDepositRequired": "No se requiere depósito para esta reserva.",
+        "generic": "Ocurrió un error. Por favor intente de nuevo.",
+        "cardDeclined": "Tarjeta rechazada. Verifique sus datos o intente con otra tarjeta.",
+        "insufficientFunds": "Fondos insuficientes. El monto no pudo ser retenido.",
+        "invalidCard": "Tarjeta inválida. Por favor verifique los datos ingresados."
+      },
+      "backToStore": "Volver a la tienda"
+    },
     "account": {
       "title": "Mi cuenta",
       "accessAccount": "Acceder a mi cuenta",
@@ -3346,6 +3428,31 @@
       "tip3": "Contacte a su banco si el problema persiste",
       "retryPayment": "Reintentar pago",
       "contactSupport": "¿Necesita ayuda? Contáctenos."
+    },
+    "paymentRequest": {
+      "subject": "Solicitud de pago para reserva #{number}",
+      "title": "Solicitud de pago",
+      "body": "{storeName} solicita un pago de {amount} para su reserva #{number}.",
+      "paymentDetails": "Detalles del pago",
+      "reservation": "Reserva",
+      "description": "Descripción",
+      "amountDue": "Monto a pagar",
+      "payNow": "Pagar {amount}",
+      "linkFallback": "O copie este enlace en su navegador:",
+      "securePayment": "Este pago está asegurado por Stripe. Su información de pago nunca se comparte con el arrendador."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorización de depósito para reserva #{number}",
+      "title": "Autorización de depósito requerida",
+      "body": "{storeName} solicita una autorización de depósito de {amount} para su reserva #{number}.",
+      "howItWorks": "Cómo funciona",
+      "step1": "Autoriza el monto del depósito en su tarjeta",
+      "step2": "El monto se retiene temporalmente (no se cobra)",
+      "step3": "Al final del alquiler, la autorización se libera automáticamente",
+      "step4": "En caso de daños, se puede cobrar parte o todo",
+      "authorizeNow": "Autorizar depósito",
+      "linkFallback": "O copie este enlace en su navegador:",
+      "securePayment": "Esta autorización está asegurada por Stripe. El monto no se cobrará inmediatamente."
     }
   },
   "contract": {

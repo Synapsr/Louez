@@ -13,8 +13,15 @@ import {
   sendReminderPickupEmail,
   sendReminderReturnEmail,
   sendInstantAccessEmail,
+  sendPaymentRequestEmail,
+  sendDepositAuthorizationRequestEmail,
 } from '@/lib/email/send'
-import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
+import {
+  sendAccessLinkSms,
+  sendPaymentRequestSms,
+  sendDepositAuthorizationRequestSms,
+  isSmsConfigured,
+} from '@/lib/sms'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import {
@@ -1305,6 +1312,7 @@ import {
   captureDeposit,
   releaseDeposit,
   getPaymentMethodDetails,
+  createPaymentRequestSession,
 } from '@/lib/stripe'
 
 type DepositActivityType = 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
@@ -1747,7 +1755,7 @@ export async function processStripeRefund(
     await logReservationActivity(
       reservationId,
       'payment_updated',
-      `Remboursement Stripe: ${data.amount.toFixed(2)}${currencySymbol}`,
+      undefined, // Details in metadata
       { paymentId, refundId: refund.refundId, amount: data.amount, type: data.type }
     )
 
@@ -2154,5 +2162,290 @@ export async function sendAccessLinkBySms(reservationId: string) {
   } catch (error) {
     console.error('Failed to send access link via SMS:', error)
     return { error: 'errors.smsSendFailed' }
+  }
+}
+
+// ============================================================================
+// Payment Request Functions
+// ============================================================================
+
+export interface RequestPaymentInput {
+  type: 'rental' | 'deposit' | 'custom'
+  amount?: number // Required for custom type
+  channels: { email: boolean; sms: boolean }
+  customMessage?: string
+}
+
+export async function requestPayment(
+  reservationId: string,
+  data: RequestPaymentInput
+): Promise<{
+  success?: boolean
+  error?: string
+  paymentUrl?: string
+}> {
+  try {
+    const store = await getStoreForUser()
+    if (!store) {
+      return { error: 'errors.unauthorized' }
+    }
+
+    // Check Stripe is configured
+    if (!store.stripeAccountId) {
+      return { error: 'errors.stripeNotConfigured' }
+    }
+
+    // Get reservation with customer and payments
+    const reservation = await db.query.reservations.findFirst({
+      where: and(
+        eq(reservations.id, reservationId),
+        eq(reservations.storeId, store.id)
+      ),
+      with: {
+        customer: true,
+        payments: true,
+      },
+    })
+
+    if (!reservation) {
+      return { error: 'errors.reservationNotFound' }
+    }
+
+    // Validate at least one channel is selected
+    if (!data.channels.email && !data.channels.sms) {
+      return { error: 'errors.noChannelSelected' }
+    }
+
+    // Validate SMS - customer must have phone number
+    if (data.channels.sms && !reservation.customer.phone) {
+      return { error: 'errors.customerNoPhone' }
+    }
+
+    const currency = store.settings?.currency || 'EUR'
+    const locale = getLocaleFromCountry(store.settings?.country)
+
+    // Calculate amount based on type
+    let amount: number
+    let description: string
+
+    if (data.type === 'custom') {
+      if (!data.amount || data.amount < 0.5) {
+        return { error: 'errors.invalidAmount' }
+      }
+      amount = data.amount
+      description = 'Payment'
+    } else if (data.type === 'rental') {
+      // Calculate remaining amount for rental from payments
+      const subtotalAmount = parseFloat(reservation.subtotalAmount || '0')
+      const paidAmount = reservation.payments
+        .filter((p) => p.type === 'rental' && p.status === 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      amount = subtotalAmount - paidAmount
+
+      if (amount < 0.5) {
+        return { error: 'errors.noAmountDue' }
+      }
+      description = 'Rental'
+    } else {
+      // deposit type
+      amount = parseFloat(reservation.depositAmount || '0')
+      if (amount < 0.5) {
+        return { error: 'errors.noDepositRequired' }
+      }
+      description = 'Deposit'
+    }
+
+    // Build URLs
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const baseUrl = `${protocol}://${store.slug}.${domain}`
+
+    let paymentUrl: string
+
+    if (data.type === 'deposit') {
+      // For deposit, create URL to authorize-deposit page with access token
+      const token = nanoid(64)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+      // Store token in verificationCodes table
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: reservation.customer.email,
+        storeId: store.id,
+        code: '', // Not used for instant_access
+        type: 'instant_access',
+        token,
+        reservationId,
+        expiresAt,
+        createdAt: new Date(),
+      })
+
+      paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`
+    } else {
+      // For rental/custom, create Stripe Checkout session
+      const successUrl = `${baseUrl}/checkout/success?reservation_id=${reservationId}`
+      const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`
+
+      const session = await createPaymentRequestSession({
+        stripeAccountId: store.stripeAccountId!,
+        reservationId,
+        reservationNumber: reservation.number,
+        customerEmail: reservation.customer.email,
+        amount: toStripeCents(amount, currency),
+        description: `${description} - Reservation #${reservation.number}`,
+        currency,
+        successUrl,
+        cancelUrl,
+        locale,
+      })
+
+      paymentUrl = session.url
+    }
+
+    // Send notifications
+    const notificationResults: { email?: boolean; sms?: boolean } = {}
+
+    if (data.channels.email) {
+      try {
+        if (data.type === 'deposit') {
+          await sendDepositAuthorizationRequestEmail({
+            to: reservation.customer.email,
+            store: {
+              id: store.id,
+              name: store.name,
+              logoUrl: store.logoUrl,
+              email: store.email,
+              phone: store.phone,
+              address: store.address,
+              theme: store.theme,
+              settings: store.settings,
+            },
+            customer: {
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              email: reservation.customer.email,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            depositAmount: amount,
+            authorizationUrl: paymentUrl,
+            customMessage: data.customMessage,
+            locale,
+          })
+        } else {
+          await sendPaymentRequestEmail({
+            to: reservation.customer.email,
+            store: {
+              id: store.id,
+              name: store.name,
+              logoUrl: store.logoUrl,
+              email: store.email,
+              phone: store.phone,
+              address: store.address,
+              theme: store.theme,
+              settings: store.settings,
+            },
+            customer: {
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              email: reservation.customer.email,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            amount,
+            description,
+            paymentUrl,
+            customMessage: data.customMessage,
+            locale,
+          })
+        }
+        notificationResults.email = true
+      } catch (error) {
+        console.error('Failed to send payment request email:', error)
+        notificationResults.email = false
+      }
+    }
+
+    if (data.channels.sms && reservation.customer.phone) {
+      try {
+        if (data.type === 'deposit') {
+          await sendDepositAuthorizationRequestSms({
+            store: {
+              id: store.id,
+              name: store.name,
+              settings: store.settings,
+            },
+            customer: {
+              id: reservation.customer.id,
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              phone: reservation.customer.phone,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            depositAmount: amount,
+            authorizationUrl: paymentUrl,
+            currency,
+          })
+        } else {
+          await sendPaymentRequestSms({
+            store: {
+              id: store.id,
+              name: store.name,
+              settings: store.settings,
+            },
+            customer: {
+              id: reservation.customer.id,
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              phone: reservation.customer.phone,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            amount,
+            paymentUrl,
+            currency,
+          })
+        }
+        notificationResults.sms = true
+      } catch (error) {
+        console.error('Failed to send payment request SMS:', error)
+        notificationResults.sms = false
+      }
+    }
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'payment_added',
+      undefined, // Description rendered from metadata in activity timeline
+      {
+        type: data.type,
+        amount,
+        currency,
+        channels: data.channels,
+        notificationResults,
+        paymentUrl,
+        isPaymentRequest: true,
+      }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+
+    return {
+      success: true,
+      paymentUrl,
+    }
+  } catch (error) {
+    console.error('Failed to request payment:', error)
+    return { error: 'errors.requestPaymentFailed' }
   }
 }

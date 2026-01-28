@@ -326,6 +326,8 @@ export type CustomerNotificationEventType =
   | 'customer_reservation_confirmed'
   | 'customer_reminder_pickup'
   | 'customer_reminder_return'
+  | 'customer_payment_requested'
+  | 'customer_deposit_authorization_requested'
 
 export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] = [
   'customer_request_received',
@@ -334,6 +336,8 @@ export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] 
   'customer_reservation_confirmed',
   'customer_reminder_pickup',
   'customer_reminder_return',
+  'customer_payment_requested',
+  'customer_deposit_authorization_requested',
 ]
 
 export interface CustomerNotificationChannelConfig {
@@ -356,6 +360,8 @@ export interface CustomerNotificationSettings {
   customer_reservation_confirmed: CustomerNotificationChannelConfig
   customer_reminder_pickup: CustomerNotificationChannelConfig
   customer_reminder_return: CustomerNotificationChannelConfig
+  customer_payment_requested: CustomerNotificationChannelConfig
+  customer_deposit_authorization_requested: CustomerNotificationChannelConfig
 
   // Custom templates
   templates: {
@@ -365,6 +371,8 @@ export interface CustomerNotificationSettings {
     customer_reservation_confirmed?: CustomerNotificationTemplate
     customer_reminder_pickup?: CustomerNotificationTemplate
     customer_reminder_return?: CustomerNotificationTemplate
+    customer_payment_requested?: CustomerNotificationTemplate
+    customer_deposit_authorization_requested?: CustomerNotificationTemplate
   }
 
   // Automatic reminder settings
@@ -386,6 +394,10 @@ export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSetting
   // Reminders - email enabled by default (SMS disabled due to cost)
   customer_reminder_pickup: { enabled: true, email: true, sms: false },
   customer_reminder_return: { enabled: true, email: true, sms: false },
+
+  // Payment requests - email enabled by default
+  customer_payment_requested: { enabled: true, email: true, sms: false },
+  customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
 
   // No custom templates by default
   templates: {},

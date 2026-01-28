@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
-        "statusCancelled": "Storniert"
+        "statusCancelled": "Storniert",
+        "requestPayment": "Zahlung anfordern"
+      },
+      "requestPaymentModal": {
+        "title": "Zahlung anfordern",
+        "description": "Zahlungsanforderung an {name} senden",
+        "paymentType": "Zahlungsart",
+        "types": {
+          "rental": {
+            "name": "Restbetrag Miete",
+            "description": "Restzahlung der Miete anfordern"
+          },
+          "deposit": {
+            "name": "Kaution (Kartenautorisierung)",
+            "description": "Kartenautorisierung für Kaution anfordern"
+          },
+          "custom": {
+            "name": "Individueller Betrag",
+            "description": "Einen bestimmten Betrag anfordern"
+          }
+        },
+        "customAmount": "Betrag",
+        "minAmount": "Mindestbetrag: {amount}",
+        "sendVia": "Senden über",
+        "email": "E-Mail",
+        "sms": "SMS",
+        "noPhone": "keine Telefonnummer",
+        "selectChannel": "Mindestens einen Versandkanal auswählen",
+        "customMessage": "Individuelle Nachricht",
+        "customMessagePlaceholder": "Nachricht für Ihren Kunden hinzufügen...",
+        "amountToRequest": "Angeforderter Betrag",
+        "send": "Anfrage senden",
+        "success": "Zahlungsanforderung gesendet",
+        "successTitle": "Anfrage gesendet!",
+        "successDescription": "Kunde erhält einen Zahlungslink per {channel}",
+        "error": "Fehler beim Senden",
+        "paymentLink": "Zahlungslink",
+        "linkCopied": "Link kopiert",
+        "copyFailed": "Kopieren fehlgeschlagen",
+        "stripeNotConfigured": "Stripe nicht konfiguriert",
+        "stripeNotConfiguredDescription": "Konfigurieren Sie Stripe in den Einstellungen, um Online-Zahlungsanforderungen zu senden."
       },
       "onlinePayment": {
         "title": "Online-Zahlung",
@@ -2892,6 +2932,48 @@
       "viewMyReservations": "Meine Mieten ansehen",
       "viewReservation": "Meine Reservierung ansehen"
     },
+    "authorizeDeposit": {
+      "title": "Kautionsautorisierung",
+      "subtitle": "Reservierung #{number}",
+      "description": "Der Vermieter fordert eine Kautionsautorisierung von {amount} an.",
+      "howItWorks": "So funktioniert es",
+      "step1": "Ihre Karte wird verifiziert und der Betrag wird vorübergehend reserviert",
+      "step2": "Der Betrag wird nicht von Ihrem Konto abgebucht",
+      "step3": "Am Ende der Miete wird die Autorisierung automatisch aufgehoben",
+      "step4": "Bei Schäden kann ein Teil oder der gesamte Betrag belastet werden",
+      "depositAmount": "Kautionsbetrag",
+      "cardDetails": "Kartendetails",
+      "authorizeButton": "{amount} autorisieren",
+      "authorizing": "Autorisierung läuft...",
+      "securePayment": "Sichere Zahlung mit Stripe",
+      "infoBox": "Dieser Betrag wird nicht abgebucht. Er wird vorübergehend auf Ihrer Karte reserviert und freigegeben, wenn Sie die Ausrüstung in gutem Zustand zurückgeben.",
+      "processing": "Verarbeitung...",
+      "redirecting": "Weiterleitung...",
+      "paymentInitError": "Zahlung konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.",
+      "confirmationError": "Autorisierung konnte nicht bestätigt werden",
+      "unexpectedStatus": "Unerwarteter Zahlungsstatus",
+      "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
+      "success": {
+        "title": "Kaution autorisiert!",
+        "description": "Der Betrag von {amount} wurde vorübergehend auf Ihrer Karte reserviert.",
+        "whatHappensNext": "Was passiert als nächstes?",
+        "willBeReleased": "Dieser Betrag wird am Ende Ihrer Miete automatisch freigegeben, wenn die Ausrüstung in gutem Zustand zurückgegeben wird. Es erfolgt keine Abbuchung, es sei denn, es liegt ein Schaden vor.",
+        "viewReservations": "Meine Reservierungen ansehen",
+        "backToStore": "Zurück zum Shop"
+      },
+      "errors": {
+        "notFound": "Reservierung nicht gefunden",
+        "alreadyAuthorized": "Kaution ist bereits autorisiert",
+        "invalidToken": "Ungültiger oder abgelaufener Zugangslink. Bitte fordern Sie einen neuen an.",
+        "stripeNotConfigured": "Online-Zahlungen sind für diesen Shop nicht verfügbar.",
+        "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich.",
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "cardDeclined": "Karte abgelehnt. Überprüfen Sie Ihre Daten oder versuchen Sie eine andere Karte.",
+        "insufficientFunds": "Nicht genügend Guthaben. Der Betrag konnte nicht reserviert werden.",
+        "invalidCard": "Ungültige Karte. Bitte überprüfen Sie die eingegebenen Daten."
+      },
+      "backToStore": "Zurück zum Shop"
+    },
     "account": {
       "title": "Mein Konto",
       "accessAccount": "Auf mein Konto zugreifen",
@@ -3344,6 +3426,31 @@
       "tip3": "Kontaktieren Sie Ihre Bank, wenn das Problem weiterhin besteht",
       "retryPayment": "Zahlung erneut versuchen",
       "contactSupport": "Hilfe benötigt? Kontaktieren Sie uns."
+    },
+    "paymentRequest": {
+      "subject": "Zahlungsanforderung für Reservierung #{number}",
+      "title": "Zahlungsanforderung",
+      "body": "{storeName} fordert eine Zahlung von {amount} für Ihre Reservierung #{number} an.",
+      "paymentDetails": "Zahlungsdetails",
+      "reservation": "Reservierung",
+      "description": "Beschreibung",
+      "amountDue": "Fälliger Betrag",
+      "payNow": "{amount} bezahlen",
+      "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
+      "securePayment": "Diese Zahlung wird durch Stripe gesichert. Ihre Zahlungsdaten werden niemals mit dem Vermieter geteilt."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Kautionsautorisierung für Reservierung #{number}",
+      "title": "Kautionsautorisierung erforderlich",
+      "body": "{storeName} fordert eine Kautionsautorisierung von {amount} für Ihre Reservierung #{number} an.",
+      "howItWorks": "So funktioniert es",
+      "step1": "Sie autorisieren den Kautionsbetrag auf Ihrer Karte",
+      "step2": "Der Betrag wird vorübergehend reserviert (nicht belastet)",
+      "step3": "Am Ende der Miete wird die Autorisierung automatisch freigegeben",
+      "step4": "Bei Schäden kann ein Teil oder der gesamte Betrag belastet werden",
+      "authorizeNow": "Kaution autorisieren",
+      "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
+      "securePayment": "Diese Autorisierung wird durch Stripe gesichert. Der Betrag wird nicht sofort belastet."
     },
     "baseLayout": {
       "sentBy": "Diese E-Mail wurde von {storeName} gesendet",

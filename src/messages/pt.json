@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Autorizado",
         "statusRefunded": "Reembolsado",
-        "statusCancelled": "Cancelado"
+        "statusCancelled": "Cancelado",
+        "requestPayment": "Solicitar pagamento"
+      },
+      "requestPaymentModal": {
+        "title": "Solicitar pagamento",
+        "description": "Enviar pedido de pagamento para {name}",
+        "paymentType": "Tipo de pagamento",
+        "types": {
+          "rental": {
+            "name": "Saldo de aluguel",
+            "description": "Solicitar pagamento restante do aluguel"
+          },
+          "deposit": {
+            "name": "Caução (autorização de cartão)",
+            "description": "Solicitar autorização de cartão para caução"
+          },
+          "custom": {
+            "name": "Valor personalizado",
+            "description": "Solicitar um valor específico"
+          }
+        },
+        "customAmount": "Valor",
+        "minAmount": "Valor mínimo: {amount}",
+        "sendVia": "Enviar por",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "sem número de telefone",
+        "selectChannel": "Selecione pelo menos um canal de envio",
+        "customMessage": "Mensagem personalizada",
+        "customMessagePlaceholder": "Adicione uma mensagem para seu cliente...",
+        "amountToRequest": "Valor solicitado",
+        "send": "Enviar pedido",
+        "success": "Pedido de pagamento enviado",
+        "successTitle": "Pedido enviado!",
+        "successDescription": "O cliente receberá um link de pagamento por {channel}",
+        "error": "Erro ao enviar",
+        "paymentLink": "Link de pagamento",
+        "linkCopied": "Link copiado",
+        "copyFailed": "Falha ao copiar",
+        "stripeNotConfigured": "Stripe não configurado",
+        "stripeNotConfiguredDescription": "Configure o Stripe nas configurações para enviar pedidos de pagamento online."
       },
       "onlinePayment": {
         "title": "Pagamento Online",
@@ -2892,6 +2932,48 @@
       "viewMyReservations": "Ver meus alugueis",
       "viewReservation": "Ver minha reserva"
     },
+    "authorizeDeposit": {
+      "title": "Autorização de caução",
+      "subtitle": "Reserva #{number}",
+      "description": "O locador solicita uma autorização de caução de {amount}.",
+      "howItWorks": "Como funciona?",
+      "step1": "Seu cartão é verificado e o valor é bloqueado temporariamente",
+      "step2": "O valor não é debitado da sua conta",
+      "step3": "No final do aluguel, a autorização é cancelada automaticamente",
+      "step4": "Em caso de danos, parte ou todo o valor pode ser cobrado",
+      "depositAmount": "Valor da caução",
+      "cardDetails": "Dados do cartão",
+      "authorizeButton": "Autorizar {amount}",
+      "authorizing": "Autorizando...",
+      "securePayment": "Pagamento seguro por Stripe",
+      "infoBox": "Este valor não será cobrado. Ele será bloqueado temporariamente no seu cartão e liberado quando você devolver o equipamento em bom estado.",
+      "processing": "Processando...",
+      "redirecting": "Redirecionando...",
+      "paymentInitError": "Não foi possível inicializar o pagamento. Por favor, tente novamente mais tarde.",
+      "confirmationError": "Falha ao confirmar a autorização",
+      "unexpectedStatus": "Status de pagamento inesperado",
+      "unexpectedError": "Ocorreu um erro inesperado",
+      "success": {
+        "title": "Caução autorizada!",
+        "description": "O valor de {amount} foi bloqueado temporariamente no seu cartão.",
+        "whatHappensNext": "O que acontece agora?",
+        "willBeReleased": "Este valor será liberado automaticamente no final do seu aluguel se o equipamento for devolvido em bom estado. Nenhuma cobrança será feita a menos que haja danos.",
+        "viewReservations": "Ver minhas reservas",
+        "backToStore": "Voltar à loja"
+      },
+      "errors": {
+        "notFound": "Reserva não encontrada",
+        "alreadyAuthorized": "A caução já está autorizada",
+        "invalidToken": "Link de acesso inválido ou expirado. Solicite um novo.",
+        "stripeNotConfigured": "Os pagamentos online não estão disponíveis para esta loja.",
+        "noDepositRequired": "Nenhuma caução é necessária para esta reserva.",
+        "generic": "Ocorreu um erro. Por favor, tente novamente.",
+        "cardDeclined": "Cartão recusado. Verifique seus dados ou tente outro cartão.",
+        "insufficientFunds": "Saldo insuficiente. O valor não pôde ser bloqueado.",
+        "invalidCard": "Cartão inválido. Verifique os dados inseridos."
+      },
+      "backToStore": "Voltar à loja"
+    },
     "account": {
       "title": "Minha conta",
       "accessAccount": "Acessar minha conta",
@@ -3344,6 +3426,31 @@
       "tip3": "Contacte seu banco se o problema persistir",
       "retryPayment": "Tentar novamente",
       "contactSupport": "Precisa de ajuda? Contacte-nos."
+    },
+    "paymentRequest": {
+      "subject": "Pedido de pagamento para reserva #{number}",
+      "title": "Pedido de pagamento",
+      "body": "{storeName} solicita um pagamento de {amount} para sua reserva #{number}.",
+      "paymentDetails": "Detalhes do pagamento",
+      "reservation": "Reserva",
+      "description": "Descrição",
+      "amountDue": "Valor a pagar",
+      "payNow": "Pagar {amount}",
+      "linkFallback": "Ou copie este link no seu navegador:",
+      "securePayment": "Este pagamento é protegido pelo Stripe. Suas informações de pagamento nunca são compartilhadas com o locador."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorização de caução para reserva #{number}",
+      "title": "Autorização de caução necessária",
+      "body": "{storeName} solicita uma autorização de caução de {amount} para sua reserva #{number}.",
+      "howItWorks": "Como funciona",
+      "step1": "Você autoriza o valor da caução no seu cartão",
+      "step2": "O valor é temporariamente bloqueado (não cobrado)",
+      "step3": "No final do aluguel, a autorização é liberada automaticamente",
+      "step4": "Em caso de danos, parte ou todo pode ser cobrado",
+      "authorizeNow": "Autorizar caução",
+      "linkFallback": "Ou copie este link no seu navegador:",
+      "securePayment": "Esta autorização é protegida pelo Stripe. O valor não será cobrado imediatamente."
     }
   },
   "contract": {
