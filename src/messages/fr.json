@@ -1834,7 +1834,9 @@
           "description": "Profitez de 50% de réduction sur tous nos plans. Prix garanti à vie pour les premiers inscrits.",
           "guaranteedForLife": "Prix garanti à vie",
           "endsOn": "Offre valable jusqu'au 1er mars 2026"
-        }
+        },
+        "pricesExcludingTax": "Prix HT",
+        "excludingTax": "HT"
       },
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",

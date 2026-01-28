@@ -703,27 +703,11 @@ export function SubscriptionManagement({
 
                 <CardContent className="flex-1">
                   <div className="text-center mb-6">
-                    {/* Early bird pricing with original price crossed out */}
-                    {showEarlyBird && (
-                      <div className="mb-1">
-                        <span className="text-lg text-muted-foreground line-through">
-                          {formatPrice(originalPrice, currency)}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-4xl font-bold">{formatPrice(price, currency)}</span>
+                    <span className="text-4xl font-bold">{formatPrice(originalPrice, currency)}</span>
                     {!isFree && (
                       <span className="text-muted-foreground ml-1">
-                        /{isYearly ? t('year') : t('month')}
+                        {t('excludingTax')} / {isYearly ? t('year') : t('month')}
                       </span>
-                    )}
-                    {/* Price guaranteed for life badge */}
-                    {showEarlyBird && (
-                      <div className="mt-2">
-                        <Badge variant="outline" className="text-xs bg-green-500/5 text-green-600 border-green-500/20">
-                          {t('earlyBird.guaranteedForLife')}
-                        </Badge>
-                      </div>
                     )}
                   </div>
 
@@ -776,6 +760,11 @@ export function SubscriptionManagement({
             )
           })}
         </div>
+
+        {/* Prices excluding tax note */}
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          {t('pricesExcludingTax')}
+        </p>
       </div>
 
       {/* Cancel Subscription Modal */}

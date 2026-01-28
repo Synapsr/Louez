@@ -1838,7 +1838,9 @@
           "description": "Obtén un 50% de descuento en todos los planes. Precio garantizado de por vida para los primeros suscriptores.",
           "guaranteedForLife": "Precio garantizado de por vida",
           "endsOn": "Oferta válida hasta el 1 de marzo de 2026"
-        }
+        },
+        "pricesExcludingTax": "Precios sin IVA",
+        "excludingTax": "sin IVA"
       },
       "team": "Equipo",
       "saveChanges": "Guardar cambios",
