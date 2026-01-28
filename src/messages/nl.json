@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
-        "statusCancelled": "Geannuleerd"
+        "statusCancelled": "Geannuleerd",
+        "requestPayment": "Betaling aanvragen"
+      },
+      "requestPaymentModal": {
+        "title": "Betaling aanvragen",
+        "description": "Stuur betalingsverzoek naar {name}",
+        "paymentType": "Betalingstype",
+        "types": {
+          "rental": {
+            "name": "Huursaldo",
+            "description": "Vraag resterende huurbetaling aan"
+          },
+          "deposit": {
+            "name": "Borg (kaartautorisatie)",
+            "description": "Vraag kaartautorisatie voor borg aan"
+          },
+          "custom": {
+            "name": "Aangepast bedrag",
+            "description": "Vraag een specifiek bedrag aan"
+          }
+        },
+        "customAmount": "Bedrag",
+        "minAmount": "Minimumbedrag: {amount}",
+        "sendVia": "Versturen via",
+        "email": "E-mail",
+        "sms": "SMS",
+        "noPhone": "geen telefoonnummer",
+        "selectChannel": "Selecteer ten minste één verzendkanaal",
+        "customMessage": "Aangepast bericht",
+        "customMessagePlaceholder": "Voeg een bericht toe voor uw klant...",
+        "amountToRequest": "Aangevraagd bedrag",
+        "send": "Verzoek versturen",
+        "success": "Betalingsverzoek verzonden",
+        "successTitle": "Verzoek verzonden!",
+        "successDescription": "Klant ontvangt een betalingslink via {channel}",
+        "error": "Fout bij verzenden",
+        "paymentLink": "Betalingslink",
+        "linkCopied": "Link gekopieerd",
+        "copyFailed": "Kopiëren mislukt",
+        "stripeNotConfigured": "Stripe niet geconfigureerd",
+        "stripeNotConfiguredDescription": "Configureer Stripe in de instellingen om online betalingsverzoeken te verzenden."
       },
       "onlinePayment": {
         "title": "Online Betaling",
@@ -2891,6 +2931,48 @@
       "viewMyReservations": "Mijn verhuur bekijken",
       "viewReservation": "Mijn reservering bekijken"
     },
+    "authorizeDeposit": {
+      "title": "Borgautorisatie",
+      "subtitle": "Reservering #{number}",
+      "description": "De verhuurder vraagt een borgautorisatie van {amount}.",
+      "howItWorks": "Hoe het werkt",
+      "step1": "Uw kaart wordt geverifieerd en het bedrag wordt tijdelijk gereserveerd",
+      "step2": "Het bedrag wordt niet van uw rekening afgeschreven",
+      "step3": "Aan het einde van de huur wordt de autorisatie automatisch opgeheven",
+      "step4": "Bij schade kan een deel of het geheel worden afgeschreven",
+      "depositAmount": "Borgbedrag",
+      "cardDetails": "Kaartgegevens",
+      "authorizeButton": "{amount} autoriseren",
+      "authorizing": "Autoriseren...",
+      "securePayment": "Veilige betaling met Stripe",
+      "infoBox": "Dit bedrag wordt niet afgeschreven. Het wordt tijdelijk gereserveerd op uw kaart en vrijgegeven wanneer u het materiaal in goede staat terugbrengt.",
+      "processing": "Verwerken...",
+      "redirecting": "Doorverwijzen...",
+      "paymentInitError": "Betaling kon niet worden geïnitialiseerd. Probeer het later opnieuw.",
+      "confirmationError": "Autorisatie kon niet worden bevestigd",
+      "unexpectedStatus": "Onverwachte betalingsstatus",
+      "unexpectedError": "Er is een onverwachte fout opgetreden",
+      "success": {
+        "title": "Borg geautoriseerd!",
+        "description": "Het bedrag van {amount} is tijdelijk gereserveerd op uw kaart.",
+        "whatHappensNext": "Wat gebeurt er nu?",
+        "willBeReleased": "Dit bedrag wordt automatisch vrijgegeven aan het einde van uw huur als het materiaal in goede staat wordt teruggebracht. Er wordt niets afgeschreven tenzij er schade is.",
+        "viewReservations": "Mijn reserveringen bekijken",
+        "backToStore": "Terug naar winkel"
+      },
+      "errors": {
+        "notFound": "Reservering niet gevonden",
+        "alreadyAuthorized": "Borg is al geautoriseerd",
+        "invalidToken": "Ongeldige of verlopen toegangslink. Vraag een nieuwe aan.",
+        "stripeNotConfigured": "Online betalingen zijn niet beschikbaar voor deze winkel.",
+        "noDepositRequired": "Geen borg vereist voor deze reservering.",
+        "generic": "Er is een fout opgetreden. Probeer het opnieuw.",
+        "cardDeclined": "Kaart geweigerd. Controleer uw gegevens of probeer een andere kaart.",
+        "insufficientFunds": "Onvoldoende saldo. Het bedrag kon niet worden gereserveerd.",
+        "invalidCard": "Ongeldige kaart. Controleer de ingevoerde gegevens."
+      },
+      "backToStore": "Terug naar winkel"
+    },
     "account": {
       "title": "Mijn account",
       "accessAccount": "Naar mijn account",
@@ -3343,6 +3425,31 @@
       "tip3": "Neem contact op met uw bank als het probleem aanhoudt",
       "retryPayment": "Betaling opnieuw proberen",
       "contactSupport": "Hulp nodig? Neem contact met ons op."
+    },
+    "paymentRequest": {
+      "subject": "Betalingsverzoek voor reservering #{number}",
+      "title": "Betalingsverzoek",
+      "body": "{storeName} vraagt een betaling van {amount} voor uw reservering #{number}.",
+      "paymentDetails": "Betalingsgegevens",
+      "reservation": "Reservering",
+      "description": "Beschrijving",
+      "amountDue": "Te betalen bedrag",
+      "payNow": "{amount} betalen",
+      "linkFallback": "Of kopieer deze link naar uw browser:",
+      "securePayment": "Deze betaling wordt beveiligd door Stripe. Uw betalingsgegevens worden nooit gedeeld met de verhuurder."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Borgautorisatie voor reservering #{number}",
+      "title": "Borgautorisatie vereist",
+      "body": "{storeName} vraagt een borgautorisatie van {amount} voor uw reservering #{number}.",
+      "howItWorks": "Hoe het werkt",
+      "step1": "U autoriseert het borgbedrag op uw kaart",
+      "step2": "Het bedrag wordt tijdelijk gereserveerd (niet afgeschreven)",
+      "step3": "Aan het einde van de huur wordt de autorisatie automatisch vrijgegeven",
+      "step4": "Bij schade kan een deel of het geheel worden afgeschreven",
+      "authorizeNow": "Borg autoriseren",
+      "linkFallback": "Of kopieer deze link naar uw browser:",
+      "securePayment": "Deze autorisatie wordt beveiligd door Stripe. Het bedrag wordt niet direct afgeschreven."
     },
     "baseLayout": {
       "sentBy": "Deze e-mail is verzonden door {storeName}",

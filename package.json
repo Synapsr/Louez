@@ -71,6 +71,8 @@
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
     "@react-pdf/renderer": "^4.3.2",
+    "@stripe/react-stripe-js": "^5.5.0",
+    "@stripe/stripe-js": "^8.6.4",
     "@tiptap/extension-link": "^3.15.3",
     "@tiptap/extension-placeholder": "^3.15.3",
     "@tiptap/pm": "^3.15.3",

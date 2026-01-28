@@ -42,6 +42,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Confirmation de votre réservation #{number}',
     customer_reminder_pickup: 'Rappel: retrait de votre réservation demain',
     customer_reminder_return: 'Rappel: retour de votre réservation demain',
+    customer_payment_requested: 'Paiement demandé pour la réservation #{number}',
+    customer_deposit_authorization_requested: 'Autorisation de caution pour la réservation #{number}',
   },
   en: {
     customer_request_received: 'Reservation request received',
@@ -50,6 +52,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Confirmation of your reservation #{number}',
     customer_reminder_pickup: 'Reminder: pickup of your reservation tomorrow',
     customer_reminder_return: 'Reminder: return of your reservation tomorrow',
+    customer_payment_requested: 'Payment requested for reservation #{number}',
+    customer_deposit_authorization_requested: 'Deposit authorization for reservation #{number}',
   },
   de: {
     customer_request_received: 'Reservierungsanfrage erhalten',
@@ -58,6 +62,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Bestätigung Ihrer Reservierung #{number}',
     customer_reminder_pickup: 'Erinnerung: Abholung Ihrer Reservierung morgen',
     customer_reminder_return: 'Erinnerung: Rückgabe Ihrer Reservierung morgen',
+    customer_payment_requested: 'Zahlung angefordert für Reservierung #{number}',
+    customer_deposit_authorization_requested: 'Kaution-Autorisierung für Reservierung #{number}',
   },
   es: {
     customer_request_received: 'Solicitud de reserva recibida',
@@ -66,6 +72,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Confirmación de su reserva #{number}',
     customer_reminder_pickup: 'Recordatorio: recogida de su reserva mañana',
     customer_reminder_return: 'Recordatorio: devolución de su reserva mañana',
+    customer_payment_requested: 'Pago solicitado para la reserva #{number}',
+    customer_deposit_authorization_requested: 'Autorización de depósito para la reserva #{number}',
   },
   it: {
     customer_request_received: 'Richiesta di prenotazione ricevuta',
@@ -74,6 +82,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Conferma della tua prenotazione #{number}',
     customer_reminder_pickup: 'Promemoria: ritiro della tua prenotazione domani',
     customer_reminder_return: 'Promemoria: restituzione della tua prenotazione domani',
+    customer_payment_requested: 'Pagamento richiesto per la prenotazione #{number}',
+    customer_deposit_authorization_requested: 'Autorizzazione deposito per la prenotazione #{number}',
   },
   nl: {
     customer_request_received: 'Reserveringsaanvraag ontvangen',
@@ -82,6 +92,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Bevestiging van uw reservering #{number}',
     customer_reminder_pickup: 'Herinnering: ophalen van uw reservering morgen',
     customer_reminder_return: 'Herinnering: terugbrengen van uw reservering morgen',
+    customer_payment_requested: 'Betaling gevraagd voor reservering #{number}',
+    customer_deposit_authorization_requested: 'Borgautorisatie voor reservering #{number}',
   },
   pl: {
     customer_request_received: 'Otrzymano prośbę o rezerwację',
@@ -90,6 +102,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Potwierdzenie rezerwacji #{number}',
     customer_reminder_pickup: 'Przypomnienie: odbiór rezerwacji jutro',
     customer_reminder_return: 'Przypomnienie: zwrot rezerwacji jutro',
+    customer_payment_requested: 'Płatność wymagana dla rezerwacji #{number}',
+    customer_deposit_authorization_requested: 'Autoryzacja kaucji dla rezerwacji #{number}',
   },
   pt: {
     customer_request_received: 'Pedido de reserva recebido',
@@ -98,6 +112,8 @@ const DEFAULT_SUBJECTS: Record<EmailLocale, Record<CustomerNotificationEventType
     customer_reservation_confirmed: 'Confirmação da sua reserva #{number}',
     customer_reminder_pickup: 'Lembrete: retirada da sua reserva amanhã',
     customer_reminder_return: 'Lembrete: devolução da sua reserva amanhã',
+    customer_payment_requested: 'Pagamento solicitado para a reserva #{number}',
+    customer_deposit_authorization_requested: 'Autorização de caução para a reserva #{number}',
   },
 }
 
@@ -110,6 +126,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nRéservation #{number} confirmée\nDu {startDate} au {endDate}',
     customer_reminder_pickup: '{storeName}\nRappel: retrait demain\nRéservation #{number}',
     customer_reminder_return: '{storeName}\nRappel: retour demain\nRéservation #{number}',
+    customer_payment_requested: '{storeName}\nPaiement de {amount} demandé pour #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nCaution de {amount} à autoriser pour #{number}\n{paymentUrl}',
   },
   en: {
     customer_request_received: '{storeName}\nRequest received #{number}\nWe will get back to you shortly.',
@@ -118,6 +136,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nReservation #{number} confirmed\nFrom {startDate} to {endDate}',
     customer_reminder_pickup: '{storeName}\nReminder: pickup tomorrow\nReservation #{number}',
     customer_reminder_return: '{storeName}\nReminder: return tomorrow\nReservation #{number}',
+    customer_payment_requested: '{storeName}\nPayment of {amount} requested for #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nDeposit of {amount} to authorize for #{number}\n{paymentUrl}',
   },
   de: {
     customer_request_received: '{storeName}\nAnfrage erhalten #{number}\nWir melden uns in Kürze.',
@@ -126,6 +146,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nReservierung #{number} bestätigt\nVom {startDate} bis {endDate}',
     customer_reminder_pickup: '{storeName}\nErinnerung: Abholung morgen\nReservierung #{number}',
     customer_reminder_return: '{storeName}\nErinnerung: Rückgabe morgen\nReservierung #{number}',
+    customer_payment_requested: '{storeName}\nZahlung von {amount} für #{number} angefordert\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nKaution von {amount} für #{number} freizugeben\n{paymentUrl}',
   },
   es: {
     customer_request_received: '{storeName}\nSolicitud recibida #{number}\nLe responderemos pronto.',
@@ -134,6 +156,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nReserva #{number} confirmada\nDel {startDate} al {endDate}',
     customer_reminder_pickup: '{storeName}\nRecordatorio: recogida mañana\nReserva #{number}',
     customer_reminder_return: '{storeName}\nRecordatorio: devolución mañana\nReserva #{number}',
+    customer_payment_requested: '{storeName}\nPago de {amount} solicitado para #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nDepósito de {amount} a autorizar para #{number}\n{paymentUrl}',
   },
   it: {
     customer_request_received: '{storeName}\nRichiesta ricevuta #{number}\nTi risponderemo presto.',
@@ -142,6 +166,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nPrenotazione #{number} confermata\nDal {startDate} al {endDate}',
     customer_reminder_pickup: '{storeName}\nPromemoria: ritiro domani\nPrenotazione #{number}',
     customer_reminder_return: '{storeName}\nPromemoria: restituzione domani\nPrenotazione #{number}',
+    customer_payment_requested: '{storeName}\nPagamento di {amount} richiesto per #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nDeposito di {amount} da autorizzare per #{number}\n{paymentUrl}',
   },
   nl: {
     customer_request_received: '{storeName}\nAanvraag ontvangen #{number}\nWe nemen snel contact op.',
@@ -150,6 +176,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nReservering #{number} bevestigd\nVan {startDate} tot {endDate}',
     customer_reminder_pickup: '{storeName}\nHerinnering: ophalen morgen\nReservering #{number}',
     customer_reminder_return: '{storeName}\nHerinnering: terugbrengen morgen\nReservering #{number}',
+    customer_payment_requested: '{storeName}\nBetaling van {amount} gevraagd voor #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nBorg van {amount} te autoriseren voor #{number}\n{paymentUrl}',
   },
   pl: {
     customer_request_received: '{storeName}\nProśba otrzymana #{number}\nOdezwiemy się wkrótce.',
@@ -158,6 +186,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nRezerwacja #{number} potwierdzona\nOd {startDate} do {endDate}',
     customer_reminder_pickup: '{storeName}\nPrzypomnienie: odbiór jutro\nRezerwacja #{number}',
     customer_reminder_return: '{storeName}\nPrzypomnienie: zwrot jutro\nRezerwacja #{number}',
+    customer_payment_requested: '{storeName}\nPłatność {amount} wymagana dla #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nKaucja {amount} do autoryzacji dla #{number}\n{paymentUrl}',
   },
   pt: {
     customer_request_received: '{storeName}\nPedido recebido #{number}\nEntraremos em contato em breve.',
@@ -166,6 +196,8 @@ const DEFAULT_SMS_TEMPLATES: Record<EmailLocale, Record<CustomerNotificationEven
     customer_reservation_confirmed: '{storeName}\nReserva #{number} confirmada\nDe {startDate} a {endDate}',
     customer_reminder_pickup: '{storeName}\nLembrete: retirada amanhã\nReserva #{number}',
     customer_reminder_return: '{storeName}\nLembrete: devolução amanhã\nReserva #{number}',
+    customer_payment_requested: '{storeName}\nPagamento de {amount} solicitado para #{number}\n{paymentUrl}',
+    customer_deposit_authorization_requested: '{storeName}\nCaução de {amount} a autorizar para #{number}\n{paymentUrl}',
   },
 }
 

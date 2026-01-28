@@ -194,6 +194,94 @@ export async function getCheckoutSession(
 }
 
 // ============================================================================
+// Payment Request Sessions (for requesting payments from dashboard)
+// ============================================================================
+
+interface CreatePaymentRequestSessionParams {
+  stripeAccountId: string
+  reservationId: string
+  reservationNumber: string
+  customerEmail: string
+  amount: number // In cents
+  description: string
+  currency: string
+  successUrl: string
+  cancelUrl: string
+  applicationFeeAmount?: number // In cents (platform fee)
+  locale?: string
+}
+
+/**
+ * Creates a Stripe Checkout session for a payment request sent from the dashboard.
+ * This is used when the store owner requests a payment (rental balance or custom amount).
+ * Session expires after 24 hours (vs 30 minutes for initial checkout).
+ */
+export async function createPaymentRequestSession({
+  stripeAccountId,
+  reservationId,
+  reservationNumber,
+  customerEmail,
+  amount,
+  description,
+  currency,
+  successUrl,
+  cancelUrl,
+  applicationFeeAmount,
+  locale,
+}: CreatePaymentRequestSessionParams) {
+  // Append session_id to success URL for payment verification
+  const successUrlWithSession = successUrl.includes('?')
+    ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
+    : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
+
+  const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: description,
+          },
+          unit_amount: amount,
+        },
+        quantity: 1,
+      },
+    ],
+    customer_email: customerEmail,
+    success_url: successUrlWithSession,
+    cancel_url: cancelUrl,
+    locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
+    expires_at: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+    metadata: {
+      reservationId,
+      reservationNumber,
+      type: 'payment_request',
+    },
+    payment_intent_data: {
+      metadata: {
+        reservationId,
+        reservationNumber,
+        type: 'payment_request',
+      },
+      ...(applicationFeeAmount && applicationFeeAmount > 0
+        ? { application_fee_amount: applicationFeeAmount }
+        : {}),
+    },
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams, {
+    stripeAccount: stripeAccountId,
+  })
+
+  return {
+    sessionId: session.id,
+    url: session.url!,
+  }
+}
+
+// ============================================================================
 // Refunds
 // ============================================================================
 
@@ -249,6 +337,52 @@ export async function getChargeRefundableAmount(
 // ============================================================================
 // Deposit Authorization Hold (Empreinte Bancaire)
 // ============================================================================
+
+interface CreateDepositAuthorizationIntentParams {
+  stripeAccountId: string
+  amount: number // In cents
+  currency: string
+  reservationId: string
+  reservationNumber: string
+}
+
+/**
+ * Creates a PaymentIntent for deposit authorization that requires customer confirmation.
+ * Used when customer needs to enter their card on the storefront page.
+ * Returns the client secret to be used with Stripe Elements.
+ */
+export async function createDepositAuthorizationIntent({
+  stripeAccountId,
+  amount,
+  currency,
+  reservationId,
+  reservationNumber,
+}: CreateDepositAuthorizationIntentParams) {
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount,
+      currency: currency.toLowerCase(),
+      capture_method: 'manual', // Authorization only, no immediate capture
+      automatic_payment_methods: {
+        enabled: true,
+      },
+      metadata: {
+        reservationId,
+        reservationNumber,
+        type: 'deposit_authorization_request',
+      },
+    },
+    {
+      stripeAccount: stripeAccountId,
+    }
+  )
+
+  return {
+    paymentIntentId: paymentIntent.id,
+    clientSecret: paymentIntent.client_secret!,
+    status: paymentIntent.status,
+  }
+}
 
 interface CreateDepositAuthorizationParams {
   stripeAccountId: string

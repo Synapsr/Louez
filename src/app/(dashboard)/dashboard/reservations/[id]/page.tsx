@@ -368,6 +368,7 @@ export default async function ReservationDetailPage({
           {/* Unified Payment Section - Combines all payment info */}
           <UnifiedPaymentSection
             reservationId={reservation.id}
+            reservationNumber={reservation.number}
             subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
@@ -377,6 +378,12 @@ export default async function ReservationDetailPage({
             depositStatus={reservation.depositStatus as 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed' | null}
             depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
             stripePaymentMethodId={reservation.stripePaymentMethodId}
+            customer={{
+              firstName: reservation.customer.firstName,
+              email: reservation.customer.email,
+              phone: reservation.customer.phone,
+            }}
+            stripeConfigured={!!store.stripeAccountId}
           />
 
           {/* Notes */}

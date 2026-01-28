@@ -1155,7 +1155,47 @@
         },
         "statusAuthorized": "Autorisé",
         "statusRefunded": "Remboursé",
-        "statusCancelled": "Annulé"
+        "statusCancelled": "Annulé",
+        "requestPayment": "Demander un paiement"
+      },
+      "requestPaymentModal": {
+        "title": "Demander un paiement",
+        "description": "Envoyer une demande de paiement à {name}",
+        "paymentType": "Type de paiement",
+        "types": {
+          "rental": {
+            "name": "Solde de location",
+            "description": "Demander le paiement du reste de la location"
+          },
+          "deposit": {
+            "name": "Caution (empreinte bancaire)",
+            "description": "Demander une empreinte bancaire pour la caution"
+          },
+          "custom": {
+            "name": "Montant personnalisé",
+            "description": "Demander un montant spécifique"
+          }
+        },
+        "customAmount": "Montant",
+        "minAmount": "Montant minimum : {amount}",
+        "sendVia": "Envoyer par",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "pas de téléphone",
+        "selectChannel": "Sélectionnez au moins un canal d'envoi",
+        "customMessage": "Message personnalisé",
+        "customMessagePlaceholder": "Ajoutez un message pour votre client...",
+        "amountToRequest": "Montant demandé",
+        "send": "Envoyer la demande",
+        "success": "Demande de paiement envoyée",
+        "successTitle": "Demande envoyée !",
+        "successDescription": "Le client recevra un lien de paiement par {channel}",
+        "error": "Erreur lors de l'envoi",
+        "paymentLink": "Lien de paiement",
+        "linkCopied": "Lien copié",
+        "copyFailed": "Échec de la copie",
+        "stripeNotConfigured": "Stripe non configuré",
+        "stripeNotConfiguredDescription": "Configurez Stripe dans les paramètres pour envoyer des demandes de paiement en ligne."
       },
       "onlinePayment": {
         "title": "Paiement en ligne",
@@ -2890,6 +2930,48 @@
       "viewMyReservations": "Voir mes locations",
       "viewReservation": "Voir ma réservation"
     },
+    "authorizeDeposit": {
+      "title": "Autorisation de caution",
+      "subtitle": "Réservation #{number}",
+      "description": "Le loueur demande une autorisation de caution de {amount}.",
+      "howItWorks": "Comment ça marche ?",
+      "step1": "Votre carte est vérifiée et le montant est bloqué temporairement",
+      "step2": "Le montant n'est pas prélevé sur votre compte",
+      "step3": "À la fin de la location, l'autorisation est annulée automatiquement",
+      "step4": "En cas de dommage, tout ou partie peut être prélevé",
+      "depositAmount": "Montant de la caution",
+      "cardDetails": "Coordonnées de la carte",
+      "authorizeButton": "Autoriser {amount}",
+      "authorizing": "Autorisation en cours...",
+      "securePayment": "Paiement sécurisé par Stripe",
+      "infoBox": "Ce montant ne sera pas prélevé. Il sera bloqué temporairement sur votre carte et libéré lorsque vous rendrez le matériel en bon état.",
+      "processing": "Traitement en cours...",
+      "redirecting": "Redirection...",
+      "paymentInitError": "Impossible d'initialiser le paiement. Veuillez réessayer plus tard.",
+      "confirmationError": "Échec de la confirmation de l'autorisation",
+      "unexpectedStatus": "Statut de paiement inattendu",
+      "unexpectedError": "Une erreur inattendue s'est produite",
+      "success": {
+        "title": "Caution autorisée !",
+        "description": "Le montant de {amount} a été bloqué temporairement sur votre carte.",
+        "whatHappensNext": "Que se passe-t-il ensuite ?",
+        "willBeReleased": "Ce montant sera libéré automatiquement à la fin de votre location si le matériel est rendu en bon état. Aucun prélèvement ne sera effectué sauf en cas de dommage.",
+        "viewReservations": "Voir mes réservations",
+        "backToStore": "Retour à la boutique"
+      },
+      "errors": {
+        "notFound": "Réservation non trouvée",
+        "alreadyAuthorized": "La caution est déjà autorisée",
+        "invalidToken": "Lien d'accès invalide ou expiré. Veuillez en demander un nouveau.",
+        "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles pour cette boutique.",
+        "noDepositRequired": "Aucune caution n'est requise pour cette réservation.",
+        "generic": "Une erreur s'est produite. Veuillez réessayer.",
+        "cardDeclined": "Carte refusée. Vérifiez vos informations ou essayez une autre carte.",
+        "insufficientFunds": "Fonds insuffisants. Le montant n'a pas pu être bloqué.",
+        "invalidCard": "Carte invalide. Veuillez vérifier les informations saisies."
+      },
+      "backToStore": "Retour à la boutique"
+    },
     "account": {
       "title": "Mon compte",
       "accessAccount": "Accéder à mon compte",
@@ -3337,6 +3419,31 @@
       "tip3": "Contactez votre banque si le problème persiste",
       "retryPayment": "Réessayer le paiement",
       "contactSupport": "Besoin d'aide ? Contactez-nous."
+    },
+    "paymentRequest": {
+      "subject": "Paiement demandé pour la réservation #{number}",
+      "title": "Demande de paiement",
+      "body": "{storeName} vous demande un paiement de {amount} pour votre réservation #{number}.",
+      "paymentDetails": "Détails du paiement",
+      "reservation": "Réservation",
+      "description": "Description",
+      "amountDue": "Montant dû",
+      "payNow": "Payer {amount}",
+      "linkFallback": "Ou copiez ce lien dans votre navigateur :",
+      "securePayment": "Ce paiement est sécurisé par Stripe. Vos informations bancaires ne sont jamais partagées avec le loueur."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorisation de caution pour la réservation #{number}",
+      "title": "Caution à autoriser",
+      "body": "{storeName} vous demande d'autoriser une caution de {amount} pour votre réservation #{number}.",
+      "howItWorks": "Comment ça marche ?",
+      "step1": "Vous autorisez le montant de la caution sur votre carte",
+      "step2": "Le montant est bloqué temporairement (pas prélevé)",
+      "step3": "À la fin de la location, la caution est libérée automatiquement",
+      "step4": "En cas de dommage, tout ou partie peut être prélevé",
+      "authorizeNow": "Autoriser la caution",
+      "linkFallback": "Ou copiez ce lien dans votre navigateur :",
+      "securePayment": "Cette autorisation est sécurisée par Stripe. Le montant ne sera pas prélevé immédiatement."
     },
     "baseLayout": {
       "sentBy": "Cet email a été envoyé par {storeName}",

@@ -1146,7 +1146,47 @@
         },
         "statusAuthorized": "Autoryzowana",
         "statusRefunded": "Zwrócona",
-        "statusCancelled": "Anulowana"
+        "statusCancelled": "Anulowana",
+        "requestPayment": "Poproś o płatność"
+      },
+      "requestPaymentModal": {
+        "title": "Poproś o płatność",
+        "description": "Wyślij prośbę o płatność do {name}",
+        "paymentType": "Typ płatności",
+        "types": {
+          "rental": {
+            "name": "Saldo wynajmu",
+            "description": "Poproś o pozostałą płatność za wynajem"
+          },
+          "deposit": {
+            "name": "Kaucja (autoryzacja karty)",
+            "description": "Poproś o autoryzację karty dla kaucji"
+          },
+          "custom": {
+            "name": "Kwota niestandardowa",
+            "description": "Poproś o określoną kwotę"
+          }
+        },
+        "customAmount": "Kwota",
+        "minAmount": "Minimalna kwota: {amount}",
+        "sendVia": "Wyślij przez",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "brak numeru telefonu",
+        "selectChannel": "Wybierz co najmniej jeden kanał wysyłki",
+        "customMessage": "Wiadomość niestandardowa",
+        "customMessagePlaceholder": "Dodaj wiadomość dla klienta...",
+        "amountToRequest": "Żądana kwota",
+        "send": "Wyślij prośbę",
+        "success": "Prośba o płatność wysłana",
+        "successTitle": "Prośba wysłana!",
+        "successDescription": "Klient otrzyma link do płatności przez {channel}",
+        "error": "Błąd wysyłania",
+        "paymentLink": "Link do płatności",
+        "linkCopied": "Link skopiowany",
+        "copyFailed": "Kopiowanie nie powiodło się",
+        "stripeNotConfigured": "Stripe nie skonfigurowany",
+        "stripeNotConfiguredDescription": "Skonfiguruj Stripe w ustawieniach, aby wysyłać prośby o płatność online."
       },
       "onlinePayment": {
         "title": "Płatność online",
@@ -2891,6 +2931,48 @@
       "viewMyReservations": "Zobacz moje wynajmy",
       "viewReservation": "Zobacz moją rezerwację"
     },
+    "authorizeDeposit": {
+      "title": "Autoryzacja kaucji",
+      "subtitle": "Rezerwacja #{number}",
+      "description": "Wynajmujący prosi o autoryzację kaucji w wysokości {amount}.",
+      "howItWorks": "Jak to działa",
+      "step1": "Twoja karta jest weryfikowana i kwota jest tymczasowo blokowana",
+      "step2": "Kwota nie jest pobierana z Twojego konta",
+      "step3": "Na koniec wynajmu autoryzacja jest automatycznie anulowana",
+      "step4": "W przypadku uszkodzeń część lub całość może zostać pobrana",
+      "depositAmount": "Kwota kaucji",
+      "cardDetails": "Dane karty",
+      "authorizeButton": "Autoryzuj {amount}",
+      "authorizing": "Autoryzacja...",
+      "securePayment": "Bezpieczna płatność przez Stripe",
+      "infoBox": "Ta kwota nie zostanie pobrana. Zostanie tymczasowo zablokowana na Twojej karcie i zwolniona, gdy zwrócisz sprzęt w dobrym stanie.",
+      "processing": "Przetwarzanie...",
+      "redirecting": "Przekierowywanie...",
+      "paymentInitError": "Nie można zainicjować płatności. Spróbuj ponownie później.",
+      "confirmationError": "Nie udało się potwierdzić autoryzacji",
+      "unexpectedStatus": "Nieoczekiwany status płatności",
+      "unexpectedError": "Wystąpił nieoczekiwany błąd",
+      "success": {
+        "title": "Kaucja autoryzowana!",
+        "description": "Kwota {amount} została tymczasowo zablokowana na Twojej karcie.",
+        "whatHappensNext": "Co dalej?",
+        "willBeReleased": "Ta kwota zostanie automatycznie zwolniona na koniec wynajmu, jeśli sprzęt zostanie zwrócony w dobrym stanie. Żadna opłata nie zostanie pobrana, chyba że wystąpią uszkodzenia.",
+        "viewReservations": "Zobacz moje rezerwacje",
+        "backToStore": "Powrót do sklepu"
+      },
+      "errors": {
+        "notFound": "Rezerwacja nie znaleziona",
+        "alreadyAuthorized": "Kaucja jest już autoryzowana",
+        "invalidToken": "Nieprawidłowy lub wygasły link dostępu. Poproś o nowy.",
+        "stripeNotConfigured": "Płatności online nie są dostępne dla tego sklepu.",
+        "noDepositRequired": "Kaucja nie jest wymagana dla tej rezerwacji.",
+        "generic": "Wystąpił błąd. Spróbuj ponownie.",
+        "cardDeclined": "Karta odrzucona. Sprawdź dane lub spróbuj inną kartę.",
+        "insufficientFunds": "Niewystarczające środki. Kwota nie mogła zostać zablokowana.",
+        "invalidCard": "Nieprawidłowa karta. Sprawdź wprowadzone dane."
+      },
+      "backToStore": "Powrót do sklepu"
+    },
     "account": {
       "title": "Moje konto",
       "accessAccount": "Wejdź na moje konto",
@@ -3343,6 +3425,31 @@
       "tip3": "Skontaktuj się z bankiem, jeśli problem się powtarza",
       "retryPayment": "Ponów płatność",
       "contactSupport": "Potrzebujesz pomocy? Skontaktuj się z nami."
+    },
+    "paymentRequest": {
+      "subject": "Prośba o płatność za rezerwację #{number}",
+      "title": "Prośba o płatność",
+      "body": "{storeName} prosi o płatność {amount} za Twoją rezerwację #{number}.",
+      "paymentDetails": "Szczegóły płatności",
+      "reservation": "Rezerwacja",
+      "description": "Opis",
+      "amountDue": "Kwota do zapłaty",
+      "payNow": "Zapłać {amount}",
+      "linkFallback": "Lub skopiuj ten link do przeglądarki:",
+      "securePayment": "Ta płatność jest zabezpieczona przez Stripe. Twoje dane płatnicze nigdy nie są udostępniane wynajmującemu."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autoryzacja kaucji dla rezerwacji #{number}",
+      "title": "Wymagana autoryzacja kaucji",
+      "body": "{storeName} prosi o autoryzację kaucji w wysokości {amount} za Twoją rezerwację #{number}.",
+      "howItWorks": "Jak to działa",
+      "step1": "Autoryzujesz kwotę kaucji na swojej karcie",
+      "step2": "Kwota jest tymczasowo zablokowana (nie pobrana)",
+      "step3": "Na koniec wynajmu autoryzacja zostaje automatycznie zwolniona",
+      "step4": "W przypadku uszkodzeń część lub całość może zostać pobrana",
+      "authorizeNow": "Autoryzuj kaucję",
+      "linkFallback": "Lub skopiuj ten link do przeglądarki:",
+      "securePayment": "Ta autoryzacja jest zabezpieczona przez Stripe. Kwota nie zostanie natychmiast pobrana."
     }
   },
   "contract": {

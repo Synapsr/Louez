@@ -21,6 +21,8 @@ import {
   ThankYouReviewEmail,
   PaymentConfirmationEmail,
   PaymentFailedEmail,
+  PaymentRequestEmail,
+  DepositAuthorizationRequestEmail,
 } from './templates'
 
 interface Store {
@@ -1167,6 +1169,151 @@ export async function sendPaymentFailedEmail({
       to,
       subject,
       templateType: 'payment_failed',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Payment Request Email (for requesting payment from dashboard)
+export async function sendPaymentRequestEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  amount,
+  description,
+  paymentUrl,
+  customMessage,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  amount: number
+  description: string
+  paymentUrl: string
+  customMessage?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.paymentRequest.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    PaymentRequestEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      amount,
+      description,
+      paymentUrl,
+      customMessage,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_request',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_request',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Deposit Authorization Request Email (for requesting deposit authorization hold)
+export async function sendDepositAuthorizationRequestEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  depositAmount,
+  authorizationUrl,
+  customMessage,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  depositAmount: number
+  authorizationUrl: string
+  customMessage?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.depositAuthorizationRequest.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    DepositAuthorizationRequestEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      depositAmount,
+      authorizationUrl,
+      customMessage,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'deposit_authorization_request',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'deposit_authorization_request',
       status: 'failed',
       error: String(error),
     })
