@@ -29,6 +29,7 @@ import { generateStoreMetadata } from '@/lib/seo'
 import { storefrontRedirect } from '@/lib/storefront-url'
 import { LogoutButton } from '@/components/storefront/logout-button'
 import { PageTracker } from '@/components/storefront/page-tracker'
+import { SuccessToast } from './success-toast'
 
 interface AccountPageProps {
   params: Promise<{ slug: string }>
@@ -173,6 +174,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
   return (
     <>
       <PageTracker page="account" />
+      <SuccessToast />
       <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Profile Header */}

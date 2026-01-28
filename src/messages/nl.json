@@ -3086,6 +3086,12 @@
         "title": "Hoe was uw huur?",
         "description": "Uw feedback helpt {name} verbeteren",
         "leaveReview": "Laat een review achter"
+      },
+      "successToast": {
+        "payment": "Betaling succesvol",
+        "paymentDescription": "Uw betaling is geregistreerd.",
+        "deposit": "Borg succesvol geautoriseerd",
+        "depositDescription": "Het bedrag is tijdelijk geblokkeerd op uw kaart."
       }
     },
     "footer": {

@@ -3089,6 +3089,12 @@
         "title": "Como fue su alquiler?",
         "description": "Sus comentarios ayudan a {name} a mejorar",
         "leaveReview": "Dejar una resena"
+      },
+      "successToast": {
+        "payment": "Pago realizado con éxito",
+        "paymentDescription": "Su pago ha sido registrado.",
+        "deposit": "Depósito autorizado con éxito",
+        "depositDescription": "El importe ha sido bloqueado temporalmente en su tarjeta."
       }
     },
     "footer": {

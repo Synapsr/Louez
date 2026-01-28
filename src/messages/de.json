@@ -3087,6 +3087,12 @@
         "title": "Wie war Ihre Miete?",
         "description": "Ihr Feedback hilft {name}, sich zu verbessern",
         "leaveReview": "Bewertung abgeben"
+      },
+      "successToast": {
+        "payment": "Zahlung erfolgreich",
+        "paymentDescription": "Ihre Zahlung wurde registriert.",
+        "deposit": "Kaution erfolgreich autorisiert",
+        "depositDescription": "Der Betrag wurde vorübergehend auf Ihrer Karte blockiert."
       }
     },
     "footer": {

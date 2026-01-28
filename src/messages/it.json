@@ -3086,6 +3086,12 @@
         "title": "Come e stato il tuo noleggio?",
         "description": "Il tuo feedback aiuta {name} a migliorare",
         "leaveReview": "Lascia una recensione"
+      },
+      "successToast": {
+        "payment": "Pagamento effettuato con successo",
+        "paymentDescription": "Il tuo pagamento è stato registrato.",
+        "deposit": "Deposito autorizzato con successo",
+        "depositDescription": "L'importo è stato temporaneamente bloccato sulla tua carta."
       }
     },
     "footer": {
