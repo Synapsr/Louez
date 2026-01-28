@@ -3087,6 +3087,12 @@
         "title": "Como foi seu aluguel?",
         "description": "Seu feedback ajuda {name} a melhorar",
         "leaveReview": "Deixar uma avaliacao"
+      },
+      "successToast": {
+        "payment": "Pagamento efetuado com sucesso",
+        "paymentDescription": "O seu pagamento foi registado.",
+        "deposit": "Depósito autorizado com sucesso",
+        "depositDescription": "O valor foi temporariamente bloqueado no seu cartão."
       }
     },
     "footer": {

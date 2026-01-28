@@ -2283,7 +2283,24 @@ export async function requestPayment(
       paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`
     } else {
       // For rental/custom, create Stripe Checkout session
-      const successUrl = `${baseUrl}/checkout/success?reservation_id=${reservationId}`
+      // Generate instant access token for auto-login after payment
+      const accessToken = nanoid(64)
+      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: reservation.customer.email,
+        storeId: store.id,
+        code: '',
+        type: 'instant_access',
+        token: accessToken,
+        reservationId,
+        expiresAt: tokenExpiresAt,
+        createdAt: new Date(),
+      })
+
+      // Success URL redirects to account with auto-login token
+      const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservationId}`
       const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`
 
       const session = await createPaymentRequestSession({

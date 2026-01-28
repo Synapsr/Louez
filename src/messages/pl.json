@@ -3086,6 +3086,12 @@
         "title": "Jak przebiegło Twoje wypożyczenie?",
         "description": "Twoja opinia pomaga {name} się rozwijać",
         "leaveReview": "Zostaw opinię"
+      },
+      "successToast": {
+        "payment": "Płatność zakończona pomyślnie",
+        "paymentDescription": "Twoja płatność została zarejestrowana.",
+        "deposit": "Kaucja autoryzowana pomyślnie",
+        "depositDescription": "Kwota została tymczasowo zablokowana na Twojej karcie."
       }
     },
     "footer": {

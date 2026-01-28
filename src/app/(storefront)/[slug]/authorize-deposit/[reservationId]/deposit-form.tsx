@@ -48,7 +48,7 @@ function CheckoutForm({
   onSuccess,
   t,
 }: Omit<DepositFormProps, 'customer'> & {
-  onSuccess: () => void
+  onSuccess: (redirectUrl?: string) => void
   t: ReturnType<typeof useTranslations<'storefront.authorizeDeposit'>>
 }) {
   const stripe = useStripe()
@@ -97,7 +97,7 @@ function CheckoutForm({
           return
         }
 
-        onSuccess()
+        onSuccess(result.redirectUrl)
       } else {
         setErrorMessage(t('unexpectedStatus'))
         setIsProcessing(false)
@@ -199,11 +199,16 @@ export function DepositForm(props: DepositFormProps) {
     })
   }, [props.store.stripeAccountId, props.store.id, props.reservation.id])
 
-  const handleSuccess = () => {
+  const handleSuccess = (redirectUrl?: string) => {
     setIsSuccess(true)
-    // Redirect to success page after a short delay
+    // Redirect to account with auto-login after a short delay
     setTimeout(() => {
-      router.push(`/${props.store.slug}/authorize-deposit/${props.reservation.id}/success`)
+      if (redirectUrl) {
+        router.push(redirectUrl)
+      } else {
+        // Fallback to success page if no redirect URL (shouldn't happen normally)
+        router.push(`/${props.store.slug}/authorize-deposit/${props.reservation.id}/success`)
+      }
     }, 1500)
   }
 

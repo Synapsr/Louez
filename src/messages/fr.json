@@ -3085,6 +3085,12 @@
         "title": "Comment s'est passée votre location ?",
         "description": "Votre avis aide {name} à s'améliorer",
         "leaveReview": "Laisser un avis"
+      },
+      "successToast": {
+        "payment": "Paiement effectué avec succès",
+        "paymentDescription": "Votre paiement a bien été enregistré.",
+        "deposit": "Caution autorisée avec succès",
+        "depositDescription": "Le montant a été bloqué temporairement sur votre carte."
       }
     },
     "footer": {

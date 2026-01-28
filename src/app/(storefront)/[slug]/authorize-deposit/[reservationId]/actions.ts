@@ -178,22 +178,31 @@ interface ConfirmDepositAuthorizationParams {
   paymentMethodId: string
 }
 
+interface ConfirmDepositAuthorizationResult {
+  success?: boolean
+  error?: string
+  redirectUrl?: string
+}
+
 /**
  * Confirm the deposit authorization was successful
- * Updates the reservation with deposit status
+ * Updates the reservation with deposit status and generates an auto-login token
  */
 export async function confirmDepositAuthorization({
   reservationId,
   storeId,
   paymentIntentId,
   paymentMethodId,
-}: ConfirmDepositAuthorizationParams) {
-  // Get reservation
+}: ConfirmDepositAuthorizationParams): Promise<ConfirmDepositAuthorizationResult> {
+  // Get reservation with customer
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
       eq(reservations.storeId, storeId)
     ),
+    with: {
+      customer: true,
+    },
   })
 
   if (!reservation) {
@@ -250,7 +259,26 @@ export async function confirmDepositAuthorization({
       },
     })
 
-    return { success: true }
+    // Generate instant access token for auto-login redirect
+    const accessToken = nanoid(64)
+    const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+    await db.insert(verificationCodes).values({
+      id: nanoid(),
+      email: reservation.customer.email,
+      storeId,
+      code: '',
+      type: 'instant_access',
+      token: accessToken,
+      reservationId,
+      expiresAt: tokenExpiresAt,
+      createdAt: new Date(),
+    })
+
+    // Build redirect URL to account with auto-login
+    const redirectUrl = `/${store.slug}/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
+
+    return { success: true, redirectUrl }
   } catch (error) {
     console.error('Error confirming deposit authorization:', error)
     return { error: 'confirmation_failed' }

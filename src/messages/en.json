@@ -3085,6 +3085,12 @@
         "title": "How was your rental?",
         "description": "Your feedback helps {name} improve",
         "leaveReview": "Leave a Review"
+      },
+      "successToast": {
+        "payment": "Payment successful",
+        "paymentDescription": "Your payment has been recorded.",
+        "deposit": "Deposit authorized successfully",
+        "depositDescription": "The amount has been temporarily held on your card."
       }
     },
     "footer": {
