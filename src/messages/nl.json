@@ -212,6 +212,7 @@
       "noStoresFound": "Geen winkels gevonden",
       "yourStores": "Uw winkels",
       "createNewStore": "Nieuwe winkel aanmaken",
+      "multiStoreView": "Multi-winkel weergave",
       "roles": {
         "owner": "Eigenaar",
         "member": "Teamlid",
@@ -418,7 +419,8 @@
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Instellingen",
-      "store": "Mijn winkel"
+      "store": "Mijn winkel",
+      "multiStore": "Multi-winkel"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -1671,6 +1673,45 @@
         "productViews": "Productweergaven",
         "cartAdditions": "Toegevoegd aan winkelwagen",
         "orders": "Bestellingen"
+      }
+    },
+    "multiStore": {
+      "title": "Multi-winkel",
+      "description": "Overzicht van uw {count, plural, one {# winkel} other {# winkels}}",
+      "goToAStore": "Naar een winkel gaan",
+      "stats": {
+        "totalRevenue": "Totale omzet",
+        "reservations": "Reserveringen",
+        "pending": "in afwachting",
+        "customers": "Klanten",
+        "newCustomers": "nieuw",
+        "vsPreviousPeriod": "vs vorige periode"
+      },
+      "chart": {
+        "title": "Omzetontwikkeling",
+        "description": "Evolutie van de omzet per winkel"
+      },
+      "table": {
+        "title": "Uw winkels",
+        "store": "Winkel",
+        "plan": "Plan",
+        "revenue": "Omzet",
+        "change": "Verandering",
+        "reservations": "Reserveringen",
+        "customers": "Klanten",
+        "goToStore": "Toegang"
+      },
+      "limits": {
+        "title": "Limieten bereikt",
+        "description": "{count, plural, one {# winkel nadert} other {# winkels naderen}} de planlimieten",
+        "products": "producten",
+        "reservations": "reserveringen/maand",
+        "customers": "klanten",
+        "upgrade": "Upgraden"
+      },
+      "empty": {
+        "title": "Nog geen gegevens",
+        "description": "Statistieken verschijnen zodra uw winkels reserveringen hebben."
       }
     },
     "settings": {

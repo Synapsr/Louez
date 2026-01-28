@@ -27,6 +27,7 @@ const DASHBOARD_ROUTES = [
   '/dashboard',
   '/onboarding',
   '/invitation',
+  '/multi-store',
 ]
 
 /**

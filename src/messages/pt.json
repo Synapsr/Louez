@@ -212,6 +212,7 @@
       "noStoresFound": "Nenhuma loja encontrada",
       "yourStores": "Suas lojas",
       "createNewStore": "Criar uma nova loja",
+      "multiStoreView": "Vista multi-lojas",
       "roles": {
         "owner": "Proprietario",
         "member": "Membro da equipe",
@@ -418,7 +419,8 @@
       "subscription": "Assinatura",
       "settings": "Configuracoes",
       "store": "Minha loja",
-      "analytics": "Análises"
+      "analytics": "Análises",
+      "multiStore": "Multi-lojas"
     },
     "home": {
       "viewAll": "Ver tudo",
@@ -1672,6 +1674,45 @@
         "productViews": "Visualizações de produtos",
         "cartAdditions": "Adicionados ao carrinho",
         "orders": "Pedidos"
+      }
+    },
+    "multiStore": {
+      "title": "Multi-lojas",
+      "description": "Visão geral de {count, plural, one {# loja} other {# lojas}}",
+      "goToAStore": "Ir para uma loja",
+      "stats": {
+        "totalRevenue": "Receita total",
+        "reservations": "Reservas",
+        "pending": "pendentes",
+        "customers": "Clientes",
+        "newCustomers": "novos",
+        "vsPreviousPeriod": "vs período anterior"
+      },
+      "chart": {
+        "title": "Evolução da receita",
+        "description": "Evolução da receita por loja"
+      },
+      "table": {
+        "title": "Suas lojas",
+        "store": "Loja",
+        "plan": "Plano",
+        "revenue": "Receita",
+        "change": "Variação",
+        "reservations": "Reservas",
+        "customers": "Clientes",
+        "goToStore": "Acessar"
+      },
+      "limits": {
+        "title": "Limites atingidos",
+        "description": "{count, plural, one {# loja está atingindo} other {# lojas estão atingindo}} os limites do plano",
+        "products": "produtos",
+        "reservations": "reservas/mês",
+        "customers": "clientes",
+        "upgrade": "Atualizar"
+      },
+      "empty": {
+        "title": "Sem dados ainda",
+        "description": "As estatísticas aparecerão quando suas lojas tiverem reservas."
       }
     },
     "settings": {

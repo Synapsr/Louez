@@ -212,6 +212,7 @@
       "noStoresFound": "Nie znaleziono sklepów",
       "yourStores": "Twoje sklepy",
       "createNewStore": "Utwórz nowy sklep",
+      "multiStoreView": "Widok multi-sklep",
       "roles": {
         "owner": "Właściciel",
         "member": "Członek zespołu",
@@ -418,7 +419,8 @@
       "subscription": "Subskrypcja",
       "settings": "Ustawienia",
       "store": "Mój sklep",
-      "analytics": "Analizy"
+      "analytics": "Analizy",
+      "multiStore": "Multi-sklep"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -1671,6 +1673,45 @@
         "productViews": "Wyświetlenia produktów",
         "cartAdditions": "Dodane do koszyka",
         "orders": "Zamówienia"
+      }
+    },
+    "multiStore": {
+      "title": "Multi-sklep",
+      "description": "Przegląd {count, plural, one {# sklepu} few {# sklepów} other {# sklepów}}",
+      "goToAStore": "Przejdź do sklepu",
+      "stats": {
+        "totalRevenue": "Całkowity przychód",
+        "reservations": "Rezerwacje",
+        "pending": "oczekujące",
+        "customers": "Klienci",
+        "newCustomers": "nowi",
+        "vsPreviousPeriod": "vs poprzedni okres"
+      },
+      "chart": {
+        "title": "Trend przychodów",
+        "description": "Ewolucja przychodów według sklepu"
+      },
+      "table": {
+        "title": "Twoje sklepy",
+        "store": "Sklep",
+        "plan": "Plan",
+        "revenue": "Przychód",
+        "change": "Zmiana",
+        "reservations": "Rezerwacje",
+        "customers": "Klienci",
+        "goToStore": "Przejdź"
+      },
+      "limits": {
+        "title": "Zbliżające się limity",
+        "description": "{count, plural, one {# sklep zbliża się} few {# sklepy zbliżają się} other {# sklepów zbliża się}} do limitów planu",
+        "products": "produktów",
+        "reservations": "rezerwacji/mies.",
+        "customers": "klientów",
+        "upgrade": "Ulepsz"
+      },
+      "empty": {
+        "title": "Brak danych",
+        "description": "Statystyki pojawią się, gdy Twoje sklepy będą miały rezerwacje."
       }
     },
     "settings": {

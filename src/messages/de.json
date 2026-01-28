@@ -212,6 +212,7 @@
       "noStoresFound": "Keine Shops gefunden",
       "yourStores": "Ihre Shops",
       "createNewStore": "Neuen Shop erstellen",
+      "multiStoreView": "Multi-Shop Ansicht",
       "roles": {
         "owner": "Inhaber",
         "member": "Teammitglied",
@@ -418,7 +419,47 @@
       "subscription": "Abonnement",
       "settings": "Einstellungen",
       "store": "Mein Shop",
-      "analytics": "Analysen"
+      "analytics": "Analysen",
+      "multiStore": "Multi-Shop"
+    },
+    "multiStore": {
+      "title": "Multi-Shop",
+      "description": "Übersicht über Ihre {count, plural, one {# Shop} other {# Shops}}",
+      "goToAStore": "Zu einem Shop wechseln",
+      "stats": {
+        "totalRevenue": "Gesamtumsatz",
+        "reservations": "Reservierungen",
+        "pending": "ausstehend",
+        "customers": "Kunden",
+        "newCustomers": "neu",
+        "vsPreviousPeriod": "vs vorherige Periode"
+      },
+      "chart": {
+        "title": "Umsatzentwicklung",
+        "description": "Umsatz pro Shop im Zeitraum"
+      },
+      "table": {
+        "title": "Ihre Shops",
+        "store": "Shop",
+        "plan": "Plan",
+        "revenue": "Umsatz",
+        "change": "Änderung",
+        "reservations": "Reserv.",
+        "customers": "Kunden",
+        "goToStore": "Öffnen"
+      },
+      "limits": {
+        "title": "Grenzen erreicht",
+        "description": "{count, plural, one {# Shop nähert sich} other {# Shops nähern sich}} seinen Grenzen",
+        "products": "Produkte",
+        "reservations": "Reserv./Monat",
+        "customers": "Kunden",
+        "upgrade": "Upgraden"
+      },
+      "empty": {
+        "title": "Noch keine Daten",
+        "description": "Statistiken erscheinen, sobald Ihre Shops Reservierungen haben."
+      }
     },
     "home": {
       "viewAll": "Alle ansehen",

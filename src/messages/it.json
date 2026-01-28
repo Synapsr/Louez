@@ -212,6 +212,7 @@
       "noStoresFound": "Nessun negozio trovato",
       "yourStores": "I tuoi negozi",
       "createNewStore": "Crea un nuovo negozio",
+      "multiStoreView": "Vista multi-negozio",
       "roles": {
         "owner": "Proprietario",
         "member": "Membro del team",
@@ -418,7 +419,8 @@
       "subscription": "Abbonamento",
       "settings": "Impostazioni",
       "store": "Il mio negozio",
-      "analytics": "Analisi"
+      "analytics": "Analisi",
+      "multiStore": "Multi-negozio"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -1671,6 +1673,45 @@
         "productViews": "Visualizzazioni prodotti",
         "cartAdditions": "Aggiunte al carrello",
         "orders": "Ordini"
+      }
+    },
+    "multiStore": {
+      "title": "Multi-negozio",
+      "description": "Panoramica di {count, plural, one {# negozio} other {# negozi}}",
+      "goToAStore": "Vai a un negozio",
+      "stats": {
+        "totalRevenue": "Fatturato totale",
+        "reservations": "Prenotazioni",
+        "pending": "in attesa",
+        "customers": "Clienti",
+        "newCustomers": "nuovi",
+        "vsPreviousPeriod": "vs periodo precedente"
+      },
+      "chart": {
+        "title": "Andamento fatturato",
+        "description": "Evoluzione del fatturato per negozio"
+      },
+      "table": {
+        "title": "I tuoi negozi",
+        "store": "Negozio",
+        "plan": "Piano",
+        "revenue": "Fatturato",
+        "change": "Variazione",
+        "reservations": "Prenotazioni",
+        "customers": "Clienti",
+        "goToStore": "Accedi"
+      },
+      "limits": {
+        "title": "Limiti raggiunti",
+        "description": "{count, plural, one {# negozio sta raggiungendo} other {# negozi stanno raggiungendo}} i limiti del piano",
+        "products": "prodotti",
+        "reservations": "prenotazioni/mese",
+        "customers": "clienti",
+        "upgrade": "Aggiorna"
+      },
+      "empty": {
+        "title": "Nessun dato ancora",
+        "description": "Le statistiche appariranno quando i tuoi negozi avranno delle prenotazioni."
       }
     },
     "settings": {

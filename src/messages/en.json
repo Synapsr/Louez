@@ -212,6 +212,7 @@
       "noStoresFound": "No stores found",
       "yourStores": "Your stores",
       "createNewStore": "Create a new store",
+      "multiStoreView": "Multi-store view",
       "roles": {
         "owner": "Owner",
         "member": "Team member",
@@ -418,7 +419,47 @@
       "sms": "SMS",
       "subscription": "Subscription",
       "settings": "Settings",
-      "store": "My store"
+      "store": "My store",
+      "multiStore": "Multi-store"
+    },
+    "multiStore": {
+      "title": "Multi-store",
+      "description": "Overview of your {count, plural, one {# store} other {# stores}}",
+      "goToAStore": "Go to a store",
+      "stats": {
+        "totalRevenue": "Total revenue",
+        "reservations": "Reservations",
+        "pending": "pending",
+        "customers": "Customers",
+        "newCustomers": "new",
+        "vsPreviousPeriod": "vs previous period"
+      },
+      "chart": {
+        "title": "Revenue trend",
+        "description": "Revenue by store over the period"
+      },
+      "table": {
+        "title": "Your stores",
+        "store": "Store",
+        "plan": "Plan",
+        "revenue": "Revenue",
+        "change": "Change",
+        "reservations": "Reserv.",
+        "customers": "Customers",
+        "goToStore": "Go to"
+      },
+      "limits": {
+        "title": "Approaching limits",
+        "description": "{count, plural, one {# store is approaching} other {# stores are approaching}} its limits",
+        "products": "products",
+        "reservations": "reserv./month",
+        "customers": "customers",
+        "upgrade": "Upgrade"
+      },
+      "empty": {
+        "title": "No data yet",
+        "description": "Statistics will appear once your stores have reservations."
+      }
     },
     "home": {
       "viewAll": "View all",
