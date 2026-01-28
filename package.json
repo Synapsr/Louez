@@ -42,7 +42,8 @@
     "db:migrate:run": "tsx src/lib/db/migrate.ts",
     "db:baseline": "tsx src/lib/db/migrate.ts --baseline",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/scripts/seed/index.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -115,6 +116,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/canvas-confetti": "^1.9.0",
