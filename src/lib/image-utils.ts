@@ -20,20 +20,21 @@ export function isDataUrl(url: string): boolean {
 }
 
 /**
- * Converts an SVG image to a PNG data URL.
+ * Converts an SVG image to a PNG buffer.
  *
- * Most email clients and PDF renderers don't support SVG.
- * This function fetches the SVG (from a remote URL or data URL),
- * converts it to PNG using sharp, and returns a base64 data URL.
+ * Fetches the SVG (from a remote URL or data URL),
+ * converts it to PNG using sharp, and returns the raw buffer.
+ *
+ * Used by email (CID attachments) and PDF generation.
  *
  * @param imageUrl - SVG image URL (remote or data URL)
  * @param maxSize - Maximum width/height in pixels (default: 400)
- * @returns PNG data URL, or null if conversion fails
+ * @returns PNG buffer, or null if conversion fails
  */
-export async function convertSvgToPng(
+export async function convertSvgToPngBuffer(
   imageUrl: string,
   maxSize: number = 400
-): Promise<string | null> {
+): Promise<Buffer | null> {
   try {
     let imageBuffer: Buffer
 
@@ -63,7 +64,7 @@ export async function convertSvgToPng(
       imageBuffer = Buffer.from(arrayBuffer)
     }
 
-    const pngBuffer = await sharp(imageBuffer)
+    return await sharp(imageBuffer)
       .resize(maxSize, maxSize, {
         fit: 'inside',
         withoutEnlargement: true,
@@ -73,10 +74,22 @@ export async function convertSvgToPng(
         compressionLevel: 6,
       })
       .toBuffer()
-
-    return `data:image/png;base64,${pngBuffer.toString('base64')}`
   } catch (error) {
     console.error('[Image] Error converting SVG to PNG:', error)
     return null
   }
+}
+
+/**
+ * Converts an SVG image to a PNG data URL.
+ * Convenience wrapper over convertSvgToPngBuffer for contexts
+ * that need a data URL (e.g. PDF generation).
+ */
+export async function convertSvgToPng(
+  imageUrl: string,
+  maxSize: number = 400
+): Promise<string | null> {
+  const buffer = await convertSvgToPngBuffer(imageUrl, maxSize)
+  if (!buffer) return null
+  return `data:image/png;base64,${buffer.toString('base64')}`
 }

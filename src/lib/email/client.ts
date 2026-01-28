@@ -10,18 +10,26 @@ const transporter = nodemailer.createTransport({
   },
 })
 
+export interface EmailAttachment {
+  filename: string
+  content: Buffer
+  cid: string
+}
+
 interface SendEmailOptions {
   to: string
   subject: string
   html: string
+  attachments?: EmailAttachment[]
 }
 
-export async function sendEmail({ to, subject, html }: SendEmailOptions) {
+export async function sendEmail({ to, subject, html, attachments }: SendEmailOptions) {
   const result = await transporter.sendMail({
     from: process.env.SMTP_FROM,
     to,
     subject,
     html,
+    attachments,
   })
 
   return {
