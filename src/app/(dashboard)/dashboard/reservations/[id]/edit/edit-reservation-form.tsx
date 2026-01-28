@@ -812,7 +812,7 @@ export function EditReservationForm({
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Supprimer</TooltipContent>
+                              <TooltipContent>{tCommon('delete')}</TooltipContent>
                             </Tooltip>
                           </div>
                         </div>

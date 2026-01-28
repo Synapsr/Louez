@@ -417,7 +417,8 @@
       "sms": "SMS",
       "subscription": "Subskrypcja",
       "settings": "Ustawienia",
-      "store": "Mój sklep"
+      "store": "Mój sklep",
+      "analytics": "Analizy"
     },
     "home": {
       "viewAll": "Zobacz wszystko",
@@ -627,6 +628,8 @@
         "mainBadge": "Główne",
         "imageError": "Proszę wybrać zdjęcie",
         "imageSizeError": "Zdjęcie nie może przekraczać 5 MB",
+        "uploading": "Przesyłanie...",
+        "imageUploadError": "Błąd przesyłania",
         "information": "Informacje",
         "name": "Nazwa produktu",
         "namePlaceholder": "Np. Rower górski XC 500",
@@ -2607,21 +2610,21 @@
       "breadcrumb": {
         "home": "Strona główna",
         "catalog": "Katalog"
-      },
-      "accessories": {
-        "productAdded": "Dodano do koszyka",
-        "youMightAlsoLike": "Może ci się też spodobać",
-        "selectAccessories": "Wybierz akcesoria do dodania",
-        "available": "{count, plural, one {# dostępny} few {# dostępne} other {# dostępnych}}",
-        "pricingUnit": {
-          "day": "dzień",
-          "hour": "godzina",
-          "week": "tydzień"
-        },
-        "continueWithout": "Kontynuuj bez akcesoriów",
-        "addToCart": "{count, plural, one {Dodaj # akcesorium} few {Dodaj # akcesoria} other {Dodaj # akcesoriów}}",
-        "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} other {# akcesoriów dodanych do koszyka}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Dodano do koszyka",
+      "youMightAlsoLike": "Może Ci się również spodobać",
+      "selectAccessories": "Wybierz akcesoria do dodania",
+      "available": "{count, plural, one {# dostępny} few {# dostępne} many {# dostępnych} other {# dostępnych}}",
+      "pricingUnit": {
+        "day": "dzień",
+        "hour": "godzina",
+        "week": "tydzień"
+      },
+      "continueWithout": "Kontynuuj bez akcesoriów",
+      "addToCart": "{count, plural, one {Dodaj # akcesorium} few {Dodaj # akcesoria} many {Dodaj # akcesoriów} other {Dodaj # akcesoriów}}",
+      "accessoriesAdded": "{count, plural, one {# akcesorium dodane do koszyka} few {# akcesoria dodane do koszyka} many {# akcesoriów dodanych do koszyka} other {# akcesoriów dodanych do koszyka}}"
     },
     "dateSelection": {
       "title": "Kiedy chcesz wynająć?",
@@ -2836,6 +2839,8 @@
         "savingsBanner": "Oszczędzasz {amount} dzięki zniżce długoterminowej"
       },
       "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu.",
+      "depositLabel": "Kaucja (autoryzacja)",
+      "depositAuthorizationInfo": "Twoja karta zostanie zapisana. Autoryzacja zostanie przeprowadzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
       "success": {
         "confirmedTitle": "Płatność potwierdzona!",
         "confirmedDescription": "Twoja płatność została zaakceptowana. Otrzymasz email z potwierdzeniem.",
@@ -2866,8 +2871,7 @@
       "emailConfirmation": "Email z potwierdzeniem",
       "confirmationSentTo": "Potwierdzenie wysłane do",
       "subtotalLabel": "Suma częściowa",
-      "depositLabel": "Kaucja (autoryzacja)",
-      "depositAuthorizationInfo": "Twoja karta zostanie zapisana. Autoryzacja zostanie utworzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
+      "depositLabel": "Kaucja",
       "totalLabel": "Suma",
       "whatNext": "Następne kroki",
       "stepRequest1": "Przeglądamy Twoje żądanie rezerwacji",
@@ -2968,7 +2972,9 @@
           "deposit": "Kaucja",
           "deposit_return": "Zwrot kaucji",
           "damage": "Uszkodzenia",
-          "adjustment": "Korekta"
+          "adjustment": "Korekta",
+          "deposit_hold": "Autoryzacja",
+          "deposit_capture": "Kaucja pobrana"
         },
         "methods": {
           "stripe": "Karta online",
@@ -2982,7 +2988,9 @@
           "completed": "Zapłacone",
           "pending": "Oczekujące",
           "failed": "Nieudane",
-          "refunded": "Zwrócone"
+          "refunded": "Zwrócone",
+          "cancelled": "Anulowane",
+          "authorized": "Autoryzowane"
         }
       },
       "reviewPrompt": {
@@ -3420,6 +3428,7 @@
     "maxValue": "Maksymalna wartość to {max}",
     "url": "Nieprawidłowy URL",
     "slug": "URL może zawierać tylko małe litery, cyfry i myślniki",
+    "slugReserved": "Ten adres URL jest zarezerwowany i nie może być używany",
     "positive": "Wartość musi być dodatnia",
     "integer": "Wartość musi być liczbą całkowitą",
     "date": "Nieprawidłowa data",
@@ -3519,6 +3528,8 @@
     "emailAlreadyExists": "Klient z tym emailem już istnieje",
     "customerHasReservations": "Nie można usunąć klienta z rezerwacjami",
     "cannotCancelReservation": "Tej rezerwacji nie można anulować",
+    "cannotEditCompletedReservation": "Zakończone rezerwacje nie mogą być edytowane",
+    "negativeAmountOnlyForAdjustment": "Ujemne kwoty są dozwolone tylko dla korekt",
     "productRequired": "Produkt wymagany",
     "customerRequired": "Klient wymagany",
     "productUnavailable": "Produkt niedostępny: {name}",
@@ -3562,8 +3573,17 @@
       "noChargeToRefund": "Brak płatności Stripe do zwrotu",
       "alreadyRefunded": "Ta płatność została już zwrócona",
       "refundExceedsCharge": "Kwota zwrotu przekracza kwotę płatności",
-      "refundFailed": "Błąd podczas zwrotu"
+      "refundFailed": "Błąd podczas zwrotu",
+      "noSavedCard": "Brak zapisanej karty dla tego klienta",
+      "invalidDepositStatus": "Status kaucji nie pozwala na tę operację",
+      "noDepositRequired": "Kaucja nie jest wymagana dla tej rezerwacji",
+      "authorizationFailed": "Nie udało się utworzyć autoryzacji",
+      "noActiveAuthorization": "Brak aktywnej autoryzacji dla tej rezerwacji",
+      "captureFailed": "Nie udało się pobrać kaucji",
+      "releaseFailed": "Nie udało się zwolnić kaucji"
     },
+    "reasonRequired": "Proszę podać powód",
+    "invalidAmount": "Nieprawidłowa kwota",
     "invalidOrExpiredToken": "Ten link jest nieprawidłowy lub wygasł. Poproś o nowy link dostępu.",
     "alreadyPaid": "Ta rezerwacja jest już opłacona.",
     "paymentNotAvailable": "Płatność online nie jest dostępna dla tego sklepu.",

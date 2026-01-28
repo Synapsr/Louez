@@ -417,7 +417,8 @@
       "sms": "SMS",
       "subscription": "Abbonamento",
       "settings": "Impostazioni",
-      "store": "Il mio negozio"
+      "store": "Il mio negozio",
+      "analytics": "Analisi"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -2609,21 +2610,21 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogo"
-      },
-      "accessories": {
-        "productAdded": "Aggiunto al carrello",
-        "youMightAlsoLike": "Potrebbe piacerti anche",
-        "selectAccessories": "Seleziona gli accessori da aggiungere",
-        "available": "{count, plural, one {# disponibile} other {# disponibili}}",
-        "pricingUnit": {
-          "day": "giorno",
-          "hour": "ora",
-          "week": "settimana"
-        },
-        "continueWithout": "Continua senza accessori",
-        "addToCart": "{count, plural, one {Aggiungi # accessorio} other {Aggiungi # accessori}}",
-        "accessoriesAdded": "{count, plural, one {# accessorio aggiunto al carrello} other {# accessori aggiunti al carrello}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Aggiunto al carrello",
+      "youMightAlsoLike": "Potrebbe piacerti anche",
+      "selectAccessories": "Seleziona gli accessori da aggiungere",
+      "available": "{count, plural, one {# disponibile} other {# disponibili}}",
+      "pricingUnit": {
+        "day": "giorno",
+        "hour": "ora",
+        "week": "settimana"
+      },
+      "continueWithout": "Continua senza accessori",
+      "addToCart": "{count, plural, one {Aggiungi # accessorio} other {Aggiungi # accessori}}",
+      "accessoriesAdded": "{count, plural, one {# accessorio aggiunto al carrello} other {# accessori aggiunti al carrello}}"
     },
     "dateSelection": {
       "title": "Quando vuoi noleggiare?",
@@ -2838,6 +2839,8 @@
         "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
       },
       "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
+      "depositLabel": "Deposito (autorizzazione)",
+      "depositAuthorizationInfo": "La tua carta verrà salvata. Un'autorizzazione verrà effettuata al ritiro. Nessun importo verrà addebitato se tutto viene restituito in buone condizioni.",
       "success": {
         "confirmedTitle": "Pagamento confermato!",
         "confirmedDescription": "Il tuo pagamento e stato accettato. Riceverai un'email di conferma.",
@@ -2868,8 +2871,7 @@
       "emailConfirmation": "Email di conferma",
       "confirmationSentTo": "Conferma inviata a",
       "subtotalLabel": "Subtotale",
-      "depositLabel": "Deposito (autorizzazione)",
-      "depositAuthorizationInfo": "La tua carta sara salvata. Un'autorizzazione sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
+      "depositLabel": "Deposito",
       "totalLabel": "Totale",
       "whatNext": "Prossimi passi",
       "stepRequest1": "Stiamo esaminando la tua richiesta di prenotazione",
@@ -2970,7 +2972,9 @@
           "deposit": "Deposito",
           "deposit_return": "Rimborso deposito",
           "damage": "Danni",
-          "adjustment": "Aggiustamento"
+          "adjustment": "Aggiustamento",
+          "deposit_hold": "Autorizzazione",
+          "deposit_capture": "Deposito addebitato"
         },
         "methods": {
           "stripe": "Carta online",
@@ -2984,7 +2988,9 @@
           "completed": "Pagato",
           "pending": "In attesa",
           "failed": "Fallito",
-          "refunded": "Rimborsato"
+          "refunded": "Rimborsato",
+          "cancelled": "Annullato",
+          "authorized": "Autorizzato"
         }
       },
       "reviewPrompt": {
@@ -3422,6 +3428,7 @@
     "maxValue": "Il valore massimo e {max}",
     "url": "URL non valido",
     "slug": "L'URL puo contenere solo lettere minuscole, numeri e trattini",
+    "slugReserved": "Questo URL è riservato e non può essere utilizzato",
     "positive": "Il valore deve essere positivo",
     "integer": "Il valore deve essere un numero intero",
     "date": "Data non valida",
@@ -3521,6 +3528,8 @@
     "emailAlreadyExists": "Esiste gia un cliente con questa email",
     "customerHasReservations": "Impossibile eliminare un cliente con prenotazioni",
     "cannotCancelReservation": "Questa prenotazione non puo essere annullata",
+    "cannotEditCompletedReservation": "Le prenotazioni completate non possono essere modificate",
+    "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",
     "customerRequired": "Cliente richiesto",
     "productUnavailable": "Prodotto non disponibile: {name}",
@@ -3564,8 +3573,17 @@
       "noChargeToRefund": "Nessun pagamento Stripe da rimborsare",
       "alreadyRefunded": "Questo pagamento e gia stato rimborsato",
       "refundExceedsCharge": "L'importo del rimborso supera l'importo del pagamento",
-      "refundFailed": "Errore nel rimborso"
+      "refundFailed": "Errore nel rimborso",
+      "noSavedCard": "Nessuna carta salvata per questo cliente",
+      "invalidDepositStatus": "Lo stato del deposito non consente questa operazione",
+      "noDepositRequired": "Nessun deposito richiesto per questa prenotazione",
+      "authorizationFailed": "Impossibile creare l'autorizzazione",
+      "noActiveAuthorization": "Nessuna autorizzazione attiva per questa prenotazione",
+      "captureFailed": "Impossibile incassare il deposito",
+      "releaseFailed": "Impossibile rilasciare il deposito"
     },
+    "reasonRequired": "Indicare un motivo",
+    "invalidAmount": "Importo non valido",
     "invalidOrExpiredToken": "Questo link non e valido o e scaduto. Per favore richiedi un nuovo link di accesso.",
     "alreadyPaid": "Questa prenotazione e gia stata pagata.",
     "paymentNotAvailable": "Il pagamento online non e disponibile per questo negozio.",
