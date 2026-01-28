@@ -56,6 +56,35 @@ export interface BillingAddress {
 }
 
 // ============================================================================
+// Delivery Settings
+// ============================================================================
+
+/**
+ * Delivery mode determines how delivery is offered to customers:
+ * - 'optional': Customer chooses between pickup and delivery (default)
+ * - 'required': Delivery is mandatory, no pickup option
+ * - 'included': Delivery is mandatory and free (included in price)
+ */
+export type DeliveryMode = 'optional' | 'required' | 'included'
+
+export interface DeliverySettings {
+  /** Whether delivery is enabled for this store */
+  enabled: boolean
+  /** How delivery is offered to customers */
+  mode: DeliveryMode
+  /** Price per kilometer in store currency */
+  pricePerKm: number
+  /** Whether the price is for round-trip (true) or one-way (false) */
+  roundTrip: boolean
+  /** Minimum delivery fee regardless of distance */
+  minimumFee: number
+  /** Maximum delivery distance in km, null = unlimited */
+  maximumDistance: number | null
+  /** Order subtotal above which delivery is free, null = no free delivery */
+  freeDeliveryThreshold: number | null
+}
+
+// ============================================================================
 // Store Settings
 // ============================================================================
 
@@ -92,6 +121,7 @@ export interface StoreSettings {
   currency?: string   // ISO 4217 currency code (e.g., 'EUR', 'USD', 'GBP')
   tax?: TaxSettings   // Configuration des taxes
   billingAddress?: BillingAddress  // Separate billing address for contracts
+  delivery?: DeliverySettings  // Delivery configuration
 }
 
 export interface StoreTheme {

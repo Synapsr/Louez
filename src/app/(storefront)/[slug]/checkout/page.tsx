@@ -61,6 +61,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
   const taxSettings = store.settings?.tax
   const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
+  const deliverySettings = store.settings?.delivery
+  const storeAddress = store.address
+  const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
+  const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
 
   return (
     <>
@@ -86,6 +90,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           cgv={store.cgv}
           taxSettings={taxSettings}
           depositPercentage={depositPercentage}
+          deliverySettings={deliverySettings}
+          storeAddress={storeAddress}
+          storeLatitude={storeLatitude}
+          storeLongitude={storeLongitude}
         />
       </div>
     </>

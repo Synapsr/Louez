@@ -22,6 +22,7 @@ import {
   getEffectivePricingMode,
 } from '@/lib/pricing/calculate'
 import type { PricingMode } from '@/lib/pricing/types'
+import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 
 interface ReservationItem {
   productId: string
@@ -31,6 +32,16 @@ interface ReservationItem {
   unitPrice: number
   depositPerUnit: number
   productSnapshot: ProductSnapshot
+}
+
+interface DeliveryInput {
+  option: 'pickup' | 'delivery'
+  address?: string
+  city?: string
+  postalCode?: string
+  country?: string
+  latitude?: number
+  longitude?: number
 }
 
 interface CreateReservationInput {
@@ -52,6 +63,7 @@ interface CreateReservationInput {
   depositAmount: number
   totalAmount: number
   locale?: 'fr' | 'en'
+  delivery?: DeliveryInput
 }
 
 async function generateUniqueReservationNumber(storeId: string, maxRetries = 5): Promise<string> {
@@ -246,22 +258,82 @@ export async function createReservation(input: CreateReservationInput) {
 
     const serverTotalAmount = serverSubtotal + serverTotalDeposit
 
-    // Log total mismatch for monitoring
-    if (Math.abs(input.totalAmount - serverTotalAmount) > 0.01) {
+    // ===== DELIVERY VALIDATION AND FEE CALCULATION =====
+    let deliveryFee = 0
+    let deliveryDistanceKm: number | null = null
+    const deliverySettings = storeSettings?.delivery
+    const deliveryMode = deliverySettings?.mode || 'optional'
+    const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
+    const isDeliveryIncluded = deliveryMode === 'included'
+
+    // Validate that delivery is selected when mode is forced
+    if (isDeliveryForced && deliverySettings?.enabled && input.delivery?.option !== 'delivery') {
+      return { error: 'errors.deliveryRequired' }
+    }
+
+    if (input.delivery?.option === 'delivery') {
+      // Validate delivery is enabled for this store
+      if (!deliverySettings?.enabled) {
+        return { error: 'errors.deliveryNotEnabled' }
+      }
+
+      // Validate delivery address is provided
+      if (!input.delivery.latitude || !input.delivery.longitude) {
+        return { error: 'errors.deliveryAddressRequired' }
+      }
+
+      // Validate store has coordinates for distance calculation
+      if (!store.latitude || !store.longitude) {
+        return { error: 'errors.storeCoordinatesNotConfigured' }
+      }
+
+      // Calculate distance from store to delivery address (server-side recalculation)
+      const storeLatitude = parseFloat(store.latitude)
+      const storeLongitude = parseFloat(store.longitude)
+      deliveryDistanceKm = calculateHaversineDistance(
+        storeLatitude,
+        storeLongitude,
+        input.delivery.latitude,
+        input.delivery.longitude
+      )
+
+      // Validate distance is within allowed range
+      const deliveryValidation = validateDelivery(deliveryDistanceKm, deliverySettings)
+      if (!deliveryValidation.valid) {
+        return {
+          error: 'errors.deliveryTooFar',
+          errorParams: { maxDistance: deliverySettings.maximumDistance },
+        }
+      }
+
+      // Calculate delivery fee (server-side, never trust client)
+      // If mode is 'included', fee is always 0
+      deliveryFee = isDeliveryIncluded
+        ? 0
+        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal)
+    }
+
+    // Add delivery fee to total
+    const serverTotalWithDelivery = serverTotalAmount + deliveryFee
+
+    // Log total mismatch for monitoring (include delivery fee in comparison)
+    if (Math.abs(input.totalAmount - serverTotalWithDelivery) > 0.01) {
       console.warn('[SECURITY] Total amount mismatch detected', {
         clientTotal: input.totalAmount,
-        serverTotal: serverTotalAmount,
+        serverTotal: serverTotalWithDelivery,
         clientSubtotal: input.subtotalAmount,
         serverSubtotal,
         clientDeposit: input.depositAmount,
         serverDeposit: serverTotalDeposit,
+        serverDeliveryFee: deliveryFee,
       })
     }
 
     // Use server-calculated values for all monetary operations
     const finalSubtotal = serverSubtotal
     const finalDeposit = serverTotalDeposit
-    const finalTotal = serverTotalAmount
+    const finalDeliveryFee = deliveryFee
+    const finalTotal = serverTotalWithDelivery
 
     // Check for date conflicts with existing reservations
     // This prevents race conditions where availability was checked earlier but changed since
@@ -414,6 +486,16 @@ export async function createReservation(input: CreateReservationInput) {
       taxRate: taxRate?.toFixed(2) ?? null,
       customerNotes: input.customerNotes || null,
       source: 'online',
+      // Delivery fields
+      deliveryOption: input.delivery?.option || 'pickup',
+      deliveryAddress: input.delivery?.option === 'delivery' ? input.delivery.address : null,
+      deliveryCity: input.delivery?.option === 'delivery' ? input.delivery.city : null,
+      deliveryPostalCode: input.delivery?.option === 'delivery' ? input.delivery.postalCode : null,
+      deliveryCountry: input.delivery?.option === 'delivery' ? input.delivery.country : null,
+      deliveryLatitude: input.delivery?.option === 'delivery' ? input.delivery.latitude?.toString() : null,
+      deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
+      deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+      deliveryFee: finalDeliveryFee.toFixed(2),
     })
 
     // Create reservation items with tax calculations (using SERVER-CALCULATED prices)

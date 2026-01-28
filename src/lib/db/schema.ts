@@ -513,6 +513,17 @@ export const reservations = mysqlTable(
     customerNotes: text('customer_notes'),
     internalNotes: text('internal_notes'),
 
+    // Delivery
+    deliveryOption: varchar('delivery_option', { length: 20 }).default('pickup'), // 'pickup' | 'delivery'
+    deliveryAddress: text('delivery_address'),
+    deliveryCity: varchar('delivery_city', { length: 255 }),
+    deliveryPostalCode: varchar('delivery_postal_code', { length: 20 }),
+    deliveryCountry: varchar('delivery_country', { length: 2 }),
+    deliveryLatitude: decimal('delivery_latitude', { precision: 10, scale: 7 }),
+    deliveryLongitude: decimal('delivery_longitude', { precision: 10, scale: 7 }),
+    deliveryDistanceKm: decimal('delivery_distance_km', { precision: 8, scale: 2 }),
+    deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default('0'),
+
     // Source
     source: varchar('source', { length: 20 }).default('online'),
 
