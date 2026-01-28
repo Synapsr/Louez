@@ -25,7 +25,17 @@ export default async function DashboardLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
-      <PostHogProvider>
+      <PostHogProvider
+        user={
+          session.user?.id && session.user?.email
+            ? {
+                id: session.user.id,
+                email: session.user.email,
+                name: session.user.name,
+              }
+            : undefined
+        }
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
