@@ -2971,7 +2971,9 @@
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",
           "damage": "Damages",
-          "adjustment": "Adjustment"
+          "adjustment": "Adjustment",
+          "deposit_hold": "Authorization hold",
+          "deposit_capture": "Deposit captured"
         },
         "methods": {
           "stripe": "Online card",
@@ -2985,7 +2987,9 @@
           "completed": "Paid",
           "pending": "Pending",
           "failed": "Failed",
-          "refunded": "Refunded"
+          "refunded": "Refunded",
+          "cancelled": "Cancelled",
+          "authorized": "Authorized"
         }
       },
       "reviewPrompt": {

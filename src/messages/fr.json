@@ -2971,7 +2971,9 @@
           "deposit": "Caution",
           "deposit_return": "Remboursement caution",
           "damage": "Dommages",
-          "adjustment": "Ajustement"
+          "adjustment": "Ajustement",
+          "deposit_hold": "Empreinte bancaire",
+          "deposit_capture": "Caution prélevée"
         },
         "methods": {
           "stripe": "Carte en ligne",
@@ -2985,7 +2987,9 @@
           "completed": "Payé",
           "pending": "En attente",
           "failed": "Échoué",
-          "refunded": "Remboursé"
+          "refunded": "Remboursé",
+          "cancelled": "Annulé",
+          "authorized": "Autorisé"
         }
       },
       "reviewPrompt": {

@@ -417,7 +417,8 @@
       "sms": "SMS",
       "subscription": "Assinatura",
       "settings": "Configuracoes",
-      "store": "Minha loja"
+      "store": "Minha loja",
+      "analytics": "Análises"
     },
     "home": {
       "viewAll": "Ver tudo",
@@ -627,6 +628,8 @@
         "mainBadge": "Principal",
         "imageError": "Por favor, selecione uma imagem",
         "imageSizeError": "A imagem nao deve exceder 5 MB",
+        "uploading": "Enviando...",
+        "imageUploadError": "Falha no envio",
         "information": "Informacoes",
         "name": "Nome do produto",
         "namePlaceholder": "Ex: Bicicleta de Montanha XC 500",
@@ -2608,21 +2611,21 @@
       "breadcrumb": {
         "home": "Inicio",
         "catalog": "Catalogo"
-      },
-      "accessories": {
-        "productAdded": "Adicionado ao carrinho",
-        "youMightAlsoLike": "Também pode gostar",
-        "selectAccessories": "Selecione os acessórios a adicionar",
-        "available": "{count, plural, one {# disponível} other {# disponíveis}}",
-        "pricingUnit": {
-          "day": "dia",
-          "hour": "hora",
-          "week": "semana"
-        },
-        "continueWithout": "Continuar sem acessórios",
-        "addToCart": "{count, plural, one {Adicionar # acessório} other {Adicionar # acessórios}}",
-        "accessoriesAdded": "{count, plural, one {# acessório adicionado ao carrinho} other {# acessórios adicionados ao carrinho}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Adicionado ao carrinho",
+      "youMightAlsoLike": "Também pode gostar",
+      "selectAccessories": "Selecione os acessórios a adicionar",
+      "available": "{count, plural, one {# disponível} other {# disponíveis}}",
+      "pricingUnit": {
+        "day": "dia",
+        "hour": "hora",
+        "week": "semana"
+      },
+      "continueWithout": "Continuar sem acessórios",
+      "addToCart": "{count, plural, one {Adicionar # acessório} other {Adicionar # acessórios}}",
+      "accessoriesAdded": "{count, plural, one {# acessório adicionado ao carrinho} other {# acessórios adicionados ao carrinho}}"
     },
     "dateSelection": {
       "title": "Quando gostaria de alugar?",
@@ -2837,6 +2840,8 @@
         "savingsBanner": "Voce economiza {amount} com o desconto de longa duracao"
       },
       "depositInfo": "Uma retencao de {amount} sera feita no seu cartao como deposito de seguranca. Este valor nao sera cobrado e sera liberado na devolucao do equipamento.",
+      "depositLabel": "Caução (autorização)",
+      "depositAuthorizationInfo": "O seu cartão será guardado. Uma autorização será realizada na retirada. Nenhum valor será cobrado se tudo for devolvido em bom estado.",
       "success": {
         "confirmedTitle": "Pagamento confirmado!",
         "confirmedDescription": "Seu pagamento foi aceito. Voce recebera um email de confirmacao.",
@@ -2867,8 +2872,7 @@
       "emailConfirmation": "Email de confirmacao",
       "confirmationSentTo": "Confirmacao enviada para",
       "subtotalLabel": "Subtotal",
-      "depositLabel": "Caucao (autorizacao)",
-      "depositAuthorizationInfo": "Seu cartao sera salvo. Uma autorizacao sera criada na retirada. Nenhum valor sera cobrado se tudo for devolvido em boas condicoes.",
+      "depositLabel": "Caucao",
       "totalLabel": "Total",
       "whatNext": "Proximos passos",
       "stepRequest1": "Estamos analisando sua solicitacao de reserva",
@@ -2969,7 +2973,9 @@
           "deposit": "Deposito",
           "deposit_return": "Devolucao de deposito",
           "damage": "Danos",
-          "adjustment": "Ajuste"
+          "adjustment": "Ajuste",
+          "deposit_hold": "Autorização",
+          "deposit_capture": "Caução capturada"
         },
         "methods": {
           "stripe": "Cartao online",
@@ -2983,7 +2989,9 @@
           "completed": "Pago",
           "pending": "Pendente",
           "failed": "Falhou",
-          "refunded": "Reembolsado"
+          "refunded": "Reembolsado",
+          "cancelled": "Cancelado",
+          "authorized": "Autorizado"
         }
       },
       "reviewPrompt": {
@@ -3421,6 +3429,7 @@
     "maxValue": "O valor maximo e {max}",
     "url": "URL invalida",
     "slug": "A URL so pode conter letras minusculas, numeros e hifens",
+    "slugReserved": "Este URL está reservado e não pode ser utilizado",
     "positive": "O valor deve ser positivo",
     "integer": "O valor deve ser um numero inteiro",
     "date": "Data invalida",
@@ -3520,6 +3529,8 @@
     "emailAlreadyExists": "Ja existe um cliente com este email",
     "customerHasReservations": "Nao e possivel excluir um cliente com reservas",
     "cannotCancelReservation": "Esta reserva nao pode ser cancelada",
+    "cannotEditCompletedReservation": "Reservas concluídas não podem ser editadas",
+    "negativeAmountOnlyForAdjustment": "Valores negativos são permitidos apenas para ajustes",
     "productRequired": "Produto obrigatorio",
     "customerRequired": "Cliente obrigatorio",
     "productUnavailable": "Produto indisponivel: {name}",
@@ -3563,8 +3574,17 @@
       "noChargeToRefund": "Nenhum pagamento Stripe para reembolsar",
       "alreadyRefunded": "Este pagamento ja foi reembolsado",
       "refundExceedsCharge": "O valor do reembolso excede o valor do pagamento",
-      "refundFailed": "Erro no reembolso"
+      "refundFailed": "Erro no reembolso",
+      "noSavedCard": "Nenhum cartão guardado para este cliente",
+      "invalidDepositStatus": "O estado do depósito não permite esta operação",
+      "noDepositRequired": "Nenhum depósito necessário para esta reserva",
+      "authorizationFailed": "Não foi possível criar a autorização",
+      "noActiveAuthorization": "Nenhuma autorização ativa para esta reserva",
+      "captureFailed": "Não foi possível cobrar o depósito",
+      "releaseFailed": "Não foi possível liberar o depósito"
     },
+    "reasonRequired": "Por favor indique um motivo",
+    "invalidAmount": "Valor inválido",
     "invalidOrExpiredToken": "Este link e invalido ou expirou. Por favor solicite um novo link de acesso.",
     "alreadyPaid": "Esta reserva ja foi paga.",
     "paymentNotAvailable": "Pagamento online nao esta disponivel para esta loja.",

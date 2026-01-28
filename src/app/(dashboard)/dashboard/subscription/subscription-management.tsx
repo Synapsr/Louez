@@ -133,6 +133,7 @@ export function SubscriptionManagement({
   const [showCancelModal, setShowCancelModal] = useState(false)
   const router = useRouter()
   const t = useTranslations('dashboard.settings.subscription')
+  const tCommon = useTranslations('common')
 
   useEffect(() => {
     if (showSuccess || showCanceled) {
@@ -321,7 +322,7 @@ export function SubscriptionManagement({
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erreur</AlertTitle>
+          <AlertTitle>{tCommon('error')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}

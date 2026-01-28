@@ -36,6 +36,7 @@
     "all": "Alle",
     "none": "Geen",
     "other": "Overig",
+    "optional": "Optioneel",
     "actions": "Acties",
     "details": "Details",
     "status": "Status",
@@ -411,6 +412,7 @@
       "calendar": "Kalender",
       "categories": "Categorieën",
       "statistics": "Statistieken",
+      "analytics": "Analyses",
       "team": "Team",
       "referrals": "Verwijzingen",
       "sms": "SMS",
@@ -2608,21 +2610,21 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogus"
-      },
-      "accessories": {
-        "productAdded": "Toegevoegd aan winkelwagen",
-        "youMightAlsoLike": "Misschien vind je dit ook leuk",
-        "selectAccessories": "Selecteer accessoires om toe te voegen",
-        "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
-        "pricingUnit": {
-          "day": "dag",
-          "hour": "uur",
-          "week": "week"
-        },
-        "continueWithout": "Doorgaan zonder accessoires",
-        "addToCart": "{count, plural, one {# accessoire toevoegen} other {# accessoires toevoegen}}",
-        "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Toegevoegd aan winkelwagen",
+      "youMightAlsoLike": "Misschien vind je dit ook leuk",
+      "selectAccessories": "Selecteer accessoires om toe te voegen",
+      "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
+      "pricingUnit": {
+        "day": "dag",
+        "hour": "uur",
+        "week": "week"
+      },
+      "continueWithout": "Doorgaan zonder accessoires",
+      "addToCart": "{count, plural, one {# accessoire toevoegen} other {# accessoires toevoegen}}",
+      "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
     },
     "dateSelection": {
       "title": "Wanneer wilt u huren?",
@@ -2837,6 +2839,8 @@
         "savingsBanner": "U bespaart {amount} met de langdurige korting"
       },
       "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
+      "depositLabel": "Borg (autorisatie)",
+      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij afhaling wordt een autorisatie uitgevoerd. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt teruggebracht.",
       "success": {
         "confirmedTitle": "Betaling bevestigd!",
         "confirmedDescription": "Uw betaling is geaccepteerd. U ontvangt een bevestigingsmail.",
@@ -2867,8 +2871,7 @@
       "emailConfirmation": "Bevestigingsmail",
       "confirmationSentTo": "Bevestiging verzonden naar",
       "subtotalLabel": "Subtotaal",
-      "depositLabel": "Borg (autorisatie)",
-      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij ophalen wordt een autorisatie aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
+      "depositLabel": "Borg",
       "totalLabel": "Totaal",
       "whatNext": "Volgende stappen",
       "stepRequest1": "We beoordelen uw reserveringsaanvraag",
@@ -2969,7 +2972,9 @@
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",
           "damage": "Schade",
-          "adjustment": "Aanpassing"
+          "adjustment": "Aanpassing",
+          "deposit_hold": "Autorisatie",
+          "deposit_capture": "Borg geïnd"
         },
         "methods": {
           "stripe": "Online kaart",
@@ -2983,7 +2988,9 @@
           "completed": "Betaald",
           "pending": "In afwachting",
           "failed": "Mislukt",
-          "refunded": "Terugbetaald"
+          "refunded": "Terugbetaald",
+          "cancelled": "Geannuleerd",
+          "authorized": "Geautoriseerd"
         }
       },
       "reviewPrompt": {
@@ -3426,6 +3433,7 @@
     "maxValue": "Maximumwaarde is {max}",
     "url": "Ongeldige URL",
     "slug": "URL mag alleen kleine letters, cijfers en streepjes bevatten",
+    "slugReserved": "Deze URL is gereserveerd en kan niet worden gebruikt",
     "positive": "Waarde moet positief zijn",
     "integer": "Waarde moet een geheel getal zijn",
     "date": "Ongeldige datum",
@@ -3525,6 +3533,8 @@
     "emailAlreadyExists": "Er bestaat al een klant met dit e-mailadres",
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
+    "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
+    "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",
     "productUnavailable": "Product niet beschikbaar: {name}",
@@ -3568,8 +3578,17 @@
       "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
       "alreadyRefunded": "Deze betaling is al terugbetaald",
       "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
-      "refundFailed": "Fout bij terugbetaling"
+      "refundFailed": "Fout bij terugbetaling",
+      "noSavedCard": "Geen kaart opgeslagen voor deze klant",
+      "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
+      "noDepositRequired": "Geen borg vereist voor deze reservering",
+      "authorizationFailed": "Kan autorisatie niet aanmaken",
+      "noActiveAuthorization": "Geen actieve autorisatie voor deze reservering",
+      "captureFailed": "Kan borg niet innen",
+      "releaseFailed": "Kan borg niet vrijgeven"
     },
+    "reasonRequired": "Geef een reden op",
+    "invalidAmount": "Ongeldig bedrag",
     "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
     "alreadyPaid": "Deze reservering is al betaald.",
     "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
