@@ -1835,7 +1835,9 @@
           "description": "Otrzymaj 50% zniżki na wszystkie plany. Cena gwarantowana dożywotnio dla pierwszych subskrybentów.",
           "guaranteedForLife": "Cena gwarantowana dożywotnio",
           "endsOn": "Oferta ważna do 1 marca 2026"
-        }
+        },
+        "pricesExcludingTax": "Ceny netto",
+        "excludingTax": "netto"
       },
       "team": "Zespół",
       "saveChanges": "Zapisz zmiany",

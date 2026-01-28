@@ -131,6 +131,10 @@ export async function createSubscriptionCheckoutSession({
     },
     allow_promotion_codes: true,
     billing_address_collection: 'required',
+    // Automatically calculate and add tax based on customer location
+    automatic_tax: {
+      enabled: true,
+    },
     tax_id_collection: {
       enabled: true,
     },

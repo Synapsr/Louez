@@ -1835,7 +1835,9 @@
           "description": "Ottieni il 50% di sconto su tutti i piani. Prezzo garantito a vita per i primi iscritti.",
           "guaranteedForLife": "Prezzo garantito a vita",
           "endsOn": "Offerta valida fino al 1° marzo 2026"
-        }
+        },
+        "pricesExcludingTax": "Prezzi IVA esclusa",
+        "excludingTax": "IVA escl."
       },
       "team": "Team",
       "saveChanges": "Salva modifiche",

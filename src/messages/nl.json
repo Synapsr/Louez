@@ -1835,7 +1835,9 @@
           "description": "Krijg 50% korting op alle plannen. Prijs levenslang gegarandeerd voor vroege inschrijvers.",
           "guaranteedForLife": "Prijs levenslang gegarandeerd",
           "endsOn": "Aanbieding geldig tot 1 maart 2026"
-        }
+        },
+        "pricesExcludingTax": "Prijzen excl. BTW",
+        "excludingTax": "excl. BTW"
       },
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",

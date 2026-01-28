@@ -1836,7 +1836,9 @@
           "description": "Erhalten Sie 50% Rabatt auf alle Pläne. Preis lebenslang garantiert für Frühbucher.",
           "guaranteedForLife": "Preis lebenslang garantiert",
           "endsOn": "Angebot gültig bis 1. März 2026"
-        }
+        },
+        "pricesExcludingTax": "Preise zzgl. MwSt.",
+        "excludingTax": "zzgl. MwSt."
       },
       "team": "Team",
       "saveChanges": "Änderungen speichern",

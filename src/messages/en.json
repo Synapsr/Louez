@@ -1834,7 +1834,9 @@
           "description": "Get 50% off all plans. Price guaranteed for life for early subscribers.",
           "guaranteedForLife": "Price guaranteed for life",
           "endsOn": "Offer valid until March 1st, 2026"
-        }
+        },
+        "pricesExcludingTax": "Prices excl. VAT",
+        "excludingTax": "excl. VAT"
       },
       "team": "Team",
       "saveChanges": "Save changes",

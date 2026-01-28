@@ -1836,7 +1836,9 @@
           "description": "Obtenha 50% de desconto em todos os planos. Preço garantido vitalício para os primeiros assinantes.",
           "guaranteedForLife": "Preço garantido vitalício",
           "endsOn": "Oferta válida até 1 de março de 2026"
-        }
+        },
+        "pricesExcludingTax": "Preços s/ IVA",
+        "excludingTax": "s/ IVA"
       },
       "team": "Equipe",
       "saveChanges": "Salvar alteracoes",
