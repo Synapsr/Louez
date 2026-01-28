@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { Check, ChevronsUpDown, Plus, Shield } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus, Shield, Building2 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -127,6 +127,13 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
     router.push('/onboarding?new=true')
   }
 
+  const handleMultiStoreView = () => {
+    setOpen(false)
+    router.push('/multi-store')
+  }
+
+  const showMultiStore = stores.length >= 2
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -182,6 +189,22 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                 </CommandItem>
               ))}
             </CommandGroup>
+            {showMultiStore && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={handleMultiStoreView}
+                    className="cursor-pointer py-2"
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center mr-3 rounded-md bg-primary/10">
+                      <Building2 className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <span className="text-sm">{t('multiStoreView')}</span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
             <CommandSeparator />
             <CommandGroup>
               <CommandItem

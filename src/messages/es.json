@@ -212,6 +212,7 @@
       "noStoresFound": "No se encontraron tiendas",
       "yourStores": "Sus tiendas",
       "createNewStore": "Crear una nueva tienda",
+      "multiStoreView": "Vista multi-tienda",
       "roles": {
         "owner": "Propietario",
         "member": "Miembro del equipo",
@@ -418,7 +419,47 @@
       "subscription": "Suscripcion",
       "settings": "Configuracion",
       "store": "Mi tienda",
-      "analytics": "Análisis"
+      "analytics": "Análisis",
+      "multiStore": "Multi-tienda"
+    },
+    "multiStore": {
+      "title": "Multi-tienda",
+      "description": "Vista general de sus {count, plural, one {# tienda} other {# tiendas}}",
+      "goToAStore": "Ir a una tienda",
+      "stats": {
+        "totalRevenue": "Ingresos totales",
+        "reservations": "Reservas",
+        "pending": "pendientes",
+        "customers": "Clientes",
+        "newCustomers": "nuevos",
+        "vsPreviousPeriod": "vs periodo anterior"
+      },
+      "chart": {
+        "title": "Evolución de ingresos",
+        "description": "Ingresos por tienda en el periodo"
+      },
+      "table": {
+        "title": "Sus tiendas",
+        "store": "Tienda",
+        "plan": "Plan",
+        "revenue": "Ingresos",
+        "change": "Cambio",
+        "reservations": "Reserv.",
+        "customers": "Clientes",
+        "goToStore": "Ir a"
+      },
+      "limits": {
+        "title": "Límites próximos",
+        "description": "{count, plural, one {# tienda se acerca} other {# tiendas se acercan}} a sus límites",
+        "products": "productos",
+        "reservations": "reserv./mes",
+        "customers": "clientes",
+        "upgrade": "Mejorar"
+      },
+      "empty": {
+        "title": "Sin datos aún",
+        "description": "Las estadísticas aparecerán una vez que sus tiendas tengan reservas."
+      }
     },
     "home": {
       "viewAll": "Ver todo",

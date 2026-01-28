@@ -212,6 +212,7 @@
       "noStoresFound": "Aucune boutique trouvée",
       "yourStores": "Vos boutiques",
       "createNewStore": "Créer une nouvelle boutique",
+      "multiStoreView": "Vue multi-boutiques",
       "roles": {
         "owner": "Propriétaire",
         "member": "Collaborateur",
@@ -418,7 +419,47 @@
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Paramètres",
-      "store": "Ma boutique"
+      "store": "Ma boutique",
+      "multiStore": "Multi-boutiques"
+    },
+    "multiStore": {
+      "title": "Multi-boutiques",
+      "description": "Vue d'ensemble de vos {count, plural, one {# boutique} other {# boutiques}}",
+      "goToAStore": "Accéder à une boutique",
+      "stats": {
+        "totalRevenue": "Chiffre d'affaires",
+        "reservations": "Réservations",
+        "pending": "en attente",
+        "customers": "Clients",
+        "newCustomers": "nouveaux",
+        "vsPreviousPeriod": "vs période précédente"
+      },
+      "chart": {
+        "title": "Évolution du CA",
+        "description": "Revenus par boutique sur la période"
+      },
+      "table": {
+        "title": "Vos boutiques",
+        "store": "Boutique",
+        "plan": "Plan",
+        "revenue": "CA",
+        "change": "Variation",
+        "reservations": "Réserv.",
+        "customers": "Clients",
+        "goToStore": "Accéder"
+      },
+      "limits": {
+        "title": "Limites approchées",
+        "description": "{count, plural, one {# boutique approche} other {# boutiques approchent}} de ses limites",
+        "products": "produits",
+        "reservations": "réserv./mois",
+        "customers": "clients",
+        "upgrade": "Améliorer"
+      },
+      "empty": {
+        "title": "Pas encore de données",
+        "description": "Les statistiques apparaîtront une fois que vos boutiques auront des réservations."
+      }
     },
     "home": {
       "viewAll": "Voir tout",
