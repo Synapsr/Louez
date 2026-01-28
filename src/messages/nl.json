@@ -660,6 +660,7 @@
         "statusArchived": "Gearchiveerd",
         "statusArchivedDescription": "Verwijderd uit catalogus",
         "save": "Opslaan",
+        "unsavedChanges": "Niet-opgeslagen wijzigingen",
         "createProduct": "Product aanmaken",
         "productCreated": "Product aangemaakt",
         "productUpdated": "Product bijgewerkt",
