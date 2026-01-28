@@ -660,6 +660,7 @@
         "statusArchived": "Archiviato",
         "statusArchivedDescription": "Rimosso dal catalogo",
         "save": "Salva",
+        "unsavedChanges": "Modifiche non salvate",
         "createProduct": "Crea prodotto",
         "productCreated": "Prodotto creato",
         "productUpdated": "Prodotto aggiornato",
