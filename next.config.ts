@@ -234,6 +234,15 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'img.youtube.com',
       },
+      // Seed script placeholders (dev only)
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
       // AWS S3
       {
         protocol: 'https',
