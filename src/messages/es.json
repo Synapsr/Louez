@@ -1842,6 +1842,10 @@
         "modePaymentDescription": "Los clientes pagan inmediatamente",
         "pendingBlocksAvailability": "Bloquear disponibilidad durante solicitud pendiente",
         "pendingBlocksAvailabilityDescription": "Cuando esta activado, una solicitud de reserva pendiente bloquea inmediatamente la disponibilidad del producto. Desactive para permitir multiples solicitudes para las mismas fechas.",
+        "depositPercentage": "Importe del deposito",
+        "depositPercentageDescription": "Porcentaje del importe total a cobrar en la reserva online",
+        "depositPercentageFull": "Pago completo en la reserva",
+        "depositPercentagePartial": "{percentage}% en la reserva, resto en la recogida",
         "pricingMode": "Unidad de precio",
         "pricingDay": "Por dia",
         "pricingHour": "Por hora",
@@ -2842,6 +2846,9 @@
         "savingsBanner": "Ahorra {amount} con el descuento a largo plazo"
       },
       "depositInfo": "Se realizara una retencion de {amount} en su tarjeta como deposito de seguridad. Esta cantidad no sera cobrada y se liberara al devolver el equipo.",
+      "toPayNow": "A pagar ahora",
+      "remainingAtPickup": "Resto a pagar en la recogida: {amount}",
+      "payDeposit": "Pagar deposito de {amount}",
       "depositLabel": "Depósito (autorización)",
       "depositAuthorizationInfo": "Su tarjeta será guardada. Se realizará una autorización al retirar el equipo. No se cobrará ningún importe si todo se devuelve en buen estado.",
       "success": {

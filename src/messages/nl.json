@@ -1839,6 +1839,10 @@
         "modePaymentDescription": "Klanten betalen direct",
         "pendingBlocksAvailability": "Beschikbaarheid blokkeren tijdens openstaande aanvraag",
         "pendingBlocksAvailabilityDescription": "Indien ingeschakeld, blokkeert een openstaande reserveringsaanvraag direct de productbeschikbaarheid. Uitschakelen om meerdere aanvragen voor dezelfde data toe te staan.",
+        "depositPercentage": "Aanbetalingsbedrag",
+        "depositPercentageDescription": "Percentage van het totaalbedrag bij online boeking",
+        "depositPercentageFull": "Volledige betaling bij boeking",
+        "depositPercentagePartial": "{percentage}% bij boeking, rest bij ophalen",
         "pricingMode": "Prijseenheid",
         "pricingDay": "Per dag",
         "pricingHour": "Per uur",
@@ -2839,6 +2843,9 @@
         "savingsBanner": "U bespaart {amount} met de langdurige korting"
       },
       "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
+      "toPayNow": "Nu te betalen",
+      "remainingAtPickup": "Restbedrag bij ophalen: {amount}",
+      "payDeposit": "Betaal aanbetaling van {amount}",
       "depositLabel": "Borg (autorisatie)",
       "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij afhaling wordt een autorisatie uitgevoerd. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt teruggebracht.",
       "success": {

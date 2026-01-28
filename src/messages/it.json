@@ -1839,6 +1839,10 @@
         "modePaymentDescription": "I clienti pagano immediatamente",
         "pendingBlocksAvailability": "Blocca disponibilita durante richiesta in sospeso",
         "pendingBlocksAvailabilityDescription": "Quando abilitato, una richiesta di prenotazione in sospeso blocca immediatamente la disponibilita del prodotto. Disabilita per consentire piu richieste per le stesse date.",
+        "depositPercentage": "Importo dell'acconto",
+        "depositPercentageDescription": "Percentuale dell'importo totale da incassare alla prenotazione online",
+        "depositPercentageFull": "Pagamento completo alla prenotazione",
+        "depositPercentagePartial": "{percentage}% alla prenotazione, resto al ritiro",
         "pricingMode": "Unita di prezzo",
         "pricingDay": "Al giorno",
         "pricingHour": "All'ora",
@@ -2839,6 +2843,9 @@
         "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
       },
       "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
+      "toPayNow": "Da pagare ora",
+      "remainingAtPickup": "Resto da pagare al ritiro: {amount}",
+      "payDeposit": "Paga acconto di {amount}",
       "depositLabel": "Deposito (autorizzazione)",
       "depositAuthorizationInfo": "La tua carta verrà salvata. Un'autorizzazione verrà effettuata al ritiro. Nessun importo verrà addebitato se tutto viene restituito in buone condizioni.",
       "success": {

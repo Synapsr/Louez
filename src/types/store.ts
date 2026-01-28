@@ -79,6 +79,13 @@ export interface StoreSettings {
    * - false: Only confirmed reservations block availability
    */
   pendingBlocksAvailability?: boolean
+  /**
+   * Percentage of rental amount to collect immediately during online checkout.
+   * Only applies when reservationMode is 'payment'.
+   * - 100 (default): Full payment required upfront
+   * - 10-99: Partial payment (deposit), remainder due at pickup
+   */
+  onlinePaymentDepositPercentage?: number
   businessHours?: BusinessHours
   country?: string    // ISO 3166-1 alpha-2 (e.g., 'FR', 'BE', 'CH')
   timezone?: string   // IANA timezone (e.g., 'Europe/Paris')

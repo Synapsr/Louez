@@ -646,19 +646,43 @@ export async function createReservation(input: CreateReservationInput) {
         const protocol = domain.includes('localhost') ? 'http' : 'https'
         const baseUrl = `${protocol}://${store.slug}.${domain}`
 
-        // Build line items for Stripe using SERVER-CALCULATED prices
-        const lineItems = input.items.map((item, idx) => {
-          const serverItem = serverCalculatedItems[idx]
-          return {
-            name: item.productSnapshot.name,
-            description: item.productSnapshot.description || undefined,
-            quantity: item.quantity,
-            // Use server-calculated subtotal for Stripe (not client-provided unitPrice)
-            unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
-          }
-        })
+        // Get deposit percentage (default 100% = full payment)
+        const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
+        const isPartialPayment = depositPercentage < 100
 
-        // Create checkout session with SERVER-CALCULATED deposit
+        // Calculate the amount to charge now
+        // Round to 2 decimal places to avoid floating point issues
+        const amountToCharge = isPartialPayment
+          ? Math.round(finalSubtotal * depositPercentage) / 100
+          : finalSubtotal
+
+        // Ensure minimum Stripe amount (50 cents for most currencies)
+        const MINIMUM_STRIPE_AMOUNT = 0.50
+        const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
+        // Don't exceed the full amount
+        const finalChargeAmount = Math.min(effectiveChargeAmount, finalSubtotal)
+
+        // Build line items for Stripe
+        // For partial payments, create a single line item for the deposit
+        // For full payments, itemize each product
+        const lineItems = isPartialPayment
+          ? [{
+              name: `Acompte (${depositPercentage}%)`,
+              description: `Acompte pour la réservation ${reservationNumber}`,
+              quantity: 1,
+              unitAmount: toStripeCents(finalChargeAmount, currency),
+            }]
+          : input.items.map((item, idx) => {
+              const serverItem = serverCalculatedItems[idx]
+              return {
+                name: item.productSnapshot.name,
+                description: item.productSnapshot.description || undefined,
+                quantity: item.quantity,
+                unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
+              }
+            })
+
+        // Create checkout session
         const { url, sessionId } = await createCheckoutSession({
           stripeAccountId: store.stripeAccountId!,
           reservationId,
@@ -674,21 +698,22 @@ export async function createReservation(input: CreateReservationInput) {
 
         paymentUrl = url
 
-        // Create a pending payment record with SERVER-CALCULATED amount
+        // Create a pending payment record with the amount being charged
         await db.insert(payments).values({
           id: nanoid(),
           reservationId,
-          amount: finalSubtotal.toFixed(2),
+          amount: finalChargeAmount.toFixed(2),
           type: 'rental',
           method: 'stripe',
           status: 'pending',
           stripeCheckoutSessionId: sessionId,
           currency,
+          notes: isPartialPayment ? `Acompte ${depositPercentage}%` : null,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
 
-        // Log payment initiated activity with SERVER-CALCULATED amount
+        // Log payment initiated activity
         await db.insert(reservationActivity).values({
           id: nanoid(),
           reservationId,
@@ -696,7 +721,10 @@ export async function createReservation(input: CreateReservationInput) {
           description: null,
           metadata: {
             checkoutSessionId: sessionId,
-            amount: finalSubtotal,
+            amount: finalChargeAmount,
+            fullAmount: finalSubtotal,
+            depositPercentage,
+            isPartialPayment,
             currency,
             method: 'stripe',
           },
