@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AddressInput } from '@/components/ui/address-input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -83,6 +84,7 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   pricingMode: z.enum(['day', 'hour', 'week']),
   reservationMode: z.enum(['payment', 'request']),
   pendingBlocksAvailability: z.boolean(),
+  onlinePaymentDepositPercentage: z.number().int().min(10).max(100),
   minRentalHours: z.number().int().min(0),
   maxRentalHours: z.number().int().min(1).nullable(),
   advanceNotice: z.number().min(0),
@@ -163,6 +165,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
       pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
+      onlinePaymentDepositPercentage: settings.onlinePaymentDepositPercentage ?? 100,
       minRentalHours: getMinRentalHours(settings as StoreSettings),
       maxRentalHours: getMaxRentalHours(settings as StoreSettings),
       advanceNotice: settings.advanceNotice,
@@ -659,6 +662,45 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Online payment deposit percentage - only shown in payment mode */}
+              {form.watch('reservationMode') === 'payment' && (
+                <FormField
+                  control={form.control}
+                  name="onlinePaymentDepositPercentage"
+                  render={({ field }) => (
+                    <FormItem className="rounded-lg border p-4">
+                      <div className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            {t('reservationSettings.depositPercentage')}
+                          </FormLabel>
+                          <FormDescription>
+                            {field.value === 100
+                              ? t('reservationSettings.depositPercentageFull')
+                              : t('reservationSettings.depositPercentagePartial', { percentage: field.value })}
+                          </FormDescription>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <FormControl>
+                            <Slider
+                              value={[field.value]}
+                              onValueChange={([value]) => field.onChange(value)}
+                              min={10}
+                              max={100}
+                              step={5}
+                              className="w-28"
+                            />
+                          </FormControl>
+                          <span className="w-12 text-right font-medium tabular-nums text-sm">
+                            {field.value}%
+                          </span>
+                        </div>
+                      </div>
                     </FormItem>
                   )}
                 />

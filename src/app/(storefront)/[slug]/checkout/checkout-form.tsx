@@ -58,6 +58,7 @@ interface CheckoutFormProps {
   requireCustomerAddress: boolean
   cgv: string | null
   taxSettings?: TaxSettings
+  depositPercentage?: number
 }
 
 /**
@@ -98,6 +99,7 @@ export function CheckoutForm({
   requireCustomerAddress,
   cgv,
   taxSettings,
+  depositPercentage = 100,
 }: CheckoutFormProps) {
   const router = useRouter()
   const locale = useLocale() as 'fr' | 'en'
@@ -670,7 +672,9 @@ export function CheckoutForm({
                         ) : reservationMode === 'payment' ? (
                           <>
                             <CreditCard className="mr-2 h-4 w-4" />
-                            {t('pay')} {formatCurrency(getTotal(), currency)}
+                            {depositPercentage < 100
+                              ? t('payDeposit', { amount: formatCurrency(Math.round(getSubtotal() * depositPercentage) / 100, currency) })
+                              : `${t('pay')} ${formatCurrency(getTotal(), currency)}`}
                           </>
                         ) : (
                           <>
@@ -793,6 +797,22 @@ export function CheckoutForm({
                   <span>{tCart('total')}</span>
                   <span className="text-primary">{formatCurrency(getTotal(), currency)}</span>
                 </div>
+                {/* Partial payment info - only in payment mode with deposit < 100% */}
+                {reservationMode === 'payment' && depositPercentage < 100 && (
+                  <div className="pt-2 space-y-1.5">
+                    <div className="flex justify-between text-base font-semibold">
+                      <span>{t('toPayNow')}</span>
+                      <span className="text-primary">
+                        {formatCurrency(Math.round(getSubtotal() * depositPercentage) / 100, currency)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {t('remainingAtPickup', {
+                        amount: formatCurrency(Math.round(getSubtotal() * (100 - depositPercentage)) / 100, currency)
+                      })}
+                    </p>
+                  </div>
+                )}
                 {taxSettings?.enabled && (
                   <p className="text-xs text-muted-foreground text-center pt-2">
                     {taxSettings.displayMode === 'inclusive' ? tCart('pricesIncludeTax') : tCart('pricesExcludeTax')}

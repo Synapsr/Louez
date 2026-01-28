@@ -1839,6 +1839,10 @@
         "modePaymentDescription": "Klienci płacą od razu",
         "pendingBlocksAvailability": "Blokuj dostępność podczas oczekującego żądania",
         "pendingBlocksAvailabilityDescription": "Po włączeniu oczekujące żądanie rezerwacji natychmiast blokuje dostępność produktu. Wyłącz, aby umożliwić wielokrotne żądania na te same daty.",
+        "depositPercentage": "Kwota zaliczki",
+        "depositPercentageDescription": "Procent kwoty całkowitej do pobrania przy rezerwacji online",
+        "depositPercentageFull": "Pełna płatność przy rezerwacji",
+        "depositPercentagePartial": "{percentage}% przy rezerwacji, reszta przy odbiorze",
         "pricingMode": "Jednostka cenowa",
         "pricingDay": "Za dzień",
         "pricingHour": "Za godzinę",
@@ -2839,6 +2843,9 @@
         "savingsBanner": "Oszczędzasz {amount} dzięki zniżce długoterminowej"
       },
       "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu.",
+      "toPayNow": "Do zapłaty teraz",
+      "remainingAtPickup": "Pozostała kwota przy odbiorze: {amount}",
+      "payDeposit": "Zapłać zaliczkę {amount}",
       "depositLabel": "Kaucja (autoryzacja)",
       "depositAuthorizationInfo": "Twoja karta zostanie zapisana. Autoryzacja zostanie przeprowadzona przy odbiorze. Żadna kwota nie zostanie pobrana, jeśli wszystko zostanie zwrócone w dobrym stanie.",
       "success": {

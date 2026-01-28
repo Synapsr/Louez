@@ -1840,6 +1840,10 @@
         "modePaymentDescription": "Os clientes pagam imediatamente",
         "pendingBlocksAvailability": "Bloquear disponibilidade durante solicitacao pendente",
         "pendingBlocksAvailabilityDescription": "Quando ativado, uma solicitacao de reserva pendente bloqueia imediatamente a disponibilidade do produto. Desative para permitir multiplas solicitacoes para as mesmas datas.",
+        "depositPercentage": "Valor do sinal",
+        "depositPercentageDescription": "Percentagem do valor total a cobrar na reserva online",
+        "depositPercentageFull": "Pagamento integral na reserva",
+        "depositPercentagePartial": "{percentage}% na reserva, resto no levantamento",
         "pricingMode": "Unidade de precos",
         "pricingDay": "Por dia",
         "pricingHour": "Por hora",
@@ -2840,6 +2844,9 @@
         "savingsBanner": "Voce economiza {amount} com o desconto de longa duracao"
       },
       "depositInfo": "Uma retencao de {amount} sera feita no seu cartao como deposito de seguranca. Este valor nao sera cobrado e sera liberado na devolucao do equipamento.",
+      "toPayNow": "A pagar agora",
+      "remainingAtPickup": "Restante a pagar no levantamento: {amount}",
+      "payDeposit": "Pagar sinal de {amount}",
       "depositLabel": "Caução (autorização)",
       "depositAuthorizationInfo": "O seu cartão será guardado. Uma autorização será realizada na retirada. Nenhum valor será cobrado se tudo for devolvido em bom estado.",
       "success": {

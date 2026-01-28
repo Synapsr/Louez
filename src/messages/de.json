@@ -1840,6 +1840,10 @@
         "modePaymentDescription": "Kunden zahlen sofort",
         "pendingBlocksAvailability": "Verfügbarkeit während ausstehender Anfrage blockieren",
         "pendingBlocksAvailabilityDescription": "Wenn aktiviert, blockiert eine ausstehende Reservierungsanfrage sofort die Produktverfügbarkeit. Deaktivieren, um mehrere Anfragen für dieselben Daten zuzulassen.",
+        "depositPercentage": "Anzahlungsbetrag",
+        "depositPercentageDescription": "Prozentsatz des Gesamtbetrags bei Online-Buchung",
+        "depositPercentageFull": "Vollständige Zahlung bei Buchung",
+        "depositPercentagePartial": "{percentage}% bei Buchung, Rest bei Abholung",
         "pricingMode": "Preiseinheit",
         "pricingDay": "Pro Tag",
         "pricingHour": "Pro Stunde",
@@ -2840,6 +2844,9 @@
         "savingsBanner": "Sie sparen {amount} mit dem Langzeitrabatt"
       },
       "depositInfo": "Eine Reservierung von {amount} wird als Kaution auf Ihrer Karte hinterlegt. Dieser Betrag wird nicht belastet und bei Rückgabe der Ausrüstung freigegeben.",
+      "toPayNow": "Jetzt zu zahlen",
+      "remainingAtPickup": "Restbetrag bei Abholung: {amount}",
+      "payDeposit": "Anzahlung von {amount} bezahlen",
       "depositLabel": "Kaution (Autorisierung)",
       "depositAuthorizationInfo": "Ihre Karte wird gespeichert. Eine Autorisierung wird bei Abholung durchgeführt. Es wird kein Betrag berechnet, wenn alles in gutem Zustand zurückgegeben wird.",
       "success": {

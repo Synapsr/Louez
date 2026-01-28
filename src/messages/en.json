@@ -1838,6 +1838,10 @@
         "modePaymentDescription": "Customers pay immediately",
         "pendingBlocksAvailability": "Block availability during pending request",
         "pendingBlocksAvailabilityDescription": "When enabled, a pending reservation request immediately blocks product availability. Disable to allow multiple requests for the same dates.",
+        "depositPercentage": "Deposit amount",
+        "depositPercentageDescription": "Percentage of total amount to collect at online booking",
+        "depositPercentageFull": "Full payment at booking",
+        "depositPercentagePartial": "{percentage}% at booking, remainder at pickup",
         "pricingMode": "Pricing unit",
         "pricingDay": "Per day",
         "pricingHour": "Per hour",
@@ -2838,6 +2842,9 @@
         "savingsBanner": "You save {amount} with the long-term discount"
       },
       "depositInfo": "A security deposit of {amount} is required.",
+      "toPayNow": "To pay now",
+      "remainingAtPickup": "Remaining due at pickup: {amount}",
+      "payDeposit": "Pay deposit of {amount}",
       "depositLabel": "Deposit (authorization)",
       "depositAuthorizationInfo": "Your card will be saved. An authorization hold will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
       "success": {

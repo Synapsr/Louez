@@ -60,6 +60,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const reservationMode = store.settings?.reservationMode || 'payment'
   const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
   const taxSettings = store.settings?.tax
+  const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
 
   return (
     <>
@@ -84,6 +85,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           requireCustomerAddress={requireCustomerAddress}
           cgv={store.cgv}
           taxSettings={taxSettings}
+          depositPercentage={depositPercentage}
         />
       </div>
     </>

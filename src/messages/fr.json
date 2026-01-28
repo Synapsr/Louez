@@ -1838,6 +1838,10 @@
         "modePaymentDescription": "Les clients paient immédiatement",
         "pendingBlocksAvailability": "Bloquer la disponibilité pendant une demande",
         "pendingBlocksAvailabilityDescription": "Quand activé, une demande de réservation en attente bloque immédiatement la disponibilité du produit. Désactivez si vous souhaitez permettre plusieurs demandes pour les mêmes dates.",
+        "depositPercentage": "Montant de l'acompte",
+        "depositPercentageDescription": "Pourcentage du montant total à payer lors de la réservation en ligne",
+        "depositPercentageFull": "Paiement intégral à la commande",
+        "depositPercentagePartial": "{percentage}% à la réservation, le reste à la prise en charge",
         "pricingMode": "Unité de tarification",
         "pricingDay": "Par jour",
         "pricingHour": "Par heure",
@@ -2838,6 +2842,9 @@
         "savingsBanner": "Vous économisez {amount} grâce à la réduction longue durée"
       },
       "depositInfo": "Une caution de {amount} est demandée.",
+      "toPayNow": "À payer maintenant",
+      "remainingAtPickup": "Reste à payer à la prise en charge : {amount}",
+      "payDeposit": "Payer l'acompte de {amount}",
       "depositLabel": "Caution (empreinte)",
       "depositAuthorizationInfo": "Votre carte sera enregistrée. Une empreinte bancaire sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
       "success": {
