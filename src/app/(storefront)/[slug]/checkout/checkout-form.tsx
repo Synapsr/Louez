@@ -21,6 +21,8 @@ import {
   ChevronRight,
   ChevronLeft,
   ArrowRight,
+  Truck,
+  Store,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations, useLocale } from 'next-intl'
@@ -48,7 +50,10 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getDetailedDuration } from '@/lib/utils/duration'
 import { calculateRentalPrice, type ProductPricing } from '@/lib/pricing'
 import { createReservation } from './actions'
-import type { TaxSettings } from '@/types/store'
+import type { TaxSettings, DeliverySettings } from '@/types/store'
+import { AddressInput } from '@/components/ui/address-input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery, isFreeDelivery } from '@/lib/utils/geo'
 
 interface CheckoutFormProps {
   storeSlug: string
@@ -59,6 +64,10 @@ interface CheckoutFormProps {
   cgv: string | null
   taxSettings?: TaxSettings
   depositPercentage?: number
+  deliverySettings?: DeliverySettings
+  storeAddress?: string | null
+  storeLatitude?: number | null
+  storeLongitude?: number | null
 }
 
 /**
@@ -84,11 +93,20 @@ function calculateDuration(
   }
 }
 
-type StepId = 'contact' | 'address' | 'confirm'
+type StepId = 'contact' | 'delivery' | 'address' | 'confirm'
 
 interface Step {
   id: StepId
   icon: React.ComponentType<{ className?: string }>
+}
+
+interface DeliveryAddress {
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  latitude: number | null
+  longitude: number | null
 }
 
 export function CheckoutForm({
@@ -100,6 +118,10 @@ export function CheckoutForm({
   cgv,
   taxSettings,
   depositPercentage = 100,
+  deliverySettings,
+  storeAddress,
+  storeLatitude,
+  storeLongitude,
 }: CheckoutFormProps) {
   const router = useRouter()
   const locale = useLocale() as 'fr' | 'en'
@@ -113,17 +135,82 @@ export function CheckoutForm({
   const [currentStep, setCurrentStep] = useState<StepId>('contact')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Build steps array based on requireCustomerAddress setting
-  const steps: Step[] = requireCustomerAddress
-    ? [
-        { id: 'contact', icon: User },
-        { id: 'address', icon: MapPin },
-        { id: 'confirm', icon: Check },
-      ]
-    : [
-        { id: 'contact', icon: User },
-        { id: 'confirm', icon: Check },
-      ]
+  // Delivery state
+  const isDeliveryEnabled = deliverySettings?.enabled && storeLatitude && storeLongitude
+  const deliveryMode = deliverySettings?.mode || 'optional'
+  // If mode is 'required' or 'included', force delivery option
+  const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
+  // If mode is 'included', delivery is always free
+  const isDeliveryIncluded = deliveryMode === 'included'
+  const [deliveryOption, setDeliveryOption] = useState<'pickup' | 'delivery'>(
+    isDeliveryForced ? 'delivery' : 'pickup'
+  )
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>({
+    address: '',
+    city: '',
+    postalCode: '',
+    country: 'FR',
+    latitude: null,
+    longitude: null,
+  })
+  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null)
+  const [deliveryFee, setDeliveryFee] = useState<number>(0)
+  const [deliveryError, setDeliveryError] = useState<string | null>(null)
+
+  // Calculate delivery when address changes
+  const handleDeliveryAddressChange = (
+    address: string,
+    latitude: number | null,
+    longitude: number | null
+  ) => {
+    setDeliveryAddress(prev => ({ ...prev, address, latitude, longitude }))
+    setDeliveryError(null)
+
+    if (latitude && longitude && storeLatitude && storeLongitude && deliverySettings) {
+      const distance = calculateHaversineDistance(
+        storeLatitude,
+        storeLongitude,
+        latitude,
+        longitude
+      )
+      setDeliveryDistance(distance)
+
+      // Validate distance
+      const validation = validateDelivery(distance, deliverySettings)
+      if (!validation.valid) {
+        setDeliveryError(t('deliveryTooFar', { maxKm: deliverySettings.maximumDistance ?? 0 }))
+        setDeliveryFee(0)
+        return
+      }
+
+      // Calculate fee (always 0 if delivery is included)
+      const fee = isDeliveryIncluded ? 0 : calculateDeliveryFee(distance, deliverySettings, getSubtotal())
+      setDeliveryFee(fee)
+    } else {
+      setDeliveryDistance(null)
+      setDeliveryFee(0)
+    }
+  }
+
+  // Build steps array based on settings
+  const steps: Step[] = (() => {
+    const result: Step[] = [{ id: 'contact', icon: User }]
+
+    // Add delivery step if enabled
+    if (isDeliveryEnabled) {
+      result.push({ id: 'delivery', icon: Truck })
+    }
+
+    // Add address step if:
+    // 1. Delivery is selected (need delivery address details), OR
+    // 2. Store requires customer address
+    if (deliveryOption === 'delivery' || requireCustomerAddress) {
+      result.push({ id: 'address', icon: MapPin })
+    }
+
+    result.push({ id: 'confirm', icon: Check })
+    return result
+  })()
 
   const checkoutSchema = z.object({
     email: z.string().email(t('errors.invalidEmail')),
@@ -224,6 +311,9 @@ export function CheckoutForm({
     setIsSubmitting(true)
 
     try {
+      // Calculate total with delivery fee
+      const totalWithDelivery = getTotal() + (deliveryOption === 'delivery' ? deliveryFee : 0)
+
       const result = await createReservation({
         storeId,
         customer: {
@@ -274,8 +364,20 @@ export function CheckoutForm({
         customerNotes: data.notes,
         subtotalAmount: getSubtotal(),
         depositAmount: getTotalDeposit(),
-        totalAmount: getTotal(),
+        totalAmount: totalWithDelivery,
         locale,
+        // Delivery data
+        delivery: deliveryOption === 'delivery' && deliveryAddress.latitude && deliveryAddress.longitude
+          ? {
+              option: 'delivery',
+              address: deliveryAddress.address,
+              city: deliveryAddress.city,
+              postalCode: deliveryAddress.postalCode,
+              country: deliveryAddress.country,
+              latitude: deliveryAddress.latitude,
+              longitude: deliveryAddress.longitude,
+            }
+          : { option: 'pickup' },
       })
 
       if (result.error) {
@@ -510,7 +612,223 @@ export function CheckoutForm({
                 </Card>
               )}
 
-              {/* Step 2: Address (Optional) */}
+              {/* Step: Delivery (when enabled) */}
+              {currentStep === 'delivery' && isDeliveryEnabled && deliverySettings && (
+                <Card>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="mb-4">
+                      <h2 className="text-lg font-semibold">{t('steps.delivery')}</h2>
+                      <p className="text-sm text-muted-foreground">
+                        {isDeliveryForced
+                          ? (isDeliveryIncluded ? t('deliveryIncludedDescription') : t('deliveryRequiredDescription'))
+                          : t('deliveryDescription')
+                        }
+                      </p>
+                    </div>
+
+                    {/* Pickup vs Delivery Selection - Only in optional mode */}
+                    {!isDeliveryForced && (
+                      <RadioGroup
+                        value={deliveryOption}
+                        onValueChange={(value) => {
+                          setDeliveryOption(value as 'pickup' | 'delivery')
+                          if (value === 'pickup') {
+                            setDeliveryFee(0)
+                            setDeliveryDistance(null)
+                            setDeliveryError(null)
+                          }
+                        }}
+                        className="grid gap-3"
+                      >
+                        {/* Pickup Option */}
+                        <label
+                          className={cn(
+                            'flex items-start gap-4 rounded-lg border p-4 cursor-pointer transition-colors',
+                            deliveryOption === 'pickup'
+                              ? 'border-primary bg-primary/5'
+                              : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <RadioGroupItem value="pickup" id="pickup" className="mt-1" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Store className="h-4 w-4" />
+                              <span className="font-medium">{t('pickupOption')}</span>
+                              <Badge variant="secondary">{t('free')}</Badge>
+                            </div>
+                            {storeAddress && (
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {storeAddress}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+
+                        {/* Delivery Option */}
+                        <label
+                          className={cn(
+                            'flex items-start gap-4 rounded-lg border p-4 cursor-pointer transition-colors',
+                            deliveryOption === 'delivery'
+                              ? 'border-primary bg-primary/5'
+                              : 'hover:bg-muted/50'
+                          )}
+                        >
+                          <RadioGroupItem value="delivery" id="delivery" className="mt-1" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <Truck className="h-4 w-4" />
+                              <span className="font-medium">{t('deliveryOption')}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {t('deliveryOptionDescription', {
+                                pricePerKm: formatCurrency(deliverySettings.pricePerKm, currency),
+                              })}
+                            </p>
+                            {deliverySettings.freeDeliveryThreshold &&
+                              isFreeDelivery(getSubtotal(), deliverySettings) && (
+                                <p className="text-sm text-green-600 mt-1">
+                                  {t('freeDeliveryApplied')}
+                                </p>
+                              )}
+                            {deliverySettings.freeDeliveryThreshold &&
+                              !isFreeDelivery(getSubtotal(), deliverySettings) && (
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {t('freeDeliveryAbove', {
+                                    amount: formatCurrency(
+                                      deliverySettings.freeDeliveryThreshold,
+                                      currency
+                                    ),
+                                  })}
+                                </p>
+                              )}
+                          </div>
+                        </label>
+                      </RadioGroup>
+                    )}
+
+                    {/* Forced delivery info banner (required or included mode) */}
+                    {isDeliveryForced && (
+                      <div className={cn(
+                        'flex items-start gap-3 rounded-lg p-4',
+                        isDeliveryIncluded
+                          ? 'bg-green-50 dark:bg-green-950/30'
+                          : 'bg-blue-50 dark:bg-blue-950/30'
+                      )}>
+                        <Truck className={cn(
+                          'h-5 w-5 mt-0.5 shrink-0',
+                          isDeliveryIncluded
+                            ? 'text-green-600 dark:text-green-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        )} />
+                        <div>
+                          <p className={cn(
+                            'font-medium',
+                            isDeliveryIncluded
+                              ? 'text-green-700 dark:text-green-300'
+                              : 'text-blue-700 dark:text-blue-300'
+                          )}>
+                            {isDeliveryIncluded ? t('deliveryIncludedBanner') : t('deliveryRequiredBanner')}
+                          </p>
+                          <p className={cn(
+                            'text-sm mt-0.5',
+                            isDeliveryIncluded
+                              ? 'text-green-600 dark:text-green-400'
+                              : 'text-blue-600 dark:text-blue-400'
+                          )}>
+                            {isDeliveryIncluded ? t('deliveryIncludedNote') : t('deliveryRequiredNote')}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Delivery Address Input (shown when delivery selected or forced) */}
+                    {(deliveryOption === 'delivery' || isDeliveryForced) && (
+                      <div className={cn('space-y-4', !isDeliveryForced && 'border-t pt-6')}>
+                        <div>
+                          <label className="text-sm font-medium">{t('deliveryAddress')}</label>
+                          <div className="mt-2">
+                            <AddressInput
+                              value={deliveryAddress.address}
+                              latitude={deliveryAddress.latitude}
+                              longitude={deliveryAddress.longitude}
+                              onChange={(address, lat, lng) =>
+                                handleDeliveryAddressChange(address, lat, lng)
+                              }
+                              placeholder={t('deliveryAddressPlaceholder')}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Delivery Cost Preview */}
+                        {deliveryDistance !== null && !deliveryError && (
+                          <div className="rounded-lg bg-muted/50 p-4">
+                            <div className="flex justify-between text-sm">
+                              <span>{t('deliveryDistance')}</span>
+                              <span>{deliveryDistance.toFixed(1)} km</span>
+                            </div>
+                            {!isDeliveryIncluded && (
+                              <div className="flex justify-between font-medium mt-2">
+                                <span>{t('deliveryFee')}</span>
+                                <span className={deliveryFee === 0 ? 'text-green-600' : ''}>
+                                  {deliveryFee === 0 ? t('free') : formatCurrency(deliveryFee, currency)}
+                                </span>
+                              </div>
+                            )}
+                            {isDeliveryIncluded && (
+                              <div className="flex justify-between font-medium mt-2 text-green-600">
+                                <span>{t('deliveryFee')}</span>
+                                <span>{t('included')}</span>
+                              </div>
+                            )}
+                            {deliveryFee === 0 && !isDeliveryIncluded && deliverySettings.freeDeliveryThreshold && (
+                              <p className="text-xs text-green-600 mt-1">
+                                {t('freeDeliveryApplied')}
+                              </p>
+                            )}
+                            {deliverySettings.roundTrip && !isDeliveryIncluded && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {t('roundTripNote', {
+                                  distance: deliveryDistance.toFixed(1),
+                                  total: (deliveryDistance * 2).toFixed(1),
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Maximum Distance Error */}
+                        {deliveryError && (
+                          <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
+                            {deliveryError}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Navigation */}
+                    <div className="pt-4 flex gap-3">
+                      <Button type="button" variant="outline" onClick={goToPreviousStep}>
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        {t('back')}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={goToNextStep}
+                        className="flex-1"
+                        disabled={
+                          deliveryOption === 'delivery' &&
+                          (!deliveryAddress.latitude || !!deliveryError)
+                        }
+                      >
+                        {t('continue')}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Step: Address (Optional or required for delivery) */}
               {currentStep === 'address' && (
                 <Card>
                   <CardContent className="pt-6 space-y-4">
@@ -674,7 +992,7 @@ export function CheckoutForm({
                             <CreditCard className="mr-2 h-4 w-4" />
                             {depositPercentage < 100
                               ? t('payDeposit', { amount: formatCurrency(Math.round(getSubtotal() * depositPercentage) / 100, currency) })
-                              : `${t('pay')} ${formatCurrency(getTotal(), currency)}`}
+                              : `${t('pay')} ${formatCurrency(getTotal() + (deliveryOption === 'delivery' ? deliveryFee : 0), currency)}`}
                           </>
                         ) : (
                           <>
@@ -792,10 +1110,26 @@ export function CheckoutForm({
                     </div>
                   </>
                 )}
+
+                {/* Delivery fee (if applicable) */}
+                {deliveryOption === 'delivery' && deliveryDistance !== null && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-1.5">
+                      <Truck className="h-3.5 w-3.5" />
+                      {t('deliveryFee')}
+                    </span>
+                    <span className={deliveryFee === 0 ? 'text-green-600 font-medium' : ''}>
+                      {deliveryFee === 0 ? t('free') : formatCurrency(deliveryFee, currency)}
+                    </span>
+                  </div>
+                )}
+
                 <Separator />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>{tCart('total')}</span>
-                  <span className="text-primary">{formatCurrency(getTotal(), currency)}</span>
+                  <span className="text-primary">
+                    {formatCurrency(getTotal() + (deliveryOption === 'delivery' ? deliveryFee : 0), currency)}
+                  </span>
                 </div>
                 {/* Partial payment info - only in payment mode with deposit < 100% */}
                 {reservationMode === 'payment' && depositPercentage < 100 && (
