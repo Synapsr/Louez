@@ -3,8 +3,8 @@
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes } from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes, productUnits, reservationItemUnits } from '@/lib/db/schema'
+import { eq, and, sql, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import type { ReservationStatus } from '@/lib/validations/reservation'
@@ -2464,5 +2464,225 @@ export async function requestPayment(
   } catch (error) {
     console.error('Failed to request payment:', error)
     return { error: 'errors.requestPaymentFailed' }
+  }
+}
+
+// ============================================================================
+// Unit Assignment Actions
+// ============================================================================
+
+/**
+ * Assign units to a reservation item.
+ * This replaces any existing assignments for the item.
+ */
+export async function assignUnitsToReservationItem(
+  reservationItemId: string,
+  unitIds: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  try {
+    // 1. Get the reservation item and verify store access
+    const [item] = await db
+      .select({
+        id: reservationItems.id,
+        productId: reservationItems.productId,
+        quantity: reservationItems.quantity,
+        reservationId: reservationItems.reservationId,
+      })
+      .from(reservationItems)
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .where(
+        and(
+          eq(reservationItems.id, reservationItemId),
+          eq(reservations.storeId, store.id)
+        )
+      )
+
+    if (!item) {
+      return { error: 'errors.notFound' }
+    }
+
+    // 2. Validate that we're not assigning more units than quantity
+    if (unitIds.length > item.quantity) {
+      return { error: 'errors.tooManyUnitsAssigned' }
+    }
+
+    // 3. Verify all units belong to the correct product
+    if (unitIds.length > 0) {
+      const units = await db
+        .select({
+          id: productUnits.id,
+          productId: productUnits.productId,
+          identifier: productUnits.identifier,
+        })
+        .from(productUnits)
+        .where(inArray(productUnits.id, unitIds))
+
+      // Check all units exist and belong to the right product
+      if (units.length !== unitIds.length) {
+        return { error: 'errors.invalidUnits' }
+      }
+
+      for (const unit of units) {
+        if (unit.productId !== item.productId) {
+          return { error: 'errors.unitProductMismatch' }
+        }
+      }
+
+      // 4. Delete existing assignments for this item
+      await db
+        .delete(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+      // 5. Insert new assignments with identifier snapshots
+      const unitMap = new Map(units.map((u) => [u.id, u.identifier]))
+      const assignmentsToInsert = unitIds.map((unitId) => ({
+        id: nanoid(),
+        reservationItemId,
+        productUnitId: unitId,
+        identifierSnapshot: unitMap.get(unitId) || '',
+      }))
+
+      await db.insert(reservationItemUnits).values(assignmentsToInsert)
+
+      // 6. Log activity
+      await logReservationActivity(
+        item.reservationId,
+        'modified',
+        undefined,
+        {
+          action: 'units_assigned',
+          reservationItemId,
+          unitIdentifiers: units.map((u) => u.identifier),
+        }
+      )
+    } else {
+      // Clear assignments if no units provided
+      await db
+        .delete(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+      await logReservationActivity(
+        item.reservationId,
+        'modified',
+        undefined,
+        {
+          action: 'units_unassigned',
+          reservationItemId,
+        }
+      )
+    }
+
+    revalidatePath(`/dashboard/reservations/${item.reservationId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to assign units:', error)
+    return { error: 'errors.assignUnitsFailed' }
+  }
+}
+
+/**
+ * Get available units for assignment to a reservation item.
+ */
+export async function getAvailableUnitsForReservationItem(
+  reservationItemId: string
+): Promise<{
+  units?: Array<{
+    id: string
+    identifier: string
+    notes: string | null
+  }>
+  assigned?: string[]
+  error?: string
+}> {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  try {
+    // 1. Get reservation item details and verify access
+    const [item] = await db
+      .select({
+        id: reservationItems.id,
+        productId: reservationItems.productId,
+        reservationId: reservationItems.reservationId,
+        startDate: reservations.startDate,
+        endDate: reservations.endDate,
+      })
+      .from(reservationItems)
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .where(
+        and(
+          eq(reservationItems.id, reservationItemId),
+          eq(reservations.storeId, store.id)
+        )
+      )
+
+    if (!item) {
+      return { error: 'errors.notFound' }
+    }
+
+    // Items without a productId (custom items) cannot have units
+    if (!item.productId) {
+      return { units: [], assigned: [] }
+    }
+
+    // 2. Get available units using the utility
+    const { getAvailableUnitsForProduct } = await import('@/lib/utils/unit-availability')
+    const availableUnits = await getAvailableUnitsForProduct(
+      item.productId,
+      item.startDate,
+      item.endDate,
+      item.reservationId // Exclude current reservation to allow re-assignment
+    )
+
+    // 3. Get currently assigned units for this item
+    const assignedUnits = await db
+      .select({
+        productUnitId: reservationItemUnits.productUnitId,
+      })
+      .from(reservationItemUnits)
+      .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+    // Include currently assigned units in the available list (they're already reserved for this item)
+    const assignedUnitIds = assignedUnits.map((a) => a.productUnitId)
+    const currentlyAssignedUnits = await db
+      .select({
+        id: productUnits.id,
+        identifier: productUnits.identifier,
+        notes: productUnits.notes,
+      })
+      .from(productUnits)
+      .where(
+        and(
+          inArray(productUnits.id, assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__']),
+          eq(productUnits.status, 'available')
+        )
+      )
+
+    // Merge available units with currently assigned (avoiding duplicates)
+    const availableUnitIds = new Set(availableUnits.map((u) => u.id))
+    const allUnits = [
+      ...availableUnits,
+      ...currentlyAssignedUnits.filter((u) => !availableUnitIds.has(u.id)),
+    ]
+
+    return {
+      units: allUnits.map((u) => ({
+        id: u.id,
+        identifier: u.identifier,
+        notes: u.notes,
+      })),
+      assigned: assignedUnitIds,
+    }
+  } catch (error) {
+    console.error('Failed to get available units:', error)
+    return { error: 'errors.getAvailableUnitsFailed' }
   }
 }

@@ -270,6 +270,12 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       flex: 1.5,
       textAlign: 'right',
     },
+    unitIdentifiers: {
+      fontSize: 7.5,
+      color: '#666666',
+      fontStyle: 'italic',
+      marginTop: 2,
+    },
 
     // Totals
     totalsContainer: {

@@ -41,6 +41,7 @@ import { SmartReservationActions } from './smart-reservation-actions'
 import { ReservationNotes } from './reservation-notes'
 import { ActivityTimelineV2 } from './activity-timeline-v2'
 import { UnifiedPaymentSection } from './unified-payment-section'
+import { UnitAssignmentSelector } from '@/components/dashboard/unit-assignment-selector'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -71,6 +72,7 @@ export default async function ReservationDetailPage({
       items: {
         with: {
           product: true,
+          assignedUnits: true,
         },
       },
       payments: true,
@@ -258,22 +260,39 @@ export default async function ReservationDetailPage({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reservation.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.productSnapshot?.name || item.product?.name}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {parseFloat(item.unitPrice).toFixed(2)}{currencySymbol}/{store.settings?.pricingMode === 'hour' ? 'h' : 'j'}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {parseFloat(item.totalPrice).toFixed(2)}{currencySymbol}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {reservation.items.map((item) => {
+                      const trackUnits = item.product?.trackUnits || false
+                      const assignedUnitIds = item.assignedUnits?.map((au) => au.productUnitId) || []
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              {item.productSnapshot?.name || item.product?.name}
+                              {/* Unit Assignment Selector - only for products with unit tracking */}
+                              {trackUnits && (
+                                <UnitAssignmentSelector
+                                  reservationItemId={item.id}
+                                  productName={item.productSnapshot?.name || item.product?.name || ''}
+                                  quantity={item.quantity}
+                                  trackUnits={trackUnits}
+                                  initialAssignedUnitIds={assignedUnitIds}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center align-top pt-4">
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground align-top pt-4">
+                            {parseFloat(item.unitPrice).toFixed(2)}{currencySymbol}/{store.settings?.pricingMode === 'hour' ? 'h' : 'j'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium align-top pt-4">
+                            {parseFloat(item.totalPrice).toFixed(2)}{currencySymbol}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                   <TableFooter>
                     {/* Tax display - if taxes are present */}

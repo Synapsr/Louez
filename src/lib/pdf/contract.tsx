@@ -37,6 +37,7 @@ export interface ContractTranslations {
     qty: string
     unitPrice: string
     total: string
+    unitIdentifiers?: string
   }
   totals: {
     subtotalHT: string
@@ -132,6 +133,7 @@ interface ReservationItem {
   quantity: number
   unitPrice: string
   totalPrice: string
+  assignedUnitIdentifiers?: string[]
 }
 
 interface Payment {
@@ -393,9 +395,16 @@ export function ContractDocument({
                   index === reservation.items.length - 1 ? styles.tableRowLast : {},
                 ]}
               >
-                <Text style={[styles.tableCell, styles.tableCellName]}>
-                  {item.productSnapshot.name}
-                </Text>
+                <View style={[styles.tableCell, styles.tableCellName]}>
+                  <Text>{item.productSnapshot.name}</Text>
+                  {item.assignedUnitIdentifiers && item.assignedUnitIdentifiers.length > 0 && (
+                    <Text style={styles.unitIdentifiers}>
+                      {t.table.unitIdentifiers
+                        ? t.table.unitIdentifiers.replace('{identifiers}', item.assignedUnitIdentifiers.join(', '))
+                        : `Identifiers: ${item.assignedUnitIdentifiers.join(', ')}`}
+                    </Text>
+                  )}
+                </View>
                 <Text style={[styles.tableCell, styles.tableCellQty]}>{item.quantity}</Text>
                 <Text style={[styles.tableCell, styles.tableCellPrice]}>
                   {formatCurrency(item.unitPrice)}

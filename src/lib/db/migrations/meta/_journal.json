@@ -141,6 +141,13 @@
       "when": 1769533667073,
       "tag": "0019_glorious_terrax",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1769619100610,
+      "tag": "0020_closed_impossible_man",
+      "breakpoints": true
     }
   ]
 }

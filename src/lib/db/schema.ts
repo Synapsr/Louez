@@ -329,6 +329,10 @@ export const products = mysqlTable(
     // Stock
     quantity: int('quantity').notNull().default(1),
 
+    // Unit tracking: when true, individual units can be registered with identifiers
+    // and assigned to reservations to track exactly which units are rented out
+    trackUnits: boolean('track_units').notNull().default(false),
+
     // Display order (for manual sorting)
     displayOrder: int('display_order').default(0),
 
@@ -992,6 +996,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   reservationItems: many(reservationItems),
   pricingTiers: many(productPricingTiers),
+  units: many(productUnits),
   accessories: many(productAccessories, { relationName: 'productAccessories' }),
   accessoryOf: many(productAccessories, { relationName: 'accessoryOf' }),
 }))
@@ -1000,6 +1005,92 @@ export const productPricingTiersRelations = relations(productPricingTiers, ({ on
   product: one(products, {
     fields: [productPricingTiers.productId],
     references: [products.id],
+  }),
+}))
+
+// ============================================================================
+// Product Units (Individual Unit Tracking)
+// ============================================================================
+
+export const unitStatus = mysqlEnum('unit_status', ['available', 'maintenance', 'retired'])
+
+export const productUnits = mysqlTable(
+  'product_units',
+  {
+    id: id(),
+    productId: varchar('product_id', { length: 21 }).notNull(),
+
+    // User-defined identifier (serial number, asset tag, etc.)
+    identifier: varchar('identifier', { length: 255 }).notNull(),
+
+    // Optional internal notes (e.g., "Blue frame", "New battery 2025")
+    notes: text('notes'),
+
+    // Unit lifecycle status
+    // Note: "rented" is derived from reservation assignments, not stored here
+    status: unitStatus.default('available').notNull(),
+
+    // Metadata
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    productIdx: index('product_units_product_idx').on(table.productId),
+    // Enforce unique identifier per product (same identifier can exist on different products)
+    uniqueIdentifierPerProduct: unique('product_units_unique_identifier').on(
+      table.productId,
+      table.identifier
+    ),
+    // For quick lookups of available units
+    statusIdx: index('product_units_status_idx').on(table.productId, table.status),
+  })
+)
+
+export const productUnitsRelations = relations(productUnits, ({ one, many }) => ({
+  product: one(products, {
+    fields: [productUnits.productId],
+    references: [products.id],
+  }),
+  reservationAssignments: many(reservationItemUnits),
+}))
+
+// ============================================================================
+// Reservation Item Units (Unit Assignment to Reservations)
+// ============================================================================
+
+export const reservationItemUnits = mysqlTable(
+  'reservation_item_units',
+  {
+    id: id(),
+    reservationItemId: varchar('reservation_item_id', { length: 21 }).notNull(),
+    productUnitId: varchar('product_unit_id', { length: 21 }).notNull(),
+
+    // Snapshot of identifier at assignment time (for contract/history accuracy
+    // even if the unit is renamed later)
+    identifierSnapshot: varchar('identifier_snapshot', { length: 255 }).notNull(),
+
+    // When the unit was assigned
+    assignedAt: timestamp('assigned_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationItemIdx: index('reservation_item_units_item_idx').on(table.reservationItemId),
+    productUnitIdx: index('reservation_item_units_unit_idx').on(table.productUnitId),
+    // Prevent assigning the same unit twice to the same reservation item
+    uniqueAssignment: unique('reservation_item_units_unique').on(
+      table.reservationItemId,
+      table.productUnitId
+    ),
+  })
+)
+
+export const reservationItemUnitsRelations = relations(reservationItemUnits, ({ one }) => ({
+  reservationItem: one(reservationItems, {
+    fields: [reservationItemUnits.reservationItemId],
+    references: [reservationItems.id],
+  }),
+  productUnit: one(productUnits, {
+    fields: [reservationItemUnits.productUnitId],
+    references: [productUnits.id],
   }),
 }))
 
@@ -1069,7 +1160,7 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   activity: many(reservationActivity),
 }))
 
-export const reservationItemsRelations = relations(reservationItems, ({ one }) => ({
+export const reservationItemsRelations = relations(reservationItems, ({ one, many }) => ({
   reservation: one(reservations, {
     fields: [reservationItems.reservationId],
     references: [reservations.id],
@@ -1078,6 +1169,7 @@ export const reservationItemsRelations = relations(reservationItems, ({ one }) =
     fields: [reservationItems.productId],
     references: [products.id],
   }),
+  assignedUnits: many(reservationItemUnits),
 }))
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
