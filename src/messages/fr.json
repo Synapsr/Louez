@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Enregistrer",
+    "unsavedChanges": "Modifications non enregistrées",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "edit": "Modifier",
@@ -212,6 +213,7 @@
       "noStoresFound": "Aucune boutique trouvée",
       "yourStores": "Vos boutiques",
       "createNewStore": "Créer une nouvelle boutique",
+      "multiStoreView": "Vue multi-boutiques",
       "roles": {
         "owner": "Propriétaire",
         "member": "Collaborateur",
@@ -418,7 +420,47 @@
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Paramètres",
-      "store": "Ma boutique"
+      "store": "Ma boutique",
+      "multiStore": "Multi-boutiques"
+    },
+    "multiStore": {
+      "title": "Multi-boutiques",
+      "description": "Vue d'ensemble de vos {count, plural, one {# boutique} other {# boutiques}}",
+      "goToAStore": "Accéder à une boutique",
+      "stats": {
+        "totalRevenue": "Chiffre d'affaires",
+        "reservations": "Réservations",
+        "pending": "en attente",
+        "customers": "Clients",
+        "newCustomers": "nouveaux",
+        "vsPreviousPeriod": "vs période précédente"
+      },
+      "chart": {
+        "title": "Évolution du CA",
+        "description": "Revenus par boutique sur la période"
+      },
+      "table": {
+        "title": "Vos boutiques",
+        "store": "Boutique",
+        "plan": "Plan",
+        "revenue": "CA",
+        "change": "Variation",
+        "reservations": "Réserv.",
+        "customers": "Clients",
+        "goToStore": "Accéder"
+      },
+      "limits": {
+        "title": "Limites approchées",
+        "description": "{count, plural, one {# boutique approche} other {# boutiques approchent}} de ses limites",
+        "products": "produits",
+        "reservations": "réserv./mois",
+        "customers": "clients",
+        "upgrade": "Améliorer"
+      },
+      "empty": {
+        "title": "Pas encore de données",
+        "description": "Les statistiques apparaîtront une fois que vos boutiques auront des réservations."
+      }
     },
     "home": {
       "viewAll": "Voir tout",
@@ -660,6 +702,7 @@
         "statusArchived": "Archivé",
         "statusArchivedDescription": "Retiré du catalogue",
         "save": "Enregistrer",
+        "unsavedChanges": "Modifications non enregistrées",
         "createProduct": "Créer le produit",
         "productCreated": "Produit créé",
         "productUpdated": "Produit modifié",
@@ -699,6 +742,40 @@
           "enforceStrictTiers": "Proposer uniquement ces durées",
           "enforceStrictTiersDescription": "Les clients ne pourront réserver que pour les durées exactes de vos paliers. Les durées intermédiaires ne seront pas proposées.",
           "enforceStrictTiersTooltip": "Si un client choisit une durée intermédiaire, elle sera automatiquement arrondie au palier supérieur. Par exemple, avec des paliers à 3 et 7 jours, une location de 5 jours sera facturée au tarif de 7 jours."
+        },
+        "unitTracking": {
+          "toggle": "Suivre les unités individuellement",
+          "toggleDescription": "Enregistrez chaque unité avec un identifiant unique pour savoir laquelle est en location",
+          "title": "Identifiants",
+          "description": "Enregistrez chaque unité avec un identifiant unique",
+          "quantityLabel": "Quantité disponible",
+          "quantityManagedByTracking": "Géré par le suivi unitaire",
+          "activeUnits": "{count, plural, one {# unité active} other {# unités actives}}",
+          "addUnit": "Ajouter une unité",
+          "addNotes": "Ajouter des notes",
+          "identifier": "Identifiant",
+          "identifierPlaceholder": "ex : VELO-01, SN-2024-001",
+          "notes": "Notes",
+          "notesPlaceholder": "Notes optionnelles sur cette unité (état, couleur...)",
+          "statusAvailable": "Disponible",
+          "statusMaintenance": "Maintenance",
+          "statusRetired": "Retiré",
+          "bulkAdd": "Ajout en masse",
+          "bulkPrefix": "Préfixe",
+          "bulkPrefixPlaceholder": "ex : VELO-",
+          "bulkFrom": "De",
+          "bulkTo": "À",
+          "bulkGenerate": "Générer",
+          "bulkPreview": "Aperçu",
+          "deleteConfirm": "Supprimer cette unité",
+          "deleteWarning": "Cette unité est actuellement assignée à une réservation active et ne peut pas être retirée.",
+          "disableConfirm": "Désactiver le suivi unitaire ?",
+          "disableDescription": "Le suivi individuel sera masqué. La quantité sera définie à {count}. Vos unités enregistrées seront conservées.",
+          "duplicateIdentifier": "Un ou plusieurs identifiants sont en double",
+          "noUnitsRegistered": "Aucune unité enregistrée",
+          "noUnitsHint": "Ajoutez des unités individuelles pour suivre lesquelles sont en location",
+          "cancel": "Annuler",
+          "confirm": "Confirmer"
         },
         "previewTitle": "Aperçu",
         "previewDescription": "Voici comment votre produit apparaîtra dans le catalogue",
@@ -1040,6 +1117,21 @@
         "showAll": "Voir tout ({count} événements)",
         "showLess": "Voir moins"
       },
+      "unitAssignment": {
+        "title": "Assignation des unités",
+        "assignUnits": "Assigner les unités",
+        "assignedCount": "{assigned} sur {total} assignées",
+        "allAssigned": "Toutes les unités assignées",
+        "noneAssigned": "Aucune unité assignée",
+        "noUnitsAvailable": "Aucune unité disponible",
+        "selectUnit": "Sélectionner une unité",
+        "unit": "Unité {number}",
+        "optional": "L'assignation est optionnelle",
+        "save": "Enregistrer",
+        "saved": "Unités assignées",
+        "notes": "Notes",
+        "identifiers": "Identifiants : {identifiers}"
+      },
       "smartActions": {
         "paymentIncomplete": "Location non réglée ({remaining} restant)",
         "depositNotCollected": "Caution non encaissée ({amount})",
@@ -1059,7 +1151,9 @@
         "notCollected": "Non encaissée",
         "toReturnToCustomer": "À restituer au client",
         "returnQuestion": "Confirmez-vous que le matériel a été rendu en bon état ?",
-        "confirmReturn": "Confirmer le retour"
+        "confirmReturn": "Confirmer le retour",
+        "skipInspectionPickup": "Passer et confirmer le retrait",
+        "skipInspectionReturn": "Passer et confirmer le retour"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -1155,7 +1249,47 @@
         },
         "statusAuthorized": "Autorisé",
         "statusRefunded": "Remboursé",
-        "statusCancelled": "Annulé"
+        "statusCancelled": "Annulé",
+        "requestPayment": "Demander un paiement"
+      },
+      "requestPaymentModal": {
+        "title": "Demander un paiement",
+        "description": "Envoyer une demande de paiement à {name}",
+        "paymentType": "Type de paiement",
+        "types": {
+          "rental": {
+            "name": "Solde de location",
+            "description": "Demander le paiement du reste de la location"
+          },
+          "deposit": {
+            "name": "Caution (empreinte bancaire)",
+            "description": "Demander une empreinte bancaire pour la caution"
+          },
+          "custom": {
+            "name": "Montant personnalisé",
+            "description": "Demander un montant spécifique"
+          }
+        },
+        "customAmount": "Montant",
+        "minAmount": "Montant minimum : {amount}",
+        "sendVia": "Envoyer par",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "pas de téléphone",
+        "selectChannel": "Sélectionnez au moins un canal d'envoi",
+        "customMessage": "Message personnalisé",
+        "customMessagePlaceholder": "Ajoutez un message pour votre client...",
+        "amountToRequest": "Montant demandé",
+        "send": "Envoyer la demande",
+        "success": "Demande de paiement envoyée",
+        "successTitle": "Demande envoyée !",
+        "successDescription": "Le client recevra un lien de paiement par {channel}",
+        "error": "Erreur lors de l'envoi",
+        "paymentLink": "Lien de paiement",
+        "linkCopied": "Lien copié",
+        "copyFailed": "Échec de la copie",
+        "stripeNotConfigured": "Stripe non configuré",
+        "stripeNotConfiguredDescription": "Configurez Stripe dans les paramètres pour envoyer des demandes de paiement en ligne."
       },
       "onlinePayment": {
         "title": "Paiement en ligne",
@@ -1620,6 +1754,11 @@
           "pastDue": "Paiement en retard",
           "cancelled": "Annulé"
         },
+        "discount": {
+          "title": "Offre spéciale active",
+          "permanent": "Vous bénéficiez d'une remise permanente de {percent}% sur votre abonnement.",
+          "limited": "Vous bénéficiez d'une remise de {percent}% sur votre abonnement pendant {months} mois."
+        },
         "paymentStatus": {
           "pending": "En attente",
           "completed": "Payé",
@@ -1703,7 +1842,9 @@
           "description": "Profitez de 50% de réduction sur tous nos plans. Prix garanti à vie pour les premiers inscrits.",
           "guaranteedForLife": "Prix garanti à vie",
           "endsOn": "Offre valable jusqu'au 1er mars 2026"
-        }
+        },
+        "pricesExcludingTax": "Prix HT",
+        "excludingTax": "HT"
       },
       "team": "Équipe",
       "saveChanges": "Enregistrer les modifications",
@@ -1838,6 +1979,10 @@
         "modePaymentDescription": "Les clients paient immédiatement",
         "pendingBlocksAvailability": "Bloquer la disponibilité pendant une demande",
         "pendingBlocksAvailabilityDescription": "Quand activé, une demande de réservation en attente bloque immédiatement la disponibilité du produit. Désactivez si vous souhaitez permettre plusieurs demandes pour les mêmes dates.",
+        "depositPercentage": "Montant de l'acompte",
+        "depositPercentageDescription": "Pourcentage du montant total à payer lors de la réservation en ligne",
+        "depositPercentageFull": "Paiement intégral à la commande",
+        "depositPercentagePartial": "{percentage}% à la réservation, le reste à la prise en charge",
         "pricingMode": "Unité de tarification",
         "pricingDay": "Par jour",
         "pricingHour": "Par heure",
@@ -2268,6 +2413,286 @@
         "depositNoTaxInfo": "Les cautions ne sont pas soumises à la TVA car elles sont restituées au client.",
         "saved": "Paramètres de taxes enregistrés"
       },
+      "delivery": {
+        "title": "Livraison",
+        "description": "Configurez les options de livraison pour vos clients",
+        "enableSection": "Service de livraison",
+        "enableSectionDescription": "Permettez aux clients de se faire livrer le matériel",
+        "enabled": "Activer la livraison",
+        "enabledDescription": "Les clients peuvent choisir la livraison au lieu du retrait",
+        "modeSection": "Mode de livraison",
+        "modeOptional": "Au choix du client",
+        "modeOptionalDescription": "Le client choisit entre retrait en magasin ou livraison",
+        "modeRequired": "Livraison obligatoire",
+        "modeRequiredDescription": "La livraison est imposée, pas d'option de retrait",
+        "modeIncluded": "Livraison incluse",
+        "modeIncludedDescription": "La livraison est obligatoire et gratuite",
+        "noCoordinatesWarning": "Vous devez configurer l'adresse de votre boutique avec la localisation sur la carte pour activer la livraison.",
+        "noCoordinatesError": "Veuillez d'abord configurer l'adresse de votre boutique avec la localisation GPS.",
+        "goToStoreSettings": "Paramètres boutique",
+        "customerAddressNoteOptional": "Quand la livraison est activée, les clients peuvent choisir entre retrait et livraison.",
+        "customerAddressNoteRequired": "Les clients doivent obligatoirement saisir une adresse de livraison.",
+        "pricingSection": "Tarification",
+        "pricePerKm": "Prix par kilomètre",
+        "pricePerKmDescription": "Montant facturé par kilomètre parcouru",
+        "minimumFee": "Frais minimum",
+        "minimumFeeDescription": "Montant minimum facturé quelle que soit la distance",
+        "tripType": "Type de trajet",
+        "oneWay": "Aller simple",
+        "oneWayDescription": "Le tarif est calculé pour la livraison uniquement",
+        "roundTrip": "Aller-retour",
+        "roundTripDescription": "Le tarif inclut la livraison et la récupération",
+        "exampleTitle": "Exemple de calcul",
+        "example": "Livraison à {distance} km = {fee}",
+        "roundTripNote": "{distance} km x 2 = {total} km facturés",
+        "optionalSection": "Paramètres optionnels",
+        "maximumDistance": "Distance maximale",
+        "maximumDistanceDescription": "Laissez vide pour aucune limite",
+        "freeDeliveryThreshold": "Livraison gratuite dès",
+        "freeDeliveryThresholdDescription": "Montant de commande à partir duquel la livraison est offerte",
+        "saved": "Paramètres de livraison enregistrés",
+        "simulator": {
+          "title": "Simulateur de tarif",
+          "description": "Testez vos paramètres pour voir le coût de livraison",
+          "distance": "Distance client",
+          "orderTotal": "Montant de la commande",
+          "result": "Frais de livraison",
+          "free": "Gratuit",
+          "notAvailable": "Non disponible",
+          "tooFar": "Distance supérieure au maximum ({max} km)",
+          "freeDeliveryApplied": "Livraison gratuite appliquée",
+          "minimumApplied": "Frais minimum appliqué",
+          "freeAbove": "Gratuit dès {amount}",
+          "distanceLabel": "Distance",
+          "rateLabel": "Calcul",
+          "minimumLabel": "Minimum",
+          "testAddress": "Tester une adresse",
+          "testAddressTitle": "Tester une adresse",
+          "testAddressDescription": "Saisissez une adresse client pour calculer la distance réelle",
+          "testAddressPlaceholder": "Rechercher une adresse..."
+        }
+      },
+      "inspection": {
+        "title": "Etat des lieux",
+        "description": "Documentez l'état du matériel au départ et au retour",
+        "nav": "Etat des lieux",
+        "enableSection": "Fonctionnalité d'état des lieux",
+        "enableSectionDescription": "Documentez l'état du matériel avec photos et signature",
+        "enabled": "Activer les états des lieux",
+        "enabledDescription": "Créez des rapports d'inspection au départ et au retour",
+        "modeSection": "Mode d'inspection",
+        "modeOptional": "Optionnel",
+        "modeOptionalDescription": "L'état des lieux peut être ignoré",
+        "modeRecommended": "Recommandé",
+        "modeRecommendedDescription": "Un rappel s'affiche mais peut être ignoré",
+        "modeRequired": "Obligatoire",
+        "modeRequiredDescription": "Requis pour changer le statut de la réservation",
+        "signatureSection": "Signature client",
+        "requireCustomerSignature": "Exiger la signature",
+        "requireCustomerSignatureDescription": "Le client doit signer l'état des lieux",
+        "autoGeneratePdf": "Générer un PDF automatiquement",
+        "autoGeneratePdfDescription": "Un rapport PDF est créé à la fin de chaque inspection",
+        "maxPhotosPerItem": "Photos par équipement",
+        "maxPhotosPerItemDescription": "Nombre maximum de photos par équipement inspecté",
+        "saved": "Paramètres d'état des lieux enregistrés",
+        "types": {
+          "departure": "Départ",
+          "return": "Retour"
+        },
+        "status": {
+          "draft": "En cours",
+          "completed": "Terminé",
+          "signed": "Signé",
+          "notStarted": "Non effectué"
+        },
+        "condition": {
+          "excellent": "Excellent",
+          "good": "Bon état",
+          "fair": "Usure normale",
+          "damaged": "Endommagé"
+        },
+        "card": {
+          "title": "Etat des lieux",
+          "departure": "Départ",
+          "return": "Retour",
+          "notDone": "Non effectué",
+          "availableAtDeparture": "Disponible au départ",
+          "start": "Commencer",
+          "view": "Voir",
+          "compare": "Comparer",
+          "photos": "{count, plural, one {# photo} other {# photos}}",
+          "items": "{count, plural, one {# équipement} other {# équipements}}",
+          "changesDetected": "{count, plural, one {# modification} other {# modifications}}",
+          "moreActions": "Plus d'actions",
+          "downloadPdf": "Télécharger le PDF"
+        },
+        "wizard": {
+          "title": "Etat des lieux - {type}",
+          "titleDeparture": "Etat des lieux - Départ",
+          "titleReturn": "Etat des lieux - Retour",
+          "step": "Etape {current} sur {total}",
+          "step_overview": "Aperçu",
+          "step_items": "Equipements",
+          "step_summary": "Résumé",
+          "step_signature": "Signature",
+          "overview": "Aperçu",
+          "items": "Equipements",
+          "summary": "Résumé",
+          "signature": "Signature",
+          "departureInspection": "Etat des lieux - Départ",
+          "returnInspection": "Etat des lieux - Retour",
+          "reservation": "Réservation",
+          "itemsToInspect": "{count, plural, one {équipement à inspecter} other {équipements à inspecter}}",
+          "instructions": "Instructions",
+          "instruction1_departure": "Vérifiez l'état de chaque équipement avant de le remettre au client",
+          "instruction1_return": "Vérifiez l'état de chaque équipement au retour du client",
+          "instruction2": "Prenez des photos pour documenter l'état actuel",
+          "instruction3": "Notez tout dommage ou usure anormale",
+          "allItemsOk": "Tout est en ordre",
+          "allOk": "Tout est OK",
+          "allOkDescription": "Marquer tous les équipements en excellent état",
+          "quantity": "Quantité",
+          "condition": "Etat général",
+          "photos": "Photos",
+          "notes": "Remarques",
+          "notesPlaceholder": "Ajoutez des remarques sur l'état de l'équipement...",
+          "damageDetected": "Dommage détecté",
+          "allGood": "Tout est en ordre",
+          "summaryItems": "{count, plural, one {# équipement inspecté} other {# équipements inspectés}}",
+          "itemsWithIssues": "Equipements avec remarques",
+          "globalNotes": "Notes générales",
+          "globalNotesPlaceholder": "Ajoutez des notes générales sur l'inspection...",
+          "signingAs": "Signature de {name}",
+          "signHere": "Signez ici",
+          "clearSignature": "Effacer",
+          "signatureConfirmation": "Je confirme avoir vérifié l'état du matériel et accepte les conditions",
+          "signatureComplete": "Signature validée",
+          "customerSignature": "Signature du client",
+          "signatureTitle": "Signature",
+          "signatureDescription": "Le client doit signer pour valider l'état des lieux",
+          "back": "Retour",
+          "continue": "Continuer",
+          "next": "Suivant",
+          "previous": "Précédent",
+          "complete": "Terminer",
+          "saving": "Enregistrement...",
+          "saved": "Etat des lieux enregistré",
+          "inspectionComplete": "Etat des lieux terminé avec succès",
+          "inspectionError": "Erreur lors de l'enregistrement",
+          "photoInvalidType": "Format d'image non supporté",
+          "photoTooLarge": "Image trop volumineuse (max 20 Mo)",
+          "photoError": "Erreur lors du traitement de l'image",
+          "addPhoto": "Ajouter une photo",
+          "takePhoto": "Prendre une photo",
+          "photoPreview": "Aperçu de la photo",
+          "deletePhoto": "Supprimer la photo",
+          "close": "Fermer"
+        },
+        "conditions": {
+          "excellent": "Excellent",
+          "good": "Bon état",
+          "fair": "Usure normale",
+          "damaged": "Endommagé",
+          "ok": "OK",
+          "wear": "Usure",
+          "damage": "Dommage"
+        },
+        "item": {
+          "condition": "Condition",
+          "notes": "Remarques",
+          "notesPlaceholder": "Ajoutez des remarques sur l'état de l'équipement...",
+          "photos": "Photos",
+          "addPhoto": "Ajouter une photo",
+          "takePhoto": "Prendre une photo",
+          "removePhoto": "Supprimer",
+          "photoUploading": "Téléversement...",
+          "photoError": "Erreur lors du téléversement",
+          "maxPhotosReached": "Nombre maximum de photos atteint"
+        },
+        "signature": {
+          "title": "Signature du client",
+          "instruction": "Signez dans le cadre ci-dessous",
+          "clear": "Effacer",
+          "confirm": "Je confirme avoir vérifié l'état du matériel",
+          "name": "Nom du signataire",
+          "skip": "Passer",
+          "skipDescription": "L'état des lieux sera enregistré sans signature",
+          "signedAt": "Signé le"
+        },
+        "summary": {
+          "totalItems": "Équipements",
+          "photos": "Photos",
+          "damageDetected": "Dommage",
+          "noDamage": "Aucun dommage"
+        },
+        "sections": {
+          "inspectionDetails": "Détails de l'inspection",
+          "equipment": "Équipements inspectés",
+          "notes": "Notes",
+          "signature": "Signature"
+        },
+        "parties": {
+          "customer": "Client"
+        },
+        "period": {
+          "performedBy": "Réalisé par"
+        },
+        "comparison": {
+          "title": "Comparaison",
+          "departure": "Départ",
+          "return": "Retour",
+          "noChanges": "Aucune modification détectée",
+          "changes": "Modifications détectées",
+          "conditionChanged": "Condition modifiée",
+          "newDamage": "Nouveau dommage",
+          "swipeHint": "Balayez pour comparer",
+          "noDepartureInspection": "Aucun état des lieux de départ",
+          "noReturnInspection": "Aucun état des lieux de retour",
+          "noPhotos": "Aucune photo"
+        },
+        "damage": {
+          "title": "Dommage détecté",
+          "description": "Description du dommage",
+          "estimatedCost": "Coût estimé",
+          "captureDeposit": "Capturer sur la caution",
+          "createPayment": "Créer un paiement"
+        },
+        "activity": {
+          "departureStarted": "Etat des lieux de départ commencé",
+          "departureCompleted": "Etat des lieux de départ terminé",
+          "returnStarted": "Etat des lieux de retour commencé",
+          "returnCompleted": "Etat des lieux de retour terminé",
+          "damageDetected": "Dommage détecté : {description}",
+          "signed": "Etat des lieux signé par le client"
+        },
+        "prompt": {
+          "departureTitle": "Effectuer l'état des lieux ?",
+          "departureDescription": "Documentez l'état du matériel avant de le remettre au client.",
+          "returnTitle": "Effectuer l'état des lieux ?",
+          "returnDescription": "Vérifiez l'état du matériel à son retour.",
+          "yes": "Oui, commencer",
+          "skip": "Passer cette étape"
+        },
+        "templates": {
+          "title": "Modèles d'inspection",
+          "description": "Définissez les points de contrôle par catégorie",
+          "default": "Par défaut",
+          "bikes": "Vélos / Trottinettes",
+          "tools": "Outillage électrique",
+          "audio": "Sono / Audio / Vidéo",
+          "generic": "Générique"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "État des lieux de départ",
+          "returnInspectionTitle": "État des lieux de retour",
+          "inspectionRequiredDescription": "Un état des lieux est requis avant de continuer.",
+          "inspectionRecommendedDescription": "Nous vous recommandons d'effectuer un état des lieux.",
+          "departureInspectionBenefit": "Documentez l'état du matériel avant de le remettre au client",
+          "returnInspectionBenefit": "Vérifiez l'état du matériel et détectez les éventuels dommages",
+          "inspectionDuration": "Environ 2 minutes",
+          "startInspection": "Commencer l'état des lieux"
+        }
+      },
       "payments": {
         "title": "Paiements",
         "description": "Configurez les paiements en ligne pour votre boutique",
@@ -2451,7 +2876,14 @@
         "trialDays": "Jours d'essai",
         "trialDaysDescription": "Nombre de jours d'essai gratuits lorsque cette boutique souscrit à un plan payant. Mettez 0 pour aucun essai (paiement immédiat).",
         "days": "jours",
-        "saved": "Paramètres admin enregistrés"
+        "saved": "Paramètres admin enregistrés",
+        "discountSection": "Remise sur l'abonnement",
+        "discountSectionDescription": "Configurez une remise sur l'abonnement de cette boutique.",
+        "discountPercent": "Pourcentage de remise",
+        "discountPercentDescription": "La remise appliquée au prix de l'abonnement (0-100%).",
+        "discountDuration": "Durée",
+        "discountDurationDescription": "Nombre de mois pendant lesquels la remise s'applique. Mettez 0 pour une remise permanente.",
+        "months": "mois"
       }
     }
   },
@@ -2777,9 +3209,30 @@
       "summary": "Votre commande",
       "steps": {
         "contact": "Coordonnées",
+        "delivery": "Livraison",
         "address": "Adresse",
         "confirm": "Confirmation"
       },
+      "deliveryDescription": "Choisissez comment recevoir votre matériel",
+      "deliveryRequiredDescription": "La livraison est requise pour cette commande",
+      "deliveryIncludedDescription": "La livraison est incluse avec votre commande",
+      "deliveryRequiredBanner": "Livraison obligatoire",
+      "deliveryIncludedBanner": "Livraison incluse",
+      "deliveryRequiredNote": "Ce produit nécessite une livraison",
+      "deliveryIncludedNote": "Les frais de livraison sont inclus dans le prix",
+      "pickupOption": "Retrait en magasin",
+      "deliveryOption": "Livraison à domicile",
+      "deliveryOptionDescription": "À partir de {pricePerKm}/km",
+      "freeDeliveryAbove": "Livraison gratuite dès {amount}",
+      "freeDeliveryApplied": "Livraison gratuite appliquée !",
+      "deliveryAddress": "Adresse de livraison",
+      "deliveryAddressPlaceholder": "Entrez votre adresse de livraison...",
+      "deliveryDistance": "Distance",
+      "deliveryFee": "Frais de livraison",
+      "free": "Gratuit",
+      "included": "Inclus",
+      "deliveryTooFar": "Désolé, nous ne livrons pas au-delà de {maxKm} km",
+      "roundTripNote": "{distance} km x 2 = {total} km (aller-retour)",
       "contactDescription": "Nous avons besoin de ces informations pour vous contacter",
       "addressDescription": "Optionnel - Renseignez votre adresse si nécessaire",
       "confirmDescription": "Vérifiez vos informations avant de valider",
@@ -2838,6 +3291,9 @@
         "savingsBanner": "Vous économisez {amount} grâce à la réduction longue durée"
       },
       "depositInfo": "Une caution de {amount} est demandée.",
+      "toPayNow": "À payer maintenant",
+      "remainingAtPickup": "Reste à payer à la prise en charge : {amount}",
+      "payDeposit": "Payer l'acompte de {amount}",
       "depositLabel": "Caution (empreinte)",
       "depositAuthorizationInfo": "Votre carte sera enregistrée. Une empreinte bancaire sera réalisée au retrait du matériel. Aucun montant ne sera prélevé si tout est rendu en bon état.",
       "success": {
@@ -2881,7 +3337,53 @@
       "stepPayment3": "Retournez le matériel en bon état à la date de fin",
       "backToStore": "Retour à l'accueil",
       "viewMyReservations": "Voir mes locations",
-      "viewReservation": "Voir ma réservation"
+      "viewReservation": "Voir ma réservation",
+      "deliveryLabel": "Livraison",
+      "pickupLabel": "Retrait en magasin",
+      "deliveryFeeLabel": "Frais de livraison",
+      "free": "Gratuit"
+    },
+    "authorizeDeposit": {
+      "title": "Autorisation de caution",
+      "subtitle": "Réservation #{number}",
+      "description": "Le loueur demande une autorisation de caution de {amount}.",
+      "howItWorks": "Comment ça marche ?",
+      "step1": "Votre carte est vérifiée et le montant est bloqué temporairement",
+      "step2": "Le montant n'est pas prélevé sur votre compte",
+      "step3": "À la fin de la location, l'autorisation est annulée automatiquement",
+      "step4": "En cas de dommage, tout ou partie peut être prélevé",
+      "depositAmount": "Montant de la caution",
+      "cardDetails": "Coordonnées de la carte",
+      "authorizeButton": "Autoriser {amount}",
+      "authorizing": "Autorisation en cours...",
+      "securePayment": "Paiement sécurisé par Stripe",
+      "infoBox": "Ce montant ne sera pas prélevé. Il sera bloqué temporairement sur votre carte et libéré lorsque vous rendrez le matériel en bon état.",
+      "processing": "Traitement en cours...",
+      "redirecting": "Redirection...",
+      "paymentInitError": "Impossible d'initialiser le paiement. Veuillez réessayer plus tard.",
+      "confirmationError": "Échec de la confirmation de l'autorisation",
+      "unexpectedStatus": "Statut de paiement inattendu",
+      "unexpectedError": "Une erreur inattendue s'est produite",
+      "success": {
+        "title": "Caution autorisée !",
+        "description": "Le montant de {amount} a été bloqué temporairement sur votre carte.",
+        "whatHappensNext": "Que se passe-t-il ensuite ?",
+        "willBeReleased": "Ce montant sera libéré automatiquement à la fin de votre location si le matériel est rendu en bon état. Aucun prélèvement ne sera effectué sauf en cas de dommage.",
+        "viewReservations": "Voir mes réservations",
+        "backToStore": "Retour à la boutique"
+      },
+      "errors": {
+        "notFound": "Réservation non trouvée",
+        "alreadyAuthorized": "La caution est déjà autorisée",
+        "invalidToken": "Lien d'accès invalide ou expiré. Veuillez en demander un nouveau.",
+        "stripeNotConfigured": "Les paiements en ligne ne sont pas disponibles pour cette boutique.",
+        "noDepositRequired": "Aucune caution n'est requise pour cette réservation.",
+        "generic": "Une erreur s'est produite. Veuillez réessayer.",
+        "cardDeclined": "Carte refusée. Vérifiez vos informations ou essayez une autre carte.",
+        "insufficientFunds": "Fonds insuffisants. Le montant n'a pas pu être bloqué.",
+        "invalidCard": "Carte invalide. Veuillez vérifier les informations saisies."
+      },
+      "backToStore": "Retour à la boutique"
     },
     "account": {
       "title": "Mon compte",
@@ -2971,7 +3473,9 @@
           "deposit": "Caution",
           "deposit_return": "Remboursement caution",
           "damage": "Dommages",
-          "adjustment": "Ajustement"
+          "adjustment": "Ajustement",
+          "deposit_hold": "Empreinte bancaire",
+          "deposit_capture": "Caution prélevée"
         },
         "methods": {
           "stripe": "Carte en ligne",
@@ -2985,13 +3489,21 @@
           "completed": "Payé",
           "pending": "En attente",
           "failed": "Échoué",
-          "refunded": "Remboursé"
+          "refunded": "Remboursé",
+          "cancelled": "Annulé",
+          "authorized": "Autorisé"
         }
       },
       "reviewPrompt": {
         "title": "Comment s'est passée votre location ?",
         "description": "Votre avis aide {name} à s'améliorer",
         "leaveReview": "Laisser un avis"
+      },
+      "successToast": {
+        "payment": "Paiement effectué avec succès",
+        "paymentDescription": "Votre paiement a bien été enregistré.",
+        "deposit": "Caution autorisée avec succès",
+        "depositDescription": "Le montant a été bloqué temporairement sur votre carte."
       }
     },
     "footer": {
@@ -3327,6 +3839,31 @@
       "retryPayment": "Réessayer le paiement",
       "contactSupport": "Besoin d'aide ? Contactez-nous."
     },
+    "paymentRequest": {
+      "subject": "Paiement demandé pour la réservation #{number}",
+      "title": "Demande de paiement",
+      "body": "{storeName} vous demande un paiement de {amount} pour votre réservation #{number}.",
+      "paymentDetails": "Détails du paiement",
+      "reservation": "Réservation",
+      "description": "Description",
+      "amountDue": "Montant dû",
+      "payNow": "Payer {amount}",
+      "linkFallback": "Ou copiez ce lien dans votre navigateur :",
+      "securePayment": "Ce paiement est sécurisé par Stripe. Vos informations bancaires ne sont jamais partagées avec le loueur."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorisation de caution pour la réservation #{number}",
+      "title": "Caution à autoriser",
+      "body": "{storeName} vous demande d'autoriser une caution de {amount} pour votre réservation #{number}.",
+      "howItWorks": "Comment ça marche ?",
+      "step1": "Vous autorisez le montant de la caution sur votre carte",
+      "step2": "Le montant est bloqué temporairement (pas prélevé)",
+      "step3": "À la fin de la location, la caution est libérée automatiquement",
+      "step4": "En cas de dommage, tout ou partie peut être prélevé",
+      "authorizeNow": "Autoriser la caution",
+      "linkFallback": "Ou copiez ce lien dans votre navigateur :",
+      "securePayment": "Cette autorisation est sécurisée par Stripe. Le montant ne sera pas prélevé immédiatement."
+    },
     "baseLayout": {
       "sentBy": "Cet email a été envoyé par {storeName}",
       "ignoreIfNotYou": "Si vous n'êtes pas à l'origine de cette action, veuillez ignorer cet email.",
@@ -3359,7 +3896,8 @@
       "designation": "Désignation",
       "qty": "Qté",
       "unitPrice": "Prix unit.",
-      "total": "Total"
+      "total": "Total",
+      "unitIdentifiers": "Identifiants : {identifiers}"
     },
     "totals": {
       "subtotalHT": "Sous-total HT",
@@ -3530,6 +4068,11 @@
     "productUnavailable": "Produit non disponible: {name}",
     "productNoLongerAvailable": "Le produit {name} n'est plus disponible pour ces dates. Une autre réservation a été effectuée entre-temps.",
     "insufficientStock": "Stock insuffisant pour: {name} ({count} disponibles)",
+    "tooManyUnitsAssigned": "Impossible d'assigner plus d'unités que la quantité réservée",
+    "invalidUnits": "Une ou plusieurs unités sélectionnées sont invalides",
+    "unitProductMismatch": "Les unités sélectionnées n'appartiennent pas à ce produit",
+    "assignUnitsFailed": "Échec de l'assignation des unités",
+    "getAvailableUnitsFailed": "Échec du chargement des unités disponibles",
     "createCustomerError": "Erreur lors de la création du client",
     "updateCustomerError": "Erreur lors de la mise à jour du client",
     "deleteCustomerError": "Erreur lors de la suppression du client",
@@ -3589,7 +4132,14 @@
     "customerNoPhone": "Le client n'a pas de numéro de téléphone",
     "smsSendFailed": "Erreur lors de l'envoi du SMS",
     "minRentalDurationViolation": "La durée de location doit être d'au moins {hours} heures",
-    "maxRentalDurationViolation": "La durée de location ne peut pas dépasser {hours} heures"
+    "maxRentalDurationViolation": "La durée de location ne peut pas dépasser {hours} heures",
+    "deliveryNotEnabled": "La livraison n'est pas activée pour cette boutique",
+    "deliveryAddressRequired": "Veuillez saisir une adresse de livraison valide",
+    "storeCoordinatesNotConfigured": "Les coordonnées de la boutique ne sont pas configurées",
+    "deliveryTooFar": "L'adresse de livraison est trop éloignée (maximum {maxDistance} km)",
+    "deliveryRequired": "La livraison est obligatoire pour cette boutique",
+    "storeCoordinatesInvalid": "Les coordonnées du magasin sont invalides",
+    "deliveryAddressInvalid": "L'adresse de livraison est invalide"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

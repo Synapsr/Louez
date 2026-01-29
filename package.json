@@ -42,7 +42,8 @@
     "db:migrate:run": "tsx src/lib/db/migrate.ts",
     "db:baseline": "tsx src/lib/db/migrate.ts --baseline",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx src/scripts/seed/index.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -62,6 +63,7 @@
     "@radix-ui/react-scroll-area": "^1.2.10",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
+    "@radix-ui/react-slider": "^1.3.6",
     "@radix-ui/react-slot": "^1.2.4",
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
@@ -70,6 +72,8 @@
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
     "@react-pdf/renderer": "^4.3.2",
+    "@stripe/react-stripe-js": "^5.5.0",
+    "@stripe/stripe-js": "^8.6.4",
     "@tiptap/extension-link": "^3.15.3",
     "@tiptap/extension-placeholder": "^3.15.3",
     "@tiptap/pm": "^3.15.3",
@@ -112,6 +116,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "@tailwindcss/postcss": "^4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/canvas-confetti": "^1.9.0",

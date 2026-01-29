@@ -28,8 +28,32 @@ function PostHogPageView() {
   return null
 }
 
+/**
+ * Identifies user in PostHog for session replay attribution.
+ * Must be used inside PostHogProvider.
+ */
+function PostHogIdentify({ user }: { user: PostHogProviderProps['user'] }) {
+  const posthogClient = usePostHog()
+
+  useEffect(() => {
+    if (posthogClient && user) {
+      posthogClient.identify(user.id, {
+        email: user.email,
+        name: user.name || undefined,
+      })
+    }
+  }, [posthogClient, user])
+
+  return null
+}
+
 interface PostHogProviderProps {
   children: React.ReactNode
+  user?: {
+    id: string
+    email: string
+    name?: string | null
+  }
 }
 
 /**
@@ -43,7 +67,7 @@ interface PostHogProviderProps {
  * PostHog is initialized in instrumentation-client.ts, this provider
  * adds React context integration for the initialized instance.
  */
-export function PostHogProvider({ children }: PostHogProviderProps) {
+export function PostHogProvider({ children, user }: PostHogProviderProps) {
   // Skip rendering if PostHog is not configured
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
     return <>{children}</>
@@ -54,6 +78,7 @@ export function PostHogProvider({ children }: PostHogProviderProps) {
       <Suspense fallback={null}>
         <PostHogPageView />
       </Suspense>
+      {user && <PostHogIdentify user={user} />}
       {children}
     </PHProvider>
   )

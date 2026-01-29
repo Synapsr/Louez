@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores, reservations } from '@/lib/db/schema'
@@ -16,20 +15,21 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  LogOut,
   Sparkles,
   CreditCard,
   History,
 } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings, StoreTheme } from '@/types/store'
-import { getCustomerSession, logout } from './actions'
+import { getCustomerSession } from './actions'
 import { generateStoreMetadata } from '@/lib/seo'
+import { storefrontRedirect } from '@/lib/storefront-url'
+import { LogoutButton } from '@/components/storefront/logout-button'
 import { PageTracker } from '@/components/storefront/page-tracker'
+import { SuccessToast } from './success-toast'
 
 interface AccountPageProps {
   params: Promise<{ slug: string }>
@@ -82,7 +82,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
   const session = await getCustomerSession(slug)
 
   if (!session) {
-    redirect('/account/login')
+    storefrontRedirect(slug, '/account/login')
   }
 
   type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
@@ -168,18 +168,13 @@ export default async function AccountPage({ params }: AccountPageProps) {
     (r) => r.status === 'confirmed' || r.status === 'ongoing'
   )
 
-  async function handleLogout() {
-    'use server'
-    await logout()
-    redirect('/')
-  }
-
   // Get initials for avatar
   const initials = `${session.customer.firstName?.[0] || ''}${session.customer.lastName?.[0] || ''}`.toUpperCase()
 
   return (
     <>
       <PageTracker page="account" />
+      <SuccessToast />
       <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Profile Header */}
@@ -198,12 +193,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                     <p className="text-muted-foreground">{session.customer.email}</p>
                   </div>
                 </div>
-                <form action={handleLogout}>
-                  <Button variant="outline" size="sm" type="submit" className="gap-2 bg-background/80 backdrop-blur-sm">
-                    <LogOut className="h-4 w-4" />
-                    {t('logout')}
-                  </Button>
-                </form>
+                <LogoutButton storeSlug={slug} />
               </div>
             </div>
 

@@ -2,10 +2,22 @@
 
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { products, categories, productPricingTiers, productAccessories } from '@/lib/db/schema'
+import {
+  products,
+  categories,
+  productPricingTiers,
+  productAccessories,
+  productUnits,
+} from '@/lib/db/schema'
 import { eq, and, ne, inArray, or } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { productSchema, categorySchema, type ProductInput, type CategoryInput } from '@/lib/validations/product'
+import {
+  productSchema,
+  categorySchema,
+  type ProductInput,
+  type CategoryInput,
+  type ProductUnitInput,
+} from '@/lib/validations/product'
 import { nanoid } from 'nanoid'
 import { validatePricingTiers } from '@/lib/pricing'
 import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
@@ -38,7 +50,16 @@ export async function createProduct(data: ProductInput) {
   const deposit = validated.data.deposit
     ? validated.data.deposit.replace(',', '.')
     : '0'
-  const quantity = parseInt(validated.data.quantity, 10)
+
+  // Unit tracking
+  const trackUnits = validated.data.trackUnits || false
+  const units = validated.data.units || []
+
+  // If tracking units, quantity is derived from the count of available units
+  // Otherwise, use the manually entered quantity
+  const quantity = trackUnits
+    ? units.filter((u) => !u.status || u.status === 'available').length
+    : parseInt(validated.data.quantity, 10)
 
   const productId = nanoid()
 
@@ -57,6 +78,7 @@ export async function createProduct(data: ProductInput) {
     videoUrl: validated.data.videoUrl || null,
     taxSettings: validated.data.taxSettings || null,
     enforceStrictTiers: validated.data.enforceStrictTiers || false,
+    trackUnits: trackUnits,
   })
 
   // Create pricing tiers if provided
@@ -68,6 +90,19 @@ export async function createProduct(data: ProductInput) {
         minDuration: tier.minDuration,
         discountPercent: tier.discountPercent.toFixed(6),
         displayOrder: index,
+      }))
+    )
+  }
+
+  // Create units if tracking is enabled
+  if (trackUnits && units.length > 0) {
+    await db.insert(productUnits).values(
+      units.map((unit) => ({
+        id: nanoid(),
+        productId: productId,
+        identifier: unit.identifier.trim(),
+        notes: unit.notes?.trim() || null,
+        status: unit.status || 'available',
       }))
     )
   }
@@ -114,7 +149,16 @@ export async function updateProduct(productId: string, data: ProductInput) {
   const deposit = validated.data.deposit
     ? validated.data.deposit.replace(',', '.')
     : '0'
-  const quantity = parseInt(validated.data.quantity, 10)
+
+  // Unit tracking
+  const trackUnits = validated.data.trackUnits || false
+  const units = validated.data.units || []
+
+  // If tracking units, quantity is derived from the count of available units
+  // Otherwise, use the manually entered quantity
+  const quantity = trackUnits
+    ? units.filter((u) => !u.status || u.status === 'available').length
+    : parseInt(validated.data.quantity, 10)
 
   await db
     .update(products)
@@ -131,6 +175,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
       videoUrl: validated.data.videoUrl || null,
       taxSettings: validated.data.taxSettings || null,
       enforceStrictTiers: validated.data.enforceStrictTiers || false,
+      trackUnits: trackUnits,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))
@@ -148,6 +193,59 @@ export async function updateProduct(productId: string, data: ProductInput) {
         displayOrder: index,
       }))
     )
+  }
+
+  // Update product units: sync with provided units
+  if (trackUnits) {
+    // Get existing units
+    const existingUnits = await db.query.productUnits.findMany({
+      where: eq(productUnits.productId, productId),
+    })
+    const existingUnitIds = new Set(existingUnits.map((u) => u.id))
+
+    // Separate units into updates and inserts
+    const unitsToUpdate = units.filter((u) => u.id && existingUnitIds.has(u.id))
+    const unitsToInsert = units.filter((u) => !u.id)
+    const unitIdsToKeep = new Set(units.filter((u) => u.id).map((u) => u.id))
+
+    // Delete units that are no longer in the list
+    // Note: We don't delete units that are assigned to active reservations
+    // (this is handled in the UI by disabling the delete button)
+    const unitIdsToDelete = existingUnits
+      .filter((u) => !unitIdsToKeep.has(u.id))
+      .map((u) => u.id)
+
+    if (unitIdsToDelete.length > 0) {
+      await db.delete(productUnits).where(inArray(productUnits.id, unitIdsToDelete))
+    }
+
+    // Update existing units
+    for (const unit of unitsToUpdate) {
+      if (unit.id) {
+        await db
+          .update(productUnits)
+          .set({
+            identifier: unit.identifier.trim(),
+            notes: unit.notes?.trim() || null,
+            status: unit.status || 'available',
+            updatedAt: new Date(),
+          })
+          .where(eq(productUnits.id, unit.id))
+      }
+    }
+
+    // Insert new units
+    if (unitsToInsert.length > 0) {
+      await db.insert(productUnits).values(
+        unitsToInsert.map((unit) => ({
+          id: nanoid(),
+          productId: productId,
+          identifier: unit.identifier.trim(),
+          notes: unit.notes?.trim() || null,
+          status: unit.status || 'available',
+        }))
+      )
+    }
   }
 
   // Update accessories: delete all existing and insert new ones
@@ -240,6 +338,9 @@ export async function deleteProduct(productId: string) {
     )
   )
 
+  // Delete product units
+  await db.delete(productUnits).where(eq(productUnits.productId, productId))
+
   await db.delete(products).where(eq(products.id, productId))
 
   revalidatePath('/dashboard/products')
@@ -266,6 +367,8 @@ export async function duplicateProduct(productId: string) {
   const newProductId = nanoid()
 
   // Note: the "(copy)" suffix will be translated on the client side
+  // Note: Unit tracking is NOT duplicated because identifiers are unique per unit.
+  // The duplicate starts with trackUnits=false and the original quantity.
   await db.insert(products).values({
     id: newProductId,
     storeId: store.id,
@@ -280,6 +383,8 @@ export async function duplicateProduct(productId: string) {
     images: product.images,
     videoUrl: product.videoUrl,
     taxSettings: product.taxSettings,
+    enforceStrictTiers: product.enforceStrictTiers,
+    trackUnits: false, // Units cannot be duplicated - they have unique identifiers
   })
 
   // Duplicate pricing tiers if any
@@ -325,6 +430,9 @@ export async function getProduct(productId: string) {
             },
           },
         },
+      },
+      units: {
+        orderBy: (units, { asc }) => [asc(units.identifier)],
       },
     },
   })

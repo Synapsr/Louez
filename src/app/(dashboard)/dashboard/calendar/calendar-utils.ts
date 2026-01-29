@@ -623,3 +623,81 @@ export function getSlotLabel(product: Product, slotIndex: number): string {
   }
   return `${product.name} #${slotIndex + 1}`
 }
+
+// =============================================================================
+// Product Sorting by Usage
+// =============================================================================
+
+const ACTIVE_RESERVATION_STATUSES = ['confirmed', 'ongoing'] as const
+
+/**
+ * Calculates usage metrics for a product based on active reservations on a reference date
+ */
+export function getProductUsageForDate(
+  productId: string,
+  reservations: Reservation[],
+  referenceDate: Date
+): { hasActiveReservations: boolean; reservedQuantity: number } {
+  let reservedQuantity = 0
+
+  for (const reservation of reservations) {
+    if (
+      !reservation.status ||
+      !ACTIVE_RESERVATION_STATUSES.includes(
+        reservation.status as (typeof ACTIVE_RESERVATION_STATUSES)[number]
+      )
+    ) {
+      continue
+    }
+
+    if (!reservationIncludesDay(reservation, referenceDate)) {
+      continue
+    }
+
+    for (const item of reservation.items) {
+      if (item.product?.id === productId) {
+        reservedQuantity += item.quantity
+      }
+    }
+  }
+
+  return {
+    hasActiveReservations: reservedQuantity > 0,
+    reservedQuantity,
+  }
+}
+
+/**
+ * Sorts products by current usage - products with active reservations appear first
+ *
+ * Sort order:
+ * 1. Products with active reservations (by reserved quantity desc, then name asc)
+ * 2. Products without active reservations (by name asc)
+ */
+export function sortProductsByUsage<T extends Product>(
+  products: T[],
+  reservations: Reservation[],
+  referenceDate: Date = new Date()
+): T[] {
+  const productsWithUsage = products.map((product) => ({
+    product,
+    ...getProductUsageForDate(product.id, reservations, referenceDate),
+  }))
+
+  return productsWithUsage
+    .sort((a, b) => {
+      // Active reservations first
+      if (a.hasActiveReservations !== b.hasActiveReservations) {
+        return a.hasActiveReservations ? -1 : 1
+      }
+
+      // Within active: higher quantity first
+      if (a.hasActiveReservations && a.reservedQuantity !== b.reservedQuantity) {
+        return b.reservedQuantity - a.reservedQuantity
+      }
+
+      // Alphabetical fallback
+      return a.product.name.localeCompare(b.product.name)
+    })
+    .map(({ product }) => product)
+}

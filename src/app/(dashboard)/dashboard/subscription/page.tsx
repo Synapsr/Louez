@@ -71,6 +71,8 @@ export default async function SubscriptionPage({
           sms: smsStatus.current,
           smsLimit: smsStatus.limit,
         }}
+        discountPercent={store.discountPercent}
+        discountDurationMonths={store.discountDurationMonths}
       />
     </div>
   )

@@ -22,6 +22,7 @@ import {
   getEffectivePricingMode,
 } from '@/lib/pricing/calculate'
 import type { PricingMode } from '@/lib/pricing/types'
+import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 
 interface ReservationItem {
   productId: string
@@ -31,6 +32,16 @@ interface ReservationItem {
   unitPrice: number
   depositPerUnit: number
   productSnapshot: ProductSnapshot
+}
+
+interface DeliveryInput {
+  option: 'pickup' | 'delivery'
+  address?: string
+  city?: string
+  postalCode?: string
+  country?: string
+  latitude?: number
+  longitude?: number
 }
 
 interface CreateReservationInput {
@@ -52,6 +63,7 @@ interface CreateReservationInput {
   depositAmount: number
   totalAmount: number
   locale?: 'fr' | 'en'
+  delivery?: DeliveryInput
 }
 
 async function generateUniqueReservationNumber(storeId: string, maxRetries = 5): Promise<string> {
@@ -246,22 +258,108 @@ export async function createReservation(input: CreateReservationInput) {
 
     const serverTotalAmount = serverSubtotal + serverTotalDeposit
 
-    // Log total mismatch for monitoring
-    if (Math.abs(input.totalAmount - serverTotalAmount) > 0.01) {
+    // ===== DELIVERY VALIDATION AND FEE CALCULATION =====
+    let deliveryFee = 0
+    let deliveryDistanceKm: number | null = null
+    const deliverySettings = storeSettings?.delivery
+    const deliveryMode = deliverySettings?.mode || 'optional'
+    const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
+    const isDeliveryIncluded = deliveryMode === 'included'
+
+    // Validate that delivery is selected when mode is forced
+    if (isDeliveryForced && deliverySettings?.enabled && input.delivery?.option !== 'delivery') {
+      return { error: 'errors.deliveryRequired' }
+    }
+
+    if (input.delivery?.option === 'delivery') {
+      // Validate delivery is enabled for this store
+      if (!deliverySettings?.enabled) {
+        return { error: 'errors.deliveryNotEnabled' }
+      }
+
+      // Validate delivery address is provided
+      if (!input.delivery.latitude || !input.delivery.longitude) {
+        return { error: 'errors.deliveryAddressRequired' }
+      }
+
+      // Validate client coordinates are in valid range
+      if (
+        input.delivery.latitude < -90 ||
+        input.delivery.latitude > 90 ||
+        input.delivery.longitude < -180 ||
+        input.delivery.longitude > 180
+      ) {
+        return { error: 'errors.deliveryAddressInvalid' }
+      }
+
+      // Validate store has coordinates for distance calculation
+      if (!store.latitude || !store.longitude) {
+        return { error: 'errors.storeCoordinatesNotConfigured' }
+      }
+
+      // Calculate distance from store to delivery address (server-side recalculation)
+      const storeLatitude = parseFloat(store.latitude)
+      const storeLongitude = parseFloat(store.longitude)
+
+      // Validate parsed coordinates are valid numbers
+      if (!isFinite(storeLatitude) || !isFinite(storeLongitude)) {
+        return { error: 'errors.storeCoordinatesInvalid' }
+      }
+
+      // Validate store coordinate ranges
+      if (
+        storeLatitude < -90 ||
+        storeLatitude > 90 ||
+        storeLongitude < -180 ||
+        storeLongitude > 180
+      ) {
+        return { error: 'errors.storeCoordinatesInvalid' }
+      }
+
+      deliveryDistanceKm = calculateHaversineDistance(
+        storeLatitude,
+        storeLongitude,
+        input.delivery.latitude,
+        input.delivery.longitude
+      )
+
+      // Validate distance is within allowed range
+      const deliveryValidation = validateDelivery(deliveryDistanceKm, deliverySettings)
+      if (!deliveryValidation.valid) {
+        return {
+          error: deliveryValidation.errorKey || 'errors.deliveryTooFar',
+          errorParams: deliveryValidation.errorParams,
+        }
+      }
+
+      // Calculate delivery fee (server-side, never trust client)
+      // If mode is 'included', fee is always 0
+      deliveryFee = isDeliveryIncluded
+        ? 0
+        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal)
+    }
+
+    // Add delivery fee to total
+    const serverTotalWithDelivery = serverTotalAmount + deliveryFee
+
+    // Log total mismatch for monitoring (include delivery fee in comparison)
+    if (Math.abs(input.totalAmount - serverTotalWithDelivery) > 0.01) {
       console.warn('[SECURITY] Total amount mismatch detected', {
         clientTotal: input.totalAmount,
-        serverTotal: serverTotalAmount,
+        serverTotal: serverTotalWithDelivery,
         clientSubtotal: input.subtotalAmount,
         serverSubtotal,
         clientDeposit: input.depositAmount,
         serverDeposit: serverTotalDeposit,
+        serverDeliveryFee: deliveryFee,
       })
     }
 
     // Use server-calculated values for all monetary operations
     const finalSubtotal = serverSubtotal
     const finalDeposit = serverTotalDeposit
-    const finalTotal = serverTotalAmount
+    const finalDeliveryFee = deliveryFee
+    const finalTotal = serverTotalWithDelivery
 
     // Check for date conflicts with existing reservations
     // This prevents race conditions where availability was checked earlier but changed since
@@ -414,6 +512,16 @@ export async function createReservation(input: CreateReservationInput) {
       taxRate: taxRate?.toFixed(2) ?? null,
       customerNotes: input.customerNotes || null,
       source: 'online',
+      // Delivery fields
+      deliveryOption: input.delivery?.option || 'pickup',
+      deliveryAddress: input.delivery?.option === 'delivery' ? input.delivery.address : null,
+      deliveryCity: input.delivery?.option === 'delivery' ? input.delivery.city : null,
+      deliveryPostalCode: input.delivery?.option === 'delivery' ? input.delivery.postalCode : null,
+      deliveryCountry: input.delivery?.option === 'delivery' ? input.delivery.country : null,
+      deliveryLatitude: input.delivery?.option === 'delivery' ? input.delivery.latitude?.toString() : null,
+      deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
+      deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+      deliveryFee: finalDeliveryFee.toFixed(2),
     })
 
     // Create reservation items with tax calculations (using SERVER-CALCULATED prices)
@@ -646,19 +754,43 @@ export async function createReservation(input: CreateReservationInput) {
         const protocol = domain.includes('localhost') ? 'http' : 'https'
         const baseUrl = `${protocol}://${store.slug}.${domain}`
 
-        // Build line items for Stripe using SERVER-CALCULATED prices
-        const lineItems = input.items.map((item, idx) => {
-          const serverItem = serverCalculatedItems[idx]
-          return {
-            name: item.productSnapshot.name,
-            description: item.productSnapshot.description || undefined,
-            quantity: item.quantity,
-            // Use server-calculated subtotal for Stripe (not client-provided unitPrice)
-            unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
-          }
-        })
+        // Get deposit percentage (default 100% = full payment)
+        const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
+        const isPartialPayment = depositPercentage < 100
 
-        // Create checkout session with SERVER-CALCULATED deposit
+        // Calculate the amount to charge now
+        // Round to 2 decimal places to avoid floating point issues
+        const amountToCharge = isPartialPayment
+          ? Math.round(finalSubtotal * depositPercentage) / 100
+          : finalSubtotal
+
+        // Ensure minimum Stripe amount (50 cents for most currencies)
+        const MINIMUM_STRIPE_AMOUNT = 0.50
+        const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
+        // Don't exceed the full amount
+        const finalChargeAmount = Math.min(effectiveChargeAmount, finalSubtotal)
+
+        // Build line items for Stripe
+        // For partial payments, create a single line item for the deposit
+        // For full payments, itemize each product
+        const lineItems = isPartialPayment
+          ? [{
+              name: `Acompte (${depositPercentage}%)`,
+              description: `Acompte pour la réservation ${reservationNumber}`,
+              quantity: 1,
+              unitAmount: toStripeCents(finalChargeAmount, currency),
+            }]
+          : input.items.map((item, idx) => {
+              const serverItem = serverCalculatedItems[idx]
+              return {
+                name: item.productSnapshot.name,
+                description: item.productSnapshot.description || undefined,
+                quantity: item.quantity,
+                unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
+              }
+            })
+
+        // Create checkout session
         const { url, sessionId } = await createCheckoutSession({
           stripeAccountId: store.stripeAccountId!,
           reservationId,
@@ -674,21 +806,22 @@ export async function createReservation(input: CreateReservationInput) {
 
         paymentUrl = url
 
-        // Create a pending payment record with SERVER-CALCULATED amount
+        // Create a pending payment record with the amount being charged
         await db.insert(payments).values({
           id: nanoid(),
           reservationId,
-          amount: finalSubtotal.toFixed(2),
+          amount: finalChargeAmount.toFixed(2),
           type: 'rental',
           method: 'stripe',
           status: 'pending',
           stripeCheckoutSessionId: sessionId,
           currency,
+          notes: isPartialPayment ? `Acompte ${depositPercentage}%` : null,
           createdAt: new Date(),
           updatedAt: new Date(),
         })
 
-        // Log payment initiated activity with SERVER-CALCULATED amount
+        // Log payment initiated activity
         await db.insert(reservationActivity).values({
           id: nanoid(),
           reservationId,
@@ -696,7 +829,10 @@ export async function createReservation(input: CreateReservationInput) {
           description: null,
           metadata: {
             checkoutSessionId: sessionId,
-            amount: finalSubtotal,
+            amount: finalChargeAmount,
+            fullAmount: finalSubtotal,
+            depositPercentage,
+            isPartialPayment,
             currency,
             method: 'stripe',
           },

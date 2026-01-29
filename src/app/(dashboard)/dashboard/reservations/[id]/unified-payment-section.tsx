@@ -22,6 +22,7 @@ import {
   Clock,
   Wifi,
   X,
+  Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -84,6 +85,7 @@ import {
   type PaymentType,
   type PaymentMethod,
 } from '../actions'
+import { RequestPaymentModal } from './request-payment-modal'
 
 interface Payment {
   id: string
@@ -110,6 +112,7 @@ type DepositStatus = 'none' | 'pending' | 'card_saved' | 'authorized' | 'capture
 
 interface UnifiedPaymentSectionProps {
   reservationId: string
+  reservationNumber: string
   subtotalAmount: string
   depositAmount: string
   totalAmount: string
@@ -120,6 +123,13 @@ interface UnifiedPaymentSectionProps {
   depositStatus: DepositStatus | null
   depositAuthorizationExpiresAt: Date | null
   stripePaymentMethodId: string | null
+  // Request payment props
+  customer: {
+    firstName: string
+    email: string
+    phone?: string | null
+  }
+  stripeConfigured: boolean
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -145,6 +155,7 @@ const VISIBLE_HISTORY_COUNT = 3
 
 export function UnifiedPaymentSection({
   reservationId,
+  reservationNumber,
   subtotalAmount,
   depositAmount,
   totalAmount,
@@ -154,6 +165,8 @@ export function UnifiedPaymentSection({
   depositStatus: depositStatusProp,
   depositAuthorizationExpiresAt,
   stripePaymentMethodId,
+  customer,
+  stripeConfigured,
 }: UnifiedPaymentSectionProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.reservations')
@@ -170,6 +183,7 @@ export function UnifiedPaymentSection({
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const [captureModalOpen, setCaptureModalOpen] = useState(false)
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
+  const [requestPaymentModalOpen, setRequestPaymentModalOpen] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null)
 
   // Form state
@@ -866,6 +880,19 @@ export function UnifiedPaymentSection({
             </Button>
           )}
 
+          {/* Request Payment Button */}
+          {stripeConfigured && (rentalRemaining >= 0.5 || (deposit > 0 && depositStatusVal !== 'authorized' && depositStatusVal !== 'captured')) && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
+              onClick={() => setRequestPaymentModalOpen(true)}
+            >
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+              {t('payment.requestPayment')}
+            </Button>
+          )}
+
           {/* Payment History with Fade Effect */}
           {historyPayments.length > 0 && (
             <div className="pt-3 border-t">
@@ -1407,6 +1434,21 @@ export function UnifiedPaymentSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Request Payment Modal */}
+      <RequestPaymentModal
+        open={requestPaymentModalOpen}
+        onOpenChange={setRequestPaymentModalOpen}
+        reservationId={reservationId}
+        reservationNumber={reservationNumber}
+        customer={customer}
+        totalAmount={rental}
+        paidAmount={rentalPaid}
+        depositAmount={deposit}
+        depositStatus={depositStatusVal}
+        currency={currency}
+        stripeConfigured={stripeConfigured}
+      />
     </TooltipProvider>
   )
 }

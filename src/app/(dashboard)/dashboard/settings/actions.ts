@@ -37,6 +37,7 @@ interface StoreSettingsInput {
   pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
   pendingBlocksAvailability: boolean
+  onlinePaymentDepositPercentage: number
   minRentalHours: number
   maxRentalHours: number | null
   advanceNotice: number
@@ -65,6 +66,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           pricingMode: data.pricingMode,
           reservationMode: data.reservationMode,
           pendingBlocksAvailability: data.pendingBlocksAvailability,
+          onlinePaymentDepositPercentage: data.onlinePaymentDepositPercentage,
           minRentalHours: data.minRentalHours,
           maxRentalHours: data.maxRentalHours,
           advanceNotice: data.advanceNotice,

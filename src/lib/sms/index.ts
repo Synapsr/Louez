@@ -17,6 +17,8 @@ export {
   sendReminderPickupSms,
   sendReminderReturnSms,
   sendCustomSms,
+  sendPaymentRequestSms,
+  sendDepositAuthorizationRequestSms,
 } from './send'
 
 // Phone validation utilities

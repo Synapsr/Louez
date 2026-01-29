@@ -71,7 +71,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
     slug: 'pro',
     name: 'Pro',
     description: 'Pour les loueurs professionnels',
-    price: 29,
+    price: 49,
     isPopular: true,
     features: {
       maxProducts: 50,
@@ -96,7 +96,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
     slug: 'ultra',
     name: 'Ultra',
     description: 'Pour les entreprises exigeantes',
-    price: 79,
+    price: 159,
     features: {
       maxProducts: null, // unlimited
       maxReservationsPerMonth: null, // unlimited

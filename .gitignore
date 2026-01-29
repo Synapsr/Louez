@@ -61,5 +61,5 @@ specs/
 SPECIFICATIONS*.md
 CLAUDE.md
 
-# Internal scripts
-scripts/
+# Internal scripts (root level only)
+/scripts/

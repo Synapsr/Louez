@@ -28,6 +28,8 @@ const SMS_TEMPLATES: Record<EmailLocale, {
   request_accepted: (vars: { storeName: string; number: string }) => string
   request_rejected: (vars: { storeName: string; number: string }) => string
   instant_access: (vars: { storeName: string; number: string; url: string }) => string
+  payment_request: (vars: { storeName: string; number: string; amount: string; url: string }) => string
+  deposit_authorization_request: (vars: { storeName: string; number: string; amount: string; url: string }) => string
 }> = {
   fr: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -44,6 +46,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nDemande #${number} non disponible. Contactez-nous.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nVotre réservation #${number}\nAccès: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPaiement de ${amount} demandé pour #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nCaution de ${amount} à autoriser pour #${number}\n${url}`,
   },
   en: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -60,6 +66,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nRequest #${number} unavailable. Contact us.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nYour reservation #${number}\nAccess: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPayment of ${amount} requested for #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nDeposit of ${amount} to authorize for #${number}\n${url}`,
   },
   de: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -76,6 +86,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nAnfrage #${number} nicht verfuegbar. Kontaktieren Sie uns.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nIhre Reservierung #${number}\nZugang: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nZahlung von ${amount} fuer #${number} angefordert\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nKaution von ${amount} fuer #${number} freizugeben\n${url}`,
   },
   es: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -92,6 +106,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nSolicitud #${number} no disponible. Contactenos.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTu reserva #${number}\nAcceso: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPago de ${amount} solicitado para #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nDeposito de ${amount} a autorizar para #${number}\n${url}`,
   },
   it: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -108,6 +126,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nRichiesta #${number} non disponibile. Contattaci.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nLa tua prenotazione #${number}\nAccesso: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPagamento di ${amount} richiesto per #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nDeposito di ${amount} da autorizzare per #${number}\n${url}`,
   },
   nl: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -124,6 +146,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nAanvraag #${number} niet beschikbaar. Neem contact op.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nUw reservering #${number}\nToegang: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nBetaling van ${amount} gevraagd voor #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nBorg van ${amount} te autoriseren voor #${number}\n${url}`,
   },
   pl: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -140,6 +166,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nZamowienie #${number} niedostepne. Skontaktuj sie.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nTwoja rezerwacja #${number}\nDostep: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPlatnosc ${amount} wymagana dla #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nKaucja ${amount} do autoryzacji dla #${number}\n${url}`,
   },
   pt: {
     reservation_confirmation: ({ storeName, number, startDate, endDate }) =>
@@ -156,6 +186,10 @@ const SMS_TEMPLATES: Record<EmailLocale, {
       `${storeName}\nPedido #${number} indisponivel. Entre em contato.`,
     instant_access: ({ storeName, number, url }) =>
       `${storeName}\nSua reserva #${number}\nAcesso: ${url}`,
+    payment_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nPagamento de ${amount} solicitado para #${number}\n${url}`,
+    deposit_authorization_request: ({ storeName, number, amount, url }) =>
+      `${storeName}\nDeposito de ${amount} a autorizar para #${number}\n${url}`,
   },
 }
 
@@ -1169,6 +1203,218 @@ export async function sendThankYouReviewSms({
       to: normalizedPhone,
       message,
       templateType: 'thank_you_review',
+      status: 'failed',
+      error: errorMessage,
+      creditSource,
+    })
+
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Send payment request SMS
+ */
+export async function sendPaymentRequestSms({
+  store,
+  customer,
+  reservation,
+  amount,
+  paymentUrl,
+  currency = 'EUR',
+}: {
+  store: Store
+  customer: Customer & { id: string }
+  reservation: {
+    id: string
+    number: string
+  }
+  amount: number
+  paymentUrl: string
+  currency?: string
+}): Promise<SmsSendResult> {
+  if (!customer.phone) {
+    return { success: false, error: 'Customer has no phone number' }
+  }
+
+  if (!isSmsConfigured()) {
+    return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS quota
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
+  }
+  const { creditSource } = quotaCheck
+
+  // Validate and normalize phone number
+  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  if (!phoneValidation.valid || !phoneValidation.normalized) {
+    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+  }
+  const normalizedPhone = phoneValidation.normalized
+
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
+
+  // Format amount
+  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    style: 'currency',
+    currency,
+  }).format(amount)
+
+  const message = templates.payment_request({
+    storeName: store.name,
+    number: reservation.number,
+    amount: formattedAmount,
+    url: paymentUrl,
+  })
+
+  try {
+    const result = await sendSms({
+      to: normalizedPhone,
+      message,
+      sender: 'Louez',
+    })
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'payment_request',
+      status: result.success ? 'sent' : 'failed',
+      messageId: result.messageId,
+      error: result.error,
+      creditSource,
+    })
+
+    await handlePostSend(store.id, creditSource, result.success)
+
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'payment_request',
+      status: 'failed',
+      error: errorMessage,
+      creditSource,
+    })
+
+    return { success: false, error: errorMessage }
+  }
+}
+
+/**
+ * Send deposit authorization request SMS
+ */
+export async function sendDepositAuthorizationRequestSms({
+  store,
+  customer,
+  reservation,
+  depositAmount,
+  authorizationUrl,
+  currency = 'EUR',
+}: {
+  store: Store
+  customer: Customer & { id: string }
+  reservation: {
+    id: string
+    number: string
+  }
+  depositAmount: number
+  authorizationUrl: string
+  currency?: string
+}): Promise<SmsSendResult> {
+  if (!customer.phone) {
+    return { success: false, error: 'Customer has no phone number' }
+  }
+
+  if (!isSmsConfigured()) {
+    return { success: false, error: 'SMS not configured' }
+  }
+
+  // Check SMS quota
+  const quotaCheck = await checkSmsQuotaAndSource(store.id)
+  if (!quotaCheck.allowed) {
+    return quotaCheck.error!
+  }
+  const { creditSource } = quotaCheck
+
+  // Validate and normalize phone number
+  const phoneValidation = validateAndNormalizePhone(customer.phone)
+  if (!phoneValidation.valid || !phoneValidation.normalized) {
+    return { success: false, error: phoneValidation.error || 'Invalid phone number format' }
+  }
+  const normalizedPhone = phoneValidation.normalized
+
+  // Get locale from store country
+  const locale = getLocaleFromCountry(store.settings?.country)
+  const templates = getSmsTemplate(locale)
+
+  // Format amount
+  const formattedAmount = new Intl.NumberFormat(locale === 'fr' ? 'fr-FR' : 'en-US', {
+    style: 'currency',
+    currency,
+  }).format(depositAmount)
+
+  const message = templates.deposit_authorization_request({
+    storeName: store.name,
+    number: reservation.number,
+    amount: formattedAmount,
+    url: authorizationUrl,
+  })
+
+  try {
+    const result = await sendSms({
+      to: normalizedPhone,
+      message,
+      sender: 'Louez',
+    })
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'deposit_authorization_request',
+      status: result.success ? 'sent' : 'failed',
+      messageId: result.messageId,
+      error: result.error,
+      creditSource,
+    })
+
+    await handlePostSend(store.id, creditSource, result.success)
+
+    if (!result.success) {
+      return { success: false, error: result.error }
+    }
+
+    return { success: true }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+
+    await logSms({
+      storeId: store.id,
+      reservationId: reservation.id,
+      customerId: customer.id,
+      to: normalizedPhone,
+      message,
+      templateType: 'deposit_authorization_request',
       status: 'failed',
       error: errorMessage,
       creditSource,

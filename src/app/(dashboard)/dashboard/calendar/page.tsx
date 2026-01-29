@@ -5,6 +5,7 @@ import { eq, and, gte, lte, or } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { CalendarView } from './calendar-view'
+import { sortProductsByUsage } from './calendar-utils'
 
 async function getStoreData() {
   const store = await getCurrentStore()
@@ -71,6 +72,9 @@ export default async function CalendarPage() {
     getProducts(store.id),
   ])
 
+  // Sort products by usage (products with active reservations today appear first)
+  const sortedProducts = sortProductsByUsage(storeProducts, storeReservations, now)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -84,7 +88,7 @@ export default async function CalendarPage() {
 
       <CalendarView
         initialReservations={storeReservations}
-        products={storeProducts}
+        products={sortedProducts}
         storeId={store.id}
       />
     </div>

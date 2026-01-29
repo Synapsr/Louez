@@ -13,6 +13,8 @@ import {
   sendReservationConfirmationEmail,
   sendReminderPickupEmail,
   sendReminderReturnEmail,
+  sendPaymentRequestEmail,
+  sendDepositAuthorizationRequestEmail,
 } from '@/lib/email/send'
 import {
   sendReservationConfirmationSms,
@@ -21,6 +23,8 @@ import {
   sendRequestReceivedSms,
   sendRequestAcceptedSms,
   sendRequestRejectedSms,
+  sendPaymentRequestSms,
+  sendDepositAuthorizationRequestSms,
 } from '@/lib/sms/send'
 import { getSmsQuotaStatus } from '@/lib/plan-limits'
 import type {
@@ -81,6 +85,14 @@ export interface CustomerNotificationContext {
   reservationUrl?: string
   paymentUrl?: string | null
   reason?: string | null
+  // Payment request specific fields
+  paymentRequestAmount?: number
+  paymentRequestDescription?: string
+  paymentRequestUrl?: string
+  customMessage?: string
+  // Deposit authorization specific fields
+  depositAuthorizationAmount?: number
+  depositAuthorizationUrl?: string
 }
 
 export interface CustomerNotificationResult {
@@ -111,6 +123,8 @@ function mergeTemplateWithLegacy(
     customer_reservation_confirmed: 'confirmationContent',
     customer_reminder_pickup: 'pickupReminderContent',
     customer_reminder_return: 'returnReminderContent',
+    customer_payment_requested: null, // No legacy mapping
+    customer_deposit_authorization_requested: null, // No legacy mapping
   }
 
   const legacyKey = legacyKeyMap[eventType]
@@ -262,6 +276,37 @@ async function sendCustomerEmail(
     case 'customer_reminder_return':
       return sendReminderReturnEmail(emailParams)
 
+    case 'customer_payment_requested':
+      if (!ctx.paymentRequestAmount || !ctx.paymentRequestDescription || !ctx.paymentRequestUrl) {
+        throw new Error('Payment request context missing required fields')
+      }
+      return sendPaymentRequestEmail({
+        to: ctx.customer.email,
+        store: ctx.store,
+        customer: ctx.customer,
+        reservation: ctx.reservation,
+        amount: ctx.paymentRequestAmount,
+        description: ctx.paymentRequestDescription,
+        paymentUrl: ctx.paymentRequestUrl,
+        customMessage: ctx.customMessage,
+        locale,
+      })
+
+    case 'customer_deposit_authorization_requested':
+      if (!ctx.depositAuthorizationAmount || !ctx.depositAuthorizationUrl) {
+        throw new Error('Deposit authorization context missing required fields')
+      }
+      return sendDepositAuthorizationRequestEmail({
+        to: ctx.customer.email,
+        store: ctx.store,
+        customer: ctx.customer,
+        reservation: ctx.reservation,
+        depositAmount: ctx.depositAuthorizationAmount,
+        authorizationUrl: ctx.depositAuthorizationUrl,
+        customMessage: ctx.customMessage,
+        locale,
+      })
+
     default:
       throw new Error(`Unknown customer notification event type: ${eventType}`)
   }
@@ -307,6 +352,42 @@ async function sendCustomerSms(
     case 'customer_reminder_return':
       return sendReminderReturnSms(smsParams)
 
+    case 'customer_payment_requested':
+      if (!ctx.paymentRequestAmount || !ctx.paymentRequestUrl) {
+        throw new Error('Payment request context missing required fields')
+      }
+      return sendPaymentRequestSms({
+        store: ctx.store,
+        customer: {
+          id: ctx.customer.id,
+          firstName: ctx.customer.firstName,
+          lastName: ctx.customer.lastName,
+          phone: ctx.customer.phone,
+        },
+        reservation: ctx.reservation,
+        amount: ctx.paymentRequestAmount,
+        paymentUrl: ctx.paymentRequestUrl,
+        currency: ctx.store.settings?.currency,
+      })
+
+    case 'customer_deposit_authorization_requested':
+      if (!ctx.depositAuthorizationAmount || !ctx.depositAuthorizationUrl) {
+        throw new Error('Deposit authorization context missing required fields')
+      }
+      return sendDepositAuthorizationRequestSms({
+        store: ctx.store,
+        customer: {
+          id: ctx.customer.id,
+          firstName: ctx.customer.firstName,
+          lastName: ctx.customer.lastName,
+          phone: ctx.customer.phone,
+        },
+        reservation: ctx.reservation,
+        depositAmount: ctx.depositAuthorizationAmount,
+        authorizationUrl: ctx.depositAuthorizationUrl,
+        currency: ctx.store.settings?.currency,
+      })
+
     default:
       throw new Error(`Unknown customer notification event type: ${eventType}`)
   }
@@ -329,6 +410,8 @@ export function shouldSendCustomerNotification(
     customer_reservation_confirmed: { enabled: true, email: true, sms: false },
     customer_reminder_pickup: { enabled: true, email: true, sms: false },
     customer_reminder_return: { enabled: true, email: true, sms: false },
+    customer_payment_requested: { enabled: true, email: true, sms: false },
+    customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
     templates: {},
   }
 

@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Speichern",
+    "unsavedChanges": "Nicht gespeicherte Änderungen",
     "cancel": "Abbrechen",
     "delete": "Löschen",
     "edit": "Bearbeiten",
@@ -212,6 +213,7 @@
       "noStoresFound": "Keine Shops gefunden",
       "yourStores": "Ihre Shops",
       "createNewStore": "Neuen Shop erstellen",
+      "multiStoreView": "Multi-Shop Ansicht",
       "roles": {
         "owner": "Inhaber",
         "member": "Teammitglied",
@@ -417,7 +419,48 @@
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Einstellungen",
-      "store": "Mein Shop"
+      "store": "Mein Shop",
+      "analytics": "Analysen",
+      "multiStore": "Multi-Shop"
+    },
+    "multiStore": {
+      "title": "Multi-Shop",
+      "description": "Übersicht über Ihre {count, plural, one {# Shop} other {# Shops}}",
+      "goToAStore": "Zu einem Shop wechseln",
+      "stats": {
+        "totalRevenue": "Gesamtumsatz",
+        "reservations": "Reservierungen",
+        "pending": "ausstehend",
+        "customers": "Kunden",
+        "newCustomers": "neu",
+        "vsPreviousPeriod": "vs vorherige Periode"
+      },
+      "chart": {
+        "title": "Umsatzentwicklung",
+        "description": "Umsatz pro Shop im Zeitraum"
+      },
+      "table": {
+        "title": "Ihre Shops",
+        "store": "Shop",
+        "plan": "Plan",
+        "revenue": "Umsatz",
+        "change": "Änderung",
+        "reservations": "Reserv.",
+        "customers": "Kunden",
+        "goToStore": "Öffnen"
+      },
+      "limits": {
+        "title": "Grenzen erreicht",
+        "description": "{count, plural, one {# Shop nähert sich} other {# Shops nähern sich}} seinen Grenzen",
+        "products": "Produkte",
+        "reservations": "Reserv./Monat",
+        "customers": "Kunden",
+        "upgrade": "Upgraden"
+      },
+      "empty": {
+        "title": "Noch keine Daten",
+        "description": "Statistiken erscheinen, sobald Ihre Shops Reservierungen haben."
+      }
     },
     "home": {
       "viewAll": "Alle ansehen",
@@ -627,6 +670,8 @@
         "mainBadge": "Hauptbild",
         "imageError": "Bitte wählen Sie ein Bild aus",
         "imageSizeError": "Bild darf 5 MB nicht überschreiten",
+        "uploading": "Hochladen...",
+        "imageUploadError": "Upload fehlgeschlagen",
         "information": "Informationen",
         "name": "Produktname",
         "namePlaceholder": "z.B. Mountainbike XC 500",
@@ -657,6 +702,7 @@
         "statusArchived": "Archiviert",
         "statusArchivedDescription": "Aus Katalog entfernt",
         "save": "Speichern",
+        "unsavedChanges": "Nicht gespeicherte Änderungen",
         "createProduct": "Produkt erstellen",
         "productCreated": "Produkt erstellt",
         "productUpdated": "Produkt aktualisiert",
@@ -696,6 +742,40 @@
           "enforceStrictTiers": "Nur diese Dauern anbieten",
           "enforceStrictTiersDescription": "Kunden können nur für die genauen Dauern Ihrer Stufen buchen. Zwischenliegende Dauern werden nicht angeboten.",
           "enforceStrictTiersTooltip": "Wenn ein Kunde eine Zwischendauer wählt, wird sie automatisch auf die nächste Stufe aufgerundet. Beispiel: Bei Stufen von 3 und 7 Tagen wird eine 5-tägige Miete zum Tarif von 7 Tagen berechnet."
+        },
+        "unitTracking": {
+          "toggle": "Einzelne Einheiten verfolgen",
+          "toggleDescription": "Registrieren Sie jede Einheit mit einer eindeutigen Kennung, um genau zu wissen, welche vermietet ist",
+          "title": "Kennungen",
+          "description": "Registrieren Sie jede Einheit mit einer eindeutigen Kennung",
+          "quantityLabel": "Verfügbare Menge",
+          "quantityManagedByTracking": "Verwaltet durch Einheitenverfolgung",
+          "activeUnits": "{count, plural, one {# aktive Einheit} other {# aktive Einheiten}}",
+          "addUnit": "Einheit hinzufügen",
+          "addNotes": "Notizen hinzufügen",
+          "identifier": "Kennung",
+          "identifierPlaceholder": "z.B. BIKE-01, SN-2024-001",
+          "notes": "Notizen",
+          "notesPlaceholder": "Optionale Notizen zu dieser Einheit (Zustand, Farbe...)",
+          "statusAvailable": "Verfügbar",
+          "statusMaintenance": "Wartung",
+          "statusRetired": "Ausgemustert",
+          "bulkAdd": "Mehrere hinzufügen",
+          "bulkPrefix": "Präfix",
+          "bulkPrefixPlaceholder": "z.B. BIKE-",
+          "bulkFrom": "Von",
+          "bulkTo": "Bis",
+          "bulkGenerate": "Generieren",
+          "bulkPreview": "Vorschau",
+          "deleteConfirm": "Diese Einheit löschen",
+          "deleteWarning": "Diese Einheit ist derzeit einer aktiven Reservierung zugeordnet und kann nicht entfernt werden.",
+          "disableConfirm": "Einheitenverfolgung deaktivieren?",
+          "disableDescription": "Die individuelle Einheitenverfolgung wird ausgeblendet. Die Menge wird auf {count} gesetzt. Ihre registrierten Einheiten bleiben erhalten.",
+          "duplicateIdentifier": "Eine oder mehrere Kennungen sind doppelt vorhanden",
+          "noUnitsRegistered": "Keine Einheiten registriert",
+          "noUnitsHint": "Fügen Sie einzelne Einheiten hinzu, um zu verfolgen, welche vermietet sind",
+          "cancel": "Abbrechen",
+          "confirm": "Bestätigen"
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -1028,6 +1108,21 @@
         "showAll": "Alle anzeigen ({count} Ereignisse)",
         "showLess": "Weniger anzeigen"
       },
+      "unitAssignment": {
+        "title": "Einheitenzuweisung",
+        "assignUnits": "Einheiten zuweisen",
+        "assignedCount": "{assigned} von {total} zugewiesen",
+        "allAssigned": "Alle Einheiten zugewiesen",
+        "noneAssigned": "Keine Einheiten zugewiesen",
+        "noUnitsAvailable": "Keine Einheiten verfügbar",
+        "selectUnit": "Einheit auswählen",
+        "unit": "Einheit {number}",
+        "optional": "Zuweisung ist optional",
+        "save": "Speichern",
+        "saved": "Einheiten zugewiesen",
+        "notes": "Notizen",
+        "identifiers": "Kennzeichen: {identifiers}"
+      },
       "smartActions": {
         "paymentIncomplete": "Miete nicht bezahlt ({remaining} verbleibend)",
         "depositNotCollected": "Kaution nicht eingezogen ({amount})",
@@ -1143,7 +1238,47 @@
         },
         "statusAuthorized": "Autorisiert",
         "statusRefunded": "Erstattet",
-        "statusCancelled": "Storniert"
+        "statusCancelled": "Storniert",
+        "requestPayment": "Zahlung anfordern"
+      },
+      "requestPaymentModal": {
+        "title": "Zahlung anfordern",
+        "description": "Zahlungsanforderung an {name} senden",
+        "paymentType": "Zahlungsart",
+        "types": {
+          "rental": {
+            "name": "Restbetrag Miete",
+            "description": "Restzahlung der Miete anfordern"
+          },
+          "deposit": {
+            "name": "Kaution (Kartenautorisierung)",
+            "description": "Kartenautorisierung für Kaution anfordern"
+          },
+          "custom": {
+            "name": "Individueller Betrag",
+            "description": "Einen bestimmten Betrag anfordern"
+          }
+        },
+        "customAmount": "Betrag",
+        "minAmount": "Mindestbetrag: {amount}",
+        "sendVia": "Senden über",
+        "email": "E-Mail",
+        "sms": "SMS",
+        "noPhone": "keine Telefonnummer",
+        "selectChannel": "Mindestens einen Versandkanal auswählen",
+        "customMessage": "Individuelle Nachricht",
+        "customMessagePlaceholder": "Nachricht für Ihren Kunden hinzufügen...",
+        "amountToRequest": "Angeforderter Betrag",
+        "send": "Anfrage senden",
+        "success": "Zahlungsanforderung gesendet",
+        "successTitle": "Anfrage gesendet!",
+        "successDescription": "Kunde erhält einen Zahlungslink per {channel}",
+        "error": "Fehler beim Senden",
+        "paymentLink": "Zahlungslink",
+        "linkCopied": "Link kopiert",
+        "copyFailed": "Kopieren fehlgeschlagen",
+        "stripeNotConfigured": "Stripe nicht konfiguriert",
+        "stripeNotConfiguredDescription": "Konfigurieren Sie Stripe in den Einstellungen, um Online-Zahlungsanforderungen zu senden."
       },
       "onlinePayment": {
         "title": "Online-Zahlung",
@@ -1619,6 +1754,11 @@
           "pastDue": "Überfällig",
           "cancelled": "Gekündigt"
         },
+        "discount": {
+          "title": "Sonderangebot aktiv",
+          "permanent": "Sie haben einen dauerhaften Rabatt von {percent}% auf Ihr Abonnement.",
+          "limited": "Sie haben einen Rabatt von {percent}% auf Ihr Abonnement für {months} Monate."
+        },
         "paymentStatus": {
           "pending": "Ausstehend",
           "completed": "Bezahlt",
@@ -1702,7 +1842,9 @@
           "description": "Erhalten Sie 50% Rabatt auf alle Pläne. Preis lebenslang garantiert für Frühbucher.",
           "guaranteedForLife": "Preis lebenslang garantiert",
           "endsOn": "Angebot gültig bis 1. März 2026"
-        }
+        },
+        "pricesExcludingTax": "Preise zzgl. MwSt.",
+        "excludingTax": "zzgl. MwSt."
       },
       "team": "Team",
       "saveChanges": "Änderungen speichern",
@@ -1837,6 +1979,10 @@
         "modePaymentDescription": "Kunden zahlen sofort",
         "pendingBlocksAvailability": "Verfügbarkeit während ausstehender Anfrage blockieren",
         "pendingBlocksAvailabilityDescription": "Wenn aktiviert, blockiert eine ausstehende Reservierungsanfrage sofort die Produktverfügbarkeit. Deaktivieren, um mehrere Anfragen für dieselben Daten zuzulassen.",
+        "depositPercentage": "Anzahlungsbetrag",
+        "depositPercentageDescription": "Prozentsatz des Gesamtbetrags bei Online-Buchung",
+        "depositPercentageFull": "Vollständige Zahlung bei Buchung",
+        "depositPercentagePartial": "{percentage}% bei Buchung, Rest bei Abholung",
         "pricingMode": "Preiseinheit",
         "pricingDay": "Pro Tag",
         "pricingHour": "Pro Stunde",
@@ -2267,6 +2413,286 @@
         "depositNoTaxInfo": "Kautionen unterliegen nicht der MwSt, da sie an den Kunden zurückgegeben werden.",
         "saved": "Steuereinstellungen gespeichert"
       },
+      "delivery": {
+        "title": "Lieferung",
+        "description": "Konfigurieren Sie Lieferoptionen für Ihre Kunden",
+        "enableSection": "Lieferservice",
+        "enableSectionDescription": "Ermöglichen Sie Kunden, sich Ausrüstung liefern zu lassen",
+        "enabled": "Lieferung aktivieren",
+        "enabledDescription": "Kunden können Lieferung statt Abholung wählen",
+        "modeSection": "Liefermodus",
+        "modeOptional": "Kundenwahl",
+        "modeOptionalDescription": "Kunde wählt zwischen Abholung oder Lieferung",
+        "modeRequired": "Lieferung erforderlich",
+        "modeRequiredDescription": "Lieferung ist Pflicht, keine Abholoption",
+        "modeIncluded": "Lieferung inklusive",
+        "modeIncludedDescription": "Lieferung ist Pflicht und kostenlos",
+        "noCoordinatesWarning": "Sie müssen Ihre Geschäftsadresse mit Kartenstandort festlegen, um die Lieferung zu aktivieren.",
+        "noCoordinatesError": "Bitte konfigurieren Sie zuerst Ihre Geschäftsadresse mit GPS-Standort.",
+        "goToStoreSettings": "Geschäftseinstellungen",
+        "customerAddressNoteOptional": "Wenn die Lieferung aktiviert ist, können Kunden zwischen Abholung und Lieferung wählen.",
+        "customerAddressNoteRequired": "Kunden müssen eine Lieferadresse angeben.",
+        "pricingSection": "Preisgestaltung",
+        "pricePerKm": "Preis pro Kilometer",
+        "pricePerKmDescription": "Betrag pro gefahrenen Kilometer",
+        "minimumFee": "Mindestgebühr",
+        "minimumFeeDescription": "Mindestbetrag unabhängig von der Entfernung",
+        "tripType": "Fahrttyp",
+        "oneWay": "Einfache Fahrt",
+        "oneWayDescription": "Preis wird nur für Lieferung berechnet",
+        "roundTrip": "Hin- und Rückfahrt",
+        "roundTripDescription": "Preis beinhaltet Lieferung und Abholung",
+        "exampleTitle": "Berechnungsbeispiel",
+        "example": "Lieferung über {distance} km = {fee}",
+        "roundTripNote": "{distance} km x 2 = {total} km berechnet",
+        "optionalSection": "Optionale Einstellungen",
+        "maximumDistance": "Maximale Entfernung",
+        "maximumDistanceDescription": "Leer lassen für keine Begrenzung",
+        "freeDeliveryThreshold": "Kostenlose Lieferung ab",
+        "freeDeliveryThresholdDescription": "Bestellwert, ab dem die Lieferung kostenlos ist",
+        "saved": "Liefereinstellungen gespeichert",
+        "simulator": {
+          "title": "Preissimulator",
+          "description": "Testen Sie Ihre Einstellungen, um die Lieferkosten zu sehen",
+          "distance": "Kundenentfernung",
+          "orderTotal": "Bestellbetrag",
+          "result": "Liefergebühr",
+          "free": "Kostenlos",
+          "notAvailable": "Nicht verfügbar",
+          "tooFar": "Entfernung überschreitet Maximum ({max} km)",
+          "freeDeliveryApplied": "Kostenlose Lieferung angewendet",
+          "minimumApplied": "Mindestgebühr angewendet",
+          "freeAbove": "Kostenlos ab {amount}",
+          "distanceLabel": "Entfernung",
+          "rateLabel": "Berechnung",
+          "minimumLabel": "Minimum",
+          "testAddress": "Adresse testen",
+          "testAddressTitle": "Adresse testen",
+          "testAddressDescription": "Geben Sie eine Kundenadresse ein, um die tatsächliche Entfernung zu berechnen",
+          "testAddressPlaceholder": "Adresse suchen..."
+        }
+      },
+      "inspection": {
+        "title": "Übergabeprotokoll",
+        "description": "Dokumentieren Sie den Zustand der Ausrüstung bei Abholung und Rückgabe",
+        "nav": "Übergabeprotokoll",
+        "enableSection": "Übergabeprotokoll-Funktion",
+        "enableSectionDescription": "Dokumentieren Sie den Zustand der Ausrüstung mit Fotos und Unterschrift",
+        "enabled": "Übergabeprotokolle aktivieren",
+        "enabledDescription": "Erstellen Sie Protokolle bei Abholung und Rückgabe",
+        "modeSection": "Protokollmodus",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Das Protokoll kann übersprungen werden",
+        "modeRecommended": "Empfohlen",
+        "modeRecommendedDescription": "Eine Erinnerung wird angezeigt, kann aber übersprungen werden",
+        "modeRequired": "Erforderlich",
+        "modeRequiredDescription": "Erforderlich, um den Reservierungsstatus zu ändern",
+        "signatureSection": "Kundenunterschrift",
+        "requireCustomerSignature": "Unterschrift erforderlich",
+        "requireCustomerSignatureDescription": "Der Kunde muss das Protokoll unterschreiben",
+        "autoGeneratePdf": "PDF automatisch generieren",
+        "autoGeneratePdfDescription": "Ein PDF-Bericht wird nach jedem Protokoll erstellt",
+        "maxPhotosPerItem": "Fotos pro Ausrüstung",
+        "maxPhotosPerItemDescription": "Maximale Anzahl von Fotos pro geprüfter Ausrüstung",
+        "saved": "Protokolleinstellungen gespeichert",
+        "types": {
+          "departure": "Abholung",
+          "return": "Rückgabe"
+        },
+        "status": {
+          "draft": "In Bearbeitung",
+          "completed": "Abgeschlossen",
+          "signed": "Unterschrieben",
+          "notStarted": "Nicht durchgeführt"
+        },
+        "condition": {
+          "excellent": "Ausgezeichnet",
+          "good": "Gut",
+          "fair": "Akzeptabel",
+          "damaged": "Beschädigt"
+        },
+        "card": {
+          "title": "Übergabeprotokoll",
+          "departure": "Abholung",
+          "return": "Rückgabe",
+          "notDone": "Nicht durchgeführt",
+          "availableAtDeparture": "Bei Abholung verfügbar",
+          "start": "Starten",
+          "view": "Ansehen",
+          "compare": "Vergleichen",
+          "photos": "{count, plural, one {# Foto} other {# Fotos}}",
+          "items": "{count, plural, one {# Artikel} other {# Artikel}}",
+          "changesDetected": "{count, plural, one {# Änderung} other {# Änderungen}}",
+          "moreActions": "Weitere Aktionen",
+          "downloadPdf": "PDF herunterladen"
+        },
+        "wizard": {
+          "title": "Übergabeprotokoll - {type}",
+          "titleDeparture": "Übergabeprotokoll - Abholung",
+          "titleReturn": "Übergabeprotokoll - Rückgabe",
+          "step": "Schritt {current} von {total}",
+          "step_overview": "Übersicht",
+          "step_items": "Artikel",
+          "step_summary": "Zusammenfassung",
+          "step_signature": "Unterschrift",
+          "overview": "Übersicht",
+          "items": "Artikel",
+          "summary": "Zusammenfassung",
+          "signature": "Unterschrift",
+          "departureInspection": "Übergabeprotokoll - Abholung",
+          "returnInspection": "Übergabeprotokoll - Rückgabe",
+          "reservation": "Reservierung",
+          "itemsToInspect": "{count, plural, one {Artikel zu prüfen} other {Artikel zu prüfen}}",
+          "instructions": "Anweisungen",
+          "instruction1_departure": "Überprüfen Sie den Zustand jedes Artikels, bevor Sie ihn dem Kunden übergeben",
+          "instruction1_return": "Überprüfen Sie den Zustand jedes Artikels bei der Rückgabe",
+          "instruction2": "Machen Sie Fotos, um den aktuellen Zustand zu dokumentieren",
+          "instruction3": "Notieren Sie alle Schäden oder ungewöhnlichen Verschleiß",
+          "allItemsOk": "Alles in Ordnung",
+          "allOk": "Alles OK",
+          "allOkDescription": "Alle Artikel als ausgezeichnet markieren",
+          "quantity": "Menge",
+          "condition": "Zustand",
+          "photos": "Fotos",
+          "notes": "Anmerkungen",
+          "notesPlaceholder": "Anmerkungen zum Zustand der Ausrüstung hinzufügen...",
+          "damageDetected": "Schaden erkannt",
+          "allGood": "Alles in Ordnung",
+          "summaryItems": "{count, plural, one {# Artikel geprüft} other {# Artikel geprüft}}",
+          "itemsWithIssues": "Artikel mit Anmerkungen",
+          "globalNotes": "Allgemeine Anmerkungen",
+          "globalNotesPlaceholder": "Allgemeine Anmerkungen zum Protokoll hinzufügen...",
+          "signingAs": "Unterschrift von {name}",
+          "signHere": "Hier unterschreiben",
+          "clearSignature": "Löschen",
+          "signatureConfirmation": "Ich bestätige, dass ich den Zustand der Ausrüstung überprüft habe und die Bedingungen akzeptiere",
+          "signatureComplete": "Unterschrift bestätigt",
+          "customerSignature": "Kundenunterschrift",
+          "signatureTitle": "Unterschrift",
+          "signatureDescription": "Der Kunde muss unterschreiben, um das Protokoll zu bestätigen",
+          "back": "Zurück",
+          "continue": "Weiter",
+          "next": "Weiter",
+          "previous": "Zurück",
+          "complete": "Abschließen",
+          "saving": "Speichern...",
+          "saved": "Protokoll gespeichert",
+          "inspectionComplete": "Protokoll erfolgreich abgeschlossen",
+          "inspectionError": "Fehler beim Speichern",
+          "photoInvalidType": "Nicht unterstütztes Bildformat",
+          "photoTooLarge": "Bild zu groß (max. 20 MB)",
+          "photoError": "Fehler bei der Bildverarbeitung",
+          "addPhoto": "Foto hinzufügen",
+          "takePhoto": "Foto aufnehmen",
+          "photoPreview": "Fotovorschau",
+          "deletePhoto": "Foto löschen",
+          "close": "Schließen"
+        },
+        "conditions": {
+          "excellent": "Ausgezeichnet",
+          "good": "Gut",
+          "fair": "Akzeptabel",
+          "damaged": "Beschädigt",
+          "ok": "OK",
+          "wear": "Verschleiß",
+          "damage": "Schaden"
+        },
+        "item": {
+          "condition": "Zustand",
+          "notes": "Anmerkungen",
+          "notesPlaceholder": "Anmerkungen zum Zustand der Ausrüstung hinzufügen...",
+          "photos": "Fotos",
+          "addPhoto": "Foto hinzufügen",
+          "takePhoto": "Foto aufnehmen",
+          "removePhoto": "Entfernen",
+          "photoUploading": "Hochladen...",
+          "photoError": "Fehler beim Hochladen",
+          "maxPhotosReached": "Maximale Anzahl an Fotos erreicht"
+        },
+        "signature": {
+          "title": "Kundenunterschrift",
+          "instruction": "Unterschreiben Sie im Feld unten",
+          "clear": "Löschen",
+          "confirm": "Ich bestätige, dass ich den Zustand der Ausrüstung überprüft habe",
+          "name": "Name des Unterzeichners",
+          "skip": "Überspringen",
+          "skipDescription": "Das Protokoll wird ohne Unterschrift gespeichert",
+          "signedAt": "Unterschrieben am"
+        },
+        "summary": {
+          "totalItems": "Ausrüstung",
+          "photos": "Fotos",
+          "damageDetected": "Schaden",
+          "noDamage": "Kein Schaden"
+        },
+        "sections": {
+          "inspectionDetails": "Protokolldetails",
+          "equipment": "Geprüfte Ausrüstung",
+          "notes": "Anmerkungen",
+          "signature": "Unterschrift"
+        },
+        "parties": {
+          "customer": "Kunde"
+        },
+        "period": {
+          "performedBy": "Durchgeführt von"
+        },
+        "comparison": {
+          "title": "Vergleich",
+          "departure": "Abholung",
+          "return": "Rückgabe",
+          "noChanges": "Keine Änderungen erkannt",
+          "changes": "Änderungen erkannt",
+          "conditionChanged": "Zustand geändert",
+          "newDamage": "Neuer Schaden",
+          "swipeHint": "Wischen zum Vergleichen",
+          "noDepartureInspection": "Kein Abholprotokoll",
+          "noReturnInspection": "Kein Rückgabeprotokoll",
+          "noPhotos": "Keine Fotos"
+        },
+        "damage": {
+          "title": "Schaden erkannt",
+          "description": "Schadensbeschreibung",
+          "estimatedCost": "Geschätzte Kosten",
+          "captureDeposit": "Von Kaution abziehen",
+          "createPayment": "Zahlung erstellen"
+        },
+        "activity": {
+          "departureStarted": "Abholprotokoll gestartet",
+          "departureCompleted": "Abholprotokoll abgeschlossen",
+          "returnStarted": "Rückgabeprotokoll gestartet",
+          "returnCompleted": "Rückgabeprotokoll abgeschlossen",
+          "damageDetected": "Schaden erkannt: {description}",
+          "signed": "Protokoll vom Kunden unterschrieben"
+        },
+        "prompt": {
+          "departureTitle": "Protokoll durchführen?",
+          "departureDescription": "Dokumentieren Sie den Zustand der Ausrüstung, bevor Sie sie dem Kunden übergeben.",
+          "returnTitle": "Protokoll durchführen?",
+          "returnDescription": "Überprüfen Sie den Zustand der Ausrüstung bei der Rückgabe.",
+          "yes": "Ja, starten",
+          "skip": "Diesen Schritt überspringen"
+        },
+        "templates": {
+          "title": "Protokollvorlagen",
+          "description": "Definieren Sie Prüfpunkte nach Kategorie",
+          "default": "Standard",
+          "bikes": "Fahrräder / Roller",
+          "tools": "Elektrowerkzeuge",
+          "audio": "Audio / Video",
+          "generic": "Allgemein"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Abholprotokoll",
+          "returnInspectionTitle": "Rückgabeprotokoll",
+          "inspectionRequiredDescription": "Ein Protokoll ist erforderlich, bevor Sie fortfahren können.",
+          "inspectionRecommendedDescription": "Wir empfehlen, ein Protokoll durchzuführen.",
+          "departureInspectionBenefit": "Dokumentieren Sie den Zustand der Ausrüstung, bevor Sie sie dem Kunden übergeben",
+          "returnInspectionBenefit": "Überprüfen Sie den Zustand der Ausrüstung und erkennen Sie mögliche Schäden",
+          "inspectionDuration": "Etwa 2 Minuten",
+          "startInspection": "Protokoll starten"
+        }
+      },
       "payments": {
         "title": "Zahlungen",
         "description": "Konfigurieren Sie Online-Zahlungen für Ihren Shop",
@@ -2450,7 +2876,14 @@
         "trialDays": "Testtage",
         "trialDaysDescription": "Anzahl der kostenlosen Testtage, wenn dieser Shop ein kostenpflichtiges Abo abschließt. 0 für keine Testphase (sofortige Zahlung).",
         "days": "Tage",
-        "saved": "Admin-Einstellungen gespeichert"
+        "saved": "Admin-Einstellungen gespeichert",
+        "discountSection": "Abo-Rabatt",
+        "discountSectionDescription": "Konfigurieren Sie einen Rabatt für das Abonnement dieses Shops.",
+        "discountPercent": "Rabattprozentsatz",
+        "discountPercentDescription": "Der auf den Abo-Preis angewandte Rabatt (0-100%).",
+        "discountDuration": "Dauer",
+        "discountDurationDescription": "Anzahl der Monate, für die der Rabatt gilt. 0 für einen dauerhaften Rabatt.",
+        "months": "Monate"
       }
     }
   },
@@ -2608,21 +3041,21 @@
       "breadcrumb": {
         "home": "Startseite",
         "catalog": "Katalog"
-      },
-      "accessories": {
-        "productAdded": "Zum Warenkorb hinzugefügt",
-        "youMightAlsoLike": "Das könnte Ihnen auch gefallen",
-        "selectAccessories": "Zubehör zum Hinzufügen auswählen",
-        "available": "{count, plural, one {# verfügbar} other {# verfügbar}}",
-        "pricingUnit": {
-          "day": "Tag",
-          "hour": "Stunde",
-          "week": "Woche"
-        },
-        "continueWithout": "Ohne Zubehör fortfahren",
-        "addToCart": "{count, plural, one {# Zubehör hinzufügen} other {# Zubehör hinzufügen}}",
-        "accessoriesAdded": "{count, plural, one {# Zubehör zum Warenkorb hinzugefügt} other {# Zubehör zum Warenkorb hinzugefügt}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Zum Warenkorb hinzugefügt",
+      "youMightAlsoLike": "Das könnte Ihnen auch gefallen",
+      "selectAccessories": "Zubehör zum Hinzufügen auswählen",
+      "available": "{count, plural, one {# verfügbar} other {# verfügbar}}",
+      "pricingUnit": {
+        "day": "Tag",
+        "hour": "Stunde",
+        "week": "Woche"
+      },
+      "continueWithout": "Ohne Zubehör fortfahren",
+      "addToCart": "{count, plural, one {# Zubehör hinzufügen} other {# Zubehör hinzufügen}}",
+      "accessoriesAdded": "{count, plural, one {# Zubehör zum Warenkorb hinzugefügt} other {# Zubehör zum Warenkorb hinzugefügt}}"
     },
     "dateSelection": {
       "title": "Wann möchten Sie mieten?",
@@ -2776,9 +3209,30 @@
       "summary": "Ihre Bestellung",
       "steps": {
         "contact": "Kontakt",
+        "delivery": "Lieferung",
         "address": "Adresse",
         "confirm": "Bestätigung"
       },
+      "deliveryDescription": "Wählen Sie, wie Sie Ihre Ausrüstung erhalten möchten",
+      "deliveryRequiredDescription": "Lieferung ist für diese Bestellung erforderlich",
+      "deliveryIncludedDescription": "Lieferung ist in Ihrer Bestellung enthalten",
+      "deliveryRequiredBanner": "Lieferung erforderlich",
+      "deliveryIncludedBanner": "Lieferung inklusive",
+      "deliveryRequiredNote": "Dieses Produkt erfordert eine Lieferung",
+      "deliveryIncludedNote": "Lieferkosten sind im Preis enthalten",
+      "included": "Inklusive",
+      "pickupOption": "Abholung im Geschäft",
+      "deliveryOption": "Hauslieferung",
+      "deliveryOptionDescription": "Ab {pricePerKm}/km",
+      "freeDeliveryAbove": "Kostenlose Lieferung ab {amount}",
+      "freeDeliveryApplied": "Kostenlose Lieferung angewendet!",
+      "deliveryAddress": "Lieferadresse",
+      "deliveryAddressPlaceholder": "Geben Sie Ihre Lieferadresse ein...",
+      "deliveryDistance": "Entfernung",
+      "deliveryFee": "Liefergebühr",
+      "free": "Kostenlos",
+      "deliveryTooFar": "Leider liefern wir nicht weiter als {maxKm} km",
+      "roundTripNote": "{distance} km x 2 = {total} km (Hin- und Rückfahrt)",
       "contactDescription": "Wir benötigen diese Informationen, um Sie zu kontaktieren",
       "addressDescription": "Optional - Geben Sie Ihre Adresse ein, falls erforderlich",
       "confirmDescription": "Überprüfen Sie Ihre Informationen vor der Bestätigung",
@@ -2837,6 +3291,11 @@
         "savingsBanner": "Sie sparen {amount} mit dem Langzeitrabatt"
       },
       "depositInfo": "Eine Reservierung von {amount} wird als Kaution auf Ihrer Karte hinterlegt. Dieser Betrag wird nicht belastet und bei Rückgabe der Ausrüstung freigegeben.",
+      "toPayNow": "Jetzt zu zahlen",
+      "remainingAtPickup": "Restbetrag bei Abholung: {amount}",
+      "payDeposit": "Anzahlung von {amount} bezahlen",
+      "depositLabel": "Kaution (Autorisierung)",
+      "depositAuthorizationInfo": "Ihre Karte wird gespeichert. Eine Autorisierung wird bei Abholung durchgeführt. Es wird kein Betrag berechnet, wenn alles in gutem Zustand zurückgegeben wird.",
       "success": {
         "confirmedTitle": "Zahlung bestätigt!",
         "confirmedDescription": "Ihre Zahlung wurde akzeptiert. Sie erhalten eine Bestätigungs-E-Mail.",
@@ -2867,8 +3326,7 @@
       "emailConfirmation": "Bestätigungs-E-Mail",
       "confirmationSentTo": "Bestätigung gesendet an",
       "subtotalLabel": "Zwischensumme",
-      "depositLabel": "Kaution (Autorisierung)",
-      "depositAuthorizationInfo": "Ihre Karte wird gespeichert. Bei Abholung wird eine Autorisierung erstellt. Es wird kein Betrag eingezogen, wenn alles in gutem Zustand zurückgegeben wird.",
+      "depositLabel": "Kaution",
       "totalLabel": "Gesamt",
       "whatNext": "Nächste Schritte",
       "stepRequest1": "Wir prüfen Ihre Reservierungsanfrage",
@@ -2879,7 +3337,53 @@
       "stepPayment3": "Geben Sie die Ausrüstung in gutem Zustand am Enddatum zurück",
       "backToStore": "Zurück zur Startseite",
       "viewMyReservations": "Meine Mieten ansehen",
-      "viewReservation": "Meine Reservierung ansehen"
+      "viewReservation": "Meine Reservierung ansehen",
+      "deliveryLabel": "Lieferung",
+      "pickupLabel": "Abholung im Geschäft",
+      "deliveryFeeLabel": "Liefergebühr",
+      "free": "Kostenlos"
+    },
+    "authorizeDeposit": {
+      "title": "Kautionsautorisierung",
+      "subtitle": "Reservierung #{number}",
+      "description": "Der Vermieter fordert eine Kautionsautorisierung von {amount} an.",
+      "howItWorks": "So funktioniert es",
+      "step1": "Ihre Karte wird verifiziert und der Betrag wird vorübergehend reserviert",
+      "step2": "Der Betrag wird nicht von Ihrem Konto abgebucht",
+      "step3": "Am Ende der Miete wird die Autorisierung automatisch aufgehoben",
+      "step4": "Bei Schäden kann ein Teil oder der gesamte Betrag belastet werden",
+      "depositAmount": "Kautionsbetrag",
+      "cardDetails": "Kartendetails",
+      "authorizeButton": "{amount} autorisieren",
+      "authorizing": "Autorisierung läuft...",
+      "securePayment": "Sichere Zahlung mit Stripe",
+      "infoBox": "Dieser Betrag wird nicht abgebucht. Er wird vorübergehend auf Ihrer Karte reserviert und freigegeben, wenn Sie die Ausrüstung in gutem Zustand zurückgeben.",
+      "processing": "Verarbeitung...",
+      "redirecting": "Weiterleitung...",
+      "paymentInitError": "Zahlung konnte nicht initialisiert werden. Bitte versuchen Sie es später erneut.",
+      "confirmationError": "Autorisierung konnte nicht bestätigt werden",
+      "unexpectedStatus": "Unerwarteter Zahlungsstatus",
+      "unexpectedError": "Ein unerwarteter Fehler ist aufgetreten",
+      "success": {
+        "title": "Kaution autorisiert!",
+        "description": "Der Betrag von {amount} wurde vorübergehend auf Ihrer Karte reserviert.",
+        "whatHappensNext": "Was passiert als nächstes?",
+        "willBeReleased": "Dieser Betrag wird am Ende Ihrer Miete automatisch freigegeben, wenn die Ausrüstung in gutem Zustand zurückgegeben wird. Es erfolgt keine Abbuchung, es sei denn, es liegt ein Schaden vor.",
+        "viewReservations": "Meine Reservierungen ansehen",
+        "backToStore": "Zurück zum Shop"
+      },
+      "errors": {
+        "notFound": "Reservierung nicht gefunden",
+        "alreadyAuthorized": "Kaution ist bereits autorisiert",
+        "invalidToken": "Ungültiger oder abgelaufener Zugangslink. Bitte fordern Sie einen neuen an.",
+        "stripeNotConfigured": "Online-Zahlungen sind für diesen Shop nicht verfügbar.",
+        "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich.",
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "cardDeclined": "Karte abgelehnt. Überprüfen Sie Ihre Daten oder versuchen Sie eine andere Karte.",
+        "insufficientFunds": "Nicht genügend Guthaben. Der Betrag konnte nicht reserviert werden.",
+        "invalidCard": "Ungültige Karte. Bitte überprüfen Sie die eingegebenen Daten."
+      },
+      "backToStore": "Zurück zum Shop"
     },
     "account": {
       "title": "Mein Konto",
@@ -2969,7 +3473,9 @@
           "deposit": "Kaution",
           "deposit_return": "Kautionsrückerstattung",
           "damage": "Schäden",
-          "adjustment": "Anpassung"
+          "adjustment": "Anpassung",
+          "deposit_hold": "Autorisierung",
+          "deposit_capture": "Kaution eingezogen"
         },
         "methods": {
           "stripe": "Online-Karte",
@@ -2983,13 +3489,21 @@
           "completed": "Bezahlt",
           "pending": "Ausstehend",
           "failed": "Fehlgeschlagen",
-          "refunded": "Erstattet"
+          "refunded": "Erstattet",
+          "cancelled": "Storniert",
+          "authorized": "Autorisiert"
         }
       },
       "reviewPrompt": {
         "title": "Wie war Ihre Miete?",
         "description": "Ihr Feedback hilft {name}, sich zu verbessern",
         "leaveReview": "Bewertung abgeben"
+      },
+      "successToast": {
+        "payment": "Zahlung erfolgreich",
+        "paymentDescription": "Ihre Zahlung wurde registriert.",
+        "deposit": "Kaution erfolgreich autorisiert",
+        "depositDescription": "Der Betrag wurde vorübergehend auf Ihrer Karte blockiert."
       }
     },
     "footer": {
@@ -3330,6 +3844,31 @@
       "retryPayment": "Zahlung erneut versuchen",
       "contactSupport": "Hilfe benötigt? Kontaktieren Sie uns."
     },
+    "paymentRequest": {
+      "subject": "Zahlungsanforderung für Reservierung #{number}",
+      "title": "Zahlungsanforderung",
+      "body": "{storeName} fordert eine Zahlung von {amount} für Ihre Reservierung #{number} an.",
+      "paymentDetails": "Zahlungsdetails",
+      "reservation": "Reservierung",
+      "description": "Beschreibung",
+      "amountDue": "Fälliger Betrag",
+      "payNow": "{amount} bezahlen",
+      "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
+      "securePayment": "Diese Zahlung wird durch Stripe gesichert. Ihre Zahlungsdaten werden niemals mit dem Vermieter geteilt."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Kautionsautorisierung für Reservierung #{number}",
+      "title": "Kautionsautorisierung erforderlich",
+      "body": "{storeName} fordert eine Kautionsautorisierung von {amount} für Ihre Reservierung #{number} an.",
+      "howItWorks": "So funktioniert es",
+      "step1": "Sie autorisieren den Kautionsbetrag auf Ihrer Karte",
+      "step2": "Der Betrag wird vorübergehend reserviert (nicht belastet)",
+      "step3": "Am Ende der Miete wird die Autorisierung automatisch freigegeben",
+      "step4": "Bei Schäden kann ein Teil oder der gesamte Betrag belastet werden",
+      "authorizeNow": "Kaution autorisieren",
+      "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
+      "securePayment": "Diese Autorisierung wird durch Stripe gesichert. Der Betrag wird nicht sofort belastet."
+    },
     "baseLayout": {
       "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
       "ignoreIfNotYou": "Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie diese E-Mail bitte.",
@@ -3362,7 +3901,8 @@
       "designation": "Bezeichnung",
       "qty": "Menge",
       "unitPrice": "Stückpreis",
-      "total": "Gesamt"
+      "total": "Gesamt",
+      "unitIdentifiers": "Kennzeichen: {identifiers}"
     },
     "totals": {
       "subtotalHT": "Zwischensumme (netto)",
@@ -3426,6 +3966,7 @@
     "maxValue": "Maximalwert ist {max}",
     "url": "Ungültige URL",
     "slug": "URL kann nur Kleinbuchstaben, Zahlen und Bindestriche enthalten",
+    "slugReserved": "Diese URL ist reserviert und kann nicht verwendet werden",
     "positive": "Wert muss positiv sein",
     "integer": "Wert muss eine ganze Zahl sein",
     "date": "Ungültiges Datum",
@@ -3525,11 +4066,18 @@
     "emailAlreadyExists": "Ein Kunde mit dieser E-Mail existiert bereits",
     "customerHasReservations": "Kunde mit Reservierungen kann nicht gelöscht werden",
     "cannotCancelReservation": "Diese Reservierung kann nicht storniert werden",
+    "cannotEditCompletedReservation": "Abgeschlossene Reservierungen können nicht bearbeitet werden",
+    "negativeAmountOnlyForAdjustment": "Negative Beträge sind nur für Anpassungen zulässig",
     "productRequired": "Produkt erforderlich",
     "customerRequired": "Kunde erforderlich",
     "productUnavailable": "Produkt nicht verfügbar: {name}",
     "productNoLongerAvailable": "Das Produkt {name} ist für diese Daten nicht mehr verfügbar. In der Zwischenzeit wurde eine andere Reservierung vorgenommen.",
     "insufficientStock": "Unzureichender Bestand für: {name} ({count} verfügbar)",
+    "tooManyUnitsAssigned": "Es können nicht mehr Einheiten zugewiesen werden als reserviert",
+    "invalidUnits": "Eine oder mehrere ausgewählte Einheiten sind ungültig",
+    "unitProductMismatch": "Ausgewählte Einheiten gehören nicht zu diesem Produkt",
+    "assignUnitsFailed": "Zuweisung der Einheiten fehlgeschlagen",
+    "getAvailableUnitsFailed": "Laden der verfügbaren Einheiten fehlgeschlagen",
     "createCustomerError": "Fehler beim Erstellen des Kunden",
     "updateCustomerError": "Fehler beim Aktualisieren des Kunden",
     "deleteCustomerError": "Fehler beim Löschen des Kunden",
@@ -3568,8 +4116,17 @@
       "noChargeToRefund": "Keine Stripe-Zahlung zum Erstatten",
       "alreadyRefunded": "Diese Zahlung wurde bereits erstattet",
       "refundExceedsCharge": "Der Erstattungsbetrag übersteigt den Zahlungsbetrag",
-      "refundFailed": "Fehler bei der Erstattung"
+      "refundFailed": "Fehler bei der Erstattung",
+      "noSavedCard": "Keine Karte für diesen Kunden gespeichert",
+      "invalidDepositStatus": "Der Kautionsstatus erlaubt diesen Vorgang nicht",
+      "noDepositRequired": "Für diese Reservierung ist keine Kaution erforderlich",
+      "authorizationFailed": "Autorisierung konnte nicht erstellt werden",
+      "noActiveAuthorization": "Keine aktive Autorisierung für diese Reservierung",
+      "captureFailed": "Kaution konnte nicht eingezogen werden",
+      "releaseFailed": "Kaution konnte nicht freigegeben werden"
     },
+    "reasonRequired": "Bitte geben Sie einen Grund an",
+    "invalidAmount": "Ungültiger Betrag",
     "invalidOrExpiredToken": "Dieser Link ist ungültig oder abgelaufen. Bitte fordern Sie einen neuen Zugriffslink an.",
     "alreadyPaid": "Diese Reservierung ist bereits bezahlt.",
     "paymentNotAvailable": "Online-Zahlung ist für diesen Shop nicht verfügbar.",
@@ -3580,7 +4137,14 @@
     "customerNoPhone": "Kunde hat keine Telefonnummer",
     "smsSendFailed": "Fehler beim Senden der SMS",
     "minRentalDurationViolation": "Die Mietdauer muss mindestens {hours} Stunden betragen",
-    "maxRentalDurationViolation": "Die Mietdauer darf {hours} Stunden nicht überschreiten"
+    "maxRentalDurationViolation": "Die Mietdauer darf {hours} Stunden nicht überschreiten",
+    "deliveryNotEnabled": "Lieferung ist für diesen Shop nicht aktiviert",
+    "deliveryAddressRequired": "Bitte geben Sie eine gültige Lieferadresse ein",
+    "storeCoordinatesNotConfigured": "Shop-Koordinaten sind nicht konfiguriert",
+    "deliveryTooFar": "Die Lieferadresse ist zu weit entfernt (maximal {maxDistance} km)",
+    "deliveryRequired": "Lieferung ist für diesen Shop erforderlich",
+    "storeCoordinatesInvalid": "Die Koordinaten des Geschäfts sind ungültig",
+    "deliveryAddressInvalid": "Die Lieferadresse ist ungültig"
   },
   "welcome": {
     "greeting": "Willkommen bei Louez.io",

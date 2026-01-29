@@ -336,13 +336,9 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
 
         {/* Bottom Section */}
         <div className="sticky bottom-0 bg-card/80 backdrop-blur-sm border-t">
-          {/* Pending Reservations Alert */}
-          <div className="p-3">
+          {/* Pending Reservations Alert + New Reservation Button */}
+          <div className="p-3 space-y-2">
             <PendingReservationsAlert />
-          </div>
-          <Separator className="opacity-50" />
-          {/* New Reservation Button */}
-          <div className="p-3">
             <Button asChild className="w-full">
               <Link href="/dashboard/reservations/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -351,16 +347,14 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
             </Button>
           </div>
           <Separator className="opacity-50" />
-          <div className="p-3 space-y-2">
+          {/* Theme/Language + User Menu */}
+          <div className="px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <ThemeToggle />
-              </div>
+              <ThemeToggle />
               <LanguageSwitcher variant="compact" />
             </div>
           </div>
-          <Separator className="opacity-50" />
-          <div className="px-1 py-2">
+          <div className="px-1 pb-2">
             <UserMenu userEmail={userEmail} userImage={userImage} />
           </div>
         </div>
@@ -403,13 +397,9 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
               </div>
               <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
               <div className="mt-auto border-t">
-                {/* Pending Reservations Alert */}
-                <div className="p-3">
+                {/* Pending Reservations Alert + New Reservation Button */}
+                <div className="p-3 space-y-2">
                   <PendingReservationsAlert onNavigate={() => setOpen(false)} />
-                </div>
-                <Separator className="opacity-50" />
-                {/* New Reservation Button */}
-                <div className="p-3">
                   <Button asChild className="w-full" onClick={() => setOpen(false)}>
                     <Link href="/dashboard/reservations/new">
                       <Plus className="mr-2 h-4 w-4" />
@@ -418,16 +408,14 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
                   </Button>
                 </div>
                 <Separator className="opacity-50" />
-                <div className="p-4 space-y-3">
+                {/* Theme/Language + User Menu */}
+                <div className="px-3 py-2 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <ThemeToggle />
-                    </div>
+                    <ThemeToggle />
                     <LanguageSwitcher variant="compact" />
                   </div>
                 </div>
-                <Separator className="opacity-50" />
-                <div className="p-2">
+                <div className="px-1 pb-2">
                   <UserMenu userEmail={userEmail} userImage={userImage} />
                 </div>
               </div>

@@ -11,20 +11,27 @@ interface CreateCheckoutSessionOptions {
   interval: 'monthly' | 'yearly'
   currency: Currency
   trialDays?: number
+  stripeCouponId?: string
   successUrl: string
   cancelUrl: string
 }
 
-export async function createSubscriptionCheckoutSession({
-  storeId,
-  planSlug,
-  interval,
-  currency,
-  trialDays,
-  successUrl,
-  cancelUrl,
-}: CreateCheckoutSessionOptions) {
-  // Get the store with owner info
+/**
+ * Get or create a Stripe customer for a store.
+ *
+ * Looks up the existing Stripe customer ID from the subscriptions table.
+ * If none exists, creates a new Stripe customer and immediately persists
+ * the ID to prevent duplicate customers on abandoned checkouts.
+ */
+export async function getOrCreateStripeCustomer(storeId: string): Promise<string> {
+  const existingSubscription = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.storeId, storeId),
+  })
+
+  if (existingSubscription?.stripeCustomerId) {
+    return existingSubscription.stripeCustomerId
+  }
+
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, storeId),
   })
@@ -33,17 +40,51 @@ export async function createSubscriptionCheckoutSession({
     throw new Error('Store not found')
   }
 
-  // Get owner email
   const ownerMember = await db
     .select({ email: users.email })
     .from(storeMembers)
     .innerJoin(users, eq(storeMembers.userId, users.id))
-    .where(
-      and(eq(storeMembers.storeId, storeId), eq(storeMembers.role, 'owner'))
-    )
+    .where(and(eq(storeMembers.storeId, storeId), eq(storeMembers.role, 'owner')))
     .limit(1)
     .then((res) => res[0])
 
+  const customer = await stripe.customers.create({
+    email: store.email || ownerMember?.email || undefined,
+    name: store.name,
+    metadata: {
+      storeId: store.id,
+      userId: store.userId,
+    },
+  })
+
+  // Persist immediately to prevent duplicate customers on retry
+  if (existingSubscription) {
+    await db
+      .update(subscriptions)
+      .set({ stripeCustomerId: customer.id, updatedAt: new Date() })
+      .where(eq(subscriptions.id, existingSubscription.id))
+  } else {
+    await db.insert(subscriptions).values({
+      id: nanoid(),
+      storeId,
+      planSlug: 'start',
+      stripeCustomerId: customer.id,
+    })
+  }
+
+  return customer.id
+}
+
+export async function createSubscriptionCheckoutSession({
+  storeId,
+  planSlug,
+  interval,
+  currency,
+  trialDays,
+  stripeCouponId,
+  successUrl,
+  cancelUrl,
+}: CreateCheckoutSessionOptions) {
   // Get the plan from code
   const plan = getPlan(planSlug)
 
@@ -58,24 +99,8 @@ export async function createSubscriptionCheckoutSession({
     throw new Error(`Price not configured for this plan in ${currency.toUpperCase()}`)
   }
 
-  // Get or create Stripe customer
-  const existingSubscription = await db.query.subscriptions.findFirst({
-    where: eq(subscriptions.storeId, storeId),
-  })
-
-  let stripeCustomerId = existingSubscription?.stripeCustomerId
-
-  if (!stripeCustomerId) {
-    const customer = await stripe.customers.create({
-      email: store.email || ownerMember?.email || undefined,
-      name: store.name,
-      metadata: {
-        storeId: store.id,
-        userId: store.userId,
-      },
-    })
-    stripeCustomerId = customer.id
-  }
+  // Get or create Stripe customer (persisted to DB to avoid duplicates on abandoned checkouts)
+  const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
 
   // Create the checkout session
   const session = await stripe.checkout.sessions.create({
@@ -91,13 +116,13 @@ export async function createSubscriptionCheckoutSession({
     cancel_url: cancelUrl,
     subscription_data: {
       metadata: {
-        storeId: store.id,
+        storeId,
         planSlug: plan.slug,
       },
       ...(trialDays && trialDays > 0 ? { trial_period_days: trialDays } : {}),
     },
     metadata: {
-      storeId: store.id,
+      storeId,
       planSlug: plan.slug,
     },
     // Allow updating existing customer's info during checkout
@@ -106,8 +131,16 @@ export async function createSubscriptionCheckoutSession({
       name: 'auto',
       address: 'auto',
     },
-    allow_promotion_codes: true,
+    // Apply platform admin discount if configured
+    // Note: Stripe doesn't allow both discounts and allow_promotion_codes
+    ...(stripeCouponId
+      ? { discounts: [{ coupon: stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     billing_address_collection: 'required',
+    // Automatically calculate and add tax based on customer location
+    automatic_tax: {
+      enabled: true,
+    },
     tax_id_collection: {
       enabled: true,
     },
