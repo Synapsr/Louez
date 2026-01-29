@@ -1753,6 +1753,11 @@
           "pastDue": "Achterstallig",
           "cancelled": "Opgezegd"
         },
+        "discount": {
+          "title": "Speciale aanbieding actief",
+          "permanent": "U heeft een permanente korting van {percent}% op uw abonnement.",
+          "limited": "U heeft een korting van {percent}% op uw abonnement voor {months} maanden."
+        },
         "paymentStatus": {
           "pending": "In behandeling",
           "completed": "Betaald",
@@ -2466,6 +2471,227 @@
           "testAddressPlaceholder": "Zoek een adres..."
         }
       },
+      "inspection": {
+        "title": "Opnameverslag",
+        "description": "Documenteer de staat van de apparatuur bij ophalen en terugbrengen",
+        "nav": "Opnameverslag",
+        "enableSection": "Opnameverslag functie",
+        "enableSectionDescription": "Documenteer de staat van de apparatuur met foto's en handtekening",
+        "enabled": "Opnameverslagen inschakelen",
+        "enabledDescription": "Maak inspectierapporten bij ophalen en terugbrengen",
+        "modeSection": "Inspectiemodus",
+        "modeOptional": "Optioneel",
+        "modeOptionalDescription": "Het verslag kan worden overgeslagen",
+        "modeRecommended": "Aanbevolen",
+        "modeRecommendedDescription": "Een herinnering wordt getoond maar kan worden overgeslagen",
+        "modeRequired": "Verplicht",
+        "modeRequiredDescription": "Vereist om de reserveringsstatus te wijzigen",
+        "signatureSection": "Klanthandtekening",
+        "requireCustomerSignature": "Handtekening vereist",
+        "requireCustomerSignatureDescription": "De klant moet het verslag ondertekenen",
+        "autoGeneratePdf": "PDF automatisch genereren",
+        "autoGeneratePdfDescription": "Er wordt een PDF-rapport gemaakt na elke inspectie",
+        "maxPhotosPerItem": "Foto's per apparaat",
+        "maxPhotosPerItemDescription": "Maximaal aantal foto's per geïnspecteerd apparaat",
+        "saved": "Inspectie-instellingen opgeslagen",
+        "types": {
+          "departure": "Ophalen",
+          "return": "Terugbrengen"
+        },
+        "status": {
+          "draft": "In uitvoering",
+          "completed": "Voltooid",
+          "signed": "Ondertekend",
+          "notStarted": "Niet uitgevoerd"
+        },
+        "condition": {
+          "excellent": "Uitstekend",
+          "good": "Goed",
+          "fair": "Redelijk",
+          "damaged": "Beschadigd"
+        },
+        "card": {
+          "title": "Opnameverslag",
+          "departure": "Ophalen",
+          "return": "Terugbrengen",
+          "notDone": "Niet uitgevoerd",
+          "availableAtDeparture": "Beschikbaar bij ophalen",
+          "start": "Starten",
+          "view": "Bekijken",
+          "compare": "Vergelijken",
+          "photos": "{count, plural, one {# foto} other {# foto's}}",
+          "items": "{count, plural, one {# artikel} other {# artikelen}}",
+          "changesDetected": "{count, plural, one {# wijziging} other {# wijzigingen}}",
+          "moreActions": "Meer acties",
+          "downloadPdf": "PDF downloaden"
+        },
+        "wizard": {
+          "title": "Opnameverslag - {type}",
+          "titleDeparture": "Opnameverslag - Ophalen",
+          "titleReturn": "Opnameverslag - Terugbrengen",
+          "step": "Stap {current} van {total}",
+          "step_overview": "Overzicht",
+          "step_items": "Artikelen",
+          "step_summary": "Samenvatting",
+          "step_signature": "Handtekening",
+          "overview": "Overzicht",
+          "items": "Artikelen",
+          "summary": "Samenvatting",
+          "signature": "Handtekening",
+          "departureInspection": "Opnameverslag - Ophalen",
+          "returnInspection": "Opnameverslag - Terugbrengen",
+          "reservation": "Reservering",
+          "itemsToInspect": "{count, plural, one {artikel te inspecteren} other {artikelen te inspecteren}}",
+          "instructions": "Instructies",
+          "instruction1_departure": "Controleer de staat van elk artikel voordat u het aan de klant overhandigt",
+          "instruction1_return": "Controleer de staat van elk artikel bij terugbrengen",
+          "instruction2": "Maak foto's om de huidige staat te documenteren",
+          "instruction3": "Noteer eventuele schade of abnormale slijtage",
+          "allItemsOk": "Alles in orde",
+          "allOk": "Alles OK",
+          "allOkDescription": "Alle artikelen als uitstekend markeren",
+          "quantity": "Hoeveelheid",
+          "condition": "Staat",
+          "photos": "Foto's",
+          "notes": "Opmerkingen",
+          "notesPlaceholder": "Voeg opmerkingen toe over de staat van de apparatuur...",
+          "damageDetected": "Schade gedetecteerd",
+          "allGood": "Alles in orde",
+          "summaryItems": "{count, plural, one {# artikel geïnspecteerd} other {# artikelen geïnspecteerd}}",
+          "itemsWithIssues": "Artikelen met opmerkingen",
+          "globalNotes": "Algemene opmerkingen",
+          "globalNotesPlaceholder": "Voeg algemene opmerkingen toe over de inspectie...",
+          "signingAs": "Handtekening van {name}",
+          "signHere": "Teken hier",
+          "clearSignature": "Wissen",
+          "signatureConfirmation": "Ik bevestig de staat van de apparatuur te hebben gecontroleerd en accepteer de voorwaarden",
+          "signatureComplete": "Handtekening gevalideerd",
+          "customerSignature": "Klanthandtekening",
+          "signatureTitle": "Handtekening",
+          "signatureDescription": "De klant moet ondertekenen om het verslag te valideren",
+          "back": "Terug",
+          "continue": "Doorgaan",
+          "next": "Volgende",
+          "previous": "Vorige",
+          "complete": "Voltooien",
+          "saving": "Opslaan...",
+          "saved": "Verslag opgeslagen",
+          "inspectionComplete": "Verslag succesvol voltooid",
+          "inspectionError": "Fout bij opslaan",
+          "photoInvalidType": "Niet-ondersteund afbeeldingsformaat",
+          "photoTooLarge": "Afbeelding te groot (max 20 MB)",
+          "photoError": "Fout bij verwerken van afbeelding",
+          "addPhoto": "Foto toevoegen",
+          "takePhoto": "Foto maken",
+          "photoPreview": "Fotovoorbeeld",
+          "deletePhoto": "Foto verwijderen",
+          "close": "Sluiten"
+        },
+        "conditions": {
+          "excellent": "Uitstekend",
+          "good": "Goed",
+          "fair": "Redelijk",
+          "damaged": "Beschadigd",
+          "ok": "OK",
+          "wear": "Slijtage",
+          "damage": "Schade"
+        },
+        "item": {
+          "condition": "Staat",
+          "notes": "Opmerkingen",
+          "notesPlaceholder": "Voeg opmerkingen toe over de staat van de apparatuur...",
+          "photos": "Foto's",
+          "addPhoto": "Foto toevoegen",
+          "takePhoto": "Foto maken",
+          "removePhoto": "Verwijderen",
+          "photoUploading": "Uploaden...",
+          "photoError": "Uploadfout",
+          "maxPhotosReached": "Maximaal aantal foto's bereikt"
+        },
+        "signature": {
+          "title": "Klanthandtekening",
+          "instruction": "Teken in het onderstaande vak",
+          "clear": "Wissen",
+          "confirm": "Ik bevestig de staat van de apparatuur te hebben gecontroleerd",
+          "name": "Naam van ondertekenaar",
+          "skip": "Overslaan",
+          "skipDescription": "Het verslag wordt opgeslagen zonder handtekening",
+          "signedAt": "Ondertekend op"
+        },
+        "summary": {
+          "totalItems": "Apparatuur",
+          "photos": "Foto's",
+          "damageDetected": "Schade",
+          "noDamage": "Geen schade"
+        },
+        "sections": {
+          "inspectionDetails": "Inspectiedetails",
+          "equipment": "Geïnspecteerde apparatuur",
+          "notes": "Opmerkingen",
+          "signature": "Handtekening"
+        },
+        "parties": {
+          "customer": "Klant"
+        },
+        "period": {
+          "performedBy": "Uitgevoerd door"
+        },
+        "comparison": {
+          "title": "Vergelijking",
+          "departure": "Ophalen",
+          "return": "Terugbrengen",
+          "noChanges": "Geen wijzigingen gedetecteerd",
+          "changes": "Wijzigingen gedetecteerd",
+          "conditionChanged": "Staat gewijzigd",
+          "newDamage": "Nieuwe schade",
+          "swipeHint": "Veeg om te vergelijken",
+          "noDepartureInspection": "Geen ophaverslag",
+          "noReturnInspection": "Geen terugbrengverslag",
+          "noPhotos": "Geen foto's"
+        },
+        "damage": {
+          "title": "Schade gedetecteerd",
+          "description": "Schadebeschrijving",
+          "estimatedCost": "Geschatte kosten",
+          "captureDeposit": "Inhouden van borg",
+          "createPayment": "Betaling aanmaken"
+        },
+        "activity": {
+          "departureStarted": "Ophaverslag gestart",
+          "departureCompleted": "Ophaverslag voltooid",
+          "returnStarted": "Terugbrengverslag gestart",
+          "returnCompleted": "Terugbrengverslag voltooid",
+          "damageDetected": "Schade gedetecteerd: {description}",
+          "signed": "Verslag ondertekend door klant"
+        },
+        "prompt": {
+          "departureTitle": "Verslag uitvoeren?",
+          "departureDescription": "Documenteer de staat van de apparatuur voordat u het aan de klant overhandigt.",
+          "returnTitle": "Verslag uitvoeren?",
+          "returnDescription": "Controleer de staat van de apparatuur bij terugbrengen.",
+          "yes": "Ja, starten",
+          "skip": "Deze stap overslaan"
+        },
+        "templates": {
+          "title": "Inspectiesjablonen",
+          "description": "Definieer controlepunten per categorie",
+          "default": "Standaard",
+          "bikes": "Fietsen / Steps",
+          "tools": "Elektrisch gereedschap",
+          "audio": "Audio / Video",
+          "generic": "Algemeen"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Ophaverslag",
+          "returnInspectionTitle": "Terugbrengverslag",
+          "inspectionRequiredDescription": "Een verslag is vereist voordat u doorgaat.",
+          "inspectionRecommendedDescription": "Wij raden aan om een opnameverslag uit te voeren.",
+          "departureInspectionBenefit": "Documenteer de staat van de apparatuur voordat u het aan de klant overhandigt",
+          "returnInspectionBenefit": "Controleer de staat van de apparatuur en detecteer eventuele schade",
+          "inspectionDuration": "Ongeveer 2 minuten",
+          "startInspection": "Opnameverslag starten"
+        }
+      },
       "payments": {
         "title": "Betalingen",
         "description": "Configureer online betalingen voor uw winkel",
@@ -2649,7 +2875,14 @@
         "trialDays": "Proefdagen",
         "trialDaysDescription": "Aantal gratis proefdagen wanneer deze winkel een betaald abonnement afsluit. Stel 0 in voor geen proefperiode (directe betaling).",
         "days": "dagen",
-        "saved": "Admininstellingen opgeslagen"
+        "saved": "Admininstellingen opgeslagen",
+        "discountSection": "Abonnementskorting",
+        "discountSectionDescription": "Configureer een korting op het abonnement van deze winkel.",
+        "discountPercent": "Kortingspercentage",
+        "discountPercentDescription": "De korting toegepast op de abonnementsprijs (0-100%).",
+        "discountDuration": "Duur",
+        "discountDurationDescription": "Aantal maanden dat de korting van toepassing is. Stel 0 in voor een permanente korting.",
+        "months": "maanden"
       }
     }
   },

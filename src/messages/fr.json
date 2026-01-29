@@ -1151,7 +1151,9 @@
         "notCollected": "Non encaissée",
         "toReturnToCustomer": "À restituer au client",
         "returnQuestion": "Confirmez-vous que le matériel a été rendu en bon état ?",
-        "confirmReturn": "Confirmer le retour"
+        "confirmReturn": "Confirmer le retour",
+        "skipInspectionPickup": "Passer et confirmer le retrait",
+        "skipInspectionReturn": "Passer et confirmer le retour"
       },
       "activityBy": "par",
       "activitySystem": "Action automatique",
@@ -1751,6 +1753,11 @@
           "trialing": "Période d'essai",
           "pastDue": "Paiement en retard",
           "cancelled": "Annulé"
+        },
+        "discount": {
+          "title": "Offre spéciale active",
+          "permanent": "Vous bénéficiez d'une remise permanente de {percent}% sur votre abonnement.",
+          "limited": "Vous bénéficiez d'une remise de {percent}% sur votre abonnement pendant {months} mois."
         },
         "paymentStatus": {
           "pending": "En attente",
@@ -2465,6 +2472,227 @@
           "testAddressPlaceholder": "Rechercher une adresse..."
         }
       },
+      "inspection": {
+        "title": "Etat des lieux",
+        "description": "Documentez l'état du matériel au départ et au retour",
+        "nav": "Etat des lieux",
+        "enableSection": "Fonctionnalité d'état des lieux",
+        "enableSectionDescription": "Documentez l'état du matériel avec photos et signature",
+        "enabled": "Activer les états des lieux",
+        "enabledDescription": "Créez des rapports d'inspection au départ et au retour",
+        "modeSection": "Mode d'inspection",
+        "modeOptional": "Optionnel",
+        "modeOptionalDescription": "L'état des lieux peut être ignoré",
+        "modeRecommended": "Recommandé",
+        "modeRecommendedDescription": "Un rappel s'affiche mais peut être ignoré",
+        "modeRequired": "Obligatoire",
+        "modeRequiredDescription": "Requis pour changer le statut de la réservation",
+        "signatureSection": "Signature client",
+        "requireCustomerSignature": "Exiger la signature",
+        "requireCustomerSignatureDescription": "Le client doit signer l'état des lieux",
+        "autoGeneratePdf": "Générer un PDF automatiquement",
+        "autoGeneratePdfDescription": "Un rapport PDF est créé à la fin de chaque inspection",
+        "maxPhotosPerItem": "Photos par équipement",
+        "maxPhotosPerItemDescription": "Nombre maximum de photos par équipement inspecté",
+        "saved": "Paramètres d'état des lieux enregistrés",
+        "types": {
+          "departure": "Départ",
+          "return": "Retour"
+        },
+        "status": {
+          "draft": "En cours",
+          "completed": "Terminé",
+          "signed": "Signé",
+          "notStarted": "Non effectué"
+        },
+        "condition": {
+          "excellent": "Excellent",
+          "good": "Bon état",
+          "fair": "Usure normale",
+          "damaged": "Endommagé"
+        },
+        "card": {
+          "title": "Etat des lieux",
+          "departure": "Départ",
+          "return": "Retour",
+          "notDone": "Non effectué",
+          "availableAtDeparture": "Disponible au départ",
+          "start": "Commencer",
+          "view": "Voir",
+          "compare": "Comparer",
+          "photos": "{count, plural, one {# photo} other {# photos}}",
+          "items": "{count, plural, one {# équipement} other {# équipements}}",
+          "changesDetected": "{count, plural, one {# modification} other {# modifications}}",
+          "moreActions": "Plus d'actions",
+          "downloadPdf": "Télécharger le PDF"
+        },
+        "wizard": {
+          "title": "Etat des lieux - {type}",
+          "titleDeparture": "Etat des lieux - Départ",
+          "titleReturn": "Etat des lieux - Retour",
+          "step": "Etape {current} sur {total}",
+          "step_overview": "Aperçu",
+          "step_items": "Equipements",
+          "step_summary": "Résumé",
+          "step_signature": "Signature",
+          "overview": "Aperçu",
+          "items": "Equipements",
+          "summary": "Résumé",
+          "signature": "Signature",
+          "departureInspection": "Etat des lieux - Départ",
+          "returnInspection": "Etat des lieux - Retour",
+          "reservation": "Réservation",
+          "itemsToInspect": "{count, plural, one {équipement à inspecter} other {équipements à inspecter}}",
+          "instructions": "Instructions",
+          "instruction1_departure": "Vérifiez l'état de chaque équipement avant de le remettre au client",
+          "instruction1_return": "Vérifiez l'état de chaque équipement au retour du client",
+          "instruction2": "Prenez des photos pour documenter l'état actuel",
+          "instruction3": "Notez tout dommage ou usure anormale",
+          "allItemsOk": "Tout est en ordre",
+          "allOk": "Tout est OK",
+          "allOkDescription": "Marquer tous les équipements en excellent état",
+          "quantity": "Quantité",
+          "condition": "Etat général",
+          "photos": "Photos",
+          "notes": "Remarques",
+          "notesPlaceholder": "Ajoutez des remarques sur l'état de l'équipement...",
+          "damageDetected": "Dommage détecté",
+          "allGood": "Tout est en ordre",
+          "summaryItems": "{count, plural, one {# équipement inspecté} other {# équipements inspectés}}",
+          "itemsWithIssues": "Equipements avec remarques",
+          "globalNotes": "Notes générales",
+          "globalNotesPlaceholder": "Ajoutez des notes générales sur l'inspection...",
+          "signingAs": "Signature de {name}",
+          "signHere": "Signez ici",
+          "clearSignature": "Effacer",
+          "signatureConfirmation": "Je confirme avoir vérifié l'état du matériel et accepte les conditions",
+          "signatureComplete": "Signature validée",
+          "customerSignature": "Signature du client",
+          "signatureTitle": "Signature",
+          "signatureDescription": "Le client doit signer pour valider l'état des lieux",
+          "back": "Retour",
+          "continue": "Continuer",
+          "next": "Suivant",
+          "previous": "Précédent",
+          "complete": "Terminer",
+          "saving": "Enregistrement...",
+          "saved": "Etat des lieux enregistré",
+          "inspectionComplete": "Etat des lieux terminé avec succès",
+          "inspectionError": "Erreur lors de l'enregistrement",
+          "photoInvalidType": "Format d'image non supporté",
+          "photoTooLarge": "Image trop volumineuse (max 20 Mo)",
+          "photoError": "Erreur lors du traitement de l'image",
+          "addPhoto": "Ajouter une photo",
+          "takePhoto": "Prendre une photo",
+          "photoPreview": "Aperçu de la photo",
+          "deletePhoto": "Supprimer la photo",
+          "close": "Fermer"
+        },
+        "conditions": {
+          "excellent": "Excellent",
+          "good": "Bon état",
+          "fair": "Usure normale",
+          "damaged": "Endommagé",
+          "ok": "OK",
+          "wear": "Usure",
+          "damage": "Dommage"
+        },
+        "item": {
+          "condition": "Condition",
+          "notes": "Remarques",
+          "notesPlaceholder": "Ajoutez des remarques sur l'état de l'équipement...",
+          "photos": "Photos",
+          "addPhoto": "Ajouter une photo",
+          "takePhoto": "Prendre une photo",
+          "removePhoto": "Supprimer",
+          "photoUploading": "Téléversement...",
+          "photoError": "Erreur lors du téléversement",
+          "maxPhotosReached": "Nombre maximum de photos atteint"
+        },
+        "signature": {
+          "title": "Signature du client",
+          "instruction": "Signez dans le cadre ci-dessous",
+          "clear": "Effacer",
+          "confirm": "Je confirme avoir vérifié l'état du matériel",
+          "name": "Nom du signataire",
+          "skip": "Passer",
+          "skipDescription": "L'état des lieux sera enregistré sans signature",
+          "signedAt": "Signé le"
+        },
+        "summary": {
+          "totalItems": "Équipements",
+          "photos": "Photos",
+          "damageDetected": "Dommage",
+          "noDamage": "Aucun dommage"
+        },
+        "sections": {
+          "inspectionDetails": "Détails de l'inspection",
+          "equipment": "Équipements inspectés",
+          "notes": "Notes",
+          "signature": "Signature"
+        },
+        "parties": {
+          "customer": "Client"
+        },
+        "period": {
+          "performedBy": "Réalisé par"
+        },
+        "comparison": {
+          "title": "Comparaison",
+          "departure": "Départ",
+          "return": "Retour",
+          "noChanges": "Aucune modification détectée",
+          "changes": "Modifications détectées",
+          "conditionChanged": "Condition modifiée",
+          "newDamage": "Nouveau dommage",
+          "swipeHint": "Balayez pour comparer",
+          "noDepartureInspection": "Aucun état des lieux de départ",
+          "noReturnInspection": "Aucun état des lieux de retour",
+          "noPhotos": "Aucune photo"
+        },
+        "damage": {
+          "title": "Dommage détecté",
+          "description": "Description du dommage",
+          "estimatedCost": "Coût estimé",
+          "captureDeposit": "Capturer sur la caution",
+          "createPayment": "Créer un paiement"
+        },
+        "activity": {
+          "departureStarted": "Etat des lieux de départ commencé",
+          "departureCompleted": "Etat des lieux de départ terminé",
+          "returnStarted": "Etat des lieux de retour commencé",
+          "returnCompleted": "Etat des lieux de retour terminé",
+          "damageDetected": "Dommage détecté : {description}",
+          "signed": "Etat des lieux signé par le client"
+        },
+        "prompt": {
+          "departureTitle": "Effectuer l'état des lieux ?",
+          "departureDescription": "Documentez l'état du matériel avant de le remettre au client.",
+          "returnTitle": "Effectuer l'état des lieux ?",
+          "returnDescription": "Vérifiez l'état du matériel à son retour.",
+          "yes": "Oui, commencer",
+          "skip": "Passer cette étape"
+        },
+        "templates": {
+          "title": "Modèles d'inspection",
+          "description": "Définissez les points de contrôle par catégorie",
+          "default": "Par défaut",
+          "bikes": "Vélos / Trottinettes",
+          "tools": "Outillage électrique",
+          "audio": "Sono / Audio / Vidéo",
+          "generic": "Générique"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "État des lieux de départ",
+          "returnInspectionTitle": "État des lieux de retour",
+          "inspectionRequiredDescription": "Un état des lieux est requis avant de continuer.",
+          "inspectionRecommendedDescription": "Nous vous recommandons d'effectuer un état des lieux.",
+          "departureInspectionBenefit": "Documentez l'état du matériel avant de le remettre au client",
+          "returnInspectionBenefit": "Vérifiez l'état du matériel et détectez les éventuels dommages",
+          "inspectionDuration": "Environ 2 minutes",
+          "startInspection": "Commencer l'état des lieux"
+        }
+      },
       "payments": {
         "title": "Paiements",
         "description": "Configurez les paiements en ligne pour votre boutique",
@@ -2648,7 +2876,14 @@
         "trialDays": "Jours d'essai",
         "trialDaysDescription": "Nombre de jours d'essai gratuits lorsque cette boutique souscrit à un plan payant. Mettez 0 pour aucun essai (paiement immédiat).",
         "days": "jours",
-        "saved": "Paramètres admin enregistrés"
+        "saved": "Paramètres admin enregistrés",
+        "discountSection": "Remise sur l'abonnement",
+        "discountSectionDescription": "Configurez une remise sur l'abonnement de cette boutique.",
+        "discountPercent": "Pourcentage de remise",
+        "discountPercentDescription": "La remise appliquée au prix de l'abonnement (0-100%).",
+        "discountDuration": "Durée",
+        "discountDurationDescription": "Nombre de mois pendant lesquels la remise s'applique. Mettez 0 pour une remise permanente.",
+        "months": "mois"
       }
     }
   },

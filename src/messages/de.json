@@ -1754,6 +1754,11 @@
           "pastDue": "Überfällig",
           "cancelled": "Gekündigt"
         },
+        "discount": {
+          "title": "Sonderangebot aktiv",
+          "permanent": "Sie haben einen dauerhaften Rabatt von {percent}% auf Ihr Abonnement.",
+          "limited": "Sie haben einen Rabatt von {percent}% auf Ihr Abonnement für {months} Monate."
+        },
         "paymentStatus": {
           "pending": "Ausstehend",
           "completed": "Bezahlt",
@@ -2467,6 +2472,227 @@
           "testAddressPlaceholder": "Adresse suchen..."
         }
       },
+      "inspection": {
+        "title": "Übergabeprotokoll",
+        "description": "Dokumentieren Sie den Zustand der Ausrüstung bei Abholung und Rückgabe",
+        "nav": "Übergabeprotokoll",
+        "enableSection": "Übergabeprotokoll-Funktion",
+        "enableSectionDescription": "Dokumentieren Sie den Zustand der Ausrüstung mit Fotos und Unterschrift",
+        "enabled": "Übergabeprotokolle aktivieren",
+        "enabledDescription": "Erstellen Sie Protokolle bei Abholung und Rückgabe",
+        "modeSection": "Protokollmodus",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Das Protokoll kann übersprungen werden",
+        "modeRecommended": "Empfohlen",
+        "modeRecommendedDescription": "Eine Erinnerung wird angezeigt, kann aber übersprungen werden",
+        "modeRequired": "Erforderlich",
+        "modeRequiredDescription": "Erforderlich, um den Reservierungsstatus zu ändern",
+        "signatureSection": "Kundenunterschrift",
+        "requireCustomerSignature": "Unterschrift erforderlich",
+        "requireCustomerSignatureDescription": "Der Kunde muss das Protokoll unterschreiben",
+        "autoGeneratePdf": "PDF automatisch generieren",
+        "autoGeneratePdfDescription": "Ein PDF-Bericht wird nach jedem Protokoll erstellt",
+        "maxPhotosPerItem": "Fotos pro Ausrüstung",
+        "maxPhotosPerItemDescription": "Maximale Anzahl von Fotos pro geprüfter Ausrüstung",
+        "saved": "Protokolleinstellungen gespeichert",
+        "types": {
+          "departure": "Abholung",
+          "return": "Rückgabe"
+        },
+        "status": {
+          "draft": "In Bearbeitung",
+          "completed": "Abgeschlossen",
+          "signed": "Unterschrieben",
+          "notStarted": "Nicht durchgeführt"
+        },
+        "condition": {
+          "excellent": "Ausgezeichnet",
+          "good": "Gut",
+          "fair": "Akzeptabel",
+          "damaged": "Beschädigt"
+        },
+        "card": {
+          "title": "Übergabeprotokoll",
+          "departure": "Abholung",
+          "return": "Rückgabe",
+          "notDone": "Nicht durchgeführt",
+          "availableAtDeparture": "Bei Abholung verfügbar",
+          "start": "Starten",
+          "view": "Ansehen",
+          "compare": "Vergleichen",
+          "photos": "{count, plural, one {# Foto} other {# Fotos}}",
+          "items": "{count, plural, one {# Artikel} other {# Artikel}}",
+          "changesDetected": "{count, plural, one {# Änderung} other {# Änderungen}}",
+          "moreActions": "Weitere Aktionen",
+          "downloadPdf": "PDF herunterladen"
+        },
+        "wizard": {
+          "title": "Übergabeprotokoll - {type}",
+          "titleDeparture": "Übergabeprotokoll - Abholung",
+          "titleReturn": "Übergabeprotokoll - Rückgabe",
+          "step": "Schritt {current} von {total}",
+          "step_overview": "Übersicht",
+          "step_items": "Artikel",
+          "step_summary": "Zusammenfassung",
+          "step_signature": "Unterschrift",
+          "overview": "Übersicht",
+          "items": "Artikel",
+          "summary": "Zusammenfassung",
+          "signature": "Unterschrift",
+          "departureInspection": "Übergabeprotokoll - Abholung",
+          "returnInspection": "Übergabeprotokoll - Rückgabe",
+          "reservation": "Reservierung",
+          "itemsToInspect": "{count, plural, one {Artikel zu prüfen} other {Artikel zu prüfen}}",
+          "instructions": "Anweisungen",
+          "instruction1_departure": "Überprüfen Sie den Zustand jedes Artikels, bevor Sie ihn dem Kunden übergeben",
+          "instruction1_return": "Überprüfen Sie den Zustand jedes Artikels bei der Rückgabe",
+          "instruction2": "Machen Sie Fotos, um den aktuellen Zustand zu dokumentieren",
+          "instruction3": "Notieren Sie alle Schäden oder ungewöhnlichen Verschleiß",
+          "allItemsOk": "Alles in Ordnung",
+          "allOk": "Alles OK",
+          "allOkDescription": "Alle Artikel als ausgezeichnet markieren",
+          "quantity": "Menge",
+          "condition": "Zustand",
+          "photos": "Fotos",
+          "notes": "Anmerkungen",
+          "notesPlaceholder": "Anmerkungen zum Zustand der Ausrüstung hinzufügen...",
+          "damageDetected": "Schaden erkannt",
+          "allGood": "Alles in Ordnung",
+          "summaryItems": "{count, plural, one {# Artikel geprüft} other {# Artikel geprüft}}",
+          "itemsWithIssues": "Artikel mit Anmerkungen",
+          "globalNotes": "Allgemeine Anmerkungen",
+          "globalNotesPlaceholder": "Allgemeine Anmerkungen zum Protokoll hinzufügen...",
+          "signingAs": "Unterschrift von {name}",
+          "signHere": "Hier unterschreiben",
+          "clearSignature": "Löschen",
+          "signatureConfirmation": "Ich bestätige, dass ich den Zustand der Ausrüstung überprüft habe und die Bedingungen akzeptiere",
+          "signatureComplete": "Unterschrift bestätigt",
+          "customerSignature": "Kundenunterschrift",
+          "signatureTitle": "Unterschrift",
+          "signatureDescription": "Der Kunde muss unterschreiben, um das Protokoll zu bestätigen",
+          "back": "Zurück",
+          "continue": "Weiter",
+          "next": "Weiter",
+          "previous": "Zurück",
+          "complete": "Abschließen",
+          "saving": "Speichern...",
+          "saved": "Protokoll gespeichert",
+          "inspectionComplete": "Protokoll erfolgreich abgeschlossen",
+          "inspectionError": "Fehler beim Speichern",
+          "photoInvalidType": "Nicht unterstütztes Bildformat",
+          "photoTooLarge": "Bild zu groß (max. 20 MB)",
+          "photoError": "Fehler bei der Bildverarbeitung",
+          "addPhoto": "Foto hinzufügen",
+          "takePhoto": "Foto aufnehmen",
+          "photoPreview": "Fotovorschau",
+          "deletePhoto": "Foto löschen",
+          "close": "Schließen"
+        },
+        "conditions": {
+          "excellent": "Ausgezeichnet",
+          "good": "Gut",
+          "fair": "Akzeptabel",
+          "damaged": "Beschädigt",
+          "ok": "OK",
+          "wear": "Verschleiß",
+          "damage": "Schaden"
+        },
+        "item": {
+          "condition": "Zustand",
+          "notes": "Anmerkungen",
+          "notesPlaceholder": "Anmerkungen zum Zustand der Ausrüstung hinzufügen...",
+          "photos": "Fotos",
+          "addPhoto": "Foto hinzufügen",
+          "takePhoto": "Foto aufnehmen",
+          "removePhoto": "Entfernen",
+          "photoUploading": "Hochladen...",
+          "photoError": "Fehler beim Hochladen",
+          "maxPhotosReached": "Maximale Anzahl an Fotos erreicht"
+        },
+        "signature": {
+          "title": "Kundenunterschrift",
+          "instruction": "Unterschreiben Sie im Feld unten",
+          "clear": "Löschen",
+          "confirm": "Ich bestätige, dass ich den Zustand der Ausrüstung überprüft habe",
+          "name": "Name des Unterzeichners",
+          "skip": "Überspringen",
+          "skipDescription": "Das Protokoll wird ohne Unterschrift gespeichert",
+          "signedAt": "Unterschrieben am"
+        },
+        "summary": {
+          "totalItems": "Ausrüstung",
+          "photos": "Fotos",
+          "damageDetected": "Schaden",
+          "noDamage": "Kein Schaden"
+        },
+        "sections": {
+          "inspectionDetails": "Protokolldetails",
+          "equipment": "Geprüfte Ausrüstung",
+          "notes": "Anmerkungen",
+          "signature": "Unterschrift"
+        },
+        "parties": {
+          "customer": "Kunde"
+        },
+        "period": {
+          "performedBy": "Durchgeführt von"
+        },
+        "comparison": {
+          "title": "Vergleich",
+          "departure": "Abholung",
+          "return": "Rückgabe",
+          "noChanges": "Keine Änderungen erkannt",
+          "changes": "Änderungen erkannt",
+          "conditionChanged": "Zustand geändert",
+          "newDamage": "Neuer Schaden",
+          "swipeHint": "Wischen zum Vergleichen",
+          "noDepartureInspection": "Kein Abholprotokoll",
+          "noReturnInspection": "Kein Rückgabeprotokoll",
+          "noPhotos": "Keine Fotos"
+        },
+        "damage": {
+          "title": "Schaden erkannt",
+          "description": "Schadensbeschreibung",
+          "estimatedCost": "Geschätzte Kosten",
+          "captureDeposit": "Von Kaution abziehen",
+          "createPayment": "Zahlung erstellen"
+        },
+        "activity": {
+          "departureStarted": "Abholprotokoll gestartet",
+          "departureCompleted": "Abholprotokoll abgeschlossen",
+          "returnStarted": "Rückgabeprotokoll gestartet",
+          "returnCompleted": "Rückgabeprotokoll abgeschlossen",
+          "damageDetected": "Schaden erkannt: {description}",
+          "signed": "Protokoll vom Kunden unterschrieben"
+        },
+        "prompt": {
+          "departureTitle": "Protokoll durchführen?",
+          "departureDescription": "Dokumentieren Sie den Zustand der Ausrüstung, bevor Sie sie dem Kunden übergeben.",
+          "returnTitle": "Protokoll durchführen?",
+          "returnDescription": "Überprüfen Sie den Zustand der Ausrüstung bei der Rückgabe.",
+          "yes": "Ja, starten",
+          "skip": "Diesen Schritt überspringen"
+        },
+        "templates": {
+          "title": "Protokollvorlagen",
+          "description": "Definieren Sie Prüfpunkte nach Kategorie",
+          "default": "Standard",
+          "bikes": "Fahrräder / Roller",
+          "tools": "Elektrowerkzeuge",
+          "audio": "Audio / Video",
+          "generic": "Allgemein"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Abholprotokoll",
+          "returnInspectionTitle": "Rückgabeprotokoll",
+          "inspectionRequiredDescription": "Ein Protokoll ist erforderlich, bevor Sie fortfahren können.",
+          "inspectionRecommendedDescription": "Wir empfehlen, ein Protokoll durchzuführen.",
+          "departureInspectionBenefit": "Dokumentieren Sie den Zustand der Ausrüstung, bevor Sie sie dem Kunden übergeben",
+          "returnInspectionBenefit": "Überprüfen Sie den Zustand der Ausrüstung und erkennen Sie mögliche Schäden",
+          "inspectionDuration": "Etwa 2 Minuten",
+          "startInspection": "Protokoll starten"
+        }
+      },
       "payments": {
         "title": "Zahlungen",
         "description": "Konfigurieren Sie Online-Zahlungen für Ihren Shop",
@@ -2650,7 +2876,14 @@
         "trialDays": "Testtage",
         "trialDaysDescription": "Anzahl der kostenlosen Testtage, wenn dieser Shop ein kostenpflichtiges Abo abschließt. 0 für keine Testphase (sofortige Zahlung).",
         "days": "Tage",
-        "saved": "Admin-Einstellungen gespeichert"
+        "saved": "Admin-Einstellungen gespeichert",
+        "discountSection": "Abo-Rabatt",
+        "discountSectionDescription": "Konfigurieren Sie einen Rabatt für das Abonnement dieses Shops.",
+        "discountPercent": "Rabattprozentsatz",
+        "discountPercentDescription": "Der auf den Abo-Preis angewandte Rabatt (0-100%).",
+        "discountDuration": "Dauer",
+        "discountDurationDescription": "Anzahl der Monate, für die der Rabatt gilt. 0 für einen dauerhaften Rabatt.",
+        "months": "Monate"
       }
     }
   },

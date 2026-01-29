@@ -1754,6 +1754,11 @@
           "pastDue": "Vencido",
           "cancelled": "Cancelado"
         },
+        "discount": {
+          "title": "Oferta especial ativa",
+          "permanent": "Você tem um desconto permanente de {percent}% na sua assinatura.",
+          "limited": "Você tem um desconto de {percent}% na sua assinatura por {months} meses."
+        },
         "paymentStatus": {
           "pending": "Pendente",
           "completed": "Pago",
@@ -2467,6 +2472,227 @@
           "testAddressPlaceholder": "Pesquisar um endereço..."
         }
       },
+      "inspection": {
+        "title": "Vistoria",
+        "description": "Documente o estado do equipamento na retirada e devolução",
+        "nav": "Vistoria",
+        "enableSection": "Função de vistoria",
+        "enableSectionDescription": "Documente o estado do equipamento com fotos e assinatura",
+        "enabled": "Ativar vistorias",
+        "enabledDescription": "Crie relatórios de inspeção na retirada e devolução",
+        "modeSection": "Modo de inspeção",
+        "modeOptional": "Opcional",
+        "modeOptionalDescription": "A vistoria pode ser ignorada",
+        "modeRecommended": "Recomendado",
+        "modeRecommendedDescription": "Um lembrete é exibido mas pode ser ignorado",
+        "modeRequired": "Obrigatório",
+        "modeRequiredDescription": "Necessário para alterar o status da reserva",
+        "signatureSection": "Assinatura do cliente",
+        "requireCustomerSignature": "Exigir assinatura",
+        "requireCustomerSignatureDescription": "O cliente deve assinar a vistoria",
+        "autoGeneratePdf": "Gerar PDF automaticamente",
+        "autoGeneratePdfDescription": "Um relatório PDF é criado após cada inspeção",
+        "maxPhotosPerItem": "Fotos por equipamento",
+        "maxPhotosPerItemDescription": "Número máximo de fotos por equipamento inspecionado",
+        "saved": "Configurações de inspeção salvas",
+        "types": {
+          "departure": "Retirada",
+          "return": "Devolução"
+        },
+        "status": {
+          "draft": "Em andamento",
+          "completed": "Concluído",
+          "signed": "Assinado",
+          "notStarted": "Não realizado"
+        },
+        "condition": {
+          "excellent": "Excelente",
+          "good": "Bom",
+          "fair": "Aceitável",
+          "damaged": "Danificado"
+        },
+        "card": {
+          "title": "Vistoria",
+          "departure": "Retirada",
+          "return": "Devolução",
+          "notDone": "Não realizado",
+          "availableAtDeparture": "Disponível na retirada",
+          "start": "Iniciar",
+          "view": "Ver",
+          "compare": "Comparar",
+          "photos": "{count, plural, one {# foto} other {# fotos}}",
+          "items": "{count, plural, one {# item} other {# itens}}",
+          "changesDetected": "{count, plural, one {# alteração} other {# alterações}}",
+          "moreActions": "Mais ações",
+          "downloadPdf": "Baixar PDF"
+        },
+        "wizard": {
+          "title": "Vistoria - {type}",
+          "titleDeparture": "Vistoria - Retirada",
+          "titleReturn": "Vistoria - Devolução",
+          "step": "Passo {current} de {total}",
+          "step_overview": "Visão geral",
+          "step_items": "Itens",
+          "step_summary": "Resumo",
+          "step_signature": "Assinatura",
+          "overview": "Visão geral",
+          "items": "Itens",
+          "summary": "Resumo",
+          "signature": "Assinatura",
+          "departureInspection": "Vistoria - Retirada",
+          "returnInspection": "Vistoria - Devolução",
+          "reservation": "Reserva",
+          "itemsToInspect": "{count, plural, one {item para inspecionar} other {itens para inspecionar}}",
+          "instructions": "Instruções",
+          "instruction1_departure": "Verifique o estado de cada item antes de entregá-lo ao cliente",
+          "instruction1_return": "Verifique o estado de cada item na devolução",
+          "instruction2": "Tire fotos para documentar o estado atual",
+          "instruction3": "Anote qualquer dano ou desgaste anormal",
+          "allItemsOk": "Tudo em ordem",
+          "allOk": "Tudo OK",
+          "allOkDescription": "Marcar todos os itens em excelente estado",
+          "quantity": "Quantidade",
+          "condition": "Estado",
+          "photos": "Fotos",
+          "notes": "Observações",
+          "notesPlaceholder": "Adicione observações sobre o estado do equipamento...",
+          "damageDetected": "Dano detectado",
+          "allGood": "Tudo em ordem",
+          "summaryItems": "{count, plural, one {# item inspecionado} other {# itens inspecionados}}",
+          "itemsWithIssues": "Itens com observações",
+          "globalNotes": "Observações gerais",
+          "globalNotesPlaceholder": "Adicione observações gerais sobre a inspeção...",
+          "signingAs": "Assinatura de {name}",
+          "signHere": "Assine aqui",
+          "clearSignature": "Limpar",
+          "signatureConfirmation": "Confirmo ter verificado o estado do equipamento e aceito as condições",
+          "signatureComplete": "Assinatura validada",
+          "customerSignature": "Assinatura do cliente",
+          "signatureTitle": "Assinatura",
+          "signatureDescription": "O cliente deve assinar para validar a vistoria",
+          "back": "Voltar",
+          "continue": "Continuar",
+          "next": "Próximo",
+          "previous": "Anterior",
+          "complete": "Concluir",
+          "saving": "Salvando...",
+          "saved": "Vistoria salva",
+          "inspectionComplete": "Vistoria concluída com sucesso",
+          "inspectionError": "Erro ao salvar",
+          "photoInvalidType": "Formato de imagem não suportado",
+          "photoTooLarge": "Imagem muito grande (máx. 20 MB)",
+          "photoError": "Erro ao processar imagem",
+          "addPhoto": "Adicionar foto",
+          "takePhoto": "Tirar foto",
+          "photoPreview": "Visualização da foto",
+          "deletePhoto": "Excluir foto",
+          "close": "Fechar"
+        },
+        "conditions": {
+          "excellent": "Excelente",
+          "good": "Bom",
+          "fair": "Aceitável",
+          "damaged": "Danificado",
+          "ok": "OK",
+          "wear": "Desgaste",
+          "damage": "Dano"
+        },
+        "item": {
+          "condition": "Estado",
+          "notes": "Observações",
+          "notesPlaceholder": "Adicione observações sobre o estado do equipamento...",
+          "photos": "Fotos",
+          "addPhoto": "Adicionar foto",
+          "takePhoto": "Tirar foto",
+          "removePhoto": "Remover",
+          "photoUploading": "Enviando...",
+          "photoError": "Erro no envio",
+          "maxPhotosReached": "Número máximo de fotos atingido"
+        },
+        "signature": {
+          "title": "Assinatura do cliente",
+          "instruction": "Assine no campo abaixo",
+          "clear": "Limpar",
+          "confirm": "Confirmo ter verificado o estado do equipamento",
+          "name": "Nome do signatário",
+          "skip": "Pular",
+          "skipDescription": "A vistoria será salva sem assinatura",
+          "signedAt": "Assinado em"
+        },
+        "summary": {
+          "totalItems": "Equipamento",
+          "photos": "Fotos",
+          "damageDetected": "Dano",
+          "noDamage": "Sem danos"
+        },
+        "sections": {
+          "inspectionDetails": "Detalhes da inspeção",
+          "equipment": "Equipamento inspecionado",
+          "notes": "Observações",
+          "signature": "Assinatura"
+        },
+        "parties": {
+          "customer": "Cliente"
+        },
+        "period": {
+          "performedBy": "Realizado por"
+        },
+        "comparison": {
+          "title": "Comparação",
+          "departure": "Retirada",
+          "return": "Devolução",
+          "noChanges": "Nenhuma alteração detectada",
+          "changes": "Alterações detectadas",
+          "conditionChanged": "Estado alterado",
+          "newDamage": "Novo dano",
+          "swipeHint": "Deslize para comparar",
+          "noDepartureInspection": "Sem vistoria de retirada",
+          "noReturnInspection": "Sem vistoria de devolução",
+          "noPhotos": "Sem fotos"
+        },
+        "damage": {
+          "title": "Dano detectado",
+          "description": "Descrição do dano",
+          "estimatedCost": "Custo estimado",
+          "captureDeposit": "Reter do depósito",
+          "createPayment": "Criar pagamento"
+        },
+        "activity": {
+          "departureStarted": "Vistoria de retirada iniciada",
+          "departureCompleted": "Vistoria de retirada concluída",
+          "returnStarted": "Vistoria de devolução iniciada",
+          "returnCompleted": "Vistoria de devolução concluída",
+          "damageDetected": "Dano detectado: {description}",
+          "signed": "Vistoria assinada pelo cliente"
+        },
+        "prompt": {
+          "departureTitle": "Realizar vistoria?",
+          "departureDescription": "Documente o estado do equipamento antes de entregá-lo ao cliente.",
+          "returnTitle": "Realizar vistoria?",
+          "returnDescription": "Verifique o estado do equipamento na devolução.",
+          "yes": "Sim, iniciar",
+          "skip": "Pular esta etapa"
+        },
+        "templates": {
+          "title": "Modelos de inspeção",
+          "description": "Defina pontos de verificação por categoria",
+          "default": "Padrão",
+          "bikes": "Bicicletas / Patinetes",
+          "tools": "Ferramentas elétricas",
+          "audio": "Áudio / Vídeo",
+          "generic": "Genérico"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Vistoria de retirada",
+          "returnInspectionTitle": "Vistoria de devolução",
+          "inspectionRequiredDescription": "Uma vistoria é necessária antes de continuar.",
+          "inspectionRecommendedDescription": "Recomendamos realizar uma vistoria.",
+          "departureInspectionBenefit": "Documente o estado do equipamento antes de entregá-lo ao cliente",
+          "returnInspectionBenefit": "Verifique o estado do equipamento e detecte possíveis danos",
+          "inspectionDuration": "Aproximadamente 2 minutos",
+          "startInspection": "Iniciar vistoria"
+        }
+      },
       "payments": {
         "title": "Pagamentos",
         "description": "Configure pagamentos online para sua loja",
@@ -2650,7 +2876,14 @@
         "trialDays": "Dias de teste",
         "trialDaysDescription": "Número de dias de teste gratuitos quando esta loja assina um plano pago. Defina 0 para nenhum teste (pagamento imediato).",
         "days": "dias",
-        "saved": "Configurações admin salvas"
+        "saved": "Configurações admin salvas",
+        "discountSection": "Desconto de assinatura",
+        "discountSectionDescription": "Configure um desconto na assinatura desta loja.",
+        "discountPercent": "Percentual de desconto",
+        "discountPercentDescription": "O desconto aplicado ao preço da assinatura (0-100%).",
+        "discountDuration": "Duração",
+        "discountDurationDescription": "Número de meses que o desconto se aplica. Defina 0 para um desconto permanente.",
+        "months": "meses"
       }
     }
   },

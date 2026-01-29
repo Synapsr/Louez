@@ -1756,6 +1756,11 @@
           "pastDue": "Vencido",
           "cancelled": "Cancelado"
         },
+        "discount": {
+          "title": "Oferta especial activa",
+          "permanent": "Tienes un descuento permanente del {percent}% en tu suscripción.",
+          "limited": "Tienes un descuento del {percent}% en tu suscripción durante {months} meses."
+        },
         "paymentStatus": {
           "pending": "Pendiente",
           "completed": "Pagado",
@@ -2469,6 +2474,227 @@
           "testAddressPlaceholder": "Buscar una dirección..."
         }
       },
+      "inspection": {
+        "title": "Acta de entrega",
+        "description": "Documente el estado del equipo en la recogida y devolución",
+        "nav": "Acta de entrega",
+        "enableSection": "Función de acta de entrega",
+        "enableSectionDescription": "Documente el estado del equipo con fotos y firma",
+        "enabled": "Activar actas de entrega",
+        "enabledDescription": "Cree informes de inspección en la recogida y devolución",
+        "modeSection": "Modo de inspección",
+        "modeOptional": "Opcional",
+        "modeOptionalDescription": "El acta puede ser omitida",
+        "modeRecommended": "Recomendado",
+        "modeRecommendedDescription": "Se muestra un recordatorio pero puede omitirse",
+        "modeRequired": "Obligatorio",
+        "modeRequiredDescription": "Requerido para cambiar el estado de la reserva",
+        "signatureSection": "Firma del cliente",
+        "requireCustomerSignature": "Requerir firma",
+        "requireCustomerSignatureDescription": "El cliente debe firmar el acta",
+        "autoGeneratePdf": "Generar PDF automáticamente",
+        "autoGeneratePdfDescription": "Se crea un informe PDF después de cada inspección",
+        "maxPhotosPerItem": "Fotos por equipo",
+        "maxPhotosPerItemDescription": "Número máximo de fotos por equipo inspeccionado",
+        "saved": "Configuración de inspección guardada",
+        "types": {
+          "departure": "Salida",
+          "return": "Devolución"
+        },
+        "status": {
+          "draft": "En progreso",
+          "completed": "Completado",
+          "signed": "Firmado",
+          "notStarted": "No realizado"
+        },
+        "condition": {
+          "excellent": "Excelente",
+          "good": "Bueno",
+          "fair": "Aceptable",
+          "damaged": "Dañado"
+        },
+        "card": {
+          "title": "Acta de entrega",
+          "departure": "Salida",
+          "return": "Devolución",
+          "notDone": "No realizado",
+          "availableAtDeparture": "Disponible en la salida",
+          "start": "Iniciar",
+          "view": "Ver",
+          "compare": "Comparar",
+          "photos": "{count, plural, one {# foto} other {# fotos}}",
+          "items": "{count, plural, one {# artículo} other {# artículos}}",
+          "changesDetected": "{count, plural, one {# cambio} other {# cambios}}",
+          "moreActions": "Más acciones",
+          "downloadPdf": "Descargar PDF"
+        },
+        "wizard": {
+          "title": "Acta de entrega - {type}",
+          "titleDeparture": "Acta de entrega - Salida",
+          "titleReturn": "Acta de entrega - Devolución",
+          "step": "Paso {current} de {total}",
+          "step_overview": "Resumen",
+          "step_items": "Artículos",
+          "step_summary": "Resumen",
+          "step_signature": "Firma",
+          "overview": "Resumen",
+          "items": "Artículos",
+          "summary": "Resumen",
+          "signature": "Firma",
+          "departureInspection": "Acta de entrega - Salida",
+          "returnInspection": "Acta de entrega - Devolución",
+          "reservation": "Reserva",
+          "itemsToInspect": "{count, plural, one {artículo a inspeccionar} other {artículos a inspeccionar}}",
+          "instructions": "Instrucciones",
+          "instruction1_departure": "Verifique el estado de cada artículo antes de entregarlo al cliente",
+          "instruction1_return": "Verifique el estado de cada artículo en la devolución",
+          "instruction2": "Tome fotos para documentar el estado actual",
+          "instruction3": "Anote cualquier daño o desgaste anormal",
+          "allItemsOk": "Todo en orden",
+          "allOk": "Todo OK",
+          "allOkDescription": "Marcar todos los artículos en excelente estado",
+          "quantity": "Cantidad",
+          "condition": "Estado",
+          "photos": "Fotos",
+          "notes": "Notas",
+          "notesPlaceholder": "Añadir notas sobre el estado del equipo...",
+          "damageDetected": "Daño detectado",
+          "allGood": "Todo en orden",
+          "summaryItems": "{count, plural, one {# artículo inspeccionado} other {# artículos inspeccionados}}",
+          "itemsWithIssues": "Artículos con observaciones",
+          "globalNotes": "Notas generales",
+          "globalNotesPlaceholder": "Añadir notas generales sobre la inspección...",
+          "signingAs": "Firmando como {name}",
+          "signHere": "Firme aquí",
+          "clearSignature": "Borrar",
+          "signatureConfirmation": "Confirmo haber verificado el estado del equipo y acepto las condiciones",
+          "signatureComplete": "Firma validada",
+          "customerSignature": "Firma del cliente",
+          "signatureTitle": "Firma",
+          "signatureDescription": "El cliente debe firmar para validar el acta",
+          "back": "Volver",
+          "continue": "Continuar",
+          "next": "Siguiente",
+          "previous": "Anterior",
+          "complete": "Completar",
+          "saving": "Guardando...",
+          "saved": "Acta guardada",
+          "inspectionComplete": "Acta completada con éxito",
+          "inspectionError": "Error al guardar",
+          "photoInvalidType": "Formato de imagen no soportado",
+          "photoTooLarge": "Imagen demasiado grande (máx. 20 MB)",
+          "photoError": "Error al procesar la imagen",
+          "addPhoto": "Añadir foto",
+          "takePhoto": "Tomar foto",
+          "photoPreview": "Vista previa de la foto",
+          "deletePhoto": "Eliminar foto",
+          "close": "Cerrar"
+        },
+        "conditions": {
+          "excellent": "Excelente",
+          "good": "Bueno",
+          "fair": "Aceptable",
+          "damaged": "Dañado",
+          "ok": "OK",
+          "wear": "Desgaste",
+          "damage": "Daño"
+        },
+        "item": {
+          "condition": "Estado",
+          "notes": "Notas",
+          "notesPlaceholder": "Añadir notas sobre el estado del equipo...",
+          "photos": "Fotos",
+          "addPhoto": "Añadir foto",
+          "takePhoto": "Tomar foto",
+          "removePhoto": "Eliminar",
+          "photoUploading": "Subiendo...",
+          "photoError": "Error al subir",
+          "maxPhotosReached": "Número máximo de fotos alcanzado"
+        },
+        "signature": {
+          "title": "Firma del cliente",
+          "instruction": "Firme en el recuadro de abajo",
+          "clear": "Borrar",
+          "confirm": "Confirmo haber verificado el estado del equipo",
+          "name": "Nombre del firmante",
+          "skip": "Omitir",
+          "skipDescription": "El acta se guardará sin firma",
+          "signedAt": "Firmado el"
+        },
+        "summary": {
+          "totalItems": "Equipo",
+          "photos": "Fotos",
+          "damageDetected": "Daño",
+          "noDamage": "Sin daños"
+        },
+        "sections": {
+          "inspectionDetails": "Detalles de la inspección",
+          "equipment": "Equipo inspeccionado",
+          "notes": "Notas",
+          "signature": "Firma"
+        },
+        "parties": {
+          "customer": "Cliente"
+        },
+        "period": {
+          "performedBy": "Realizado por"
+        },
+        "comparison": {
+          "title": "Comparación",
+          "departure": "Salida",
+          "return": "Devolución",
+          "noChanges": "No se detectaron cambios",
+          "changes": "Cambios detectados",
+          "conditionChanged": "Estado cambiado",
+          "newDamage": "Nuevo daño",
+          "swipeHint": "Deslice para comparar",
+          "noDepartureInspection": "Sin acta de salida",
+          "noReturnInspection": "Sin acta de devolución",
+          "noPhotos": "Sin fotos"
+        },
+        "damage": {
+          "title": "Daño detectado",
+          "description": "Descripción del daño",
+          "estimatedCost": "Costo estimado",
+          "captureDeposit": "Retener del depósito",
+          "createPayment": "Crear pago"
+        },
+        "activity": {
+          "departureStarted": "Acta de salida iniciada",
+          "departureCompleted": "Acta de salida completada",
+          "returnStarted": "Acta de devolución iniciada",
+          "returnCompleted": "Acta de devolución completada",
+          "damageDetected": "Daño detectado: {description}",
+          "signed": "Acta firmada por el cliente"
+        },
+        "prompt": {
+          "departureTitle": "¿Realizar acta de entrega?",
+          "departureDescription": "Documente el estado del equipo antes de entregarlo al cliente.",
+          "returnTitle": "¿Realizar acta de entrega?",
+          "returnDescription": "Verifique el estado del equipo en la devolución.",
+          "yes": "Sí, iniciar",
+          "skip": "Omitir este paso"
+        },
+        "templates": {
+          "title": "Plantillas de inspección",
+          "description": "Defina puntos de control por categoría",
+          "default": "Por defecto",
+          "bikes": "Bicicletas / Patinetes",
+          "tools": "Herramientas eléctricas",
+          "audio": "Audio / Video",
+          "generic": "Genérico"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Acta de salida",
+          "returnInspectionTitle": "Acta de devolución",
+          "inspectionRequiredDescription": "Se requiere un acta antes de continuar.",
+          "inspectionRecommendedDescription": "Recomendamos realizar un acta de entrega.",
+          "departureInspectionBenefit": "Documente el estado del equipo antes de entregarlo al cliente",
+          "returnInspectionBenefit": "Verifique el estado del equipo y detecte posibles daños",
+          "inspectionDuration": "Aproximadamente 2 minutos",
+          "startInspection": "Iniciar acta de entrega"
+        }
+      },
       "payments": {
         "title": "Pagos",
         "description": "Configure los pagos en linea para su tienda",
@@ -2652,7 +2878,14 @@
         "trialDays": "Días de prueba",
         "trialDaysDescription": "Número de días de prueba gratuitos cuando esta tienda se suscribe a un plan de pago. Establezca 0 para no ofrecer prueba (pago inmediato).",
         "days": "días",
-        "saved": "Configuración admin guardada"
+        "saved": "Configuración admin guardada",
+        "discountSection": "Descuento de suscripción",
+        "discountSectionDescription": "Configure un descuento en la suscripción de esta tienda.",
+        "discountPercent": "Porcentaje de descuento",
+        "discountPercentDescription": "El descuento aplicado al precio de la suscripción (0-100%).",
+        "discountDuration": "Duración",
+        "discountDurationDescription": "Número de meses que se aplica el descuento. Establezca 0 para un descuento permanente.",
+        "months": "meses"
       }
     }
   },
