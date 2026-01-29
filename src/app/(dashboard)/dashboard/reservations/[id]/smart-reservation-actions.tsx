@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
@@ -16,6 +17,7 @@ import {
   AlertTriangle,
   CreditCard,
   Shield,
+  ClipboardCheck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
@@ -48,6 +50,7 @@ import { cn, getCurrencySymbol } from '@/lib/utils'
 import { updateReservationStatus, cancelReservation } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+type InspectionMode = 'optional' | 'recommended' | 'required'
 
 interface SmartReservationActionsProps {
   reservationId: string
@@ -64,6 +67,11 @@ interface SmartReservationActionsProps {
   hasOnlinePaymentPending?: boolean
   hasActiveAuthorization?: boolean
   currency?: string
+  // Inspection info
+  inspectionEnabled?: boolean
+  inspectionMode?: InspectionMode
+  hasDepartureInspection?: boolean
+  hasReturnInspection?: boolean
 }
 
 export function SmartReservationActions({
@@ -79,9 +87,14 @@ export function SmartReservationActions({
   hasOnlinePaymentPending = false,
   hasActiveAuthorization = false,
   currency = 'EUR',
+  inspectionEnabled = false,
+  inspectionMode = 'optional',
+  hasDepartureInspection = false,
+  hasReturnInspection = false,
 }: SmartReservationActionsProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.reservations')
+  const tInspection = useTranslations('dashboard.settings.inspection')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const currencySymbol = getCurrencySymbol(currency)
@@ -91,8 +104,14 @@ export function SmartReservationActions({
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [pickupConfirmOpen, setPickupConfirmOpen] = useState(false)
   const [returnConfirmOpen, setReturnConfirmOpen] = useState(false)
+  const [inspectionPromptOpen, setInspectionPromptOpen] = useState<'departure' | 'return' | null>(null)
   const [rejectionReason, setRejectionReason] = useState('')
   const [acknowledgeWarnings, setAcknowledgeWarnings] = useState(false)
+
+  // Inspection prompts logic
+  const shouldPromptDepartureInspection = inspectionEnabled && !hasDepartureInspection && inspectionMode !== 'optional'
+  const shouldPromptReturnInspection = inspectionEnabled && !hasReturnInspection && inspectionMode !== 'optional'
+  const inspectionRequired = inspectionMode === 'required'
 
   // Calculate payment states
   const isRentalFullyPaid = rentalPaid >= rentalAmount
@@ -267,7 +286,9 @@ export function SmartReservationActions({
                 size="sm"
                 className="w-full"
                 onClick={() => {
-                  if (hasWarnings) {
+                  if (shouldPromptDepartureInspection) {
+                    setInspectionPromptOpen('departure')
+                  } else if (hasWarnings) {
                     setPickupConfirmOpen(true)
                   } else {
                     handlePickup()
@@ -345,7 +366,13 @@ export function SmartReservationActions({
               <Button
                 size="sm"
                 className="w-full"
-                onClick={() => setReturnConfirmOpen(true)}
+                onClick={() => {
+                  if (shouldPromptReturnInspection) {
+                    setInspectionPromptOpen('return')
+                  } else {
+                    setReturnConfirmOpen(true)
+                  }
+                }}
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -631,6 +658,76 @@ export function SmartReservationActions({
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               <CheckCircle className="mr-2 h-4 w-4" />
               {t('smartActions.confirmReturn')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Inspection Prompt Dialog */}
+      <Dialog open={!!inspectionPromptOpen} onOpenChange={() => setInspectionPromptOpen(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardCheck className="h-5 w-5 text-primary" />
+              {inspectionPromptOpen === 'departure'
+                ? tInspection('smartActions.departureInspectionTitle')
+                : tInspection('smartActions.returnInspectionTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {inspectionRequired
+                ? tInspection('smartActions.inspectionRequiredDescription')
+                : tInspection('smartActions.inspectionRecommendedDescription')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
+                <ClipboardCheck className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">
+                  {inspectionPromptOpen === 'departure'
+                    ? tInspection('smartActions.departureInspectionBenefit')
+                    : tInspection('smartActions.returnInspectionBenefit')}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {tInspection('smartActions.inspectionDuration')}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {!inspectionRequired && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setInspectionPromptOpen(null)
+                  if (inspectionPromptOpen === 'departure') {
+                    if (hasWarnings) {
+                      setPickupConfirmOpen(true)
+                    } else {
+                      handlePickup()
+                    }
+                  } else {
+                    setReturnConfirmOpen(true)
+                  }
+                }}
+                className="sm:flex-1"
+              >
+                {inspectionPromptOpen === 'departure'
+                  ? t('smartActions.skipInspectionPickup')
+                  : t('smartActions.skipInspectionReturn')}
+              </Button>
+            )}
+            <Button asChild className="sm:flex-1">
+              <Link
+                href={`/dashboard/reservations/${reservationId}/inspection/${inspectionPromptOpen}`}
+              >
+                <ClipboardCheck className="mr-2 h-4 w-4" />
+                {tInspection('smartActions.startInspection')}
+              </Link>
             </Button>
           </DialogFooter>
         </DialogContent>

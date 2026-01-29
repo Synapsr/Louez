@@ -75,7 +75,11 @@ export function getPublicUrl(key: string) {
   return `${PUBLIC_URL}/${key}`
 }
 
-export function getStorageKey(storeId: string, type: 'logo' | 'products' | 'documents', ...parts: string[]) {
+export function getStorageKey(
+  storeId: string,
+  type: 'logo' | 'products' | 'documents' | 'inspections',
+  ...parts: string[]
+) {
   const base = `${storeId}/${type}`
   if (parts.length === 0) return base
   return `${base}/${parts.join('/')}`

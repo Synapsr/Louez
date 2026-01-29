@@ -85,6 +85,42 @@ export interface DeliverySettings {
 }
 
 // ============================================================================
+// Inspection Settings (Etat des lieux)
+// ============================================================================
+
+/**
+ * Inspection mode determines when inspections are prompted:
+ * - 'optional': Staff can skip inspections
+ * - 'recommended': Reminder shown but can be skipped
+ * - 'required': Cannot change status without completing inspection
+ */
+export type InspectionMode = 'optional' | 'recommended' | 'required'
+
+export interface InspectionSettings {
+  /** Whether inspection feature is enabled */
+  enabled: boolean
+  /** How inspections are enforced */
+  mode: InspectionMode
+  /** Require customer signature on inspections */
+  requireCustomerSignature: boolean
+  /** Auto-generate PDF after inspection completion */
+  autoGeneratePdf: boolean
+  /** Maximum photos per inspection item */
+  maxPhotosPerItem: number
+}
+
+/**
+ * Default inspection settings for new stores
+ */
+export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
+  enabled: false,
+  mode: 'optional',
+  requireCustomerSignature: true,
+  autoGeneratePdf: true,
+  maxPhotosPerItem: 10,
+}
+
+// ============================================================================
 // Store Settings
 // ============================================================================
 
@@ -122,6 +158,7 @@ export interface StoreSettings {
   tax?: TaxSettings   // Configuration des taxes
   billingAddress?: BillingAddress  // Separate billing address for contracts
   delivery?: DeliverySettings  // Delivery configuration
+  inspection?: InspectionSettings  // Inventory inspection (etat des lieux)
 }
 
 export interface StoreTheme {
