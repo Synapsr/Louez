@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Opslaan",
+    "unsavedChanges": "Niet-opgeslagen wijzigingen",
     "cancel": "Annuleren",
     "delete": "Verwijderen",
     "edit": "Bewerken",

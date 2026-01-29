@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
+import { ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -57,6 +57,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { updateStoreSettings } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreSettings } from '@/types'
 import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry, getCurrencyByCode, type CurrencyCode } from '@/lib/utils/currency'
@@ -173,12 +174,18 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
     },
   })
 
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
+
   // Auto-update currency when country changes (only if user hasn't manually changed it)
   const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
     onChange(newCountry)
     // Automatically set the default currency for this country
     const newDefaultCurrency = getDefaultCurrencyForCountry(newCountry)
-    form.setValue('currency', newDefaultCurrency)
+    form.setValue('currency', newDefaultCurrency, { shouldDirty: true })
   }
 
   const onSubmit = (data: StoreSettingsInput) => {
@@ -861,12 +868,11 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('saveChanges')}
-            </Button>
-          </div>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isPending}
+            onReset={handleReset}
+          />
         </form>
       </Form>
 

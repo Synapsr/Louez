@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/dialog'
 import { Stepper, StepContent, StepActions } from '@/components/ui/stepper'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { cn, formatCurrency, getCurrencySymbol } from '@/lib/utils'
@@ -1014,45 +1015,11 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             </CardContent>
           </Card>
 
-          {/* Floating Save Bar */}
-          <div
-            className={cn(
-              'fixed inset-x-0 bottom-0 z-40 flex justify-center pb-6 px-4 pointer-events-none transition-all duration-300 ease-out',
-              isDirty
-                ? 'translate-y-0 opacity-100'
-                : 'translate-y-8 opacity-0'
-            )}
-          >
-            <div className="pointer-events-auto relative flex items-center gap-4 rounded-full bg-zinc-900/90 dark:bg-zinc-800/90 px-5 py-2.5 shadow-lg shadow-black/20 ring-1 ring-white/10 backdrop-blur-xl">
-              <div className="flex items-center gap-2 text-sm text-zinc-300">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
-                </span>
-                <span>{t('unsavedChanges')}</span>
-              </div>
-              <div className="h-4 w-px bg-zinc-700" />
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleReset}
-                  disabled={isLoading}
-                  className="text-zinc-300 hover:text-white hover:bg-zinc-800"
-                >
-                  {tCommon('cancel')}
-                </Button>
-                <Button type="submit" size="sm" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {t('save')}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* Spacer for floating bar */}
-          {isDirty && <div className="h-20" />}
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isLoading}
+            onReset={handleReset}
+          />
         </form>
       </Form>
     )

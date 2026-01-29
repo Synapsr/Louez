@@ -3,11 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { useForm, useFieldArray } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useTransition, useState } from 'react'
+import { useTransition, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { Loader2, Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
+import { Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { updateBusinessHours } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { businessHoursSchema, defaultBusinessHours, type BusinessHoursInput } from '@/lib/validations/business-hours'
 import { generateTimeSlots, DAY_KEYS } from '@/lib/utils/business-hours'
 import type { StoreSettings } from '@/types/store'
@@ -72,6 +73,12 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
     resolver: zodResolver(businessHoursSchema),
     defaultValues: businessHours,
   })
+
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
 
   const isEnabled = form.watch('enabled')
 
@@ -136,7 +143,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                     </span>
                     <Switch
                       checked={isEnabled}
-                      onCheckedChange={(checked) => form.setValue('enabled', checked)}
+                      onCheckedChange={(checked) => form.setValue('enabled', checked, { shouldDirty: true })}
                     />
                   </div>
                 </div>
@@ -222,12 +229,11 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
             </Card>
           </div>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {tCommon('save')}
-            </Button>
-          </div>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isPending}
+            onReset={handleReset}
+          />
         </form>
       </Form>
     </div>
@@ -255,7 +261,7 @@ function DayScheduleRow({
         <Switch
           checked={isOpen}
           onCheckedChange={(checked) => {
-            form.setValue(`schedule.${dayKey}.isOpen` as any, checked)
+            form.setValue(`schedule.${dayKey}.isOpen` as any, checked, { shouldDirty: true })
           }}
         />
         <span className={`font-medium ${!isOpen ? 'text-muted-foreground' : ''}`}>
@@ -268,7 +274,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.openTime ?? '09:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.openTime` as any, value)
+              form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">
@@ -286,7 +292,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.closeTime ?? '18:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.closeTime` as any, value)
+              form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">

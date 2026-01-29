@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toast } from 'sonner'
 import {
   Star,
-  Loader2,
   Lock,
   Zap,
   ArrowRight,
@@ -36,6 +35,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { GooglePlaceSearch } from './google-place-search'
 import { NotificationTemplateSheet } from '@/components/dashboard/notification-template-sheet'
 import { updateReviewBoosterSettings, updateReviewBoosterTemplate, getReviewBoosterTemplate } from './actions'
@@ -83,9 +83,21 @@ export function ReviewBoosterForm({
   const t = useTranslations('dashboard.settings.reviewBooster')
   const tCommon = useTranslations('common')
 
-  const initialSettings = store.reviewBoosterSettings || defaultReviewBoosterSettings
+  const initialSettingsRef = useMemo(
+    () => store.reviewBoosterSettings || defaultReviewBoosterSettings,
+    [store.reviewBoosterSettings]
+  )
 
-  const [settings, setSettings] = useState<ReviewBoosterSettings>(initialSettings)
+  const [settings, setSettings] = useState<ReviewBoosterSettings>(initialSettingsRef)
+
+  // Deep comparison for dirty state
+  const isDirty = useMemo(() => {
+    return JSON.stringify(settings) !== JSON.stringify(initialSettingsRef)
+  }, [settings, initialSettingsRef])
+
+  const handleReset = useCallback(() => {
+    setSettings(initialSettingsRef)
+  }, [initialSettingsRef])
 
   // Template customization state
   const [templateSheetOpen, setTemplateSheetOpen] = useState(false)
@@ -502,13 +514,12 @@ export function ReviewBoosterForm({
         </>
       )}
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={onSubmit} disabled={isPending}>
-          {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {tCommon('save')}
-        </Button>
-      </div>
+      <FloatingSaveBar
+        isDirty={isDirty}
+        isLoading={isPending}
+        onReset={handleReset}
+        onSubmit={onSubmit}
+      />
 
       {/* Template Sheet */}
       <NotificationTemplateSheet

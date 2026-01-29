@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Zapisz",
+    "unsavedChanges": "Niezapisane zmiany",
     "cancel": "Anuluj",
     "delete": "Usuń",
     "edit": "Edytuj",
