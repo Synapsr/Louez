@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { setCurrentStoreAction } from '../actions'
 
 interface StoreWithRole {
   id: string
@@ -33,10 +34,6 @@ interface MultiStoreHeaderProps {
   userImage?: string | null
 }
 
-function setCurrentStoreCookie(storeId: string) {
-  document.cookie = `currentStoreId=${storeId}; path=/; max-age=31536000`
-}
-
 export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHeaderProps) {
   const t = useTranslations('dashboard.multiStore')
   const tAuth = useTranslations('auth')
@@ -44,8 +41,8 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
   const router = useRouter()
   const initials = userEmail.slice(0, 2).toUpperCase()
 
-  const handleStoreSelect = (storeId: string) => {
-    setCurrentStoreCookie(storeId)
+  const handleStoreSelect = async (storeId: string) => {
+    await setCurrentStoreAction(storeId)
     router.push('/dashboard')
     router.refresh()
   }

@@ -356,11 +356,17 @@ export async function getStoresApproachingLimits(
       .leftJoin(subscriptions, eq(stores.id, subscriptions.storeId))
       .where(inArray(stores.id, storeIds))
 
-    // Check limits for each store
-    for (const store of storeInfo) {
-      const plan = getPlan(store.planSlug || 'start') || getDefaultPlan()
-      const usage = await getStoreUsage(store.id)
+    // Fetch all usages in parallel to avoid N+1 query pattern
+    const storesWithUsage = await Promise.all(
+      storeInfo.map(async (store) => ({
+        store,
+        plan: getPlan(store.planSlug || 'start') || getDefaultPlan(),
+        usage: await getStoreUsage(store.id),
+      }))
+    )
 
+    // Check limits for each store
+    for (const { store, plan, usage } of storesWithUsage) {
       // Check products limit
       if (plan.features.maxProducts !== null) {
         const percentUsed = Math.round(

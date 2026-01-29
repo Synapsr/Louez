@@ -3903,7 +3903,9 @@
     "deliveryAddressRequired": "Proszę podać prawidłowy adres dostawy",
     "storeCoordinatesNotConfigured": "Współrzędne sklepu nie są skonfigurowane",
     "deliveryTooFar": "Adres dostawy jest za daleko (maksymalnie {maxDistance} km)",
-    "deliveryRequired": "Dostawa jest wymagana dla tego sklepu"
+    "deliveryRequired": "Dostawa jest wymagana dla tego sklepu",
+    "storeCoordinatesInvalid": "Współrzędne sklepu są nieprawidłowe",
+    "deliveryAddressInvalid": "Adres dostawy jest nieprawidłowy"
   },
   "welcome": {
     "greeting": "Witamy w Louez.io",
