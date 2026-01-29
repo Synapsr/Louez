@@ -8,14 +8,17 @@ import { db } from '@/lib/db'
 import { stores } from '@/lib/db/schema'
 import { getCurrentStore } from '@/lib/store-context'
 import { isCurrentUserPlatformAdmin } from '@/lib/platform-admin'
+import { createStoreCoupon } from '@/lib/stripe/coupons'
 
-const trialDaysSchema = z.object({
+const adminSettingsSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
+  discountPercent: z.number().int().min(0).max(100),
+  discountDurationMonths: z.number().int().min(0).max(120),
 })
 
-type TrialDaysInput = z.infer<typeof trialDaysSchema>
+type AdminSettingsInput = z.infer<typeof adminSettingsSchema>
 
-export async function updateTrialDays(data: TrialDaysInput) {
+export async function updateAdminSettings(data: AdminSettingsInput) {
   const store = await getCurrentStore()
   if (!store) {
     return { error: 'errors.unauthorized' }
@@ -26,15 +29,46 @@ export async function updateTrialDays(data: TrialDaysInput) {
     return { error: 'errors.unauthorized' }
   }
 
-  const validated = trialDaysSchema.safeParse(data)
+  const validated = adminSettingsSchema.safeParse(data)
   if (!validated.success) {
     return { error: 'errors.invalidData' }
+  }
+
+  const { trialDays, discountPercent, discountDurationMonths } = validated.data
+
+  // Handle Stripe coupon creation/update
+  let stripeCouponId: string | null = store.stripeCouponId ?? null
+
+  if (discountPercent > 0) {
+    // Only create new coupon if discount configuration changed
+    const discountChanged =
+      discountPercent !== store.discountPercent ||
+      discountDurationMonths !== store.discountDurationMonths
+
+    if (discountChanged) {
+      try {
+        stripeCouponId = await createStoreCoupon({
+          storeId: store.id,
+          percentOff: discountPercent,
+          durationMonths: discountDurationMonths,
+        })
+      } catch (error) {
+        console.error('Failed to create Stripe coupon:', error)
+        return { error: 'errors.stripeCouponFailed' }
+      }
+    }
+  } else {
+    // Clear coupon reference when discount is removed
+    stripeCouponId = null
   }
 
   await db
     .update(stores)
     .set({
-      trialDays: validated.data.trialDays,
+      trialDays,
+      discountPercent,
+      discountDurationMonths,
+      stripeCouponId,
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))

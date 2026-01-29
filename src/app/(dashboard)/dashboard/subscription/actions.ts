@@ -31,6 +31,7 @@ export async function createCheckoutSession({
       interval,
       currency,
       trialDays: store.trialDays ?? 0,
+      stripeCouponId: store.stripeCouponId ?? undefined,
       successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
       cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
     })

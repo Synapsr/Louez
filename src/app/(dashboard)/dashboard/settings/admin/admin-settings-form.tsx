@@ -6,10 +6,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Shield } from 'lucide-react'
+import { Shield, Percent } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   Card,
@@ -27,28 +26,39 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { updateTrialDays } from './actions'
+import { updateAdminSettings } from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 
-const trialDaysSchema = z.object({
+const adminSettingsSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
+  discountPercent: z.number().int().min(0).max(100),
+  discountDurationMonths: z.number().int().min(0).max(120),
 })
 
-type TrialDaysInput = z.infer<typeof trialDaysSchema>
+type AdminSettingsInput = z.infer<typeof adminSettingsSchema>
 
 interface AdminSettingsFormProps {
   trialDays: number
+  discountPercent: number
+  discountDurationMonths: number
 }
 
-export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
+export function AdminSettingsForm({
+  trialDays,
+  discountPercent,
+  discountDurationMonths,
+}: AdminSettingsFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const t = useTranslations('dashboard.settings.admin')
-  const tCommon = useTranslations('common')
 
-  const form = useForm<TrialDaysInput>({
-    resolver: zodResolver(trialDaysSchema),
-    defaultValues: { trialDays },
+  const form = useForm<AdminSettingsInput>({
+    resolver: zodResolver(adminSettingsSchema),
+    defaultValues: {
+      trialDays,
+      discountPercent,
+      discountDurationMonths,
+    },
   })
 
   const { isDirty } = form.formState
@@ -57,14 +67,15 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
     form.reset()
   }, [form])
 
-  const onSubmit = (data: TrialDaysInput) => {
+  const onSubmit = (data: AdminSettingsInput) => {
     startTransition(async () => {
-      const result = await updateTrialDays(data)
+      const result = await updateAdminSettings(data)
       if (result.error) {
         form.setError('root', { message: result.error })
         return
       }
       toast.success(t('saved'))
+      form.reset(data)
       router.refresh()
     })
   }
@@ -84,9 +95,7 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
               <Shield className="h-5 w-5" />
               {t('trialSection')}
             </CardTitle>
-            <CardDescription>
-              {t('trialSectionDescription')}
-            </CardDescription>
+            <CardDescription>{t('trialSectionDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
             <FormField
@@ -105,14 +114,10 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                         className="w-24"
                       />
-                      <span className="text-sm text-muted-foreground">
-                        {t('days')}
-                      </span>
+                      <span className="text-sm text-muted-foreground">{t('days')}</span>
                     </div>
                   </FormControl>
-                  <FormDescription>
-                    {t('trialDaysDescription')}
-                  </FormDescription>
+                  <FormDescription>{t('trialDaysDescription')}</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -120,11 +125,68 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
           </CardContent>
         </Card>
 
-        <FloatingSaveBar
-          isDirty={isDirty}
-          isLoading={isPending}
-          onReset={handleReset}
-        />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              {t('discountSection')}
+            </CardTitle>
+            <CardDescription>{t('discountSectionDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <FormField
+              control={form.control}
+              name="discountPercent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('discountPercent')}</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={100}
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">%</span>
+                    </div>
+                  </FormControl>
+                  <FormDescription>{t('discountPercentDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="discountDurationMonths"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('discountDuration')}</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={120}
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                        className="w-24"
+                      />
+                      <span className="text-sm text-muted-foreground">{t('months')}</span>
+                    </div>
+                  </FormControl>
+                  <FormDescription>{t('discountDurationDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+
+        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={handleReset} />
       </form>
     </Form>
   )

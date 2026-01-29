@@ -25,7 +25,11 @@ export default async function AdminSettingsPage() {
         {t('admin.description')}
       </p>
 
-      <AdminSettingsForm trialDays={store.trialDays ?? 0} />
+      <AdminSettingsForm
+        trialDays={store.trialDays ?? 0}
+        discountPercent={store.discountPercent ?? 0}
+        discountDurationMonths={store.discountDurationMonths ?? 0}
+      />
     </div>
   )
 }

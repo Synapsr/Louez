@@ -11,6 +11,7 @@ interface CreateCheckoutSessionOptions {
   interval: 'monthly' | 'yearly'
   currency: Currency
   trialDays?: number
+  stripeCouponId?: string
   successUrl: string
   cancelUrl: string
 }
@@ -80,6 +81,7 @@ export async function createSubscriptionCheckoutSession({
   interval,
   currency,
   trialDays,
+  stripeCouponId,
   successUrl,
   cancelUrl,
 }: CreateCheckoutSessionOptions) {
@@ -129,7 +131,11 @@ export async function createSubscriptionCheckoutSession({
       name: 'auto',
       address: 'auto',
     },
-    allow_promotion_codes: true,
+    // Apply platform admin discount if configured
+    // Note: Stripe doesn't allow both discounts and allow_promotion_codes
+    ...(stripeCouponId
+      ? { discounts: [{ coupon: stripeCouponId }] }
+      : { allow_promotion_codes: true }),
     billing_address_collection: 'required',
     // Automatically calculate and add tax based on customer location
     automatic_tax: {
