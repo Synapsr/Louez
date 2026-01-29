@@ -124,6 +124,13 @@ export type ActivityType =
   | 'deposit_failed'
   | 'access_link_sent'
   | 'modified'
+  // Inspection events
+  | 'inspection_departure_started'
+  | 'inspection_departure_completed'
+  | 'inspection_return_started'
+  | 'inspection_return_completed'
+  | 'inspection_damage_detected'
+  | 'inspection_signed'
 
 export interface GeneratedReservationActivity {
   id: string
