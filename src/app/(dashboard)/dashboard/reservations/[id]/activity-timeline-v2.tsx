@@ -27,6 +27,9 @@ import {
   Link,
   Pencil,
   ChevronDown,
+  ClipboardCheck,
+  ClipboardX,
+  PenLine,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -55,6 +58,13 @@ type ActivityType =
   | 'deposit_failed'
   | 'access_link_sent'
   | 'modified'
+  // Inspection events
+  | 'inspection_departure_started'
+  | 'inspection_departure_completed'
+  | 'inspection_return_started'
+  | 'inspection_return_completed'
+  | 'inspection_damage_detected'
+  | 'inspection_signed'
 
 interface Activity {
   id: string
@@ -179,6 +189,37 @@ const ACTIVITY_CONFIG: Record<
     icon: Pencil,
     bgColor: 'bg-amber-100 dark:bg-amber-950/50',
     iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  // Inspection events
+  inspection_departure_started: {
+    icon: ClipboardCheck,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  inspection_departure_completed: {
+    icon: ClipboardCheck,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  inspection_return_started: {
+    icon: ClipboardCheck,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  inspection_return_completed: {
+    icon: ClipboardCheck,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  inspection_damage_detected: {
+    icon: ClipboardX,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+  },
+  inspection_signed: {
+    icon: PenLine,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
   },
 }
 

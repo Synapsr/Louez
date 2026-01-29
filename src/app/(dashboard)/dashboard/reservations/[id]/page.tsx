@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationActivity } from '@/lib/db/schema'
+import { reservations, reservationActivity, inspections, inspectionItems, inspectionPhotos } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -42,6 +42,8 @@ import { ReservationNotes } from './reservation-notes'
 import { ActivityTimelineV2 } from './activity-timeline-v2'
 import { UnifiedPaymentSection } from './unified-payment-section'
 import { UnitAssignmentSelector } from '@/components/dashboard/unit-assignment-selector'
+import { InspectionStatusCard } from '@/components/dashboard/inspection-status-card'
+import { DEFAULT_INSPECTION_SETTINGS } from '@/types/store'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -124,6 +126,68 @@ export default async function ReservationDetailPage({
 
   // Check if SMS is configured
   const smsConfigured = isSmsConfigured()
+
+  // Inspection settings and data
+  const inspectionSettings = store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS
+
+  // Query inspections for this reservation
+  const reservationInspections = await db
+    .select({
+      id: inspections.id,
+      type: inspections.type,
+      status: inspections.status,
+      hasDamage: inspections.hasDamage,
+      createdAt: inspections.createdAt,
+      signedAt: inspections.signedAt,
+    })
+    .from(inspections)
+    .where(eq(inspections.reservationId, id))
+
+  const departureInspection = reservationInspections.find((i) => i.type === 'departure')
+  const returnInspection = reservationInspections.find((i) => i.type === 'return')
+
+  // Count items and photos for inspections
+  const getInspectionData = async (inspectionId: string | undefined) => {
+    if (!inspectionId) return null
+
+    const items = await db
+      .select({ id: inspectionItems.id })
+      .from(inspectionItems)
+      .where(eq(inspectionItems.inspectionId, inspectionId))
+
+    const photos = await db
+      .select({ id: inspectionPhotos.id })
+      .from(inspectionPhotos)
+      .innerJoin(inspectionItems, eq(inspectionItems.id, inspectionPhotos.inspectionItemId))
+      .where(eq(inspectionItems.inspectionId, inspectionId))
+
+    return { itemCount: items.length, photoCount: photos.length }
+  }
+
+  const departureData = departureInspection ? await getInspectionData(departureInspection.id) : null
+  const returnData = returnInspection ? await getInspectionData(returnInspection.id) : null
+
+  const formattedDepartureInspection = departureInspection && departureData ? {
+    id: departureInspection.id,
+    type: departureInspection.type as 'departure' | 'return',
+    status: departureInspection.status as 'draft' | 'completed' | 'signed',
+    hasDamage: departureInspection.hasDamage,
+    itemCount: departureData.itemCount,
+    photoCount: departureData.photoCount,
+    createdAt: departureInspection.createdAt,
+    signedAt: departureInspection.signedAt,
+  } : null
+
+  const formattedReturnInspection = returnInspection && returnData ? {
+    id: returnInspection.id,
+    type: returnInspection.type as 'departure' | 'return',
+    status: returnInspection.status as 'draft' | 'completed' | 'signed',
+    hasDamage: returnInspection.hasDamage,
+    itemCount: returnData.itemCount,
+    photoCount: returnData.photoCount,
+    createdAt: returnInspection.createdAt,
+    signedAt: returnInspection.signedAt,
+  } : null
 
   return (
     <div className="space-y-6">
@@ -382,6 +446,20 @@ export default async function ReservationDetailPage({
             hasOnlinePaymentPending={hasOnlinePaymentPending}
             hasActiveAuthorization={reservation.depositStatus === 'authorized'}
             currency={currency}
+            inspectionEnabled={inspectionSettings.enabled}
+            inspectionMode={inspectionSettings.mode}
+            hasDepartureInspection={!!departureInspection}
+            hasReturnInspection={!!returnInspection}
+          />
+
+          {/* Inspection Status Card */}
+          <InspectionStatusCard
+            reservationId={reservation.id}
+            reservationStatus={status}
+            departureInspection={formattedDepartureInspection}
+            returnInspection={formattedReturnInspection}
+            inspectionEnabled={inspectionSettings.enabled}
+            inspectionMode={inspectionSettings.mode}
           />
 
           {/* Unified Payment Section - Combines all payment info */}

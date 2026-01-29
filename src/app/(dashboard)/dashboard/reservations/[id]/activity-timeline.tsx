@@ -22,13 +22,16 @@ import {
   AlertCircle,
   Link,
   Pencil,
+  ClipboardCheck,
+  ClipboardX,
+  PenLine,
 } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent' | 'modified'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'payment_received' | 'payment_initiated' | 'payment_failed' | 'payment_expired' | 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
 
 interface Activity {
   id: string
@@ -155,6 +158,37 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
     icon: <Pencil className="h-4 w-4" />,
     bgColor: 'bg-amber-100 dark:bg-amber-950/50',
     iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  // Inspection events
+  inspection_departure_started: {
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  inspection_departure_completed: {
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  inspection_return_started: {
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    bgColor: 'bg-blue-100 dark:bg-blue-950/50',
+    iconColor: 'text-blue-600 dark:text-blue-400',
+  },
+  inspection_return_completed: {
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  inspection_damage_detected: {
+    icon: <ClipboardX className="h-4 w-4" />,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
+  },
+  inspection_signed: {
+    icon: <PenLine className="h-4 w-4" />,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
   },
 }
 

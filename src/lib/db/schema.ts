@@ -263,6 +263,11 @@ export const stores = mysqlTable(
     // Trial period (platform admin only)
     trialDays: int('trial_days').default(0).notNull(),
 
+    // Subscription discount (platform admin only)
+    discountPercent: int('discount_percent').default(0).notNull(),
+    discountDurationMonths: int('discount_duration_months').default(0).notNull(),
+    stripeCouponId: varchar('stripe_coupon_id', { length: 255 }),
+
     // Metadata
     onboardingCompleted: boolean('onboarding_completed').default(false),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -671,6 +676,13 @@ export const activityType = mysqlEnum('activity_type', [
   'deposit_failed', // Authorization failed
   'access_link_sent', // Instant access link sent to customer
   'modified', // Reservation modified (dates, items, prices)
+  // Inspection events
+  'inspection_departure_started', // Departure inspection initiated
+  'inspection_departure_completed', // Departure inspection completed
+  'inspection_return_started', // Return inspection initiated
+  'inspection_return_completed', // Return inspection completed
+  'inspection_damage_detected', // Damage found during inspection
+  'inspection_signed', // Customer signed the inspection
 ])
 
 export const reservationActivity = mysqlTable(
@@ -1462,5 +1474,367 @@ export const productStatsRelations = relations(productStats, ({ one }) => ({
   product: one(products, {
     fields: [productStats.productId],
     references: [products.id],
+  }),
+}))
+
+// ============================================================================
+// Inspection Tables (Etat des lieux)
+// ============================================================================
+
+/**
+ * Inspection template scope determines inheritance:
+ * - store: Default template for all products in the store
+ * - category: Template for products in a specific category
+ * - product: Template for a specific product (highest priority)
+ */
+export const inspectionTemplateScope = mysqlEnum('inspection_template_scope', [
+  'store',
+  'category',
+  'product',
+])
+
+/**
+ * Field types for inspection template fields
+ */
+export const inspectionFieldType = mysqlEnum('inspection_field_type', [
+  'checkbox', // Simple yes/no (e.g., "Brakes working")
+  'rating', // 1-5 scale (e.g., "Tire condition")
+  'text', // Free text notes
+  'number', // Numeric value (e.g., "Operating hours: 150")
+  'select', // Dropdown options (e.g., "Good/Fair/Poor")
+])
+
+/**
+ * Inspection type: departure (pickup) or return
+ */
+export const inspectionType = mysqlEnum('inspection_type', [
+  'departure', // Check-out inspection when customer picks up
+  'return', // Check-in inspection when customer returns
+])
+
+/**
+ * Inspection status workflow
+ */
+export const inspectionStatus = mysqlEnum('inspection_status', [
+  'draft', // In progress, not yet completed
+  'completed', // Inspection finished by staff
+  'signed', // Customer signed the inspection
+])
+
+/**
+ * Overall condition rating for quick assessment
+ */
+export const conditionRating = mysqlEnum('condition_rating', [
+  'excellent', // Perfect condition
+  'good', // Minor wear, acceptable
+  'fair', // Noticeable wear, still functional
+  'damaged', // Damage detected, needs attention
+])
+
+/**
+ * Inspection templates define what points to check for products
+ */
+export const inspectionTemplates = mysqlTable(
+  'inspection_templates',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    scope: inspectionTemplateScope.notNull(),
+    categoryId: varchar('category_id', { length: 21 }), // If scope = 'category'
+    productId: varchar('product_id', { length: 21 }), // If scope = 'product'
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    isActive: boolean('is_active').default(true).notNull(),
+    displayOrder: int('display_order').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('inspection_templates_store_idx').on(table.storeId),
+    categoryIdx: index('inspection_templates_category_idx').on(table.categoryId),
+    productIdx: index('inspection_templates_product_idx').on(table.productId),
+    // One template per scope/target combination
+    uniqueScope: unique('inspection_templates_unique_scope').on(
+      table.storeId,
+      table.scope,
+      table.categoryId,
+      table.productId
+    ),
+  })
+)
+
+/**
+ * Individual inspection points within a template
+ */
+export const inspectionTemplateFields = mysqlTable(
+  'inspection_template_fields',
+  {
+    id: id(),
+    templateId: varchar('template_id', { length: 21 }).notNull(),
+    name: varchar('name', { length: 255 }).notNull(),
+    description: text('description'),
+    fieldType: inspectionFieldType.notNull(),
+    options: json('options').$type<string[]>(), // For 'select' type
+    ratingMin: int('rating_min').default(1), // For 'rating' type
+    ratingMax: int('rating_max').default(5), // For 'rating' type
+    numberUnit: varchar('number_unit', { length: 50 }), // For 'number' type (e.g., "hours", "km")
+    isRequired: boolean('is_required').default(false).notNull(),
+    sectionName: varchar('section_name', { length: 100 }), // Optional grouping
+    displayOrder: int('display_order').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    templateIdx: index('inspection_template_fields_template_idx').on(table.templateId),
+    orderIdx: index('inspection_template_fields_order_idx').on(
+      table.templateId,
+      table.displayOrder
+    ),
+  })
+)
+
+/**
+ * Inspection records for reservations
+ */
+export const inspections = mysqlTable(
+  'inspections',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    type: inspectionType.notNull(),
+    status: inspectionStatus.default('draft').notNull(),
+    // Template reference (snapshot stored for historical accuracy)
+    templateId: varchar('template_id', { length: 21 }),
+    templateSnapshot: json('template_snapshot').$type<{
+      id: string
+      name: string
+      fields: Array<{
+        id: string
+        name: string
+        fieldType: string
+        options?: string[]
+        ratingMin?: number
+        ratingMax?: number
+        numberUnit?: string
+        isRequired: boolean
+        sectionName?: string
+      }>
+    }>(),
+    // General notes
+    notes: text('notes'),
+    // Performed by
+    performedById: varchar('performed_by_id', { length: 21 }),
+    performedAt: timestamp('performed_at', { mode: 'date' }),
+    // Customer signature
+    customerSignature: longtext('customer_signature'), // Base64 signature image
+    signedAt: timestamp('signed_at', { mode: 'date' }),
+    signatureIp: varchar('signature_ip', { length: 50 }),
+    // Damage assessment
+    hasDamage: boolean('has_damage').default(false).notNull(),
+    damageDescription: text('damage_description'),
+    estimatedDamageCost: decimal('estimated_damage_cost', { precision: 10, scale: 2 }),
+    damagePaymentId: varchar('damage_payment_id', { length: 21 }), // Link to payment if charged
+    // Timestamps
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('inspections_store_idx').on(table.storeId),
+    reservationIdx: index('inspections_reservation_idx').on(table.reservationId),
+    // One inspection per type per reservation
+    uniqueTypePerReservation: unique('inspections_unique_type').on(
+      table.reservationId,
+      table.type
+    ),
+  })
+)
+
+/**
+ * Per-item inspection within a reservation
+ */
+export const inspectionItems = mysqlTable(
+  'inspection_items',
+  {
+    id: id(),
+    inspectionId: varchar('inspection_id', { length: 21 }).notNull(),
+    reservationItemId: varchar('reservation_item_id', { length: 21 }).notNull(),
+    productUnitId: varchar('product_unit_id', { length: 21 }), // If unit tracking enabled
+    // Product snapshot for historical reference
+    productSnapshot: json('product_snapshot')
+      .$type<{
+        name: string
+        unitIdentifier?: string
+      }>()
+      .notNull(),
+    // Overall quick assessment
+    overallCondition: conditionRating,
+    notes: text('notes'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    inspectionIdx: index('inspection_items_inspection_idx').on(table.inspectionId),
+    reservationItemIdx: index('inspection_items_reservation_item_idx').on(
+      table.reservationItemId
+    ),
+    unitIdx: index('inspection_items_unit_idx').on(table.productUnitId),
+  })
+)
+
+/**
+ * Field values recorded during inspection
+ */
+export const inspectionFieldValues = mysqlTable(
+  'inspection_field_values',
+  {
+    id: id(),
+    inspectionItemId: varchar('inspection_item_id', { length: 21 }).notNull(),
+    templateFieldId: varchar('template_field_id', { length: 21 }).notNull(),
+    // Field snapshot for historical reference
+    fieldSnapshot: json('field_snapshot')
+      .$type<{
+        name: string
+        fieldType: string
+        sectionName?: string
+      }>()
+      .notNull(),
+    // Values (only one used based on type)
+    checkboxValue: boolean('checkbox_value'),
+    ratingValue: int('rating_value'),
+    textValue: text('text_value'),
+    numberValue: decimal('number_value', { precision: 15, scale: 4 }),
+    selectValue: varchar('select_value', { length: 255 }),
+    // Quick flag for filtering issues
+    hasIssue: boolean('has_issue').default(false).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    itemIdx: index('inspection_field_values_item_idx').on(table.inspectionItemId),
+    fieldIdx: index('inspection_field_values_field_idx').on(table.templateFieldId),
+    issueIdx: index('inspection_field_values_issue_idx').on(
+      table.inspectionItemId,
+      table.hasIssue
+    ),
+  })
+)
+
+/**
+ * Photos taken during inspection
+ */
+export const inspectionPhotos = mysqlTable(
+  'inspection_photos',
+  {
+    id: id(),
+    inspectionItemId: varchar('inspection_item_id', { length: 21 }).notNull(),
+    fieldValueId: varchar('field_value_id', { length: 21 }), // Optional link to specific field
+    // R2/S3 storage keys
+    photoKey: varchar('photo_key', { length: 255 }).notNull(),
+    photoUrl: text('photo_url').notNull(),
+    thumbnailKey: varchar('thumbnail_key', { length: 255 }),
+    thumbnailUrl: text('thumbnail_url'),
+    // Metadata
+    caption: text('caption'),
+    displayOrder: int('display_order').default(0).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    itemIdx: index('inspection_photos_item_idx').on(table.inspectionItemId),
+    fieldValueIdx: index('inspection_photos_field_value_idx').on(table.fieldValueId),
+  })
+)
+
+// ============================================================================
+// Inspection Relations
+// ============================================================================
+
+export const inspectionTemplatesRelations = relations(inspectionTemplates, ({ one, many }) => ({
+  store: one(stores, {
+    fields: [inspectionTemplates.storeId],
+    references: [stores.id],
+  }),
+  category: one(categories, {
+    fields: [inspectionTemplates.categoryId],
+    references: [categories.id],
+  }),
+  product: one(products, {
+    fields: [inspectionTemplates.productId],
+    references: [products.id],
+  }),
+  fields: many(inspectionTemplateFields),
+}))
+
+export const inspectionTemplateFieldsRelations = relations(
+  inspectionTemplateFields,
+  ({ one }) => ({
+    template: one(inspectionTemplates, {
+      fields: [inspectionTemplateFields.templateId],
+      references: [inspectionTemplates.id],
+    }),
+  })
+)
+
+export const inspectionsRelations = relations(inspections, ({ one, many }) => ({
+  store: one(stores, {
+    fields: [inspections.storeId],
+    references: [stores.id],
+  }),
+  reservation: one(reservations, {
+    fields: [inspections.reservationId],
+    references: [reservations.id],
+  }),
+  template: one(inspectionTemplates, {
+    fields: [inspections.templateId],
+    references: [inspectionTemplates.id],
+  }),
+  performedBy: one(users, {
+    fields: [inspections.performedById],
+    references: [users.id],
+  }),
+  damagePayment: one(payments, {
+    fields: [inspections.damagePaymentId],
+    references: [payments.id],
+  }),
+  items: many(inspectionItems),
+}))
+
+export const inspectionItemsRelations = relations(inspectionItems, ({ one, many }) => ({
+  inspection: one(inspections, {
+    fields: [inspectionItems.inspectionId],
+    references: [inspections.id],
+  }),
+  reservationItem: one(reservationItems, {
+    fields: [inspectionItems.reservationItemId],
+    references: [reservationItems.id],
+  }),
+  productUnit: one(productUnits, {
+    fields: [inspectionItems.productUnitId],
+    references: [productUnits.id],
+  }),
+  fieldValues: many(inspectionFieldValues),
+  photos: many(inspectionPhotos),
+}))
+
+export const inspectionFieldValuesRelations = relations(
+  inspectionFieldValues,
+  ({ one, many }) => ({
+    inspectionItem: one(inspectionItems, {
+      fields: [inspectionFieldValues.inspectionItemId],
+      references: [inspectionItems.id],
+    }),
+    templateField: one(inspectionTemplateFields, {
+      fields: [inspectionFieldValues.templateFieldId],
+      references: [inspectionTemplateFields.id],
+    }),
+    photos: many(inspectionPhotos),
+  })
+)
+
+export const inspectionPhotosRelations = relations(inspectionPhotos, ({ one }) => ({
+  inspectionItem: one(inspectionItems, {
+    fields: [inspectionPhotos.inspectionItemId],
+    references: [inspectionItems.id],
+  }),
+  fieldValue: one(inspectionFieldValues, {
+    fields: [inspectionPhotos.fieldValueId],
+    references: [inspectionFieldValues.id],
   }),
 }))
