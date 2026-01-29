@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Opslaan",
+    "unsavedChanges": "Niet-opgeslagen wijzigingen",
     "cancel": "Annuleren",
     "delete": "Verwijderen",
     "edit": "Bewerken",
@@ -36,6 +37,7 @@
     "all": "Alle",
     "none": "Geen",
     "other": "Overig",
+    "optional": "Optioneel",
     "actions": "Acties",
     "details": "Details",
     "status": "Status",
@@ -211,6 +213,7 @@
       "noStoresFound": "Geen winkels gevonden",
       "yourStores": "Uw winkels",
       "createNewStore": "Nieuwe winkel aanmaken",
+      "multiStoreView": "Multi-winkel weergave",
       "roles": {
         "owner": "Eigenaar",
         "member": "Teamlid",
@@ -411,12 +414,14 @@
       "calendar": "Kalender",
       "categories": "Categorieën",
       "statistics": "Statistieken",
+      "analytics": "Analyses",
       "team": "Team",
       "referrals": "Verwijzingen",
       "sms": "SMS",
       "subscription": "Abonnement",
       "settings": "Instellingen",
-      "store": "Mijn winkel"
+      "store": "Mijn winkel",
+      "multiStore": "Multi-winkel"
     },
     "home": {
       "viewAll": "Alles bekijken",
@@ -658,6 +663,7 @@
         "statusArchived": "Gearchiveerd",
         "statusArchivedDescription": "Verwijderd uit catalogus",
         "save": "Opslaan",
+        "unsavedChanges": "Niet-opgeslagen wijzigingen",
         "createProduct": "Product aanmaken",
         "productCreated": "Product aangemaakt",
         "productUpdated": "Product bijgewerkt",
@@ -697,6 +703,40 @@
           "enforceStrictTiers": "Alleen deze duur aanbieden",
           "enforceStrictTiersDescription": "Klanten kunnen alleen boeken voor de exacte duur van uw niveaus. Tussenliggende duur wordt niet aangeboden.",
           "enforceStrictTiersTooltip": "Als een klant een tussenliggende duur kiest, wordt deze automatisch afgerond naar het volgende niveau. Bijvoorbeeld: met niveaus van 3 en 7 dagen wordt een huur van 5 dagen gefactureerd tegen het tarief van 7 dagen."
+        },
+        "unitTracking": {
+          "toggle": "Individuele eenheden volgen",
+          "toggleDescription": "Registreer elke eenheid met een unieke identificatie om precies te weten welke verhuurd is",
+          "title": "Identificaties",
+          "description": "Registreer elke eenheid met een unieke identificatie",
+          "quantityLabel": "Beschikbare hoeveelheid",
+          "quantityManagedByTracking": "Beheerd door eenheidtracking",
+          "activeUnits": "{count, plural, one {# actieve eenheid} other {# actieve eenheden}}",
+          "addUnit": "Eenheid toevoegen",
+          "addNotes": "Notities toevoegen",
+          "identifier": "Identificatie",
+          "identifierPlaceholder": "bijv., BIKE-01, SN-2024-001",
+          "notes": "Notities",
+          "notesPlaceholder": "Optionele notities over deze eenheid (conditie, kleur...)",
+          "statusAvailable": "Beschikbaar",
+          "statusMaintenance": "Onderhoud",
+          "statusRetired": "Uitgeschreven",
+          "bulkAdd": "Bulk toevoegen",
+          "bulkPrefix": "Prefix",
+          "bulkPrefixPlaceholder": "bijv., BIKE-",
+          "bulkFrom": "Van",
+          "bulkTo": "Tot",
+          "bulkGenerate": "Genereren",
+          "bulkPreview": "Voorbeeld",
+          "deleteConfirm": "Deze eenheid verwijderen",
+          "deleteWarning": "Deze eenheid is momenteel toegewezen aan een actieve reservering en kan niet worden verwijderd.",
+          "disableConfirm": "Eenheidtracking uitschakelen?",
+          "disableDescription": "Individuele eenheidtracking wordt verborgen. De hoeveelheid wordt ingesteld op {count}. Uw geregistreerde eenheden blijven behouden.",
+          "duplicateIdentifier": "Een of meer identificaties zijn gedupliceerd",
+          "noUnitsRegistered": "Geen eenheden geregistreerd",
+          "noUnitsHint": "Voeg individuele eenheden toe om bij te houden welke verhuurd zijn",
+          "cancel": "Annuleren",
+          "confirm": "Bevestigen"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -1029,6 +1069,21 @@
         "showAll": "Alles tonen ({count} gebeurtenissen)",
         "showLess": "Minder tonen"
       },
+      "unitAssignment": {
+        "title": "Eenheid toewijzing",
+        "assignUnits": "Eenheden toewijzen",
+        "assignedCount": "{assigned} van {total} toegewezen",
+        "allAssigned": "Alle eenheden toegewezen",
+        "noneAssigned": "Geen eenheden toegewezen",
+        "noUnitsAvailable": "Geen eenheden beschikbaar",
+        "selectUnit": "Selecteer eenheid",
+        "unit": "Eenheid {number}",
+        "optional": "Toewijzing is optioneel",
+        "save": "Opslaan",
+        "saved": "Eenheden toegewezen",
+        "notes": "Notities",
+        "identifiers": "Identificatoren: {identifiers}"
+      },
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
         "depositNotCollected": "Borg niet geïnd ({amount})",
@@ -1144,7 +1199,47 @@
         },
         "statusAuthorized": "Geautoriseerd",
         "statusRefunded": "Terugbetaald",
-        "statusCancelled": "Geannuleerd"
+        "statusCancelled": "Geannuleerd",
+        "requestPayment": "Betaling aanvragen"
+      },
+      "requestPaymentModal": {
+        "title": "Betaling aanvragen",
+        "description": "Stuur betalingsverzoek naar {name}",
+        "paymentType": "Betalingstype",
+        "types": {
+          "rental": {
+            "name": "Huursaldo",
+            "description": "Vraag resterende huurbetaling aan"
+          },
+          "deposit": {
+            "name": "Borg (kaartautorisatie)",
+            "description": "Vraag kaartautorisatie voor borg aan"
+          },
+          "custom": {
+            "name": "Aangepast bedrag",
+            "description": "Vraag een specifiek bedrag aan"
+          }
+        },
+        "customAmount": "Bedrag",
+        "minAmount": "Minimumbedrag: {amount}",
+        "sendVia": "Versturen via",
+        "email": "E-mail",
+        "sms": "SMS",
+        "noPhone": "geen telefoonnummer",
+        "selectChannel": "Selecteer ten minste één verzendkanaal",
+        "customMessage": "Aangepast bericht",
+        "customMessagePlaceholder": "Voeg een bericht toe voor uw klant...",
+        "amountToRequest": "Aangevraagd bedrag",
+        "send": "Verzoek versturen",
+        "success": "Betalingsverzoek verzonden",
+        "successTitle": "Verzoek verzonden!",
+        "successDescription": "Klant ontvangt een betalingslink via {channel}",
+        "error": "Fout bij verzenden",
+        "paymentLink": "Betalingslink",
+        "linkCopied": "Link gekopieerd",
+        "copyFailed": "Kopiëren mislukt",
+        "stripeNotConfigured": "Stripe niet geconfigureerd",
+        "stripeNotConfiguredDescription": "Configureer Stripe in de instellingen om online betalingsverzoeken te verzenden."
       },
       "onlinePayment": {
         "title": "Online Betaling",
@@ -1581,6 +1676,45 @@
         "orders": "Bestellingen"
       }
     },
+    "multiStore": {
+      "title": "Multi-winkel",
+      "description": "Overzicht van uw {count, plural, one {# winkel} other {# winkels}}",
+      "goToAStore": "Naar een winkel gaan",
+      "stats": {
+        "totalRevenue": "Totale omzet",
+        "reservations": "Reserveringen",
+        "pending": "in afwachting",
+        "customers": "Klanten",
+        "newCustomers": "nieuw",
+        "vsPreviousPeriod": "vs vorige periode"
+      },
+      "chart": {
+        "title": "Omzetontwikkeling",
+        "description": "Evolutie van de omzet per winkel"
+      },
+      "table": {
+        "title": "Uw winkels",
+        "store": "Winkel",
+        "plan": "Plan",
+        "revenue": "Omzet",
+        "change": "Verandering",
+        "reservations": "Reserveringen",
+        "customers": "Klanten",
+        "goToStore": "Toegang"
+      },
+      "limits": {
+        "title": "Limieten bereikt",
+        "description": "{count, plural, one {# winkel nadert} other {# winkels naderen}} de planlimieten",
+        "products": "producten",
+        "reservations": "reserveringen/maand",
+        "customers": "klanten",
+        "upgrade": "Upgraden"
+      },
+      "empty": {
+        "title": "Nog geen gegevens",
+        "description": "Statistieken verschijnen zodra uw winkels reserveringen hebben."
+      }
+    },
     "settings": {
       "title": "Instellingen",
       "store": "Winkel",
@@ -1618,6 +1752,11 @@
           "trialing": "Proefperiode",
           "pastDue": "Achterstallig",
           "cancelled": "Opgezegd"
+        },
+        "discount": {
+          "title": "Speciale aanbieding actief",
+          "permanent": "U heeft een permanente korting van {percent}% op uw abonnement.",
+          "limited": "U heeft een korting van {percent}% op uw abonnement voor {months} maanden."
         },
         "paymentStatus": {
           "pending": "In behandeling",
@@ -1702,7 +1841,9 @@
           "description": "Krijg 50% korting op alle plannen. Prijs levenslang gegarandeerd voor vroege inschrijvers.",
           "guaranteedForLife": "Prijs levenslang gegarandeerd",
           "endsOn": "Aanbieding geldig tot 1 maart 2026"
-        }
+        },
+        "pricesExcludingTax": "Prijzen excl. BTW",
+        "excludingTax": "excl. BTW"
       },
       "team": "Team",
       "saveChanges": "Wijzigingen opslaan",
@@ -1837,6 +1978,10 @@
         "modePaymentDescription": "Klanten betalen direct",
         "pendingBlocksAvailability": "Beschikbaarheid blokkeren tijdens openstaande aanvraag",
         "pendingBlocksAvailabilityDescription": "Indien ingeschakeld, blokkeert een openstaande reserveringsaanvraag direct de productbeschikbaarheid. Uitschakelen om meerdere aanvragen voor dezelfde data toe te staan.",
+        "depositPercentage": "Aanbetalingsbedrag",
+        "depositPercentageDescription": "Percentage van het totaalbedrag bij online boeking",
+        "depositPercentageFull": "Volledige betaling bij boeking",
+        "depositPercentagePartial": "{percentage}% bij boeking, rest bij ophalen",
         "pricingMode": "Prijseenheid",
         "pricingDay": "Per dag",
         "pricingHour": "Per uur",
@@ -2267,6 +2412,286 @@
         "depositNoTaxInfo": "Borgen zijn niet onderworpen aan BTW omdat ze aan de klant worden terugbetaald.",
         "saved": "Belastinginstellingen opgeslagen"
       },
+      "delivery": {
+        "title": "Bezorging",
+        "description": "Configureer bezorgopties voor uw klanten",
+        "enableSection": "Bezorgservice",
+        "enableSectionDescription": "Laat klanten apparatuur laten bezorgen",
+        "enabled": "Bezorging inschakelen",
+        "enabledDescription": "Klanten kunnen bezorging kiezen in plaats van ophalen",
+        "modeSection": "Bezorgmodus",
+        "modeOptional": "Keuze van de klant",
+        "modeOptionalDescription": "Klant kiest tussen ophalen of bezorging",
+        "modeRequired": "Bezorging verplicht",
+        "modeRequiredDescription": "Bezorging is verplicht, geen ophaalmogelijkheid",
+        "modeIncluded": "Bezorging inbegrepen",
+        "modeIncludedDescription": "Bezorging is verplicht en gratis",
+        "noCoordinatesWarning": "U moet uw winkeladres met kaartlocatie instellen om bezorging in te schakelen.",
+        "noCoordinatesError": "Configureer eerst uw winkeladres met GPS-locatie.",
+        "goToStoreSettings": "Winkelinstellingen",
+        "customerAddressNoteOptional": "Wanneer bezorging is ingeschakeld, kunnen klanten kiezen tussen ophalen en bezorging.",
+        "customerAddressNoteRequired": "Klanten moeten een bezorgadres opgeven.",
+        "pricingSection": "Prijzen",
+        "pricePerKm": "Prijs per kilometer",
+        "pricePerKmDescription": "Bedrag per gereden kilometer",
+        "minimumFee": "Minimumtarief",
+        "minimumFeeDescription": "Minimumbedrag ongeacht de afstand",
+        "tripType": "Rittype",
+        "oneWay": "Enkele reis",
+        "oneWayDescription": "Prijs wordt alleen voor bezorging berekend",
+        "roundTrip": "Retour",
+        "roundTripDescription": "Prijs inclusief bezorging en ophalen",
+        "exampleTitle": "Rekenvoorbeeld",
+        "example": "Bezorging op {distance} km = {fee}",
+        "roundTripNote": "{distance} km x 2 = {total} km in rekening gebracht",
+        "optionalSection": "Optionele instellingen",
+        "maximumDistance": "Maximale afstand",
+        "maximumDistanceDescription": "Laat leeg voor geen limiet",
+        "freeDeliveryThreshold": "Gratis bezorging vanaf",
+        "freeDeliveryThresholdDescription": "Bestelbedrag waarboven bezorging gratis is",
+        "saved": "Bezorginstellingen opgeslagen",
+        "simulator": {
+          "title": "Prijssimulator",
+          "description": "Test uw instellingen om de bezorgkosten te zien",
+          "distance": "Klantafstand",
+          "orderTotal": "Bestelbedrag",
+          "result": "Bezorgkosten",
+          "free": "Gratis",
+          "notAvailable": "Niet beschikbaar",
+          "tooFar": "Afstand overschrijdt maximum ({max} km)",
+          "freeDeliveryApplied": "Gratis bezorging toegepast",
+          "minimumApplied": "Minimumtarief toegepast",
+          "freeAbove": "Gratis vanaf {amount}",
+          "distanceLabel": "Afstand",
+          "rateLabel": "Berekening",
+          "minimumLabel": "Minimum",
+          "testAddress": "Test een adres",
+          "testAddressTitle": "Test een adres",
+          "testAddressDescription": "Voer een klantadres in om de werkelijke afstand te berekenen",
+          "testAddressPlaceholder": "Zoek een adres..."
+        }
+      },
+      "inspection": {
+        "title": "Opnameverslag",
+        "description": "Documenteer de staat van de apparatuur bij ophalen en terugbrengen",
+        "nav": "Opnameverslag",
+        "enableSection": "Opnameverslag functie",
+        "enableSectionDescription": "Documenteer de staat van de apparatuur met foto's en handtekening",
+        "enabled": "Opnameverslagen inschakelen",
+        "enabledDescription": "Maak inspectierapporten bij ophalen en terugbrengen",
+        "modeSection": "Inspectiemodus",
+        "modeOptional": "Optioneel",
+        "modeOptionalDescription": "Het verslag kan worden overgeslagen",
+        "modeRecommended": "Aanbevolen",
+        "modeRecommendedDescription": "Een herinnering wordt getoond maar kan worden overgeslagen",
+        "modeRequired": "Verplicht",
+        "modeRequiredDescription": "Vereist om de reserveringsstatus te wijzigen",
+        "signatureSection": "Klanthandtekening",
+        "requireCustomerSignature": "Handtekening vereist",
+        "requireCustomerSignatureDescription": "De klant moet het verslag ondertekenen",
+        "autoGeneratePdf": "PDF automatisch genereren",
+        "autoGeneratePdfDescription": "Er wordt een PDF-rapport gemaakt na elke inspectie",
+        "maxPhotosPerItem": "Foto's per apparaat",
+        "maxPhotosPerItemDescription": "Maximaal aantal foto's per geïnspecteerd apparaat",
+        "saved": "Inspectie-instellingen opgeslagen",
+        "types": {
+          "departure": "Ophalen",
+          "return": "Terugbrengen"
+        },
+        "status": {
+          "draft": "In uitvoering",
+          "completed": "Voltooid",
+          "signed": "Ondertekend",
+          "notStarted": "Niet uitgevoerd"
+        },
+        "condition": {
+          "excellent": "Uitstekend",
+          "good": "Goed",
+          "fair": "Redelijk",
+          "damaged": "Beschadigd"
+        },
+        "card": {
+          "title": "Opnameverslag",
+          "departure": "Ophalen",
+          "return": "Terugbrengen",
+          "notDone": "Niet uitgevoerd",
+          "availableAtDeparture": "Beschikbaar bij ophalen",
+          "start": "Starten",
+          "view": "Bekijken",
+          "compare": "Vergelijken",
+          "photos": "{count, plural, one {# foto} other {# foto's}}",
+          "items": "{count, plural, one {# artikel} other {# artikelen}}",
+          "changesDetected": "{count, plural, one {# wijziging} other {# wijzigingen}}",
+          "moreActions": "Meer acties",
+          "downloadPdf": "PDF downloaden"
+        },
+        "wizard": {
+          "title": "Opnameverslag - {type}",
+          "titleDeparture": "Opnameverslag - Ophalen",
+          "titleReturn": "Opnameverslag - Terugbrengen",
+          "step": "Stap {current} van {total}",
+          "step_overview": "Overzicht",
+          "step_items": "Artikelen",
+          "step_summary": "Samenvatting",
+          "step_signature": "Handtekening",
+          "overview": "Overzicht",
+          "items": "Artikelen",
+          "summary": "Samenvatting",
+          "signature": "Handtekening",
+          "departureInspection": "Opnameverslag - Ophalen",
+          "returnInspection": "Opnameverslag - Terugbrengen",
+          "reservation": "Reservering",
+          "itemsToInspect": "{count, plural, one {artikel te inspecteren} other {artikelen te inspecteren}}",
+          "instructions": "Instructies",
+          "instruction1_departure": "Controleer de staat van elk artikel voordat u het aan de klant overhandigt",
+          "instruction1_return": "Controleer de staat van elk artikel bij terugbrengen",
+          "instruction2": "Maak foto's om de huidige staat te documenteren",
+          "instruction3": "Noteer eventuele schade of abnormale slijtage",
+          "allItemsOk": "Alles in orde",
+          "allOk": "Alles OK",
+          "allOkDescription": "Alle artikelen als uitstekend markeren",
+          "quantity": "Hoeveelheid",
+          "condition": "Staat",
+          "photos": "Foto's",
+          "notes": "Opmerkingen",
+          "notesPlaceholder": "Voeg opmerkingen toe over de staat van de apparatuur...",
+          "damageDetected": "Schade gedetecteerd",
+          "allGood": "Alles in orde",
+          "summaryItems": "{count, plural, one {# artikel geïnspecteerd} other {# artikelen geïnspecteerd}}",
+          "itemsWithIssues": "Artikelen met opmerkingen",
+          "globalNotes": "Algemene opmerkingen",
+          "globalNotesPlaceholder": "Voeg algemene opmerkingen toe over de inspectie...",
+          "signingAs": "Handtekening van {name}",
+          "signHere": "Teken hier",
+          "clearSignature": "Wissen",
+          "signatureConfirmation": "Ik bevestig de staat van de apparatuur te hebben gecontroleerd en accepteer de voorwaarden",
+          "signatureComplete": "Handtekening gevalideerd",
+          "customerSignature": "Klanthandtekening",
+          "signatureTitle": "Handtekening",
+          "signatureDescription": "De klant moet ondertekenen om het verslag te valideren",
+          "back": "Terug",
+          "continue": "Doorgaan",
+          "next": "Volgende",
+          "previous": "Vorige",
+          "complete": "Voltooien",
+          "saving": "Opslaan...",
+          "saved": "Verslag opgeslagen",
+          "inspectionComplete": "Verslag succesvol voltooid",
+          "inspectionError": "Fout bij opslaan",
+          "photoInvalidType": "Niet-ondersteund afbeeldingsformaat",
+          "photoTooLarge": "Afbeelding te groot (max 20 MB)",
+          "photoError": "Fout bij verwerken van afbeelding",
+          "addPhoto": "Foto toevoegen",
+          "takePhoto": "Foto maken",
+          "photoPreview": "Fotovoorbeeld",
+          "deletePhoto": "Foto verwijderen",
+          "close": "Sluiten"
+        },
+        "conditions": {
+          "excellent": "Uitstekend",
+          "good": "Goed",
+          "fair": "Redelijk",
+          "damaged": "Beschadigd",
+          "ok": "OK",
+          "wear": "Slijtage",
+          "damage": "Schade"
+        },
+        "item": {
+          "condition": "Staat",
+          "notes": "Opmerkingen",
+          "notesPlaceholder": "Voeg opmerkingen toe over de staat van de apparatuur...",
+          "photos": "Foto's",
+          "addPhoto": "Foto toevoegen",
+          "takePhoto": "Foto maken",
+          "removePhoto": "Verwijderen",
+          "photoUploading": "Uploaden...",
+          "photoError": "Uploadfout",
+          "maxPhotosReached": "Maximaal aantal foto's bereikt"
+        },
+        "signature": {
+          "title": "Klanthandtekening",
+          "instruction": "Teken in het onderstaande vak",
+          "clear": "Wissen",
+          "confirm": "Ik bevestig de staat van de apparatuur te hebben gecontroleerd",
+          "name": "Naam van ondertekenaar",
+          "skip": "Overslaan",
+          "skipDescription": "Het verslag wordt opgeslagen zonder handtekening",
+          "signedAt": "Ondertekend op"
+        },
+        "summary": {
+          "totalItems": "Apparatuur",
+          "photos": "Foto's",
+          "damageDetected": "Schade",
+          "noDamage": "Geen schade"
+        },
+        "sections": {
+          "inspectionDetails": "Inspectiedetails",
+          "equipment": "Geïnspecteerde apparatuur",
+          "notes": "Opmerkingen",
+          "signature": "Handtekening"
+        },
+        "parties": {
+          "customer": "Klant"
+        },
+        "period": {
+          "performedBy": "Uitgevoerd door"
+        },
+        "comparison": {
+          "title": "Vergelijking",
+          "departure": "Ophalen",
+          "return": "Terugbrengen",
+          "noChanges": "Geen wijzigingen gedetecteerd",
+          "changes": "Wijzigingen gedetecteerd",
+          "conditionChanged": "Staat gewijzigd",
+          "newDamage": "Nieuwe schade",
+          "swipeHint": "Veeg om te vergelijken",
+          "noDepartureInspection": "Geen ophaverslag",
+          "noReturnInspection": "Geen terugbrengverslag",
+          "noPhotos": "Geen foto's"
+        },
+        "damage": {
+          "title": "Schade gedetecteerd",
+          "description": "Schadebeschrijving",
+          "estimatedCost": "Geschatte kosten",
+          "captureDeposit": "Inhouden van borg",
+          "createPayment": "Betaling aanmaken"
+        },
+        "activity": {
+          "departureStarted": "Ophaverslag gestart",
+          "departureCompleted": "Ophaverslag voltooid",
+          "returnStarted": "Terugbrengverslag gestart",
+          "returnCompleted": "Terugbrengverslag voltooid",
+          "damageDetected": "Schade gedetecteerd: {description}",
+          "signed": "Verslag ondertekend door klant"
+        },
+        "prompt": {
+          "departureTitle": "Verslag uitvoeren?",
+          "departureDescription": "Documenteer de staat van de apparatuur voordat u het aan de klant overhandigt.",
+          "returnTitle": "Verslag uitvoeren?",
+          "returnDescription": "Controleer de staat van de apparatuur bij terugbrengen.",
+          "yes": "Ja, starten",
+          "skip": "Deze stap overslaan"
+        },
+        "templates": {
+          "title": "Inspectiesjablonen",
+          "description": "Definieer controlepunten per categorie",
+          "default": "Standaard",
+          "bikes": "Fietsen / Steps",
+          "tools": "Elektrisch gereedschap",
+          "audio": "Audio / Video",
+          "generic": "Algemeen"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Ophaverslag",
+          "returnInspectionTitle": "Terugbrengverslag",
+          "inspectionRequiredDescription": "Een verslag is vereist voordat u doorgaat.",
+          "inspectionRecommendedDescription": "Wij raden aan om een opnameverslag uit te voeren.",
+          "departureInspectionBenefit": "Documenteer de staat van de apparatuur voordat u het aan de klant overhandigt",
+          "returnInspectionBenefit": "Controleer de staat van de apparatuur en detecteer eventuele schade",
+          "inspectionDuration": "Ongeveer 2 minuten",
+          "startInspection": "Opnameverslag starten"
+        }
+      },
       "payments": {
         "title": "Betalingen",
         "description": "Configureer online betalingen voor uw winkel",
@@ -2450,7 +2875,14 @@
         "trialDays": "Proefdagen",
         "trialDaysDescription": "Aantal gratis proefdagen wanneer deze winkel een betaald abonnement afsluit. Stel 0 in voor geen proefperiode (directe betaling).",
         "days": "dagen",
-        "saved": "Admininstellingen opgeslagen"
+        "saved": "Admininstellingen opgeslagen",
+        "discountSection": "Abonnementskorting",
+        "discountSectionDescription": "Configureer een korting op het abonnement van deze winkel.",
+        "discountPercent": "Kortingspercentage",
+        "discountPercentDescription": "De korting toegepast op de abonnementsprijs (0-100%).",
+        "discountDuration": "Duur",
+        "discountDurationDescription": "Aantal maanden dat de korting van toepassing is. Stel 0 in voor een permanente korting.",
+        "months": "maanden"
       }
     }
   },
@@ -2608,21 +3040,21 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogus"
-      },
-      "accessories": {
-        "productAdded": "Toegevoegd aan winkelwagen",
-        "youMightAlsoLike": "Misschien vind je dit ook leuk",
-        "selectAccessories": "Selecteer accessoires om toe te voegen",
-        "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
-        "pricingUnit": {
-          "day": "dag",
-          "hour": "uur",
-          "week": "week"
-        },
-        "continueWithout": "Doorgaan zonder accessoires",
-        "addToCart": "{count, plural, one {# accessoire toevoegen} other {# accessoires toevoegen}}",
-        "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Toegevoegd aan winkelwagen",
+      "youMightAlsoLike": "Misschien vind je dit ook leuk",
+      "selectAccessories": "Selecteer accessoires om toe te voegen",
+      "available": "{count, plural, one {# beschikbaar} other {# beschikbaar}}",
+      "pricingUnit": {
+        "day": "dag",
+        "hour": "uur",
+        "week": "week"
+      },
+      "continueWithout": "Doorgaan zonder accessoires",
+      "addToCart": "{count, plural, one {# accessoire toevoegen} other {# accessoires toevoegen}}",
+      "accessoriesAdded": "{count, plural, one {# accessoire toegevoegd aan winkelwagen} other {# accessoires toegevoegd aan winkelwagen}}"
     },
     "dateSelection": {
       "title": "Wanneer wilt u huren?",
@@ -2776,9 +3208,30 @@
       "summary": "Uw bestelling",
       "steps": {
         "contact": "Contact",
+        "delivery": "Bezorging",
         "address": "Adres",
         "confirm": "Bevestiging"
       },
+      "deliveryDescription": "Kies hoe u uw apparatuur wilt ontvangen",
+      "deliveryRequiredDescription": "Bezorging is verplicht voor deze bestelling",
+      "deliveryIncludedDescription": "Bezorging is inbegrepen bij uw bestelling",
+      "deliveryRequiredBanner": "Bezorging verplicht",
+      "deliveryIncludedBanner": "Bezorging inbegrepen",
+      "deliveryRequiredNote": "Dit product vereist bezorging",
+      "deliveryIncludedNote": "Bezorgkosten zijn inbegrepen in de prijs",
+      "included": "Inbegrepen",
+      "pickupOption": "Ophalen in winkel",
+      "deliveryOption": "Thuisbezorging",
+      "deliveryOptionDescription": "Vanaf {pricePerKm}/km",
+      "freeDeliveryAbove": "Gratis bezorging vanaf {amount}",
+      "freeDeliveryApplied": "Gratis bezorging toegepast!",
+      "deliveryAddress": "Bezorgadres",
+      "deliveryAddressPlaceholder": "Voer uw bezorgadres in...",
+      "deliveryDistance": "Afstand",
+      "deliveryFee": "Bezorgkosten",
+      "free": "Gratis",
+      "deliveryTooFar": "Sorry, we bezorgen niet verder dan {maxKm} km",
+      "roundTripNote": "{distance} km x 2 = {total} km (retour)",
       "contactDescription": "We hebben deze informatie nodig om contact met u op te nemen",
       "addressDescription": "Optioneel - Vul uw adres in indien nodig",
       "confirmDescription": "Controleer uw gegevens voor bevestiging",
@@ -2837,6 +3290,11 @@
         "savingsBanner": "U bespaart {amount} met de langdurige korting"
       },
       "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
+      "toPayNow": "Nu te betalen",
+      "remainingAtPickup": "Restbedrag bij ophalen: {amount}",
+      "payDeposit": "Betaal aanbetaling van {amount}",
+      "depositLabel": "Borg (autorisatie)",
+      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij afhaling wordt een autorisatie uitgevoerd. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt teruggebracht.",
       "success": {
         "confirmedTitle": "Betaling bevestigd!",
         "confirmedDescription": "Uw betaling is geaccepteerd. U ontvangt een bevestigingsmail.",
@@ -2867,8 +3325,7 @@
       "emailConfirmation": "Bevestigingsmail",
       "confirmationSentTo": "Bevestiging verzonden naar",
       "subtotalLabel": "Subtotaal",
-      "depositLabel": "Borg (autorisatie)",
-      "depositAuthorizationInfo": "Uw kaart wordt opgeslagen. Bij ophalen wordt een autorisatie aangemaakt. Er wordt geen bedrag in rekening gebracht als alles in goede staat wordt geretourneerd.",
+      "depositLabel": "Borg",
       "totalLabel": "Totaal",
       "whatNext": "Volgende stappen",
       "stepRequest1": "We beoordelen uw reserveringsaanvraag",
@@ -2879,7 +3336,53 @@
       "stepPayment3": "Breng het materiaal in goede staat terug op de einddatum",
       "backToStore": "Terug naar home",
       "viewMyReservations": "Mijn verhuur bekijken",
-      "viewReservation": "Mijn reservering bekijken"
+      "viewReservation": "Mijn reservering bekijken",
+      "deliveryLabel": "Levering",
+      "pickupLabel": "Ophalen in winkel",
+      "deliveryFeeLabel": "Bezorgkosten",
+      "free": "Gratis"
+    },
+    "authorizeDeposit": {
+      "title": "Borgautorisatie",
+      "subtitle": "Reservering #{number}",
+      "description": "De verhuurder vraagt een borgautorisatie van {amount}.",
+      "howItWorks": "Hoe het werkt",
+      "step1": "Uw kaart wordt geverifieerd en het bedrag wordt tijdelijk gereserveerd",
+      "step2": "Het bedrag wordt niet van uw rekening afgeschreven",
+      "step3": "Aan het einde van de huur wordt de autorisatie automatisch opgeheven",
+      "step4": "Bij schade kan een deel of het geheel worden afgeschreven",
+      "depositAmount": "Borgbedrag",
+      "cardDetails": "Kaartgegevens",
+      "authorizeButton": "{amount} autoriseren",
+      "authorizing": "Autoriseren...",
+      "securePayment": "Veilige betaling met Stripe",
+      "infoBox": "Dit bedrag wordt niet afgeschreven. Het wordt tijdelijk gereserveerd op uw kaart en vrijgegeven wanneer u het materiaal in goede staat terugbrengt.",
+      "processing": "Verwerken...",
+      "redirecting": "Doorverwijzen...",
+      "paymentInitError": "Betaling kon niet worden geïnitialiseerd. Probeer het later opnieuw.",
+      "confirmationError": "Autorisatie kon niet worden bevestigd",
+      "unexpectedStatus": "Onverwachte betalingsstatus",
+      "unexpectedError": "Er is een onverwachte fout opgetreden",
+      "success": {
+        "title": "Borg geautoriseerd!",
+        "description": "Het bedrag van {amount} is tijdelijk gereserveerd op uw kaart.",
+        "whatHappensNext": "Wat gebeurt er nu?",
+        "willBeReleased": "Dit bedrag wordt automatisch vrijgegeven aan het einde van uw huur als het materiaal in goede staat wordt teruggebracht. Er wordt niets afgeschreven tenzij er schade is.",
+        "viewReservations": "Mijn reserveringen bekijken",
+        "backToStore": "Terug naar winkel"
+      },
+      "errors": {
+        "notFound": "Reservering niet gevonden",
+        "alreadyAuthorized": "Borg is al geautoriseerd",
+        "invalidToken": "Ongeldige of verlopen toegangslink. Vraag een nieuwe aan.",
+        "stripeNotConfigured": "Online betalingen zijn niet beschikbaar voor deze winkel.",
+        "noDepositRequired": "Geen borg vereist voor deze reservering.",
+        "generic": "Er is een fout opgetreden. Probeer het opnieuw.",
+        "cardDeclined": "Kaart geweigerd. Controleer uw gegevens of probeer een andere kaart.",
+        "insufficientFunds": "Onvoldoende saldo. Het bedrag kon niet worden gereserveerd.",
+        "invalidCard": "Ongeldige kaart. Controleer de ingevoerde gegevens."
+      },
+      "backToStore": "Terug naar winkel"
     },
     "account": {
       "title": "Mijn account",
@@ -2969,7 +3472,9 @@
           "deposit": "Borg",
           "deposit_return": "Borg terugbetaling",
           "damage": "Schade",
-          "adjustment": "Aanpassing"
+          "adjustment": "Aanpassing",
+          "deposit_hold": "Autorisatie",
+          "deposit_capture": "Borg geïnd"
         },
         "methods": {
           "stripe": "Online kaart",
@@ -2983,13 +3488,21 @@
           "completed": "Betaald",
           "pending": "In afwachting",
           "failed": "Mislukt",
-          "refunded": "Terugbetaald"
+          "refunded": "Terugbetaald",
+          "cancelled": "Geannuleerd",
+          "authorized": "Geautoriseerd"
         }
       },
       "reviewPrompt": {
         "title": "Hoe was uw huur?",
         "description": "Uw feedback helpt {name} verbeteren",
         "leaveReview": "Laat een review achter"
+      },
+      "successToast": {
+        "payment": "Betaling succesvol",
+        "paymentDescription": "Uw betaling is geregistreerd.",
+        "deposit": "Borg succesvol geautoriseerd",
+        "depositDescription": "Het bedrag is tijdelijk geblokkeerd op uw kaart."
       }
     },
     "footer": {
@@ -3330,6 +3843,31 @@
       "retryPayment": "Betaling opnieuw proberen",
       "contactSupport": "Hulp nodig? Neem contact met ons op."
     },
+    "paymentRequest": {
+      "subject": "Betalingsverzoek voor reservering #{number}",
+      "title": "Betalingsverzoek",
+      "body": "{storeName} vraagt een betaling van {amount} voor uw reservering #{number}.",
+      "paymentDetails": "Betalingsgegevens",
+      "reservation": "Reservering",
+      "description": "Beschrijving",
+      "amountDue": "Te betalen bedrag",
+      "payNow": "{amount} betalen",
+      "linkFallback": "Of kopieer deze link naar uw browser:",
+      "securePayment": "Deze betaling wordt beveiligd door Stripe. Uw betalingsgegevens worden nooit gedeeld met de verhuurder."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Borgautorisatie voor reservering #{number}",
+      "title": "Borgautorisatie vereist",
+      "body": "{storeName} vraagt een borgautorisatie van {amount} voor uw reservering #{number}.",
+      "howItWorks": "Hoe het werkt",
+      "step1": "U autoriseert het borgbedrag op uw kaart",
+      "step2": "Het bedrag wordt tijdelijk gereserveerd (niet afgeschreven)",
+      "step3": "Aan het einde van de huur wordt de autorisatie automatisch vrijgegeven",
+      "step4": "Bij schade kan een deel of het geheel worden afgeschreven",
+      "authorizeNow": "Borg autoriseren",
+      "linkFallback": "Of kopieer deze link naar uw browser:",
+      "securePayment": "Deze autorisatie wordt beveiligd door Stripe. Het bedrag wordt niet direct afgeschreven."
+    },
     "baseLayout": {
       "sentBy": "Deze e-mail is verzonden door {storeName}",
       "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
@@ -3362,7 +3900,8 @@
       "designation": "Omschrijving",
       "qty": "Aantal",
       "unitPrice": "Eenheidsprijs",
-      "total": "Totaal"
+      "total": "Totaal",
+      "unitIdentifiers": "Identificatoren: {identifiers}"
     },
     "totals": {
       "subtotalHT": "Subtotaal (excl. BTW)",
@@ -3426,6 +3965,7 @@
     "maxValue": "Maximumwaarde is {max}",
     "url": "Ongeldige URL",
     "slug": "URL mag alleen kleine letters, cijfers en streepjes bevatten",
+    "slugReserved": "Deze URL is gereserveerd en kan niet worden gebruikt",
     "positive": "Waarde moet positief zijn",
     "integer": "Waarde moet een geheel getal zijn",
     "date": "Ongeldige datum",
@@ -3525,11 +4065,18 @@
     "emailAlreadyExists": "Er bestaat al een klant met dit e-mailadres",
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
+    "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
+    "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",
     "productUnavailable": "Product niet beschikbaar: {name}",
     "productNoLongerAvailable": "Product {name} is niet meer beschikbaar voor deze datums. Er is inmiddels een andere reservering gemaakt.",
     "insufficientStock": "Onvoldoende voorraad voor: {name} ({count} beschikbaar)",
+    "tooManyUnitsAssigned": "Kan niet meer eenheden toewijzen dan de gereserveerde hoeveelheid",
+    "invalidUnits": "Een of meer geselecteerde eenheden zijn ongeldig",
+    "unitProductMismatch": "Geselecteerde eenheden behoren niet tot dit product",
+    "assignUnitsFailed": "Toewijzing van eenheden mislukt",
+    "getAvailableUnitsFailed": "Laden van beschikbare eenheden mislukt",
     "createCustomerError": "Fout bij aanmaken klant",
     "updateCustomerError": "Fout bij bijwerken klant",
     "deleteCustomerError": "Fout bij verwijderen klant",
@@ -3568,8 +4115,17 @@
       "noChargeToRefund": "Geen Stripe-betaling om terug te betalen",
       "alreadyRefunded": "Deze betaling is al terugbetaald",
       "refundExceedsCharge": "Het terugbetalingsbedrag overschrijdt het betalingsbedrag",
-      "refundFailed": "Fout bij terugbetaling"
+      "refundFailed": "Fout bij terugbetaling",
+      "noSavedCard": "Geen kaart opgeslagen voor deze klant",
+      "invalidDepositStatus": "De borgstatus staat deze bewerking niet toe",
+      "noDepositRequired": "Geen borg vereist voor deze reservering",
+      "authorizationFailed": "Kan autorisatie niet aanmaken",
+      "noActiveAuthorization": "Geen actieve autorisatie voor deze reservering",
+      "captureFailed": "Kan borg niet innen",
+      "releaseFailed": "Kan borg niet vrijgeven"
     },
+    "reasonRequired": "Geef een reden op",
+    "invalidAmount": "Ongeldig bedrag",
     "invalidOrExpiredToken": "Deze link is ongeldig of verlopen. Vraag een nieuwe toegangslink aan.",
     "alreadyPaid": "Deze reservering is al betaald.",
     "paymentNotAvailable": "Online betaling is niet beschikbaar voor deze winkel.",
@@ -3580,7 +4136,14 @@
     "customerNoPhone": "Klant heeft geen telefoonnummer",
     "smsSendFailed": "Fout bij verzenden SMS",
     "minRentalDurationViolation": "De huurduur moet minstens {hours} uur zijn",
-    "maxRentalDurationViolation": "De huurduur mag niet meer dan {hours} uur zijn"
+    "maxRentalDurationViolation": "De huurduur mag niet meer dan {hours} uur zijn",
+    "deliveryNotEnabled": "Levering is niet ingeschakeld voor deze winkel",
+    "deliveryAddressRequired": "Voer een geldig afleveradres in",
+    "storeCoordinatesNotConfigured": "Winkelcoördinaten zijn niet geconfigureerd",
+    "deliveryTooFar": "Het afleveradres is te ver weg (maximaal {maxDistance} km)",
+    "deliveryRequired": "Bezorging is verplicht voor deze winkel",
+    "storeCoordinatesInvalid": "De winkelcoördinaten zijn ongeldig",
+    "deliveryAddressInvalid": "Het afleveradres is ongeldig"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

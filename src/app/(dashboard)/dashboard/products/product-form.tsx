@@ -58,17 +58,19 @@ import {
 } from '@/components/ui/dialog'
 import { Stepper, StepContent, StepActions } from '@/components/ui/stepper'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { cn, formatCurrency, getCurrencySymbol } from '@/lib/utils'
 import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor'
 import type { PricingMode } from '@/types'
 
-import { productSchema, type ProductInput, type PricingTierInput } from '@/lib/validations/product'
+import { productSchema, type ProductInput, type PricingTierInput, type ProductUnitInput } from '@/lib/validations/product'
 import { createProduct, updateProduct, createCategory } from './actions'
 import type { TaxSettings, ProductTaxSettings } from '@/types/store'
 import { Switch } from '@/components/ui/switch'
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
+import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
 import { Link2, Puzzle } from 'lucide-react'
 
 interface Category {
@@ -81,6 +83,13 @@ interface PricingTierData {
   minDuration: number
   discountPercent: string
   displayOrder: number | null
+}
+
+interface ProductUnitData {
+  id: string
+  identifier: string
+  notes: string | null
+  status: 'available' | 'maintenance' | 'retired'
 }
 
 interface Product {
@@ -99,6 +108,8 @@ interface Product {
   taxSettings?: ProductTaxSettings | null
   enforceStrictTiers?: boolean
   accessoryIds?: string[]
+  trackUnits?: boolean
+  units?: ProductUnitData[]
 }
 
 interface AvailableAccessory {
@@ -148,6 +159,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     discountPercent: parseFloat(tier.discountPercent),
   })) ?? []
 
+  // Convert product units to input format
+  const initialUnits: ProductUnitInput[] = product?.units?.map((unit) => ({
+    id: unit.id,
+    identifier: unit.identifier,
+    notes: unit.notes || '',
+    status: unit.status,
+  })) ?? []
+
   const form = useForm<ProductInput>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -165,8 +184,12 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       taxSettings: product?.taxSettings || { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
       accessoryIds: product?.accessoryIds || [],
+      trackUnits: product?.trackUnits || false,
+      units: initialUnits,
     },
   })
+
+  const { isDirty } = form.formState
 
   const processFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -223,7 +246,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
         if (uploadedUrls.length > 0) {
           const updatedPreviews = [...imagesPreviews, ...uploadedUrls]
           setImagesPreviews(updatedPreviews)
-          form.setValue('images', updatedPreviews)
+          form.setValue('images', updatedPreviews, { shouldDirty: true })
         }
       } catch (error) {
         console.error('Image upload error:', error)
@@ -278,7 +301,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   const removeImage = (index: number) => {
     const newPreviews = imagesPreviews.filter((_, i) => i !== index)
     setImagesPreviews(newPreviews)
-    form.setValue('images', newPreviews)
+    form.setValue('images', newPreviews, { shouldDirty: true })
   }
 
   const setMainImage = (index: number) => {
@@ -287,8 +310,13 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     const [moved] = newPreviews.splice(index, 1)
     newPreviews.unshift(moved)
     setImagesPreviews(newPreviews)
-    form.setValue('images', newPreviews)
+    form.setValue('images', newPreviews, { shouldDirty: true })
   }
+
+  const handleReset = useCallback(() => {
+    form.reset()
+    setImagesPreviews(product?.images ?? [])
+  }, [form, product?.images])
 
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return
@@ -838,18 +866,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                 <CardDescription>{t('quantityHelp')}</CardDescription>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="quantity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('quantity')}</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" className="w-32" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                <UnitTrackingEditor
+                  trackUnits={watchedValues.trackUnits || false}
+                  onTrackUnitsChange={(value) => form.setValue('trackUnits', value, { shouldDirty: true })}
+                  units={watchedValues.units || []}
+                  onChange={(units) => form.setValue('units', units, { shouldDirty: true })}
+                  quantity={watchedValues.quantity || '1'}
+                  onQuantityChange={(value) => form.setValue('quantity', value, { shouldDirty: true })}
+                  disabled={isLoading}
                 />
               </CardContent>
             </Card>
@@ -872,7 +896,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                           tiers={field.value || []}
                           onChange={field.onChange}
                           enforceStrictTiers={form.watch('enforceStrictTiers') || false}
-                          onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value)}
+                          onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value, { shouldDirty: true })}
                           disabled={isLoading}
                         />
                       </FormControl>
@@ -991,21 +1015,11 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             </CardContent>
           </Card>
 
-          {/* Actions */}
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => router.push('/dashboard/products')}
-            >
-              {tCommon('cancel')}
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              <Check className="mr-2 h-4 w-4" />
-              {t('save')}
-            </Button>
-          </div>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isLoading}
+            onReset={handleReset}
+          />
         </form>
       </Form>
     )
@@ -1349,18 +1363,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <CardDescription>{t('quantityHelp')}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="quantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('quantity')}</FormLabel>
-                          <FormControl>
-                            <Input type="number" min="1" className="w-32" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
+                    <UnitTrackingEditor
+                      trackUnits={watchedValues.trackUnits || false}
+                      onTrackUnitsChange={(value) => form.setValue('trackUnits', value, { shouldDirty: true })}
+                      units={watchedValues.units || []}
+                      onChange={(units) => form.setValue('units', units, { shouldDirty: true })}
+                      quantity={watchedValues.quantity || '1'}
+                      onQuantityChange={(value) => form.setValue('quantity', value, { shouldDirty: true })}
+                      disabled={isLoading}
                     />
                   </CardContent>
                 </Card>
@@ -1381,7 +1391,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                             tiers={field.value || []}
                             onChange={field.onChange}
                             enforceStrictTiers={form.watch('enforceStrictTiers') || false}
-                            onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value)}
+                            onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value, { shouldDirty: true })}
                             disabled={isLoading}
                           />
                         </FormControl>

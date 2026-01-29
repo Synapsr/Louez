@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@/lib/db'
 import { stores } from '@/lib/db/schema'
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { getCustomerSession } from '../actions'
 import { LoginForm } from './login-form'
 import { generateStoreMetadata } from '@/lib/seo'
+import { storefrontRedirect } from '@/lib/storefront-url'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 
 interface LoginPageProps {
@@ -62,7 +62,7 @@ export default async function LoginPage({ params }: LoginPageProps) {
   // Check if already logged in
   const session = await getCustomerSession(slug)
   if (session) {
-    redirect('/account')
+    storefrontRedirect(slug, '/account')
   }
 
   return (

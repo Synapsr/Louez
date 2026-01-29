@@ -207,7 +207,10 @@ export function StripeConnectCard({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDisconnect}>
+                    <AlertDialogAction
+                      onClick={handleDisconnect}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
                       {t('disconnect')}
                     </AlertDialogAction>
                   </AlertDialogFooter>
@@ -256,7 +259,10 @@ export function StripeConnectCard({
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDisconnect}>
+                    <AlertDialogAction
+                      onClick={handleDisconnect}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
                       {t('disconnect')}
                     </AlertDialogAction>
                   </AlertDialogFooter>

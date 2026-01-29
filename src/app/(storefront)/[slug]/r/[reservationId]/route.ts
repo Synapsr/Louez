@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
+import { storefrontRedirect } from '@/lib/storefront-url'
 import {
   verificationCodes,
   customerSessions,
@@ -23,7 +23,7 @@ export async function GET(
 
   if (!token) {
     // No token provided, redirect to login
-    redirect(`/account/login?redirect=/account/reservations/${reservationId}`)
+    storefrontRedirect(slug, `/account/login?redirect=/account/reservations/${reservationId}`)
   }
 
   try {
@@ -33,7 +33,7 @@ export async function GET(
     })
 
     if (!store) {
-      redirect(`/account/login?error=storeNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(slug, `/account/login?error=storeNotFound&redirect=/account/reservations/${reservationId}`)
     }
 
     // Find valid instant access token
@@ -48,7 +48,7 @@ export async function GET(
     })
 
     if (!verification) {
-      redirect(`/account/login?error=invalidToken&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(slug, `/account/login?error=invalidToken&redirect=/account/reservations/${reservationId}`)
     }
 
     // Verify reservation exists and belongs to this store
@@ -61,7 +61,7 @@ export async function GET(
     })
 
     if (!reservation) {
-      redirect(`/account/login?error=reservationNotFound&redirect=/account/reservations/${reservationId}`)
+      storefrontRedirect(slug, `/account/login?error=reservationNotFound&redirect=/account/reservations/${reservationId}`)
     }
 
     // Token is valid and reusable (we don't mark it as used)
@@ -89,7 +89,7 @@ export async function GET(
     })
 
     // Redirect to reservation detail page
-    redirect(`/account/reservations/${reservationId}`)
+    storefrontRedirect(slug, `/account/reservations/${reservationId}`)
   } catch (error) {
     // If it's a redirect, rethrow it
     if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
@@ -97,6 +97,6 @@ export async function GET(
     }
 
     console.error('Error processing instant access:', error)
-    redirect(`/account/login?error=verificationError&redirect=/account/reservations/${reservationId}`)
+    storefrontRedirect(slug, `/account/login?error=verificationError&redirect=/account/reservations/${reservationId}`)
   }
 }

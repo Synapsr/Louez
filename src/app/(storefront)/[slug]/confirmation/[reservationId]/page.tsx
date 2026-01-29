@@ -7,11 +7,12 @@ import { eq, and } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { CheckCircle, Calendar, Mail, Clock, User } from 'lucide-react'
+import { CheckCircle, Calendar, Mail, Clock, User, Truck, Store, MapPin } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings, StoreTheme } from '@/types/store'
 import { generateStoreMetadata } from '@/lib/seo'
@@ -81,6 +82,10 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
   const isRequest = store.settings?.reservationMode === 'request'
 
+  // Delivery information
+  const isDelivery = reservation.deliveryOption === 'delivery'
+  const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
+
   // Format dates with times
   const startDateTime = format(reservation.startDate, "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })
   const endDateTime = format(reservation.endDate, "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })
@@ -129,6 +134,50 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               </div>
             </div>
 
+            {/* Delivery or Pickup Option */}
+            <div className="rounded-lg bg-muted/50 p-4">
+              <div className="flex items-start gap-3">
+                {isDelivery ? (
+                  <>
+                    <Truck className="h-5 w-5 text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-medium">{t('deliveryLabel')}</p>
+                        {deliveryFee === 0 && (
+                          <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                            {t('free')}
+                          </Badge>
+                        )}
+                      </div>
+                      {reservation.deliveryAddress && (
+                        <p className="text-sm text-muted-foreground flex items-start gap-1.5">
+                          <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                          <span>
+                            {reservation.deliveryAddress}
+                            {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
+                            {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Store className="h-5 w-5 text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{t('pickupLabel')}</p>
+                        <Badge variant="secondary" className="text-xs">{t('free')}</Badge>
+                      </div>
+                      {store.address && (
+                        <p className="text-sm text-muted-foreground">{store.address}</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
             {/* Customer email */}
             <div className="flex items-center gap-3 text-sm">
               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -158,6 +207,15 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                 <span className="text-muted-foreground">{t('subtotalLabel')}</span>
                 <span>{formatCurrency(parseFloat(reservation.subtotalAmount), currency)}</span>
               </div>
+              {deliveryFee > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Truck className="h-3.5 w-3.5" />
+                    {t('deliveryFeeLabel')}
+                  </span>
+                  <span>{formatCurrency(deliveryFee, currency)}</span>
+                </div>
+              )}
               {parseFloat(reservation.depositAmount) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('depositLabel')}</span>

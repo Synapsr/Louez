@@ -1,9 +1,10 @@
 import { render } from '@react-email/render'
-import { sendEmail } from './client'
+import { sendEmail, type EmailAttachment } from './client'
 import { db } from '@/lib/db'
 import { emailLogs } from '@/lib/db/schema'
 import { getEmailTranslations, type EmailLocale } from './i18n'
 import { getLogoForLightBackground } from '@/lib/utils'
+import { isSvgUrl, convertSvgToPngBuffer } from '@/lib/image-utils'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
@@ -20,6 +21,8 @@ import {
   ThankYouReviewEmail,
   PaymentConfirmationEmail,
   PaymentFailedEmail,
+  PaymentRequestEmail,
+  DepositAuthorizationRequestEmail,
 } from './templates'
 
 interface Store {
@@ -63,6 +66,30 @@ interface ReservationItem {
   quantity: number
   unitPrice: number
   totalPrice: number
+}
+
+/**
+ * Resolves a logo URL for email compatibility.
+ * SVG logos are converted to PNG and embedded as CID attachments,
+ * because most email clients (Gmail, Outlook, Yahoo) don't render
+ * SVG images or data: URIs in <img> tags.
+ *
+ * Returns the URL to use in <img src> (either the original URL or a cid: reference)
+ * and an optional attachment to include in the email.
+ */
+async function resolveEmailLogo(
+  logoUrl: string | null | undefined
+): Promise<{ url: string | null; attachments: EmailAttachment[] }> {
+  if (!logoUrl) return { url: null, attachments: [] }
+  if (!isSvgUrl(logoUrl)) return { url: logoUrl, attachments: [] }
+
+  const pngBuffer = await convertSvgToPngBuffer(logoUrl, 200)
+  if (!pngBuffer) return { url: null, attachments: [] }
+
+  return {
+    url: 'cid:store-logo',
+    attachments: [{ filename: 'logo.png', content: pngBuffer, cid: 'store-logo' }],
+  }
 }
 
 // Log email in database
@@ -118,10 +145,11 @@ export async function sendVerificationCodeEmail({
 }) {
   const t = getEmailTranslations(locale)
   const subject = `${t.verificationCode.subject.replace('{code}', code)} - ${store.name}`
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     VerificationCodeEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -131,7 +159,7 @@ export async function sendVerificationCodeEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       to,
@@ -191,10 +219,11 @@ export async function sendReservationConfirmationEmail({
     ? customContent.subject.replace('{number}', reservation.number)
     : `${t.confirmReservation.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ReservationConfirmationEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -219,7 +248,7 @@ export async function sendReservationConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -269,10 +298,11 @@ export async function sendRequestReceivedEmail({
     ? customContent.subject.replace('{number}', reservation.number)
     : `${t.requestReceived.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     RequestReceivedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -287,7 +317,7 @@ export async function sendRequestReceivedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -344,10 +374,11 @@ export async function sendRequestAcceptedEmail({
     ? customContent.subject.replace('{number}', reservation.number)
     : `${t.requestAccepted.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     RequestAcceptedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -367,7 +398,7 @@ export async function sendRequestAcceptedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -417,10 +448,11 @@ export async function sendRequestRejectedEmail({
     ? customContent.subject.replace('{number}', reservation.number)
     : `${t.requestRejected.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     RequestRejectedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeEmail: store.email,
       storePhone: store.phone,
@@ -434,7 +466,7 @@ export async function sendRequestRejectedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -483,10 +515,11 @@ export async function sendReminderPickupEmail({
   const customContent = store.emailSettings?.pickupReminderContent
   const subject = customContent?.subject || `${t.reminderPickup.subject} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ReminderPickupEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -501,7 +534,7 @@ export async function sendReminderPickupEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -548,10 +581,11 @@ export async function sendReminderReturnEmail({
   const customContent = store.emailSettings?.returnReminderContent
   const subject = customContent?.subject || `${t.reminderReturn.subject} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ReminderReturnEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -565,7 +599,7 @@ export async function sendReminderReturnEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -614,10 +648,11 @@ export async function sendNewRequestLandlordEmail({
 }) {
   const t = getEmailTranslations(locale)
   const subject = t.newRequestLandlord.subject.replace('{number}', reservation.number)
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     NewRequestLandlordEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       customerFirstName: customer.firstName,
       customerLastName: customer.lastName,
@@ -633,7 +668,7 @@ export async function sendNewRequestLandlordEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -676,10 +711,11 @@ export async function sendTeamInvitationEmail({
 }) {
   const t = getEmailTranslations(locale)
   const subject = t.teamInvitation.subject.replace('{inviterName}', inviterName).replace('{storeName}', storeName)
+  const logo = await resolveEmailLogo(storeLogoUrl)
   const html = await render(
     TeamInvitationEmail({
       storeName,
-      storeLogoUrl,
+      storeLogoUrl: logo.url,
       inviterName,
       invitationUrl,
       locale,
@@ -687,7 +723,7 @@ export async function sendTeamInvitationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     return { success: true, messageId: result.messageId }
   } catch (error) {
     console.error('Failed to send team invitation email:', error)
@@ -724,10 +760,11 @@ export async function sendInstantAccessEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.instantAccess.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     InstantAccessEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -746,7 +783,7 @@ export async function sendInstantAccessEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -804,10 +841,11 @@ export async function sendThankYouReviewEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.thankYouReview.subject} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ThankYouReviewEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storePhone: store.phone,
@@ -822,7 +860,7 @@ export async function sendThankYouReviewEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -873,10 +911,11 @@ export async function sendReservationCancelledEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.reservationCancelled.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ReservationCancelledEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -892,7 +931,7 @@ export async function sendReservationCancelledEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -945,10 +984,11 @@ export async function sendReservationCompletedEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.reservationCompleted.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     ReservationCompletedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -966,7 +1006,7 @@ export async function sendReservationCompletedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1019,10 +1059,11 @@ export async function sendPaymentConfirmationEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.paymentConfirmation.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     PaymentConfirmationEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -1039,7 +1080,7 @@ export async function sendPaymentConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1090,10 +1131,11 @@ export async function sendPaymentFailedEmail({
   const t = getEmailTranslations(locale)
   const subject = `${t.paymentFailed.subject.replace('{number}', reservation.number)} - ${store.name}`
 
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
     PaymentFailedEmail({
       storeName: store.name,
-      logoUrl: getLogoForLightBackground(store),
+      logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
       storeEmail: store.email,
@@ -1109,7 +1151,7 @@ export async function sendPaymentFailedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1127,6 +1169,151 @@ export async function sendPaymentFailedEmail({
       to,
       subject,
       templateType: 'payment_failed',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Payment Request Email (for requesting payment from dashboard)
+export async function sendPaymentRequestEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  amount,
+  description,
+  paymentUrl,
+  customMessage,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  amount: number
+  description: string
+  paymentUrl: string
+  customMessage?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.paymentRequest.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    PaymentRequestEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      amount,
+      description,
+      paymentUrl,
+      customMessage,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_request',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'payment_request',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Deposit Authorization Request Email (for requesting deposit authorization hold)
+export async function sendDepositAuthorizationRequestEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  depositAmount,
+  authorizationUrl,
+  customMessage,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+  }
+  depositAmount: number
+  authorizationUrl: string
+  customMessage?: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.depositAuthorizationRequest.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    DepositAuthorizationRequestEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      depositAmount,
+      authorizationUrl,
+      customMessage,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'deposit_authorization_request',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'deposit_authorization_request',
       status: 'failed',
       error: String(error),
     })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreTheme } from '@/types'
 
 interface Store {
@@ -92,6 +93,34 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
   )
   const [heroImages, setHeroImages] = useState<string[]>(store.theme?.heroImages || [])
   const [hexInputValue, setHexInputValue] = useState(primaryColor.replace('#', '').toUpperCase())
+
+  // Track initial values for dirty state detection
+  const initialValues = useMemo(() => ({
+    logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
+    primaryColor: store.theme?.primaryColor || '#2563eb',
+    themeMode: store.theme?.mode === 'dark' ? 'dark' : 'light',
+    heroImages: store.theme?.heroImages || [],
+  }), [store.logoUrl, store.darkLogoUrl, store.theme?.primaryColor, store.theme?.mode, store.theme?.heroImages])
+
+  const isDirty = useMemo(() => {
+    return (
+      logoPreview !== initialValues.logoUrl ||
+      darkLogoPreview !== initialValues.darkLogoUrl ||
+      primaryColor !== initialValues.primaryColor ||
+      themeMode !== initialValues.themeMode ||
+      JSON.stringify(heroImages) !== JSON.stringify(initialValues.heroImages)
+    )
+  }, [logoPreview, darkLogoPreview, primaryColor, themeMode, heroImages, initialValues])
+
+  const handleReset = useCallback(() => {
+    setLogoPreview(initialValues.logoUrl)
+    setDarkLogoPreview(initialValues.darkLogoUrl)
+    setPrimaryColor(initialValues.primaryColor)
+    setThemeMode(initialValues.themeMode as 'light' | 'dark')
+    setHeroImages(initialValues.heroImages)
+    setHexInputValue(initialValues.primaryColor.replace('#', '').toUpperCase())
+  }, [initialValues])
 
   // Get contrast color for buttons
   const buttonTextColor = getContrastColor(primaryColor)
@@ -590,15 +619,11 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
             <p className="text-xs text-muted-foreground">{t('heroImagesOptional')}</p>
           </section>
 
-          {/* Actions - Fixed at bottom on mobile */}
-          <div className="flex gap-3 pt-4 lg:pt-0">
-            <Button type="button" variant="outline" onClick={() => router.back()} className="flex-1 lg:flex-none">
-              {tCommon('cancel')}
-            </Button>
-            <Button type="submit" disabled={isLoading || isUploadingLogo || isUploadingDarkLogo || isUploadingHero} className="flex-1 lg:flex-none">
-              {isLoading ? tCommon('loading') : tCommon('save')}
-            </Button>
-          </div>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isLoading || isUploadingLogo || isUploadingDarkLogo || isUploadingHero}
+            onReset={handleReset}
+          />
         </div>
 
         {/* Live Preview - Right side, sticky */}

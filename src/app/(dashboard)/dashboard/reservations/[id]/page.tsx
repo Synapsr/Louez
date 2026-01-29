@@ -1,6 +1,6 @@
 import { db } from '@/lib/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationActivity } from '@/lib/db/schema'
+import { reservations, reservationActivity, inspections, inspectionItems, inspectionPhotos } from '@/lib/db/schema'
 import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -11,6 +11,7 @@ import { getCurrencySymbol } from '@/lib/utils'
 import { isSmsConfigured } from '@/lib/sms'
 import {
   User,
+  Building2,
   MapPin,
   Calendar,
   Package,
@@ -40,6 +41,9 @@ import { SmartReservationActions } from './smart-reservation-actions'
 import { ReservationNotes } from './reservation-notes'
 import { ActivityTimelineV2 } from './activity-timeline-v2'
 import { UnifiedPaymentSection } from './unified-payment-section'
+import { UnitAssignmentSelector } from '@/components/dashboard/unit-assignment-selector'
+import { InspectionStatusCard } from '@/components/dashboard/inspection-status-card'
+import { DEFAULT_INSPECTION_SETTINGS } from '@/types/store'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -70,6 +74,7 @@ export default async function ReservationDetailPage({
       items: {
         with: {
           product: true,
+          assignedUnits: true,
         },
       },
       payments: true,
@@ -122,6 +127,68 @@ export default async function ReservationDetailPage({
   // Check if SMS is configured
   const smsConfigured = isSmsConfigured()
 
+  // Inspection settings and data
+  const inspectionSettings = store.settings?.inspection || DEFAULT_INSPECTION_SETTINGS
+
+  // Query inspections for this reservation
+  const reservationInspections = await db
+    .select({
+      id: inspections.id,
+      type: inspections.type,
+      status: inspections.status,
+      hasDamage: inspections.hasDamage,
+      createdAt: inspections.createdAt,
+      signedAt: inspections.signedAt,
+    })
+    .from(inspections)
+    .where(eq(inspections.reservationId, id))
+
+  const departureInspection = reservationInspections.find((i) => i.type === 'departure')
+  const returnInspection = reservationInspections.find((i) => i.type === 'return')
+
+  // Count items and photos for inspections
+  const getInspectionData = async (inspectionId: string | undefined) => {
+    if (!inspectionId) return null
+
+    const items = await db
+      .select({ id: inspectionItems.id })
+      .from(inspectionItems)
+      .where(eq(inspectionItems.inspectionId, inspectionId))
+
+    const photos = await db
+      .select({ id: inspectionPhotos.id })
+      .from(inspectionPhotos)
+      .innerJoin(inspectionItems, eq(inspectionItems.id, inspectionPhotos.inspectionItemId))
+      .where(eq(inspectionItems.inspectionId, inspectionId))
+
+    return { itemCount: items.length, photoCount: photos.length }
+  }
+
+  const departureData = departureInspection ? await getInspectionData(departureInspection.id) : null
+  const returnData = returnInspection ? await getInspectionData(returnInspection.id) : null
+
+  const formattedDepartureInspection = departureInspection && departureData ? {
+    id: departureInspection.id,
+    type: departureInspection.type as 'departure' | 'return',
+    status: departureInspection.status as 'draft' | 'completed' | 'signed',
+    hasDamage: departureInspection.hasDamage,
+    itemCount: departureData.itemCount,
+    photoCount: departureData.photoCount,
+    createdAt: departureInspection.createdAt,
+    signedAt: departureInspection.signedAt,
+  } : null
+
+  const formattedReturnInspection = returnInspection && returnData ? {
+    id: returnInspection.id,
+    type: returnInspection.type as 'departure' | 'return',
+    status: returnInspection.status as 'draft' | 'completed' | 'signed',
+    hasDamage: returnInspection.hasDamage,
+    itemCount: returnData.itemCount,
+    photoCount: returnData.photoCount,
+    createdAt: returnInspection.createdAt,
+    signedAt: returnInspection.signedAt,
+  } : null
+
   return (
     <div className="space-y-6">
       {/* Header with badges and actions */}
@@ -138,6 +205,8 @@ export default async function ReservationDetailPage({
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
           phone: reservation.customer.phone,
+          customerType: reservation.customer.customerType,
+          companyName: reservation.customer.companyName,
         }}
         storeSlug={store.slug}
         rentalAmount={rental}
@@ -158,13 +227,28 @@ export default async function ReservationDetailPage({
           <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <User className="h-5 w-5 text-primary" />
+                {reservation.customer.customerType === 'business' ? (
+                  <Building2 className="h-5 w-5 text-primary" />
+                ) : (
+                  <User className="h-5 w-5 text-primary" />
+                )}
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-medium">
-                    {reservation.customer.firstName} {reservation.customer.lastName}
-                  </span>
+                  {reservation.customer.customerType === 'business' && reservation.customer.companyName ? (
+                    <>
+                      <span className="font-medium">
+                        {reservation.customer.companyName}
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        {reservation.customer.firstName} {reservation.customer.lastName}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-medium">
+                      {reservation.customer.firstName} {reservation.customer.lastName}
+                    </span>
+                  )}
                   <span className="text-muted-foreground">•</span>
                   <a
                     href={`mailto:${reservation.customer.email}`}
@@ -240,22 +324,39 @@ export default async function ReservationDetailPage({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reservation.items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="font-medium">
-                          {item.productSnapshot?.name || item.product?.name}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {parseFloat(item.unitPrice).toFixed(2)}{currencySymbol}/{store.settings?.pricingMode === 'hour' ? 'h' : 'j'}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {parseFloat(item.totalPrice).toFixed(2)}{currencySymbol}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {reservation.items.map((item) => {
+                      const trackUnits = item.product?.trackUnits || false
+                      const assignedUnitIds = item.assignedUnits?.map((au) => au.productUnitId) || []
+
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium">
+                            <div>
+                              {item.productSnapshot?.name || item.product?.name}
+                              {/* Unit Assignment Selector - only for products with unit tracking */}
+                              {trackUnits && (
+                                <UnitAssignmentSelector
+                                  reservationItemId={item.id}
+                                  productName={item.productSnapshot?.name || item.product?.name || ''}
+                                  quantity={item.quantity}
+                                  trackUnits={trackUnits}
+                                  initialAssignedUnitIds={assignedUnitIds}
+                                />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center align-top pt-4">
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground align-top pt-4">
+                            {parseFloat(item.unitPrice).toFixed(2)}{currencySymbol}/{store.settings?.pricingMode === 'hour' ? 'h' : 'j'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium align-top pt-4">
+                            {parseFloat(item.totalPrice).toFixed(2)}{currencySymbol}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                   <TableFooter>
                     {/* Tax display - if taxes are present */}
@@ -345,11 +446,26 @@ export default async function ReservationDetailPage({
             hasOnlinePaymentPending={hasOnlinePaymentPending}
             hasActiveAuthorization={reservation.depositStatus === 'authorized'}
             currency={currency}
+            inspectionEnabled={inspectionSettings.enabled}
+            inspectionMode={inspectionSettings.mode}
+            hasDepartureInspection={!!departureInspection}
+            hasReturnInspection={!!returnInspection}
+          />
+
+          {/* Inspection Status Card */}
+          <InspectionStatusCard
+            reservationId={reservation.id}
+            reservationStatus={status}
+            departureInspection={formattedDepartureInspection}
+            returnInspection={formattedReturnInspection}
+            inspectionEnabled={inspectionSettings.enabled}
+            inspectionMode={inspectionSettings.mode}
           />
 
           {/* Unified Payment Section - Combines all payment info */}
           <UnifiedPaymentSection
             reservationId={reservation.id}
+            reservationNumber={reservation.number}
             subtotalAmount={reservation.subtotalAmount}
             depositAmount={reservation.depositAmount}
             totalAmount={reservation.totalAmount}
@@ -359,6 +475,12 @@ export default async function ReservationDetailPage({
             depositStatus={reservation.depositStatus as 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed' | null}
             depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
             stripePaymentMethodId={reservation.stripePaymentMethodId}
+            customer={{
+              firstName: reservation.customer.firstName,
+              email: reservation.customer.email,
+              phone: reservation.customer.phone,
+            }}
+            stripeConfigured={!!store.stripeAccountId}
           />
 
           {/* Notes */}

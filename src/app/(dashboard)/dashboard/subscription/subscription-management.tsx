@@ -20,10 +20,9 @@ import {
   Package,
   CalendarDays,
   Users,
-  Gift,
-  Clock,
   MessageSquare,
   ChevronRight,
+  Gift,
 } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -93,6 +92,8 @@ interface SubscriptionManagementProps {
   showSuccess?: boolean
   showCanceled?: boolean
   usage: UsageStats
+  discountPercent?: number
+  discountDurationMonths?: number
 }
 
 // Helper function to format price with currency
@@ -104,16 +105,9 @@ function formatPrice(amount: number, currency: Currency): string {
   return `${symbol}${amount}`
 }
 
-// Early bird discount: current prices are 50% off until March 1st, 2026
-// Original prices are 2x the current prices
-const EARLY_BIRD_END_DATE = new Date('2026-03-01')
-
-function getOriginalPrice(discountedPrice: number): number {
-  return discountedPrice * 2
-}
-
-function isEarlyBirdActive(): boolean {
-  return new Date() < EARLY_BIRD_END_DATE
+// Helper function to apply discount to price
+function applyDiscount(price: number, discountPercent: number): number {
+  return Math.round(price * (1 - discountPercent / 100))
 }
 
 export function SubscriptionManagement({
@@ -123,6 +117,8 @@ export function SubscriptionManagement({
   showSuccess,
   showCanceled,
   usage,
+  discountPercent = 0,
+  discountDurationMonths = 0,
 }: SubscriptionManagementProps) {
   const locale = useLocale()
   const [loading, setLoading] = useState<string | null>(null)
@@ -133,6 +129,9 @@ export function SubscriptionManagement({
   const [showCancelModal, setShowCancelModal] = useState(false)
   const router = useRouter()
   const t = useTranslations('dashboard.settings.subscription')
+  const tCommon = useTranslations('common')
+
+  const hasDiscount = discountPercent > 0
 
   useEffect(() => {
     if (showSuccess || showCanceled) {
@@ -214,7 +213,11 @@ export function SubscriptionManagement({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
-        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">{t('status.active')}</Badge>
+        return (
+          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+            {t('status.active')}
+          </Badge>
+        )
       case 'trialing':
         return <Badge variant="secondary">{t('status.trialing')}</Badge>
       case 'past_due':
@@ -258,9 +261,7 @@ export function SubscriptionManagement({
     if (features.maxReservationsPerMonth === null) {
       list.push(t('plans.features.unlimitedReservations'))
     } else {
-      list.push(
-        t('plans.features.maxReservations', { count: features.maxReservationsPerMonth })
-      )
+      list.push(t('plans.features.maxReservations', { count: features.maxReservationsPerMonth }))
     }
 
     if (features.maxCustomers === null) {
@@ -311,9 +312,8 @@ export function SubscriptionManagement({
 
   // Get the current plan info
   const currentPlanSlug = subscription?.planSlug || 'start'
-  const currentPlan = subscription?.plan || plans.find(p => p.slug === currentPlanSlug) || plans[0]
+  const currentPlan = subscription?.plan || plans.find((p) => p.slug === currentPlanSlug) || plans[0]
   const hasPaidSubscription = subscription?.stripeSubscriptionId && currentPlan?.price !== 0
-  const isActive = subscription?.status === 'active'
 
   return (
     <div className="space-y-8">
@@ -321,7 +321,7 @@ export function SubscriptionManagement({
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erreur</AlertTitle>
+          <AlertTitle>{tCommon('error')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
@@ -382,21 +382,25 @@ export function SubscriptionManagement({
 
       {/* Current Plan Overview */}
       <Card className="overflow-hidden pt-0">
-        <div className={cn(
-          'h-2',
-          currentPlanSlug === 'ultra' && 'bg-gradient-to-r from-amber-400 to-orange-500',
-          currentPlanSlug === 'pro' && 'bg-gradient-to-r from-primary to-blue-600',
-          currentPlanSlug === 'start' && 'bg-muted'
-        )} />
+        <div
+          className={cn(
+            'h-2',
+            currentPlanSlug === 'ultra' && 'bg-gradient-to-r from-amber-400 to-orange-500',
+            currentPlanSlug === 'pro' && 'bg-gradient-to-r from-primary to-blue-600',
+            currentPlanSlug === 'start' && 'bg-muted'
+          )}
+        />
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                'p-2 rounded-lg',
-                currentPlanSlug === 'ultra' && 'bg-amber-500/10',
-                currentPlanSlug === 'pro' && 'bg-primary/10',
-                currentPlanSlug === 'start' && 'bg-muted'
-              )}>
+              <div
+                className={cn(
+                  'p-2 rounded-lg',
+                  currentPlanSlug === 'ultra' && 'bg-amber-500/10',
+                  currentPlanSlug === 'pro' && 'bg-primary/10',
+                  currentPlanSlug === 'start' && 'bg-muted'
+                )}
+              >
                 {currentPlanSlug === 'ultra' ? (
                   <Crown className="h-6 w-6 text-amber-500" />
                 ) : currentPlanSlug === 'pro' ? (
@@ -504,9 +508,7 @@ export function SubscriptionManagement({
                 <p className="text-xs text-muted-foreground truncate">{t('usage.sms')}</p>
                 <p className="text-sm font-medium">
                   {usage.sms}
-                  <span className="text-muted-foreground font-normal">
-                    /{usage.smsLimit ?? '∞'}
-                  </span>
+                  <span className="text-muted-foreground font-normal">/{usage.smsLimit ?? '∞'}</span>
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
@@ -518,11 +520,7 @@ export function SubscriptionManagement({
           {/* Actions */}
           <div className="flex flex-wrap gap-3">
             {canAccessBillingPortal && (
-              <Button
-                variant="outline"
-                onClick={handleOpenPortal}
-                disabled={loading === 'portal'}
-              >
+              <Button variant="outline" onClick={handleOpenPortal} disabled={loading === 'portal'}>
                 <FileText className="mr-2 h-4 w-4" />
                 {t('billingPortal.openPortal')}
                 <ExternalLink className="ml-2 h-3 w-3" />
@@ -544,22 +542,20 @@ export function SubscriptionManagement({
       </Card>
 
       {/* Plans Section */}
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Crown className="h-5 w-5" />
               {hasPaidSubscription ? t('changePlan') : t('noSubscription.title')}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
-              {hasPaidSubscription
-                ? t('changePlanDescription')
-                : t('noSubscription.description')}
+              {hasPaidSubscription ? t('changePlanDescription') : t('noSubscription.description')}
             </p>
           </div>
 
           {/* Billing Toggle and Currency Selector */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 flex-wrap">
             {/* Currency Selector */}
             <div className="flex items-center bg-muted/50 rounded-full p-1">
               {SUPPORTED_CURRENCIES.map((curr) => (
@@ -579,7 +575,7 @@ export function SubscriptionManagement({
             </div>
 
             {/* Billing Toggle */}
-            <div className="flex items-center gap-3 bg-muted/50 rounded-full px-4 py-2">
+            <div className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1.5">
               <Label
                 htmlFor="billing-toggle"
                 className={cn('text-sm cursor-pointer', !isYearly && 'font-semibold')}
@@ -589,7 +585,10 @@ export function SubscriptionManagement({
               <Switch id="billing-toggle" checked={isYearly} onCheckedChange={setIsYearly} />
               <Label
                 htmlFor="billing-toggle"
-                className={cn('text-sm cursor-pointer flex items-center gap-2', isYearly && 'font-semibold')}
+                className={cn(
+                  'text-sm cursor-pointer flex items-center gap-1.5',
+                  isYearly && 'font-semibold'
+                )}
               >
                 {t('yearly')}
                 <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600 border-0">
@@ -600,40 +599,26 @@ export function SubscriptionManagement({
           </div>
         </div>
 
-        {/* Early Bird Banner */}
-        {isEarlyBirdActive() && (
-          <div className="max-w-4xl mx-auto relative overflow-hidden rounded-xl bg-primary/5 border border-primary/20 p-6">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg flex-shrink-0">
-                  <Gift className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-xl">{t('earlyBird.title')}</h3>
-                    <Badge className="bg-primary text-primary-foreground border-0 shadow-sm text-sm px-3">
-                      {t('earlyBird.badge')}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{t('earlyBird.description')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-primary bg-primary/10 rounded-full px-4 py-2">
-                <Clock className="h-4 w-4" />
-                <span>{t('earlyBird.subtitle')}</span>
-              </div>
+        {/* Discount Banner - integrated into plans section */}
+        {hasDiscount && (
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-sm">
+              <Gift className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <span className="text-green-700 dark:text-green-400">
+                {discountDurationMonths === 0
+                  ? t('discount.permanent', { percent: discountPercent })
+                  : t('discount.limited', { percent: discountPercent, months: discountDurationMonths })}
+              </span>
             </div>
           </div>
         )}
 
         {/* Plan Cards */}
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4">
           {plans.map((plan) => {
-            const price = getPrice(plan)
-            const originalPrice = getOriginalPrice(price)
+            const originalPrice = getPrice(plan)
+            const discountedPrice = hasDiscount ? applyDiscount(originalPrice, discountPercent) : originalPrice
             const isFree = plan.price === 0
-            const showEarlyBird = isEarlyBirdActive() && !isFree
             const isAvailable = canChangePlan(plan)
             const isCurrent = isCurrentPlan(plan)
 
@@ -682,52 +667,60 @@ export function SubscriptionManagement({
                   </div>
                 )}
 
-                <CardHeader className="text-center pb-2 pt-6">
+                <CardHeader className="text-center pb-0 pt-6">
                   {/* Plan icon */}
-                  <div className={cn(
-                    "mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full",
-                    plan.slug === 'start' && "bg-muted",
-                    plan.slug === 'pro' && "bg-primary/10",
-                    plan.slug === 'ultra' && "bg-gradient-to-br from-amber-400/20 to-orange-500/20"
-                  )}>
-                    {plan.slug === 'start' && <Zap className="h-6 w-6 text-muted-foreground" />}
-                    {plan.slug === 'pro' && <Sparkles className="h-6 w-6 text-primary" />}
-                    {plan.slug === 'ultra' && <Crown className="h-6 w-6 text-amber-500" />}
+                  <div
+                    className={cn(
+                      'mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full',
+                      plan.slug === 'start' && 'bg-muted',
+                      plan.slug === 'pro' && 'bg-primary/10',
+                      plan.slug === 'ultra' && 'bg-gradient-to-br from-amber-400/20 to-orange-500/20'
+                    )}
+                  >
+                    {plan.slug === 'start' && <Zap className="h-5 w-5 text-muted-foreground" />}
+                    {plan.slug === 'pro' && <Sparkles className="h-5 w-5 text-primary" />}
+                    {plan.slug === 'ultra' && <Crown className="h-5 w-5 text-amber-500" />}
                   </div>
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                  <CardDescription className="min-h-[40px]">
-                    {plan.description}
-                  </CardDescription>
+                  <CardTitle className="text-lg">{plan.name}</CardTitle>
+                  <CardDescription className="text-xs">{plan.description}</CardDescription>
                 </CardHeader>
 
-                <CardContent className="flex-1">
-                  <div className="text-center mb-6">
-                    {/* Early bird pricing with original price crossed out */}
-                    {showEarlyBird && (
-                      <div className="mb-1">
-                        <span className="text-lg text-muted-foreground line-through">
-                          {formatPrice(originalPrice, currency)}
-                        </span>
+                <CardContent className="flex-1 pt-3">
+                  {/* Pricing with discount */}
+                  <div className="text-center mb-4">
+                    {hasDiscount && !isFree ? (
+                      <div className="space-y-0.5">
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="text-lg text-muted-foreground line-through">
+                            {formatPrice(originalPrice, currency)}
+                          </span>
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                            -{discountPercent}%
+                          </Badge>
+                        </div>
+                        <div>
+                          <span className="text-3xl font-bold text-green-600">
+                            {formatPrice(discountedPrice, currency)}
+                          </span>
+                          <span className="text-muted-foreground text-sm ml-1">
+                            {t('excludingTax')} / {isYearly ? t('year') : t('month')}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    <span className="text-4xl font-bold">{formatPrice(price, currency)}</span>
-                    {!isFree && (
-                      <span className="text-muted-foreground ml-1">
-                        /{isYearly ? t('year') : t('month')}
-                      </span>
-                    )}
-                    {/* Price guaranteed for life badge */}
-                    {showEarlyBird && (
-                      <div className="mt-2">
-                        <Badge variant="outline" className="text-xs bg-green-500/5 text-green-600 border-green-500/20">
-                          {t('earlyBird.guaranteedForLife')}
-                        </Badge>
+                    ) : (
+                      <div>
+                        <span className="text-3xl font-bold">{formatPrice(originalPrice, currency)}</span>
+                        {!isFree && (
+                          <span className="text-muted-foreground text-sm ml-1">
+                            {t('excludingTax')} / {isYearly ? t('year') : t('month')}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
 
                   {/* All included features */}
-                  <ul className="space-y-2.5">
+                  <ul className="space-y-2">
                     {/* Key limits */}
                     {getKeyLimits(plan).map((feature, index) => (
                       <li key={`limit-${index}`} className="flex items-start gap-2">
@@ -747,8 +740,8 @@ export function SubscriptionManagement({
                   {/* Separator and not included features (only show if there are some) */}
                   {getNotIncludedFeatures(plan).length > 0 && (
                     <>
-                      <Separator className="my-4" />
-                      <ul className="space-y-2.5">
+                      <Separator className="my-3" />
+                      <ul className="space-y-2">
                         {getNotIncludedFeatures(plan).map((feature, index) => (
                           <li key={`not-${index}`} className="flex items-start gap-2">
                             <X className="h-4 w-4 text-muted-foreground/40 flex-shrink-0 mt-0.5" />
@@ -760,7 +753,7 @@ export function SubscriptionManagement({
                   )}
                 </CardContent>
 
-                <CardFooter className="pt-4">
+                <CardFooter className="pt-3">
                   <Button
                     className="w-full"
                     variant={isCurrent ? 'outline' : plan.isPopular ? 'default' : 'outline'}
@@ -775,6 +768,9 @@ export function SubscriptionManagement({
             )
           })}
         </div>
+
+        {/* Prices excluding tax note */}
+        <p className="text-center text-xs text-muted-foreground">{t('pricesExcludingTax')}</p>
       </div>
 
       {/* Cancel Subscription Modal */}
@@ -784,9 +780,7 @@ export function SubscriptionManagement({
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
-            <DialogTitle className="text-center text-xl">
-              {t('cancelModal.title')}
-            </DialogTitle>
+            <DialogTitle className="text-center text-xl">{t('cancelModal.title')}</DialogTitle>
             <DialogDescription className="text-center">
               {t('cancelModal.description')}
             </DialogDescription>

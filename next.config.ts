@@ -112,7 +112,7 @@ const cspDirectives = {
   ],
 
   // Frames: Stripe for 3D Secure + Gleap
-  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com'],
+  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io'],
 
   // Workers: only from self
   'worker-src': ["'self'", 'blob:'],
@@ -233,6 +233,15 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'img.youtube.com',
+      },
+      // Seed script placeholders (dev only)
+      {
+        protocol: 'https',
+        hostname: 'ui-avatars.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
       },
       // AWS S3
       {

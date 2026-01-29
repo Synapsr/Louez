@@ -28,7 +28,19 @@ export const productTaxSettingsSchema = z.object({
   customRate: z.number().min(0).max(100).optional(),
 })
 
+// Product unit schema for individual unit tracking
+export const productUnitSchema = z.object({
+  id: z.string().optional(), // Absent for new units
+  identifier: z
+    .string()
+    .min(1, 'validation.required')
+    .max(255, 'validation.maxLength'),
+  notes: z.string().max(1000).optional().or(z.literal('')),
+  status: z.enum(['available', 'maintenance', 'retired']).optional(),
+})
+
 export type PricingTierInput = z.infer<typeof pricingTierSchema>
+export type ProductUnitInput = z.infer<typeof productUnitSchema>
 
 // Schema factory that accepts translation function
 // YouTube URL validation regex
@@ -60,6 +72,9 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
       .regex(youtubeUrlRegex, t('invalidYoutubeUrl'))
       .optional()
       .or(z.literal('')),
+    // Unit tracking
+    trackUnits: z.boolean().optional(),
+    units: z.array(productUnitSchema).optional(),
   })
 
 export const createCategorySchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -98,6 +113,9 @@ export const productSchema = z.object({
     .optional()
     .or(z.literal('')),
   accessoryIds: z.array(z.string()).optional(),
+  // Unit tracking
+  trackUnits: z.boolean().optional(),
+  units: z.array(productUnitSchema).optional(),
 })
 
 export const categorySchema = z.object({

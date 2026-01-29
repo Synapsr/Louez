@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Salva",
+    "unsavedChanges": "Modifiche non salvate",
     "cancel": "Annulla",
     "delete": "Elimina",
     "edit": "Modifica",
@@ -212,6 +213,7 @@
       "noStoresFound": "Nessun negozio trovato",
       "yourStores": "I tuoi negozi",
       "createNewStore": "Crea un nuovo negozio",
+      "multiStoreView": "Vista multi-negozio",
       "roles": {
         "owner": "Proprietario",
         "member": "Membro del team",
@@ -417,7 +419,9 @@
       "sms": "SMS",
       "subscription": "Abbonamento",
       "settings": "Impostazioni",
-      "store": "Il mio negozio"
+      "store": "Il mio negozio",
+      "analytics": "Analisi",
+      "multiStore": "Multi-negozio"
     },
     "home": {
       "viewAll": "Vedi tutto",
@@ -659,6 +663,7 @@
         "statusArchived": "Archiviato",
         "statusArchivedDescription": "Rimosso dal catalogo",
         "save": "Salva",
+        "unsavedChanges": "Modifiche non salvate",
         "createProduct": "Crea prodotto",
         "productCreated": "Prodotto creato",
         "productUpdated": "Prodotto aggiornato",
@@ -698,6 +703,40 @@
           "enforceStrictTiers": "Offrire solo queste durate",
           "enforceStrictTiersDescription": "I clienti potranno prenotare solo per le durate esatte dei tuoi livelli. Le durate intermedie non saranno disponibili.",
           "enforceStrictTiersTooltip": "Se un cliente sceglie una durata intermedia, verrà automaticamente arrotondata al livello superiore. Ad esempio, con livelli a 3 e 7 giorni, un noleggio di 5 giorni verrà fatturato alla tariffa di 7 giorni."
+        },
+        "unitTracking": {
+          "toggle": "Traccia unità individuali",
+          "toggleDescription": "Registra ogni unità con un identificatore unico per sapere esattamente quale è noleggiata",
+          "title": "Identificatori",
+          "description": "Registra ogni unità con un identificatore unico",
+          "quantityLabel": "Quantità disponibile",
+          "quantityManagedByTracking": "Gestito dal tracciamento delle unità",
+          "activeUnits": "{count, plural, one {# unità attiva} other {# unità attive}}",
+          "addUnit": "Aggiungi unità",
+          "addNotes": "Aggiungi note",
+          "identifier": "Identificatore",
+          "identifierPlaceholder": "es., BIKE-01, SN-2024-001",
+          "notes": "Note",
+          "notesPlaceholder": "Note opzionali su questa unità (condizione, colore...)",
+          "statusAvailable": "Disponibile",
+          "statusMaintenance": "Manutenzione",
+          "statusRetired": "Ritirato",
+          "bulkAdd": "Aggiungi in blocco",
+          "bulkPrefix": "Prefisso",
+          "bulkPrefixPlaceholder": "es., BIKE-",
+          "bulkFrom": "Da",
+          "bulkTo": "A",
+          "bulkGenerate": "Genera",
+          "bulkPreview": "Anteprima",
+          "deleteConfirm": "Elimina questa unità",
+          "deleteWarning": "Questa unità è attualmente assegnata a una prenotazione attiva e non può essere rimossa.",
+          "disableConfirm": "Disattivare il tracciamento delle unità?",
+          "disableDescription": "Il tracciamento individuale delle unità sarà nascosto. La quantità sarà impostata a {count}. Le unità registrate saranno conservate.",
+          "duplicateIdentifier": "Uno o più identificatori sono duplicati",
+          "noUnitsRegistered": "Nessuna unità registrata",
+          "noUnitsHint": "Aggiungi singole unità per tracciare quali sono noleggiate",
+          "cancel": "Annulla",
+          "confirm": "Conferma"
         },
         "previewTitle": "Anteprima",
         "previewDescription": "Ecco come apparira il tuo prodotto nel catalogo",
@@ -1030,6 +1069,21 @@
         "showAll": "Mostra tutto ({count} eventi)",
         "showLess": "Mostra meno"
       },
+      "unitAssignment": {
+        "title": "Assegnazione unita",
+        "assignUnits": "Assegna unita",
+        "assignedCount": "{assigned} di {total} assegnate",
+        "allAssigned": "Tutte le unita assegnate",
+        "noneAssigned": "Nessuna unita assegnata",
+        "noUnitsAvailable": "Nessuna unita disponibile",
+        "selectUnit": "Seleziona unita",
+        "unit": "Unita {number}",
+        "optional": "L'assegnazione e opzionale",
+        "save": "Salva",
+        "saved": "Unita assegnate",
+        "notes": "Note",
+        "identifiers": "Identificatori: {identifiers}"
+      },
       "smartActions": {
         "paymentIncomplete": "Noleggio non pagato ({remaining} rimanente)",
         "depositNotCollected": "Deposito non riscosso ({amount})",
@@ -1145,7 +1199,47 @@
         },
         "statusAuthorized": "Autorizzato",
         "statusRefunded": "Rimborsato",
-        "statusCancelled": "Annullato"
+        "statusCancelled": "Annullato",
+        "requestPayment": "Richiedi pagamento"
+      },
+      "requestPaymentModal": {
+        "title": "Richiedi pagamento",
+        "description": "Invia richiesta di pagamento a {name}",
+        "paymentType": "Tipo di pagamento",
+        "types": {
+          "rental": {
+            "name": "Saldo noleggio",
+            "description": "Richiedi il pagamento rimanente del noleggio"
+          },
+          "deposit": {
+            "name": "Cauzione (autorizzazione carta)",
+            "description": "Richiedi autorizzazione carta per la cauzione"
+          },
+          "custom": {
+            "name": "Importo personalizzato",
+            "description": "Richiedi un importo specifico"
+          }
+        },
+        "customAmount": "Importo",
+        "minAmount": "Importo minimo: {amount}",
+        "sendVia": "Invia tramite",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "nessun numero di telefono",
+        "selectChannel": "Seleziona almeno un canale di invio",
+        "customMessage": "Messaggio personalizzato",
+        "customMessagePlaceholder": "Aggiungi un messaggio per il tuo cliente...",
+        "amountToRequest": "Importo richiesto",
+        "send": "Invia richiesta",
+        "success": "Richiesta di pagamento inviata",
+        "successTitle": "Richiesta inviata!",
+        "successDescription": "Il cliente riceverà un link di pagamento via {channel}",
+        "error": "Errore durante l'invio",
+        "paymentLink": "Link di pagamento",
+        "linkCopied": "Link copiato",
+        "copyFailed": "Copia fallita",
+        "stripeNotConfigured": "Stripe non configurato",
+        "stripeNotConfiguredDescription": "Configura Stripe nelle impostazioni per inviare richieste di pagamento online."
       },
       "onlinePayment": {
         "title": "Pagamento online",
@@ -1582,6 +1676,45 @@
         "orders": "Ordini"
       }
     },
+    "multiStore": {
+      "title": "Multi-negozio",
+      "description": "Panoramica di {count, plural, one {# negozio} other {# negozi}}",
+      "goToAStore": "Vai a un negozio",
+      "stats": {
+        "totalRevenue": "Fatturato totale",
+        "reservations": "Prenotazioni",
+        "pending": "in attesa",
+        "customers": "Clienti",
+        "newCustomers": "nuovi",
+        "vsPreviousPeriod": "vs periodo precedente"
+      },
+      "chart": {
+        "title": "Andamento fatturato",
+        "description": "Evoluzione del fatturato per negozio"
+      },
+      "table": {
+        "title": "I tuoi negozi",
+        "store": "Negozio",
+        "plan": "Piano",
+        "revenue": "Fatturato",
+        "change": "Variazione",
+        "reservations": "Prenotazioni",
+        "customers": "Clienti",
+        "goToStore": "Accedi"
+      },
+      "limits": {
+        "title": "Limiti raggiunti",
+        "description": "{count, plural, one {# negozio sta raggiungendo} other {# negozi stanno raggiungendo}} i limiti del piano",
+        "products": "prodotti",
+        "reservations": "prenotazioni/mese",
+        "customers": "clienti",
+        "upgrade": "Aggiorna"
+      },
+      "empty": {
+        "title": "Nessun dato ancora",
+        "description": "Le statistiche appariranno quando i tuoi negozi avranno delle prenotazioni."
+      }
+    },
     "settings": {
       "title": "Impostazioni",
       "store": "Negozio",
@@ -1619,6 +1752,11 @@
           "trialing": "Prova",
           "pastDue": "Scaduto",
           "cancelled": "Annullato"
+        },
+        "discount": {
+          "title": "Offerta speciale attiva",
+          "permanent": "Hai uno sconto permanente del {percent}% sul tuo abbonamento.",
+          "limited": "Hai uno sconto del {percent}% sul tuo abbonamento per {months} mesi."
         },
         "paymentStatus": {
           "pending": "In attesa",
@@ -1703,7 +1841,9 @@
           "description": "Ottieni il 50% di sconto su tutti i piani. Prezzo garantito a vita per i primi iscritti.",
           "guaranteedForLife": "Prezzo garantito a vita",
           "endsOn": "Offerta valida fino al 1° marzo 2026"
-        }
+        },
+        "pricesExcludingTax": "Prezzi IVA esclusa",
+        "excludingTax": "IVA escl."
       },
       "team": "Team",
       "saveChanges": "Salva modifiche",
@@ -1838,6 +1978,10 @@
         "modePaymentDescription": "I clienti pagano immediatamente",
         "pendingBlocksAvailability": "Blocca disponibilita durante richiesta in sospeso",
         "pendingBlocksAvailabilityDescription": "Quando abilitato, una richiesta di prenotazione in sospeso blocca immediatamente la disponibilita del prodotto. Disabilita per consentire piu richieste per le stesse date.",
+        "depositPercentage": "Importo dell'acconto",
+        "depositPercentageDescription": "Percentuale dell'importo totale da incassare alla prenotazione online",
+        "depositPercentageFull": "Pagamento completo alla prenotazione",
+        "depositPercentagePartial": "{percentage}% alla prenotazione, resto al ritiro",
         "pricingMode": "Unita di prezzo",
         "pricingDay": "Al giorno",
         "pricingHour": "All'ora",
@@ -2268,6 +2412,286 @@
         "depositNoTaxInfo": "I depositi non sono soggetti a IVA in quanto vengono restituiti al cliente.",
         "saved": "Impostazioni imposte salvate"
       },
+      "delivery": {
+        "title": "Consegna",
+        "description": "Configura le opzioni di consegna per i tuoi clienti",
+        "enableSection": "Servizio di consegna",
+        "enableSectionDescription": "Consenti ai clienti di ricevere l'attrezzatura a domicilio",
+        "enabled": "Abilita consegna",
+        "enabledDescription": "I clienti possono scegliere la consegna invece del ritiro",
+        "modeSection": "Modalità di consegna",
+        "modeOptional": "Scelta del cliente",
+        "modeOptionalDescription": "Il cliente sceglie tra ritiro in negozio o consegna",
+        "modeRequired": "Consegna obbligatoria",
+        "modeRequiredDescription": "La consegna è obbligatoria, nessuna opzione di ritiro",
+        "modeIncluded": "Consegna inclusa",
+        "modeIncludedDescription": "La consegna è obbligatoria e gratuita",
+        "noCoordinatesWarning": "Devi impostare l'indirizzo del tuo negozio con la posizione sulla mappa per abilitare la consegna.",
+        "noCoordinatesError": "Per favore, configura prima l'indirizzo del tuo negozio con la posizione GPS.",
+        "goToStoreSettings": "Impostazioni negozio",
+        "customerAddressNoteOptional": "Quando la consegna è abilitata, i clienti possono scegliere tra ritiro e consegna.",
+        "customerAddressNoteRequired": "I clienti devono fornire un indirizzo di consegna.",
+        "pricingSection": "Prezzi",
+        "pricePerKm": "Prezzo per chilometro",
+        "pricePerKmDescription": "Importo addebitato per chilometro percorso",
+        "minimumFee": "Tariffa minima",
+        "minimumFeeDescription": "Importo minimo addebitato indipendentemente dalla distanza",
+        "tripType": "Tipo di viaggio",
+        "oneWay": "Solo andata",
+        "oneWayDescription": "Il prezzo viene calcolato solo per la consegna",
+        "roundTrip": "Andata e ritorno",
+        "roundTripDescription": "Il prezzo include consegna e ritiro",
+        "exampleTitle": "Esempio di calcolo",
+        "example": "Consegna a {distance} km = {fee}",
+        "roundTripNote": "{distance} km x 2 = {total} km addebitati",
+        "optionalSection": "Impostazioni opzionali",
+        "maximumDistance": "Distanza massima",
+        "maximumDistanceDescription": "Lascia vuoto per nessun limite",
+        "freeDeliveryThreshold": "Consegna gratuita da",
+        "freeDeliveryThresholdDescription": "Importo dell'ordine da cui la consegna è gratuita",
+        "saved": "Impostazioni consegna salvate",
+        "simulator": {
+          "title": "Simulatore prezzi",
+          "description": "Testa le tue impostazioni per vedere il costo di consegna",
+          "distance": "Distanza cliente",
+          "orderTotal": "Importo ordine",
+          "result": "Costo consegna",
+          "free": "Gratuito",
+          "notAvailable": "Non disponibile",
+          "tooFar": "Distanza supera il massimo ({max} km)",
+          "freeDeliveryApplied": "Consegna gratuita applicata",
+          "minimumApplied": "Tariffa minima applicata",
+          "freeAbove": "Gratuito da {amount}",
+          "distanceLabel": "Distanza",
+          "rateLabel": "Calcolo",
+          "minimumLabel": "Minimo",
+          "testAddress": "Testa un indirizzo",
+          "testAddressTitle": "Testa un indirizzo",
+          "testAddressDescription": "Inserisci un indirizzo cliente per calcolare la distanza reale",
+          "testAddressPlaceholder": "Cerca un indirizzo..."
+        }
+      },
+      "inspection": {
+        "title": "Verbale di consegna",
+        "description": "Documenta lo stato dell'attrezzatura al ritiro e alla riconsegna",
+        "nav": "Verbale di consegna",
+        "enableSection": "Funzione verbale di consegna",
+        "enableSectionDescription": "Documenta lo stato dell'attrezzatura con foto e firma",
+        "enabled": "Attiva verbali di consegna",
+        "enabledDescription": "Crea rapporti di ispezione al ritiro e alla riconsegna",
+        "modeSection": "Modalità ispezione",
+        "modeOptional": "Opzionale",
+        "modeOptionalDescription": "Il verbale può essere saltato",
+        "modeRecommended": "Consigliato",
+        "modeRecommendedDescription": "Viene mostrato un promemoria ma può essere saltato",
+        "modeRequired": "Obbligatorio",
+        "modeRequiredDescription": "Richiesto per cambiare lo stato della prenotazione",
+        "signatureSection": "Firma del cliente",
+        "requireCustomerSignature": "Richiedi firma",
+        "requireCustomerSignatureDescription": "Il cliente deve firmare il verbale",
+        "autoGeneratePdf": "Genera PDF automaticamente",
+        "autoGeneratePdfDescription": "Viene creato un rapporto PDF dopo ogni ispezione",
+        "maxPhotosPerItem": "Foto per attrezzatura",
+        "maxPhotosPerItemDescription": "Numero massimo di foto per attrezzatura ispezionata",
+        "saved": "Impostazioni ispezione salvate",
+        "types": {
+          "departure": "Ritiro",
+          "return": "Riconsegna"
+        },
+        "status": {
+          "draft": "In corso",
+          "completed": "Completato",
+          "signed": "Firmato",
+          "notStarted": "Non effettuato"
+        },
+        "condition": {
+          "excellent": "Eccellente",
+          "good": "Buono",
+          "fair": "Accettabile",
+          "damaged": "Danneggiato"
+        },
+        "card": {
+          "title": "Verbale di consegna",
+          "departure": "Ritiro",
+          "return": "Riconsegna",
+          "notDone": "Non effettuato",
+          "availableAtDeparture": "Disponibile al ritiro",
+          "start": "Inizia",
+          "view": "Visualizza",
+          "compare": "Confronta",
+          "photos": "{count, plural, one {# foto} other {# foto}}",
+          "items": "{count, plural, one {# articolo} other {# articoli}}",
+          "changesDetected": "{count, plural, one {# modifica} other {# modifiche}}",
+          "moreActions": "Altre azioni",
+          "downloadPdf": "Scarica PDF"
+        },
+        "wizard": {
+          "title": "Verbale di consegna - {type}",
+          "titleDeparture": "Verbale di consegna - Ritiro",
+          "titleReturn": "Verbale di consegna - Riconsegna",
+          "step": "Passo {current} di {total}",
+          "step_overview": "Panoramica",
+          "step_items": "Articoli",
+          "step_summary": "Riepilogo",
+          "step_signature": "Firma",
+          "overview": "Panoramica",
+          "items": "Articoli",
+          "summary": "Riepilogo",
+          "signature": "Firma",
+          "departureInspection": "Verbale di consegna - Ritiro",
+          "returnInspection": "Verbale di consegna - Riconsegna",
+          "reservation": "Prenotazione",
+          "itemsToInspect": "{count, plural, one {articolo da ispezionare} other {articoli da ispezionare}}",
+          "instructions": "Istruzioni",
+          "instruction1_departure": "Verifica lo stato di ogni articolo prima di consegnarlo al cliente",
+          "instruction1_return": "Verifica lo stato di ogni articolo alla riconsegna",
+          "instruction2": "Scatta foto per documentare lo stato attuale",
+          "instruction3": "Annota eventuali danni o usura anomala",
+          "allItemsOk": "Tutto in ordine",
+          "allOk": "Tutto OK",
+          "allOkDescription": "Segna tutti gli articoli in condizioni eccellenti",
+          "quantity": "Quantità",
+          "condition": "Stato",
+          "photos": "Foto",
+          "notes": "Note",
+          "notesPlaceholder": "Aggiungi note sullo stato dell'attrezzatura...",
+          "damageDetected": "Danno rilevato",
+          "allGood": "Tutto in ordine",
+          "summaryItems": "{count, plural, one {# articolo ispezionato} other {# articoli ispezionati}}",
+          "itemsWithIssues": "Articoli con osservazioni",
+          "globalNotes": "Note generali",
+          "globalNotesPlaceholder": "Aggiungi note generali sull'ispezione...",
+          "signingAs": "Firma di {name}",
+          "signHere": "Firma qui",
+          "clearSignature": "Cancella",
+          "signatureConfirmation": "Confermo di aver verificato lo stato dell'attrezzatura e accetto le condizioni",
+          "signatureComplete": "Firma convalidata",
+          "customerSignature": "Firma del cliente",
+          "signatureTitle": "Firma",
+          "signatureDescription": "Il cliente deve firmare per convalidare il verbale",
+          "back": "Indietro",
+          "continue": "Continua",
+          "next": "Avanti",
+          "previous": "Precedente",
+          "complete": "Completa",
+          "saving": "Salvataggio...",
+          "saved": "Verbale salvato",
+          "inspectionComplete": "Verbale completato con successo",
+          "inspectionError": "Errore durante il salvataggio",
+          "photoInvalidType": "Formato immagine non supportato",
+          "photoTooLarge": "Immagine troppo grande (max 20 MB)",
+          "photoError": "Errore durante l'elaborazione dell'immagine",
+          "addPhoto": "Aggiungi foto",
+          "takePhoto": "Scatta foto",
+          "photoPreview": "Anteprima foto",
+          "deletePhoto": "Elimina foto",
+          "close": "Chiudi"
+        },
+        "conditions": {
+          "excellent": "Eccellente",
+          "good": "Buono",
+          "fair": "Accettabile",
+          "damaged": "Danneggiato",
+          "ok": "OK",
+          "wear": "Usura",
+          "damage": "Danno"
+        },
+        "item": {
+          "condition": "Stato",
+          "notes": "Note",
+          "notesPlaceholder": "Aggiungi note sullo stato dell'attrezzatura...",
+          "photos": "Foto",
+          "addPhoto": "Aggiungi foto",
+          "takePhoto": "Scatta foto",
+          "removePhoto": "Rimuovi",
+          "photoUploading": "Caricamento...",
+          "photoError": "Errore di caricamento",
+          "maxPhotosReached": "Numero massimo di foto raggiunto"
+        },
+        "signature": {
+          "title": "Firma del cliente",
+          "instruction": "Firma nel riquadro sottostante",
+          "clear": "Cancella",
+          "confirm": "Confermo di aver verificato lo stato dell'attrezzatura",
+          "name": "Nome del firmatario",
+          "skip": "Salta",
+          "skipDescription": "Il verbale verrà salvato senza firma",
+          "signedAt": "Firmato il"
+        },
+        "summary": {
+          "totalItems": "Attrezzatura",
+          "photos": "Foto",
+          "damageDetected": "Danno",
+          "noDamage": "Nessun danno"
+        },
+        "sections": {
+          "inspectionDetails": "Dettagli ispezione",
+          "equipment": "Attrezzatura ispezionata",
+          "notes": "Note",
+          "signature": "Firma"
+        },
+        "parties": {
+          "customer": "Cliente"
+        },
+        "period": {
+          "performedBy": "Eseguito da"
+        },
+        "comparison": {
+          "title": "Confronto",
+          "departure": "Ritiro",
+          "return": "Riconsegna",
+          "noChanges": "Nessuna modifica rilevata",
+          "changes": "Modifiche rilevate",
+          "conditionChanged": "Stato modificato",
+          "newDamage": "Nuovo danno",
+          "swipeHint": "Scorri per confrontare",
+          "noDepartureInspection": "Nessun verbale di ritiro",
+          "noReturnInspection": "Nessun verbale di riconsegna",
+          "noPhotos": "Nessuna foto"
+        },
+        "damage": {
+          "title": "Danno rilevato",
+          "description": "Descrizione del danno",
+          "estimatedCost": "Costo stimato",
+          "captureDeposit": "Trattenere dal deposito",
+          "createPayment": "Crea pagamento"
+        },
+        "activity": {
+          "departureStarted": "Verbale di ritiro iniziato",
+          "departureCompleted": "Verbale di ritiro completato",
+          "returnStarted": "Verbale di riconsegna iniziato",
+          "returnCompleted": "Verbale di riconsegna completato",
+          "damageDetected": "Danno rilevato: {description}",
+          "signed": "Verbale firmato dal cliente"
+        },
+        "prompt": {
+          "departureTitle": "Effettuare il verbale?",
+          "departureDescription": "Documenta lo stato dell'attrezzatura prima di consegnarla al cliente.",
+          "returnTitle": "Effettuare il verbale?",
+          "returnDescription": "Verifica lo stato dell'attrezzatura alla riconsegna.",
+          "yes": "Sì, inizia",
+          "skip": "Salta questo passaggio"
+        },
+        "templates": {
+          "title": "Modelli di ispezione",
+          "description": "Definisci punti di controllo per categoria",
+          "default": "Predefinito",
+          "bikes": "Biciclette / Monopattini",
+          "tools": "Utensili elettrici",
+          "audio": "Audio / Video",
+          "generic": "Generico"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Verbale di ritiro",
+          "returnInspectionTitle": "Verbale di riconsegna",
+          "inspectionRequiredDescription": "È richiesto un verbale prima di procedere.",
+          "inspectionRecommendedDescription": "Ti consigliamo di effettuare un verbale di consegna.",
+          "departureInspectionBenefit": "Documenta lo stato dell'attrezzatura prima di consegnarla al cliente",
+          "returnInspectionBenefit": "Verifica lo stato dell'attrezzatura e rileva eventuali danni",
+          "inspectionDuration": "Circa 2 minuti",
+          "startInspection": "Inizia verbale di consegna"
+        }
+      },
       "payments": {
         "title": "Pagamenti",
         "description": "Configura i pagamenti online per il tuo negozio",
@@ -2451,7 +2875,14 @@
         "trialDays": "Giorni di prova",
         "trialDaysDescription": "Numero di giorni di prova gratuiti quando questo negozio sottoscrive un piano a pagamento. Imposta 0 per nessuna prova (pagamento immediato).",
         "days": "giorni",
-        "saved": "Impostazioni admin salvate"
+        "saved": "Impostazioni admin salvate",
+        "discountSection": "Sconto abbonamento",
+        "discountSectionDescription": "Configura uno sconto sull'abbonamento di questo negozio.",
+        "discountPercent": "Percentuale di sconto",
+        "discountPercentDescription": "Lo sconto applicato al prezzo dell'abbonamento (0-100%).",
+        "discountDuration": "Durata",
+        "discountDurationDescription": "Numero di mesi per cui si applica lo sconto. Imposta 0 per uno sconto permanente.",
+        "months": "mesi"
       }
     }
   },
@@ -2609,21 +3040,21 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogo"
-      },
-      "accessories": {
-        "productAdded": "Aggiunto al carrello",
-        "youMightAlsoLike": "Potrebbe piacerti anche",
-        "selectAccessories": "Seleziona gli accessori da aggiungere",
-        "available": "{count, plural, one {# disponibile} other {# disponibili}}",
-        "pricingUnit": {
-          "day": "giorno",
-          "hour": "ora",
-          "week": "settimana"
-        },
-        "continueWithout": "Continua senza accessori",
-        "addToCart": "{count, plural, one {Aggiungi # accessorio} other {Aggiungi # accessori}}",
-        "accessoriesAdded": "{count, plural, one {# accessorio aggiunto al carrello} other {# accessori aggiunti al carrello}}"
       }
+    },
+    "accessories": {
+      "productAdded": "Aggiunto al carrello",
+      "youMightAlsoLike": "Potrebbe piacerti anche",
+      "selectAccessories": "Seleziona gli accessori da aggiungere",
+      "available": "{count, plural, one {# disponibile} other {# disponibili}}",
+      "pricingUnit": {
+        "day": "giorno",
+        "hour": "ora",
+        "week": "settimana"
+      },
+      "continueWithout": "Continua senza accessori",
+      "addToCart": "{count, plural, one {Aggiungi # accessorio} other {Aggiungi # accessori}}",
+      "accessoriesAdded": "{count, plural, one {# accessorio aggiunto al carrello} other {# accessori aggiunti al carrello}}"
     },
     "dateSelection": {
       "title": "Quando vuoi noleggiare?",
@@ -2777,9 +3208,30 @@
       "summary": "Il tuo ordine",
       "steps": {
         "contact": "Contatto",
+        "delivery": "Consegna",
         "address": "Indirizzo",
         "confirm": "Conferma"
       },
+      "deliveryDescription": "Scegli come ricevere la tua attrezzatura",
+      "deliveryRequiredDescription": "La consegna è obbligatoria per questo ordine",
+      "deliveryIncludedDescription": "La consegna è inclusa nel tuo ordine",
+      "deliveryRequiredBanner": "Consegna obbligatoria",
+      "deliveryIncludedBanner": "Consegna inclusa",
+      "deliveryRequiredNote": "Questo prodotto richiede la consegna",
+      "deliveryIncludedNote": "Le spese di consegna sono incluse nel prezzo",
+      "included": "Incluso",
+      "pickupOption": "Ritiro in negozio",
+      "deliveryOption": "Consegna a domicilio",
+      "deliveryOptionDescription": "A partire da {pricePerKm}/km",
+      "freeDeliveryAbove": "Consegna gratuita sopra {amount}",
+      "freeDeliveryApplied": "Consegna gratuita applicata!",
+      "deliveryAddress": "Indirizzo di consegna",
+      "deliveryAddressPlaceholder": "Inserisci il tuo indirizzo di consegna...",
+      "deliveryDistance": "Distanza",
+      "deliveryFee": "Costo consegna",
+      "free": "Gratuito",
+      "deliveryTooFar": "Spiacenti, non consegniamo oltre {maxKm} km",
+      "roundTripNote": "{distance} km x 2 = {total} km (andata e ritorno)",
       "contactDescription": "Abbiamo bisogno di queste informazioni per contattarti",
       "addressDescription": "Opzionale - Inserisci il tuo indirizzo se necessario",
       "confirmDescription": "Rivedi le tue informazioni prima di confermare",
@@ -2838,6 +3290,11 @@
         "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
       },
       "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
+      "toPayNow": "Da pagare ora",
+      "remainingAtPickup": "Resto da pagare al ritiro: {amount}",
+      "payDeposit": "Paga acconto di {amount}",
+      "depositLabel": "Deposito (autorizzazione)",
+      "depositAuthorizationInfo": "La tua carta verrà salvata. Un'autorizzazione verrà effettuata al ritiro. Nessun importo verrà addebitato se tutto viene restituito in buone condizioni.",
       "success": {
         "confirmedTitle": "Pagamento confermato!",
         "confirmedDescription": "Il tuo pagamento e stato accettato. Riceverai un'email di conferma.",
@@ -2868,8 +3325,7 @@
       "emailConfirmation": "Email di conferma",
       "confirmationSentTo": "Conferma inviata a",
       "subtotalLabel": "Subtotale",
-      "depositLabel": "Deposito (autorizzazione)",
-      "depositAuthorizationInfo": "La tua carta sara salvata. Un'autorizzazione sara creata al ritiro. Nessun importo sara addebitato se tutto viene restituito in buone condizioni.",
+      "depositLabel": "Deposito",
       "totalLabel": "Totale",
       "whatNext": "Prossimi passi",
       "stepRequest1": "Stiamo esaminando la tua richiesta di prenotazione",
@@ -2880,7 +3336,53 @@
       "stepPayment3": "Restituisci l'attrezzatura in buone condizioni alla data di fine",
       "backToStore": "Torna alla home",
       "viewMyReservations": "Vedi i miei noleggi",
-      "viewReservation": "Vedi la mia prenotazione"
+      "viewReservation": "Vedi la mia prenotazione",
+      "deliveryLabel": "Consegna",
+      "pickupLabel": "Ritiro in negozio",
+      "deliveryFeeLabel": "Spese di consegna",
+      "free": "Gratuito"
+    },
+    "authorizeDeposit": {
+      "title": "Autorizzazione cauzione",
+      "subtitle": "Prenotazione #{number}",
+      "description": "Il noleggiatore richiede un'autorizzazione cauzione di {amount}.",
+      "howItWorks": "Come funziona",
+      "step1": "La tua carta viene verificata e l'importo viene temporaneamente bloccato",
+      "step2": "L'importo non viene addebitato sul tuo conto",
+      "step3": "Alla fine del noleggio, l'autorizzazione viene annullata automaticamente",
+      "step4": "In caso di danni, può essere addebitato in parte o totalmente",
+      "depositAmount": "Importo cauzione",
+      "cardDetails": "Dati della carta",
+      "authorizeButton": "Autorizza {amount}",
+      "authorizing": "Autorizzazione in corso...",
+      "securePayment": "Pagamento sicuro con Stripe",
+      "infoBox": "Questo importo non verrà addebitato. Verrà temporaneamente bloccato sulla tua carta e rilasciato quando restituirai l'attrezzatura in buone condizioni.",
+      "processing": "Elaborazione...",
+      "redirecting": "Reindirizzamento...",
+      "paymentInitError": "Impossibile inizializzare il pagamento. Riprova più tardi.",
+      "confirmationError": "Impossibile confermare l'autorizzazione",
+      "unexpectedStatus": "Stato del pagamento imprevisto",
+      "unexpectedError": "Si è verificato un errore imprevisto",
+      "success": {
+        "title": "Cauzione autorizzata!",
+        "description": "L'importo di {amount} è stato temporaneamente bloccato sulla tua carta.",
+        "whatHappensNext": "Cosa succede ora?",
+        "willBeReleased": "Questo importo verrà rilasciato automaticamente alla fine del noleggio se l'attrezzatura viene restituita in buone condizioni. Non verrà effettuato alcun addebito a meno che non vi siano danni.",
+        "viewReservations": "Vedi le mie prenotazioni",
+        "backToStore": "Torna al negozio"
+      },
+      "errors": {
+        "notFound": "Prenotazione non trovata",
+        "alreadyAuthorized": "La cauzione è già autorizzata",
+        "invalidToken": "Link di accesso non valido o scaduto. Richiedine uno nuovo.",
+        "stripeNotConfigured": "I pagamenti online non sono disponibili per questo negozio.",
+        "noDepositRequired": "Nessuna cauzione richiesta per questa prenotazione.",
+        "generic": "Si è verificato un errore. Riprova.",
+        "cardDeclined": "Carta rifiutata. Verifica i dati o prova con un'altra carta.",
+        "insufficientFunds": "Fondi insufficienti. L'importo non può essere bloccato.",
+        "invalidCard": "Carta non valida. Verifica i dati inseriti."
+      },
+      "backToStore": "Torna al negozio"
     },
     "account": {
       "title": "Il mio account",
@@ -2970,7 +3472,9 @@
           "deposit": "Deposito",
           "deposit_return": "Rimborso deposito",
           "damage": "Danni",
-          "adjustment": "Aggiustamento"
+          "adjustment": "Aggiustamento",
+          "deposit_hold": "Autorizzazione",
+          "deposit_capture": "Deposito addebitato"
         },
         "methods": {
           "stripe": "Carta online",
@@ -2984,13 +3488,21 @@
           "completed": "Pagato",
           "pending": "In attesa",
           "failed": "Fallito",
-          "refunded": "Rimborsato"
+          "refunded": "Rimborsato",
+          "cancelled": "Annullato",
+          "authorized": "Autorizzato"
         }
       },
       "reviewPrompt": {
         "title": "Come e stato il tuo noleggio?",
         "description": "Il tuo feedback aiuta {name} a migliorare",
         "leaveReview": "Lascia una recensione"
+      },
+      "successToast": {
+        "payment": "Pagamento effettuato con successo",
+        "paymentDescription": "Il tuo pagamento è stato registrato.",
+        "deposit": "Deposito autorizzato con successo",
+        "depositDescription": "L'importo è stato temporaneamente bloccato sulla tua carta."
       }
     },
     "footer": {
@@ -3330,6 +3842,31 @@
       "tip3": "Contatta la tua banca se il problema persiste",
       "retryPayment": "Riprova pagamento",
       "contactSupport": "Hai bisogno di aiuto? Contattaci."
+    },
+    "paymentRequest": {
+      "subject": "Richiesta di pagamento per prenotazione #{number}",
+      "title": "Richiesta di pagamento",
+      "body": "{storeName} richiede un pagamento di {amount} per la tua prenotazione #{number}.",
+      "paymentDetails": "Dettagli pagamento",
+      "reservation": "Prenotazione",
+      "description": "Descrizione",
+      "amountDue": "Importo dovuto",
+      "payNow": "Paga {amount}",
+      "linkFallback": "Oppure copia questo link nel tuo browser:",
+      "securePayment": "Questo pagamento è protetto da Stripe. I tuoi dati di pagamento non vengono mai condivisi con il noleggiatore."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Autorizzazione cauzione per prenotazione #{number}",
+      "title": "Autorizzazione cauzione richiesta",
+      "body": "{storeName} richiede un'autorizzazione cauzione di {amount} per la tua prenotazione #{number}.",
+      "howItWorks": "Come funziona",
+      "step1": "Autorizzi l'importo della cauzione sulla tua carta",
+      "step2": "L'importo viene temporaneamente bloccato (non addebitato)",
+      "step3": "Alla fine del noleggio, l'autorizzazione viene rilasciata automaticamente",
+      "step4": "In caso di danni, può essere addebitato in parte o totalmente",
+      "authorizeNow": "Autorizza cauzione",
+      "linkFallback": "Oppure copia questo link nel tuo browser:",
+      "securePayment": "Questa autorizzazione è protetta da Stripe. L'importo non verrà addebitato immediatamente."
     }
   },
   "contract": {
@@ -3358,7 +3895,8 @@
       "designation": "Descrizione",
       "qty": "Qta",
       "unitPrice": "Prezzo Unit.",
-      "total": "Totale"
+      "total": "Totale",
+      "unitIdentifiers": "Identificatori: {identifiers}"
     },
     "totals": {
       "subtotalHT": "Subtotale (IVA esclusa)",
@@ -3422,6 +3960,7 @@
     "maxValue": "Il valore massimo e {max}",
     "url": "URL non valido",
     "slug": "L'URL puo contenere solo lettere minuscole, numeri e trattini",
+    "slugReserved": "Questo URL è riservato e non può essere utilizzato",
     "positive": "Il valore deve essere positivo",
     "integer": "Il valore deve essere un numero intero",
     "date": "Data non valida",
@@ -3521,11 +4060,18 @@
     "emailAlreadyExists": "Esiste gia un cliente con questa email",
     "customerHasReservations": "Impossibile eliminare un cliente con prenotazioni",
     "cannotCancelReservation": "Questa prenotazione non puo essere annullata",
+    "cannotEditCompletedReservation": "Le prenotazioni completate non possono essere modificate",
+    "negativeAmountOnlyForAdjustment": "Gli importi negativi sono consentiti solo per gli aggiustamenti",
     "productRequired": "Prodotto richiesto",
     "customerRequired": "Cliente richiesto",
     "productUnavailable": "Prodotto non disponibile: {name}",
     "productNoLongerAvailable": "Il prodotto {name} non e piu disponibile per queste date. Nel frattempo e stata effettuata un'altra prenotazione.",
     "insufficientStock": "Stock insufficiente per: {name} ({count} disponibili)",
+    "tooManyUnitsAssigned": "Non e possibile assegnare piu unita della quantita riservata",
+    "invalidUnits": "Una o piu unita selezionate non sono valide",
+    "unitProductMismatch": "Le unita selezionate non appartengono a questo prodotto",
+    "assignUnitsFailed": "Assegnazione unita fallita",
+    "getAvailableUnitsFailed": "Caricamento unita disponibili fallito",
     "createCustomerError": "Errore nella creazione del cliente",
     "updateCustomerError": "Errore nell'aggiornamento del cliente",
     "deleteCustomerError": "Errore nell'eliminazione del cliente",
@@ -3564,8 +4110,17 @@
       "noChargeToRefund": "Nessun pagamento Stripe da rimborsare",
       "alreadyRefunded": "Questo pagamento e gia stato rimborsato",
       "refundExceedsCharge": "L'importo del rimborso supera l'importo del pagamento",
-      "refundFailed": "Errore nel rimborso"
+      "refundFailed": "Errore nel rimborso",
+      "noSavedCard": "Nessuna carta salvata per questo cliente",
+      "invalidDepositStatus": "Lo stato del deposito non consente questa operazione",
+      "noDepositRequired": "Nessun deposito richiesto per questa prenotazione",
+      "authorizationFailed": "Impossibile creare l'autorizzazione",
+      "noActiveAuthorization": "Nessuna autorizzazione attiva per questa prenotazione",
+      "captureFailed": "Impossibile incassare il deposito",
+      "releaseFailed": "Impossibile rilasciare il deposito"
     },
+    "reasonRequired": "Indicare un motivo",
+    "invalidAmount": "Importo non valido",
     "invalidOrExpiredToken": "Questo link non e valido o e scaduto. Per favore richiedi un nuovo link di accesso.",
     "alreadyPaid": "Questa prenotazione e gia stata pagata.",
     "paymentNotAvailable": "Il pagamento online non e disponibile per questo negozio.",
@@ -3576,7 +4131,14 @@
     "customerNoPhone": "Il cliente non ha un numero di telefono",
     "smsSendFailed": "Errore nell'invio dell'SMS",
     "minRentalDurationViolation": "La durata del noleggio deve essere di almeno {hours} ore",
-    "maxRentalDurationViolation": "La durata del noleggio non può superare le {hours} ore"
+    "maxRentalDurationViolation": "La durata del noleggio non può superare le {hours} ore",
+    "deliveryNotEnabled": "La consegna non è attivata per questo negozio",
+    "deliveryAddressRequired": "Inserisci un indirizzo di consegna valido",
+    "storeCoordinatesNotConfigured": "Le coordinate del negozio non sono configurate",
+    "deliveryTooFar": "L'indirizzo di consegna è troppo lontano (massimo {maxDistance} km)",
+    "deliveryRequired": "La consegna è obbligatoria per questo negozio",
+    "storeCoordinatesInvalid": "Le coordinate del negozio non sono valide",
+    "deliveryAddressInvalid": "L'indirizzo di consegna non è valido"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

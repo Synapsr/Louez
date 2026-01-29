@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useTransition } from 'react'
+import { useTransition, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, Info, Receipt } from 'lucide-react'
+import { Info, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -33,6 +33,7 @@ import {
   RadioGroupItem,
 } from '@/components/ui/radio-group'
 import { updateTaxSettings } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreSettings, TaxSettings } from '@/types'
 
 const createTaxSettingsSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) => z.object({
@@ -81,6 +82,12 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
       taxNumber: currentTax.taxNumber || '',
     },
   })
+
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
 
   const isEnabled = form.watch('enabled')
   const displayMode = form.watch('displayMode')
@@ -334,12 +341,11 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {tCommon('save')}
-          </Button>
-        </div>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={handleReset}
+        />
       </form>
     </Form>
   )

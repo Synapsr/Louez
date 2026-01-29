@@ -28,11 +28,15 @@ export async function generateContract({
   regenerate = false,
   locale = 'fr'
 }: GenerateContractOptions) {
-  // Get reservation with all relations including payments
+  // Get reservation with all relations including payments and assigned units
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     with: {
-      items: true,
+      items: {
+        with: {
+          assignedUnits: true,
+        },
+      },
       customer: true,
       payments: true,
     },
@@ -101,6 +105,9 @@ export async function generateContract({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           totalPrice: item.totalPrice,
+          assignedUnitIdentifiers: item.assignedUnits
+            ?.map((au) => au.identifierSnapshot)
+            .filter(Boolean) || [],
         })),
         payments: reservation.payments.map((payment) => ({
           id: payment.id,

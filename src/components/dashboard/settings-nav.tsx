@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, FileText, CreditCard, Percent, Wallet, Star, Bell, Shield } from 'lucide-react'
+import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useMemo } from 'react'
 
@@ -38,6 +38,16 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/taxes',
     icon: Percent,
     labelKey: 'taxes.title',
+  },
+  {
+    href: '/dashboard/settings/delivery',
+    icon: Truck,
+    labelKey: 'delivery.title',
+  },
+  {
+    href: '/dashboard/settings/inspections',
+    icon: ClipboardCheck,
+    labelKey: 'inspection.title',
   },
   {
     href: '/dashboard/settings/payments',

@@ -47,6 +47,9 @@ export type StoreWithFullData = {
   icsToken: string | null
   referralCode: string | null
   trialDays: number
+  discountPercent: number
+  discountDurationMonths: number
+  stripeCouponId: string | null
   onboardingCompleted: boolean | null
   createdAt: Date
   updatedAt: Date

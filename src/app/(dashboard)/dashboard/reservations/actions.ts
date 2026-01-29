@@ -3,8 +3,8 @@
 import { db } from '@/lib/db'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes } from '@/lib/db/schema'
-import { eq, and, sql } from 'drizzle-orm'
+import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes, productUnits, reservationItemUnits } from '@/lib/db/schema'
+import { eq, and, sql, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import type { ReservationStatus } from '@/lib/validations/reservation'
@@ -13,8 +13,15 @@ import {
   sendReminderPickupEmail,
   sendReminderReturnEmail,
   sendInstantAccessEmail,
+  sendPaymentRequestEmail,
+  sendDepositAuthorizationRequestEmail,
 } from '@/lib/email/send'
-import { sendAccessLinkSms, isSmsConfigured } from '@/lib/sms'
+import {
+  sendAccessLinkSms,
+  sendPaymentRequestSms,
+  sendDepositAuthorizationRequestSms,
+  isSmsConfigured,
+} from '@/lib/sms'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
 import {
@@ -43,7 +50,7 @@ async function getStoreForUser() {
   return getCurrentStore()
 }
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified'
+type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
 
 async function logReservationActivity(
   reservationId: string,
@@ -1305,6 +1312,7 @@ import {
   captureDeposit,
   releaseDeposit,
   getPaymentMethodDetails,
+  createPaymentRequestSession,
 } from '@/lib/stripe'
 
 type DepositActivityType = 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
@@ -1747,7 +1755,7 @@ export async function processStripeRefund(
     await logReservationActivity(
       reservationId,
       'payment_updated',
-      `Remboursement Stripe: ${data.amount.toFixed(2)}${currencySymbol}`,
+      undefined, // Details in metadata
       { paymentId, refundId: refund.refundId, amount: data.amount, type: data.type }
     )
 
@@ -2154,5 +2162,527 @@ export async function sendAccessLinkBySms(reservationId: string) {
   } catch (error) {
     console.error('Failed to send access link via SMS:', error)
     return { error: 'errors.smsSendFailed' }
+  }
+}
+
+// ============================================================================
+// Payment Request Functions
+// ============================================================================
+
+export interface RequestPaymentInput {
+  type: 'rental' | 'deposit' | 'custom'
+  amount?: number // Required for custom type
+  channels: { email: boolean; sms: boolean }
+  customMessage?: string
+}
+
+export async function requestPayment(
+  reservationId: string,
+  data: RequestPaymentInput
+): Promise<{
+  success?: boolean
+  error?: string
+  paymentUrl?: string
+}> {
+  try {
+    const store = await getStoreForUser()
+    if (!store) {
+      return { error: 'errors.unauthorized' }
+    }
+
+    // Check Stripe is configured
+    if (!store.stripeAccountId) {
+      return { error: 'errors.stripeNotConfigured' }
+    }
+
+    // Get reservation with customer and payments
+    const reservation = await db.query.reservations.findFirst({
+      where: and(
+        eq(reservations.id, reservationId),
+        eq(reservations.storeId, store.id)
+      ),
+      with: {
+        customer: true,
+        payments: true,
+      },
+    })
+
+    if (!reservation) {
+      return { error: 'errors.reservationNotFound' }
+    }
+
+    // Validate at least one channel is selected
+    if (!data.channels.email && !data.channels.sms) {
+      return { error: 'errors.noChannelSelected' }
+    }
+
+    // Validate SMS - customer must have phone number
+    if (data.channels.sms && !reservation.customer.phone) {
+      return { error: 'errors.customerNoPhone' }
+    }
+
+    const currency = store.settings?.currency || 'EUR'
+    const locale = getLocaleFromCountry(store.settings?.country)
+
+    // Calculate amount based on type
+    let amount: number
+    let description: string
+
+    if (data.type === 'custom') {
+      if (!data.amount || data.amount < 0.5) {
+        return { error: 'errors.invalidAmount' }
+      }
+      amount = data.amount
+      description = 'Payment'
+    } else if (data.type === 'rental') {
+      // Calculate remaining amount for rental from payments
+      const subtotalAmount = parseFloat(reservation.subtotalAmount || '0')
+      const paidAmount = reservation.payments
+        .filter((p) => p.type === 'rental' && p.status === 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      amount = subtotalAmount - paidAmount
+
+      if (amount < 0.5) {
+        return { error: 'errors.noAmountDue' }
+      }
+      description = 'Rental'
+    } else {
+      // deposit type
+      amount = parseFloat(reservation.depositAmount || '0')
+      if (amount < 0.5) {
+        return { error: 'errors.noDepositRequired' }
+      }
+      description = 'Deposit'
+    }
+
+    // Build URLs
+    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const protocol = domain.includes('localhost') ? 'http' : 'https'
+    const baseUrl = `${protocol}://${store.slug}.${domain}`
+
+    let paymentUrl: string
+
+    if (data.type === 'deposit') {
+      // For deposit, create URL to authorize-deposit page with access token
+      const token = nanoid(64)
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+      // Store token in verificationCodes table
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: reservation.customer.email,
+        storeId: store.id,
+        code: '', // Not used for instant_access
+        type: 'instant_access',
+        token,
+        reservationId,
+        expiresAt,
+        createdAt: new Date(),
+      })
+
+      paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`
+    } else {
+      // For rental/custom, create Stripe Checkout session
+      // Generate instant access token for auto-login after payment
+      const accessToken = nanoid(64)
+      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: reservation.customer.email,
+        storeId: store.id,
+        code: '',
+        type: 'instant_access',
+        token: accessToken,
+        reservationId,
+        expiresAt: tokenExpiresAt,
+        createdAt: new Date(),
+      })
+
+      // Success URL redirects to account with auto-login token
+      const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservationId}`
+      const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`
+
+      const session = await createPaymentRequestSession({
+        stripeAccountId: store.stripeAccountId!,
+        reservationId,
+        reservationNumber: reservation.number,
+        customerEmail: reservation.customer.email,
+        amount: toStripeCents(amount, currency),
+        description: `${description} - Reservation #${reservation.number}`,
+        currency,
+        successUrl,
+        cancelUrl,
+        locale,
+      })
+
+      paymentUrl = session.url
+    }
+
+    // Send notifications
+    const notificationResults: { email?: boolean; sms?: boolean } = {}
+
+    if (data.channels.email) {
+      try {
+        if (data.type === 'deposit') {
+          await sendDepositAuthorizationRequestEmail({
+            to: reservation.customer.email,
+            store: {
+              id: store.id,
+              name: store.name,
+              logoUrl: store.logoUrl,
+              email: store.email,
+              phone: store.phone,
+              address: store.address,
+              theme: store.theme,
+              settings: store.settings,
+            },
+            customer: {
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              email: reservation.customer.email,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            depositAmount: amount,
+            authorizationUrl: paymentUrl,
+            customMessage: data.customMessage,
+            locale,
+          })
+        } else {
+          await sendPaymentRequestEmail({
+            to: reservation.customer.email,
+            store: {
+              id: store.id,
+              name: store.name,
+              logoUrl: store.logoUrl,
+              email: store.email,
+              phone: store.phone,
+              address: store.address,
+              theme: store.theme,
+              settings: store.settings,
+            },
+            customer: {
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              email: reservation.customer.email,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            amount,
+            description,
+            paymentUrl,
+            customMessage: data.customMessage,
+            locale,
+          })
+        }
+        notificationResults.email = true
+      } catch (error) {
+        console.error('Failed to send payment request email:', error)
+        notificationResults.email = false
+      }
+    }
+
+    if (data.channels.sms && reservation.customer.phone) {
+      try {
+        if (data.type === 'deposit') {
+          await sendDepositAuthorizationRequestSms({
+            store: {
+              id: store.id,
+              name: store.name,
+              settings: store.settings,
+            },
+            customer: {
+              id: reservation.customer.id,
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              phone: reservation.customer.phone,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            depositAmount: amount,
+            authorizationUrl: paymentUrl,
+            currency,
+          })
+        } else {
+          await sendPaymentRequestSms({
+            store: {
+              id: store.id,
+              name: store.name,
+              settings: store.settings,
+            },
+            customer: {
+              id: reservation.customer.id,
+              firstName: reservation.customer.firstName,
+              lastName: reservation.customer.lastName,
+              phone: reservation.customer.phone,
+            },
+            reservation: {
+              id: reservationId,
+              number: reservation.number,
+            },
+            amount,
+            paymentUrl,
+            currency,
+          })
+        }
+        notificationResults.sms = true
+      } catch (error) {
+        console.error('Failed to send payment request SMS:', error)
+        notificationResults.sms = false
+      }
+    }
+
+    // Log activity
+    await logReservationActivity(
+      reservationId,
+      'payment_added',
+      undefined, // Description rendered from metadata in activity timeline
+      {
+        type: data.type,
+        amount,
+        currency,
+        channels: data.channels,
+        notificationResults,
+        paymentUrl,
+        isPaymentRequest: true,
+      }
+    )
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`)
+
+    return {
+      success: true,
+      paymentUrl,
+    }
+  } catch (error) {
+    console.error('Failed to request payment:', error)
+    return { error: 'errors.requestPaymentFailed' }
+  }
+}
+
+// ============================================================================
+// Unit Assignment Actions
+// ============================================================================
+
+/**
+ * Assign units to a reservation item.
+ * This replaces any existing assignments for the item.
+ */
+export async function assignUnitsToReservationItem(
+  reservationItemId: string,
+  unitIds: string[]
+): Promise<{ success?: boolean; error?: string }> {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  try {
+    // 1. Get the reservation item and verify store access
+    const [item] = await db
+      .select({
+        id: reservationItems.id,
+        productId: reservationItems.productId,
+        quantity: reservationItems.quantity,
+        reservationId: reservationItems.reservationId,
+      })
+      .from(reservationItems)
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .where(
+        and(
+          eq(reservationItems.id, reservationItemId),
+          eq(reservations.storeId, store.id)
+        )
+      )
+
+    if (!item) {
+      return { error: 'errors.notFound' }
+    }
+
+    // 2. Validate that we're not assigning more units than quantity
+    if (unitIds.length > item.quantity) {
+      return { error: 'errors.tooManyUnitsAssigned' }
+    }
+
+    // 3. Verify all units belong to the correct product
+    if (unitIds.length > 0) {
+      const units = await db
+        .select({
+          id: productUnits.id,
+          productId: productUnits.productId,
+          identifier: productUnits.identifier,
+        })
+        .from(productUnits)
+        .where(inArray(productUnits.id, unitIds))
+
+      // Check all units exist and belong to the right product
+      if (units.length !== unitIds.length) {
+        return { error: 'errors.invalidUnits' }
+      }
+
+      for (const unit of units) {
+        if (unit.productId !== item.productId) {
+          return { error: 'errors.unitProductMismatch' }
+        }
+      }
+
+      // 4. Delete existing assignments for this item
+      await db
+        .delete(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+      // 5. Insert new assignments with identifier snapshots
+      const unitMap = new Map(units.map((u) => [u.id, u.identifier]))
+      const assignmentsToInsert = unitIds.map((unitId) => ({
+        id: nanoid(),
+        reservationItemId,
+        productUnitId: unitId,
+        identifierSnapshot: unitMap.get(unitId) || '',
+      }))
+
+      await db.insert(reservationItemUnits).values(assignmentsToInsert)
+
+      // 6. Log activity
+      await logReservationActivity(
+        item.reservationId,
+        'modified',
+        undefined,
+        {
+          action: 'units_assigned',
+          reservationItemId,
+          unitIdentifiers: units.map((u) => u.identifier),
+        }
+      )
+    } else {
+      // Clear assignments if no units provided
+      await db
+        .delete(reservationItemUnits)
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+      await logReservationActivity(
+        item.reservationId,
+        'modified',
+        undefined,
+        {
+          action: 'units_unassigned',
+          reservationItemId,
+        }
+      )
+    }
+
+    revalidatePath(`/dashboard/reservations/${item.reservationId}`)
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to assign units:', error)
+    return { error: 'errors.assignUnitsFailed' }
+  }
+}
+
+/**
+ * Get available units for assignment to a reservation item.
+ */
+export async function getAvailableUnitsForReservationItem(
+  reservationItemId: string
+): Promise<{
+  units?: Array<{
+    id: string
+    identifier: string
+    notes: string | null
+  }>
+  assigned?: string[]
+  error?: string
+}> {
+  const store = await getStoreForUser()
+  if (!store) {
+    return { error: 'errors.unauthorized' }
+  }
+
+  try {
+    // 1. Get reservation item details and verify access
+    const [item] = await db
+      .select({
+        id: reservationItems.id,
+        productId: reservationItems.productId,
+        reservationId: reservationItems.reservationId,
+        startDate: reservations.startDate,
+        endDate: reservations.endDate,
+      })
+      .from(reservationItems)
+      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .where(
+        and(
+          eq(reservationItems.id, reservationItemId),
+          eq(reservations.storeId, store.id)
+        )
+      )
+
+    if (!item) {
+      return { error: 'errors.notFound' }
+    }
+
+    // Items without a productId (custom items) cannot have units
+    if (!item.productId) {
+      return { units: [], assigned: [] }
+    }
+
+    // 2. Get available units using the utility
+    const { getAvailableUnitsForProduct } = await import('@/lib/utils/unit-availability')
+    const availableUnits = await getAvailableUnitsForProduct(
+      item.productId,
+      item.startDate,
+      item.endDate,
+      item.reservationId // Exclude current reservation to allow re-assignment
+    )
+
+    // 3. Get currently assigned units for this item
+    const assignedUnits = await db
+      .select({
+        productUnitId: reservationItemUnits.productUnitId,
+      })
+      .from(reservationItemUnits)
+      .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+
+    // Include currently assigned units in the available list (they're already reserved for this item)
+    const assignedUnitIds = assignedUnits.map((a) => a.productUnitId)
+    const currentlyAssignedUnits = await db
+      .select({
+        id: productUnits.id,
+        identifier: productUnits.identifier,
+        notes: productUnits.notes,
+      })
+      .from(productUnits)
+      .where(
+        and(
+          inArray(productUnits.id, assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__']),
+          eq(productUnits.status, 'available')
+        )
+      )
+
+    // Merge available units with currently assigned (avoiding duplicates)
+    const availableUnitIds = new Set(availableUnits.map((u) => u.id))
+    const allUnits = [
+      ...availableUnits,
+      ...currentlyAssignedUnits.filter((u) => !availableUnitIds.has(u.id)),
+    ]
+
+    return {
+      units: allUnits.map((u) => ({
+        id: u.id,
+        identifier: u.identifier,
+        notes: u.notes,
+      })),
+      assigned: assignedUnitIds,
+    }
+  } catch (error) {
+    console.error('Failed to get available units:', error)
+    return { error: 'errors.getAvailableUnitsFailed' }
   }
 }

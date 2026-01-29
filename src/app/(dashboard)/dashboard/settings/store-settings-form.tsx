@@ -1,19 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
+import { ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { Slider } from '@/components/ui/slider'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AddressInput } from '@/components/ui/address-input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -56,6 +57,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { updateStoreSettings } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreSettings } from '@/types'
 import { getCountriesSortedByName, getTimezoneForCountry, getCountryFlag, getCountryName } from '@/lib/utils/countries'
 import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry, getCurrencyByCode, type CurrencyCode } from '@/lib/utils/currency'
@@ -83,6 +85,7 @@ const createStoreSettingsSchema = (t: (key: string, params?: Record<string, stri
   pricingMode: z.enum(['day', 'hour', 'week']),
   reservationMode: z.enum(['payment', 'request']),
   pendingBlocksAvailability: z.boolean(),
+  onlinePaymentDepositPercentage: z.number().int().min(10).max(100),
   minRentalHours: z.number().int().min(0),
   maxRentalHours: z.number().int().min(1).nullable(),
   advanceNotice: z.number().min(0),
@@ -163,6 +166,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
       pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
       pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
+      onlinePaymentDepositPercentage: settings.onlinePaymentDepositPercentage ?? 100,
       minRentalHours: getMinRentalHours(settings as StoreSettings),
       maxRentalHours: getMaxRentalHours(settings as StoreSettings),
       advanceNotice: settings.advanceNotice,
@@ -170,12 +174,18 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
     },
   })
 
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
+
   // Auto-update currency when country changes (only if user hasn't manually changed it)
   const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
     onChange(newCountry)
     // Automatically set the default currency for this country
     const newDefaultCurrency = getDefaultCurrencyForCountry(newCountry)
-    form.setValue('currency', newDefaultCurrency)
+    form.setValue('currency', newDefaultCurrency, { shouldDirty: true })
   }
 
   const onSubmit = (data: StoreSettingsInput) => {
@@ -664,6 +674,45 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                 />
               )}
 
+              {/* Online payment deposit percentage - only shown in payment mode */}
+              {form.watch('reservationMode') === 'payment' && (
+                <FormField
+                  control={form.control}
+                  name="onlinePaymentDepositPercentage"
+                  render={({ field }) => (
+                    <FormItem className="rounded-lg border p-4">
+                      <div className="flex flex-row items-center justify-between">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">
+                            {t('reservationSettings.depositPercentage')}
+                          </FormLabel>
+                          <FormDescription>
+                            {field.value === 100
+                              ? t('reservationSettings.depositPercentageFull')
+                              : t('reservationSettings.depositPercentagePartial', { percentage: field.value })}
+                          </FormDescription>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <FormControl>
+                            <Slider
+                              value={[field.value]}
+                              onValueChange={([value]) => field.onChange(value)}
+                              min={10}
+                              max={100}
+                              step={5}
+                              className="w-28"
+                            />
+                          </FormControl>
+                          <span className="w-12 text-right font-medium tabular-nums text-sm">
+                            {field.value}%
+                          </span>
+                        </div>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              )}
+
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -819,12 +868,11 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </CardContent>
           </Card>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={isPending}>
-              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {t('saveChanges')}
-            </Button>
-          </div>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isPending}
+            onReset={handleReset}
+          />
         </form>
       </Form>
 

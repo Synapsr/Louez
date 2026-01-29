@@ -5,6 +5,7 @@
   },
   "common": {
     "save": "Save",
+    "unsavedChanges": "Unsaved changes",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -212,6 +213,7 @@
       "noStoresFound": "No stores found",
       "yourStores": "Your stores",
       "createNewStore": "Create a new store",
+      "multiStoreView": "Multi-store view",
       "roles": {
         "owner": "Owner",
         "member": "Team member",
@@ -418,7 +420,47 @@
       "sms": "SMS",
       "subscription": "Subscription",
       "settings": "Settings",
-      "store": "My store"
+      "store": "My store",
+      "multiStore": "Multi-store"
+    },
+    "multiStore": {
+      "title": "Multi-store",
+      "description": "Overview of your {count, plural, one {# store} other {# stores}}",
+      "goToAStore": "Go to a store",
+      "stats": {
+        "totalRevenue": "Total revenue",
+        "reservations": "Reservations",
+        "pending": "pending",
+        "customers": "Customers",
+        "newCustomers": "new",
+        "vsPreviousPeriod": "vs previous period"
+      },
+      "chart": {
+        "title": "Revenue trend",
+        "description": "Revenue by store over the period"
+      },
+      "table": {
+        "title": "Your stores",
+        "store": "Store",
+        "plan": "Plan",
+        "revenue": "Revenue",
+        "change": "Change",
+        "reservations": "Reserv.",
+        "customers": "Customers",
+        "goToStore": "Go to"
+      },
+      "limits": {
+        "title": "Approaching limits",
+        "description": "{count, plural, one {# store is approaching} other {# stores are approaching}} its limits",
+        "products": "products",
+        "reservations": "reserv./month",
+        "customers": "customers",
+        "upgrade": "Upgrade"
+      },
+      "empty": {
+        "title": "No data yet",
+        "description": "Statistics will appear once your stores have reservations."
+      }
     },
     "home": {
       "viewAll": "View all",
@@ -660,6 +702,7 @@
         "statusArchived": "Archived",
         "statusArchivedDescription": "Removed from catalog",
         "save": "Save",
+        "unsavedChanges": "Unsaved changes",
         "createProduct": "Create product",
         "productCreated": "Product created",
         "productUpdated": "Product updated",
@@ -699,6 +742,40 @@
           "enforceStrictTiers": "Only offer these durations",
           "enforceStrictTiersDescription": "Customers will only be able to book for the exact durations defined by your tiers. Intermediate durations will not be available.",
           "enforceStrictTiersTooltip": "If a customer selects an intermediate duration, it will be automatically rounded up to the next tier. For example, with tiers at 3 and 7 days, a 5-day rental will be billed at the 7-day rate."
+        },
+        "unitTracking": {
+          "toggle": "Track individual units",
+          "toggleDescription": "Register each unit with a unique identifier to know exactly which one is rented out",
+          "title": "Identifiers",
+          "description": "Register each unit with a unique identifier",
+          "quantityLabel": "Available quantity",
+          "quantityManagedByTracking": "Managed by unit tracking",
+          "activeUnits": "{count, plural, one {# active unit} other {# active units}}",
+          "addUnit": "Add unit",
+          "addNotes": "Add notes",
+          "identifier": "Identifier",
+          "identifierPlaceholder": "e.g., BIKE-01, SN-2024-001",
+          "notes": "Notes",
+          "notesPlaceholder": "Optional notes about this unit (condition, color...)",
+          "statusAvailable": "Available",
+          "statusMaintenance": "Maintenance",
+          "statusRetired": "Retired",
+          "bulkAdd": "Bulk add",
+          "bulkPrefix": "Prefix",
+          "bulkPrefixPlaceholder": "e.g., BIKE-",
+          "bulkFrom": "From",
+          "bulkTo": "To",
+          "bulkGenerate": "Generate",
+          "bulkPreview": "Preview",
+          "deleteConfirm": "Delete this unit",
+          "deleteWarning": "This unit is currently assigned to an active reservation and cannot be removed.",
+          "disableConfirm": "Disable unit tracking?",
+          "disableDescription": "Individual unit tracking will be hidden. The quantity will be set to {count}. Your registered units will be preserved.",
+          "duplicateIdentifier": "One or more identifiers are duplicated",
+          "noUnitsRegistered": "No units registered",
+          "noUnitsHint": "Add individual units to track which ones are rented out",
+          "cancel": "Cancel",
+          "confirm": "Confirm"
         },
         "previewTitle": "Preview",
         "previewDescription": "Here's how your product will appear in the catalog",
@@ -1031,6 +1108,21 @@
         "showAll": "Show all ({count} events)",
         "showLess": "Show less"
       },
+      "unitAssignment": {
+        "title": "Unit assignment",
+        "assignUnits": "Assign units",
+        "assignedCount": "{assigned} of {total} assigned",
+        "allAssigned": "All units assigned",
+        "noneAssigned": "No units assigned",
+        "noUnitsAvailable": "No units available",
+        "selectUnit": "Select unit",
+        "unit": "Unit {number}",
+        "optional": "Assignment is optional",
+        "save": "Save",
+        "saved": "Units assigned",
+        "notes": "Notes",
+        "identifiers": "Identifiers: {identifiers}"
+      },
       "smartActions": {
         "paymentIncomplete": "Rental unpaid ({remaining} remaining)",
         "depositNotCollected": "Deposit not collected ({amount})",
@@ -1050,7 +1142,9 @@
         "notCollected": "Not collected",
         "toReturnToCustomer": "To return to customer",
         "returnQuestion": "Confirm that the equipment was returned in good condition?",
-        "confirmReturn": "Confirm return"
+        "confirmReturn": "Confirm return",
+        "skipInspectionPickup": "Skip and confirm pickup",
+        "skipInspectionReturn": "Skip and confirm return"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -1146,7 +1240,47 @@
         },
         "statusAuthorized": "Authorized",
         "statusRefunded": "Refunded",
-        "statusCancelled": "Cancelled"
+        "statusCancelled": "Cancelled",
+        "requestPayment": "Request payment"
+      },
+      "requestPaymentModal": {
+        "title": "Request payment",
+        "description": "Send a payment request to {name}",
+        "paymentType": "Payment type",
+        "types": {
+          "rental": {
+            "name": "Rental balance",
+            "description": "Request remaining rental payment"
+          },
+          "deposit": {
+            "name": "Deposit (card authorization)",
+            "description": "Request card authorization for deposit"
+          },
+          "custom": {
+            "name": "Custom amount",
+            "description": "Request a specific amount"
+          }
+        },
+        "customAmount": "Amount",
+        "minAmount": "Minimum amount: {amount}",
+        "sendVia": "Send via",
+        "email": "Email",
+        "sms": "SMS",
+        "noPhone": "no phone number",
+        "selectChannel": "Select at least one delivery channel",
+        "customMessage": "Custom message",
+        "customMessagePlaceholder": "Add a message for your customer...",
+        "amountToRequest": "Amount requested",
+        "send": "Send request",
+        "success": "Payment request sent",
+        "successTitle": "Request sent!",
+        "successDescription": "Customer will receive a payment link via {channel}",
+        "error": "Error sending request",
+        "paymentLink": "Payment link",
+        "linkCopied": "Link copied",
+        "copyFailed": "Failed to copy",
+        "stripeNotConfigured": "Stripe not configured",
+        "stripeNotConfiguredDescription": "Configure Stripe in settings to send online payment requests."
       },
       "onlinePayment": {
         "title": "Online Payment",
@@ -1620,6 +1754,11 @@
           "pastDue": "Past due",
           "cancelled": "Cancelled"
         },
+        "discount": {
+          "title": "Special offer active",
+          "permanent": "You have a permanent {percent}% discount on your subscription.",
+          "limited": "You have a {percent}% discount on your subscription for {months} months."
+        },
         "paymentStatus": {
           "pending": "Pending",
           "completed": "Paid",
@@ -1703,7 +1842,9 @@
           "description": "Get 50% off all plans. Price guaranteed for life for early subscribers.",
           "guaranteedForLife": "Price guaranteed for life",
           "endsOn": "Offer valid until March 1st, 2026"
-        }
+        },
+        "pricesExcludingTax": "Prices excl. VAT",
+        "excludingTax": "excl. VAT"
       },
       "team": "Team",
       "saveChanges": "Save changes",
@@ -1838,6 +1979,10 @@
         "modePaymentDescription": "Customers pay immediately",
         "pendingBlocksAvailability": "Block availability during pending request",
         "pendingBlocksAvailabilityDescription": "When enabled, a pending reservation request immediately blocks product availability. Disable to allow multiple requests for the same dates.",
+        "depositPercentage": "Deposit amount",
+        "depositPercentageDescription": "Percentage of total amount to collect at online booking",
+        "depositPercentageFull": "Full payment at booking",
+        "depositPercentagePartial": "{percentage}% at booking, remainder at pickup",
         "pricingMode": "Pricing unit",
         "pricingDay": "Per day",
         "pricingHour": "Per hour",
@@ -2268,6 +2413,286 @@
         "depositNoTaxInfo": "Deposits are not subject to VAT as they are returned to the customer.",
         "saved": "Tax settings saved"
       },
+      "delivery": {
+        "title": "Delivery",
+        "description": "Configure delivery options for your customers",
+        "enableSection": "Delivery service",
+        "enableSectionDescription": "Allow customers to have equipment delivered to their location",
+        "enabled": "Enable delivery",
+        "enabledDescription": "Customers can choose delivery instead of pickup",
+        "modeSection": "Delivery mode",
+        "modeOptional": "Customer's choice",
+        "modeOptionalDescription": "Customer chooses between store pickup or delivery",
+        "modeRequired": "Delivery required",
+        "modeRequiredDescription": "Delivery is mandatory, no pickup option",
+        "modeIncluded": "Delivery included",
+        "modeIncludedDescription": "Delivery is mandatory and free",
+        "noCoordinatesWarning": "You must set your store address with map location to enable delivery.",
+        "noCoordinatesError": "Please first configure your store address with GPS location.",
+        "goToStoreSettings": "Store settings",
+        "customerAddressNoteOptional": "When delivery is enabled, customers can choose between pickup and delivery.",
+        "customerAddressNoteRequired": "Customers must provide a delivery address.",
+        "pricingSection": "Pricing",
+        "pricePerKm": "Price per kilometer",
+        "pricePerKmDescription": "Amount charged per kilometer traveled",
+        "minimumFee": "Minimum fee",
+        "minimumFeeDescription": "Minimum amount charged regardless of distance",
+        "tripType": "Trip type",
+        "oneWay": "One way",
+        "oneWayDescription": "Price is calculated for delivery only",
+        "roundTrip": "Round trip",
+        "roundTripDescription": "Price includes delivery and pickup",
+        "exampleTitle": "Calculation example",
+        "example": "Delivery at {distance} km = {fee}",
+        "roundTripNote": "{distance} km x 2 = {total} km charged",
+        "optionalSection": "Optional settings",
+        "maximumDistance": "Maximum distance",
+        "maximumDistanceDescription": "Leave empty for no limit",
+        "freeDeliveryThreshold": "Free delivery from",
+        "freeDeliveryThresholdDescription": "Order amount above which delivery is free",
+        "saved": "Delivery settings saved",
+        "simulator": {
+          "title": "Price Simulator",
+          "description": "Test your settings to see the delivery cost",
+          "distance": "Customer distance",
+          "orderTotal": "Order amount",
+          "result": "Delivery fee",
+          "free": "Free",
+          "notAvailable": "Not available",
+          "tooFar": "Distance exceeds maximum ({max} km)",
+          "freeDeliveryApplied": "Free delivery applied",
+          "minimumApplied": "Minimum fee applied",
+          "freeAbove": "Free above {amount}",
+          "distanceLabel": "Distance",
+          "rateLabel": "Calculation",
+          "minimumLabel": "Minimum",
+          "testAddress": "Test an address",
+          "testAddressTitle": "Test an address",
+          "testAddressDescription": "Enter a customer address to calculate the actual distance",
+          "testAddressPlaceholder": "Search for an address..."
+        }
+      },
+      "inspection": {
+        "title": "Inventory Inspection",
+        "description": "Document equipment condition at pickup and return",
+        "nav": "Inspection",
+        "enableSection": "Inspection Feature",
+        "enableSectionDescription": "Document equipment condition with photos and signature",
+        "enabled": "Enable inspections",
+        "enabledDescription": "Create inspection reports at pickup and return",
+        "modeSection": "Inspection Mode",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Inspections can be skipped",
+        "modeRecommended": "Recommended",
+        "modeRecommendedDescription": "A reminder is shown but can be skipped",
+        "modeRequired": "Required",
+        "modeRequiredDescription": "Required to change reservation status",
+        "signatureSection": "Customer Signature",
+        "requireCustomerSignature": "Require signature",
+        "requireCustomerSignatureDescription": "Customer must sign the inspection report",
+        "autoGeneratePdf": "Auto-generate PDF",
+        "autoGeneratePdfDescription": "A PDF report is created after each inspection",
+        "maxPhotosPerItem": "Photos per equipment",
+        "maxPhotosPerItemDescription": "Maximum photos per inspected equipment",
+        "saved": "Inspection settings saved",
+        "types": {
+          "departure": "Departure",
+          "return": "Return"
+        },
+        "status": {
+          "draft": "In Progress",
+          "completed": "Completed",
+          "signed": "Signed",
+          "notStarted": "Not Done"
+        },
+        "condition": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "damaged": "Damaged"
+        },
+        "card": {
+          "title": "Inspection",
+          "departure": "Departure",
+          "return": "Return",
+          "notDone": "Not done",
+          "availableAtDeparture": "Available at departure",
+          "start": "Start",
+          "view": "View",
+          "compare": "Compare",
+          "photos": "{count, plural, one {# photo} other {# photos}}",
+          "items": "{count, plural, one {# item} other {# items}}",
+          "changesDetected": "{count, plural, one {# change} other {# changes}}",
+          "moreActions": "More actions",
+          "downloadPdf": "Download PDF"
+        },
+        "wizard": {
+          "title": "Inspection - {type}",
+          "titleDeparture": "Inspection - Departure",
+          "titleReturn": "Inspection - Return",
+          "step": "Step {current} of {total}",
+          "step_overview": "Overview",
+          "step_items": "Items",
+          "step_summary": "Summary",
+          "step_signature": "Signature",
+          "overview": "Overview",
+          "items": "Items",
+          "summary": "Summary",
+          "signature": "Signature",
+          "departureInspection": "Departure Inspection",
+          "returnInspection": "Return Inspection",
+          "reservation": "Reservation",
+          "itemsToInspect": "{count, plural, one {item to inspect} other {items to inspect}}",
+          "instructions": "Instructions",
+          "instruction1_departure": "Check the condition of each item before handing it to the customer",
+          "instruction1_return": "Check the condition of each item upon return",
+          "instruction2": "Take photos to document the current condition",
+          "instruction3": "Note any damage or abnormal wear",
+          "allItemsOk": "Everything is in order",
+          "allOk": "All OK",
+          "allOkDescription": "Mark all items as excellent condition",
+          "quantity": "Quantity",
+          "condition": "Condition",
+          "photos": "Photos",
+          "notes": "Notes",
+          "notesPlaceholder": "Add notes about the equipment condition...",
+          "damageDetected": "Damage detected",
+          "allGood": "Everything is in order",
+          "summaryItems": "{count, plural, one {# item inspected} other {# items inspected}}",
+          "itemsWithIssues": "Items with issues",
+          "globalNotes": "General notes",
+          "globalNotesPlaceholder": "Add general notes about the inspection...",
+          "signingAs": "Signing as {name}",
+          "signHere": "Sign here",
+          "clearSignature": "Clear",
+          "signatureConfirmation": "I confirm having checked the equipment condition and accept the terms",
+          "signatureComplete": "Signature validated",
+          "customerSignature": "Customer signature",
+          "signatureTitle": "Signature",
+          "signatureDescription": "The customer must sign to validate the inspection",
+          "back": "Back",
+          "continue": "Continue",
+          "next": "Next",
+          "previous": "Previous",
+          "complete": "Complete",
+          "saving": "Saving...",
+          "saved": "Inspection saved",
+          "inspectionComplete": "Inspection completed successfully",
+          "inspectionError": "Error saving inspection",
+          "photoInvalidType": "Unsupported image format",
+          "photoTooLarge": "Image too large (max 20 MB)",
+          "photoError": "Error processing image",
+          "addPhoto": "Add photo",
+          "takePhoto": "Take photo",
+          "photoPreview": "Photo preview",
+          "deletePhoto": "Delete photo",
+          "close": "Close"
+        },
+        "conditions": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "damaged": "Damaged",
+          "ok": "OK",
+          "wear": "Wear",
+          "damage": "Damage"
+        },
+        "item": {
+          "condition": "Condition",
+          "notes": "Notes",
+          "notesPlaceholder": "Add notes about the equipment condition...",
+          "photos": "Photos",
+          "addPhoto": "Add photo",
+          "takePhoto": "Take photo",
+          "removePhoto": "Remove",
+          "photoUploading": "Uploading...",
+          "photoError": "Upload error",
+          "maxPhotosReached": "Maximum photos reached"
+        },
+        "signature": {
+          "title": "Customer Signature",
+          "instruction": "Sign in the box below",
+          "clear": "Clear",
+          "confirm": "I confirm that I have verified the equipment condition",
+          "name": "Signatory name",
+          "skip": "Skip",
+          "skipDescription": "The inspection will be saved without signature",
+          "signedAt": "Signed on"
+        },
+        "summary": {
+          "totalItems": "Equipment",
+          "photos": "Photos",
+          "damageDetected": "Damage",
+          "noDamage": "No damage"
+        },
+        "sections": {
+          "inspectionDetails": "Inspection details",
+          "equipment": "Inspected equipment",
+          "notes": "Notes",
+          "signature": "Signature"
+        },
+        "parties": {
+          "customer": "Customer"
+        },
+        "period": {
+          "performedBy": "Performed by"
+        },
+        "comparison": {
+          "title": "Comparison",
+          "departure": "Departure",
+          "return": "Return",
+          "noChanges": "No changes detected",
+          "changes": "Changes detected",
+          "conditionChanged": "Condition changed",
+          "newDamage": "New damage",
+          "swipeHint": "Swipe to compare",
+          "noDepartureInspection": "No departure inspection",
+          "noReturnInspection": "No return inspection",
+          "noPhotos": "No photos"
+        },
+        "damage": {
+          "title": "Damage Detected",
+          "description": "Damage description",
+          "estimatedCost": "Estimated cost",
+          "captureDeposit": "Capture from deposit",
+          "createPayment": "Create payment"
+        },
+        "activity": {
+          "departureStarted": "Departure inspection started",
+          "departureCompleted": "Departure inspection completed",
+          "returnStarted": "Return inspection started",
+          "returnCompleted": "Return inspection completed",
+          "damageDetected": "Damage detected: {description}",
+          "signed": "Inspection signed by customer"
+        },
+        "prompt": {
+          "departureTitle": "Perform inspection?",
+          "departureDescription": "Document the equipment condition before handing it to the customer.",
+          "returnTitle": "Perform inspection?",
+          "returnDescription": "Check the equipment condition upon return.",
+          "yes": "Yes, start",
+          "skip": "Skip this step"
+        },
+        "templates": {
+          "title": "Inspection Templates",
+          "description": "Define checkpoints by category",
+          "default": "Default",
+          "bikes": "Bikes / Scooters",
+          "tools": "Power Tools",
+          "audio": "Audio / Video",
+          "generic": "Generic"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Departure Inspection",
+          "returnInspectionTitle": "Return Inspection",
+          "inspectionRequiredDescription": "An inspection is required before proceeding.",
+          "inspectionRecommendedDescription": "We recommend performing an inspection.",
+          "departureInspectionBenefit": "Document the equipment condition before handing it to the customer",
+          "returnInspectionBenefit": "Check the equipment condition and detect any damages",
+          "inspectionDuration": "About 2 minutes",
+          "startInspection": "Start Inspection"
+        }
+      },
       "payments": {
         "title": "Payments",
         "description": "Configure online payments for your store",
@@ -2451,7 +2876,14 @@
         "trialDays": "Trial days",
         "trialDaysDescription": "Number of free trial days when this store subscribes to a paid plan. Set to 0 for no trial (immediate payment).",
         "days": "days",
-        "saved": "Admin settings saved"
+        "saved": "Admin settings saved",
+        "discountSection": "Subscription discount",
+        "discountSectionDescription": "Configure a discount on this store's subscription.",
+        "discountPercent": "Discount percentage",
+        "discountPercentDescription": "The discount applied to the subscription price (0-100%).",
+        "discountDuration": "Duration",
+        "discountDurationDescription": "Number of months the discount applies. Set to 0 for a permanent discount.",
+        "months": "months"
       }
     }
   },
@@ -2777,9 +3209,30 @@
       "summary": "Your order",
       "steps": {
         "contact": "Contact",
+        "delivery": "Delivery",
         "address": "Address",
         "confirm": "Confirmation"
       },
+      "deliveryDescription": "Choose how to receive your equipment",
+      "deliveryRequiredDescription": "Delivery is required for this order",
+      "deliveryIncludedDescription": "Delivery is included with your order",
+      "deliveryRequiredBanner": "Delivery required",
+      "deliveryIncludedBanner": "Delivery included",
+      "deliveryRequiredNote": "This product requires delivery",
+      "deliveryIncludedNote": "Delivery fees are included in the price",
+      "included": "Included",
+      "pickupOption": "Store pickup",
+      "deliveryOption": "Home delivery",
+      "deliveryOptionDescription": "Starting at {pricePerKm}/km",
+      "freeDeliveryAbove": "Free delivery above {amount}",
+      "freeDeliveryApplied": "Free delivery applied!",
+      "deliveryAddress": "Delivery address",
+      "deliveryAddressPlaceholder": "Enter your delivery address...",
+      "deliveryDistance": "Distance",
+      "deliveryFee": "Delivery fee",
+      "free": "Free",
+      "deliveryTooFar": "Sorry, we don't deliver beyond {maxKm} km",
+      "roundTripNote": "{distance} km x 2 = {total} km (round trip)",
       "contactDescription": "We need this information to contact you",
       "addressDescription": "Optional - Enter your address if necessary",
       "confirmDescription": "Review your information before confirming",
@@ -2838,6 +3291,9 @@
         "savingsBanner": "You save {amount} with the long-term discount"
       },
       "depositInfo": "A security deposit of {amount} is required.",
+      "toPayNow": "To pay now",
+      "remainingAtPickup": "Remaining due at pickup: {amount}",
+      "payDeposit": "Pay deposit of {amount}",
       "depositLabel": "Deposit (authorization)",
       "depositAuthorizationInfo": "Your card will be saved. An authorization hold will be placed when you pick up. No amount will be charged if everything is returned in good condition.",
       "success": {
@@ -2881,7 +3337,53 @@
       "stepPayment3": "Return the equipment in good condition on the end date",
       "backToStore": "Back to home",
       "viewMyReservations": "View my rentals",
-      "viewReservation": "View my reservation"
+      "viewReservation": "View my reservation",
+      "deliveryLabel": "Delivery",
+      "pickupLabel": "Store pickup",
+      "deliveryFeeLabel": "Delivery fee",
+      "free": "Free"
+    },
+    "authorizeDeposit": {
+      "title": "Deposit authorization",
+      "subtitle": "Reservation #{number}",
+      "description": "The rental provider is requesting a deposit authorization of {amount}.",
+      "howItWorks": "How it works",
+      "step1": "Your card is verified and the amount is temporarily held",
+      "step2": "The amount is not charged to your account",
+      "step3": "At the end of the rental, the authorization is automatically cancelled",
+      "step4": "In case of damage, part or all may be charged",
+      "depositAmount": "Deposit amount",
+      "cardDetails": "Card details",
+      "authorizeButton": "Authorize {amount}",
+      "authorizing": "Authorizing...",
+      "securePayment": "Secure payment by Stripe",
+      "infoBox": "This amount will not be charged. It will be temporarily held on your card and released when you return the equipment in good condition.",
+      "processing": "Processing...",
+      "redirecting": "Redirecting...",
+      "paymentInitError": "Unable to initialize payment. Please try again later.",
+      "confirmationError": "Failed to confirm authorization",
+      "unexpectedStatus": "Unexpected payment status",
+      "unexpectedError": "An unexpected error occurred",
+      "success": {
+        "title": "Deposit authorized!",
+        "description": "The amount of {amount} has been temporarily held on your card.",
+        "whatHappensNext": "What happens next?",
+        "willBeReleased": "This amount will be automatically released at the end of your rental if the equipment is returned in good condition. No charge will be made unless there is damage.",
+        "viewReservations": "View my reservations",
+        "backToStore": "Back to store"
+      },
+      "errors": {
+        "notFound": "Reservation not found",
+        "alreadyAuthorized": "Deposit is already authorized",
+        "invalidToken": "Invalid or expired access link. Please request a new one.",
+        "stripeNotConfigured": "Online payments are not available for this store.",
+        "noDepositRequired": "No deposit is required for this reservation.",
+        "generic": "An error occurred. Please try again.",
+        "cardDeclined": "Card declined. Check your information or try another card.",
+        "insufficientFunds": "Insufficient funds. The amount could not be held.",
+        "invalidCard": "Invalid card. Please check the information entered."
+      },
+      "backToStore": "Back to store"
     },
     "account": {
       "title": "My account",
@@ -2971,7 +3473,9 @@
           "deposit": "Deposit",
           "deposit_return": "Deposit refund",
           "damage": "Damages",
-          "adjustment": "Adjustment"
+          "adjustment": "Adjustment",
+          "deposit_hold": "Authorization hold",
+          "deposit_capture": "Deposit captured"
         },
         "methods": {
           "stripe": "Online card",
@@ -2985,13 +3489,21 @@
           "completed": "Paid",
           "pending": "Pending",
           "failed": "Failed",
-          "refunded": "Refunded"
+          "refunded": "Refunded",
+          "cancelled": "Cancelled",
+          "authorized": "Authorized"
         }
       },
       "reviewPrompt": {
         "title": "How was your rental?",
         "description": "Your feedback helps {name} improve",
         "leaveReview": "Leave a Review"
+      },
+      "successToast": {
+        "payment": "Payment successful",
+        "paymentDescription": "Your payment has been recorded.",
+        "deposit": "Deposit authorized successfully",
+        "depositDescription": "The amount has been temporarily held on your card."
       }
     },
     "footer": {
@@ -3332,6 +3844,31 @@
       "retryPayment": "Retry payment",
       "contactSupport": "Need help? Contact us."
     },
+    "paymentRequest": {
+      "subject": "Payment requested for reservation #{number}",
+      "title": "Payment request",
+      "body": "{storeName} is requesting a payment of {amount} for your reservation #{number}.",
+      "paymentDetails": "Payment details",
+      "reservation": "Reservation",
+      "description": "Description",
+      "amountDue": "Amount due",
+      "payNow": "Pay {amount}",
+      "linkFallback": "Or copy this link into your browser:",
+      "securePayment": "This payment is secured by Stripe. Your payment information is never shared with the rental provider."
+    },
+    "depositAuthorizationRequest": {
+      "subject": "Deposit authorization for reservation #{number}",
+      "title": "Deposit authorization required",
+      "body": "{storeName} is requesting a deposit authorization of {amount} for your reservation #{number}.",
+      "howItWorks": "How it works",
+      "step1": "You authorize the deposit amount on your card",
+      "step2": "The amount is temporarily held (not charged)",
+      "step3": "At the end of the rental, the authorization is automatically released",
+      "step4": "In case of damage, part or all may be charged",
+      "authorizeNow": "Authorize deposit",
+      "linkFallback": "Or copy this link into your browser:",
+      "securePayment": "This authorization is secured by Stripe. The amount will not be charged immediately."
+    },
     "baseLayout": {
       "sentBy": "This email was sent by {storeName}",
       "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
@@ -3364,7 +3901,8 @@
       "designation": "Description",
       "qty": "Qty",
       "unitPrice": "Unit Price",
-      "total": "Total"
+      "total": "Total",
+      "unitIdentifiers": "Identifiers: {identifiers}"
     },
     "totals": {
       "subtotalHT": "Subtotal (excl. VAT)",
@@ -3535,6 +4073,11 @@
     "productUnavailable": "Product unavailable: {name}",
     "productNoLongerAvailable": "Product {name} is no longer available for these dates. Another reservation was made in the meantime.",
     "insufficientStock": "Insufficient stock for: {name} ({count} available)",
+    "tooManyUnitsAssigned": "Cannot assign more units than the reserved quantity",
+    "invalidUnits": "One or more selected units are invalid",
+    "unitProductMismatch": "Selected units do not belong to this product",
+    "assignUnitsFailed": "Failed to assign units",
+    "getAvailableUnitsFailed": "Failed to load available units",
     "createCustomerError": "Error creating customer",
     "updateCustomerError": "Error updating customer",
     "deleteCustomerError": "Error deleting customer",
@@ -3594,7 +4137,14 @@
     "customerNoPhone": "Customer has no phone number",
     "smsSendFailed": "Failed to send SMS",
     "minRentalDurationViolation": "The rental duration must be at least {hours} hours",
-    "maxRentalDurationViolation": "The rental duration cannot exceed {hours} hours"
+    "maxRentalDurationViolation": "The rental duration cannot exceed {hours} hours",
+    "deliveryNotEnabled": "Delivery is not enabled for this store",
+    "deliveryAddressRequired": "Please enter a valid delivery address",
+    "storeCoordinatesNotConfigured": "Store coordinates are not configured",
+    "deliveryTooFar": "The delivery address is too far (maximum {maxDistance} km)",
+    "deliveryRequired": "Delivery is required for this store",
+    "storeCoordinatesInvalid": "Store coordinates are invalid",
+    "deliveryAddressInvalid": "Delivery address is invalid"
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",

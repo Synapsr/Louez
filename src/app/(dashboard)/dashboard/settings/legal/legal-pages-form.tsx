@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { FileText, Sparkles, ExternalLink } from 'lucide-react'
@@ -11,6 +11,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { getCgvTemplate, getLegalNoticeTemplate } from '@/lib/legal-templates'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 
 interface Store {
   id: string
@@ -34,6 +35,19 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
   const [cgv, setCgv] = useState(store.cgv || '')
   const [legalNotice, setLegalNotice] = useState(store.legalNotice || '')
   const [activeTab, setActiveTab] = useState('cgv')
+
+  // Track initial values for dirty state detection
+  const initialCgv = useMemo(() => store.cgv || '', [store.cgv])
+  const initialLegalNotice = useMemo(() => store.legalNotice || '', [store.legalNotice])
+
+  const isDirty = useMemo(() => {
+    return cgv !== initialCgv || legalNotice !== initialLegalNotice
+  }, [cgv, legalNotice, initialCgv, initialLegalNotice])
+
+  const handleReset = useCallback(() => {
+    setCgv(initialCgv)
+    setLegalNotice(initialLegalNotice)
+  }, [initialCgv, initialLegalNotice])
 
   const handleUseTemplate = (type: 'cgv' | 'legal') => {
     if (type === 'cgv') {
@@ -194,15 +208,11 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
         </CardContent>
       </Card>
 
-      {/* Actions */}
-      <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={() => router.back()}>
-          {tCommon('cancel')}
-        </Button>
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? tCommon('loading') : tCommon('save')}
-        </Button>
-      </div>
+      <FloatingSaveBar
+        isDirty={isDirty}
+        isLoading={isLoading}
+        onReset={handleReset}
+      />
     </form>
   )
 }
