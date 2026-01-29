@@ -121,16 +121,16 @@ export function StoresTable({ stores, translations, limitsMap = {} }: StoresTabl
                 >
                   <td className="py-4">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9 ring-2 ring-border">
+                      <Avatar className="h-10 w-10 shrink-0 border-2 border-border">
                         <AvatarImage src={store.logoUrl || undefined} alt={store.storeName} />
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
+                        <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
                           {store.storeName.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{store.storeName}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-medium truncate">{store.storeName}</span>
                         {limitsMap[store.storeId] && (
-                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
                         )}
                       </div>
                     </div>
@@ -161,13 +161,13 @@ export function StoresTable({ stores, translations, limitsMap = {} }: StoresTabl
                   </td>
                   <td className="py-4 text-right">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       onClick={() => handleStoreClick(store.storeId)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="group/btn border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground"
                     >
                       {translations.goToStore}
-                      <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                      <ExternalLink className="ml-1.5 h-3.5 w-3.5 transition-transform group-hover/btn:translate-x-0.5" />
                     </Button>
                   </td>
                 </tr>

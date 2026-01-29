@@ -240,18 +240,15 @@ export default async function MultiStorePage({ searchParams }: MultiStorePagePro
         <PlanLimitsSection storeIds={storeIds} />
       </Suspense>
 
-      {/* Two column layout for table and chart */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Stores Table */}
-        <Suspense fallback={<TableSkeleton />}>
-          <StoresTableSection storeIds={storeIds} period={period} />
-        </Suspense>
+      {/* Stores Table */}
+      <Suspense fallback={<TableSkeleton />}>
+        <StoresTableSection storeIds={storeIds} period={period} />
+      </Suspense>
 
-        {/* Revenue Chart */}
-        <Suspense fallback={<ChartSkeleton />}>
-          <RevenueChartSection storeIds={storeIds} period={period} />
-        </Suspense>
-      </div>
+      {/* Revenue Chart */}
+      <Suspense fallback={<ChartSkeleton />}>
+        <RevenueChartSection storeIds={storeIds} period={period} />
+      </Suspense>
     </div>
   )
 }
