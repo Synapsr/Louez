@@ -21,6 +21,84 @@ Louez is production-ready with core rental management features:
 
 ## Planned Features
 
+### ⏰ Late Return Detection
+
+**Status**: 📋 Planned
+
+Automatically detect and handle overdue rentals.
+
+| Feature | Description |
+|---------|-------------|
+| **Auto-detection** | Automatic alerts when a rental exceeds its return date |
+| **Dashboard widget** | "Overdue returns" counter visible on home dashboard |
+| **Multi-channel alerts** | Notify store owner via email, SMS, or Discord |
+| **Customer reminders** | Optional automatic reminder to customer |
+| **Late fees** | Ability to charge additional fees for late returns |
+| **Grace period** | Configure a tolerance period before triggering alerts |
+
+> Useful for: Protecting your inventory, reducing losses, maintaining rental schedule integrity.
+
+---
+
+### 🎟️ Promo Codes
+
+**Status**: 📋 Planned
+
+Attract and reward customers with discount codes.
+
+| Feature | Description |
+|---------|-------------|
+| **Discount types** | Percentage off, fixed amount, or free delivery |
+| **Usage limits** | Set maximum uses per code or per customer |
+| **Validity period** | Start and end dates for promotions |
+| **Minimum order** | Require minimum cart value to apply |
+| **Product restrictions** | Limit codes to specific products or categories |
+| **Tracking** | See which codes are used and by whom |
+| **Checkout integration** | Easy code entry field during checkout |
+
+> Useful for: Seasonal promotions, loyalty rewards, marketing campaigns, first-time customer incentives.
+
+---
+
+### 📝 Quotes System
+
+**Status**: 📋 Planned
+
+Create professional quotes for B2B and large orders.
+
+| Feature | Description |
+|---------|-------------|
+| **Quote creation** | Generate quotes from dashboard with selected products |
+| **PDF export** | Professional quote document with your branding |
+| **Validity period** | Set expiration date for quotes (7, 15, 30 days) |
+| **Convert to reservation** | One-click conversion from accepted quote |
+| **Quote status** | Track draft, sent, accepted, expired, declined |
+| **Customer portal** | Customers can view and accept quotes online |
+| **Price negotiation** | Adjust prices specifically for the quote |
+
+> Useful for: B2B customers, event rentals, large orders, corporate clients who need approval workflows.
+
+---
+
+### 🔄 Flexible Pricing Modes
+
+**Status**: 📋 Planned
+
+Offer multiple pricing options on the same product.
+
+| Feature | Description |
+|---------|-------------|
+| **Multi-mode pricing** | Set both hourly AND daily rates on the same product |
+| **Customer choice** | Let customers choose their preferred billing unit |
+| **Smart suggestions** | Recommend the best option based on rental duration |
+| **Automatic switching** | Auto-switch to daily rate when hourly exceeds daily |
+| **Per-product config** | Enable multi-mode on specific products only |
+| **Clear display** | Show all available rates on product page |
+
+> Useful for: Equipment that can be rented for a few hours (events, photo shoots) or multiple days (projects, vacations). Maximizes flexibility without creating duplicate products.
+
+---
+
 ### 🌍 Languages
 
 **Status**: ✅ Available
@@ -307,7 +385,7 @@ Have an idea that's not on this list?
 
 *This roadmap is a living document. Priorities may shift based on community feedback.*
 
-**Last updated**: January 18, 2026
+**Last updated**: January 29, 2026
 
 📋 **See what's already shipped in our [Changelog](CHANGELOG.md)**
 
