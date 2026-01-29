@@ -1753,6 +1753,11 @@
           "pastDue": "Przeterminowana",
           "cancelled": "Anulowana"
         },
+        "discount": {
+          "title": "Oferta specjalna aktywna",
+          "permanent": "Masz stałą zniżkę {percent}% na subskrypcję.",
+          "limited": "Masz zniżkę {percent}% na subskrypcję przez {months} miesięcy."
+        },
         "paymentStatus": {
           "pending": "Oczekująca",
           "completed": "Opłacona",
@@ -2466,6 +2471,227 @@
           "testAddressPlaceholder": "Szukaj adresu..."
         }
       },
+      "inspection": {
+        "title": "Protokół zdawczo-odbiorczy",
+        "description": "Dokumentuj stan sprzętu przy odbiorze i zwrocie",
+        "nav": "Protokół zdawczo-odbiorczy",
+        "enableSection": "Funkcja protokołu",
+        "enableSectionDescription": "Dokumentuj stan sprzętu ze zdjęciami i podpisem",
+        "enabled": "Włącz protokoły",
+        "enabledDescription": "Twórz raporty inspekcji przy odbiorze i zwrocie",
+        "modeSection": "Tryb inspekcji",
+        "modeOptional": "Opcjonalny",
+        "modeOptionalDescription": "Protokół można pominąć",
+        "modeRecommended": "Zalecany",
+        "modeRecommendedDescription": "Wyświetlane jest przypomnienie, ale można je pominąć",
+        "modeRequired": "Wymagany",
+        "modeRequiredDescription": "Wymagany do zmiany statusu rezerwacji",
+        "signatureSection": "Podpis klienta",
+        "requireCustomerSignature": "Wymagaj podpisu",
+        "requireCustomerSignatureDescription": "Klient musi podpisać protokół",
+        "autoGeneratePdf": "Automatycznie generuj PDF",
+        "autoGeneratePdfDescription": "Raport PDF jest tworzony po każdej inspekcji",
+        "maxPhotosPerItem": "Zdjęcia na sprzęt",
+        "maxPhotosPerItemDescription": "Maksymalna liczba zdjęć na sprawdzany sprzęt",
+        "saved": "Ustawienia inspekcji zapisane",
+        "types": {
+          "departure": "Wydanie",
+          "return": "Zwrot"
+        },
+        "status": {
+          "draft": "W trakcie",
+          "completed": "Ukończony",
+          "signed": "Podpisany",
+          "notStarted": "Nie wykonany"
+        },
+        "condition": {
+          "excellent": "Doskonały",
+          "good": "Dobry",
+          "fair": "Akceptowalny",
+          "damaged": "Uszkodzony"
+        },
+        "card": {
+          "title": "Protokół zdawczo-odbiorczy",
+          "departure": "Wydanie",
+          "return": "Zwrot",
+          "notDone": "Nie wykonany",
+          "availableAtDeparture": "Dostępny przy wydaniu",
+          "start": "Rozpocznij",
+          "view": "Zobacz",
+          "compare": "Porównaj",
+          "photos": "{count, plural, one {# zdjęcie} few {# zdjęcia} other {# zdjęć}}",
+          "items": "{count, plural, one {# przedmiot} few {# przedmioty} other {# przedmiotów}}",
+          "changesDetected": "{count, plural, one {# zmiana} few {# zmiany} other {# zmian}}",
+          "moreActions": "Więcej działań",
+          "downloadPdf": "Pobierz PDF"
+        },
+        "wizard": {
+          "title": "Protokół - {type}",
+          "titleDeparture": "Protokół - Wydanie",
+          "titleReturn": "Protokół - Zwrot",
+          "step": "Krok {current} z {total}",
+          "step_overview": "Przegląd",
+          "step_items": "Przedmioty",
+          "step_summary": "Podsumowanie",
+          "step_signature": "Podpis",
+          "overview": "Przegląd",
+          "items": "Przedmioty",
+          "summary": "Podsumowanie",
+          "signature": "Podpis",
+          "departureInspection": "Protokół - Wydanie",
+          "returnInspection": "Protokół - Zwrot",
+          "reservation": "Rezerwacja",
+          "itemsToInspect": "{count, plural, one {przedmiot do sprawdzenia} few {przedmioty do sprawdzenia} other {przedmiotów do sprawdzenia}}",
+          "instructions": "Instrukcje",
+          "instruction1_departure": "Sprawdź stan każdego przedmiotu przed przekazaniem klientowi",
+          "instruction1_return": "Sprawdź stan każdego przedmiotu przy zwrocie",
+          "instruction2": "Zrób zdjęcia dokumentujące aktualny stan",
+          "instruction3": "Zanotuj wszelkie uszkodzenia lub nietypowe zużycie",
+          "allItemsOk": "Wszystko w porządku",
+          "allOk": "Wszystko OK",
+          "allOkDescription": "Oznacz wszystkie przedmioty jako w doskonałym stanie",
+          "quantity": "Ilość",
+          "condition": "Stan",
+          "photos": "Zdjęcia",
+          "notes": "Uwagi",
+          "notesPlaceholder": "Dodaj uwagi o stanie sprzętu...",
+          "damageDetected": "Wykryto uszkodzenie",
+          "allGood": "Wszystko w porządku",
+          "summaryItems": "{count, plural, one {# przedmiot sprawdzony} few {# przedmioty sprawdzone} other {# przedmiotów sprawdzonych}}",
+          "itemsWithIssues": "Przedmioty z uwagami",
+          "globalNotes": "Ogólne uwagi",
+          "globalNotesPlaceholder": "Dodaj ogólne uwagi o inspekcji...",
+          "signingAs": "Podpis {name}",
+          "signHere": "Podpisz tutaj",
+          "clearSignature": "Wyczyść",
+          "signatureConfirmation": "Potwierdzam, że sprawdziłem stan sprzętu i akceptuję warunki",
+          "signatureComplete": "Podpis zweryfikowany",
+          "customerSignature": "Podpis klienta",
+          "signatureTitle": "Podpis",
+          "signatureDescription": "Klient musi podpisać, aby zatwierdzić protokół",
+          "back": "Wstecz",
+          "continue": "Kontynuuj",
+          "next": "Dalej",
+          "previous": "Poprzedni",
+          "complete": "Zakończ",
+          "saving": "Zapisywanie...",
+          "saved": "Protokół zapisany",
+          "inspectionComplete": "Protokół zakończony pomyślnie",
+          "inspectionError": "Błąd podczas zapisywania",
+          "photoInvalidType": "Nieobsługiwany format obrazu",
+          "photoTooLarge": "Obraz zbyt duży (maks. 20 MB)",
+          "photoError": "Błąd podczas przetwarzania obrazu",
+          "addPhoto": "Dodaj zdjęcie",
+          "takePhoto": "Zrób zdjęcie",
+          "photoPreview": "Podgląd zdjęcia",
+          "deletePhoto": "Usuń zdjęcie",
+          "close": "Zamknij"
+        },
+        "conditions": {
+          "excellent": "Doskonały",
+          "good": "Dobry",
+          "fair": "Akceptowalny",
+          "damaged": "Uszkodzony",
+          "ok": "OK",
+          "wear": "Zużycie",
+          "damage": "Uszkodzenie"
+        },
+        "item": {
+          "condition": "Stan",
+          "notes": "Uwagi",
+          "notesPlaceholder": "Dodaj uwagi o stanie sprzętu...",
+          "photos": "Zdjęcia",
+          "addPhoto": "Dodaj zdjęcie",
+          "takePhoto": "Zrób zdjęcie",
+          "removePhoto": "Usuń",
+          "photoUploading": "Przesyłanie...",
+          "photoError": "Błąd przesyłania",
+          "maxPhotosReached": "Osiągnięto maksymalną liczbę zdjęć"
+        },
+        "signature": {
+          "title": "Podpis klienta",
+          "instruction": "Podpisz w polu poniżej",
+          "clear": "Wyczyść",
+          "confirm": "Potwierdzam sprawdzenie stanu sprzętu",
+          "name": "Imię i nazwisko podpisującego",
+          "skip": "Pomiń",
+          "skipDescription": "Protokół zostanie zapisany bez podpisu",
+          "signedAt": "Podpisano"
+        },
+        "summary": {
+          "totalItems": "Sprzęt",
+          "photos": "Zdjęcia",
+          "damageDetected": "Uszkodzenie",
+          "noDamage": "Brak uszkodzeń"
+        },
+        "sections": {
+          "inspectionDetails": "Szczegóły inspekcji",
+          "equipment": "Sprawdzony sprzęt",
+          "notes": "Uwagi",
+          "signature": "Podpis"
+        },
+        "parties": {
+          "customer": "Klient"
+        },
+        "period": {
+          "performedBy": "Wykonane przez"
+        },
+        "comparison": {
+          "title": "Porównanie",
+          "departure": "Wydanie",
+          "return": "Zwrot",
+          "noChanges": "Nie wykryto zmian",
+          "changes": "Wykryto zmiany",
+          "conditionChanged": "Stan zmieniony",
+          "newDamage": "Nowe uszkodzenie",
+          "swipeHint": "Przesuń, aby porównać",
+          "noDepartureInspection": "Brak protokołu wydania",
+          "noReturnInspection": "Brak protokołu zwrotu",
+          "noPhotos": "Brak zdjęć"
+        },
+        "damage": {
+          "title": "Wykryto uszkodzenie",
+          "description": "Opis uszkodzenia",
+          "estimatedCost": "Szacowany koszt",
+          "captureDeposit": "Potrącić z kaucji",
+          "createPayment": "Utwórz płatność"
+        },
+        "activity": {
+          "departureStarted": "Protokół wydania rozpoczęty",
+          "departureCompleted": "Protokół wydania zakończony",
+          "returnStarted": "Protokół zwrotu rozpoczęty",
+          "returnCompleted": "Protokół zwrotu zakończony",
+          "damageDetected": "Wykryto uszkodzenie: {description}",
+          "signed": "Protokół podpisany przez klienta"
+        },
+        "prompt": {
+          "departureTitle": "Wykonać protokół?",
+          "departureDescription": "Udokumentuj stan sprzętu przed przekazaniem klientowi.",
+          "returnTitle": "Wykonać protokół?",
+          "returnDescription": "Sprawdź stan sprzętu przy zwrocie.",
+          "yes": "Tak, rozpocznij",
+          "skip": "Pomiń ten krok"
+        },
+        "templates": {
+          "title": "Szablony inspekcji",
+          "description": "Zdefiniuj punkty kontrolne według kategorii",
+          "default": "Domyślny",
+          "bikes": "Rowery / Hulajnogi",
+          "tools": "Elektronarzędzia",
+          "audio": "Audio / Wideo",
+          "generic": "Ogólny"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Protokół wydania",
+          "returnInspectionTitle": "Protokół zwrotu",
+          "inspectionRequiredDescription": "Protokół jest wymagany przed kontynuowaniem.",
+          "inspectionRecommendedDescription": "Zalecamy wykonanie protokołu zdawczo-odbiorczego.",
+          "departureInspectionBenefit": "Udokumentuj stan sprzętu przed przekazaniem klientowi",
+          "returnInspectionBenefit": "Sprawdź stan sprzętu i wykryj ewentualne uszkodzenia",
+          "inspectionDuration": "Około 2 minuty",
+          "startInspection": "Rozpocznij protokół"
+        }
+      },
       "payments": {
         "title": "Płatności",
         "description": "Skonfiguruj płatności online dla swojego sklepu",
@@ -2649,7 +2875,14 @@
         "trialDays": "Dni próbne",
         "trialDaysDescription": "Liczba bezpłatnych dni próbnych, gdy ten sklep wykupi płatny plan. Ustaw 0, aby nie oferować okresu próbnego (natychmiastowa płatność).",
         "days": "dni",
-        "saved": "Ustawienia admina zapisane"
+        "saved": "Ustawienia admina zapisane",
+        "discountSection": "Zniżka na subskrypcję",
+        "discountSectionDescription": "Skonfiguruj zniżkę na subskrypcję tego sklepu.",
+        "discountPercent": "Procent zniżki",
+        "discountPercentDescription": "Zniżka stosowana do ceny subskrypcji (0-100%).",
+        "discountDuration": "Czas trwania",
+        "discountDurationDescription": "Liczba miesięcy, przez które obowiązuje zniżka. Ustaw 0 dla zniżki stałej.",
+        "months": "miesiące"
       }
     }
   },

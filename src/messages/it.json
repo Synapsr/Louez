@@ -1753,6 +1753,11 @@
           "pastDue": "Scaduto",
           "cancelled": "Annullato"
         },
+        "discount": {
+          "title": "Offerta speciale attiva",
+          "permanent": "Hai uno sconto permanente del {percent}% sul tuo abbonamento.",
+          "limited": "Hai uno sconto del {percent}% sul tuo abbonamento per {months} mesi."
+        },
         "paymentStatus": {
           "pending": "In attesa",
           "completed": "Pagato",
@@ -2466,6 +2471,227 @@
           "testAddressPlaceholder": "Cerca un indirizzo..."
         }
       },
+      "inspection": {
+        "title": "Verbale di consegna",
+        "description": "Documenta lo stato dell'attrezzatura al ritiro e alla riconsegna",
+        "nav": "Verbale di consegna",
+        "enableSection": "Funzione verbale di consegna",
+        "enableSectionDescription": "Documenta lo stato dell'attrezzatura con foto e firma",
+        "enabled": "Attiva verbali di consegna",
+        "enabledDescription": "Crea rapporti di ispezione al ritiro e alla riconsegna",
+        "modeSection": "Modalità ispezione",
+        "modeOptional": "Opzionale",
+        "modeOptionalDescription": "Il verbale può essere saltato",
+        "modeRecommended": "Consigliato",
+        "modeRecommendedDescription": "Viene mostrato un promemoria ma può essere saltato",
+        "modeRequired": "Obbligatorio",
+        "modeRequiredDescription": "Richiesto per cambiare lo stato della prenotazione",
+        "signatureSection": "Firma del cliente",
+        "requireCustomerSignature": "Richiedi firma",
+        "requireCustomerSignatureDescription": "Il cliente deve firmare il verbale",
+        "autoGeneratePdf": "Genera PDF automaticamente",
+        "autoGeneratePdfDescription": "Viene creato un rapporto PDF dopo ogni ispezione",
+        "maxPhotosPerItem": "Foto per attrezzatura",
+        "maxPhotosPerItemDescription": "Numero massimo di foto per attrezzatura ispezionata",
+        "saved": "Impostazioni ispezione salvate",
+        "types": {
+          "departure": "Ritiro",
+          "return": "Riconsegna"
+        },
+        "status": {
+          "draft": "In corso",
+          "completed": "Completato",
+          "signed": "Firmato",
+          "notStarted": "Non effettuato"
+        },
+        "condition": {
+          "excellent": "Eccellente",
+          "good": "Buono",
+          "fair": "Accettabile",
+          "damaged": "Danneggiato"
+        },
+        "card": {
+          "title": "Verbale di consegna",
+          "departure": "Ritiro",
+          "return": "Riconsegna",
+          "notDone": "Non effettuato",
+          "availableAtDeparture": "Disponibile al ritiro",
+          "start": "Inizia",
+          "view": "Visualizza",
+          "compare": "Confronta",
+          "photos": "{count, plural, one {# foto} other {# foto}}",
+          "items": "{count, plural, one {# articolo} other {# articoli}}",
+          "changesDetected": "{count, plural, one {# modifica} other {# modifiche}}",
+          "moreActions": "Altre azioni",
+          "downloadPdf": "Scarica PDF"
+        },
+        "wizard": {
+          "title": "Verbale di consegna - {type}",
+          "titleDeparture": "Verbale di consegna - Ritiro",
+          "titleReturn": "Verbale di consegna - Riconsegna",
+          "step": "Passo {current} di {total}",
+          "step_overview": "Panoramica",
+          "step_items": "Articoli",
+          "step_summary": "Riepilogo",
+          "step_signature": "Firma",
+          "overview": "Panoramica",
+          "items": "Articoli",
+          "summary": "Riepilogo",
+          "signature": "Firma",
+          "departureInspection": "Verbale di consegna - Ritiro",
+          "returnInspection": "Verbale di consegna - Riconsegna",
+          "reservation": "Prenotazione",
+          "itemsToInspect": "{count, plural, one {articolo da ispezionare} other {articoli da ispezionare}}",
+          "instructions": "Istruzioni",
+          "instruction1_departure": "Verifica lo stato di ogni articolo prima di consegnarlo al cliente",
+          "instruction1_return": "Verifica lo stato di ogni articolo alla riconsegna",
+          "instruction2": "Scatta foto per documentare lo stato attuale",
+          "instruction3": "Annota eventuali danni o usura anomala",
+          "allItemsOk": "Tutto in ordine",
+          "allOk": "Tutto OK",
+          "allOkDescription": "Segna tutti gli articoli in condizioni eccellenti",
+          "quantity": "Quantità",
+          "condition": "Stato",
+          "photos": "Foto",
+          "notes": "Note",
+          "notesPlaceholder": "Aggiungi note sullo stato dell'attrezzatura...",
+          "damageDetected": "Danno rilevato",
+          "allGood": "Tutto in ordine",
+          "summaryItems": "{count, plural, one {# articolo ispezionato} other {# articoli ispezionati}}",
+          "itemsWithIssues": "Articoli con osservazioni",
+          "globalNotes": "Note generali",
+          "globalNotesPlaceholder": "Aggiungi note generali sull'ispezione...",
+          "signingAs": "Firma di {name}",
+          "signHere": "Firma qui",
+          "clearSignature": "Cancella",
+          "signatureConfirmation": "Confermo di aver verificato lo stato dell'attrezzatura e accetto le condizioni",
+          "signatureComplete": "Firma convalidata",
+          "customerSignature": "Firma del cliente",
+          "signatureTitle": "Firma",
+          "signatureDescription": "Il cliente deve firmare per convalidare il verbale",
+          "back": "Indietro",
+          "continue": "Continua",
+          "next": "Avanti",
+          "previous": "Precedente",
+          "complete": "Completa",
+          "saving": "Salvataggio...",
+          "saved": "Verbale salvato",
+          "inspectionComplete": "Verbale completato con successo",
+          "inspectionError": "Errore durante il salvataggio",
+          "photoInvalidType": "Formato immagine non supportato",
+          "photoTooLarge": "Immagine troppo grande (max 20 MB)",
+          "photoError": "Errore durante l'elaborazione dell'immagine",
+          "addPhoto": "Aggiungi foto",
+          "takePhoto": "Scatta foto",
+          "photoPreview": "Anteprima foto",
+          "deletePhoto": "Elimina foto",
+          "close": "Chiudi"
+        },
+        "conditions": {
+          "excellent": "Eccellente",
+          "good": "Buono",
+          "fair": "Accettabile",
+          "damaged": "Danneggiato",
+          "ok": "OK",
+          "wear": "Usura",
+          "damage": "Danno"
+        },
+        "item": {
+          "condition": "Stato",
+          "notes": "Note",
+          "notesPlaceholder": "Aggiungi note sullo stato dell'attrezzatura...",
+          "photos": "Foto",
+          "addPhoto": "Aggiungi foto",
+          "takePhoto": "Scatta foto",
+          "removePhoto": "Rimuovi",
+          "photoUploading": "Caricamento...",
+          "photoError": "Errore di caricamento",
+          "maxPhotosReached": "Numero massimo di foto raggiunto"
+        },
+        "signature": {
+          "title": "Firma del cliente",
+          "instruction": "Firma nel riquadro sottostante",
+          "clear": "Cancella",
+          "confirm": "Confermo di aver verificato lo stato dell'attrezzatura",
+          "name": "Nome del firmatario",
+          "skip": "Salta",
+          "skipDescription": "Il verbale verrà salvato senza firma",
+          "signedAt": "Firmato il"
+        },
+        "summary": {
+          "totalItems": "Attrezzatura",
+          "photos": "Foto",
+          "damageDetected": "Danno",
+          "noDamage": "Nessun danno"
+        },
+        "sections": {
+          "inspectionDetails": "Dettagli ispezione",
+          "equipment": "Attrezzatura ispezionata",
+          "notes": "Note",
+          "signature": "Firma"
+        },
+        "parties": {
+          "customer": "Cliente"
+        },
+        "period": {
+          "performedBy": "Eseguito da"
+        },
+        "comparison": {
+          "title": "Confronto",
+          "departure": "Ritiro",
+          "return": "Riconsegna",
+          "noChanges": "Nessuna modifica rilevata",
+          "changes": "Modifiche rilevate",
+          "conditionChanged": "Stato modificato",
+          "newDamage": "Nuovo danno",
+          "swipeHint": "Scorri per confrontare",
+          "noDepartureInspection": "Nessun verbale di ritiro",
+          "noReturnInspection": "Nessun verbale di riconsegna",
+          "noPhotos": "Nessuna foto"
+        },
+        "damage": {
+          "title": "Danno rilevato",
+          "description": "Descrizione del danno",
+          "estimatedCost": "Costo stimato",
+          "captureDeposit": "Trattenere dal deposito",
+          "createPayment": "Crea pagamento"
+        },
+        "activity": {
+          "departureStarted": "Verbale di ritiro iniziato",
+          "departureCompleted": "Verbale di ritiro completato",
+          "returnStarted": "Verbale di riconsegna iniziato",
+          "returnCompleted": "Verbale di riconsegna completato",
+          "damageDetected": "Danno rilevato: {description}",
+          "signed": "Verbale firmato dal cliente"
+        },
+        "prompt": {
+          "departureTitle": "Effettuare il verbale?",
+          "departureDescription": "Documenta lo stato dell'attrezzatura prima di consegnarla al cliente.",
+          "returnTitle": "Effettuare il verbale?",
+          "returnDescription": "Verifica lo stato dell'attrezzatura alla riconsegna.",
+          "yes": "Sì, inizia",
+          "skip": "Salta questo passaggio"
+        },
+        "templates": {
+          "title": "Modelli di ispezione",
+          "description": "Definisci punti di controllo per categoria",
+          "default": "Predefinito",
+          "bikes": "Biciclette / Monopattini",
+          "tools": "Utensili elettrici",
+          "audio": "Audio / Video",
+          "generic": "Generico"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Verbale di ritiro",
+          "returnInspectionTitle": "Verbale di riconsegna",
+          "inspectionRequiredDescription": "È richiesto un verbale prima di procedere.",
+          "inspectionRecommendedDescription": "Ti consigliamo di effettuare un verbale di consegna.",
+          "departureInspectionBenefit": "Documenta lo stato dell'attrezzatura prima di consegnarla al cliente",
+          "returnInspectionBenefit": "Verifica lo stato dell'attrezzatura e rileva eventuali danni",
+          "inspectionDuration": "Circa 2 minuti",
+          "startInspection": "Inizia verbale di consegna"
+        }
+      },
       "payments": {
         "title": "Pagamenti",
         "description": "Configura i pagamenti online per il tuo negozio",
@@ -2649,7 +2875,14 @@
         "trialDays": "Giorni di prova",
         "trialDaysDescription": "Numero di giorni di prova gratuiti quando questo negozio sottoscrive un piano a pagamento. Imposta 0 per nessuna prova (pagamento immediato).",
         "days": "giorni",
-        "saved": "Impostazioni admin salvate"
+        "saved": "Impostazioni admin salvate",
+        "discountSection": "Sconto abbonamento",
+        "discountSectionDescription": "Configura uno sconto sull'abbonamento di questo negozio.",
+        "discountPercent": "Percentuale di sconto",
+        "discountPercentDescription": "Lo sconto applicato al prezzo dell'abbonamento (0-100%).",
+        "discountDuration": "Durata",
+        "discountDurationDescription": "Numero di mesi per cui si applica lo sconto. Imposta 0 per uno sconto permanente.",
+        "months": "mesi"
       }
     }
   },

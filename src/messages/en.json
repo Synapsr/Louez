@@ -1142,7 +1142,9 @@
         "notCollected": "Not collected",
         "toReturnToCustomer": "To return to customer",
         "returnQuestion": "Confirm that the equipment was returned in good condition?",
-        "confirmReturn": "Confirm return"
+        "confirmReturn": "Confirm return",
+        "skipInspectionPickup": "Skip and confirm pickup",
+        "skipInspectionReturn": "Skip and confirm return"
       },
       "activityBy": "by",
       "activitySystem": "Automatic action",
@@ -1751,6 +1753,11 @@
           "trialing": "Trial",
           "pastDue": "Past due",
           "cancelled": "Cancelled"
+        },
+        "discount": {
+          "title": "Special offer active",
+          "permanent": "You have a permanent {percent}% discount on your subscription.",
+          "limited": "You have a {percent}% discount on your subscription for {months} months."
         },
         "paymentStatus": {
           "pending": "Pending",
@@ -2465,6 +2472,227 @@
           "testAddressPlaceholder": "Search for an address..."
         }
       },
+      "inspection": {
+        "title": "Inventory Inspection",
+        "description": "Document equipment condition at pickup and return",
+        "nav": "Inspection",
+        "enableSection": "Inspection Feature",
+        "enableSectionDescription": "Document equipment condition with photos and signature",
+        "enabled": "Enable inspections",
+        "enabledDescription": "Create inspection reports at pickup and return",
+        "modeSection": "Inspection Mode",
+        "modeOptional": "Optional",
+        "modeOptionalDescription": "Inspections can be skipped",
+        "modeRecommended": "Recommended",
+        "modeRecommendedDescription": "A reminder is shown but can be skipped",
+        "modeRequired": "Required",
+        "modeRequiredDescription": "Required to change reservation status",
+        "signatureSection": "Customer Signature",
+        "requireCustomerSignature": "Require signature",
+        "requireCustomerSignatureDescription": "Customer must sign the inspection report",
+        "autoGeneratePdf": "Auto-generate PDF",
+        "autoGeneratePdfDescription": "A PDF report is created after each inspection",
+        "maxPhotosPerItem": "Photos per equipment",
+        "maxPhotosPerItemDescription": "Maximum photos per inspected equipment",
+        "saved": "Inspection settings saved",
+        "types": {
+          "departure": "Departure",
+          "return": "Return"
+        },
+        "status": {
+          "draft": "In Progress",
+          "completed": "Completed",
+          "signed": "Signed",
+          "notStarted": "Not Done"
+        },
+        "condition": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "damaged": "Damaged"
+        },
+        "card": {
+          "title": "Inspection",
+          "departure": "Departure",
+          "return": "Return",
+          "notDone": "Not done",
+          "availableAtDeparture": "Available at departure",
+          "start": "Start",
+          "view": "View",
+          "compare": "Compare",
+          "photos": "{count, plural, one {# photo} other {# photos}}",
+          "items": "{count, plural, one {# item} other {# items}}",
+          "changesDetected": "{count, plural, one {# change} other {# changes}}",
+          "moreActions": "More actions",
+          "downloadPdf": "Download PDF"
+        },
+        "wizard": {
+          "title": "Inspection - {type}",
+          "titleDeparture": "Inspection - Departure",
+          "titleReturn": "Inspection - Return",
+          "step": "Step {current} of {total}",
+          "step_overview": "Overview",
+          "step_items": "Items",
+          "step_summary": "Summary",
+          "step_signature": "Signature",
+          "overview": "Overview",
+          "items": "Items",
+          "summary": "Summary",
+          "signature": "Signature",
+          "departureInspection": "Departure Inspection",
+          "returnInspection": "Return Inspection",
+          "reservation": "Reservation",
+          "itemsToInspect": "{count, plural, one {item to inspect} other {items to inspect}}",
+          "instructions": "Instructions",
+          "instruction1_departure": "Check the condition of each item before handing it to the customer",
+          "instruction1_return": "Check the condition of each item upon return",
+          "instruction2": "Take photos to document the current condition",
+          "instruction3": "Note any damage or abnormal wear",
+          "allItemsOk": "Everything is in order",
+          "allOk": "All OK",
+          "allOkDescription": "Mark all items as excellent condition",
+          "quantity": "Quantity",
+          "condition": "Condition",
+          "photos": "Photos",
+          "notes": "Notes",
+          "notesPlaceholder": "Add notes about the equipment condition...",
+          "damageDetected": "Damage detected",
+          "allGood": "Everything is in order",
+          "summaryItems": "{count, plural, one {# item inspected} other {# items inspected}}",
+          "itemsWithIssues": "Items with issues",
+          "globalNotes": "General notes",
+          "globalNotesPlaceholder": "Add general notes about the inspection...",
+          "signingAs": "Signing as {name}",
+          "signHere": "Sign here",
+          "clearSignature": "Clear",
+          "signatureConfirmation": "I confirm having checked the equipment condition and accept the terms",
+          "signatureComplete": "Signature validated",
+          "customerSignature": "Customer signature",
+          "signatureTitle": "Signature",
+          "signatureDescription": "The customer must sign to validate the inspection",
+          "back": "Back",
+          "continue": "Continue",
+          "next": "Next",
+          "previous": "Previous",
+          "complete": "Complete",
+          "saving": "Saving...",
+          "saved": "Inspection saved",
+          "inspectionComplete": "Inspection completed successfully",
+          "inspectionError": "Error saving inspection",
+          "photoInvalidType": "Unsupported image format",
+          "photoTooLarge": "Image too large (max 20 MB)",
+          "photoError": "Error processing image",
+          "addPhoto": "Add photo",
+          "takePhoto": "Take photo",
+          "photoPreview": "Photo preview",
+          "deletePhoto": "Delete photo",
+          "close": "Close"
+        },
+        "conditions": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "fair": "Fair",
+          "damaged": "Damaged",
+          "ok": "OK",
+          "wear": "Wear",
+          "damage": "Damage"
+        },
+        "item": {
+          "condition": "Condition",
+          "notes": "Notes",
+          "notesPlaceholder": "Add notes about the equipment condition...",
+          "photos": "Photos",
+          "addPhoto": "Add photo",
+          "takePhoto": "Take photo",
+          "removePhoto": "Remove",
+          "photoUploading": "Uploading...",
+          "photoError": "Upload error",
+          "maxPhotosReached": "Maximum photos reached"
+        },
+        "signature": {
+          "title": "Customer Signature",
+          "instruction": "Sign in the box below",
+          "clear": "Clear",
+          "confirm": "I confirm that I have verified the equipment condition",
+          "name": "Signatory name",
+          "skip": "Skip",
+          "skipDescription": "The inspection will be saved without signature",
+          "signedAt": "Signed on"
+        },
+        "summary": {
+          "totalItems": "Equipment",
+          "photos": "Photos",
+          "damageDetected": "Damage",
+          "noDamage": "No damage"
+        },
+        "sections": {
+          "inspectionDetails": "Inspection details",
+          "equipment": "Inspected equipment",
+          "notes": "Notes",
+          "signature": "Signature"
+        },
+        "parties": {
+          "customer": "Customer"
+        },
+        "period": {
+          "performedBy": "Performed by"
+        },
+        "comparison": {
+          "title": "Comparison",
+          "departure": "Departure",
+          "return": "Return",
+          "noChanges": "No changes detected",
+          "changes": "Changes detected",
+          "conditionChanged": "Condition changed",
+          "newDamage": "New damage",
+          "swipeHint": "Swipe to compare",
+          "noDepartureInspection": "No departure inspection",
+          "noReturnInspection": "No return inspection",
+          "noPhotos": "No photos"
+        },
+        "damage": {
+          "title": "Damage Detected",
+          "description": "Damage description",
+          "estimatedCost": "Estimated cost",
+          "captureDeposit": "Capture from deposit",
+          "createPayment": "Create payment"
+        },
+        "activity": {
+          "departureStarted": "Departure inspection started",
+          "departureCompleted": "Departure inspection completed",
+          "returnStarted": "Return inspection started",
+          "returnCompleted": "Return inspection completed",
+          "damageDetected": "Damage detected: {description}",
+          "signed": "Inspection signed by customer"
+        },
+        "prompt": {
+          "departureTitle": "Perform inspection?",
+          "departureDescription": "Document the equipment condition before handing it to the customer.",
+          "returnTitle": "Perform inspection?",
+          "returnDescription": "Check the equipment condition upon return.",
+          "yes": "Yes, start",
+          "skip": "Skip this step"
+        },
+        "templates": {
+          "title": "Inspection Templates",
+          "description": "Define checkpoints by category",
+          "default": "Default",
+          "bikes": "Bikes / Scooters",
+          "tools": "Power Tools",
+          "audio": "Audio / Video",
+          "generic": "Generic"
+        },
+        "smartActions": {
+          "departureInspectionTitle": "Departure Inspection",
+          "returnInspectionTitle": "Return Inspection",
+          "inspectionRequiredDescription": "An inspection is required before proceeding.",
+          "inspectionRecommendedDescription": "We recommend performing an inspection.",
+          "departureInspectionBenefit": "Document the equipment condition before handing it to the customer",
+          "returnInspectionBenefit": "Check the equipment condition and detect any damages",
+          "inspectionDuration": "About 2 minutes",
+          "startInspection": "Start Inspection"
+        }
+      },
       "payments": {
         "title": "Payments",
         "description": "Configure online payments for your store",
@@ -2648,7 +2876,14 @@
         "trialDays": "Trial days",
         "trialDaysDescription": "Number of free trial days when this store subscribes to a paid plan. Set to 0 for no trial (immediate payment).",
         "days": "days",
-        "saved": "Admin settings saved"
+        "saved": "Admin settings saved",
+        "discountSection": "Subscription discount",
+        "discountSectionDescription": "Configure a discount on this store's subscription.",
+        "discountPercent": "Discount percentage",
+        "discountPercentDescription": "The discount applied to the subscription price (0-100%).",
+        "discountDuration": "Duration",
+        "discountDurationDescription": "Number of months the discount applies. Set to 0 for a permanent discount.",
+        "months": "months"
       }
     }
   },
