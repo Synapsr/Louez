@@ -282,6 +282,16 @@ export async function createReservation(input: CreateReservationInput) {
         return { error: 'errors.deliveryAddressRequired' }
       }
 
+      // Validate client coordinates are in valid range
+      if (
+        input.delivery.latitude < -90 ||
+        input.delivery.latitude > 90 ||
+        input.delivery.longitude < -180 ||
+        input.delivery.longitude > 180
+      ) {
+        return { error: 'errors.deliveryAddressInvalid' }
+      }
+
       // Validate store has coordinates for distance calculation
       if (!store.latitude || !store.longitude) {
         return { error: 'errors.storeCoordinatesNotConfigured' }
@@ -290,6 +300,22 @@ export async function createReservation(input: CreateReservationInput) {
       // Calculate distance from store to delivery address (server-side recalculation)
       const storeLatitude = parseFloat(store.latitude)
       const storeLongitude = parseFloat(store.longitude)
+
+      // Validate parsed coordinates are valid numbers
+      if (!isFinite(storeLatitude) || !isFinite(storeLongitude)) {
+        return { error: 'errors.storeCoordinatesInvalid' }
+      }
+
+      // Validate store coordinate ranges
+      if (
+        storeLatitude < -90 ||
+        storeLatitude > 90 ||
+        storeLongitude < -180 ||
+        storeLongitude > 180
+      ) {
+        return { error: 'errors.storeCoordinatesInvalid' }
+      }
+
       deliveryDistanceKm = calculateHaversineDistance(
         storeLatitude,
         storeLongitude,
@@ -301,8 +327,8 @@ export async function createReservation(input: CreateReservationInput) {
       const deliveryValidation = validateDelivery(deliveryDistanceKm, deliverySettings)
       if (!deliveryValidation.valid) {
         return {
-          error: 'errors.deliveryTooFar',
-          errorParams: { maxDistance: deliverySettings.maximumDistance },
+          error: deliveryValidation.errorKey || 'errors.deliveryTooFar',
+          errorParams: deliveryValidation.errorParams,
         }
       }
 

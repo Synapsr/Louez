@@ -64,22 +64,22 @@ export function calculateDeliveryFee(
   // Calculate fee based on distance
   const calculatedFee = effectiveDistance * settings.pricePerKm
 
-  // Apply minimum fee
-  return Math.max(calculatedFee, settings.minimumFee)
+  // Apply minimum fee and round to 2 decimal places
+  return Math.round(Math.max(calculatedFee, settings.minimumFee) * 100) / 100
 }
 
 /**
  * Validate if delivery is possible for given distance
  * @param distanceKm - Distance in kilometers
  * @param settings - Delivery settings from store
- * @returns Validation result with error message if invalid
+ * @returns Validation result with i18n error key if invalid
  */
 export function validateDelivery(
   distanceKm: number,
   settings: DeliverySettings
-): { valid: boolean; error?: string } {
+): { valid: boolean; errorKey?: string; errorParams?: Record<string, unknown> } {
   if (!settings.enabled) {
-    return { valid: false, error: 'Delivery is not enabled for this store' }
+    return { valid: false, errorKey: 'errors.deliveryNotEnabled' }
   }
 
   if (
@@ -88,7 +88,8 @@ export function validateDelivery(
   ) {
     return {
       valid: false,
-      error: `Delivery not available beyond ${settings.maximumDistance} km`,
+      errorKey: 'errors.deliveryTooFar',
+      errorParams: { maxDistance: settings.maximumDistance },
     }
   }
 

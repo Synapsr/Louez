@@ -3902,7 +3902,9 @@
     "deliveryAddressRequired": "Veuillez saisir une adresse de livraison valide",
     "storeCoordinatesNotConfigured": "Les coordonnées de la boutique ne sont pas configurées",
     "deliveryTooFar": "L'adresse de livraison est trop éloignée (maximum {maxDistance} km)",
-    "deliveryRequired": "La livraison est obligatoire pour cette boutique"
+    "deliveryRequired": "La livraison est obligatoire pour cette boutique",
+    "storeCoordinatesInvalid": "Les coordonnées du magasin sont invalides",
+    "deliveryAddressInvalid": "L'adresse de livraison est invalide"
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

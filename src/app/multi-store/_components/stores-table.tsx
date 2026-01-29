@@ -15,6 +15,7 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 import type { StorePerformance } from '@/lib/dashboard/multi-store-metrics'
+import { setCurrentStoreAction } from '../actions'
 
 interface StoresTableProps {
   stores: StorePerformance[]
@@ -30,10 +31,6 @@ interface StoresTableProps {
     goToStore: string
   }
   limitsMap?: Record<string, boolean>
-}
-
-function setCurrentStoreCookie(storeId: string) {
-  document.cookie = `currentStoreId=${storeId}; path=/; max-age=31536000`
 }
 
 function PlanBadge({ planSlug, planName }: { planSlug: string; planName: string }) {
@@ -92,8 +89,8 @@ function ChangeIndicator({ change }: { change: number }) {
 export function StoresTable({ stores, translations, limitsMap = {} }: StoresTableProps) {
   const router = useRouter()
 
-  const handleStoreClick = (storeId: string) => {
-    setCurrentStoreCookie(storeId)
+  const handleStoreClick = async (storeId: string) => {
+    await setCurrentStoreAction(storeId)
     router.push('/dashboard')
     router.refresh()
   }

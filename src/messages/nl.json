@@ -3908,7 +3908,9 @@
     "deliveryAddressRequired": "Voer een geldig afleveradres in",
     "storeCoordinatesNotConfigured": "Winkelcoördinaten zijn niet geconfigureerd",
     "deliveryTooFar": "Het afleveradres is te ver weg (maximaal {maxDistance} km)",
-    "deliveryRequired": "Bezorging is verplicht voor deze winkel"
+    "deliveryRequired": "Bezorging is verplicht voor deze winkel",
+    "storeCoordinatesInvalid": "De winkelcoördinaten zijn ongeldig",
+    "deliveryAddressInvalid": "Het afleveradres is ongeldig"
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

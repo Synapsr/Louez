@@ -3906,7 +3906,9 @@
     "deliveryAddressRequired": "Por favor, introduzca una dirección de entrega válida",
     "storeCoordinatesNotConfigured": "Las coordenadas de la tienda no están configuradas",
     "deliveryTooFar": "La dirección de entrega está demasiado lejos (máximo {maxDistance} km)",
-    "deliveryRequired": "La entrega es obligatoria para esta tienda"
+    "deliveryRequired": "La entrega es obligatoria para esta tienda",
+    "storeCoordinatesInvalid": "Las coordenadas de la tienda no son válidas",
+    "deliveryAddressInvalid": "La dirección de entrega no es válida"
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

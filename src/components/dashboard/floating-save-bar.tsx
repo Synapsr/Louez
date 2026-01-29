@@ -56,6 +56,9 @@ export function FloatingSaveBar({
   return (
     <>
       <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
         className={cn(
           'fixed inset-x-0 bottom-0 z-40 flex justify-center pb-6 px-4 pointer-events-none transition-all duration-300 ease-out',
           isDirty ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
@@ -63,10 +66,10 @@ export function FloatingSaveBar({
         )}
       >
         <div className="pointer-events-auto relative flex items-center gap-4 rounded-full bg-zinc-900/90 dark:bg-zinc-800/90 px-5 py-2.5 shadow-lg shadow-black/20 ring-1 ring-white/10 backdrop-blur-xl">
-          {/* Status indicator with pulsing animation */}
-          <div className="flex items-center gap-2 text-sm text-zinc-300">
+          {/* Status indicator with pulsing animation (respects reduced motion) */}
+          <div className="flex items-center gap-2 text-sm text-zinc-200">
             <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
             </span>
             <span>{t('unsavedChanges')}</span>

@@ -3903,7 +3903,9 @@
     "deliveryAddressRequired": "Inserisci un indirizzo di consegna valido",
     "storeCoordinatesNotConfigured": "Le coordinate del negozio non sono configurate",
     "deliveryTooFar": "L'indirizzo di consegna è troppo lontano (massimo {maxDistance} km)",
-    "deliveryRequired": "La consegna è obbligatoria per questo negozio"
+    "deliveryRequired": "La consegna è obbligatoria per questo negozio",
+    "storeCoordinatesInvalid": "Le coordinate del negozio non sono valide",
+    "deliveryAddressInvalid": "L'indirizzo di consegna non è valido"
   },
   "welcome": {
     "greeting": "Benvenuto su Louez.io",

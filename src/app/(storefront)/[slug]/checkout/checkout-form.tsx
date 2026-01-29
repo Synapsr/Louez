@@ -385,11 +385,11 @@ export function CheckoutForm({
         let errorMessage = result.error
         if (result.error.startsWith('errors.')) {
           const errorKey = result.error.replace('errors.', '')
-          // Filter out undefined values from errorParams for translation
+          // Filter out undefined/null values from errorParams for translation
           const params: Record<string, string | number> = {}
           if (result.errorParams) {
             for (const [key, value] of Object.entries(result.errorParams)) {
-              if (value !== undefined) {
+              if (value !== undefined && value !== null && (typeof value === 'string' || typeof value === 'number')) {
                 params[key] = value
               }
             }
