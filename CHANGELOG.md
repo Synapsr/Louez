@@ -8,6 +8,20 @@ All notable changes to Louez are documented here.
 
 ## [1.6.0] - January 29, 2026
 
+### 🔍 Inventory Inspection (Equipment Condition Reports)
+
+Complete inspection system for documenting equipment condition at pickup and return.
+
+- 📋 **Inspection templates** — Customizable checklists at store, category, or product level
+- 📷 **Photo documentation** — Capture unlimited photos with thumbnails and captions
+- ✍️ **Digital signatures** — Customer signature capture with IP tracking
+- 📊 **Condition ratings** — 4-level scale (Excellent, Good, Fair, Damaged)
+- ⚠️ **Damage tracking** — Flag damage, add descriptions and cost estimates
+- 🔄 **Departure vs Return comparison** — Side-by-side view showing condition changes
+- 📄 **PDF reports** — Professional inspection documents (État des Lieux)
+- ⚙️ **Configurable modes** — Optional, Recommended, or Required inspections
+- 🌍 **Full i18n** — All 8 languages supported
+
 ### 🏪 Multi-Store Dashboard
 
 Manage all your stores from one place.
@@ -432,6 +446,20 @@ Toutes les évolutions notables de Louez sont documentées ici.
 ---
 
 ## [1.6.0] - 29 janvier 2026
+
+### 🔍 États des Lieux (Rapports de Condition)
+
+Système complet d'inspection pour documenter l'état des équipements au retrait et au retour.
+
+- 📋 **Modèles d'inspection** — Checklists personnalisables par boutique, catégorie ou produit
+- 📷 **Documentation photo** — Capturez des photos illimitées avec miniatures et légendes
+- ✍️ **Signatures numériques** — Capture de signature client avec suivi IP
+- 📊 **Notes de condition** — Échelle à 4 niveaux (Excellent, Bon, Correct, Endommagé)
+- ⚠️ **Suivi des dommages** — Signalez les dégâts, ajoutez descriptions et estimations de coût
+- 🔄 **Comparaison Départ vs Retour** — Vue côte à côte montrant les changements d'état
+- 📄 **Rapports PDF** — Documents d'inspection professionnels
+- ⚙️ **Modes configurables** — Inspections Optionnelles, Recommandées ou Obligatoires
+- 🌍 **i18n complet** — Les 8 langues supportées
 
 ### 🏪 Dashboard Multi-Boutiques
 
