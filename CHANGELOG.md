@@ -6,6 +6,112 @@ All notable changes to Louez are documented here.
 
 ---
 
+## [1.6.0] - January 29, 2026
+
+### 🏪 Multi-Store Dashboard
+
+Manage all your stores from one place.
+
+- 📊 **Aggregated metrics** — Total revenue, reservations, customers across all stores
+- 📈 **Store comparison** — Performance table with plan badges and growth indicators
+- 📉 **Revenue trends** — Chart comparing stores over time
+- ⚠️ **Plan limits alerts** — Warnings when stores approach their limits
+- 🔗 **Quick access** — Multi-store link in store switcher dropdown
+
+### 🚚 Delivery System
+
+Flexible delivery options for your customers.
+
+- 🎛️ **Three modes** — Optional (customer chooses), required, or included (free)
+- 📍 **Distance pricing** — Calculate fees based on Haversine formula
+- 🗺️ **Google Places** — Address autocomplete with geocoding
+- 🔒 **Server validation** — Secure fee recalculation prevents manipulation
+- 📄 **Confirmation display** — Delivery address shown on confirmation page
+
+### 💳 Payment Enhancements
+
+More flexibility for collecting payments.
+
+- 📨 **Payment requests** — Send payment links via email/SMS from dashboard
+- 🔐 **Deposit authorization** — Hold funds on customer cards without charging (Stripe manual capture)
+- 📊 **Configurable deposits** — Set deposit percentage (10-100%) for online payments
+- 🔓 **Auto-login** — Customers automatically logged in after payment completion
+
+### 📦 Unit Tracking
+
+Track individual items with unique identifiers.
+
+- 🏷️ **Unit identifiers** — Serial numbers, license plates, or custom IDs
+- 📋 **Assignment selector** — Assign specific units to reservations
+- 📄 **PDF contracts** — Assigned units shown in rental contracts
+- 🔢 **Quantity management** — Pre-create slots based on product quantity
+
+### ✨ Settings & UX
+
+- 💾 **Floating save bar** — Sticky pill appears when forms have unsaved changes
+- 🎨 **Smooth animations** — Backdrop blur and subtle transitions
+- ♿ **Accessibility** — ARIA attributes and motion-reduce support
+- 🔄 **Reset functionality** — Discard changes with one click
+
+### 💰 Subscription Updates
+
+- 💶 **New pricing** — Pro 49€/month, Ultra 159€/month
+- 🧾 **Prices HT** — Display excluding tax with Stripe automatic tax
+- 🎫 **Early bird removed** — Discount offer concluded
+
+### 📅 Calendar Improvements
+
+- 🔝 **Smart sorting** — Products with active reservations appear first
+- 📊 **Usage-based** — Sorted by reserved quantity for quick visibility
+
+### 🛠️ Developer Tools
+
+- 🌱 **Database seed script** — `pnpm db:seed --email=dev@example.com`
+- 🏪 **4 test stores** — Different configurations, pricing modes, plans
+- 📦 **Realistic data** — Products, customers, reservations, payments, analytics
+- 🔒 **Production safe** — Script refuses to run in production
+
+### 🔧 Other Improvements
+
+- 📏 **Unlimited pricing tiers** — Removed 5-tier limit on long-duration pricing
+- 👤 **PostHog identification** — User attribution for session replays
+- 🏢 **Business customers** — Company info displayed on reservation detail
+
+### 🐛 Bug Fixes
+
+**Security & Validation**
+- 🛡️ NaN validation and GPS coordinate range checks in delivery
+- 🔒 httpOnly cookie for store selection (XSS protection)
+- ⚡ Parallelized multi-store metrics queries (N+1 fix)
+- 💰 Delivery fees rounded to 2 decimal places
+
+**Email Compatibility**
+- 🖼️ SVG logos converted to PNG (Gmail, Outlook, Yahoo)
+- 📎 CID attachments instead of data: URIs
+
+**Internationalization**
+- 🌍 50+ missing translation keys added across 8 languages
+- 📍 Fixed misplaced paths (accessories, checkout, confirmation)
+- 🔤 Hardcoded French strings replaced with i18n calls
+
+**Stripe**
+- 💳 Persist customer ID on creation (prevents duplicates)
+
+**Routing**
+- 🔗 Fixed double-slug issue on subdomain routing
+- 🔀 Absolute URLs for all server-side redirects
+
+**UI**
+- 📐 Reduced sidebar spacing for small screens
+- 🎨 Improved AlertDialog button styling
+
+### 🗃️ Database Migrations
+
+- `0020_closed_impossible_man.sql` — Unit tracking tables
+- `0021_add_delivery_fields.sql` — Delivery fields on reservations
+
+---
+
 ## [1.5.0] - January 27, 2026
 
 ### 🔒 Security Hardening
@@ -322,6 +428,112 @@ The first public release of Louez!
 > [🇬🇧 English](#changelog) | 🇫🇷 **Français**
 
 Toutes les évolutions notables de Louez sont documentées ici.
+
+---
+
+## [1.6.0] - 29 janvier 2026
+
+### 🏪 Dashboard Multi-Boutiques
+
+Gérez toutes vos boutiques depuis un seul endroit.
+
+- 📊 **Métriques agrégées** — Chiffre d'affaires, réservations, clients sur toutes les boutiques
+- 📈 **Comparaison** — Tableau de performance avec badges plan et indicateurs de croissance
+- 📉 **Tendances revenus** — Graphique comparant les boutiques dans le temps
+- ⚠️ **Alertes limites** — Avertissements quand les boutiques approchent leurs limites
+- 🔗 **Accès rapide** — Lien multi-boutiques dans le sélecteur de boutique
+
+### 🚚 Système de Livraison
+
+Options de livraison flexibles pour vos clients.
+
+- 🎛️ **Trois modes** — Optionnel (choix client), obligatoire, ou inclus (gratuit)
+- 📍 **Tarification distance** — Calcul des frais basé sur la formule de Haversine
+- 🗺️ **Google Places** — Autocomplétion d'adresse avec géocodage
+- 🔒 **Validation serveur** — Recalcul sécurisé des frais empêche la manipulation
+- 📄 **Affichage confirmation** — Adresse de livraison affichée sur la page de confirmation
+
+### 💳 Améliorations Paiements
+
+Plus de flexibilité pour collecter les paiements.
+
+- 📨 **Demandes de paiement** — Envoyez des liens de paiement par email/SMS depuis le dashboard
+- 🔐 **Autorisation de caution** — Bloquez des fonds sur la carte client sans débiter (capture manuelle Stripe)
+- 📊 **Acomptes configurables** — Définissez le pourcentage d'acompte (10-100%) pour les paiements en ligne
+- 🔓 **Connexion auto** — Clients automatiquement connectés après paiement
+
+### 📦 Suivi des Unités
+
+Suivez les articles individuels avec des identifiants uniques.
+
+- 🏷️ **Identifiants d'unité** — Numéros de série, plaques d'immatriculation, ou IDs personnalisés
+- 📋 **Sélecteur d'assignation** — Assignez des unités spécifiques aux réservations
+- 📄 **Contrats PDF** — Unités assignées affichées dans les contrats de location
+- 🔢 **Gestion quantité** — Pré-création des slots selon la quantité produit
+
+### ✨ Paramètres & UX
+
+- 💾 **Barre de sauvegarde flottante** — Pilule sticky qui apparaît avec des modifications non sauvegardées
+- 🎨 **Animations fluides** — Flou d'arrière-plan et transitions subtiles
+- ♿ **Accessibilité** — Attributs ARIA et support motion-reduce
+- 🔄 **Réinitialisation** — Annulez les modifications en un clic
+
+### 💰 Mises à jour Abonnements
+
+- 💶 **Nouveaux tarifs** — Pro 49€/mois, Ultra 159€/mois
+- 🧾 **Prix HT** — Affichage hors taxes avec calcul automatique Stripe
+- 🎫 **Early bird terminé** — Offre de réduction conclue
+
+### 📅 Améliorations Calendrier
+
+- 🔝 **Tri intelligent** — Les produits avec réservations actives apparaissent en premier
+- 📊 **Basé sur l'usage** — Trié par quantité réservée pour visibilité rapide
+
+### 🛠️ Outils Développeur
+
+- 🌱 **Script de seed BDD** — `pnpm db:seed --email=dev@example.com`
+- 🏪 **4 boutiques test** — Différentes configurations, modes tarifaires, plans
+- 📦 **Données réalistes** — Produits, clients, réservations, paiements, analytics
+- 🔒 **Sécurité production** — Le script refuse de s'exécuter en production
+
+### 🔧 Autres améliorations
+
+- 📏 **Paliers illimités** — Suppression de la limite à 5 paliers pour les longues durées
+- 👤 **Identification PostHog** — Attribution utilisateur pour les replays de session
+- 🏢 **Clients professionnels** — Infos entreprise affichées sur le détail réservation
+
+### 🐛 Corrections de bugs
+
+**Sécurité & Validation**
+- 🛡️ Validation NaN et plages de coordonnées GPS pour la livraison
+- 🔒 Cookie httpOnly pour la sélection de boutique (protection XSS)
+- ⚡ Requêtes multi-boutiques parallélisées (fix N+1)
+- 💰 Frais de livraison arrondis à 2 décimales
+
+**Compatibilité Email**
+- 🖼️ Logos SVG convertis en PNG (Gmail, Outlook, Yahoo)
+- 📎 Pièces jointes CID au lieu des data: URIs
+
+**Internationalisation**
+- 🌍 50+ clés de traduction manquantes ajoutées sur 8 langues
+- 📍 Chemins mal placés corrigés (accessoires, checkout, confirmation)
+- 🔤 Chaînes françaises codées en dur remplacées par des appels i18n
+
+**Stripe**
+- 💳 Persistance de l'ID client à la création (évite les doublons)
+
+**Routage**
+- 🔗 Correction du problème de double-slug sur le routage par sous-domaine
+- 🔀 URLs absolues pour toutes les redirections côté serveur
+
+**Interface**
+- 📐 Espacement sidebar réduit pour petits écrans
+- 🎨 Style des boutons AlertDialog amélioré
+
+### 🗃️ Migrations Base de données
+
+- `0020_closed_impossible_man.sql` — Tables de suivi d'unités
+- `0021_add_delivery_fields.sql` — Champs livraison sur les réservations
 
 ---
 
