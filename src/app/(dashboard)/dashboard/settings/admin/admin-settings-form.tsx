@@ -3,10 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useTransition } from 'react'
+import { useTransition, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -28,6 +28,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { updateTrialDays } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 
 const trialDaysSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
@@ -49,6 +50,12 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
     resolver: zodResolver(trialDaysSchema),
     defaultValues: { trialDays },
   })
+
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
 
   const onSubmit = (data: TrialDaysInput) => {
     startTransition(async () => {
@@ -113,12 +120,11 @@ export function AdminSettingsForm({ trialDays }: AdminSettingsFormProps) {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {tCommon('save')}
-          </Button>
-        </div>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={handleReset}
+        />
       </form>
     </Form>
   )

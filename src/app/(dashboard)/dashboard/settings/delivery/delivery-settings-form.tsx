@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
-import { Loader2, Info, Truck, AlertTriangle, MapPin, Calculator, Search, Package, Gift } from 'lucide-react'
+import { Info, Truck, AlertTriangle, MapPin, Calculator, Search, Package, Gift } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 
@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/form'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { updateDeliverySettings } from './actions'
+import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { formatCurrency } from '@/lib/utils'
 import type { StoreSettings, DeliverySettings, DeliveryMode } from '@/types'
 
@@ -128,6 +129,12 @@ export function DeliverySettingsForm({
       freeDeliveryThreshold: currentDelivery.freeDeliveryThreshold,
     },
   })
+
+  const { isDirty } = form.formState
+
+  const handleReset = useCallback(() => {
+    form.reset()
+  }, [form])
 
   const isEnabled = form.watch('enabled')
   const mode = form.watch('mode')
@@ -760,12 +767,11 @@ export function DeliverySettingsForm({
           </Card>
         )}
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {tCommon('save')}
-          </Button>
-        </div>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={handleReset}
+        />
       </form>
     </Form>
   )
