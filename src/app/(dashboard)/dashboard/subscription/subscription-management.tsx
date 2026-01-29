@@ -20,8 +20,6 @@ import {
   Package,
   CalendarDays,
   Users,
-  Gift,
-  Clock,
   MessageSquare,
   ChevronRight,
 } from 'lucide-react'
@@ -102,18 +100,6 @@ function formatPrice(amount: number, currency: Currency): string {
     return `${amount}${symbol}`
   }
   return `${symbol}${amount}`
-}
-
-// Early bird discount: current prices are 50% off until March 1st, 2026
-// Original prices are 2x the current prices
-const EARLY_BIRD_END_DATE = new Date('2026-03-01')
-
-function getOriginalPrice(discountedPrice: number): number {
-  return discountedPrice * 2
-}
-
-function isEarlyBirdActive(): boolean {
-  return new Date() < EARLY_BIRD_END_DATE
 }
 
 export function SubscriptionManagement({
@@ -601,40 +587,11 @@ export function SubscriptionManagement({
           </div>
         </div>
 
-        {/* Early Bird Banner */}
-        {isEarlyBirdActive() && (
-          <div className="max-w-4xl mx-auto relative overflow-hidden rounded-xl bg-primary/5 border border-primary/20 p-6">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-lg flex-shrink-0">
-                  <Gift className="h-7 w-7 text-primary-foreground" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-xl">{t('earlyBird.title')}</h3>
-                    <Badge className="bg-primary text-primary-foreground border-0 shadow-sm text-sm px-3">
-                      {t('earlyBird.badge')}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">{t('earlyBird.description')}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-medium text-primary bg-primary/10 rounded-full px-4 py-2">
-                <Clock className="h-4 w-4" />
-                <span>{t('earlyBird.subtitle')}</span>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Plan Cards */}
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan) => {
             const price = getPrice(plan)
-            const originalPrice = getOriginalPrice(price)
             const isFree = plan.price === 0
-            const showEarlyBird = isEarlyBirdActive() && !isFree
             const isAvailable = canChangePlan(plan)
             const isCurrent = isCurrentPlan(plan)
 
@@ -703,7 +660,7 @@ export function SubscriptionManagement({
 
                 <CardContent className="flex-1">
                   <div className="text-center mb-6">
-                    <span className="text-4xl font-bold">{formatPrice(originalPrice, currency)}</span>
+                    <span className="text-4xl font-bold">{formatPrice(price, currency)}</span>
                     {!isFree && (
                       <span className="text-muted-foreground ml-1">
                         {t('excludingTax')} / {isYearly ? t('year') : t('month')}
