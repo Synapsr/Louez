@@ -189,7 +189,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     },
   })
 
-  const { isDirty } = form.formState
+  const { isDirty, errors } = form.formState
+
+  // Debug: Log validation errors when they occur
+  React.useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      console.log('[ProductForm] Validation errors:', errors)
+    }
+  }, [errors])
 
   const processFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -375,6 +382,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   }
 
   async function onSubmit(data: ProductInput) {
+    console.log('[ProductForm] onSubmit called with data:', data)
     setIsLoading(true)
     try {
       const result = product
