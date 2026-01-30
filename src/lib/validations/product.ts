@@ -1,15 +1,13 @@
 import { z } from 'zod'
 
-// Image URL validation - only allows http/https URLs, blocks base64 data URIs
+// Image URL validation - allows http/https URLs and legacy base64 data URIs
+// Note: base64 is allowed for backwards compatibility with old products,
+// but new uploads should go through S3
 const imageUrlSchema = z
   .string()
   .refine(
-    (url) => !url.startsWith('data:'),
-    'Base64 images are not allowed. Please upload images to S3.'
-  )
-  .refine(
-    (url) => url.startsWith('http://') || url.startsWith('https://'),
-    'Invalid image URL. Must be a valid HTTP(S) URL.'
+    (url) => url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image/'),
+    'Invalid image URL. Must be a valid HTTP(S) URL or image data URI.'
   )
 
 // Pricing tier schema
