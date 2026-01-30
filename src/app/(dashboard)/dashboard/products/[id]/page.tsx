@@ -39,6 +39,9 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
           },
         },
       },
+      units: {
+        orderBy: (units, { asc }) => [asc(units.identifier)],
+      },
     },
   })
 
