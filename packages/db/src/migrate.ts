@@ -72,7 +72,9 @@ async function runMigrations() {
     )
     const hasUserTables = userTables.length > 0
 
-    console.log(`📊 Database state: ${userTables.length} user tables, migrations table: ${migrationsTableExists ? 'exists' : 'missing'}`)
+    console.log(
+      `📊 Database state: ${userTables.length} user tables, migrations table: ${migrationsTableExists ? 'exists' : 'missing'}`
+    )
 
     // Get applied migrations from database
     let appliedHashes: string[] = []
@@ -91,9 +93,10 @@ async function runMigrations() {
     // This happens when:
     // 1. Tables exist but no migrations are tracked
     // 2. OR tables exist and we have pending migrations that would fail (CREATE TABLE for existing tables)
-    const needsBaseline = hasUserTables && pendingMigrations.length > 0 && (
-      !migrationsTableExists || appliedHashes.length === 0
-    )
+    const needsBaseline =
+      hasUserTables &&
+      pendingMigrations.length > 0 &&
+      (!migrationsTableExists || appliedHashes.length === 0)
 
     if (needsBaseline) {
       console.log('⚠️  Database has tables but migrations are not properly tracked')
@@ -130,7 +133,9 @@ async function runMigrations() {
       const migrationsToSkip: typeof pendingMigrations = []
       for (const migration of pendingMigrations) {
         // migration.sql is an array of SQL statements
-        const sqlStatements = Array.isArray(migration.sql) ? migration.sql.join('\n') : migration.sql
+        const sqlStatements = Array.isArray(migration.sql)
+          ? migration.sql.join('\n')
+          : migration.sql
         let shouldSkip = false
 
         // Check for CREATE TABLE statements
@@ -139,7 +144,9 @@ async function runMigrations() {
           const tableName = match[1].toLowerCase()
           if (existingTableNames.includes(tableName)) {
             migrationsToSkip.push(migration)
-            console.log(`⚠️  Skipping migration (table '${match[1]}' already exists): ${migration.hash.substring(0, 8)}...`)
+            console.log(
+              `⚠️  Skipping migration (table '${match[1]}' already exists): ${migration.hash.substring(0, 8)}...`
+            )
             shouldSkip = true
             break
           }
@@ -147,14 +154,18 @@ async function runMigrations() {
 
         // Check for ALTER TABLE ADD COLUMN statements
         if (!shouldSkip) {
-          const alterTableMatches = sqlStatements.matchAll(/ALTER TABLE [`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?/gi)
+          const alterTableMatches = sqlStatements.matchAll(
+            /ALTER TABLE [`"]?(\w+)[`"]?\s+ADD\s+(?:COLUMN\s+)?[`"]?(\w+)[`"]?/gi
+          )
           for (const match of alterTableMatches) {
             const tableName = match[1].toLowerCase()
             const columnName = match[2].toLowerCase()
             const key = `${tableName}.${columnName}`
             if (existingColumnSet.has(key)) {
               migrationsToSkip.push(migration)
-              console.log(`⚠️  Skipping migration (column '${match[1]}.${match[2]}' already exists): ${migration.hash.substring(0, 8)}...`)
+              console.log(
+                `⚠️  Skipping migration (column '${match[1]}.${match[2]}' already exists): ${migration.hash.substring(0, 8)}...`
+              )
               shouldSkip = true
               break
             }
@@ -164,7 +175,9 @@ async function runMigrations() {
 
       // Mark skipped migrations as applied without running them
       if (migrationsToSkip.length > 0) {
-        console.log(`📝 Marking ${migrationsToSkip.length} migration(s) as applied (tables already exist)...`)
+        console.log(
+          `📝 Marking ${migrationsToSkip.length} migration(s) as applied (tables already exist)...`
+        )
 
         // Ensure migrations table exists
         await connection.query(`
@@ -234,7 +247,11 @@ async function runMigrations() {
           } catch (error) {
             // Handle idempotent cases gracefully
             const err = error as { code?: string; sqlMessage?: string }
-            if (err.code === 'ER_DUP_FIELDNAME' || err.code === 'ER_DUP_KEYNAME' || err.code === 'ER_TABLE_EXISTS_ERROR') {
+            if (
+              err.code === 'ER_DUP_FIELDNAME' ||
+              err.code === 'ER_DUP_KEYNAME' ||
+              err.code === 'ER_TABLE_EXISTS_ERROR'
+            ) {
               console.log(`   ⚠️  Skipped (already exists): ${err.sqlMessage}`)
             } else {
               throw error
@@ -252,7 +269,6 @@ async function runMigrations() {
 
       console.log('✅ All migrations completed successfully!')
     }
-
   } catch (error) {
     console.error('❌ Migration failed:', error instanceof Error ? error.message : error)
 
@@ -298,10 +314,10 @@ async function createBaseline(
   // Insert all migrations as already applied
   const now = Date.now()
   for (const migration of migrationsToMark) {
-    await connection.query(
-      `INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES (?, ?)`,
-      [migration.hash, now]
-    )
+    await connection.query(`INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES (?, ?)`, [
+      migration.hash,
+      now,
+    ])
   }
 
   console.log(`   Marked ${migrationsToMark.length} migration(s) as applied`)
@@ -330,7 +346,6 @@ export async function createBaselineOnly() {
 
     await createBaseline(connection, allMigrations)
     console.log('✅ Baseline created successfully!')
-
   } finally {
     await connection.end()
     console.log('🔌 Database connection closed.')
@@ -338,7 +353,8 @@ export async function createBaselineOnly() {
 }
 
 // Check if running directly (not imported)
-const isMainModule = process.argv[1]?.includes('migrate.ts') || process.argv[1]?.includes('migrate.js')
+const isMainModule =
+  process.argv[1]?.includes('migrate.ts') || process.argv[1]?.includes('migrate.js')
 
 if (isMainModule) {
   // Check for --baseline flag

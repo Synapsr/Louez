@@ -16,6 +16,7 @@
     "react-email": "^5.1.1"
   },
   "devDependencies": {
+    "@louez/config": "workspace:*",
     "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "typescript": "^5"

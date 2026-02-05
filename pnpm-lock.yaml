@@ -315,6 +315,9 @@ importers:
         specifier: ^5.1.6
         version: 5.1.6
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       drizzle-kit:
         specifier: ^0.31.8
         version: 0.31.8
@@ -349,6 +352,9 @@ importers:
         specifier: ^5.1.1
         version: 5.1.1
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       '@types/nodemailer':
         specifier: ^7.0.4
         version: 7.0.4
@@ -374,6 +380,9 @@ importers:
         specifier: ^19
         version: 19.2.3
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       '@types/react':
         specifier: ^19
         version: 19.2.7
@@ -383,6 +392,9 @@ importers:
 
   packages/types:
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -480,6 +492,9 @@ importers:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       '@types/react':
         specifier: ^19
         version: 19.2.7
@@ -502,6 +517,9 @@ importers:
         specifier: ^3.4.0
         version: 3.4.0
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -515,6 +533,12 @@ importers:
         specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
+      '@louez/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^20.19.27
+        version: 20.19.27
       typescript:
         specifier: ^5
         version: 5.9.3

@@ -13,6 +13,7 @@
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {
+    "@louez/config": "workspace:*",
     "typescript": "^5"
   }
 }
