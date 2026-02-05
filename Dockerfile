@@ -1,100 +1,67 @@
 # syntax=docker/dockerfile:1
-
-# =============================================================================
-# Louez - Production Dockerfile
-# =============================================================================
-# Optimized multi-stage build for Next.js standalone output
-# Image size: ~150MB | Startup: <5s | Non-root user
 #
-# Features:
-# - Automatic database migrations at container startup
-# - Health checks for container orchestrators
-# - Non-root user for security
+# DEPRECATED: Use docker/Dockerfile.web instead
 #
-# Build:  docker build -t louez .
-# Run:    docker run -p 3000:3000 --env-file .env louez
+# This file exists for backward compatibility only.
+# For Turborepo-native builds, use:
+#   docker build -f docker/Dockerfile.web -t louez-web .
+#
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Stage 1: Dependencies
-# Install all npm dependencies in isolated stage for better caching
-# -----------------------------------------------------------------------------
+# Include the web app Dockerfile
+# Note: Docker doesn't support includes, so this is a copy for compatibility
+# The canonical version is in docker/Dockerfile.web
+
 FROM node:20-alpine AS deps
-
-# libc6-compat is needed for some npm packages on Alpine
 RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/config/package.json ./packages/config/
+COPY packages/types/package.json ./packages/types/
+COPY packages/utils/package.json ./packages/utils/
+COPY packages/validations/package.json ./packages/validations/
+COPY packages/db/package.json ./packages/db/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/email/package.json ./packages/email/
+COPY packages/pdf/package.json ./packages/pdf/
+COPY apps/web/package.json ./apps/web/
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-# Copy only package files for dependency caching
-COPY package.json pnpm-lock.yaml ./
-
-# Install dependencies using pnpm
-RUN corepack enable pnpm && \
-    pnpm install --frozen-lockfile
-
-# -----------------------------------------------------------------------------
-# Stage 2: Builder
-# Build the Next.js application with standalone output
-# -----------------------------------------------------------------------------
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
+COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
+COPY --from=deps /app/packages/validations/node_modules ./packages/validations/node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
+COPY --from=deps /app/packages/email/node_modules ./packages/email/node_modules
+COPY --from=deps /app/packages/pdf/node_modules ./packages/pdf/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
-
-# Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+RUN corepack enable pnpm && pnpm turbo run build --filter=web
 
-# Build the application
-RUN corepack enable pnpm && pnpm build
-
-# -----------------------------------------------------------------------------
-# Stage 3: Runner (Production)
-# Minimal image with only the standalone build output
-# -----------------------------------------------------------------------------
 FROM node:20-alpine AS runner
-
 WORKDIR /app
-
-# Install wget for health checks and create non-root user
 RUN apk add --no-cache wget && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
-
-# Production environment
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-
-# Copy public assets (static files)
-COPY --from=builder /app/public ./public
-
-# Copy standalone build (includes server.js and minimal node_modules)
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Copy database migration script and SQL files
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
-COPY --from=builder --chown=nextjs:nodejs /app/src/lib/db/migrations ./migrations
-
-# Copy and prepare entrypoint script
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/migrations ./migrations
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod +x ./docker/entrypoint.sh
-
-# Switch to non-root user
 USER nextjs
-
-# Expose application port
 EXPOSE 3000
-
-# Health check for container orchestrators (EasyPanel, Dokploy, Kubernetes)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "wget --no-verbose --tries=1 --spider http://localhost:\${PORT:-3000}/api/health || exit 1"
-
-# Start with entrypoint (runs migrations then starts server)
 ENTRYPOINT ["./docker/entrypoint.sh"]

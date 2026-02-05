@@ -1,0 +1,2 @@
+ALTER TABLE `reservation_activity` MODIFY COLUMN `activity_type` enum('created','confirmed','rejected','cancelled','picked_up','returned','note_updated','payment_added','payment_updated','payment_received','payment_initiated','payment_failed','payment_expired','deposit_authorized','deposit_captured','deposit_released','deposit_failed','access_link_sent') NOT NULL;--> statement-breakpoint
+ALTER TABLE `verification_codes` ADD `reservation_id` varchar(21);

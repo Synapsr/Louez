@@ -1,0 +1,11 @@
+{
+  "name": "@louez/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/nextjs": "./typescript/nextjs.json",
+    "./typescript/library": "./typescript/library.json",
+    "./eslint/base": "./eslint/base.js"
+  }
+}
