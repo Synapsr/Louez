@@ -20,6 +20,7 @@
  */
 
 import { PostHog } from 'posthog-node'
+import { env } from '@/env'
 
 let posthogServerInstance: PostHog | null = null
 
@@ -28,7 +29,7 @@ let posthogServerInstance: PostHog | null = null
  * Creates a singleton instance for reuse across requests.
  */
 export function getPostHogServer(): PostHog {
-  if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
+  if (!env.NEXT_PUBLIC_POSTHOG_KEY) {
     // Return a no-op client if PostHog is not configured
     return {
       capture: () => {},
@@ -38,8 +39,8 @@ export function getPostHogServer(): PostHog {
   }
 
   if (!posthogServerInstance) {
-    posthogServerInstance = new PostHog(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com',
+    posthogServerInstance = new PostHog(env.NEXT_PUBLIC_POSTHOG_KEY, {
+      host: env.NEXT_PUBLIC_POSTHOG_HOST,
       // Flush events every 30 seconds or when 20 events are queued
       flushAt: 20,
       flushInterval: 30000,

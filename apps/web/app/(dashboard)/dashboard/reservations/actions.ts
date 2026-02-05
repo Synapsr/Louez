@@ -8,6 +8,7 @@ import { eq, and, sql, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
 import type { ReservationStatus } from '@louez/validations'
+import { env } from '@/env'
 import {
   sendReservationConfirmationEmail,
   sendReminderPickupEmail,
@@ -169,7 +170,7 @@ export async function updateReservationStatus(
     email: reservation.customer.email,
   }
 
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
   // Build customer notification context
@@ -677,7 +678,7 @@ export async function createManualReservation(data: CreateReservationData) {
       })),
     ]
 
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
     // TODO: Use customer's stored locale preference when available
@@ -1824,7 +1825,7 @@ export async function sendReservationEmail(
     email: reservation.customer.email,
   }
 
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
   try {
@@ -1835,7 +1836,7 @@ export async function sendReservationEmail(
     switch (data.templateId) {
       case 'contract': {
         // Send contract email with PDF attachment link
-        const contractUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`
+        const contractUrl = `${env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`
         const subject = data.customSubject || `Contrat de location #${reservation.number} - ${store.name}`
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
@@ -1985,7 +1986,7 @@ export async function sendAccessLink(reservationId: string) {
     })
 
     // Build access URL
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
     const protocol = domain.includes('localhost') ? 'http' : 'https'
     const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
 
@@ -2114,7 +2115,7 @@ export async function sendAccessLinkBySms(reservationId: string) {
     })
 
     // Build access URL
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
     const protocol = domain.includes('localhost') ? 'http' : 'https'
     const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
 
@@ -2256,7 +2257,7 @@ export async function requestPayment(
     }
 
     // Build URLs
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
     const protocol = domain.includes('localhost') ? 'http' : 'https'
     const baseUrl = `${protocol}://${store.slug}.${domain}`
 

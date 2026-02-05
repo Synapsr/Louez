@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { signOut } from 'next-auth/react'
+import { env } from '@/env'
 import {
   Home,
   Package,
@@ -297,7 +298,7 @@ function StoreHeader({
         </div>
         {storeSlug && (
           <Link
-            href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
+            href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
             target="_blank"
             className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             title={t('viewStore')}
@@ -432,7 +433,7 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
 
       {storeSlug && (
         <Link
-          href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'}`}
+          href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
           target="_blank"
           className="shrink-0 p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >

@@ -17,6 +17,7 @@ import {
   notifyVerificationEmailSent,
   notifyUserSignedIn,
 } from '@/lib/discord/platform-notifications'
+import { env } from '@/env'
 
 // Get locale from Accept-Language header
 function getLocaleFromRequest(request?: Request): EmailLocale {
@@ -46,21 +47,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   }),
   providers: [
     Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      clientId: env.AUTH_GOOGLE_ID,
+      clientSecret: env.AUTH_GOOGLE_SECRET,
       // Account linking disabled to prevent account takeover attacks
       // Users must sign in with the same method they originally registered with
     }),
     Nodemailer({
       server: {
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT),
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
         auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASSWORD,
+          user: env.SMTP_USER,
+          pass: env.SMTP_PASSWORD,
         },
       },
-      from: process.env.SMTP_FROM,
+      from: env.SMTP_FROM,
       async sendVerificationRequest({ identifier: email, url, request }) {
         const locale = getLocaleFromRequest(request)
         const subject = subjectTranslations[locale]

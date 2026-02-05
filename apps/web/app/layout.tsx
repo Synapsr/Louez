@@ -1,14 +1,14 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
 // Import translations directly since this is a root layout without NextIntlProvider
-import messages from '@/messages/fr.json'
-import { UmamiAnalytics } from '@/components/umami-analytics'
+import messages from '@/messages/fr.json';
+import { UmamiAnalytics } from '@/components/umami-analytics';
 
 const inter = Inter({
   variable: '--font-inter',
   subsets: ['latin'],
-})
+});
 
 export const metadata: Metadata = {
   title: {
@@ -25,15 +25,16 @@ export const metadata: Metadata = {
     apple: '/apple-touch-icon.png',
     shortcut: '/favicon.svg',
   },
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="fr" suppressHydrationWarning>
+      <UmamiAnalytics />
       <head>
         <link
           href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap"
@@ -41,9 +42,8 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <UmamiAnalytics />
         {children}
       </body>
     </html>
-  )
+  );
 }

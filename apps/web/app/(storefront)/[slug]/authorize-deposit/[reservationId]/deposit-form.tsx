@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
+import { env } from '@/env'
 import {
   Elements,
   PaymentElement,
@@ -178,7 +179,7 @@ export function DepositForm(props: DepositFormProps) {
   useEffect(() => {
     // Load Stripe with the connected account
     const stripe = loadStripe(
-      process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!,
+      env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
       {
         stripeAccount: props.store.stripeAccountId,
       }

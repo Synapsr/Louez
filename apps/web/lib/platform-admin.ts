@@ -12,30 +12,15 @@
  */
 
 import { auth } from '@/lib/auth'
-
-/**
- * Validates an email format
- */
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
+import { env } from '@/env'
 
 /**
  * Parses the admin emails from environment variable
  * Returns an empty array if not configured
  */
 function getAdminEmails(): string[] {
-  // Read at RUNTIME - not cached at build time
-  const adminEmailsRaw = process.env.PLATFORM_ADMIN_EMAILS
-
-  if (!adminEmailsRaw || adminEmailsRaw.trim() === '') {
-    return []
-  }
-
-  return adminEmailsRaw
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter((email) => email.length > 0 && isValidEmail(email))
+  // env.PLATFORM_ADMIN_EMAILS is already an array, transformed in env.ts
+  return env.PLATFORM_ADMIN_EMAILS
 }
 
 /**

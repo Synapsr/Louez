@@ -1,8 +1,9 @@
 import { drizzle } from 'drizzle-orm/mysql2'
 import mysql from 'mysql2/promise'
 import * as schema from './schema'
+import { env } from './env'
 
-const connectionString = process.env.DATABASE_URL || ''
+const connectionString = env.DATABASE_URL
 
 // Singleton pattern to prevent connection pool exhaustion in development
 // Next.js hot reload creates new module instances, each creating a new pool
@@ -22,7 +23,7 @@ const pool =
   })
 
 // In development, cache the pool to avoid "Too many connections" errors
-if (process.env.NODE_ENV !== 'production') {
+if (env.NODE_ENV !== 'production') {
   globalForDb.pool = pool
 }
 

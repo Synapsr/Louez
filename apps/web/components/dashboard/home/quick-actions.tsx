@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
+import { env } from '@/env'
 import {
   Package,
   CalendarDays,
@@ -154,7 +155,7 @@ export function StorefrontWidget({ storeSlug, className }: StorefrontWidgetProps
   const [copied, setCopied] = useState(false)
   const [shareModalOpen, setShareModalOpen] = useState(false)
 
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const storeUrl = `https://${storeSlug}.${domain}`
 
   const handleCopy = async () => {

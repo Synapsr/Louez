@@ -14,6 +14,7 @@
 import { db } from '@louez/db'
 import { subscriptions, storeMembers, stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
+import { env } from '@/env'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,7 +35,7 @@ export interface StoreInfo {
  * Use this to skip expensive work (DB queries, string building) when disabled.
  */
 function isEnabled(): boolean {
-  return !!process.env.DISCORD_ADMIN_WEBHOOK_URL
+  return !!env.DISCORD_ADMIN_WEBHOOK_URL
 }
 
 /**
@@ -42,11 +43,10 @@ function isEnabled(): boolean {
  * Returns immediately if DISCORD_ADMIN_WEBHOOK_URL is not set.
  */
 async function send(message: string): Promise<void> {
-  const webhookUrl = process.env.DISCORD_ADMIN_WEBHOOK_URL
-  if (!webhookUrl) return
+  if (!env.DISCORD_ADMIN_WEBHOOK_URL) return
 
   try {
-    await fetch(webhookUrl, {
+    await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
@@ -75,7 +75,7 @@ function planLabel(slug: string): string {
 
 /** Build a Discord markdown link to a store's storefront. */
 function storeLink(name: string, slug: string): string {
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const protocol = domain.includes('localhost') ? 'http' : 'https'
   return `[${name}](${protocol}://${slug}.${domain})`
 }

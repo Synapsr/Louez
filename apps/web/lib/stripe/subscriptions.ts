@@ -4,6 +4,7 @@ import { stores, subscriptions, users, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { getPlan, getPlans, getPlanPriceId, type Plan, type Currency } from '@/lib/plans'
+import { env } from '@/env'
 
 interface CreateCheckoutSessionOptions {
   storeId: string
@@ -163,7 +164,7 @@ export async function createCustomerPortalSession(storeId: string) {
 
   const session = await stripe.billingPortal.sessions.create({
     customer: subscription.stripeCustomerId,
-    return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription`,
+    return_url: `${env.NEXT_PUBLIC_APP_URL}/dashboard/subscription`,
   })
 
   return {

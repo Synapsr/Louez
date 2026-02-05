@@ -7,8 +7,9 @@ import { createAccountLink } from '@/lib/stripe'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Button } from '@louez/ui'
 import Link from 'next/link'
+import { env } from '@/env'
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = env.NEXT_PUBLIC_APP_URL
 
 export default async function StripeRefreshPage() {
   const store = await getCurrentStore()

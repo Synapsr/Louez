@@ -3,6 +3,7 @@ import { processReviewRequests } from '@/lib/review-booster/automation'
 import { processReminders } from '@/lib/reminders/automation'
 import { refreshAllStoresCache, cleanExpiredCache } from '@/lib/google-places/cache'
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytics/aggregation'
+import { env } from '@/env'
 
 /**
  * Unified cron endpoint - called every minute
@@ -25,9 +26,8 @@ import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytic
 export async function GET(request: Request) {
   // Verify cron secret - required
   const authHeader = request.headers.get('authorization')
-  const cronSecret = process.env.CRON_SECRET
 
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

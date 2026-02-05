@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
+import { env } from '@/env'
 
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
 
 /**
  * Build an absolute storefront URL for server-side redirects.

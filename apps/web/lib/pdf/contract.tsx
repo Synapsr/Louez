@@ -9,6 +9,7 @@ import {
 import { format } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
 import { createContractStyles } from './styles'
+import { env } from '@/env'
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>
@@ -541,7 +542,7 @@ export function ContractDocument({
               <Text style={styles.conditionText}>
                 {t.conditions.termsLink
                   .replace('{slug}', store.slug)
-                  .replace('{domain}', process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost')}
+                  .replace('{domain}', env.NEXT_PUBLIC_APP_DOMAIN)}
               </Text>
             </View>
           </View>

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Store, Loader2, Globe, Mail, Phone, Pencil, Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
+import { env } from '@/env'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -118,7 +119,7 @@ export default function OnboardingStorePage() {
   })
 
   const currentSlug = form.watch('slug')
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
 
   /**
    * Auto-focus slug input when entering edit mode

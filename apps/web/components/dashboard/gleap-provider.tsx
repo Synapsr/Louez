@@ -1,27 +1,26 @@
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import Gleap from 'gleap'
+import { useEffect } from 'react';
+import Gleap from 'gleap';
+import { env } from '@/env';
 
 interface GleapProviderProps {
-  children: React.ReactNode
+  children: React.ReactNode;
   user?: {
-    id: string
-    email: string
-    name?: string | null
-  }
+    id: string;
+    email: string;
+    name?: string | null;
+  };
   store?: {
-    id: string
-    name: string
-  }
+    id: string;
+    name: string;
+  };
 }
 
 export function GleapProvider({ children, user, store }: GleapProviderProps) {
   useEffect(() => {
-    const apiKey = process.env.NEXT_PUBLIC_GLEAP_API_KEY
-
-    if (apiKey) {
-      Gleap.initialize(apiKey)
+    if (env.NEXT_PUBLIC_GLEAP_API_KEY && env.NODE_ENV === 'production') {
+      Gleap.initialize(env.NEXT_PUBLIC_GLEAP_API_KEY);
 
       if (user) {
         Gleap.identify(user.id, {
@@ -34,10 +33,10 @@ export function GleapProvider({ children, user, store }: GleapProviderProps) {
             storeName: store?.name,
             emailVerified: true,
           },
-        })
+        });
       }
     }
-  }, [user, store])
+  }, [user, store]);
 
-  return <>{children}</>
+  return <>{children}</>;
 }

@@ -7,6 +7,7 @@ import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getCustomerSession } from '../../actions'
 import { calculateDuration } from '@/lib/pricing'
+import { env } from '@/env'
 
 export async function createReservationPaymentSession(
   storeSlug: string,
@@ -68,7 +69,7 @@ export async function createReservationPaymentSession(
     }
 
     const currency = store.settings?.currency || 'EUR'
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
     const protocol = domain.includes('localhost') ? 'http' : 'https'
     const baseUrl = `${protocol}://${store.slug}.${domain}`
 

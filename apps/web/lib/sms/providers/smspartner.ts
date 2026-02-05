@@ -10,6 +10,7 @@
 
 import type { SmsProvider, SendSmsOptions, SendSmsResult } from '../types'
 import { validateAndNormalizePhone } from '../phone'
+import { env } from '@/env'
 
 const API_ENDPOINT = 'https://api.smspartner.fr/v1/send'
 
@@ -46,18 +47,14 @@ interface SmsPartnerResponse {
 export class SmsPartnerProvider implements SmsProvider {
   readonly name = 'smspartner' as const
 
-  private getApiKey(): string | undefined {
-    return process.env.SMS_PARTNER_API_KEY
-  }
-
   isConfigured(): boolean {
-    return !!this.getApiKey()
+    return !!env.SMS_PARTNER_API_KEY
   }
 
   getConfigStatus(): { configured: boolean; missingVars?: string[] } {
     const missingVars: string[] = []
 
-    if (!process.env.SMS_PARTNER_API_KEY) {
+    if (!env.SMS_PARTNER_API_KEY) {
       missingVars.push('SMS_PARTNER_API_KEY')
     }
 
@@ -68,9 +65,7 @@ export class SmsPartnerProvider implements SmsProvider {
   }
 
   async send(options: SendSmsOptions): Promise<SendSmsResult> {
-    const apiKey = this.getApiKey()
-
-    if (!apiKey) {
+    if (!env.SMS_PARTNER_API_KEY) {
       return {
         success: false,
         error: 'SMS Partner API key not configured',
@@ -91,13 +86,13 @@ export class SmsPartnerProvider implements SmsProvider {
 
     // Build request payload
     const payload: Record<string, unknown> = {
-      apiKey,
+      apiKey: env.SMS_PARTNER_API_KEY,
       phoneNumbers: phoneNumber,
       message: options.message,
     }
 
     // Add sender if provided
-    const sender = options.sender || process.env.SMS_DEFAULT_SENDER
+    const sender = options.sender || env.SMS_DEFAULT_SENDER
     if (sender) {
       // SMS Partner requires sender to be 3-11 alphanumeric characters
       const sanitizedSender = sender.replace(/[^a-zA-Z0-9]/g, '').slice(0, 11)

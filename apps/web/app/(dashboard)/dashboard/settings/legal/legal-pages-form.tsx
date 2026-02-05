@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { FileText, Sparkles, ExternalLink } from 'lucide-react'
+import { env } from '@/env'
 import { Button } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui'
@@ -152,7 +153,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
                 {store.slug && (
                   <Button type="button" variant="ghost" size="sm" asChild>
                     <a
-                      href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/terms`}
+                      href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/terms`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1"
@@ -176,7 +177,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
                 {store.slug && (
                   <Button type="button" variant="ghost" size="sm" asChild>
                     <a
-                      href={`https://${store.slug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/legal`}
+                      href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/legal`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-1"

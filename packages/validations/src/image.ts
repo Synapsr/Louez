@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { env } from './env'
 
 // ===== IMAGE VALIDATION =====
 // Validates image URLs and data URIs to prevent malicious uploads
@@ -90,8 +91,8 @@ export function isValidImageUrl(url: string): boolean {
   }
 
   // Check for S3 URLs
-  const s3PublicUrl = process.env.S3_PUBLIC_URL
-  if (s3PublicUrl && url.startsWith(s3PublicUrl)) {
+  const s3PublicUrl = env.S3_PUBLIC_URL
+  if (url.startsWith(s3PublicUrl)) {
     // Validate URL format and extension
     try {
       const parsed = new URL(url)
@@ -106,7 +107,7 @@ export function isValidImageUrl(url: string): boolean {
   }
 
   // For development, also allow localhost URLs
-  if (process.env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === 'development') {
     try {
       const parsed = new URL(url)
       if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {

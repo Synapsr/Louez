@@ -23,6 +23,7 @@ import {
 } from '@/lib/pricing/calculate'
 import type { PricingMode } from '@/lib/pricing/types'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
+import { env } from '@/env'
 
 interface ReservationItem {
   productId: string
@@ -686,7 +687,7 @@ export async function createReservation(input: CreateReservationInput) {
       // Send email to landlord (new request notification) - always in French for landlord
       const landlordEmail = store.email || ownerMember?.email
       if (landlordEmail) {
-        const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservationId}`
+        const dashboardUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservationId}`
         sendNewRequestLandlordEmail({
           to: landlordEmail,
           store: storeData,
@@ -750,7 +751,7 @@ export async function createReservation(input: CreateReservationInput) {
     if (shouldProcessPayment) {
       try {
         const currency = store.settings?.currency || 'EUR'
-        const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+        const domain = env.NEXT_PUBLIC_APP_DOMAIN
         const protocol = domain.includes('localhost') ? 'http' : 'https'
         const baseUrl = `${protocol}://${store.slug}.${domain}`
 
