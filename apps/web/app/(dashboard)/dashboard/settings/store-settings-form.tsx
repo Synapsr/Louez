@@ -10,6 +10,7 @@ import { z } from 'zod'
 import { ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { env } from '@/env'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -127,7 +128,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
   )
   const t = useTranslations('dashboard.settings')
 
-  const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost'
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const tCommon = useTranslations('common')
   const tValidation = useTranslations('validation')
 

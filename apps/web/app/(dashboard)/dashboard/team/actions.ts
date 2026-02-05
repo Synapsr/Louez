@@ -12,6 +12,7 @@ import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { z } from 'zod'
 import { canAddTeamMember } from '@/lib/plan-limits'
 import { notifyTeamMemberInvited } from '@/lib/discord/platform-notifications'
+import { env } from '@/env'
 
 const addMemberSchema = z.object({
   email: z.string().email(),
@@ -123,7 +124,7 @@ export async function addTeamMember(formData: FormData) {
       storeName: store.name,
       storeLogoUrl: store.logoUrl,
       inviterName: inviter?.name || inviter?.email || 'Un membre',
-      invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invitation/${token}`,
+      invitationUrl: `${env.NEXT_PUBLIC_APP_URL}/invitation/${token}`,
       locale: getLocaleFromCountry(store.settings?.country),
     })
   } catch (error) {
@@ -262,7 +263,7 @@ export async function resendInvitation(invitationId: string) {
       storeName: store.name,
       storeLogoUrl: store.logoUrl,
       inviterName: inviter?.name || inviter?.email || 'Un membre',
-      invitationUrl: `${process.env.NEXT_PUBLIC_APP_URL}/invitation/${newToken}`,
+      invitationUrl: `${env.NEXT_PUBLIC_APP_URL}/invitation/${newToken}`,
       locale: getLocaleFromCountry(store.settings?.country),
     })
   } catch (error) {

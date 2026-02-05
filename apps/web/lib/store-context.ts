@@ -169,7 +169,7 @@ export async function setActiveStoreId(storeId: string): Promise<{ success: bool
   const cookieStore = await cookies()
   cookieStore.set(ACTIVE_STORE_COOKIE, storeId, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // Keep using NODE_ENV as specified
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 365, // 1 year
     path: '/',

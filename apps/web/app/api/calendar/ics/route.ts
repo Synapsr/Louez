@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@louez/db'
 import { stores, reservations } from '@louez/db'
 import { eq, and, inArray } from 'drizzle-orm'
+import { env } from '@/env'
 
 // Format date to ICS format (YYYYMMDDTHHMMSS)
 function formatICSDate(date: Date): string {
@@ -136,7 +137,7 @@ export async function GET(request: Request) {
     lines.push(`TRANSP:OPAQUE`)
 
     // Add URL to reservation details
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.louez.io'
+    const baseUrl = env.NEXT_PUBLIC_APP_URL
     lines.push(`URL:${baseUrl}/dashboard/reservations/${reservation.id}`)
 
     lines.push('END:VEVENT')

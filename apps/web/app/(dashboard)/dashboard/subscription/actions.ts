@@ -9,6 +9,7 @@ import {
 } from '@/lib/stripe/subscriptions'
 import { revalidatePath } from 'next/cache'
 import type { Currency } from '@/lib/plans'
+import { env } from '@/env'
 
 export async function createCheckoutSession({
   planSlug,
@@ -32,8 +33,8 @@ export async function createCheckoutSession({
       currency,
       trialDays: store.trialDays ?? 0,
       stripeCouponId: store.stripeCouponId ?? undefined,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
+      successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?success=true`,
+      cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/subscription?canceled=true`,
     })
 
     return session

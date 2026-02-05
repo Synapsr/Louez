@@ -6,6 +6,7 @@ import { eq, desc, and, gte, lt, count } from 'drizzle-orm'
 import { getCurrentStore, verifyStoreAccess } from '@/lib/store-context'
 import { createSmsTopupCheckoutSession, getSmsTopupPrice } from '@/lib/stripe/sms-topup'
 import { SMS_TOPUP_PACKAGES, type SmsTopupPackage } from '@/lib/plans'
+import { env } from '@/env'
 
 // ===== INPUT VALIDATION HELPERS =====
 // Validate inputs to prevent unauthorized access and parameter manipulation
@@ -352,8 +353,8 @@ export async function createTopupCheckout(
     const result = await createSmsTopupCheckoutSession({
       storeId: store.id,
       quantity: quantity as SmsTopupPackage,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sms?topup=success`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/sms?topup=cancelled`,
+      successUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/sms?topup=success`,
+      cancelUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard/sms?topup=cancelled`,
       translations,
     })
 

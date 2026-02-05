@@ -11,6 +11,7 @@ import {
   notifySubscriptionCancelled,
   notifySmsCreditsTopup,
 } from '@/lib/discord/platform-notifications'
+import { env } from '@/env'
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -21,16 +22,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
   }
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set')
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
-  }
-
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_WEBHOOK_SECRET)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

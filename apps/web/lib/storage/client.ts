@@ -5,19 +5,20 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { env } from '@/env'
 
 export const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'fr-par',
-  endpoint: process.env.S3_ENDPOINT,
+  region: env.S3_REGION,
+  endpoint: env.S3_ENDPOINT,
   credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
   },
   forcePathStyle: true,
 })
 
-const BUCKET = process.env.S3_BUCKET!
-const PUBLIC_URL = process.env.S3_PUBLIC_URL!
+const BUCKET = env.S3_BUCKET
+const PUBLIC_URL = env.S3_PUBLIC_URL
 
 interface UploadOptions {
   key: string

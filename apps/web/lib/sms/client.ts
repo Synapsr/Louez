@@ -26,6 +26,7 @@
 
 import type { SmsProvider, SmsProviderType, SendSmsOptions, SendSmsResult, SmsConfig } from './types'
 import { SmsPartnerProvider } from './providers'
+import { env } from '@/env'
 
 // Provider instances cache
 let providerInstance: SmsProvider | null = null
@@ -34,8 +35,7 @@ let providerInstance: SmsProvider | null = null
  * Get the configured SMS provider type
  */
 function getProviderType(): SmsProviderType {
-  const provider = process.env.SMS_PROVIDER?.toLowerCase() as SmsProviderType | undefined
-  return provider || 'smspartner'
+  return env.SMS_PROVIDER
 }
 
 /**
@@ -103,7 +103,7 @@ export function getSmsConfig(): SmsConfig {
   return {
     provider: getProviderType(),
     enabled: isSmsConfigured(),
-    defaultSender: process.env.SMS_DEFAULT_SENDER,
+    defaultSender: env.SMS_DEFAULT_SENDER,
   }
 }
 

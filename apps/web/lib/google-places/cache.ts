@@ -3,9 +3,10 @@ import { googlePlacesCache, stores } from '@louez/db'
 import { eq, lt, sql } from 'drizzle-orm'
 import { getPlaceDetails, type PlaceDetails } from './index'
 import type { GoogleReview, ReviewBoosterSettings } from '@louez/types'
+import { env } from '@/env'
 
 // Default: 5 days (120 hours), configurable via env
-const CACHE_TTL_HOURS = parseInt(process.env.GOOGLE_PLACES_CACHE_TTL_HOURS || '120', 10)
+const CACHE_TTL_HOURS = env.GOOGLE_PLACES_CACHE_TTL_HOURS
 
 /**
  * Fetch an image and convert to base64

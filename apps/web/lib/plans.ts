@@ -1,4 +1,5 @@
 import type { PlanFeatures } from '@louez/types'
+import { env } from '@/env'
 
 export type Currency = 'eur' | 'usd'
 
@@ -130,34 +131,34 @@ export function getPlans(): Plan[] {
     {
       ...BASE_PLANS.pro,
       // Legacy EUR prices (backwards compatibility)
-      stripePriceMonthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
-      stripePriceYearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+      stripePriceMonthly: env.STRIPE_PRICE_PRO_MONTHLY,
+      stripePriceYearly: env.STRIPE_PRICE_PRO_YEARLY,
       // Multi-currency support
       stripePrices: {
         eur: {
-          monthly: process.env.STRIPE_PRICE_PRO_MONTHLY,
-          yearly: process.env.STRIPE_PRICE_PRO_YEARLY,
+          monthly: env.STRIPE_PRICE_PRO_MONTHLY,
+          yearly: env.STRIPE_PRICE_PRO_YEARLY,
         },
         usd: {
-          monthly: process.env.STRIPE_PRICE_PRO_MONTHLY_USD,
-          yearly: process.env.STRIPE_PRICE_PRO_YEARLY_USD,
+          monthly: env.STRIPE_PRICE_PRO_MONTHLY_USD,
+          yearly: env.STRIPE_PRICE_PRO_YEARLY_USD,
         },
       },
     },
     {
       ...BASE_PLANS.ultra,
       // Legacy EUR prices (backwards compatibility)
-      stripePriceMonthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
-      stripePriceYearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
+      stripePriceMonthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
+      stripePriceYearly: env.STRIPE_PRICE_ULTRA_YEARLY,
       // Multi-currency support
       stripePrices: {
         eur: {
-          monthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY,
-          yearly: process.env.STRIPE_PRICE_ULTRA_YEARLY,
+          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY,
+          yearly: env.STRIPE_PRICE_ULTRA_YEARLY,
         },
         usd: {
-          monthly: process.env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
-          yearly: process.env.STRIPE_PRICE_ULTRA_YEARLY_USD,
+          monthly: env.STRIPE_PRICE_ULTRA_MONTHLY_USD,
+          yearly: env.STRIPE_PRICE_ULTRA_YEARLY_USD,
         },
       },
     },
@@ -183,9 +184,9 @@ export function getDefaultPlan(): Plan {
  */
 export function isStripeConfigured(): boolean {
   return !!(
-    process.env.STRIPE_SECRET_KEY &&
-    process.env.STRIPE_PRICE_PRO_MONTHLY &&
-    process.env.STRIPE_PRICE_ULTRA_MONTHLY
+    env.STRIPE_SECRET_KEY &&
+    env.STRIPE_PRICE_PRO_MONTHLY &&
+    env.STRIPE_PRICE_ULTRA_MONTHLY
   )
 }
 

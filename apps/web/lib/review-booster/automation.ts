@@ -13,10 +13,11 @@ import { buildReviewUrl } from '@/lib/google-places'
 import { sendThankYouReviewEmail } from '@/lib/email/send'
 import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
 import type { ReviewBoosterSettings } from '@louez/types'
+import { env } from '@/env'
 
 // Base domain for short URLs (e.g., "louez.io" or "localhost:3000")
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'louez.io'
-const IS_PRODUCTION = process.env.NODE_ENV === 'production'
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
+const IS_PRODUCTION = env.NODE_ENV === 'production'
 
 // Maximum window for eligible reservations (prevents mass sending on feature activation)
 // Only reservations returned within the last 24 hours are eligible

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { AddressSuggestion } from '@louez/types'
+import { env } from '@/env'
 
-const GOOGLE_PLACES_API_KEY = process.env.GOOGLE_PLACES_API_KEY
+const GOOGLE_PLACES_API_KEY = env.GOOGLE_PLACES_API_KEY
 
 /**
  * GET /api/address/autocomplete?query=...

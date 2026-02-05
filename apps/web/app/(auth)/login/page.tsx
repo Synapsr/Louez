@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { env } from '@/env'
 import { Button } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -41,7 +42,7 @@ function isValidRedirectUrl(url: string | null): string {
   // For absolute URLs, validate they point to our domain
   try {
     const parsed = new URL(url)
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const appUrl = env.NEXT_PUBLIC_APP_URL
     const appDomain = new URL(appUrl).hostname
 
     // Check if the redirect URL is for our domain (or subdomains)

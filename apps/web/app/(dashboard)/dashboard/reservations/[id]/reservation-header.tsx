@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
+import { env } from '@/env'
 import {
   ArrowLeft,
   Building2,
@@ -133,7 +134,7 @@ export function ReservationHeader({
   }
 
   const handleCopyLink = () => {
-    const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN
     const url = `https://${storeSlug}.${domain}/account/reservations/${reservationId}`
     navigator.clipboard.writeText(url)
     setCopiedLink(true)
@@ -403,7 +404,7 @@ export function ReservationHeader({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <a
-                    href={`https://${storeSlug}.${process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'}/account/reservations/${reservationId}`}
+                    href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}/account/reservations/${reservationId}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

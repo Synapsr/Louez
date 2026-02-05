@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { env } from '@/env'
 
 // =============================================================================
 // CONFIGURATION
@@ -15,9 +16,9 @@ import type { NextRequest } from 'next/server'
 //   PREVIEW_STORE_SLUG - For local dev, show this store's storefront instead of dashboard
 // =============================================================================
 
-const APP_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
-const DASHBOARD_SUBDOMAIN = process.env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN || 'app'
-const PREVIEW_STORE_SLUG = process.env.PREVIEW_STORE_SLUG || process.env.PREVIEW_MODE || ''
+const APP_DOMAIN = env.NEXT_PUBLIC_APP_DOMAIN
+const DASHBOARD_SUBDOMAIN = env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN
+const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG
 
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [

@@ -16,6 +16,7 @@ import {
   notifyPaymentFailed,
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications'
+import { env } from '@/env'
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -124,16 +125,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
   }
 
-  const webhookSecret = process.env.STRIPE_CONNECT_WEBHOOK_SECRET
-  if (!webhookSecret) {
-    console.error('STRIPE_CONNECT_WEBHOOK_SECRET is not set')
-    return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
-  }
-
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    event = stripe.webhooks.constructEvent(body, signature, env.STRIPE_CONNECT_WEBHOOK_SECRET)
   } catch (err) {
     console.error('Connect webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
@@ -451,7 +446,7 @@ async function handleCheckoutCompleted(
 
     // Dispatch customer notification for reservation confirmed (email/SMS based on store preferences)
     if (reservation.customer) {
-      const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+      const domain = env.NEXT_PUBLIC_APP_DOMAIN
       const reservationUrl = `https://${reservation.store.slug}.${domain}/account/reservations/${reservationId}`
 
       const emailItems = reservation.items?.map((item) => ({

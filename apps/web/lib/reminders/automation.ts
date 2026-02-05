@@ -15,6 +15,7 @@ import {
   DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS,
   type CustomerNotificationSettings,
 } from '@louez/types'
+import { env } from '@/env'
 
 interface ProcessResult {
   processed: number
@@ -155,7 +156,7 @@ async function processPickupReminders(
 
     try {
       // Build reservation URL
-      const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+      const domain = env.NEXT_PUBLIC_APP_DOMAIN
       const storeData = await db.query.stores.findFirst({
         where: eq(stores.id, store.id),
         columns: { slug: true },
@@ -293,7 +294,7 @@ async function processReturnReminders(
 
     try {
       // Build reservation URL
-      const domain = process.env.NEXT_PUBLIC_APP_DOMAIN || 'localhost:3000'
+      const domain = env.NEXT_PUBLIC_APP_DOMAIN
       const storeData = await db.query.stores.findFirst({
         where: eq(stores.id, store.id),
         columns: { slug: true },
