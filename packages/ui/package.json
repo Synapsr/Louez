@@ -46,6 +46,7 @@
     "react-dom": "^19"
   },
   "devDependencies": {
+    "@louez/config": "workspace:*",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "typescript": "^5"

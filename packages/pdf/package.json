@@ -13,6 +13,7 @@
     "@react-pdf/renderer": "^4.3.2"
   },
   "devDependencies": {
+    "@louez/config": "workspace:*",
     "@types/react": "^19",
     "typescript": "^5"
   },
