@@ -7,6 +7,7 @@
 **Louez** is a multi-tenant, self-hosted equipment rental management platform. It provides rental businesses with inventory management, reservation handling, customer databases, and branded storefronts.
 
 - **License**: MIT (open-source)
+- **Monorepo**: Turborepo + pnpm workspaces
 - **Language**: TypeScript (strict mode)
 - **Framework**: Next.js 16 with App Router
 
@@ -15,26 +16,29 @@
 ### Multi-Tenant Model
 
 Each `store` operates independently with its own:
+
 - Products, categories, pricing tiers
 - Customers and reservations
 - Settings, branding, legal pages
 - Team members (owner/member roles)
 
 **Subdomain routing**:
+
 - `app.domain.com` → Admin dashboard
 - `{store-slug}.domain.com` → Public storefront
 
 ### Route Groups
 
-| Group | Path | Auth | Purpose |
-|-------|------|------|---------|
-| `(auth)` | `/login`, `/verify-request` | Public | Authentication |
-| `(dashboard)` | `/dashboard/*`, `/onboarding/*` | Protected | Store management |
-| `(storefront)` | `/{slug}/*` | Public | Customer-facing |
+| Group          | Path                            | Auth      | Purpose          |
+| -------------- | ------------------------------- | --------- | ---------------- |
+| `(auth)`       | `/login`, `/verify-request`     | Public    | Authentication   |
+| `(dashboard)`  | `/dashboard/*`, `/onboarding/*` | Protected | Store management |
+| `(storefront)` | `/{slug}/*`                     | Public    | Customer-facing  |
 
 ### Data Flow
 
 **Server Actions (mutations)**:
+
 ```
 Request → Middleware (subdomain detection) → Layout (auth check) → Page/Action
                                                      ↓
@@ -44,6 +48,7 @@ Request → Middleware (subdomain detection) → Layout (auth check) → Page/Ac
 ```
 
 **oRPC (queries/mutations)**:
+
 ```
 Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
                                                            ↓
@@ -56,21 +61,74 @@ Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js, Next.js 16, React 19 |
-| Language | TypeScript 5 |
-| Database | MySQL 8, Drizzle ORM |
-| Auth | NextAuth v5 (OAuth, Email) |
-| API | oRPC (type-safe RPC) |
-| Data Fetching | TanStack Query |
-| Validation | Zod |
-| UI | Tailwind CSS 4, shadcn/ui, Radix UI |
-| Forms | React Hook Form |
-| Payments | Stripe Connect |
-| Email | React Email, Nodemailer |
-| PDF | @react-pdf/renderer |
-| i18n | next-intl (fr, en) |
+| Layer         | Technology                          |
+| ------------- | ----------------------------------- |
+| Monorepo      | Turborepo + pnpm workspaces         |
+| Runtime       | Node.js, Next.js 16, React 19       |
+| Language      | TypeScript 5                        |
+| Database      | MySQL 8, Drizzle ORM                |
+| Auth          | NextAuth v5 (OAuth, Email)          |
+| API           | oRPC (type-safe RPC)                |
+| Data Fetching | TanStack Query                      |
+| Validation    | Zod                                 |
+| UI            | Tailwind CSS 4, shadcn/ui, Radix UI |
+| Forms         | React Hook Form                     |
+| Payments      | Stripe Connect                      |
+| Email         | React Email, Nodemailer             |
+| PDF           | @react-pdf/renderer                 |
+| i18n          | next-intl (fr, en)                  |
+
+## Monorepo Architecture
+
+This project uses **Turborepo** with **pnpm workspaces** for monorepo management.
+
+### Workspaces
+
+| Workspace    | Package Prefix | Purpose                      |
+| ------------ | -------------- | ---------------------------- |
+| `apps/*`     | `@louez/`      | Deployable applications      |
+| `packages/*` | `@louez/`      | Shared libraries and configs |
+
+### Task Pipeline
+
+Turborepo manages task execution with automatic dependency resolution and caching.
+
+**Cached tasks** (outputs stored for replay):
+
+- `build` - Production builds (outputs: `dist/**`, `.next/**`)
+- `lint` - ESLint checks
+- `type-check` - TypeScript validation
+
+**Non-cached tasks** (always run):
+
+- `dev` - Development server (persistent)
+- `db:*` - Database operations (side effects)
+- `clean` - Cleanup
+
+### Filtering
+
+Run tasks for specific packages using `--filter`:
+
+```bash
+# Run dev for web app only
+pnpm dev --filter=@louez/web
+
+# Build a specific package
+pnpm build --filter=@louez/db
+
+# Type-check web and its dependencies
+pnpm type-check --filter=@louez/web...
+
+# Run for all packages except one
+pnpm build --filter=!@louez/config
+```
+
+### Adding a New Package
+
+1. Create directory in `packages/` or `apps/`
+2. Add `package.json` with `"name": "@louez/package-name"`
+3. Run `pnpm install` to link workspaces
+4. Import in other packages: `import { x } from '@louez/package-name'`
 
 ## Directory Structure
 
@@ -112,22 +170,30 @@ louez/
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `pnpm dev` | Start development server |
-| `pnpm build` | Production build |
-| `pnpm lint` | Run ESLint |
-| `pnpm format` | Run Prettier |
-| `pnpm db:push` | Sync schema to DB |
-| `pnpm db:studio` | Open Drizzle Studio |
-| `pnpm db:generate` | Generate migrations |
-| `pnpm db:migrate` | Apply migrations |
+All commands run through Turborepo. Use `--filter` to target specific packages.
+
+| Command                          | Purpose                               |
+| -------------------------------- | ------------------------------------- |
+| `pnpm dev`                       | Start all dev servers (Turbo TUI)     |
+| `pnpm dev:web`                   | Start web app only                    |
+| `pnpm build`                     | Production build (all packages)       |
+| `pnpm build --filter=@louez/web` | Build web app only                    |
+| `pnpm type-check`                | TypeScript check (all packages)       |
+| `pnpm type-check:web`            | Type-check web only                   |
+| `pnpm lint`                      | Run ESLint                            |
+| `pnpm format`                    | Run Prettier                          |
+| `pnpm clean`                     | Remove build artifacts & node_modules |
+| `pnpm db:push`                   | Sync schema to DB                     |
+| `pnpm db:studio`                 | Open Drizzle Studio                   |
+| `pnpm db:generate`               | Generate migrations                   |
+| `pnpm db:migrate`                | Apply migrations                      |
 
 ## Coding Conventions
 
 ### Server Actions
 
 Located in `actions.ts` files. Always:
+
 1. Authenticate via `getCurrentStore()`
 2. Validate input with Zod
 3. Filter database queries by `storeId`
@@ -139,9 +205,10 @@ Located in `actions.ts` files. Always:
 For new API calls, use oRPC instead of REST for end-to-end type safety.
 
 **Defining procedures** (`packages/api/src/routers/`):
+
 ```typescript
-import { z } from 'zod'
-import { dashboardProcedure } from '../../procedures'
+import { z } from 'zod';
+import { dashboardProcedure } from '../../procedures';
 
 export const myRouter = {
   getItems: dashboardProcedure
@@ -149,27 +216,29 @@ export const myRouter = {
     .handler(async ({ input, context }) => {
       // context.store is available (multi-tenant isolated)
       return db.query.items.findMany({
-        where: eq(items.storeId, context.store.id)
-      })
+        where: eq(items.storeId, context.store.id),
+      });
     }),
-}
+};
 ```
 
 **Client usage** (in React components):
+
 ```typescript
-import { useQuery } from '@tanstack/react-query'
-import { orpc } from '@/lib/orpc/react'
+import { useQuery } from '@tanstack/react-query';
+import { orpc } from '@/lib/orpc/react';
 
 function MyComponent() {
   const { data, isLoading } = useQuery(
     orpc.dashboard.myRouter.getItems.queryOptions({
-      input: { status: 'active' }
-    })
-  )
+      input: { status: 'active' },
+    }),
+  );
 }
 ```
 
 **Base procedures**:
+
 - `publicProcedure` - No auth required
 - `dashboardProcedure` - Requires authenticated user + store access
 - `storefrontProcedure` - Public but requires store context (via header)
@@ -205,6 +274,7 @@ function MyComponent() {
 ## Key Domain Concepts
 
 ### Reservation Flow
+
 ```
 pending → confirmed → ongoing → completed
     ↓         ↓
@@ -212,14 +282,17 @@ pending → confirmed → ongoing → completed
 ```
 
 ### Pricing Modes
+
 - `hour`: Hourly rental
 - `day`: Daily rental
 - `week`: Weekly rental
 
 ### Payment Methods
+
 `stripe` | `cash` | `card` | `transfer` | `check` | `other`
 
 ### User Roles
+
 - `owner`: Full access including settings and team management
 - `member`: Read and write access only
 
