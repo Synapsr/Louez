@@ -4,6 +4,7 @@ import './globals.css';
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from '@/messages/fr.json';
 import { UmamiAnalytics } from '@/components/umami-analytics';
+import { ORPCProvider } from '@/lib/orpc/provider';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -42,7 +43,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.variable} font-sans antialiased`}>
-        {children}
+        <ORPCProvider>{children}</ORPCProvider>
       </body>
     </html>
   );

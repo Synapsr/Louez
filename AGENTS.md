@@ -34,12 +34,24 @@ Each `store` operates independently with its own:
 
 ### Data Flow
 
+**Server Actions (mutations)**:
 ```
 Request → Middleware (subdomain detection) → Layout (auth check) → Page/Action
                                                      ↓
                                             getCurrentStore()
                                                      ↓
                                             Database (storeId filter)
+```
+
+**oRPC (queries/mutations)**:
+```
+Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
+                                                           ↓
+                                                    RPCHandler → Procedure middleware
+                                                           ↓
+                                                    getCurrentStore() / getCustomerSession()
+                                                           ↓
+                                                    Database (storeId filter)
 ```
 
 ## Tech Stack
@@ -50,6 +62,8 @@ Request → Middleware (subdomain detection) → Layout (auth check) → Page/Ac
 | Language | TypeScript 5 |
 | Database | MySQL 8, Drizzle ORM |
 | Auth | NextAuth v5 (OAuth, Email) |
+| API | oRPC (type-safe RPC) |
+| Data Fetching | TanStack Query |
 | Validation | Zod |
 | UI | Tailwind CSS 4, shadcn/ui, Radix UI |
 | Forms | React Hook Form |
@@ -61,27 +75,39 @@ Request → Middleware (subdomain detection) → Layout (auth check) → Page/Ac
 ## Directory Structure
 
 ```
-src/
-├── app/                    # Next.js App Router
-│   ├── (auth)/            # Login pages
-│   ├── (dashboard)/       # Protected admin routes
-│   ├── (storefront)/      # Public store routes [slug]/
-│   └── api/               # REST endpoints
-├── components/
-│   ├── ui/                # Base components (shadcn/ui)
-│   ├── dashboard/         # Admin-specific
-│   └── storefront/        # Customer-facing
-├── lib/
-│   ├── db/schema.ts       # Drizzle schema (20+ tables)
-│   ├── auth.ts            # NextAuth config
-│   ├── store-context.ts   # Multi-tenant utilities
-│   ├── validations/       # Zod schemas
-│   ├── email/templates/   # Email components
-│   ├── pdf/               # Contract generation
-│   └── pricing/           # Price calculations
-├── contexts/              # React contexts
-├── messages/              # i18n JSON files
-└── types/                 # TypeScript definitions
+louez/
+├── apps/
+│   └── web/                        # Next.js application
+│       ├── app/                    # Next.js App Router
+│       │   ├── (auth)/            # Login pages
+│       │   ├── (dashboard)/       # Protected admin routes
+│       │   ├── (storefront)/      # Public store routes [slug]/
+│       │   └── api/               # API endpoints (including /api/rpc)
+│       ├── components/
+│       │   ├── ui/                # Base components (shadcn/ui)
+│       │   ├── dashboard/         # Admin-specific
+│       │   └── storefront/        # Customer-facing
+│       ├── lib/
+│       │   ├── auth.ts            # NextAuth config
+│       │   ├── store-context.ts   # Multi-tenant utilities
+│       │   └── orpc/              # oRPC client utilities
+│       ├── contexts/              # React contexts
+│       └── messages/              # i18n JSON files
+│
+├── packages/
+│   ├── api/                       # @louez/api - oRPC router & procedures
+│   │   └── src/
+│   │       ├── router.ts          # Root router
+│   │       ├── procedures.ts      # Base procedures (public, dashboard, storefront)
+│   │       ├── context.ts         # Context type definitions
+│   │       └── routers/           # Feature routers
+│   │           ├── dashboard/     # Admin procedures
+│   │           └── storefront/    # Customer procedures
+│   ├── db/                        # @louez/db - Drizzle schema & connection
+│   ├── validations/               # @louez/validations - Zod schemas
+│   ├── types/                     # @louez/types - Shared TypeScript types
+│   ├── utils/                     # @louez/utils - Shared utilities
+│   └── ui/                        # @louez/ui - shadcn/ui components
 ```
 
 ## Commands
@@ -107,6 +133,48 @@ Located in `actions.ts` files. Always:
 3. Filter database queries by `storeId`
 4. Return `{ success: true }` or `{ error: 'i18n.key' }`
 5. Call `revalidatePath()` after mutations
+
+### oRPC (Type-Safe API)
+
+For new API calls, use oRPC instead of REST for end-to-end type safety.
+
+**Defining procedures** (`packages/api/src/routers/`):
+```typescript
+import { z } from 'zod'
+import { dashboardProcedure } from '../../procedures'
+
+export const myRouter = {
+  getItems: dashboardProcedure
+    .input(z.object({ status: z.string().optional() }))
+    .handler(async ({ input, context }) => {
+      // context.store is available (multi-tenant isolated)
+      return db.query.items.findMany({
+        where: eq(items.storeId, context.store.id)
+      })
+    }),
+}
+```
+
+**Client usage** (in React components):
+```typescript
+import { useQuery } from '@tanstack/react-query'
+import { orpc } from '@/lib/orpc/react'
+
+function MyComponent() {
+  const { data, isLoading } = useQuery(
+    orpc.dashboard.myRouter.getItems.queryOptions({
+      input: { status: 'active' }
+    })
+  )
+}
+```
+
+**Base procedures**:
+- `publicProcedure` - No auth required
+- `dashboardProcedure` - Requires authenticated user + store access
+- `storefrontProcedure` - Public but requires store context (via header)
+- `storefrontAuthProcedure` - Requires authenticated customer
+- `requirePermission('write')` - Requires specific permission
 
 ### Components
 
@@ -172,9 +240,12 @@ pending → confirmed → ongoing → completed
 
 ## Documentation References
 
-- Database schema: `src/lib/db/schema.ts`
-- Auth configuration: `src/lib/auth.ts`
-- Multi-tenant context: `src/lib/store-context.ts`
-- Middleware routing: `src/middleware.ts`
-- Email templates: `src/lib/email/templates/`
-- Pricing logic: `src/lib/pricing/`
+- Database schema: `packages/db/src/schema.ts`
+- Auth configuration: `apps/web/lib/auth.ts`
+- Multi-tenant context: `apps/web/lib/store-context.ts`
+- Middleware routing: `apps/web/middleware.ts`
+- oRPC router: `packages/api/src/router.ts`
+- oRPC procedures: `packages/api/src/procedures.ts`
+- oRPC client: `apps/web/lib/orpc/`
+- Email templates: `apps/web/lib/email/templates/`
+- Pricing logic: `apps/web/lib/pricing/`
