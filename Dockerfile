@@ -16,6 +16,7 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/api/package.json ./packages/api/
 COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
@@ -30,6 +31,7 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
 COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
@@ -42,6 +44,7 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV SKIP_ENV_VALIDATION=1
 RUN corepack enable pnpm && pnpm turbo run build --filter=web
 
 FROM node:20-alpine AS runner
