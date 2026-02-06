@@ -60,7 +60,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
-COPY --from=builder --chown=nextjs:nodejs /app/packages/db/migrations ./migrations
+COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod +x ./docker/entrypoint.sh
 USER nextjs
