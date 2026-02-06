@@ -932,7 +932,10 @@
         "lockPrice": "Figer le prix",
         "unlockPrice": "Recalculer le prix",
         "adjustmentPositive": "Un complément de {amount} devra être encaissé.",
-        "adjustmentNegative": "Un remboursement de {amount} pourra être effectué."
+        "adjustmentNegative": "Un remboursement de {amount} pourra être effectué.",
+        "warningDialogTitle": "Confirmer une modification exceptionnelle",
+        "warningDialogDescription": "Cette modification ne respecte pas les règles habituelles de réservation. Vérifiez les avertissements avant d'enregistrer.",
+        "confirmWithWarnings": "Enregistrer malgré les avertissements"
       },
       "accessLink": {
         "send": "Envoyer le lien",

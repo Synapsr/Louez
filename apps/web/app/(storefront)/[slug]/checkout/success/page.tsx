@@ -13,6 +13,10 @@ import { formatCurrency, formatDate } from '@louez/utils'
 import { getCheckoutSession, fromStripeCents } from '@/lib/stripe'
 import { stripe } from '@/lib/stripe/client'
 import { nanoid } from 'nanoid'
+import {
+  evaluateReservationRules,
+  formatReservationWarningsForLog,
+} from '@/lib/utils/reservation-rules'
 
 interface SuccessPageProps {
   params: Promise<{ slug: string }>
@@ -79,6 +83,20 @@ async function verifyAndUpdatePayment(
 
     if (!reservation || reservation.status !== 'pending') {
       return null
+    }
+
+    const validationWarnings = evaluateReservationRules({
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      storeSettings: store.settings,
+    })
+
+    if (validationWarnings.length > 0) {
+      console.warn('[reservation-confirmation-warning] Success page confirmed reservation with rule violations', {
+        reservationId,
+        storeId: store.id,
+        warnings: validationWarnings,
+      })
     }
 
     const currency = session.currency
@@ -167,12 +185,19 @@ async function verifyAndUpdatePayment(
       id: nanoid(),
       reservationId,
       activityType: 'confirmed',
-      description: null,
+      description:
+        validationWarnings.length > 0
+          ? formatReservationWarningsForLog(validationWarnings)
+          : null,
       metadata: {
         source: 'online_payment',
         depositAmount,
         depositStatus: newDepositStatus,
         cardSaved: !!stripePaymentMethodId,
+        ...(validationWarnings.length > 0 && {
+          validationWarnings,
+          validationWarningsCount: validationWarnings.length,
+        }),
       },
       createdAt: new Date(),
     })

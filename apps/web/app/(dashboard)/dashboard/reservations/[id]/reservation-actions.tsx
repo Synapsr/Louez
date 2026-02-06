@@ -84,6 +84,18 @@ export function ReservationActions({
       if (result.error) {
         toast.error(tErrors(result.error))
       } else {
+        const warnings = 'warnings' in result ? result.warnings : undefined
+        if (warnings && warnings.length > 0) {
+          const warningMessage = warnings
+            .map((warning: { key: string; params?: Record<string, string | number> }) => {
+              const key = warning.key.replace('errors.', '')
+              return tErrors(key, warning.params || {})
+            })
+            .join(' • ')
+
+          toast.warning(warningMessage)
+        }
+
         toast.success(t('statusUpdated'))
         router.refresh()
       }

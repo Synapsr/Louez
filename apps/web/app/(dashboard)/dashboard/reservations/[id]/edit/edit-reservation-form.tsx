@@ -52,8 +52,12 @@ import { Separator } from '@louez/ui'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { cn, getCurrencySymbol } from '@louez/utils'
 import { dateRangesOverlap } from '@/lib/utils/duration'
+import {
+  evaluateReservationRules,
+  type ReservationValidationWarning,
+} from '@/lib/utils/reservation-rules'
 import { updateReservation } from '../../actions'
-import type { PricingBreakdown, ProductSnapshot } from '@louez/types'
+import type { PricingBreakdown, ProductSnapshot, StoreSettings } from '@louez/types'
 
 // Types
 interface PricingTier {
@@ -132,6 +136,7 @@ interface EditReservationFormProps {
   existingReservations: ExistingReservation[]
   pricingMode: string
   currency: string
+  storeSettings: StoreSettings | null
 }
 
 // Helper functions
@@ -195,6 +200,7 @@ export function EditReservationForm({
   existingReservations,
   pricingMode,
   currency,
+  storeSettings,
 }: EditReservationFormProps) {
   const router = useRouter()
   // Use separate translators for different namespaces
@@ -221,6 +227,10 @@ export function EditReservationForm({
     }))
   )
   const [availabilityWarnings, setAvailabilityWarnings] = useState<AvailabilityWarning[]>([])
+  const [validationWarningsToConfirm, setValidationWarningsToConfirm] = useState<
+    ReservationValidationWarning[]
+  >([])
+  const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false)
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -469,16 +479,31 @@ export function EditReservationForm({
     toast.success(tForm('customItem.added'))
   }
 
-  const handleSave = async () => {
+  const getRuleWarnings = useCallback((): ReservationValidationWarning[] => {
+    if (!startDate || !endDate) return []
+
+    return evaluateReservationRules({
+      startDate,
+      endDate,
+      storeSettings,
+    })
+  }, [startDate, endDate, storeSettings])
+
+  const getWarningLabel = useCallback(
+    (warning: ReservationValidationWarning) => {
+      const key = warning.key.replace('errors.', '')
+      return tErrors(key, warning.params || {})
+    },
+    [tErrors]
+  )
+
+  const saveReservation = async () => {
+    if (!startDate || !endDate) return
+
     if (items.length === 0) {
       toast.error(t('edit.noItems'))
       return
     }
-    if (!startDate || !endDate) {
-      toast.error(t('edit.datesRequired'))
-      return
-    }
-
     setIsLoading(true)
     try {
       const result = await updateReservation(reservation.id, {
@@ -498,6 +523,23 @@ export function EditReservationForm({
       if (result.error) {
         toast.error(tErrors(result.error))
       } else {
+        const warnings = 'warnings' in result ? result.warnings : undefined
+        if (warnings && warnings.length > 0) {
+          const toastableWarnings = warnings.filter(
+            (warning: ReservationValidationWarning) =>
+              warning.code !== 'min_duration' &&
+              warning.key !== 'errors.minRentalDurationViolation'
+          )
+
+          const warningMessage = toastableWarnings
+            .map((warning: ReservationValidationWarning) => getWarningLabel(warning))
+            .join(' • ')
+
+          if (warningMessage) {
+            toast.warning(warningMessage)
+          }
+        }
+
         toast.success(t('edit.saved'))
         router.push(`/dashboard/reservations/${reservation.id}`)
         router.refresh()
@@ -507,6 +549,27 @@ export function EditReservationForm({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSave = async () => {
+    if (!startDate || !endDate) {
+      toast.error(t('edit.datesRequired'))
+      return
+    }
+
+    const warnings = getRuleWarnings()
+    if (warnings.length > 0) {
+      setValidationWarningsToConfirm(warnings)
+      setShowValidationConfirmDialog(true)
+      return
+    }
+
+    await saveReservation()
+  }
+
+  const handleConfirmWarningSave = async () => {
+    setShowValidationConfirmDialog(false)
+    await saveReservation()
   }
 
   const hasChanges =
@@ -1055,6 +1118,50 @@ export function EditReservationForm({
             <Button type="button" onClick={handleAddCustomItem} disabled={newDuration === 0}>
               <Plus className="h-4 w-4 mr-2" />
               {tForm('customItem.addButton')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showValidationConfirmDialog} onOpenChange={setShowValidationConfirmDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              {t('edit.warningDialogTitle')}
+            </DialogTitle>
+            <DialogDescription>
+              {t('edit.warningDialogDescription')}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            {validationWarningsToConfirm.map((warning, index) => (
+              <div
+                key={`${warning.code}-${index}`}
+                className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              >
+                {getWarningLabel(warning)}
+              </div>
+            ))}
+            <p className="text-sm text-muted-foreground">{tForm('warnings.canContinue')}</p>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowValidationConfirmDialog(false)}
+              disabled={isLoading}
+            >
+              {tCommon('cancel')}
+            </Button>
+            <Button onClick={handleConfirmWarningSave} disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <AlertTriangle className="mr-2 h-4 w-4" />
+              )}
+              {t('edit.confirmWithWarnings')}
             </Button>
           </DialogFooter>
         </DialogContent>
