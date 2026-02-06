@@ -3697,6 +3697,7 @@
       "period": "Période",
       "periodFrom": "Du {startDate}",
       "periodTo": "Au {endDate}",
+      "timezone": "Fuseau horaire : {timezone}",
       "address": "Adresse",
       "pickupAddress": "Adresse de retrait",
       "returnAddress": "Adresse de retour",

@@ -43,7 +43,7 @@ export interface CustomerNotificationStore {
   address?: string | null
   phone?: string | null
   theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
-  settings?: { country?: string; currency?: string } | null
+  settings?: { country?: string; currency?: string; timezone?: string } | null
   emailSettings?: {
     confirmationContent?: { subject?: string; greeting?: string; message?: string; signature?: string }
     rejectionContent?: { subject?: string; greeting?: string; message?: string; signature?: string }

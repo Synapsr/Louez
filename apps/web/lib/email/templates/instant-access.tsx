@@ -7,16 +7,18 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
 import {
   getEmailTranslations,
-  getDateLocale,
   getDateFormatPatterns,
   getCurrencyFormatter,
   type EmailLocale,
 } from '../i18n'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface InstantAccessItem {
   name: string
@@ -31,6 +33,8 @@ interface InstantAccessEmailProps {
   storeAddress?: string | null
   storePhone?: string | null
   storeEmail?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   startDate: Date
@@ -50,6 +54,8 @@ export function InstantAccessEmail({
   storeAddress,
   storePhone,
   storeEmail,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   startDate,
@@ -64,9 +70,13 @@ export function InstantAccessEmail({
   const t = getEmailTranslations(locale)
   const messages = t.instantAccess
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
   const formatCurrency = getCurrencyFormatter(locale, currency)
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   const buttonStyle = {
     ...button,
@@ -101,14 +111,27 @@ export function InstantAccessEmail({
         <Text style={paragraph}>
           {tc.periodFrom.replace(
             '{startDate}',
-            format(startDate, datePatterns.full, { locale: dateLocale })
+            formatEmailDateInStoreTimezone(
+              startDate,
+              locale,
+              datePatterns.full,
+              storeTimezone,
+              storeCountry
+            )
           )}
           <br />
           {tc.periodTo.replace(
             '{endDate}',
-            format(endDate, datePatterns.full, { locale: dateLocale })
+            formatEmailDateInStoreTimezone(
+              endDate,
+              locale,
+              datePatterns.full,
+              storeTimezone,
+              storeCountry
+            )
           )}
         </Text>
+        <Text style={timezoneText}>{timezoneLine}</Text>
       </Section>
 
       <Hr style={hr} />
@@ -187,6 +210,13 @@ const sectionTitle = {
   textTransform: 'uppercase' as const,
   color: '#8898aa',
   marginBottom: '8px',
+}
+
+const timezoneText = {
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#8898aa',
+  margin: '4px 0 0 0',
 }
 
 const hr = {

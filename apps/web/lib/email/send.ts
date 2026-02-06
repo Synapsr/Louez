@@ -39,6 +39,8 @@ interface Store {
   } | null
   settings?: {
     currency?: string
+    country?: string
+    timezone?: string
   } | null
   emailSettings?: {
     confirmationEnabled?: boolean
@@ -228,6 +230,8 @@ export async function sendReservationConfirmationEmail({
       storeAddress: store.address,
       storePhone: store.phone,
       storeEmail: store.email,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -307,6 +311,8 @@ export async function sendRequestReceivedEmail({
       storeEmail: store.email,
       storePhone: store.phone,
       storeAddress: store.address,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -383,6 +389,8 @@ export async function sendRequestAcceptedEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -524,6 +532,8 @@ export async function sendReminderPickupEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -590,6 +600,8 @@ export async function sendReminderReturnEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       endDate: reservation.endDate,
@@ -769,6 +781,8 @@ export async function sendInstantAccessEmail({
       storeAddress: store.address,
       storePhone: store.phone,
       storeEmail: store.email,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -827,6 +841,10 @@ export async function sendThankYouReviewEmail({
     phone?: string | null
     address?: string | null
     theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
+    settings?: {
+      country?: string
+      timezone?: string
+    } | null
   }
   customer: { firstName: string }
   reservation: {
@@ -850,6 +868,8 @@ export async function sendThankYouReviewEmail({
       storeAddress: store.address,
       storePhone: store.phone,
       storeEmail: store.email,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -920,6 +940,8 @@ export async function sendReservationCancelledEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -993,6 +1015,8 @@ export async function sendReservationCompletedEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       startDate: reservation.startDate,
@@ -1068,6 +1092,8 @@ export async function sendPaymentConfirmationEmail({
       storeAddress: store.address,
       storeEmail: store.email,
       storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
       customerFirstName: customer.firstName,
       reservationNumber: reservation.number,
       paymentAmount,

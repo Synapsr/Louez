@@ -7,11 +7,19 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import {
+  getEmailTranslations,
+  getDateFormatPatterns,
+  getCurrencyFormatter,
+  type EmailLocale,
+} from '../i18n'
 import type { EmailCustomContent } from '@louez/types'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface ReservationItem {
   name: string
@@ -27,6 +35,8 @@ interface ReservationConfirmationEmailProps {
   storeAddress?: string | null
   storePhone?: string | null
   storeEmail?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   startDate: Date
@@ -53,6 +63,8 @@ export function ReservationConfirmationEmail({
   storeAddress,
   storePhone,
   storeEmail,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   startDate,
@@ -73,9 +85,13 @@ export function ReservationConfirmationEmail({
   const t = getEmailTranslations(locale)
   const messages = t.confirmReservation
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
   const formatCurrency = getCurrencyFormatter(locale, currency)
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   const buttonStyle = {
     ...button,
@@ -122,10 +138,29 @@ export function ReservationConfirmationEmail({
       <Section style={section}>
         <Text style={sectionTitle}>{tc.period}</Text>
         <Text style={paragraph}>
-          {tc.periodFrom.replace('{startDate}', format(startDate, datePatterns.full, { locale: dateLocale }))}
+          {tc.periodFrom.replace(
+            '{startDate}',
+            formatEmailDateInStoreTimezone(
+              startDate,
+              locale,
+              datePatterns.full,
+              storeTimezone,
+              storeCountry
+            )
+          )}
           <br />
-          {tc.periodTo.replace('{endDate}', format(endDate, datePatterns.full, { locale: dateLocale }))}
+          {tc.periodTo.replace(
+            '{endDate}',
+            formatEmailDateInStoreTimezone(
+              endDate,
+              locale,
+              datePatterns.full,
+              storeTimezone,
+              storeCountry
+            )
+          )}
         </Text>
+        <Text style={timezoneText}>{timezoneLine}</Text>
       </Section>
 
       {/* Pickup Address */}
@@ -255,6 +290,13 @@ const sectionTitle = {
   textTransform: 'uppercase' as const,
   color: '#8898aa',
   marginBottom: '8px',
+}
+
+const timezoneText = {
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#8898aa',
+  margin: '4px 0 0 0',
 }
 
 const hr = {

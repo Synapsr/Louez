@@ -1,8 +1,11 @@
 import { Heading, Section, Text } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, type EmailLocale } from '../i18n'
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
 import type { EmailCustomContent } from '@louez/types'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface ReminderReturnEmailProps {
   storeName: string
@@ -11,6 +14,8 @@ interface ReminderReturnEmailProps {
   storeAddress?: string | null
   storeEmail?: string | null
   storePhone?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   endDate: Date
@@ -25,6 +30,8 @@ export function ReminderReturnEmail({
   storeAddress,
   storeEmail,
   storePhone,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   endDate,
@@ -34,8 +41,12 @@ export function ReminderReturnEmail({
   const t = getEmailTranslations(locale)
   const messages = t.reminderReturn
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
+  const timezoneLabel = getStoreTimezoneLabel(endDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   // Use custom content or defaults
   const greeting = customContent?.greeting
@@ -77,8 +88,15 @@ export function ReminderReturnEmail({
       <Section style={infoBox}>
         <Text style={infoTitle}>{messages.scheduledReturn}</Text>
         <Text style={infoDate}>
-          {format(endDate, datePatterns.full, { locale: dateLocale })}
+          {formatEmailDateInStoreTimezone(
+            endDate,
+            locale,
+            datePatterns.full,
+            storeTimezone,
+            storeCountry
+          )}
         </Text>
+        <Text style={timezoneText}>{timezoneLine}</Text>
         {storeAddress && (
           <>
             <Text style={infoTitle}>{tc.returnAddress}</Text>
@@ -143,6 +161,12 @@ const infoText = {
   fontSize: '14px',
   color: '#92400e',
   margin: '0',
+}
+
+const timezoneText = {
+  fontSize: '12px',
+  color: '#d97706',
+  margin: '6px 0 0 0',
 }
 
 const signature = {

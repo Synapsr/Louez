@@ -5,10 +5,13 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, type EmailLocale } from '../i18n'
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface ThankYouReviewEmailProps {
   storeName: string
@@ -17,6 +20,8 @@ interface ThankYouReviewEmailProps {
   storeAddress?: string | null
   storeEmail?: string | null
   storePhone?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   startDate: Date
@@ -32,6 +37,8 @@ export function ThankYouReviewEmail({
   storeAddress,
   storeEmail,
   storePhone,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   startDate,
@@ -42,8 +49,12 @@ export function ThankYouReviewEmail({
   const t = getEmailTranslations(locale)
   const messages = t.thankYouReview
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   const buttonStyle = {
     ...button,
@@ -78,10 +89,26 @@ export function ThankYouReviewEmail({
         <Text style={paragraph}>
           {tc.reservationNumber.replace('{number}', reservationNumber)}
           <br />
-          {tc.periodFrom.replace('{startDate}', format(startDate, datePatterns.short, { locale: dateLocale }))}
+          {tc.periodFrom.replace(
+            '{startDate}',
+            formatEmailDateInStoreTimezone(
+              startDate,
+              locale,
+              datePatterns.short,
+              storeTimezone,
+              storeCountry
+            )
+          )}
           {' - '}
-          {format(endDate, datePatterns.short, { locale: dateLocale })}
+          {formatEmailDateInStoreTimezone(
+            endDate,
+            locale,
+            datePatterns.short,
+            storeTimezone,
+            storeCountry
+          )}
         </Text>
+        <Text style={timezoneText}>{timezoneLine}</Text>
       </Section>
 
       <Hr style={hr} />
@@ -124,6 +151,13 @@ const sectionTitle = {
   textTransform: 'uppercase' as const,
   color: '#8898aa',
   marginBottom: '8px',
+}
+
+const timezoneText = {
+  fontSize: '12px',
+  lineHeight: '18px',
+  color: '#8898aa',
+  margin: '4px 0 0 0',
 }
 
 const hr = {
