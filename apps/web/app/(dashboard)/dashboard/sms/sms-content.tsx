@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { format, type Locale } from 'date-fns'
 import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   MessageSquare,
   CheckCircle2,
@@ -111,6 +113,7 @@ export function SmsContent({
   const t = useTranslations('dashboard.sms')
   const locale = useLocale()
   const router = useRouter()
+  const timezone = useStoreTimezone()
   const [selectedSms, setSelectedSms] = useState<SmsLog | null>(null)
   const [showTopupModal, setShowTopupModal] = useState(false)
   const [showSuccessAlert, setShowSuccessAlert] = useState(topupSuccess)
@@ -413,7 +416,7 @@ export function SmsContent({
                           {format(new Date(log.sentAt), 'dd MMM yyyy', { locale: dateLocale })}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
-                          {format(new Date(log.sentAt), 'HH:mm', { locale: dateLocale })}
+                          {formatStoreDate(new Date(log.sentAt), timezone, 'TIME_ONLY')}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -481,9 +484,7 @@ export function SmsContent({
             </DialogTitle>
             <DialogDescription>
               {selectedSms &&
-                format(new Date(selectedSms.sentAt), "EEEE d MMMM yyyy 'à' HH:mm", {
-                  locale: dateLocale,
-                })}
+                formatStoreDate(new Date(selectedSms.sentAt), timezone, 'FULL_DATETIME')}
             </DialogDescription>
           </DialogHeader>
           {selectedSms && (

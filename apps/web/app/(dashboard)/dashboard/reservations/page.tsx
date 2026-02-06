@@ -125,6 +125,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
 
   const params = await searchParams
   const currency = store.settings?.currency || 'EUR'
+  const timezone = store.settings?.timezone
   const [reservationsList, reservationCounts, limits, plan] = await Promise.all([
     getReservations(store.id, params),
     getReservationCounts(store.id),
@@ -142,6 +143,7 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
         limits={limits.reservationsThisMonth}
         planSlug={plan.slug}
         currency={currency}
+        timezone={timezone}
       />
     </Suspense>
   )

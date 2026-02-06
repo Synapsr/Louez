@@ -162,6 +162,7 @@ export async function generateInspectionReport({
       },
       locale,
       translations,
+      timezone: store.settings?.timezone || undefined,
     })
   )
 

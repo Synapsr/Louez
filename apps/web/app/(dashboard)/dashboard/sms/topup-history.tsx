@@ -4,6 +4,8 @@ import { useTranslations, useLocale } from 'next-intl'
 import { format, type Locale } from 'date-fns'
 import { fr, enUS, de, es, it, nl, pl, pt } from 'date-fns/locale'
 import { CheckCircle2, Clock, XCircle, RefreshCw, History } from 'lucide-react'
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -36,6 +38,7 @@ interface TopupHistoryProps {
 export function TopupHistory({ transactions }: TopupHistoryProps) {
   const t = useTranslations('dashboard.sms.topupHistory')
   const locale = useLocale()
+  const timezone = useStoreTimezone()
   const dateLocale = localeMap[locale] || fr
 
   const formatPrice = (cents: number) => {
@@ -119,9 +122,7 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
                       })}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(transaction.createdAt), 'HH:mm', {
-                        locale: dateLocale,
-                      })}
+                      {formatStoreDate(new Date(transaction.createdAt), timezone, 'TIME_ONLY')}
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-medium">

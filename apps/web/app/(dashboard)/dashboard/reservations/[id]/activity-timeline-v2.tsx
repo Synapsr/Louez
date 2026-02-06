@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
 import {
   Clock,
@@ -37,6 +35,9 @@ import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { cn } from '@louez/utils'
+
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 
 type ActivityType =
   | 'created'
@@ -242,6 +243,7 @@ export function ActivityTimelineV2({
   initialVisibleCount = 3,
 }: ActivityTimelineV2Props) {
   const t = useTranslations('dashboard.reservations')
+  const timezone = useStoreTimezone()
   const [isExpanded, setIsExpanded] = useState(false)
 
   // Sort activities by date (most recent first)
@@ -380,7 +382,7 @@ export function ActivityTimelineV2({
                 )}
             </div>
             <time className="text-xs text-muted-foreground">
-              {format(new Date(activity.createdAt), 'dd MMM yyyy HH:mm', { locale: fr })}
+              {formatStoreDate(new Date(activity.createdAt), timezone, 'COMPACT_DATETIME')}
             </time>
           </div>
 
@@ -503,7 +505,7 @@ export function ActivityTimelineV2({
                       </Badge>
                     </div>
                     <time className="text-xs text-muted-foreground">
-                      {format(reservationCreatedAt, 'dd MMM yyyy HH:mm', { locale: fr })}
+                      {formatStoreDate(reservationCreatedAt, timezone, 'COMPACT_DATETIME')}
                     </time>
                   </div>
                 </div>

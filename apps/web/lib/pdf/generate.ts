@@ -135,6 +135,7 @@ export async function generateContract({
       locale,
       translations,
       currency: store.settings?.currency || 'EUR',
+      timezone: store.settings?.timezone || undefined,
     })
   )
 

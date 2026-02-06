@@ -19,8 +19,6 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -71,6 +69,8 @@ import {
 } from '@louez/ui'
 import { cn, getCurrencySymbol } from '@louez/utils'
 
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   recordPayment,
   deletePayment,
@@ -122,6 +122,7 @@ export function PaymentSummary({
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
   const [isLoading, setIsLoading] = useState(false)
@@ -602,7 +603,7 @@ export function PaymentSummary({
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           {payment.paidAt
-                            ? format(new Date(payment.paidAt), 'dd/MM/yy HH:mm', { locale: fr })
+                            ? formatStoreDate(new Date(payment.paidAt), timezone, 'TIMESTAMP')
                             : '-'}
                         </p>
                       </div>
