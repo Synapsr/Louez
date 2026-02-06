@@ -3697,6 +3697,7 @@
       "period": "Period",
       "periodFrom": "From {startDate}",
       "periodTo": "To {endDate}",
+      "timezone": "Timezone: {timezone}",
       "address": "Address",
       "pickupAddress": "Pickup address",
       "returnAddress": "Return address",

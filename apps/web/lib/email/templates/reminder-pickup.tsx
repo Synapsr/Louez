@@ -1,9 +1,12 @@
 import { Button, Heading, Section, Text } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, type EmailLocale } from '../i18n'
+import { getEmailTranslations, getDateFormatPatterns, type EmailLocale } from '../i18n'
 import type { EmailCustomContent } from '@louez/types'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface ReminderPickupEmailProps {
   storeName: string
@@ -12,6 +15,8 @@ interface ReminderPickupEmailProps {
   storeAddress?: string | null
   storeEmail?: string | null
   storePhone?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   startDate: Date
@@ -27,6 +32,8 @@ export function ReminderPickupEmail({
   storeAddress,
   storeEmail,
   storePhone,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   startDate,
@@ -37,8 +44,12 @@ export function ReminderPickupEmail({
   const t = getEmailTranslations(locale)
   const messages = t.reminderPickup
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
+  const timezoneLabel = getStoreTimezoneLabel(startDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   const buttonStyle = {
     ...button,
@@ -86,8 +97,15 @@ export function ReminderPickupEmail({
       <Section style={infoBox}>
         <Text style={infoTitle}>{messages.scheduledPickup}</Text>
         <Text style={infoDate}>
-          {format(startDate, datePatterns.full, { locale: dateLocale })}
+          {formatEmailDateInStoreTimezone(
+            startDate,
+            locale,
+            datePatterns.full,
+            storeTimezone,
+            storeCountry
+          )}
         </Text>
+        <Text style={timezoneText}>{timezoneLine}</Text>
         {storeAddress && (
           <>
             <Text style={infoTitle}>{tc.address}</Text>
@@ -160,6 +178,12 @@ const infoText = {
   fontSize: '14px',
   color: '#1e40af',
   margin: '0',
+}
+
+const timezoneText = {
+  fontSize: '12px',
+  color: '#3b82f6',
+  margin: '6px 0 0 0',
 }
 
 const checklistSection = {

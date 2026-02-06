@@ -7,10 +7,18 @@ import {
   Section,
   Text,
 } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import {
+  getEmailTranslations,
+  getDateFormatPatterns,
+  getCurrencyFormatter,
+  type EmailLocale,
+} from '../i18n'
+import {
+  formatEmailDateInStoreTimezone,
+  getStoreTimezoneLabel,
+} from '../date-time'
 
 interface PaymentConfirmationEmailProps {
   storeName: string
@@ -19,6 +27,8 @@ interface PaymentConfirmationEmailProps {
   storeAddress?: string | null
   storeEmail?: string | null
   storePhone?: string | null
+  storeTimezone?: string | null
+  storeCountry?: string | null
   customerFirstName: string
   reservationNumber: string
   paymentAmount: number
@@ -36,6 +46,8 @@ export function PaymentConfirmationEmail({
   storeAddress,
   storeEmail,
   storePhone,
+  storeTimezone,
+  storeCountry,
   customerFirstName,
   reservationNumber,
   paymentAmount,
@@ -48,9 +60,13 @@ export function PaymentConfirmationEmail({
   const t = getEmailTranslations(locale)
   const messages = t.paymentConfirmation
   const tc = t.common
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
   const formatCurrency = getCurrencyFormatter(locale, currency)
+  const timezoneLabel = getStoreTimezoneLabel(paymentDate, storeTimezone, storeCountry)
+  const timezoneLine =
+    typeof tc.timezone === 'string'
+      ? tc.timezone.replace('{timezone}', timezoneLabel)
+      : `Timezone: ${timezoneLabel}`
 
   const buttonStyle = {
     ...button,
@@ -96,9 +112,22 @@ export function PaymentConfirmationEmail({
           </Column>
           <Column align="right">
             <Text style={detailValue}>
-              {format(paymentDate, datePatterns.dateTime, { locale: dateLocale })}
+              {formatEmailDateInStoreTimezone(
+                paymentDate,
+                locale,
+                datePatterns.dateTime,
+                storeTimezone,
+                storeCountry
+              )}
             </Text>
           </Column>
+        </Row>
+
+        <Row style={detailRow}>
+          <Column>
+            <Text style={detailLabel}>{timezoneLine}</Text>
+          </Column>
+          <Column />
         </Row>
 
         {paymentMethod && (
