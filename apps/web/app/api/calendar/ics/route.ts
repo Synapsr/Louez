@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@louez/db'
 import { stores, reservations } from '@louez/db'
-import { eq, and, inArray } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { env } from '@/env'
 
 // Format date to ICS format (YYYYMMDDTHHMMSS)
@@ -63,12 +63,9 @@ export async function GET(request: Request) {
     return new NextResponse('Invalid store or token', { status: 401 })
   }
 
-  // Get all active reservations (not cancelled or rejected)
+  // Get all reservations including cancelled/rejected (needed for proper ICS STATUS:CANCELLED)
   const storeReservations = await db.query.reservations.findMany({
-    where: and(
-      eq(reservations.storeId, storeId),
-      inArray(reservations.status, ['pending', 'confirmed', 'ongoing', 'completed'])
-    ),
+    where: eq(reservations.storeId, storeId),
     with: {
       customer: true,
       items: {
@@ -122,19 +119,35 @@ export async function GET(request: Request) {
       confirmed: '[OK]',
       ongoing: '[>>]',
       completed: '[V]',
+      cancelled: '[X]',
+      rejected: '[X]',
     }
 
     const summary = `${statusEmoji[reservation.status || 'pending']} ${reservation.customer.firstName} ${reservation.customer.lastName} - ${productNames}`
 
+    const isCancelled = reservation.status === 'cancelled' || reservation.status === 'rejected'
+
+    // RFC 5545 STATUS mapping
+    let icsStatus: string
+    if (isCancelled) {
+      icsStatus = 'CANCELLED'
+    } else if (reservation.status === 'confirmed' || reservation.status === 'ongoing' || reservation.status === 'completed') {
+      icsStatus = 'CONFIRMED'
+    } else {
+      icsStatus = 'TENTATIVE'
+    }
+
     lines.push('BEGIN:VEVENT')
     lines.push(`UID:${reservation.id}@louez.io`)
+    lines.push(`SEQUENCE:${isCancelled ? 1 : 0}`)
     lines.push(`DTSTAMP:${formatICSDate(new Date())}`)
+    lines.push(`LAST-MODIFIED:${formatICSDate(new Date(reservation.updatedAt))}`)
     lines.push(`DTSTART:${formatICSDate(startDate)}`)
     lines.push(`DTEND:${formatICSDate(endDate)}`)
     lines.push(foldLine(`SUMMARY:${escapeICSText(summary)}`))
     lines.push(foldLine(`DESCRIPTION:${description}`))
-    lines.push(`STATUS:${reservation.status === 'confirmed' || reservation.status === 'ongoing' ? 'CONFIRMED' : 'TENTATIVE'}`)
-    lines.push(`TRANSP:OPAQUE`)
+    lines.push(`STATUS:${icsStatus}`)
+    lines.push(`TRANSP:${isCancelled ? 'TRANSPARENT' : 'OPAQUE'}`)
 
     // Add URL to reservation details
     const baseUrl = env.NEXT_PUBLIC_APP_URL
