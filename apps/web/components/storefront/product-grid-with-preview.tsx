@@ -42,6 +42,7 @@ interface ProductGridWithPreviewProps {
   storePricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
+  timezone?: string
 }
 
 function ProductCardInteractive({
@@ -154,6 +155,7 @@ export function ProductGridWithPreview({
   storePricingMode,
   businessHours,
   advanceNotice,
+  timezone,
 }: ProductGridWithPreviewProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -190,6 +192,7 @@ export function ProductGridWithPreview({
           storePricingMode={storePricingMode}
           businessHours={businessHours}
           advanceNotice={advanceNotice}
+          timezone={timezone}
         />
       )}
     </>

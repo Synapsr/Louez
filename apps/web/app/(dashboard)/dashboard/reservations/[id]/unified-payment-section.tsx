@@ -25,7 +25,7 @@ import {
   Send,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
 import { Button } from '@louez/ui'
@@ -73,6 +73,8 @@ import {
 } from '@louez/ui'
 import { cn, getCurrencySymbol } from '@louez/utils'
 
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   recordPayment,
   deletePayment,
@@ -172,6 +174,7 @@ export function UnifiedPaymentSection({
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
   const [isLoading, setIsLoading] = useState(false)
@@ -593,7 +596,7 @@ export function UnifiedPaymentSection({
                     <p className="text-sm font-medium">{t('onlinePayment.received')}</p>
                     <p className="text-xs text-muted-foreground">
                       {stripeRentalPayment.paidAt
-                        ? format(new Date(stripeRentalPayment.paidAt), "d MMM 'à' HH:mm", { locale: fr })
+                        ? formatStoreDate(new Date(stripeRentalPayment.paidAt), timezone, 'SHORT_DATE_AT_TIME')
                         : ''}
                     </p>
                   </div>
@@ -964,7 +967,7 @@ export function UnifiedPaymentSection({
                           </div>
                           <p className="text-[10px] text-muted-foreground">
                             {payment.paidAt
-                              ? format(new Date(payment.paidAt), 'dd/MM/yy HH:mm', { locale: fr })
+                              ? formatStoreDate(new Date(payment.paidAt), timezone, 'TIMESTAMP')
                               : '-'}
                           </p>
                         </div>

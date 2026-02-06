@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
 import {
   ArrowLeft,
@@ -19,6 +17,8 @@ import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   Dialog,
   DialogContent,
@@ -77,6 +77,7 @@ export function ComparisonView({
   return_,
 }: ComparisonViewProps) {
   const t = useTranslations('dashboard.settings.inspection')
+  const timezone = useStoreTimezone()
   const [activeTab, setActiveTab] = useState<'departure' | 'return'>(
     departure ? 'departure' : 'return'
   )
@@ -147,7 +148,7 @@ export function ComparisonView({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            {format(new Date(inspection.createdAt), "d MMM yyyy 'à' HH:mm", { locale: fr })}
+            {formatStoreDate(new Date(inspection.createdAt), timezone, 'DATE_AT_TIME')}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -73,6 +73,7 @@ interface ReservationsPageContentProps {
   limits: LimitStatus
   planSlug: string
   currency?: string
+  timezone?: string
 }
 
 export function ReservationsPageContent({
@@ -83,6 +84,7 @@ export function ReservationsPageContent({
   limits,
   planSlug,
   currency,
+  timezone,
 }: ReservationsPageContentProps) {
   const t = useTranslations('dashboard.reservations')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
@@ -150,14 +152,14 @@ export function ReservationsPageContent({
       />
 
       {/* Reservations Table - Visible */}
-      <ReservationsTable reservations={visibleReservations} currency={currency} />
+      <ReservationsTable reservations={visibleReservations} currency={currency} timezone={timezone} />
 
       {/* Blurred Reservations Section */}
       {blurredReservations.length > 0 && (
         <div className="relative">
           {/* Blurred table */}
           <div className="blur-sm pointer-events-none select-none opacity-60">
-            <ReservationsTable reservations={blurredReservations} currency={currency} />
+            <ReservationsTable reservations={blurredReservations} currency={currency} timezone={timezone} />
           </div>
 
           {/* Overlay */}
