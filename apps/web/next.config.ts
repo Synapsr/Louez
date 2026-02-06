@@ -185,6 +185,12 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
   output: 'standalone',
+  // Make SKIP_ENV_VALIDATION visible to Turbopack-compiled code (packages/db, packages/validations).
+  // Without this, Turbopack inlines process.env.SKIP_ENV_VALIDATION as undefined during compilation.
+  // At runtime, t3-env's proxy falls back to real process.env for actual values like DATABASE_URL.
+  env: {
+    SKIP_ENV_VALIDATION: process.env.SKIP_ENV_VALIDATION ?? '',
+  },
   // Increase body size limit for server actions (image uploads)
   experimental: {
     serverActions: {

@@ -73,11 +73,7 @@ COPY . .
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-
-# Skip env validation at build time — .env is needed because Turbopack reads
-# env vars from files, not the OS environment, during page data collection.
-# Real env vars are validated at runtime when the container starts.
-RUN echo "SKIP_ENV_VALIDATION=1" > .env
+ENV SKIP_ENV_VALIDATION=1
 
 # Build the application using Turborepo
 RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web
