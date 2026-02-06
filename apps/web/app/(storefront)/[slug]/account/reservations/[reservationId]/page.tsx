@@ -182,7 +182,7 @@ export default async function ReservationDetailPage({
         {/* Back Button */}
         <div className="mb-6">
           <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-            <Link href="/account">
+            <Link href={`/${slug}/account`}>
               <ArrowLeft className="h-4 w-4" />
               {t('backToAccount')}
             </Link>
@@ -203,7 +203,7 @@ export default async function ReservationDetailPage({
           </div>
           {canDownloadContract && (
             <DownloadContractButton
-              href={`/account/reservations/${reservationId}/contract`}
+              href={`/${slug}/account/reservations/${reservationId}/contract`}
               label={t('downloadContract')}
             />
           )}

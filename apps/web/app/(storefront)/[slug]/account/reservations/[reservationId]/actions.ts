@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getCustomerSession } from '../../actions'
 import { calculateDuration } from '@/lib/pricing'
-import { env } from '@/env'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 
 export async function createReservationPaymentSession(
   storeSlug: string,
@@ -69,9 +69,6 @@ export async function createReservationPaymentSession(
     }
 
     const currency = store.settings?.currency || 'EUR'
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-    const protocol = domain.includes('localhost') ? 'http' : 'https'
-    const baseUrl = `${protocol}://${store.slug}.${domain}`
 
     // Calculate duration
     const duration = calculateDuration(
@@ -97,8 +94,8 @@ export async function createReservationPaymentSession(
       lineItems,
       depositAmount: toStripeCents(parseFloat(reservation.depositAmount), currency),
       currency,
-      successUrl: `${baseUrl}/account/reservations/${reservationId}?payment=success`,
-      cancelUrl: `${baseUrl}/account/reservations/${reservationId}?payment=cancelled`,
+      successUrl: getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=success`),
+      cancelUrl: getStorefrontUrl(storeSlug, `/account/reservations/${reservationId}?payment=cancelled`),
     })
 
     // Create pending payment record

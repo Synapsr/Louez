@@ -234,7 +234,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/account/reservations/${reservation.id}`}
+                    href={`/${slug}/account/reservations/${reservation.id}`}
                     className="block"
                   >
                     <Card className={`group hover:shadow-md transition-all duration-200 border-l-4 ${isPending ? 'border-l-amber-400 dark:border-l-amber-600' : 'border-l-primary'}`}>
@@ -319,7 +319,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/account/reservations/${reservation.id}`}
+                    href={`/${slug}/account/reservations/${reservation.id}`}
                     className="block"
                   >
                     <Card className="group hover:shadow-sm transition-all duration-200">
