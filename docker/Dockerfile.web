@@ -54,6 +54,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build-time env vars forwarded by EasyPanel (`--build-arg ...`)
+ARG SKIP_ENV_VALIDATION=true
+ARG DATABASE_URL
+
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
@@ -73,10 +77,11 @@ COPY . .
 # Disable telemetry during build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV SKIP_ENV_VALIDATION=1
+ENV SKIP_ENV_VALIDATION=${SKIP_ENV_VALIDATION}
+ENV DATABASE_URL=${DATABASE_URL}
 
 # Build the application using Turborepo
-RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web
+RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 # -----------------------------------------------------------------------------
 # Stage 3: Runner (Production)
