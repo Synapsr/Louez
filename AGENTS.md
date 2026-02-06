@@ -208,6 +208,7 @@ For new API calls, use oRPC instead of REST for end-to-end type safety.
 
 ```typescript
 import { z } from 'zod';
+
 import { dashboardProcedure } from '../../procedures';
 
 export const myRouter = {
@@ -226,6 +227,7 @@ export const myRouter = {
 
 ```typescript
 import { useQuery } from '@tanstack/react-query';
+
 import { orpc } from '@/lib/orpc/react';
 
 function MyComponent() {
@@ -264,6 +266,7 @@ function MyComponent() {
 - React Hook Form with Zod resolver
 - Validation schemas in `src/lib/validations/`
 - Error messages via i18n keys
+- look at the details at docs/FORM_HANDLING.md
 
 ### Internationalization
 
