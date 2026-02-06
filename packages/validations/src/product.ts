@@ -27,12 +27,11 @@ export const productTaxSettingsSchema = z.object({
 })
 
 // Product unit schema for individual unit tracking
+// Note: identifier min length is NOT enforced here — it's conditionally validated
+// via .superRefine() on the parent schema only when trackUnits is true.
 export const productUnitSchema = z.object({
   id: z.string().optional(), // Absent for new units
-  identifier: z
-    .string()
-    .min(1, 'validation.required')
-    .max(255, 'validation.maxLength'),
+  identifier: z.string().max(255, 'validation.maxLength'),
   notes: z.string().max(1000).optional().or(z.literal('')),
   status: z.enum(['available', 'maintenance', 'retired']).optional(),
 })
@@ -73,6 +72,18 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
     // Unit tracking
     trackUnits: z.boolean().optional(),
     units: z.array(productUnitSchema).optional(),
+  }).superRefine((data, ctx) => {
+    if (data.trackUnits && data.units) {
+      for (let i = 0; i < data.units.length; i++) {
+        if (!data.units[i].identifier || !data.units[i].identifier.trim()) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('required'),
+            path: ['units', i, 'identifier'],
+          })
+        }
+      }
+    }
   })
 
 export const createCategorySchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -114,6 +125,18 @@ export const productSchema = z.object({
   // Unit tracking
   trackUnits: z.boolean().optional(),
   units: z.array(productUnitSchema).optional(),
+}).superRefine((data, ctx) => {
+  if (data.trackUnits && data.units) {
+    for (let i = 0; i < data.units.length; i++) {
+      if (!data.units[i].identifier || !data.units[i].identifier.trim()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'validation.required',
+          path: ['units', i, 'identifier'],
+        })
+      }
+    }
+  }
 })
 
 export const categorySchema = z.object({

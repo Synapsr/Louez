@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useForm, type FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
   Loader2,
@@ -374,6 +374,27 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     }
   }
 
+  function onInvalid(errors: FieldErrors<ProductInput>) {
+    toast.error(t('validationError'))
+
+    // In stepper mode: navigate to the first step with errors
+    if (!isEditMode) {
+      const errorFields = Object.keys(errors)
+      const stepForField = (field: string): number => {
+        if (['images', 'videoUrl'].includes(field)) return 0
+        if (['name', 'description', 'categoryId'].includes(field)) return 1
+        if (['price', 'deposit', 'quantity', 'pricingMode', 'pricingTiers', 'taxSettings', 'trackUnits', 'units', 'enforceStrictTiers'].includes(field)) return 2
+        if (['status'].includes(field)) return 3
+        return currentStep
+      }
+
+      const firstErrorStep = Math.min(...errorFields.map(stepForField))
+      if (firstErrorStep < currentStep) {
+        setCurrentStep(firstErrorStep)
+      }
+    }
+  }
+
   async function onSubmit(data: ProductInput) {
     setIsLoading(true)
     try {
@@ -556,7 +577,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   if (isEditMode) {
     return (
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
           {/* Photos */}
           <Card>
             <CardHeader>
@@ -1028,7 +1049,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   // Create mode: stepper flow
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">

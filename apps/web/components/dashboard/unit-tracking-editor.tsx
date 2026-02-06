@@ -75,6 +75,7 @@ export function UnitTrackingEditor({
   const [bulkFrom, setBulkFrom] = useState('1')
   const [bulkTo, setBulkTo] = useState('5')
   const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({})
+  const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set())
 
   // Calculate active units count (available status only)
   const activeUnitsCount = useMemo(() => {
@@ -117,6 +118,7 @@ export function UnitTrackingEditor({
 
   const confirmDisable = () => {
     onTrackUnitsChange(false)
+    onChange([])
     setShowDisableConfirm(false)
   }
 
@@ -280,6 +282,7 @@ export function UnitTrackingEditor({
                   const isDuplicate =
                     unit.identifier.trim() &&
                     duplicateIdentifiers.has(unit.identifier.trim().toLowerCase())
+                  const isEmpty = touchedUnits.has(index) && !unit.identifier.trim()
                   const isEditingNotes = editingNotes[index]
 
                   return (
@@ -296,7 +299,8 @@ export function UnitTrackingEditor({
                             placeholder={t('identifierPlaceholder')}
                             value={unit.identifier}
                             onChange={(e) => updateUnit(index, 'identifier', e.target.value)}
-                            className={cn('flex-1', isDuplicate && 'border-destructive')}
+                            onBlur={() => setTouchedUnits(prev => new Set(prev).add(index))}
+                            className={cn('flex-1', (isDuplicate || isEmpty) && 'border-destructive')}
                             disabled={disabled}
                           />
                           <Select
@@ -331,6 +335,10 @@ export function UnitTrackingEditor({
                             </SelectContent>
                           </Select>
                         </div>
+
+                        {isEmpty && (
+                          <p className="text-xs text-destructive">{t('identifierRequired')}</p>
+                        )}
 
                         {/* Notes toggle/field */}
                         {isEditingNotes || unit.notes ? (
