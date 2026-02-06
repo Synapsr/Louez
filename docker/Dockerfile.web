@@ -77,7 +77,7 @@ ENV NODE_ENV=production
 ENV SKIP_ENV_VALIDATION=1
 
 # Build the application using Turborepo
-RUN corepack enable pnpm && pnpm turbo run build --filter=web
+RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web
 
 # -----------------------------------------------------------------------------
 # Stage 3: Runner (Production)
