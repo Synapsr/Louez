@@ -46,6 +46,10 @@ import {
   type PricingTier,
 } from '@/lib/pricing'
 import type { PricingBreakdown } from '@louez/types'
+import {
+  evaluateReservationRules,
+  formatReservationWarningsForLog,
+} from '@/lib/utils/reservation-rules'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -117,6 +121,15 @@ export async function updateReservationStatus(
     return { error: 'errors.reservationNotFound' }
   }
 
+  const validationWarnings =
+    status === 'confirmed'
+      ? evaluateReservationRules({
+          startDate: reservation.startDate,
+          endDate: reservation.endDate,
+          storeSettings: store.settings,
+        })
+      : []
+
   const previousStatus = reservation.status
   const updateData: Record<string, unknown> = {
     status,
@@ -144,11 +157,23 @@ export async function updateReservationStatus(
   }
 
   if (activityMap[status]) {
+    const warningDescription =
+      status === 'confirmed' && validationWarnings.length > 0
+        ? formatReservationWarningsForLog(validationWarnings)
+        : undefined
+
     await logReservationActivity(
       reservationId,
       activityMap[status],
-      status === 'rejected' ? rejectionReason : undefined,
-      { previousStatus, newStatus: status }
+      status === 'rejected' ? rejectionReason : warningDescription,
+      {
+        previousStatus,
+        newStatus: status,
+        ...(validationWarnings.length > 0 && {
+          validationWarnings,
+          validationWarningsCount: validationWarnings.length,
+        }),
+      }
     )
   }
 
@@ -291,7 +316,10 @@ export async function updateReservationStatus(
 
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true }
+  return {
+    success: true,
+    ...(validationWarnings.length > 0 && { warnings: validationWarnings }),
+  }
 }
 
 export async function cancelReservation(reservationId: string) {
@@ -847,6 +875,12 @@ export async function updateReservation(
   const newStartDate = data.startDate || reservation.startDate
   const newEndDate = data.endDate || reservation.endDate
 
+  const validationWarnings = evaluateReservationRules({
+    startDate: newStartDate,
+    endDate: newEndDate,
+    storeSettings: store.settings,
+  })
+
   // Get store pricing mode
   const storePricingMode = store.settings?.pricingMode || 'day'
   const newDuration = calculateDuration(newStartDate, newEndDate, storePricingMode)
@@ -1020,7 +1054,9 @@ export async function updateReservation(
   await logReservationActivity(
     reservationId,
     'modified',
-    undefined,
+    validationWarnings.length > 0
+      ? formatReservationWarningsForLog(validationWarnings)
+      : undefined,
     {
       previous: {
         startDate: previousState.startDate,
@@ -1035,6 +1071,10 @@ export async function updateReservation(
         depositAmount: newDepositAmount,
       },
       difference,
+      ...(validationWarnings.length > 0 && {
+        validationWarnings,
+        validationWarningsCount: validationWarnings.length,
+      }),
     }
   )
 
@@ -1046,6 +1086,7 @@ export async function updateReservation(
     difference,
     newTotal: newSubtotalAmount,
     previousTotal: previousState.subtotalAmount,
+    ...(validationWarnings.length > 0 && { warnings: validationWarnings }),
   }
 }
 

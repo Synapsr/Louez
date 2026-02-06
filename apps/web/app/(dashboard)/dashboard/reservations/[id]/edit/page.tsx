@@ -146,6 +146,7 @@ export default async function EditReservationPage({
       existingReservations={existingReservations}
       pricingMode={pricingMode}
       currency={currency}
+      storeSettings={store.settings || null}
     />
   )
 }

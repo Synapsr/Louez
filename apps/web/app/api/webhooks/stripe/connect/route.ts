@@ -17,6 +17,10 @@ import {
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications'
 import { env } from '@/env'
+import {
+  evaluateReservationRules,
+  formatReservationWarningsForLog,
+} from '@/lib/utils/reservation-rules'
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -337,6 +341,20 @@ async function handleCheckoutCompleted(
 
   // Update reservation only if still pending
   if (reservation.status === 'pending') {
+    const validationWarnings = evaluateReservationRules({
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      storeSettings: reservation.store.settings,
+    })
+
+    if (validationWarnings.length > 0) {
+      console.warn('[reservation-confirmation-warning] Stripe webhook confirmed reservation with rule violations', {
+        reservationId,
+        storeId: reservation.store.id,
+        warnings: validationWarnings,
+      })
+    }
+
     await db
       .update(reservations)
       .set({
@@ -371,12 +389,19 @@ async function handleCheckoutCompleted(
       id: nanoid(),
       reservationId,
       activityType: 'confirmed',
-      description: null,
+      description:
+        validationWarnings.length > 0
+          ? formatReservationWarningsForLog(validationWarnings)
+          : null,
       metadata: {
         source: 'online_payment',
         depositAmount,
         depositStatus: newDepositStatus,
         cardSaved: !!stripePaymentMethodId,
+        ...(validationWarnings.length > 0 && {
+          validationWarnings,
+          validationWarningsCount: validationWarnings.length,
+        }),
       },
       createdAt: new Date(),
     })

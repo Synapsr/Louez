@@ -932,7 +932,10 @@
         "lockPrice": "Lock price",
         "unlockPrice": "Recalculate price",
         "adjustmentPositive": "An additional {amount} will need to be collected.",
-        "adjustmentNegative": "A refund of {amount} can be issued."
+        "adjustmentNegative": "A refund of {amount} can be issued.",
+        "warningDialogTitle": "Confirm exceptional change",
+        "warningDialogDescription": "This update does not match the usual reservation rules. Review the warnings before saving.",
+        "confirmWithWarnings": "Save anyway"
       },
       "contract": {
         "title": "Contract",
