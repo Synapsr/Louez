@@ -45,7 +45,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV SKIP_ENV_VALIDATION=1
-RUN corepack enable pnpm && pnpm turbo run build --filter=web
+RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web
 
 FROM node:20-alpine AS runner
 WORKDIR /app
