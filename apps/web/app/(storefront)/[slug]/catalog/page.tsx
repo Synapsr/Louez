@@ -240,6 +240,7 @@ export default async function CatalogPage({
   const activeCategory = storeCategories.find((c) => c.id === categoryId)
   const settings = (store.settings as StoreSettings) || {}
   const businessHours = settings.businessHours
+  const timezone = settings.timezone
   const advanceNotice = settings.advanceNotice || 0
   const minRentalHours = getMinRentalHours(settings)
 
@@ -311,6 +312,7 @@ export default async function CatalogPage({
               businessHours={businessHours}
               advanceNotice={advanceNotice}
               minRentalHours={minRentalHours}
+              timezone={timezone}
             />
           </div>
 
@@ -355,6 +357,7 @@ export default async function CatalogPage({
             storePricingMode={pricingMode}
             businessHours={businessHours}
             advanceNotice={advanceNotice}
+            timezone={timezone}
           />
         ) : (
           <Card className="py-16">

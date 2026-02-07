@@ -6,9 +6,8 @@ import {
   View as BaseView,
   Image as BaseImage,
 } from '@react-pdf/renderer'
-import { format } from 'date-fns'
-import { fr, enUS } from 'date-fns/locale'
 import { createContractStyles } from './styles'
+import { formatStoreDate } from '@/lib/utils/store-date'
 import { env } from '@/env'
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
@@ -185,11 +184,7 @@ interface ContractDocumentProps {
   locale: SupportedLocale
   translations: ContractTranslations
   currency?: string
-}
-
-// Get date-fns locale from our locale code
-function getDateLocale(locale: SupportedLocale) {
-  return locale === 'fr' ? fr : enUS
+  timezone?: string
 }
 
 // Currency formatting based on locale and currency
@@ -221,33 +216,6 @@ function formatCurrencyValue(
     .replace(/\u202F/g, ' ')
 }
 
-// Date formatting functions with locale support
-function formatFullDate(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'EEEE d MMMM yyyy', { locale: dateLocale })
-}
-
-function formatTime(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'HH:mm', { locale: dateLocale })
-}
-
-function formatDateTimePrecise(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  const atWord = locale === 'fr' ? 'à' : 'at'
-  return format(date, `d MMMM yyyy '${atWord}' HH:mm:ss`, { locale: dateLocale })
-}
-
-function formatShortDate(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'd MMM yyyy', { locale: dateLocale })
-}
-
-function formatDateOnly(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'd MMMM yyyy', { locale: dateLocale })
-}
-
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
@@ -259,12 +227,20 @@ export function ContractDocument({
   locale,
   translations: t,
   currency = 'EUR',
+  timezone,
 }: ContractDocumentProps) {
   const primaryColor = store.primaryColor || '#0066FF'
   const styles = createContractStyles(primaryColor)
 
   // Create a currency formatter for this document
   const formatCurrency = (amount: number | string) => formatCurrencyValue(amount, locale, currency)
+
+  // Date formatting helpers using store timezone
+  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, 'FULL_DATE', locale)
+  const formatTime = (date: Date) => formatStoreDate(date, timezone, 'TIME_ONLY', locale)
+  const formatDateTimePrecise = (date: Date) => formatStoreDate(date, timezone, 'PRECISE_DATETIME', locale)
+  const formatShortDate = (date: Date) => formatStoreDate(date, timezone, 'SHORT_DATE', locale)
+  const formatDateOnly = (date: Date) => formatStoreDate(date, timezone, 'MEDIUM_DATE', locale)
 
   return (
     <Document>
@@ -293,7 +269,7 @@ export function ContractDocument({
                 {t.reservationNumber.replace('{number}', reservation.number)}
               </Text>
               <Text style={styles.documentDate}>
-                {capitalize(formatDateOnly(doc.generatedAt, locale))}
+                {capitalize(formatDateOnly(doc.generatedAt))}
               </Text>
             </View>
           </View>
@@ -366,10 +342,10 @@ export function ContractDocument({
               <View style={styles.periodContent}>
                 <Text style={styles.periodLabel}>{t.period.start}</Text>
                 <Text style={styles.periodDate}>
-                  {capitalize(formatFullDate(reservation.startDate, locale))}
+                  {capitalize(formatFullDate(reservation.startDate))}
                 </Text>
                 <Text style={styles.periodTime}>
-                  {t.period.at} {formatTime(reservation.startDate, locale)}
+                  {t.period.at} {formatTime(reservation.startDate)}
                 </Text>
               </View>
             </View>
@@ -377,10 +353,10 @@ export function ContractDocument({
               <View style={styles.periodContent}>
                 <Text style={styles.periodLabel}>{t.period.end}</Text>
                 <Text style={styles.periodDate}>
-                  {capitalize(formatFullDate(reservation.endDate, locale))}
+                  {capitalize(formatFullDate(reservation.endDate))}
                 </Text>
                 <Text style={styles.periodTime}>
-                  {t.period.at} {formatTime(reservation.endDate, locale)}
+                  {t.period.at} {formatTime(reservation.endDate)}
                 </Text>
               </View>
             </View>
@@ -491,8 +467,8 @@ export function ContractDocument({
                   </View>
                   <Text style={styles.paymentDate}>
                     {payment.paidAt
-                      ? formatShortDate(payment.paidAt, locale)
-                      : formatShortDate(payment.createdAt, locale)}
+                      ? formatShortDate(payment.paidAt)
+                      : formatShortDate(payment.createdAt)}
                   </Text>
                   <Text
                     style={[
@@ -563,7 +539,7 @@ export function ContractDocument({
                 <View style={styles.signatureDateRow}>
                   <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
                   <Text style={styles.signatureDate}>
-                    {formatDateTimePrecise(doc.generatedAt, locale)}
+                    {formatDateTimePrecise(doc.generatedAt)}
                   </Text>
                 </View>
               </View>
@@ -580,7 +556,7 @@ export function ContractDocument({
                 <View style={styles.signatureDateRow}>
                   <Text style={styles.signatureDateLabel}>{t.signature.dateLabel}</Text>
                   <Text style={styles.signatureDate}>
-                    {formatDateTimePrecise(reservation.signedAt || reservation.createdAt, locale)}
+                    {formatDateTimePrecise(reservation.signedAt || reservation.createdAt)}
                   </Text>
                 </View>
                 {reservation.signatureIp && (
@@ -616,7 +592,7 @@ export function ContractDocument({
             </Text>
             <Text style={styles.footerCenter}>{t.footer.poweredBy}</Text>
             <Text style={styles.footerRight}>
-              {t.footer.generatedOn.replace('{date}', formatDateOnly(doc.generatedAt, locale))}
+              {t.footer.generatedOn.replace('{date}', formatDateOnly(doc.generatedAt))}
             </Text>
           </View>
         </View>

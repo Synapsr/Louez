@@ -676,6 +676,8 @@ export async function sendNewRequestLandlordEmail({
       dashboardUrl,
       locale,
       currency: store.settings?.currency || 'EUR',
+      storeTimezone: store.settings?.timezone,
+      storeCountryCode: store.settings?.country,
     })
   )
 

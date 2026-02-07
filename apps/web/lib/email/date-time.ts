@@ -1,9 +1,6 @@
-import { formatInTimeZone } from 'date-fns-tz'
+import { formatStoreDate } from '@/lib/utils/store-date'
 import type { EmailLocale } from './i18n'
-import { getDateLocale } from './i18n'
 import { getTimezoneForCountry } from '@/lib/utils/countries'
-
-const DEFAULT_TIMEZONE = 'UTC'
 
 export function resolveStoreTimezone(
   timezone?: string | null,
@@ -17,7 +14,7 @@ export function resolveStoreTimezone(
     return getTimezoneForCountry(countryCode)
   }
 
-  return DEFAULT_TIMEZONE
+  return 'UTC'
 }
 
 export function formatEmailDateInStoreTimezone(
@@ -27,18 +24,8 @@ export function formatEmailDateInStoreTimezone(
   timezone?: string | null,
   countryCode?: string | null
 ): string {
-  const dateLocale = getDateLocale(locale)
   const resolvedTimezone = resolveStoreTimezone(timezone, countryCode)
-
-  try {
-    return formatInTimeZone(date, resolvedTimezone, pattern, {
-      locale: dateLocale,
-    })
-  } catch {
-    return formatInTimeZone(date, DEFAULT_TIMEZONE, pattern, {
-      locale: dateLocale,
-    })
-  }
+  return formatStoreDate(date, resolvedTimezone, pattern, locale)
 }
 
 export function getStoreTimezoneLabel(
@@ -49,9 +36,9 @@ export function getStoreTimezoneLabel(
   const resolvedTimezone = resolveStoreTimezone(timezone, countryCode)
 
   try {
-    const offset = formatInTimeZone(date, resolvedTimezone, 'xxx')
+    const offset = formatStoreDate(date, resolvedTimezone, 'xxx')
     return `${resolvedTimezone} (UTC${offset})`
   } catch {
-    return `${DEFAULT_TIMEZONE} (UTC+00:00)`
+    return 'UTC (UTC+00:00)'
   }
 }

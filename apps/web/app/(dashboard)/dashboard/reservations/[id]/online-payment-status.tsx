@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   CheckCircle,
   Clock,
@@ -21,6 +19,8 @@ import {
 } from '@louez/ui'
 import { getCurrencySymbol } from '@louez/utils'
 
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import { getReservationPaymentMethod } from '../actions'
 
 interface Payment {
@@ -69,6 +69,7 @@ export function OnlinePaymentStatus({
   currency = 'EUR',
 }: OnlinePaymentStatusProps) {
   const t = useTranslations('dashboard.reservations.onlinePayment')
+  const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null)
@@ -152,7 +153,7 @@ export function OnlinePaymentStatus({
   if (stripeRentalPayment) {
     const paymentAmount = parseFloat(stripeRentalPayment.amount)
     const paymentDate = stripeRentalPayment.paidAt
-      ? format(new Date(stripeRentalPayment.paidAt), "d MMM yyyy 'à' HH:mm", { locale: fr })
+      ? formatStoreDate(new Date(stripeRentalPayment.paidAt), timezone, 'DATE_AT_TIME')
       : null
 
     const hasCardSaved = !!stripePaymentMethodId && depositStatus !== 'pending'

@@ -6,9 +6,8 @@ import {
   View as BaseView,
   Image as BaseImage,
 } from '@react-pdf/renderer'
-import { format } from 'date-fns'
-import { fr, enUS } from 'date-fns/locale'
 import { createInspectionStyles } from './inspection-styles'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>
@@ -129,26 +128,7 @@ interface InspectionReportProps {
   }
   locale: SupportedLocale
   translations: InspectionTranslations
-}
-
-function getDateLocale(locale: SupportedLocale) {
-  return locale === 'fr' ? fr : enUS
-}
-
-function formatFullDate(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'EEEE d MMMM yyyy', { locale: dateLocale })
-}
-
-function formatTime(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  return format(date, 'HH:mm', { locale: dateLocale })
-}
-
-function formatDateTimePrecise(date: Date, locale: SupportedLocale): string {
-  const dateLocale = getDateLocale(locale)
-  const atWord = locale === 'fr' ? 'à' : 'at'
-  return format(date, `d MMMM yyyy '${atWord}' HH:mm:ss`, { locale: dateLocale })
+  timezone?: string
 }
 
 function capitalize(str: string): string {
@@ -161,9 +141,15 @@ export function InspectionReportDocument({
   document: doc,
   locale,
   translations: t,
+  timezone,
 }: InspectionReportProps) {
   const primaryColor = store.primaryColor || '#0066FF'
   const styles = createInspectionStyles(primaryColor)
+
+  // Date formatting helpers using store timezone
+  const formatFullDate = (date: Date) => formatStoreDate(date, timezone, 'FULL_DATE', locale)
+  const formatTime = (date: Date) => formatStoreDate(date, timezone, 'TIME_ONLY', locale)
+  const formatDateTimePrecise = (date: Date) => formatStoreDate(date, timezone, 'PRECISE_DATETIME', locale)
 
   // Calculate summary stats
   const totalItems = inspection.items.length
@@ -218,12 +204,12 @@ export function InspectionReportDocument({
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{t.period.date}</Text>
               <Text style={styles.detailValue}>
-                {capitalize(formatFullDate(inspection.createdAt, locale))}
+                {capitalize(formatFullDate(inspection.createdAt))}
               </Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{t.period.time}</Text>
-              <Text style={styles.detailValue}>{formatTime(inspection.createdAt, locale)}</Text>
+              <Text style={styles.detailValue}>{formatTime(inspection.createdAt)}</Text>
             </View>
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>{t.parties.customer}</Text>
@@ -341,7 +327,7 @@ export function InspectionReportDocument({
               <View style={styles.signatureDetails}>
                 {inspection.signedAt && (
                   <Text style={styles.signatureDetailText}>
-                    {t.signature.signedAt}: {formatDateTimePrecise(inspection.signedAt, locale)}
+                    {t.signature.signedAt}: {formatDateTimePrecise(inspection.signedAt)}
                   </Text>
                 )}
                 {inspection.signatureIp && (
@@ -361,7 +347,7 @@ export function InspectionReportDocument({
         {/* Footer */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerLeft}>
-            {t.footer.generatedOn} {formatDateTimePrecise(doc.generatedAt, locale)}
+            {t.footer.generatedOn} {formatDateTimePrecise(doc.generatedAt)}
           </Text>
           <Text
             style={styles.footerRight}

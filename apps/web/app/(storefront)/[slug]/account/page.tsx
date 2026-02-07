@@ -5,8 +5,6 @@ import { db } from '@louez/db'
 import { stores, reservations } from '@louez/db'
 import { eq, and, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   User,
   Calendar,
@@ -30,6 +28,7 @@ import { storefrontRedirect } from '@/lib/storefront-url'
 import { LogoutButton } from '@/components/storefront/logout-button'
 import { PageTracker } from '@/components/storefront/page-tracker'
 import { SuccessToast } from './success-toast'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface AccountPageProps {
   params: Promise<{ slug: string }>
@@ -78,6 +77,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
   const storeSettings = (store.settings as StoreSettings) || {}
   const currency = storeSettings.currency || 'EUR'
+  const storeTimezone = storeSettings.timezone
 
   const session = await getCustomerSession(slug)
 
@@ -254,9 +254,9 @@ export default async function AccountPage({ params }: AccountPageProps) {
                               <span className="flex items-center gap-1.5">
                                 <Calendar className="h-4 w-4 flex-shrink-0" />
                                 <span>
-                                  {format(reservation.startDate, 'dd MMM HH:mm', { locale: fr })}
+                                  {formatStoreDate(reservation.startDate, storeTimezone, 'RANGE_ELEMENT')}
                                   {' → '}
-                                  {format(reservation.endDate, 'dd MMM HH:mm', { locale: fr })}
+                                  {formatStoreDate(reservation.endDate, storeTimezone, 'RANGE_ELEMENT')}
                                 </span>
                               </span>
                               <span className="flex items-center gap-1.5">
@@ -335,9 +335,9 @@ export default async function AccountPage({ params }: AccountPageProps) {
                                 <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {format(reservation.startDate, 'dd/MM HH:mm', { locale: fr })}
+                                {formatStoreDate(reservation.startDate, storeTimezone, 'dd/MM HH:mm')}
                                 {' - '}
-                                {format(reservation.endDate, 'dd/MM/yy HH:mm', { locale: fr })}
+                                {formatStoreDate(reservation.endDate, storeTimezone, 'TIMESTAMP')}
                                 {' • '}
                                 {t('itemCount', { count: reservation.items.length })}
                               </p>

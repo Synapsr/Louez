@@ -4,11 +4,10 @@ import { reservations, reservationActivity, inspections, inspectionItems, inspec
 import { eq, and, desc } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { getTranslations } from 'next-intl/server'
 import { getCurrencySymbol } from '@louez/utils'
 import { isSmsConfigured } from '@/lib/sms'
+import { formatStoreDate } from '@/lib/utils/store-date'
 import {
   User,
   Building2,
@@ -64,6 +63,7 @@ export default async function ReservationDetailPage({
 
   const currency = store.settings?.currency || 'EUR'
   const currencySymbol = getCurrencySymbol(currency)
+  const storeTimezone = store.settings?.timezone
 
   const { id } = await params
 
@@ -300,11 +300,11 @@ export default async function ReservationDetailPage({
                 <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="flex items-center gap-2 flex-wrap">
                   <span>
-                    {format(startDate, "EEE d MMM 'à' HH:mm", { locale: fr })}
+                    {formatStoreDate(startDate, storeTimezone, 'SHORT_DATETIME')}
                   </span>
                   <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>
-                    {format(endDate, "EEE d MMM 'à' HH:mm", { locale: fr })}
+                    {formatStoreDate(endDate, storeTimezone, 'SHORT_DATETIME')}
                   </span>
                   <span className="text-muted-foreground">
                     ({tCommon('days', { count: days })})

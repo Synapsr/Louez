@@ -1,5 +1,5 @@
 import { format, isWithinInterval, parseISO, startOfDay, endOfDay, addDays, setHours, setMinutes } from 'date-fns'
-import { toZonedTime, formatInTimeZone } from 'date-fns-tz'
+import { toZonedTime, fromZonedTime, formatInTimeZone } from 'date-fns-tz'
 import type { BusinessHours, ClosurePeriod, DaySchedule } from '@louez/types'
 
 /**
@@ -275,6 +275,20 @@ export function getUpcomingClosures(
   return closurePeriods
     .filter(period => endOfDay(parseISO(period.endDate)) >= now)
     .sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime())
+}
+
+/**
+ * Build a UTC Date from a date and time string, interpreted in the store's timezone.
+ * When the user selects "09:00" for a Paris store, this creates 09:00 Paris time (= 08:00 UTC).
+ * If no timezone is provided, falls back to the browser's local timezone.
+ */
+export function buildStoreDate(date: Date, time: string, timezone?: string): Date {
+  const [hours, minutes] = time.split(':').map(Number)
+  const localDate = setMinutes(setHours(date, hours), minutes)
+  if (timezone) {
+    return fromZonedTime(localDate, timezone)
+  }
+  return localDate
 }
 
 /**

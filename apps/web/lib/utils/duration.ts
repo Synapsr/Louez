@@ -195,7 +195,7 @@ export function formatDetailedDuration(
  */
 export function formatDateTime(
   date: Date | string,
-  options?: { includeYear?: boolean }
+  options?: { includeYear?: boolean; timezone?: string }
 ): { date: string; time: string } {
   const d = typeof date === 'string' ? new Date(date) : date
 
@@ -204,11 +204,13 @@ export function formatDateTime(
     day: 'numeric',
     month: 'short',
     ...(options?.includeYear && { year: 'numeric' }),
+    ...(options?.timezone && { timeZone: options.timezone }),
   })
 
   const timeStr = d.toLocaleTimeString('fr-FR', {
     hour: '2-digit',
     minute: '2-digit',
+    ...(options?.timezone && { timeZone: options.timezone }),
   })
 
   return { date: dateStr, time: timeStr }

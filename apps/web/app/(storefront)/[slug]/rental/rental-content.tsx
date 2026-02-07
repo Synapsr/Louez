@@ -12,6 +12,7 @@ import {
   Filter,
   ArrowRight,
   AlertTriangle,
+  Globe,
 } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -95,6 +96,7 @@ interface Store {
   settings?: {
     businessHours?: import('@/types/store').BusinessHours
     advanceNotice?: number
+    timezone?: string
   } | null
 }
 
@@ -148,9 +150,20 @@ export function RentalContent({
     [startDate, endDate]
   )
 
-  // Format start and end datetime
-  const startDateTime = useMemo(() => formatDateTime(startDate), [startDate])
-  const endDateTime = useMemo(() => formatDateTime(endDate), [endDate])
+  // Format start and end datetime in store timezone
+  const storeTimezone = store.settings?.timezone
+  const startDateTime = useMemo(() => formatDateTime(startDate, { timezone: storeTimezone }), [startDate, storeTimezone])
+  const endDateTime = useMemo(() => formatDateTime(endDate, { timezone: storeTimezone }), [endDate, storeTimezone])
+
+  // Detect if user's browser timezone differs from the store's timezone
+  const timezoneCity = useMemo(() => {
+    if (!storeTimezone) return null
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (browserTimezone === storeTimezone) return null
+    // Extract city name from IANA timezone (e.g., "Europe/Paris" → "Paris")
+    const city = storeTimezone.split('/').pop()?.replace(/_/g, ' ')
+    return city || storeTimezone
+  }, [storeTimezone])
 
   // Set global dates in cart context
   useEffect(() => {
@@ -369,6 +382,14 @@ export function RentalContent({
                 {t('changeDates')}
               </Button>
             </div>
+
+            {/* Timezone notice */}
+            {timezoneCity && (
+              <div className="flex items-center gap-1.5 mt-3 pt-3 border-t text-xs text-muted-foreground">
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                <span>{tDate('timezoneNotice', { city: timezoneCity })}</span>
+              </div>
+            )}
           </div>
 
           {/* Business Hours Warning */}
@@ -564,6 +585,7 @@ export function RentalContent({
         pricingMode={pricingMode}
         businessHours={store.settings?.businessHours}
         advanceNotice={store.settings?.advanceNotice}
+        timezone={store.settings?.timezone}
         isOpen={isDateModalOpen}
         onClose={() => setIsDateModalOpen(false)}
         initialStartDate={startDate}

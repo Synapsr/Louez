@@ -6,6 +6,8 @@ import { useForm } from 'react-hook-form'
 import { format } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
 import { useLocale } from 'next-intl'
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   Loader2,
   Plus,
@@ -174,6 +176,7 @@ export function NewReservationForm({
 }: NewReservationFormProps) {
   const router = useRouter()
   const locale = useLocale()
+  const timezone = useStoreTimezone()
   const t = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
@@ -1078,9 +1081,9 @@ export function NewReservationForm({
                         <div>
                           <p className="text-sm font-medium">{t('duration')}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(watchStartDate, 'PPP HH:mm', { locale: dateLocale })}
+                            {formatStoreDate(watchStartDate, timezone, "d MMMM yyyy HH:mm")}
                             {' '}&rarr;{' '}
-                            {format(watchEndDate, 'PPP HH:mm', { locale: dateLocale })}
+                            {formatStoreDate(watchEndDate, timezone, "d MMMM yyyy HH:mm")}
                           </p>
                           {/* Show detailed breakdown for transparency */}
                           {detailedDuration && pricingMode === 'day' && (
