@@ -22,3 +22,10 @@ export {
 
 // Pricing utilities
 export * from './pricing'
+
+// Permissions
+export {
+  hasPermission,
+  type Permission,
+  type MemberRole,
+} from './permissions'

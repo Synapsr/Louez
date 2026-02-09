@@ -330,6 +330,9 @@ importers:
       '@louez/types':
         specifier: workspace:*
         version: link:../types
+      '@louez/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@louez/validations':
         specifier: workspace:*
         version: link:../validations

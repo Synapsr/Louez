@@ -1,4 +1,8 @@
 import { auth } from '@louez/auth'
+import { db, stores } from '@louez/db'
+import { hasPermission } from '@louez/utils'
+import type { Permission } from '@louez/utils'
+import { eq } from 'drizzle-orm'
 import { os, ORPCError } from '@orpc/server'
 import type {
   BaseContext,
@@ -10,18 +14,15 @@ import type {
 
 /**
  * Public procedure - no authentication required
- * Use for public endpoints or health checks
  */
 export const publicProcedure = os.$context<BaseContext>()
 
 /**
- * Dashboard procedure - requires authenticated user with store access
- * Integrates with existing getCurrentStore() pattern
+ * Dashboard procedure - requires authenticated user with store access.
+ * `getCurrentStore` is injected via context by the route handler.
  */
 export const dashboardProcedure = publicProcedure.use(
   async ({ context, next }) => {
-    const { getCurrentStore } = await import('@/lib/store-context')
-
     const session = await auth()
     if (!session?.user) {
       throw new ORPCError('UNAUTHORIZED', {
@@ -29,7 +30,13 @@ export const dashboardProcedure = publicProcedure.use(
       })
     }
 
-    const store = await getCurrentStore()
+    if (!context.getCurrentStore) {
+      throw new ORPCError('INTERNAL_SERVER_ERROR', {
+        message: 'getCurrentStore not provided in context',
+      })
+    }
+
+    const store = await context.getCurrentStore()
     if (!store) {
       throw new ORPCError('FORBIDDEN', {
         message: 'errors.unauthorized',
@@ -44,17 +51,14 @@ export const dashboardProcedure = publicProcedure.use(
         role: store.role,
       } satisfies DashboardContext,
     })
-  }
+  },
 )
 
 /**
  * Helper to create a procedure that requires a specific permission
  */
-export function requirePermission(
-  permission: 'read' | 'write' | 'delete' | 'manage_members' | 'manage_settings'
-) {
+export function requirePermission(permission: Permission) {
   return dashboardProcedure.use(async ({ context, next }) => {
-    const { hasPermission } = await import('@/lib/store-context')
     if (!hasPermission(context.role, permission)) {
       throw new ORPCError('FORBIDDEN', {
         message: 'errors.permissionDenied',
@@ -65,14 +69,11 @@ export function requirePermission(
 }
 
 /**
- * Storefront procedure - public but requires store context via header
- * Use for customer-facing endpoints
+ * Storefront procedure - public but requires store context via header.
+ * `getCustomerSession` is injected via context by the route handler.
  */
 export const storefrontProcedure = publicProcedure.use(
   async ({ context, next }) => {
-    const { db, stores } = await import('@louez/db')
-    const { eq } = await import('drizzle-orm')
-
     // Get store slug from header (set by client)
     const storeSlug = context.headers.get('x-store-slug')
     if (!storeSlug) {
@@ -93,21 +94,21 @@ export const storefrontProcedure = publicProcedure.use(
     }
 
     // Get customer session if exists (from cookie)
-    // Note: This import path is relative to apps/web where the handler runs
-    const { getCustomerSession } = await import(
-      '@/app/(storefront)/[slug]/account/actions'
-    )
-    const customerSession = await getCustomerSession(storeSlug)
+    let customer = null
+    if (context.getCustomerSession) {
+      const customerSession = await context.getCustomerSession(storeSlug)
+      customer = customerSession?.customer ?? null
+    }
 
     return next({
       context: {
         ...context,
         storeSlug,
         store: store as PublicStoreData,
-        customer: customerSession?.customer ?? null,
+        customer,
       } satisfies StorefrontContext,
     })
-  }
+  },
 )
 
 /**
@@ -121,5 +122,5 @@ export const storefrontAuthProcedure = storefrontProcedure.use(
       })
     }
     return next({ context })
-  }
+  },
 )

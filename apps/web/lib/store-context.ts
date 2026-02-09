@@ -5,10 +5,11 @@ import { stores, storeMembers } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { isPlatformAdmin } from '@/lib/platform-admin'
 import type { StoreSettings, StoreTheme, EmailSettings, ReviewBoosterSettings, NotificationSettings, CustomerNotificationSettings } from '@louez/types'
+import { hasPermission, type MemberRole, type Permission } from '@louez/utils'
+
+export { hasPermission, type MemberRole, type Permission }
 
 const ACTIVE_STORE_COOKIE = 'louez_active_store'
-
-export type MemberRole = 'owner' | 'member' | 'platform_admin'
 
 export type StoreWithRole = {
   id: string
@@ -257,21 +258,6 @@ export async function getCurrentStoreRole(): Promise<MemberRole | null> {
   const activeStore = userStores.find((s) => s.id === activeStoreId) || userStores[0]
 
   return activeStore.role
-}
-
-type Permission = 'read' | 'write' | 'delete' | 'manage_members' | 'manage_settings'
-
-const ROLE_PERMISSIONS: Record<MemberRole, Permission[]> = {
-  owner: ['read', 'write', 'delete', 'manage_members', 'manage_settings'],
-  member: ['read', 'write'],
-  platform_admin: ['read', 'write', 'delete', 'manage_members', 'manage_settings'],
-}
-
-/**
- * Check if a role has a specific permission
- */
-export function hasPermission(role: MemberRole, permission: Permission): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
 }
 
 /**

@@ -13,6 +13,7 @@
     "@louez/auth": "workspace:*",
     "@louez/db": "workspace:*",
     "@louez/types": "workspace:*",
+    "@louez/utils": "workspace:*",
     "@louez/validations": "workspace:*",
     "@orpc/server": "^1.13.4",
     "drizzle-orm": "^0.45.1",
