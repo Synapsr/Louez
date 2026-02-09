@@ -3115,7 +3115,8 @@
         "openHours": "Ouvert {openTime} - {closeTime}"
       },
       "modifyDates": "Modifier les dates",
-      "applyDates": "Appliquer les dates"
+      "applyDates": "Appliquer les dates",
+      "timezoneNotice": "Horaires affichés en heure de {city}"
     },
     "availability": {
       "title": "Produits disponibles",

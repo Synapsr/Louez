@@ -138,6 +138,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const pricingMode = storeWithRelations.settings?.pricingMode || 'day'
   const primaryColor = storeWithRelations.theme?.primaryColor || '#0066FF'
   const businessHours = storeWithRelations.settings?.businessHours
+  const timezone = storeWithRelations.settings?.timezone
   const advanceNotice = storeWithRelations.settings?.advanceNotice || 0
   const minRentalHours = getMinRentalHours(storeWithRelations.settings as StoreSettings | null)
   const heroImages = storeWithRelations.theme?.heroImages || []
@@ -216,7 +217,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
                 {/* Status and rating badges */}
                 <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <StoreStatusBadge businessHours={businessHours} />
+                  <StoreStatusBadge businessHours={businessHours} timezone={timezone} />
                   {reviewBoosterSettings?.googleRating && (
                     <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1 text-sm">
                       <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -264,6 +265,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
                       minRentalHours={minRentalHours}
+                      timezone={timezone}
                     />
                   </Suspense>
                 </div>
@@ -291,7 +293,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
                 {/* Status and rating badges */}
                 <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
-                  <StoreStatusBadge businessHours={businessHours} />
+                  <StoreStatusBadge businessHours={businessHours} timezone={timezone} />
                   {reviewBoosterSettings?.googleRating && (
                     <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1.5 text-sm">
                       <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
@@ -333,6 +335,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
                       minRentalHours={minRentalHours}
+                      timezone={timezone}
                     />
                   </Suspense>
                 </div>
@@ -410,6 +413,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
               storePricingMode={pricingMode}
               businessHours={businessHours}
               advanceNotice={advanceNotice}
+              timezone={timezone}
             />
           ) : (
             <Card className="py-16 text-center">

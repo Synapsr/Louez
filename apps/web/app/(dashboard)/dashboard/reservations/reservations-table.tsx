@@ -2,9 +2,8 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
+import { formatStoreDateRange } from '@/lib/utils/store-date'
 import {
   CheckCircle,
   XCircle,
@@ -94,6 +93,7 @@ interface Reservation {
 interface ReservationsTableProps {
   reservations: Reservation[]
   currency?: string
+  timezone?: string
 }
 
 const STATUS_CONFIG: Record<ReservationStatus, {
@@ -140,17 +140,6 @@ const STATUS_CONFIG: Record<ReservationStatus, {
   },
 }
 
-function formatDateRange(start: Date, end: Date): string {
-  const startFormatted = format(start, 'd MMM', { locale: fr })
-  const endFormatted = format(end, 'd MMM', { locale: fr })
-
-  if (startFormatted === endFormatted) {
-    return `${startFormatted} • ${format(start, 'HH:mm')} - ${format(end, 'HH:mm')}`
-  }
-
-  return `${format(start, 'd MMM HH:mm', { locale: fr })} → ${format(end, 'd MMM HH:mm', { locale: fr })}`
-}
-
 type PaymentStatusType = 'paid' | 'partial' | 'unpaid'
 
 function getPaymentStatus(reservation: Reservation): {
@@ -184,7 +173,7 @@ function getPaymentStatus(reservation: Reservation): {
   return { status, rentalPaid, depositCollected, totalDue, totalPaid }
 }
 
-export function ReservationsTable({ reservations, currency = 'EUR' }: ReservationsTableProps) {
+export function ReservationsTable({ reservations, currency = 'EUR', timezone }: ReservationsTableProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
@@ -424,7 +413,7 @@ export function ReservationsTable({ reservations, currency = 'EUR' }: Reservatio
                       {/* Dates */}
                       <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                         <Calendar className="h-3.5 w-3.5" />
-                        {formatDateRange(reservation.startDate, reservation.endDate)}
+                        {formatStoreDateRange(reservation.startDate, reservation.endDate, timezone)}
                       </div>
                     </div>
 

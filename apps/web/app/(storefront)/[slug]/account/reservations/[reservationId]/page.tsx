@@ -39,6 +39,7 @@ import { DownloadContractButton } from './download-contract-button'
 import { PayNowButton } from './pay-now-button'
 import { ReviewPromptCard } from '@/components/storefront/review-prompt-card'
 import { buildReviewUrl } from '@/lib/google-places'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface ReservationDetailPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -61,6 +62,7 @@ export default async function ReservationDetailPage({
 
   const storeSettings = (store.settings as StoreSettings) || {}
   const currency = storeSettings.currency || 'EUR'
+  const storeTimezone = storeSettings.timezone
   const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
 
   const session = await getCustomerSession(slug)
@@ -284,11 +286,11 @@ export default async function ReservationDetailPage({
                   {t('start')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {format(reservation.startDate, 'EEEE dd MMMM', { locale: fr })}
+                  {formatStoreDate(reservation.startDate, storeTimezone, 'DAY_AND_DATE')}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {format(reservation.startDate, 'HH:mm', { locale: fr })}
+                  {formatStoreDate(reservation.startDate, storeTimezone, 'TIME_ONLY')}
                 </p>
               </div>
 
@@ -302,11 +304,11 @@ export default async function ReservationDetailPage({
                   {t('end')}
                 </div>
                 <p className="font-semibold text-lg">
-                  {format(reservation.endDate, 'EEEE dd MMMM', { locale: fr })}
+                  {formatStoreDate(reservation.endDate, storeTimezone, 'DAY_AND_DATE')}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" />
-                  {format(reservation.endDate, 'HH:mm', { locale: fr })}
+                  {formatStoreDate(reservation.endDate, storeTimezone, 'TIME_ONLY')}
                 </p>
               </div>
             </div>
@@ -321,7 +323,7 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('pickedUpAt')}</p>
                         <p className="font-medium">
-                          {format(reservation.pickedUpAt, 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          {formatStoreDate(reservation.pickedUpAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
                         </p>
                       </div>
                     </div>
@@ -332,7 +334,7 @@ export default async function ReservationDetailPage({
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wide opacity-80">{t('returnedAt')}</p>
                         <p className="font-medium">
-                          {format(reservation.returnedAt, 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          {formatStoreDate(reservation.returnedAt, storeTimezone, 'dd/MM/yyyy HH:mm')}
                         </p>
                       </div>
                     </div>

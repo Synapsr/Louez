@@ -1,6 +1,6 @@
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { getTranslations } from 'next-intl/server'
+
+import { formatStoreDate } from '@/lib/utils/store-date'
 import {
   Clock,
   CheckCircle,
@@ -51,6 +51,7 @@ interface ActivityTimelineProps {
   activities: Activity[]
   reservationCreatedAt: Date
   reservationSource: string | null
+  timezone?: string
   createdByUser?: {
     id: string
     name: string | null
@@ -208,6 +209,7 @@ export async function ActivityTimeline({
   activities,
   reservationCreatedAt,
   reservationSource,
+  timezone,
 }: ActivityTimelineProps) {
   const t = await getTranslations('dashboard.reservations')
 
@@ -245,6 +247,7 @@ export async function ActivityTimeline({
                 source={isManualCreation ? 'manual' : 'online'}
                 timestamp={reservationCreatedAt}
                 user={null}
+                timezone={timezone}
               />
             ) : (
               sortedActivities.map((activity) => {
@@ -272,6 +275,7 @@ export async function ActivityTimeline({
                     user={activity.user}
                     metadata={activity.metadata}
                     source={isCreationEvent ? activitySource : undefined}
+                    timezone={timezone}
                     activityType={activity.activityType}
                   />
                 )
@@ -294,6 +298,7 @@ interface ActivityItemProps {
   user: Activity['user']
   metadata?: Record<string, unknown> | null
   source?: string | null
+  timezone?: string
 }
 
 async function ActivityItem({
@@ -306,6 +311,7 @@ async function ActivityItem({
   user,
   metadata,
   source,
+  timezone,
   activityType,
 }: ActivityItemProps & { activityType?: ActivityType }) {
   const t = await getTranslations('dashboard.reservations')
@@ -393,7 +399,7 @@ async function ActivityItem({
             )}
           </div>
           <time className="text-xs text-muted-foreground">
-            {format(timestamp, 'dd MMM yyyy HH:mm', { locale: fr })}
+            {formatStoreDate(timestamp, timezone, 'COMPACT_DATETIME')}
           </time>
         </div>
 

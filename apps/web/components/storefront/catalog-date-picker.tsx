@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays, setHours, setMinutes } from 'date-fns'
+import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle } from 'lucide-react'
 
@@ -26,6 +26,7 @@ import {
   getAvailableTimeSlots,
   generateTimeSlots,
   getNextAvailableDate,
+  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface CatalogDatePickerProps {
@@ -34,6 +35,7 @@ interface CatalogDatePickerProps {
   businessHours?: BusinessHours
   advanceNotice?: number
   minRentalHours?: number
+  timezone?: string
 }
 
 const defaultTimeSlots = generateTimeSlots('07:00', '21:00', 30)
@@ -44,6 +46,7 @@ export function CatalogDatePicker({
   businessHours,
   advanceNotice = 0,
   minRentalHours = 0,
+  timezone,
 }: CatalogDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -79,10 +82,10 @@ export function CatalogDatePicker({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
     // Filter out time slots that are within the advance notice period
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice])
+  }, [startDate, businessHours, advanceNotice, timezone])
 
   // Check if start and end are on the same day
   const isSameDay = useMemo(() => {
@@ -92,22 +95,22 @@ export function CatalogDatePicker({
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    const slots = getAvailableTimeSlots(endDate, businessHours, 30)
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30, timezone)
     // When same day, filter out times that are <= start time
     if (isSameDay && startTime) {
       return slots.filter(slot => slot > startTime)
     }
     return slots
-  }, [endDate, businessHours, isSameDay, startTime])
+  }, [endDate, businessHours, isSameDay, startTime, timezone])
 
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
       if (date < minDate) return true
       if (!businessHours?.enabled) return false
-      const availability = isDateAvailable(date, businessHours)
+      const availability = isDateAvailable(date, businessHours, timezone)
       return !availability.available
     },
-    [businessHours, minDate]
+    [businessHours, minDate, timezone]
   )
 
   useEffect(() => {
@@ -149,7 +152,7 @@ export function CatalogDatePicker({
         setEndDate(date)
       } else {
         const nextDay = addDays(date, 1)
-        const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+        const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
         setEndDate(nextAvailable ?? nextDay)
       }
       // Mark that end date was auto-set (so we can clear selection when opening picker)
@@ -197,13 +200,8 @@ export function CatalogDatePicker({
     setEndTime(time)
     setEndTimeOpen(false)
 
-    const start = startDate!
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(start, startH), startM)
-
-    const end = endDate!
-    const [endH, endM] = time.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(end, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, time, timezone)
 
     navigateToRental(finalStart, finalEnd)
   }
@@ -215,11 +213,19 @@ export function CatalogDatePicker({
 
   const handleStartTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      return
+    }
     setStartTimeOpen(open)
   }
 
   const handleEndDateOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      return
+    }
     setEndDateOpen(open)
     if (!open) {
       // Reset hide selection when closing picker
@@ -229,6 +235,14 @@ export function CatalogDatePicker({
 
   const handleEndTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !endDate) {
+      if (!startDate) {
+        setStartDateOpen(true)
+      } else {
+        setEndDateOpen(true)
+      }
+      return
+    }
     setEndTimeOpen(open)
   }
 
@@ -238,10 +252,8 @@ export function CatalogDatePicker({
     if (isSameDay && endTime <= startTime) return false
     // Validate minimum rental duration
     if (minRentalHours > 0) {
-      const [sH, sM] = startTime.split(':').map(Number)
-      const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
-      const [eH, eM] = endTime.split(':').map(Number)
-      const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+      const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
+      const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
       if (!validateMinRentalDuration(fullStart, fullEnd, minRentalHours).valid) return false
     }
     return true
@@ -250,10 +262,8 @@ export function CatalogDatePicker({
   const durationWarning = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return null
     if (minRentalHours <= 0) return null
-    const [sH, sM] = startTime.split(':').map(Number)
-    const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
-    const [eH, eM] = endTime.split(':').map(Number)
-    const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+    const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
+    const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
     const check = validateMinRentalDuration(fullStart, fullEnd, minRentalHours)
     if (check.valid) return null
     return t('minDurationWarning', { hours: minRentalHours })
@@ -262,10 +272,8 @@ export function CatalogDatePicker({
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(startDate!, startH), startM)
-    const [endH, endM] = endTime.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(endDate!, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
     navigateToRental(finalStart, finalEnd)
   }
 

@@ -6,6 +6,7 @@ interface StoreContextValue {
   currency: string
   storeSlug: string
   storeName: string
+  timezone?: string
 }
 
 const StoreContext = createContext<StoreContextValue | undefined>(undefined)
@@ -15,6 +16,7 @@ interface StoreProviderProps {
   currency: string
   storeSlug: string
   storeName: string
+  timezone?: string
 }
 
 export function StoreProvider({
@@ -22,9 +24,10 @@ export function StoreProvider({
   currency,
   storeSlug,
   storeName,
+  timezone,
 }: StoreProviderProps) {
   return (
-    <StoreContext.Provider value={{ currency, storeSlug, storeName }}>
+    <StoreContext.Provider value={{ currency, storeSlug, storeName, timezone }}>
       {children}
     </StoreContext.Provider>
   )
@@ -42,4 +45,9 @@ export function useStore() {
 export function useStoreCurrency(): string {
   const context = useContext(StoreContext)
   return context?.currency || 'EUR'
+}
+
+export function useStoreTimezone(): string | undefined {
+  const context = useContext(StoreContext)
+  return context?.timezone
 }

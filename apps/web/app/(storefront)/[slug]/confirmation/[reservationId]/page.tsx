@@ -5,8 +5,6 @@ import { db } from '@louez/db'
 import { stores, reservations } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import { CheckCircle, Calendar, Mail, Clock, User, Truck, Store, MapPin } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -16,6 +14,7 @@ import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface ConfirmationPageProps {
   params: Promise<{ slug: string; reservationId: string }>
@@ -86,9 +85,10 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
   const isDelivery = reservation.deliveryOption === 'delivery'
   const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
 
-  // Format dates with times
-  const startDateTime = format(reservation.startDate, "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })
-  const endDateTime = format(reservation.endDate, "EEEE d MMMM yyyy 'à' HH:mm", { locale: fr })
+  // Format dates with times in store timezone
+  const storeTimezone = storeSettings.timezone
+  const startDateTime = formatStoreDate(reservation.startDate, storeTimezone, 'FULL_DATETIME')
+  const endDateTime = formatStoreDate(reservation.endDate, storeTimezone, 'FULL_DATETIME')
 
   return (
     <div className="container mx-auto px-4 py-8">

@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays, setHours, setMinutes } from 'date-fns'
+import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle } from 'lucide-react'
+import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { Calendar } from '@louez/ui'
@@ -26,6 +26,7 @@ import {
   getAvailableTimeSlots,
   generateTimeSlots,
   getNextAvailableDate,
+  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface HeroDatePickerProps {
@@ -34,6 +35,7 @@ interface HeroDatePickerProps {
   businessHours?: BusinessHours
   advanceNotice?: number
   minRentalHours?: number
+  timezone?: string
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
@@ -46,6 +48,7 @@ export function HeroDatePicker({
   businessHours,
   advanceNotice = 0,
   minRentalHours = 0,
+  timezone,
 }: HeroDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -88,10 +91,10 @@ export function HeroDatePicker({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
     // Filter out time slots that are within the advance notice period
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice])
+  }, [startDate, businessHours, advanceNotice, timezone])
 
   // Check if start and end are on the same day
   const isSameDay = useMemo(() => {
@@ -101,20 +104,20 @@ export function HeroDatePicker({
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    const slots = getAvailableTimeSlots(endDate, businessHours, 30)
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30, timezone)
     // When same day, filter out times that are <= start time
     if (isSameDay && startTime) {
       return slots.filter(slot => slot > startTime)
     }
     return slots
-  }, [endDate, businessHours, isSameDay, startTime])
+  }, [endDate, businessHours, isSameDay, startTime, timezone])
 
   const isDateDisabled = useCallback((date: Date): boolean => {
     if (date < minDate) return true
     if (!businessHours?.enabled) return false
-    const availability = isDateAvailable(date, businessHours)
+    const availability = isDateAvailable(date, businessHours, timezone)
     return !availability.available
-  }, [businessHours, minDate])
+  }, [businessHours, minDate, timezone])
 
   useEffect(() => {
     setPricingMode(pricingMode)
@@ -154,7 +157,7 @@ export function HeroDatePicker({
         setEndDate(date)
       } else {
         const nextDay = addDays(date, 1)
-        const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+        const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
         setEndDate(nextAvailable ?? nextDay)
       }
       // Mark that end date was auto-set (so we can clear selection when opening picker)
@@ -206,13 +209,8 @@ export function HeroDatePicker({
     setEndTimeOpen(false)
     setActiveField(null)
 
-    const start = startDate!
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(start, startH), startM)
-
-    const end = endDate!
-    const [endH, endM] = time.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(end, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, time, timezone)
 
     navigateToRental(finalStart, finalEnd)
   }
@@ -225,12 +223,24 @@ export function HeroDatePicker({
 
   const handleStartTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    // If no start date selected, redirect to date picker
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      setActiveField('startDate')
+      return
+    }
     setStartTimeOpen(open)
     if (open) setActiveField('startTime')
   }
 
   const handleEndDateOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    // If no start date selected, redirect to start date picker
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      setActiveField('startDate')
+      return
+    }
     setEndDateOpen(open)
     if (open) {
       setActiveField('endDate')
@@ -242,6 +252,17 @@ export function HeroDatePicker({
 
   const handleEndTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    // If no end date selected, redirect to the appropriate date picker
+    if (open && !endDate) {
+      if (!startDate) {
+        setStartDateOpen(true)
+        setActiveField('startDate')
+      } else {
+        setEndDateOpen(true)
+        setActiveField('endDate')
+      }
+      return
+    }
     setEndTimeOpen(open)
     if (open) setActiveField('endTime')
   }
@@ -252,34 +273,36 @@ export function HeroDatePicker({
     if (isSameDay && endTime <= startTime) return false
     // Validate minimum rental duration
     if (minRentalHours > 0) {
-      const [sH, sM] = startTime.split(':').map(Number)
-      const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
-      const [eH, eM] = endTime.split(':').map(Number)
-      const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+      const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
+      const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
       if (!validateMinRentalDuration(fullStart, fullEnd, minRentalHours).valid) return false
     }
     return true
-  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalHours])
+  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalHours, timezone])
+
+  const timezoneCity = useMemo(() => {
+    if (!timezone) return null
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (browserTimezone === timezone) return null
+    const city = timezone.split('/').pop()?.replace(/_/g, ' ')
+    return city || timezone
+  }, [timezone])
 
   const durationWarning = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return null
     if (minRentalHours <= 0) return null
-    const [sH, sM] = startTime.split(':').map(Number)
-    const fullStart = setMinutes(setHours(new Date(startDate), sH), sM)
-    const [eH, eM] = endTime.split(':').map(Number)
-    const fullEnd = setMinutes(setHours(new Date(endDate), eH), eM)
+    const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
+    const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
     const check = validateMinRentalDuration(fullStart, fullEnd, minRentalHours)
     if (check.valid) return null
     return t('minDurationWarning', { hours: minRentalHours })
-  }, [startDate, endDate, startTime, endTime, minRentalHours, t])
+  }, [startDate, endDate, startTime, endTime, minRentalHours, timezone, t])
 
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(startDate!, startH), startM)
-    const [endH, endM] = endTime.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(endDate!, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
     navigateToRental(finalStart, finalEnd)
   }
 
@@ -459,6 +482,14 @@ export function HeroDatePicker({
             {t('viewAvailability')}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
+
+          {/* Timezone notice */}
+          {timezoneCity && (
+            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
+              <Globe className="h-3.5 w-3.5 shrink-0" />
+              <span>{t('timezoneNotice', { city: timezoneCity })}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -86,6 +86,7 @@ interface ProductPreviewModalProps {
   storePricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
+  timezone?: string
 }
 
 const defaultTimeSlots = generateTimeSlots('07:00', '21:00', 30)
@@ -98,6 +99,7 @@ export function ProductPreviewModal({
   storePricingMode,
   businessHours,
   advanceNotice = 0,
+  timezone,
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations('storefront.product')
   const tDateSelection = useTranslations('storefront.dateSelection')
@@ -202,24 +204,24 @@ export function ProductPreviewModal({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
     // Filter out time slots that are within the advance notice period
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice])
+  }, [startDate, businessHours, advanceNotice, timezone])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30)
-  }, [endDate, businessHours])
+    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
+  }, [endDate, businessHours, timezone])
 
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
       if (date < minDate) return true
       if (!businessHours?.enabled) return false
-      const availability = isDateAvailable(date, businessHours)
+      const availability = isDateAvailable(date, businessHours, timezone)
       return !availability.available
     },
-    [businessHours, minDate]
+    [businessHours, minDate, timezone]
   )
 
   useEffect(() => {
