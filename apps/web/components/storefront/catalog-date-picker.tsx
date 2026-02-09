@@ -422,7 +422,7 @@ export function CatalogDatePicker({
       )}
 
       {/* Submit Button */}
-      <Button onClick={handleSubmit} disabled={!canSubmit} size="sm" className="h-10 px-4">
+      <Button onClick={handleSubmit} disabled={!canSubmit} className="h-10 px-4">
         {t('viewAvailability')}
         <ArrowRight className="ml-1.5 h-4 w-4" />
       </Button>

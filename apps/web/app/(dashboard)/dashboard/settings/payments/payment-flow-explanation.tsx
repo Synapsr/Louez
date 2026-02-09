@@ -112,7 +112,6 @@ export function PaymentFlowExplanation({
                 </p>
                 {onConnectStripe && (
                   <Button
-                    size="sm"
                     className="mt-2"
                     onClick={onConnectStripe}
                     disabled={isConnecting}
@@ -225,7 +224,6 @@ export function PaymentFlowExplanation({
                 </p>
                 {onConnectStripe && (
                   <Button
-                    size="sm"
                     className="mt-2"
                     onClick={onConnectStripe}
                     disabled={isConnecting}

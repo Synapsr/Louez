@@ -51,7 +51,6 @@ export function MultiStorePeriodFilter({ className }: MultiStorePeriodFilterProp
           <Button
             key={period.value}
             variant={currentPeriod === period.value ? 'default' : 'ghost'}
-            size="sm"
             onClick={() => handlePeriodChange(period.value)}
             className="h-8 px-3"
           >

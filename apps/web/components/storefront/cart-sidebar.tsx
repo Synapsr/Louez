@@ -222,7 +222,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
             </Button>
 
             <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive" />}>
+              <AlertDialogTrigger render={<Button variant="ghost" className="w-full text-destructive hover:text-destructive" />}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   {t('clear')}
               </AlertDialogTrigger>

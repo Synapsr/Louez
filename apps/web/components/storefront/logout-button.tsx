@@ -41,7 +41,6 @@ export function LogoutButton({ storeSlug }: LogoutButtonProps) {
   return (
     <Button
       variant="outline"
-      size="sm"
       onClick={handleLogout}
       disabled={isLoading}
       className="gap-2 bg-background/80 backdrop-blur-sm"

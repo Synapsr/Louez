@@ -177,7 +177,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                   className="cursor-pointer py-2"
                 >
                   <div className="mr-3">
-                    <StoreLogo logoUrl={store.logoUrl} name={store.name} size="sm" />
+                    <StoreLogo logoUrl={store.logoUrl} name={store.name} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="truncate text-sm">{store.name}</span>

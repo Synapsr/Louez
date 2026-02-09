@@ -73,7 +73,6 @@ export function ReservationNotes({
           <Button
             onClick={handleSave}
             disabled={isLoading}
-            size="sm"
             className="w-full"
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

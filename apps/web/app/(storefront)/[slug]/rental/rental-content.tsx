@@ -376,7 +376,6 @@ export function RentalContent({
               {/* Change dates button */}
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleChangeDates}
                 className="shrink-0 w-full sm:w-auto"
               >
@@ -459,7 +458,6 @@ export function RentalContent({
                 {hasFilters && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleClearFilters}
                     className="h-9"
                   >
@@ -470,7 +468,7 @@ export function RentalContent({
               </div>
 
               {/* Mobile filter toggle */}
-              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" size="sm" />}>
+              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" />}>
                   <Filter className="h-4 w-4 mr-2" />
                   Filtres
                   <ChevronDown
@@ -514,7 +512,6 @@ export function RentalContent({
                 {hasFilters && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleClearFilters}
                     className="justify-start"
                   >

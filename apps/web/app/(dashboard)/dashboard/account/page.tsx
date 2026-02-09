@@ -144,7 +144,7 @@ export default async function AccountSettingsPage() {
                 {t('accountSettings.deleteAccountDescription')}
               </p>
             </div>
-            <Button variant="destructive" size="sm" disabled>
+            <Button variant="destructive" disabled>
               {tCommon('delete')}
             </Button>
           </div>

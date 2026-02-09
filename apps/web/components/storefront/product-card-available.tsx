@@ -214,7 +214,6 @@ export function ProductCardAvailable({
               availableQuantity={availableQuantity}
               totalQuantity={product.quantity}
               cartQuantity={cartQuantity}
-              size="sm"
             />
           </div>
 

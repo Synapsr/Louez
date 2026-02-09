@@ -83,7 +83,6 @@ export function FloatingSaveBar({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
               onClick={onReset}
               disabled={isLoading}
               className="text-zinc-300 hover:text-white hover:bg-zinc-800"
@@ -93,7 +92,6 @@ export function FloatingSaveBar({
             <Button
               type={onSubmit || formId ? 'button' : 'submit'}
               form={formId}
-              size="sm"
               disabled={isLoading}
               onClick={onSubmit}
             >

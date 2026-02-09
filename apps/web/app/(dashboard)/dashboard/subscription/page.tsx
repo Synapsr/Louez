@@ -48,7 +48,7 @@ export default async function SubscriptionPage({
           <h1 className="text-2xl font-bold tracking-tight">{t('label')}</h1>
           <p className="text-muted-foreground">{t('description')}</p>
         </div>
-        <Button variant="outline" size="sm" render={<Link href="/dashboard/sms" />}>
+        <Button variant="outline" render={<Link href="/dashboard/sms" />}>
             <MessageSquare className="mr-2 h-4 w-4" />
             {tSms('title')}
         </Button>

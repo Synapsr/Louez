@@ -275,7 +275,7 @@ export function UnitAssignmentSelector({
       <div className="flex items-center justify-between pt-1">
         <p className="text-xs text-muted-foreground">{t('optional')}</p>
         {hasChanges && (
-          <Button size="sm" onClick={handleSave} disabled={isPending}>
+          <Button onClick={handleSave} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
             {t('save')}
           </Button>

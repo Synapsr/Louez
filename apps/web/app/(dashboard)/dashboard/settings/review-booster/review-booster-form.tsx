@@ -426,7 +426,6 @@ export function ReviewBoosterForm({
                     </div>
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleOpenTemplateSheet}
                       className="gap-2"
                     >
@@ -499,7 +498,6 @@ export function ReviewBoosterForm({
                     </p>
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleOpenTemplateSheet}
                       className="gap-2"
                     >

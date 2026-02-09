@@ -258,7 +258,7 @@ export function SmsContent({
                 </Badge>
               )}
               {isCurrentMonth && (
-                <Button size="sm" onClick={() => setShowTopupModal(true)}>
+                <Button onClick={() => setShowTopupModal(true)}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {t('quota.topup')}
                 </Button>
@@ -344,7 +344,7 @@ export function SmsContent({
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {quotaStatus.canTopup ? t('quota.topupMessage') : t('quota.upgradeMessage')}
               </p>
-              <Button variant="outline" size="sm" onClick={() => setShowTopupModal(true)}>
+              <Button variant="outline" onClick={() => setShowTopupModal(true)}>
                 {quotaStatus.canTopup ? t('quota.topupNow') : t('quota.upgradePlan')}
                 <Plus className="ml-1 h-3 w-3" />
               </Button>
@@ -357,7 +357,7 @@ export function SmsContent({
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {t('quota.nearLimit', { count: planLimit ? planLimit - displayCurrent : 0 })}
               </p>
-              <Button variant="ghost" size="sm" onClick={() => setShowTopupModal(true)}>
+              <Button variant="ghost" onClick={() => setShowTopupModal(true)}>
                 {t('quota.topup')}
                 <Plus className="ml-1 h-3 w-3" />
               </Button>
@@ -452,7 +452,6 @@ export function SmsContent({
                       <TableCell>
                         <Button
                           variant="ghost"
-                          size="sm"
                           className="h-8 w-8 p-0"
                           onClick={(e) => {
                             e.stopPropagation()

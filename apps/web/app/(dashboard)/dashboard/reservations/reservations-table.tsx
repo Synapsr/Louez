@@ -428,7 +428,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                         <div className="flex items-center gap-1.5">
                           <Tooltip>
                             <TooltipTrigger render={<Button
-                                size="sm"
                                 variant="default"
                                 className="h-8 gap-1.5 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
                                 onClick={(e) => handleStatusChange(e, reservation, 'confirmed')}
@@ -445,7 +444,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                           </Tooltip>
                           <Tooltip>
                             <TooltipTrigger render={<Button
-                                size="sm"
                                 variant="outline"
                                 className="h-8 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-950"
                                 onClick={(e) => openRejectDialog(e, reservation)}
@@ -476,7 +474,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {isConfirmed && (
                         <Tooltip>
                           <TooltipTrigger render={<Button
-                              size="sm"
                               variant="outline"
                               className="h-8 gap-1.5"
                               onClick={(e) => handleStatusChange(e, reservation, 'ongoing')}
@@ -497,7 +494,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {isOngoing && (
                         <Tooltip>
                           <TooltipTrigger render={<Button
-                              size="sm"
                               variant="outline"
                               className="h-8 gap-1.5"
                               onClick={(e) => handleStatusChange(e, reservation, 'completed')}
@@ -517,7 +513,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {/* Cancel option for active reservations */}
                       {canCancel && !isPending && (
                         <Button
-                          size="sm"
                           variant="ghost"
                           className="h-7 text-xs text-muted-foreground hover:text-destructive"
                           onClick={(e) => openCancelDialog(e, reservation)}

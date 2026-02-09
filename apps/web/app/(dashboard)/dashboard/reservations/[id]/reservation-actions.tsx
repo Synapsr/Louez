@@ -184,7 +184,6 @@ export function ReservationActions({
               </p>
               <div className="space-y-2">
                 <Button
-                  size="sm"
                   className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white"
                   onClick={() => handleStatusChange('confirmed')}
                   disabled={isLoading}
@@ -197,7 +196,6 @@ export function ReservationActions({
                   {t('acceptRequest')}
                 </Button>
                 <Button
-                  size="sm"
                   variant="outline"
                   className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-950"
                   onClick={() => setRejectDialogOpen(true)}
@@ -230,7 +228,6 @@ export function ReservationActions({
               </p>
 
               <Button
-                size="sm"
                 className="w-full"
                 onClick={() => handleStatusChange('ongoing')}
                 disabled={isLoading}
@@ -295,7 +292,6 @@ export function ReservationActions({
               </p>
 
               <Button
-                size="sm"
                 className="w-full"
                 onClick={() => handleStatusChange('completed')}
                 disabled={isLoading}

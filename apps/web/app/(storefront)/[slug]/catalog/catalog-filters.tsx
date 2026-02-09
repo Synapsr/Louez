@@ -112,7 +112,6 @@ export function CatalogFilters({
       {hasFilters && (
         <Button
           variant="outline"
-          size="sm"
           onClick={clearFilters}
           className="w-full"
         >

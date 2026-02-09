@@ -174,7 +174,7 @@ export default async function AuthorizeDepositPage({
 
         {/* Back link */}
         <div className="mt-6 text-center">
-          <Button variant="ghost" size="sm" render={<Link href={`/${slug}`} />}>
+          <Button variant="ghost" render={<Link href={`/${slug}`} />}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('backToStore')}
           </Button>

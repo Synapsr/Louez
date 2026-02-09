@@ -183,7 +183,7 @@ function InspectionSlot({
       </div>
 
       {showStartButton && (
-        <Button size="sm" render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
+        <Button render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
             {t('card.start')}
             <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
@@ -191,7 +191,7 @@ function InspectionSlot({
 
       {showViewButton && (
         <div className="flex items-center gap-1">
-          <Button variant="outline" size="sm" render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
+          <Button variant="outline" render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
               {t('card.view')}
           </Button>
           {(inspection?.status === 'completed' || inspection?.status === 'signed') && (

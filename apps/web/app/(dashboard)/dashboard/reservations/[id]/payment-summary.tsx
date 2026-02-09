@@ -515,7 +515,6 @@ export function PaymentSummary({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => setDamageModalOpen(true)}
@@ -530,7 +529,6 @@ export function PaymentSummary({
             <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
               <CollapsibleTrigger render={<Button
                   variant="ghost"
-                  size="sm"
                   className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
                 />}>
                   {t('payment.history')} ({payments.length})

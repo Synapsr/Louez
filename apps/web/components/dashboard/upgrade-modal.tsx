@@ -307,7 +307,6 @@ export function LimitBanner({
         <Button
           onClick={onUpgradeClick}
           variant={isAtLimit ? "default" : "outline"}
-          size="sm"
           className="flex-shrink-0 gap-1"
         >
           <Zap className="h-3.5 w-3.5" />

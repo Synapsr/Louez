@@ -1309,7 +1309,6 @@ export function NewReservationForm({
                               <Button
                                 type="button"
                                 variant={isOutOfStock ? 'ghost' : 'outline'}
-                                size="sm"
                                 onClick={() => addProduct(product.id)}
                                 disabled={isOutOfStock}
                               >
@@ -1329,7 +1328,6 @@ export function NewReservationForm({
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
                                   className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
                                   onClick={() => openPriceOverrideDialog(product.id, calculatedPrice)}
                                 >
@@ -1408,7 +1406,6 @@ export function NewReservationForm({
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={() => setShowCustomItemDialog(true)}
                     >
                       <Plus className="h-4 w-4 mr-1" />

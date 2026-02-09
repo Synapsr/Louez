@@ -246,7 +246,7 @@ export function DeliverySettingsForm({
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>{t('noCoordinatesWarning')}</span>
-                  <Button variant="outline" size="sm" render={<Link href="/dashboard/settings" />}>
+                  <Button variant="outline" render={<Link href="/dashboard/settings" />}>
                       <MapPin className="mr-2 h-4 w-4" />
                       {t('goToStoreSettings')}
                   </Button>
@@ -627,7 +627,7 @@ export function DeliverySettingsForm({
                 </div>
                 {hasCoordinates && (
                   <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
-                    <DialogTrigger render={<Button variant="outline" size="sm" className="shrink-0" />}>
+                    <DialogTrigger render={<Button variant="outline" className="shrink-0" />}>
                         <Search className="h-4 w-4 mr-2" />
                         {t('simulator.testAddress')}
                     </DialogTrigger>

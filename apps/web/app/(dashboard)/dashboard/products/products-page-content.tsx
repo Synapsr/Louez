@@ -139,7 +139,6 @@ export function ProductsPageContent({
         {products.length > 1 && (
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setShowOrderDialog(true)}
           >
             <ArrowUpDown className="mr-2 h-4 w-4" />

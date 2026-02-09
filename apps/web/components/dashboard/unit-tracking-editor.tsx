@@ -249,7 +249,6 @@ export function UnitTrackingEditor({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={addUnit}
                 disabled={disabled}
               >
@@ -266,7 +265,6 @@ export function UnitTrackingEditor({
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
                   onClick={addUnit}
                   className="mt-4"
                   disabled={disabled}
@@ -357,7 +355,6 @@ export function UnitTrackingEditor({
                           <Button
                             type="button"
                             variant="ghost"
-                            size="sm"
                             className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
                             onClick={() => setEditingNotes((prev) => ({ ...prev, [index]: true }))}
                             disabled={disabled}
@@ -395,7 +392,6 @@ export function UnitTrackingEditor({
               <CollapsibleTrigger render={<Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   className="w-full justify-between"
                   disabled={disabled}
                 />}>

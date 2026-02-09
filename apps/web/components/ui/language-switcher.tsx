@@ -62,7 +62,7 @@ export function LanguageSwitcher({ variant = 'default', className }: LanguageSwi
   if (variant === 'compact') {
     if (!mounted) {
       return (
-        <Button variant="ghost" size="sm" className={cn('gap-2', className)}>
+        <Button variant="ghost" className={cn('gap-2', className)}>
           <span className="text-base">{localeFlags[locale]}</span>
           <span className="text-xs uppercase">{locale}</span>
         </Button>
@@ -70,7 +70,7 @@ export function LanguageSwitcher({ variant = 'default', className }: LanguageSwi
     }
     return (
       <DropdownMenu>
-        <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className={cn('gap-2', className)} />}>
+        <DropdownMenuTrigger render={<Button variant="ghost" className={cn('gap-2', className)} />}>
             <span className="text-base">{localeFlags[locale]}</span>
             <span className="text-xs uppercase">{locale}</span>
         </DropdownMenuTrigger>
@@ -95,7 +95,7 @@ export function LanguageSwitcher({ variant = 'default', className }: LanguageSwi
 
   if (!mounted) {
     return (
-      <Button variant="outline" size="sm" className={cn('gap-2 w-full justify-start', className)}>
+      <Button variant="outline" className={cn('gap-2 w-full justify-start', className)}>
         <Globe className="h-4 w-4" />
         <span className="text-base">{localeFlags[locale]}</span>
         <span className="flex-1 text-left">{localeNames[locale]}</span>
@@ -105,7 +105,7 @@ export function LanguageSwitcher({ variant = 'default', className }: LanguageSwi
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="outline" size="sm" className={cn('gap-2 w-full justify-start', className)} />}>
+      <DropdownMenuTrigger render={<Button variant="outline" className={cn('gap-2 w-full justify-start', className)} />}>
           <Globe className="h-4 w-4" />
           <span className="text-base">{localeFlags[locale]}</span>
           <span className="flex-1 text-left">{localeNames[locale]}</span>
