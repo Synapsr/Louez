@@ -7,14 +7,18 @@
     "config": "",
     "css": "src/styles/globals.css",
     "baseColor": "neutral",
-    "cssVariables": true
+    "cssVariables": true,
+    "prefix": ""
   },
   "iconLibrary": "lucide",
   "aliases": {
     "components": "@louez/ui/components",
-    "utils": "@louez/utils",
-    "hooks": "@louez/ui/hooks",
+    "ui": "@louez/ui/components",
+    "utils": "@louez/ui/lib/utils",
     "lib": "@louez/ui/lib",
-    "ui": "@louez/ui/components"
+    "hooks": "@louez/ui/hooks"
+  },
+  "registries": {
+    "@coss": "https://coss.com/ui/r/{name}.json"
   }
 }
