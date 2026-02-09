@@ -7,13 +7,16 @@
 # Image size: ~150MB | Startup: <5s | Non-root user
 #
 # Features:
-# - Automatic database migrations at container startup
+# - Dedicated migrator target (run separately from app)
 # - Health checks for container orchestrators
 # - Non-root user for security
 # - Turborepo monorepo support
 #
 # Build:  docker build -f docker/Dockerfile.web -t louez-web .
 # Run:    docker run -p 3000:3000 --env-file .env louez-web
+# Migrate: docker build -f docker/Dockerfile.web --target migrator -t louez-migrator .
+# EasyPanel (no build target): use docker/Dockerfile.web for app and
+# docker/Dockerfile.web.migrator for migrations.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -46,15 +49,6 @@ COPY apps/web/package.json ./apps/web/
 # Install dependencies using pnpm
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile
-
-# Prepare de-symlinked runtime deps needed by docker/migrate.mjs.
-# Copy the full mysql2 dependency subtree (includes sqlstring, iconv-lite, etc.).
-RUN set -eux; \
-    mkdir -p /app/migrate-node-modules/node_modules; \
-    cp -RL /app/apps/web/node_modules/drizzle-orm /app/migrate-node-modules/node_modules/drizzle-orm; \
-    MYSQL2_NODE_MODULES_DIR="$(find /app/node_modules/.pnpm -maxdepth 1 -type d -name 'mysql2@*' | head -n 1)/node_modules"; \
-    test -d "$MYSQL2_NODE_MODULES_DIR"; \
-    cp -RL "$MYSQL2_NODE_MODULES_DIR/." /app/migrate-node-modules/node_modules/
 
 # -----------------------------------------------------------------------------
 # Stage 2: Builder
@@ -95,10 +89,30 @@ ENV DATABASE_URL=${DATABASE_URL}
 RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 # -----------------------------------------------------------------------------
-# Stage 3: Runner (Production)
+# Stage 3: Migrator
+# One-off image used to run database migrations
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS migrator
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Keep pnpm virtual store + workspace links so migrate.mjs can resolve mysql2 deps
+COPY --from=deps /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+
+# Place migration script under apps/web so module resolution uses apps/web/node_modules
+COPY --from=builder /app/docker/migrate.mjs ./apps/web/docker/migrate.mjs
+COPY --from=builder /app/packages/db/src/migrations ./migrations
+
+CMD ["node", "apps/web/docker/migrate.mjs"]
+
+# -----------------------------------------------------------------------------
+# Stage 4: App (Production)
 # Minimal image with only the standalone build output
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:20-alpine AS app
 
 WORKDIR /app
 
@@ -121,17 +135,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 # Copy public assets (static files) - must match monorepo structure
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
-# Copy database migration script and SQL files
-COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
-COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
-
-# Copy node_modules required by migrate.mjs (not included in standalone output)
-COPY --from=deps --chown=nextjs:nodejs /app/migrate-node-modules/node_modules/ ./node_modules/
-
-# Copy and prepare entrypoint script
-COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
-RUN chmod +x ./docker/entrypoint.sh
-
 # Switch to non-root user
 USER nextjs
 
@@ -142,5 +145,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "wget --no-verbose --tries=1 --spider http://localhost:\${PORT:-3000}/api/health || exit 1"
 
-# Start with entrypoint (runs migrations then starts server)
-ENTRYPOINT ["./docker/entrypoint.sh"]
+# Start standalone Next.js server
+CMD ["node", "apps/web/server.js"]
