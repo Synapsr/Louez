@@ -1,6 +1,8 @@
 import { RPCHandler } from '@orpc/server/fetch'
 import { onError } from '@orpc/server'
 import { appRouter } from '@louez/api/router'
+import { getCurrentStore } from '@/lib/store-context'
+import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions'
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -15,6 +17,8 @@ async function handleRequest(request: Request) {
     prefix: '/api/rpc',
     context: {
       headers: request.headers,
+      getCurrentStore,
+      getCustomerSession,
     },
   })
 

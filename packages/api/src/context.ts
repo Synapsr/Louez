@@ -1,6 +1,7 @@
+import type { MemberRole, Permission } from '@louez/utils'
+
 /**
- * Minimal Session type matching next-auth Session
- * Defined locally to avoid dependency on next-auth in this package
+ * Minimal Session type matching Better Auth session shape
  */
 export interface Session {
   user?: {
@@ -11,12 +12,6 @@ export interface Session {
   }
   expires: string
 }
-
-/**
- * Store data with role information
- * Matches StoreWithFullData from apps/web/lib/store-context.ts
- */
-export type MemberRole = 'owner' | 'member' | 'platform_admin'
 
 /**
  * Base store data (without member role)
@@ -39,7 +34,6 @@ export type BaseStoreData = {
 
 /**
  * Store data with role information for dashboard context
- * Matches StoreWithFullData from apps/web/lib/store-context.ts
  */
 export type StoreData = BaseStoreData & {
   role: MemberRole
@@ -63,10 +57,17 @@ export type CustomerData = {
 }
 
 /**
- * Base context provided to all procedures
+ * Base context provided to all procedures.
+ *
+ * `getCurrentStore` and `getCustomerSession` are injected by the route handler
+ * in apps/web so the API package never imports from the web app directly.
  */
 export interface BaseContext {
   headers: Headers
+  getCurrentStore?: () => Promise<StoreData | null>
+  getCustomerSession?: (
+    storeSlug: string,
+  ) => Promise<{ customerId: string; customer: CustomerData } | null>
 }
 
 /**
@@ -87,3 +88,5 @@ export interface StorefrontContext extends BaseContext {
   store: PublicStoreData
   customer: CustomerData | null
 }
+
+export type { MemberRole, Permission }
