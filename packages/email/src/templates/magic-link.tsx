@@ -5,7 +5,7 @@ import {
   Text,
 } from '@react-email/components'
 import { BaseLayoutSimple } from './base-layout-simple'
-import type { EmailLocale } from '../i18n'
+import type { EmailLocale } from '../types'
 
 const translations: Record<string, { subject: string; title: string; greeting: string; body: string; button: string; expiry: string; alternative: string }> = {
   fr: {

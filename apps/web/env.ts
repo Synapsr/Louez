@@ -1,34 +1,19 @@
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
+import { env as authEnv } from '@louez/auth/env';
 import { env as dbEnv } from '@louez/db/env';
+import { env as emailEnv } from '@louez/email/env';
 import { env as validationsEnv } from '@louez/validations/env';
 
 export const env = createEnv({
-  extends: [dbEnv, validationsEnv],
+  extends: [dbEnv, validationsEnv, authEnv, emailEnv],
 
   server: {
-    // ===== Authentication (Required) =====
-    AUTH_SECRET: z.string().min(1, 'AUTH_SECRET is required'),
-    AUTH_URL: z.url('AUTH_URL must be a valid URL'),
+    // ===== Authentication =====
     AUTH_TRUST_HOST: z
       .string()
       .default('false')
       .transform((val) => val === 'true'),
-
-    // ===== Google OAuth (Optional) =====
-    AUTH_GOOGLE_ID: z.string().min(1, 'AUTH_GOOGLE_ID is required'),
-    AUTH_GOOGLE_SECRET: z.string().min(1, 'AUTH_GOOGLE_SECRET is required'),
-
-    // ===== Email / SMTP (Required) =====
-    SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
-    SMTP_PORT: z.coerce.number().int().positive().default(587),
-    SMTP_SECURE: z
-      .string()
-      .default('false')
-      .transform((val) => val === 'true'),
-    SMTP_USER: z.string().min(1, 'SMTP_USER is required'),
-    SMTP_PASSWORD: z.string().min(1, 'SMTP_PASSWORD is required'),
-    SMTP_FROM: z.string().min(1, 'SMTP_FROM is required'),
 
     // ===== Storage / S3 (Required for image uploads) =====
     S3_ENDPOINT: z.string().url('S3_ENDPOINT must be a valid URL'),
@@ -146,17 +131,7 @@ export const env = createEnv({
 
   runtimeEnv: {
     // Server
-    AUTH_SECRET: process.env.AUTH_SECRET,
-    AUTH_URL: process.env.AUTH_URL,
     AUTH_TRUST_HOST: process.env.AUTH_TRUST_HOST,
-    AUTH_GOOGLE_ID: process.env.AUTH_GOOGLE_ID,
-    AUTH_GOOGLE_SECRET: process.env.AUTH_GOOGLE_SECRET,
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    SMTP_SECURE: process.env.SMTP_SECURE,
-    SMTP_USER: process.env.SMTP_USER,
-    SMTP_PASSWORD: process.env.SMTP_PASSWORD,
-    SMTP_FROM: process.env.SMTP_FROM,
     S3_ENDPOINT: process.env.S3_ENDPOINT,
     S3_REGION: process.env.S3_REGION,
     S3_BUCKET: process.env.S3_BUCKET,

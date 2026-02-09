@@ -11,7 +11,8 @@ import nlMessages from '@/messages/nl.json'
 import plMessages from '@/messages/pl.json'
 import ptMessages from '@/messages/pt.json'
 
-export type EmailLocale = 'fr' | 'en' | 'de' | 'es' | 'it' | 'nl' | 'pl' | 'pt'
+import type { EmailLocale } from '@louez/email'
+export type { EmailLocale }
 
 // Type for email messages structure (use frMessages as reference)
 type EmailMessages = typeof frMessages

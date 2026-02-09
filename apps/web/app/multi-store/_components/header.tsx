@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { signOut } from 'next-auth/react'
+import { authClient } from '@louez/auth/client'
 import { LogOut, Store, ChevronDown } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -120,7 +120,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={() => signOut({ callbackUrl: '/login' })}
+                onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = '/login' } } })}
                 className="text-destructive cursor-pointer"
               >
                 <LogOut className="h-4 w-4 mr-2" />

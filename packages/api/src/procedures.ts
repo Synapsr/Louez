@@ -1,3 +1,4 @@
+import { auth } from '@louez/auth'
 import { os, ORPCError } from '@orpc/server'
 import type {
   BaseContext,
@@ -19,9 +20,6 @@ export const publicProcedure = os.$context<BaseContext>()
  */
 export const dashboardProcedure = publicProcedure.use(
   async ({ context, next }) => {
-    // Dynamic imports to avoid bundling server code in client
-    // These will be resolved at runtime in the Next.js server environment
-    const { auth } = await import('@/lib/auth')
     const { getCurrentStore } = await import('@/lib/store-context')
 
     const session = await auth()

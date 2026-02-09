@@ -169,6 +169,13 @@
       "when": 1769706383906,
       "tag": "0023_careless_albert_cleary",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1770630729522,
+      "tag": "0024_better_auth_migration",
+      "breakpoints": true
     }
   ]
 }
