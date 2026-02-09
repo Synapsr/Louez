@@ -161,16 +161,14 @@ export function AccessoriesSelector({
 
       {/* Add accessory button */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogTrigger asChild>
-          <Button
+        <DialogTrigger render={<Button
             type="button"
             variant="outline"
             className="w-full border-dashed"
             disabled={disabled || filteredProducts.length === 0}
-          >
+          />}>
             <Plus className="mr-2 h-4 w-4" />
             {t('addAccessory')}
-          </Button>
         </DialogTrigger>
         <DialogContent className="max-w-md flex flex-col max-h-[80vh]">
           <DialogHeader className="flex-shrink-0">

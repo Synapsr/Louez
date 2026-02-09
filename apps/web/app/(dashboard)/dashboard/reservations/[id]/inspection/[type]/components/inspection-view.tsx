@@ -118,11 +118,9 @@ export function InspectionView({
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <a href={`/api/inspections/${inspection.id}/report`} download>
+            <Button variant="outline" size="sm" render={<a href={`/api/inspections/${inspection.id}/report`} download />}>
                 <Download className="mr-2 h-4 w-4" />
                 {t('card.downloadPdf')}
-              </a>
             </Button>
           </div>
         </div>

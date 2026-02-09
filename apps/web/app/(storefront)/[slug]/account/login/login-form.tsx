@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, Mail, KeyRound, ArrowRight, RotateCcw } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -59,15 +59,15 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       const result = await sendVerificationCode(storeId, data.email)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
       setEmail(data.email)
       setStep('code')
-      toast.success(t('codeSent'))
+      toastManager.add({ title: t('codeSent'), type: 'success' })
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -81,15 +81,15 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       const result = await verifyCode(storeId, email, codeValue)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
-      toast.success(t('loginSuccess'))
+      toastManager.add({ title: t('loginSuccess'), type: 'success' })
       router.push(getUrl('/account'))
       router.refresh()
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -109,13 +109,13 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       const result = await sendVerificationCode(storeId, email)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
-      toast.success(t('newCodeSent'))
+      toastManager.add({ title: t('newCodeSent'), type: 'success' })
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

@@ -95,8 +95,7 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
     if (minimal) {
       return (
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
+          <TooltipTrigger render={<Link
               ref={ref}
               href={`/dashboard/reservations/${reservation.id}`}
               className={cn(
@@ -106,8 +105,8 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
                 className
               )}
               style={style}
-            />
-          </TooltipTrigger>
+            />} />
+
           <TooltipContent side="top" className="max-w-xs">
             <ReservationTooltipContent
               reservation={reservation}
@@ -122,8 +121,7 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
 
     return (
       <Tooltip>
-        <TooltipTrigger asChild>
-          <Link
+        <TooltipTrigger render={<Link
             ref={ref}
             href={`/dashboard/reservations/${reservation.id}`}
             className={cn(
@@ -147,7 +145,7 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
               className
             )}
             style={style}
-          >
+          />}>
             {/* Continuation indicator (left) */}
             {continuesBefore && (
               <span
@@ -195,7 +193,6 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
                 </svg>
               </span>
             )}
-          </Link>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-xs">
           <ReservationTooltipContent

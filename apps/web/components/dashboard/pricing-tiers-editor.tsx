@@ -493,9 +493,7 @@ export function PricingTiersEditor({
                   </Label>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
+                      <TooltipTrigger render={<Info className="h-4 w-4 text-muted-foreground cursor-help" />} />
                       <TooltipContent side="top" className="max-w-xs">
                         <p>{t('enforceStrictTiersTooltip')}</p>
                       </TooltipContent>
@@ -523,9 +521,7 @@ export function PricingTiersEditor({
                   <CardTitle className="text-base">{t('preview')}</CardTitle>
                   <TooltipProvider>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
+                      <TooltipTrigger render={<Info className="h-4 w-4 text-muted-foreground cursor-help" />} />
                       <TooltipContent>
                         <p>{t('previewTooltip')}</p>
                       </TooltipContent>

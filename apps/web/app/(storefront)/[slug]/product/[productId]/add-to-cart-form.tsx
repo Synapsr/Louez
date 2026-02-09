@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { differenceInDays, differenceInHours, differenceInWeeks } from 'date-fns'
 import { Plus, Minus, ShoppingCart } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -137,7 +137,7 @@ export function AddToCartForm({
 
   const handleAddToCart = () => {
     if (!startDate || !endDate) {
-      toast.error(t('selectDates'))
+      toastManager.add({ title: t('selectDates'), type: 'error' })
       return
     }
 
@@ -145,7 +145,7 @@ export function AddToCartForm({
     if (minRentalHours > 0) {
       const check = validateMinRentalDuration(startDate, endDate, minRentalHours)
       if (!check.valid) {
-        toast.error(t('minDurationError', { hours: minRentalHours }))
+        toastManager.add({ title: t('minDurationError', { hours: minRentalHours }, type: 'error' }))
         return
       }
     }
@@ -175,7 +175,9 @@ export function AddToCartForm({
       setAccessoriesModalOpen(true)
     } else {
       // Otherwise show the classic toast
-      toast.success(t('addedToCart', { name: productName }), {
+      toastManager.add({
+        title: t('addedToCart', { name: productName }),
+        type: 'success',
         action: {
           label: t('goToCheckout'),
           onClick: () => router.push(getUrl('/checkout')),

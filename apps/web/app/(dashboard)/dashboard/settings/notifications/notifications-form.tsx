@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import Link from 'next/link'
 import {
   Mail,
@@ -182,7 +182,7 @@ export function NotificationsForm({
             [channel]: !enabled,
           },
         }))
-        toast.error(t('saveError'))
+        toastManager.add({ title: t('saveError'), type: 'error' })
       }
     })
   }
@@ -211,7 +211,7 @@ export function NotificationsForm({
             [channel]: !enabled,
           },
         }))
-        toast.error(t('saveError'))
+        toastManager.add({ title: t('saveError'), type: 'error' })
       }
     })
   }
@@ -222,10 +222,10 @@ export function NotificationsForm({
     setSavingWebhook(false)
 
     if (result.error) {
-      toast.error(t('discord.invalidUrl'))
+      toastManager.add({ title: t('discord.invalidUrl'), type: 'error' })
     } else {
       setIsDiscordConnected(!!discordWebhookUrl)
-      toast.success(t('discord.saved'))
+      toastManager.add({ title: t('discord.saved'), type: 'success' })
     }
   }
 
@@ -235,9 +235,9 @@ export function NotificationsForm({
     setTestingDiscord(false)
 
     if (result.error) {
-      toast.error(t('discord.testError'))
+      toastManager.add({ title: t('discord.testError'), type: 'error' })
     } else {
-      toast.success(t('discord.testSuccess'))
+      toastManager.add({ title: t('discord.testSuccess'), type: 'success' })
     }
   }
 
@@ -247,14 +247,14 @@ export function NotificationsForm({
     setSavingPhone(false)
 
     if (result.error) {
-      toast.error(t('phone.invalidNumber'))
+      toastManager.add({ title: t('phone.invalidNumber'), type: 'error' })
     } else {
       const hasPhone = !!result.phone
       setIsSmsConfigured(hasPhone)
       if (result.phone) {
         setOwnerPhone(result.phone)
       }
-      toast.success(t('phone.saved'))
+      toastManager.add({ title: t('phone.saved'), type: 'success' })
     }
   }
 
@@ -276,7 +276,7 @@ export function NotificationsForm({
     })
 
     if (result.error) {
-      toast.error(t('saveError'))
+      toastManager.add({ title: t('saveError'), type: 'error' })
     } else {
       setCustomerSettings((prev) => ({
         ...prev,
@@ -285,7 +285,7 @@ export function NotificationsForm({
           [editingEventType]: template,
         },
       }))
-      toast.success(t('templateSaved'))
+      toastManager.add({ title: t('templateSaved'), type: 'success' })
     }
     setTemplateModalOpen(false)
     setEditingEventType(null)
@@ -310,9 +310,9 @@ export function NotificationsForm({
     })
 
     if (result.error) {
-      toast.error(t('saveError'))
+      toastManager.add({ title: t('saveError'), type: 'error' })
     } else {
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
     }
     setSavingReminderSettings(false)
   }
@@ -381,11 +381,9 @@ export function NotificationsForm({
                 <div className="mt-4 pt-4 border-t flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground">{t('sms.quotaLabel')}</span>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-                      <Link href="/dashboard/sms">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" render={<Link href="/dashboard/sms" />}>
                         {t('sms.manage')}
                         <ExternalLink className="ml-1 h-3 w-3" />
-                      </Link>
                     </Button>
                   </div>
                   {smsLimitReached ? (
@@ -395,8 +393,8 @@ export function NotificationsForm({
                         <span className="text-sm font-medium">{t('sms.noCreditsLeft')}</span>
                       </div>
                       <p className="mt-1 text-xs text-destructive/80">{t('sms.noCreditsDescription')}</p>
-                      <Button size="sm" variant="destructive" className="mt-2 w-full" asChild>
-                        <Link href="/dashboard/sms">{t('sms.buyCredits')}</Link>
+                      <Button size="sm" variant="destructive" className="mt-2 w-full" render={<Link href="/dashboard/sms" />}>
+                        {t('sms.buyCredits')}
                       </Button>
                     </div>
                   ) : (
@@ -735,8 +733,8 @@ export function NotificationsForm({
                       limit: smsQuota.limit ?? 0,
                     })}
               </span>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/dashboard/sms">{t('sms.buyMore')}</Link>
+              <Button variant="outline" size="sm" render={<Link href="/dashboard/sms" />}>
+                {t('sms.buyMore')}
               </Button>
             </AlertDescription>
           </Alert>
@@ -809,10 +807,8 @@ function NotificationRow({
         <div className="w-10 flex justify-center">
           {smsDisabled && smsTooltip ? (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
+              <TooltipTrigger render={<div />}>
                   <Switch checked={config.sms} disabled />
-                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{smsTooltip}</p>
@@ -829,10 +825,8 @@ function NotificationRow({
         <div className="w-10 flex justify-center">
           {discordDisabled && discordTooltip ? (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
+              <TooltipTrigger render={<div />}>
                   <Switch checked={config.discord} disabled />
-                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{discordTooltip}</p>
@@ -899,10 +893,8 @@ function CustomerNotificationRow({
         <div className="w-10 flex justify-center">
           {smsDisabled && smsTooltip ? (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
+              <TooltipTrigger render={<div />}>
                   <Switch checked={config.sms} disabled />
-                </div>
               </TooltipTrigger>
               <TooltipContent>
                 <p>{smsTooltip}</p>

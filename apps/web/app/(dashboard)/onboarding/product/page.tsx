@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Package, Loader2, Upload, X, ImageIcon } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -62,12 +62,12 @@ export default function OnboardingProductPage() {
         const file = files[i]
 
         if (!file.type.startsWith('image/')) {
-          toast.error(t('photoError'))
+          toastManager.add({ title: t('photoError'), type: 'error' })
           continue
         }
 
         if (file.size > 5 * 1024 * 1024) {
-          toast.error(t('photoSizeError'))
+          toastManager.add({ title: t('photoSizeError'), type: 'error' })
           continue
         }
 
@@ -100,12 +100,12 @@ export default function OnboardingProductPage() {
     try {
       const result = await createFirstProduct(data)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
         return
       }
       router.push('/onboarding/stripe')
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

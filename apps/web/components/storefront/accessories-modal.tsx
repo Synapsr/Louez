@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Check, ChevronLeft, ChevronRight, ShoppingCart } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import {
   Dialog,
@@ -126,7 +126,7 @@ export function AccessoriesModal({
 
     // Show success toast
     if (addedNames.length > 0) {
-      toast.success(t('accessoriesAdded', { count: addedNames.length }))
+      toastManager.add({ title: t('accessoriesAdded', { count: addedNames.length }), type: 'success' })
     }
   }
 

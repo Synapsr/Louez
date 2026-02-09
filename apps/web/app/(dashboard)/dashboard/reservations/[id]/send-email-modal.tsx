@@ -14,7 +14,7 @@ import {
   AlertCircle,
   MessageSquare,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -118,12 +118,12 @@ export function SendEmailModal({
 
   const handleSend = async () => {
     if (!selectedTemplate) {
-      toast.error(t('selectTemplateError'))
+      toastManager.add({ title: t('selectTemplateError'), type: 'error' })
       return
     }
 
     if (selectedTemplate === 'custom' && !customMessage.trim()) {
-      toast.error(t('customMessageRequired'))
+      toastManager.add({ title: t('customMessageRequired'), type: 'error' })
       return
     }
 
@@ -136,15 +136,15 @@ export function SendEmailModal({
       })
 
       if (result.error) {
-        toast.error(t('sendError'))
+        toastManager.add({ title: t('sendError'), type: 'error' })
       } else {
-        toast.success(t('sendSuccess'))
+        toastManager.add({ title: t('sendSuccess'), type: 'success' })
         onOpenChange(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(t('sendError'))
+      toastManager.add({ title: t('sendError'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

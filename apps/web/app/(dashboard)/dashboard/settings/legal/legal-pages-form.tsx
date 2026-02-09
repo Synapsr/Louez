@@ -9,7 +9,7 @@ import { Button } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import Link from 'next/link'
 import { getCgvTemplate, getLegalNoticeTemplate } from '@/lib/legal-templates'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
@@ -58,7 +58,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
       setLegalNotice(getLegalNoticeTemplate(locale))
       setActiveTab('legal')
     }
-    toast.success(t('templateApplied'))
+    toastManager.add({ title: t('templateApplied'), type: 'success' })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,10 +76,10 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
         throw new Error('Failed to update legal pages')
       }
 
-      toast.success(t('updated'))
+      toastManager.add({ title: t('updated'), type: 'success' })
       router.refresh()
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -151,16 +151,9 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               />
               <div className="flex items-center justify-end">
                 {store.slug && (
-                  <Button type="button" variant="ghost" size="sm" asChild>
-                    <a
-                      href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/terms`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1"
-                    >
+                  <Button type="button" variant="ghost" size="sm" render={<a href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/terms`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
-                    </a>
                   </Button>
                 )}
               </div>
@@ -175,16 +168,9 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               />
               <div className="flex items-center justify-end">
                 {store.slug && (
-                  <Button type="button" variant="ghost" size="sm" asChild>
-                    <a
-                      href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/legal`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1"
-                    >
+                  <Button type="button" variant="ghost" size="sm" render={<a href={`https://${store.slug}.${env.NEXT_PUBLIC_APP_DOMAIN}/legal`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1" />}>
                       <ExternalLink className="h-4 w-4" />
                       {t('viewOnStore')}
-                    </a>
                   </Button>
                 )}
               </div>

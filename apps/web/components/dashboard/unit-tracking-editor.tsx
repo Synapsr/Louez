@@ -24,8 +24,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -370,17 +369,15 @@ export function UnitTrackingEditor({
 
                       <TooltipProvider>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               type="button"
                               variant="ghost"
                               size="icon"
                               onClick={() => removeUnit(index)}
                               disabled={disabled}
                               className="mt-1 shrink-0 text-muted-foreground hover:text-destructive"
-                            >
+                            />}>
                               <Trash2 className="h-4 w-4" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{t('deleteConfirm')}</p>
@@ -395,14 +392,13 @@ export function UnitTrackingEditor({
 
             {/* Bulk add */}
             <Collapsible open={bulkOpen} onOpenChange={setBulkOpen}>
-              <CollapsibleTrigger asChild>
-                <Button
+              <CollapsibleTrigger render={<Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="w-full justify-between"
                   disabled={disabled}
-                >
+                />}>
                   {t('bulkAdd')}
                   <ChevronDown
                     className={cn(
@@ -410,7 +406,6 @@ export function UnitTrackingEditor({
                       bulkOpen && 'rotate-180'
                     )}
                   />
-                </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">
                 <div className="rounded-lg border bg-muted/30 p-4">
@@ -485,13 +480,13 @@ export function UnitTrackingEditor({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{t('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button />}
               onClick={confirmDisable}
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {t('confirm')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

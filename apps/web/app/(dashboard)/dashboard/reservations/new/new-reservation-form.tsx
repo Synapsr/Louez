@@ -27,7 +27,7 @@ import {
   Clock,
   PackageX,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -606,14 +606,14 @@ export function NewReservationForm({
       const totalPrice = parseFloat(customItemForm.totalPrice)
       const quantity = parseInt(customItemForm.quantity) || 1
       if (isNaN(totalPrice) || totalPrice <= 0) {
-        toast.error(t('customItem.priceRequired'))
+        toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
         return
       }
       unitPrice = totalPrice / (quantity * duration)
     } else {
       unitPrice = parseFloat(customItemForm.unitPrice)
       if (isNaN(unitPrice) || unitPrice <= 0) {
-        toast.error(t('customItem.priceRequired'))
+        toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
         return
       }
     }
@@ -622,7 +622,7 @@ export function NewReservationForm({
     const quantity = parseInt(customItemForm.quantity) || 1
 
     if (!customItemForm.name.trim()) {
-      toast.error(t('customItem.nameRequired'))
+      toastManager.add({ title: t('customItem.nameRequired'), type: 'error' })
       return
     }
 
@@ -638,7 +638,7 @@ export function NewReservationForm({
     setCustomItems([...customItems, newItem])
     resetCustomItemForm()
     setShowCustomItemDialog(false)
-    toast.success(t('customItem.added'))
+    toastManager.add({ title: t('customItem.added'), type: 'success' })
   }
 
   const updateCustomItemQuantity = (id: string, delta: number) => {
@@ -684,7 +684,7 @@ export function NewReservationForm({
 
     const newPrice = parseFloat(priceOverrideDialog.newPrice)
     if (isNaN(newPrice)) {
-      toast.error(t('customItem.priceRequired'))
+      toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
       return
     }
 
@@ -702,7 +702,7 @@ export function NewReservationForm({
       })
     )
 
-    toast.success(t('priceOverride.priceUpdated'))
+    toastManager.add({ title: t('priceOverride.priceUpdated'), type: 'success' })
     closePriceOverrideDialog()
   }
 
@@ -716,7 +716,7 @@ export function NewReservationForm({
         return p
       })
     )
-    toast.success(t('priceOverride.priceReset'))
+    toastManager.add({ title: t('priceOverride.priceReset'), type: 'success' })
   }
 
   const validateCurrentStep = (): boolean => {
@@ -724,26 +724,26 @@ export function NewReservationForm({
       case 0: // Customer
         if (watchCustomerType === 'existing') {
           if (!watchCustomerId) {
-            toast.error(t('selectCustomerError'))
+            toastManager.add({ title: t('selectCustomerError'), type: 'error' })
             return false
           }
         } else {
           const { email, firstName, lastName } = watchedValues
           if (!email || !firstName || !lastName) {
-            toast.error(t('fillCustomerInfoError'))
+            toastManager.add({ title: t('fillCustomerInfoError'), type: 'error' })
             return false
           }
         }
         return true
       case 1: // Period
         if (!watchStartDate || !watchEndDate) {
-          toast.error(t('selectDatesError'))
+          toastManager.add({ title: t('selectDatesError'), type: 'error' })
           return false
         }
         return true
       case 2: // Products
         if (selectedProducts.length === 0 && customItems.length === 0) {
-          toast.error(t('addProductError'))
+          toastManager.add({ title: t('addProductError'), type: 'error' })
           return false
         }
         return true
@@ -802,14 +802,14 @@ export function NewReservationForm({
       })
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
-      toast.success(t('reservationCreated'))
+      toastManager.add({ title: t('reservationCreated'), type: 'success' })
       router.push(`/dashboard/reservations/${result.reservationId}`)
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

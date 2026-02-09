@@ -25,8 +25,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -82,8 +81,8 @@ export function CustomersTable({ customers }: CustomersTableProps) {
         <p className="mt-2 text-sm text-muted-foreground">
           {t('noCustomersDescription')}
         </p>
-        <Button asChild className="mt-4">
-          <Link href="/dashboard/customers/new">{t('addCustomer')}</Link>
+        <Button render={<Link href="/dashboard/customers/new" />} className="mt-4">
+          {t('addCustomer')}
         </Button>
       </div>
     )
@@ -174,24 +173,18 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">{tCommon('actions')}</span>
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">{tCommon('actions')}</span>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/customers/${customer.id}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          {t('viewDetails')}
-                        </Link>
+                      <DropdownMenuItem render={<Link href={`/dashboard/customers/${customer.id}`} />}>
+                        <Eye className="mr-2 h-4 w-4" />
+                        {t('viewDetails')}
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/customers/${customer.id}/edit`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          {tCommon('edit')}
-                        </Link>
+                      <DropdownMenuItem render={<Link href={`/dashboard/customers/${customer.id}/edit`} />}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        {tCommon('edit')}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -220,14 +213,14 @@ export function CustomersTable({ customers }: CustomersTableProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={isPending}
             >
               {isPending ? tCommon('loading') : tCommon('delete')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

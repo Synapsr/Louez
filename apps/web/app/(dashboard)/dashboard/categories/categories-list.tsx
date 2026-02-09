@@ -11,7 +11,7 @@ import {
   FolderOpen,
   Loader2,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -38,8 +38,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -87,15 +86,15 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     try {
       const result = await createCategory({ name: newCategoryName.trim() })
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('categoryCreated'))
+        toastManager.add({ title: t('categoryCreated'), type: 'success' })
         setNewCategoryName('')
         setCreateDialogOpen(false)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -110,15 +109,15 @@ export function CategoriesList({ categories }: CategoriesListProps) {
         name: editCategoryName.trim(),
       })
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('categoryUpdated'))
+        toastManager.add({ title: t('categoryUpdated'), type: 'success' })
         setEditDialogOpen(false)
         setEditingCategory(null)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -131,15 +130,15 @@ export function CategoriesList({ categories }: CategoriesListProps) {
     try {
       const result = await deleteCategory(categoryToDelete.id)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('categoryDeleted'))
+        toastManager.add({ title: t('categoryDeleted'), type: 'success' })
         setDeleteDialogOpen(false)
         setCategoryToDelete(null)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -207,10 +206,8 @@ export function CategoriesList({ categories }: CategoriesListProps) {
                     </div>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                      <MoreHorizontal className="h-4 w-4" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => openEditDialog(category)}>
@@ -317,13 +314,13 @@ export function CategoriesList({ categories }: CategoriesListProps) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {tCommon('delete')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

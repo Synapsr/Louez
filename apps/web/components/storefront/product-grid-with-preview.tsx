@@ -101,11 +101,9 @@ function ProductCardInteractive({
           {/* Quick action button */}
           {isAvailable && (
             <div className="absolute bottom-3 left-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0">
-              <Button size="sm" className="w-full shadow-lg" asChild>
-                <span>
+              <Button size="sm" className="w-full shadow-lg" render={<span />}>
                   <Calendar className="mr-2 h-4 w-4" />
                   {t('selectDates')}
-                </span>
               </Button>
             </div>
           )}

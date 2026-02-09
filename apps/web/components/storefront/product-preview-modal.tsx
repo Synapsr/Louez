@@ -567,20 +567,18 @@ export function ProductPreviewModal({
                 </label>
                 <div className="flex rounded-xl border bg-background overflow-hidden h-11">
                   <Popover open={startDateOpen} onOpenChange={setStartDateOpen}>
-                    <PopoverTrigger asChild>
-                      <button
+                    <PopoverTrigger render={<button
                         className={cn(
                           'flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0',
                           !startDate && 'text-muted-foreground'
                         )}
-                      >
+                      />}>
                         <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                         <span className="font-medium text-sm truncate">
                           {startDate
                             ? format(startDate, 'd MMM', { locale: fr })
                             : tDateSelection('startDate')}
                         </span>
-                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
@@ -597,11 +595,9 @@ export function ProductPreviewModal({
                   <div className="w-px bg-border my-2" />
 
                   <Popover open={startTimeOpen} onOpenChange={setStartTimeOpen}>
-                    <PopoverTrigger asChild>
-                      <button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0">
+                    <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium text-sm">{startTime}</span>
-                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-40 p-0" align="start">
                       <TimeSelector
@@ -621,20 +617,18 @@ export function ProductPreviewModal({
                 </label>
                 <div className="flex rounded-xl border bg-background overflow-hidden h-11">
                   <Popover open={endDateOpen} onOpenChange={setEndDateOpen}>
-                    <PopoverTrigger asChild>
-                      <button
+                    <PopoverTrigger render={<button
                         className={cn(
                           'flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0',
                           !endDate && 'text-muted-foreground'
                         )}
-                      >
+                      />}>
                         <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                         <span className="font-medium text-sm truncate">
                           {endDate
                             ? format(endDate, 'd MMM', { locale: fr })
                             : tDateSelection('endDate')}
                         </span>
-                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                       <Calendar
@@ -653,11 +647,9 @@ export function ProductPreviewModal({
                   <div className="w-px bg-border my-2" />
 
                   <Popover open={endTimeOpen} onOpenChange={setEndTimeOpen}>
-                    <PopoverTrigger asChild>
-                      <button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0">
+                    <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
                         <Clock className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium text-sm">{endTime}</span>
-                      </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-40 p-0" align="end">
                       <TimeSelector

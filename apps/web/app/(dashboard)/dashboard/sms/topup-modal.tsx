@@ -140,11 +140,9 @@ export function TopupModal({ open, onOpenChange, priceCents, planSlug }: TopupMo
             </div>
 
             {/* CTA */}
-            <Button asChild className="w-full shadow-sm shadow-primary/20">
-              <Link href="/dashboard/subscription">
+            <Button className="w-full shadow-sm shadow-primary/20" render={<Link href="/dashboard/subscription" />}>
                 {t('upsell.upgradeToPro')}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
             </Button>
           </div>
         </DialogContent>
@@ -192,11 +190,9 @@ export function TopupModal({ open, onOpenChange, priceCents, planSlug }: TopupMo
                       count: PLAN_DETAILS.ultra.smsIncluded,
                     })}
                   </p>
-                  <Button variant="outline" size="sm" asChild className="h-7 border-primary/20 text-xs hover:bg-primary/5 hover:text-primary">
-                    <Link href="/dashboard/subscription">
+                  <Button variant="outline" size="sm" className="h-7 border-primary/20 text-xs hover:bg-primary/5 hover:text-primary" render={<Link href="/dashboard/subscription" />}>
                       {t('upsell.upgradeToUltra')}
                       <ArrowRight className="ml-1.5 h-3 w-3" />
-                    </Link>
                   </Button>
                 </div>
               </div>

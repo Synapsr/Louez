@@ -126,8 +126,7 @@ export function DateTimePicker({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <PopoverTrigger asChild>
-        <Button
+      <PopoverTrigger render={<Button
           variant="outline"
           className={cn(
             'w-full justify-start text-left font-normal',
@@ -135,10 +134,9 @@ export function DateTimePicker({
             className
           )}
           disabled={disabled}
-        >
+        />}>
           <CalendarIcon className="mr-2 h-4 w-4" />
           {date ? formatDateTime(date) : actualPlaceholder}
-        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar

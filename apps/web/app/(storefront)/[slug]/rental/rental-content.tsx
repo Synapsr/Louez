@@ -469,14 +469,12 @@ export function RentalContent({
               </div>
 
               {/* Mobile filter toggle */}
-              <CollapsibleTrigger asChild className="md:hidden">
-                <Button variant="outline" size="sm">
+              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" size="sm" />}>
                   <Filter className="h-4 w-4 mr-2" />
                   Filtres
                   <ChevronDown
                     className={`h-4 w-4 ml-2 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
                   />
-                </Button>
               </CollapsibleTrigger>
             </div>
 

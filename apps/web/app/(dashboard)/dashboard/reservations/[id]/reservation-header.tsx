@@ -22,7 +22,7 @@ import {
   Pencil,
   Smartphone,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useRouter } from 'next/navigation'
 
 import { Button } from '@louez/ui'
@@ -138,7 +138,7 @@ export function ReservationHeader({
     const url = `https://${storeSlug}.${domain}/account/reservations/${reservationId}`
     navigator.clipboard.writeText(url)
     setCopiedLink(true)
-    toast.success(t('linkCopied'))
+    toastManager.add({ title: t('linkCopied'), type: 'success' })
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
@@ -147,12 +147,12 @@ export function ReservationHeader({
     try {
       const result = await sendAccessLink(reservationId)
       if (result.error) {
-        toast.error(t('accessLink.sendError'))
+        toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
       } else {
-        toast.success(t('accessLink.sendSuccess'))
+        toastManager.add({ title: t('accessLink.sendSuccess'), type: 'success' })
       }
     } catch {
-      toast.error(t('accessLink.sendError'))
+      toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
     } finally {
       setIsSendingAccessLink(false)
     }
@@ -160,7 +160,7 @@ export function ReservationHeader({
 
   const handleSendAccessLinkSms = async () => {
     if (!customer.phone) {
-      toast.error(t('accessLink.noPhone'))
+      toastManager.add({ title: t('accessLink.noPhone'), type: 'error' })
       return
     }
     setIsSendingAccessLinkSms(true)
@@ -177,15 +177,15 @@ export function ReservationHeader({
           setSmsLimitInfo(result.limitInfo)
           setSmsLimitModalOpen(true)
         } else if (result.error === 'errors.customerNoPhone') {
-          toast.error(t('accessLink.noPhone'))
+          toastManager.add({ title: t('accessLink.noPhone'), type: 'error' })
         } else {
-          toast.error(t('accessLink.smsSendError'))
+          toastManager.add({ title: t('accessLink.smsSendError'), type: 'error' })
         }
       } else {
-        toast.success(t('accessLink.smsSendSuccess'))
+        toastManager.add({ title: t('accessLink.smsSendSuccess'), type: 'success' })
       }
     } catch {
-      toast.error(t('accessLink.smsSendError'))
+      toastManager.add({ title: t('accessLink.smsSendError'), type: 'error' })
     } finally {
       setIsSendingAccessLinkSms(false)
     }
@@ -202,15 +202,13 @@ export function ReservationHeader({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <Button
+              render={<Link href="/dashboard/reservations" />}
               variant="ghost"
               size="icon"
               className="shrink-0 -ml-2 mt-0.5"
-              asChild
             >
-              <Link href="/dashboard/reservations">
-                <ArrowLeft className="h-4 w-4" />
-                <span className="sr-only">{tCommon('back')}</span>
-              </Link>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="sr-only">{tCommon('back')}</span>
             </Button>
 
             <div className="space-y-1">
@@ -323,11 +321,9 @@ export function ReservationHeader({
 
             {/* More actions dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">{tCommon('actions')}</span>
-                </Button>
+              <DropdownMenuTrigger render={<Button variant="outline" size="icon" className="h-9 w-9" />}>
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">{tCommon('actions')}</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 {/* Mobile-only items */}
@@ -402,15 +398,13 @@ export function ReservationHeader({
                   )}
                   {t('actions.copyLink')}
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a
+                <DropdownMenuItem render={<a
                     href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}/account/reservations/${reservationId}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    {t('actions.viewAsCustomer')}
-                  </a>
+                  />}>
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  {t('actions.viewAsCustomer')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

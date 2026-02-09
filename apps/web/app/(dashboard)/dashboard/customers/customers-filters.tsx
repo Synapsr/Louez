@@ -103,11 +103,9 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
           </SelectContent>
         </Select>
 
-        <Button asChild>
-          <Link href="/dashboard/customers/new">
-            <Plus className="mr-2 h-4 w-4" />
-            {tCommon('add')}
-          </Link>
+        <Button render={<Link href="/dashboard/customers/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          {tCommon('add')}
         </Button>
       </div>
     </div>

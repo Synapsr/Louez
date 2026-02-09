@@ -64,12 +64,10 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
         <div className="flex items-center gap-2">
           {/* Quick store access */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
                 <Store className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('goToAStore')}</span>
                 <ChevronDown className="h-3 w-3 opacity-50" />
-              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               {stores.map((store) => (
@@ -98,25 +96,21 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
 
           {/* User menu */}
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={userImage || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium truncate">{userEmail}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/dashboard/account" className="cursor-pointer">
+              <DropdownMenuItem render={<Link href="/dashboard/account" className="cursor-pointer" />}>
                   {tSettings('title')}
-                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

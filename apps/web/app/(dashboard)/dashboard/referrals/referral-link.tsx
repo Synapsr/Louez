@@ -5,7 +5,7 @@ import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
 import { Copy, Check, Gift, Crown } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 interface ReferralLinkProps {
   referralUrl: string
@@ -18,7 +18,7 @@ export function ReferralLink({ referralUrl }: ReferralLinkProps) {
   const copyToClipboard = async () => {
     await navigator.clipboard.writeText(referralUrl)
     setCopied(true)
-    toast.success(t('linkCopied'))
+    toastManager.add({ title: t('linkCopied'), type: 'success' })
     setTimeout(() => setCopied(false), 2000)
   }
 

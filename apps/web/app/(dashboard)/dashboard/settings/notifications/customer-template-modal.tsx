@@ -294,15 +294,13 @@ export function CustomerTemplateModal({
                           {t('customized')}
                         </Badge>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
                               onClick={handleResetSubject}
-                            >
+                            />}>
                               <RotateCcw className="h-3 w-3" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{t('resetToDefault')}</p>
@@ -336,15 +334,13 @@ export function CustomerTemplateModal({
                         {t('customized')}
                       </Badge>
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
+                        <TooltipTrigger render={<Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
                             onClick={handleResetEmailMessage}
-                          >
+                          />}>
                             <RotateCcw className="h-3 w-3" />
-                          </Button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>{t('clearMessage')}</p>
@@ -383,15 +379,13 @@ export function CustomerTemplateModal({
                           {t('customized')}
                         </Badge>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
                               onClick={handleResetSms}
-                            >
+                            />}>
                               <RotateCcw className="h-3 w-3" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{t('resetToDefault')}</p>
