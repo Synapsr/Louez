@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
+import { authClient } from '@louez/auth/client'
 import { acceptInvitation } from './actions'
 
 type InvitationType = 'ready' | 'login_required' | 'email_mismatch' | 'expired' | 'used'
@@ -181,10 +182,12 @@ export function InvitationContent({
           )}
 
           {type === 'email_mismatch' && (
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/api/auth/signout">
-                {t('logout')}
-              </Link>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => authClient.signOut({ fetchOptions: { onSuccess: () => { window.location.href = '/login' } } })}
+            >
+              {t('logout')}
             </Button>
           )}
 

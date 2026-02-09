@@ -10,6 +10,7 @@
     "./router": "./src/router.ts"
   },
   "dependencies": {
+    "@louez/auth": "workspace:*",
     "@louez/db": "workspace:*",
     "@louez/types": "workspace:*",
     "@louez/validations": "workspace:*",

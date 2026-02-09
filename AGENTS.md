@@ -67,7 +67,7 @@ Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
 | Runtime       | Node.js, Next.js 16, React 19       |
 | Language      | TypeScript 5                        |
 | Database      | MySQL 8, Drizzle ORM                |
-| Auth          | NextAuth v5 (OAuth, Email)          |
+| Auth          | Better Auth (OAuth, Magic Link, OTP)|
 | API           | oRPC (type-safe RPC)                |
 | Data Fetching | TanStack Query                      |
 | Validation    | Zod                                 |
@@ -146,7 +146,8 @@ louez/
 │       │   ├── dashboard/         # Admin-specific
 │       │   └── storefront/        # Customer-facing
 │       ├── lib/
-│       │   ├── auth.ts            # NextAuth config
+│       │   ├── auth.ts            # Better Auth config + backward-compatible auth() wrapper
+│       │   ├── auth-client.ts     # Better Auth React client (signIn, signOut, OTP)
 │       │   ├── store-context.ts   # Multi-tenant utilities
 │       │   └── orpc/              # oRPC client utilities
 │       ├── contexts/              # React contexts
@@ -317,7 +318,8 @@ pending → confirmed → ongoing → completed
 ## Documentation References
 
 - Database schema: `packages/db/src/schema.ts`
-- Auth configuration: `apps/web/lib/auth.ts`
+- Auth configuration: `apps/web/lib/auth.ts` (Better Auth server + backward-compatible `auth()` wrapper)
+- Auth client: `apps/web/lib/auth-client.ts` (Better Auth React client)
 - Multi-tenant context: `apps/web/lib/store-context.ts`
 - Middleware routing: `apps/web/middleware.ts`
 - oRPC router: `packages/api/src/router.ts`

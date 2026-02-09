@@ -12,13 +12,14 @@
     "db:seed": "tsx scripts/seed/index.ts"
   },
   "dependencies": {
-    "@auth/drizzle-adapter": "^1.11.1",
     "@aws-sdk/client-s3": "^3.964.0",
     "@aws-sdk/s3-request-presigner": "^3.964.0",
     "@hookform/resolvers": "^5.2.2",
     "@louez/api": "workspace:*",
+    "@louez/auth": "workspace:*",
     "@louez/config": "workspace:*",
     "@louez/db": "workspace:*",
+    "@louez/email": "workspace:*",
     "@louez/types": "workspace:*",
     "@louez/ui": "workspace:*",
     "@louez/utils": "workspace:*",
@@ -72,7 +73,6 @@
     "mysql2": "^3.16.0",
     "nanoid": "^5.1.6",
     "next": "16.1.6",
-    "next-auth": "5.0.0-beta.30",
     "next-intl": "^4.7.0",
     "next-themes": "^0.4.6",
     "nodemailer": "^7.0.12",

@@ -2,18 +2,23 @@
   "name": "@louez/email",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./env": "./src/env.ts",
+    "./templates": "./src/templates/index.ts"
   },
   "dependencies": {
     "@louez/types": "workspace:*",
     "@louez/utils": "workspace:*",
     "@react-email/components": "^1.0.3",
     "@react-email/render": "^2.0.1",
+    "@t3-oss/env-core": "^0.13.10",
     "nodemailer": "^7.0.12",
-    "react-email": "^5.1.1"
+    "react-email": "^5.1.1",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",

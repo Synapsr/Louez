@@ -31,7 +31,7 @@ import type {
 const id = () => varchar('id', { length: 21 }).primaryKey().$defaultFn(() => nanoid())
 
 // ============================================================================
-// Auth.js Tables
+// Better Auth Tables
 // ============================================================================
 
 export const users = mysqlTable('users', {
@@ -39,7 +39,7 @@ export const users = mysqlTable('users', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 255 }),
   image: text('image'),
-  emailVerified: timestamp('email_verified', { mode: 'date' }),
+  emailVerified: boolean('email_verified').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 })
@@ -49,46 +49,53 @@ export const accounts = mysqlTable(
   {
     id: id(),
     userId: varchar('user_id', { length: 21 }).notNull(),
-    type: varchar('type', { length: 255 }).notNull(),
-    provider: varchar('provider', { length: 255 }).notNull(),
-    providerAccountId: varchar('provider_account_id', { length: 255 }).notNull(),
-    refresh_token: text('refresh_token'),
-    access_token: text('access_token'),
-    expires_at: int('expires_at'),
-    token_type: varchar('token_type', { length: 255 }),
+    providerId: varchar('provider', { length: 255 }).notNull(),
+    accountId: varchar('provider_account_id', { length: 255 }).notNull(),
+    accessToken: text('access_token'),
+    refreshToken: text('refresh_token'),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', { mode: 'date' }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { mode: 'date' }),
     scope: varchar('scope', { length: 255 }),
-    id_token: text('id_token'),
-    session_state: varchar('session_state', { length: 255 }),
+    idToken: text('id_token'),
+    password: text('password'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
     providerIdx: unique('accounts_provider_idx').on(
-      table.provider,
-      table.providerAccountId
+      table.providerId,
+      table.accountId
     ),
     userIdx: index('accounts_user_idx').on(table.userId),
   })
 )
 
-export const sessions = mysqlTable('sessions', {
-  sessionToken: varchar('session_token', { length: 255 }).primaryKey(),
-  userId: varchar('user_id', { length: 21 }).notNull(),
-  expires: timestamp('expires', { mode: 'date' }).notNull(),
-})
-
-export const verificationTokens = mysqlTable(
-  'verification_tokens',
+export const sessions = mysqlTable(
+  'sessions',
   {
-    identifier: varchar('identifier', { length: 255 }).notNull(),
-    token: varchar('token', { length: 255 }).notNull(),
-    expires: timestamp('expires', { mode: 'date' }).notNull(),
+    id: id(),
+    token: varchar('token', { length: 255 }).notNull().unique(),
+    userId: varchar('user_id', { length: 21 }).notNull(),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+    ipAddress: varchar('ip_address', { length: 255 }),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    compositePk: unique('verification_tokens_identifier_token').on(
-      table.identifier,
-      table.token
-    ),
+    userIdx: index('sessions_user_idx').on(table.userId),
+    tokenIdx: index('sessions_token_idx').on(table.token),
   })
 )
+
+export const verification = mysqlTable('verification', {
+  id: id(),
+  identifier: varchar('identifier', { length: 255 }).notNull(),
+  value: varchar('value', { length: 255 }).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
+})
 
 // ============================================================================
 // Subscriptions (simplified - plans defined in code)

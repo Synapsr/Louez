@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
-import { signIn } from 'next-auth/react'
+import { authClient } from '@louez/auth/client'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { env } from '@/env'
@@ -65,6 +65,9 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [loginMethod, setLoginMethod] = useState<'magic-link' | 'otp'>('magic-link')
+  const [otpSent, setOtpSent] = useState(false)
+  const [otp, setOtp] = useState('')
 
   // Persist referral code in a cookie so it survives OAuth/magic-link redirects
   useEffect(() => {
@@ -97,14 +100,49 @@ function LoginForm() {
   async function handleEmailSignIn(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
-    await signIn('nodemailer', { email, callbackUrl, redirect: false })
-    setEmailSent(true)
+
+    if (loginMethod === 'magic-link') {
+      await authClient.signIn.magicLink({
+        email,
+        callbackURL: callbackUrl,
+      })
+      setEmailSent(true)
+    } else {
+      // OTP flow - send the code
+      await authClient.emailOtp.sendVerificationOtp({
+        email,
+        type: 'sign-in',
+      })
+      setOtpSent(true)
+    }
+
     setIsLoading(false)
+  }
+
+  async function handleOtpVerify(e: React.FormEvent) {
+    e.preventDefault()
+    setIsLoading(true)
+
+    const { error } = await authClient.signIn.emailOtp({
+      email,
+      otp,
+    })
+
+    if (error) {
+      setIsLoading(false)
+      // Could show error toast here
+      return
+    }
+
+    window.location.href = callbackUrl
   }
 
   async function handleGoogleSignIn() {
     setIsLoading(true)
-    await signIn('google', { callbackUrl })
+    await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: callbackUrl,
+    })
   }
 
   return (
@@ -116,7 +154,56 @@ function LoginForm() {
         </Link>
       </div>
 
-      {emailSent ? (
+      {otpSent ? (
+        <Card className="border-0 shadow-none lg:shadow lg:border">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Mail className="h-8 w-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl">{t('enterCode')}</CardTitle>
+            <CardDescription className="text-base">
+              {t('codeSentTo')} <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleOtpVerify} className="space-y-4">
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="000000"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                className="h-14 text-center text-2xl tracking-[0.5em] font-mono"
+                autoFocus
+                disabled={isLoading}
+              />
+              <Button
+                type="submit"
+                className="w-full h-12 text-base font-medium"
+                disabled={isLoading || otp.length !== 6}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('verifying')}
+                  </>
+                ) : (
+                  t('verify')
+                )}
+              </Button>
+            </form>
+            <Button
+              variant="outline"
+              onClick={() => { setOtpSent(false); setOtp('') }}
+              className="w-full mt-3"
+            >
+              {t('tryDifferentEmail')}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : emailSent ? (
         <Card className="border-0 shadow-none lg:shadow lg:border">
           <CardHeader className="text-center space-y-4">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
@@ -192,6 +279,27 @@ function LoginForm() {
               </div>
             </div>
 
+            <div className="flex gap-2">
+              <Button
+                variant={loginMethod === 'magic-link' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1"
+                type="button"
+                onClick={() => setLoginMethod('magic-link')}
+              >
+                {t('magicLink')}
+              </Button>
+              <Button
+                variant={loginMethod === 'otp' ? 'default' : 'outline'}
+                size="sm"
+                className="flex-1"
+                type="button"
+                onClick={() => setLoginMethod('otp')}
+              >
+                {t('code')}
+              </Button>
+            </div>
+
             <form onSubmit={handleEmailSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">
@@ -220,7 +328,7 @@ function LoginForm() {
                   </>
                 ) : (
                   <>
-                    {t('continueWithEmail')}
+                    {loginMethod === 'otp' ? t('sendCode') || t('continueWithEmail') : t('continueWithEmail')}
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </>
                 )}
