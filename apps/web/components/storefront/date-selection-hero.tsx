@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays, addWeeks, addHours, startOfWeek, endOfWeek, setHours, setMinutes } from 'date-fns'
+import { format, addDays, addWeeks, addHours, startOfWeek, endOfWeek } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle } from 'lucide-react'
+import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 import { Button } from '@louez/ui'
@@ -32,6 +32,7 @@ import {
   getAvailableTimeSlots,
   generateTimeSlots,
   getNextAvailableDate,
+  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface DateSelectionHeroProps {
@@ -40,6 +41,7 @@ interface DateSelectionHeroProps {
   primaryColor?: string
   businessHours?: BusinessHours
   advanceNotice?: number
+  timezone?: string
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
@@ -53,6 +55,7 @@ export function DateSelectionHero({
   primaryColor = '#0066FF',
   businessHours,
   advanceNotice = 0,
+  timezone,
 }: DateSelectionHeroProps) {
   const t = useTranslations('storefront.dateSelection')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
@@ -102,35 +105,35 @@ export function DateSelectionHero({
   // Business hours-aware time slots with advance notice filtering
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
     // Filter out time slots that are within the advance notice period
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice])
+  }, [startDate, businessHours, advanceNotice, timezone])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30)
-  }, [endDate, businessHours])
+    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
+  }, [endDate, businessHours, timezone])
 
   // Check if a date is disabled due to business hours or advance notice
   const isDateDisabled = useCallback((date: Date): boolean => {
     if (date < minDate) return true
     if (!businessHours?.enabled) return false
 
-    const availability = isDateAvailable(date, businessHours)
+    const availability = isDateAvailable(date, businessHours, timezone)
     return !availability.available
-  }, [businessHours, minDate])
+  }, [businessHours, minDate, timezone])
 
   // Get closure period info for a date
   const getClosurePeriodForDate = useCallback((date: Date) => {
     if (!businessHours?.enabled) return null
 
-    const availability = isDateAvailable(date, businessHours)
+    const availability = isDateAvailable(date, businessHours, timezone)
     if (availability.reason === 'closure_period' && availability.closurePeriod) {
       return availability.closurePeriod
     }
     return null
-  }, [businessHours])
+  }, [businessHours, timezone])
 
   useEffect(() => {
     setPricingMode(pricingMode)
@@ -167,7 +170,7 @@ export function DateSelectionHero({
     // Auto-set end date if not set or before start
     if (!endDate || date >= endDate) {
       const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+      const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
       setEndDate(nextAvailable ?? nextDay)
     }
 
@@ -213,13 +216,8 @@ export function DateSelectionHero({
     setActiveField(null)
 
     // Build final dates with times and navigate
-    const start = startDate!
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(start, startH), startM)
-
-    const end = endDate!
-    const [endH, endM] = time.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(end, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, time, timezone)
 
     navigateToRental(finalStart, finalEnd)
   }
@@ -233,18 +231,38 @@ export function DateSelectionHero({
 
   const handleStartTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      setActiveField('startDate')
+      return
+    }
     setStartTimeOpen(open)
     if (open) setActiveField('startTime')
   }
 
   const handleEndDateOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !startDate) {
+      setStartDateOpen(true)
+      setActiveField('startDate')
+      return
+    }
     setEndDateOpen(open)
     if (open) setActiveField('endDate')
   }
 
   const handleEndTimeOpenChange = (open: boolean) => {
     if (isTransitioningRef.current) return
+    if (open && !endDate) {
+      if (!startDate) {
+        setStartDateOpen(true)
+        setActiveField('startDate')
+      } else {
+        setEndDateOpen(true)
+        setActiveField('endDate')
+      }
+      return
+    }
     setEndTimeOpen(open)
     if (open) setActiveField('endTime')
   }
@@ -253,24 +271,24 @@ export function DateSelectionHero({
   const handleQuickSelect = (days: number) => {
     const start = addDays(today, 1)
     const end = addDays(start, days)
-    const finalStart = setMinutes(setHours(start, 9), 0)
-    const finalEnd = setMinutes(setHours(end, 18), 0)
+    const finalStart = buildStoreDate(start, '09:00', timezone)
+    const finalEnd = buildStoreDate(end, '18:00', timezone)
     navigateToRental(finalStart, finalEnd)
   }
 
   const handleWeekendSelect = () => {
     const nextSaturday = startOfWeek(addWeeks(today, 1), { weekStartsOn: 6 })
     const nextSunday = addDays(nextSaturday, 1)
-    const finalStart = setMinutes(setHours(nextSaturday, 9), 0)
-    const finalEnd = setMinutes(setHours(nextSunday, 18), 0)
+    const finalStart = buildStoreDate(nextSaturday, '09:00', timezone)
+    const finalEnd = buildStoreDate(nextSunday, '18:00', timezone)
     navigateToRental(finalStart, finalEnd)
   }
 
   const handleNextWeekSelect = () => {
     const nextMonday = startOfWeek(addWeeks(today, 1), { weekStartsOn: 1 })
     const nextFriday = endOfWeek(nextMonday, { weekStartsOn: 1 })
-    const finalStart = setMinutes(setHours(nextMonday, 9), 0)
-    const finalEnd = setMinutes(setHours(nextFriday, 18), 0)
+    const finalStart = buildStoreDate(nextMonday, '09:00', timezone)
+    const finalEnd = buildStoreDate(nextFriday, '18:00', timezone)
     navigateToRental(finalStart, finalEnd)
   }
 
@@ -286,11 +304,8 @@ export function DateSelectionHero({
   const getDetailedDuration = () => {
     if (!startDate || !endDate) return null
 
-    const [startH, startM] = startTime.split(':').map(Number)
-    const [endH, endM] = endTime.split(':').map(Number)
-
-    const start = setMinutes(setHours(new Date(startDate), startH), startM)
-    const end = setMinutes(setHours(new Date(endDate), endH), endM)
+    const start = buildStoreDate(new Date(startDate), startTime, timezone)
+    const end = buildStoreDate(new Date(endDate), endTime, timezone)
 
     const diffMs = end.getTime() - start.getTime()
     if (diffMs <= 0) return null
@@ -322,6 +337,14 @@ export function DateSelectionHero({
     return `${days} ${days > 1 ? t('durationDays') : t('durationDay')} ${t('and')} ${hours}h`
   }
 
+  const timezoneCity = useMemo(() => {
+    if (!timezone) return null
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    if (browserTimezone === timezone) return null
+    const city = timezone.split('/').pop()?.replace(/_/g, ' ')
+    return city || timezone
+  }, [timezone])
+
   // Check if we can submit - always require times
   const canSubmit = startDate && endDate && startTime && endTime
 
@@ -329,10 +352,8 @@ export function DateSelectionHero({
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(startDate!, startH), startM)
-    const [endH, endM] = endTime.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(endDate!, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
     navigateToRental(finalStart, finalEnd)
   }
 
@@ -610,6 +631,14 @@ export function DateSelectionHero({
           {t('viewAvailability')}
           <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
         </Button>
+
+        {/* Timezone notice */}
+        {timezoneCity && (
+          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground mb-6">
+            <Globe className="h-3.5 w-3.5 shrink-0" />
+            <span>{t('timezoneNotice', { city: timezoneCity })}</span>
+          </div>
+        )}
 
         {/* Quick Selections - Secondary */}
         <div className="border-t pt-4">

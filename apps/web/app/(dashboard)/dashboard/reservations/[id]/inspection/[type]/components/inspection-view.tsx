@@ -2,8 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   ArrowLeft,
   Download,
@@ -31,6 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
 import type { ConditionRating, InspectionStatus, InspectionType } from '@louez/types'
 
 interface InspectionPhoto {
@@ -87,6 +87,7 @@ export function InspectionView({
 }: InspectionViewProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.inspection')
+  const timezone = useStoreTimezone()
   const [previewPhoto, setPreviewPhoto] = useState<InspectionPhoto | null>(null)
 
   const StatusIcon = statusConfig[inspection.status].icon
@@ -158,9 +159,7 @@ export function InspectionView({
                         : t(`status.${inspection.status}`)}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(inspection.createdAt), "d MMM yyyy 'à' HH:mm", {
-                        locale: fr,
-                      })}
+                      {formatStoreDate(new Date(inspection.createdAt), timezone, 'DATE_AT_TIME')}
                     </p>
                   </div>
                 </div>
@@ -308,9 +307,7 @@ export function InspectionView({
                 {inspection.signedAt && (
                   <p className="text-xs text-muted-foreground text-center">
                     {t('signature.signedAt')}:{' '}
-                    {format(new Date(inspection.signedAt), "d MMM yyyy 'à' HH:mm:ss", {
-                      locale: fr,
-                    })}
+                    {formatStoreDate(new Date(inspection.signedAt), timezone, "d MMM yyyy 'à' HH:mm:ss")}
                   </p>
                 )}
               </CardContent>

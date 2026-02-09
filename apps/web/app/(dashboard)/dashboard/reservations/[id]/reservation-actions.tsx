@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   CheckCircle,
   XCircle,
@@ -44,6 +42,9 @@ import {
 import { Textarea } from '@louez/ui'
 import { Label } from '@louez/ui'
 
+import { formatStoreDate } from '@/lib/utils/store-date'
+import { useStoreTimezone } from '@/contexts/store-context'
+
 import { updateReservationStatus, cancelReservation } from '../actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
@@ -71,6 +72,7 @@ export function ReservationActions({
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const timezone = useStoreTimezone()
 
   const [isLoading, setIsLoading] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -224,7 +226,7 @@ export function ReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('confirmedCard.pickupOn', {
-                  date: format(startDate, "EEE d MMM 'à' HH:mm", { locale: fr }),
+                  date: formatStoreDate(startDate, timezone, 'SHORT_DATETIME'),
                 })}
               </p>
 
@@ -289,7 +291,7 @@ export function ReservationActions({
               </div>
               <p className="text-xs text-muted-foreground">
                 {t('ongoingCard.returnOn', {
-                  date: format(endDate, "EEE d MMM 'à' HH:mm", { locale: fr }),
+                  date: formatStoreDate(endDate, timezone, 'SHORT_DATETIME'),
                 })}
               </p>
 

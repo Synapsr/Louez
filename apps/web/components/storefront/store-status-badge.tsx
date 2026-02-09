@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays, isToday, isTomorrow } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { fr } from 'date-fns/locale'
 import { cn } from '@louez/utils'
 import type { BusinessHours } from '@louez/types'
@@ -10,6 +11,7 @@ import { isInClosurePeriod, getDaySchedule } from '@/lib/utils/business-hours'
 
 interface StoreStatusBadgeProps {
   businessHours?: BusinessHours
+  timezone?: string
   className?: string
 }
 
@@ -23,7 +25,7 @@ interface StoreStatus {
   reason?: 'closed_today' | 'closure_period' | 'outside_hours' | 'not_configured'
 }
 
-function getStoreStatus(businessHours: BusinessHours | undefined): StoreStatus {
+function getStoreStatus(businessHours: BusinessHours | undefined, timezone?: string): StoreStatus {
   if (!businessHours?.enabled) {
     return { isOpen: true, reason: 'not_configured' }
   }
@@ -34,17 +36,20 @@ function getStoreStatus(businessHours: BusinessHours | undefined): StoreStatus {
   const closurePeriod = isInClosurePeriod(now, businessHours.closurePeriods)
   if (closurePeriod) {
     // Find next opening after closure period
-    const nextOpening = findNextOpening(now, businessHours)
+    const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'closure_period', nextOpening }
   }
 
-  // Get today's schedule
-  const daySchedule = getDaySchedule(now, businessHours)
-  const currentTime = format(now, 'HH:mm')
+  // Get today's schedule (in store timezone)
+  const daySchedule = getDaySchedule(now, businessHours, timezone)
+  // Get current time in the store's timezone
+  const currentTime = timezone
+    ? formatInTimeZone(now, timezone, 'HH:mm')
+    : format(now, 'HH:mm')
 
   if (!daySchedule.isOpen) {
     // Store is closed today, find next opening
-    const nextOpening = findNextOpening(now, businessHours)
+    const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'closed_today', nextOpening }
   }
 
@@ -59,7 +64,7 @@ function getStoreStatus(businessHours: BusinessHours | undefined): StoreStatus {
 
   // Check if after closing time
   if (currentTime > daySchedule.closeTime) {
-    const nextOpening = findNextOpening(now, businessHours)
+    const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'outside_hours', nextOpening }
   }
 
@@ -67,7 +72,7 @@ function getStoreStatus(businessHours: BusinessHours | undefined): StoreStatus {
   return { isOpen: true, closesAt: daySchedule.closeTime }
 }
 
-function findNextOpening(fromDate: Date, businessHours: BusinessHours): { day: Date; time: string } | undefined {
+function findNextOpening(fromDate: Date, businessHours: BusinessHours, timezone?: string): { day: Date; time: string } | undefined {
   // Search up to 14 days ahead
   for (let i = 0; i < 14; i++) {
     const checkDate = i === 0 ? fromDate : addDays(fromDate, i)
@@ -77,10 +82,12 @@ function findNextOpening(fromDate: Date, businessHours: BusinessHours): { day: D
       continue
     }
 
-    const daySchedule = getDaySchedule(checkDate, businessHours)
+    const daySchedule = getDaySchedule(checkDate, businessHours, timezone)
 
     if (daySchedule.isOpen) {
-      const currentTime = format(fromDate, 'HH:mm')
+      const currentTime = timezone
+        ? formatInTimeZone(fromDate, timezone, 'HH:mm')
+        : format(fromDate, 'HH:mm')
 
       // If it's today and we haven't passed opening time yet
       if (i === 0 && currentTime < daySchedule.openTime) {
@@ -117,18 +124,18 @@ function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: st
   return `${t('opensOn')} ${dayName} ${formattedTime}`
 }
 
-export function StoreStatusBadge({ businessHours, className }: StoreStatusBadgeProps) {
+export function StoreStatusBadge({ businessHours, timezone, className }: StoreStatusBadgeProps) {
   const t = useTranslations('storefront.status')
-  const [status, setStatus] = useState<StoreStatus>(() => getStoreStatus(businessHours))
+  const [status, setStatus] = useState<StoreStatus>(() => getStoreStatus(businessHours, timezone))
 
   // Update status every minute
   useEffect(() => {
     const interval = setInterval(() => {
-      setStatus(getStoreStatus(businessHours))
+      setStatus(getStoreStatus(businessHours, timezone))
     }, 60000)
 
     return () => clearInterval(interval)
-  }, [businessHours])
+  }, [businessHours, timezone])
 
   // Don't show badge if business hours aren't configured
   if (status.reason === 'not_configured') {

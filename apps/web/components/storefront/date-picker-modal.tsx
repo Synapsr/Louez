@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays, setHours, setMinutes } from 'date-fns'
+import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { CalendarIcon, Clock, Check, AlertCircle, ArrowRight } from 'lucide-react'
 
@@ -31,6 +31,7 @@ import {
   getAvailableTimeSlots,
   generateTimeSlots,
   getNextAvailableDate,
+  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface DatePickerModalProps {
@@ -38,6 +39,7 @@ interface DatePickerModalProps {
   pricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
+  timezone?: string
   isOpen: boolean
   onClose: () => void
   initialStartDate?: string
@@ -51,6 +53,7 @@ export function DatePickerModal({
   pricingMode,
   businessHours,
   advanceNotice = 0,
+  timezone,
   isOpen,
   onClose,
   initialStartDate,
@@ -103,24 +106,24 @@ export function DatePickerModal({
 
   const startTimeSlots = useMemo(() => {
     if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30)
+    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
     // Filter out time slots that are within the advance notice period
     return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice])
+  }, [startDate, businessHours, advanceNotice, timezone])
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30)
-  }, [endDate, businessHours])
+    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
+  }, [endDate, businessHours, timezone])
 
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
       if (date < minDate) return true
       if (!businessHours?.enabled) return false
-      const availability = isDateAvailable(date, businessHours)
+      const availability = isDateAvailable(date, businessHours, timezone)
       return !availability.available
     },
-    [businessHours, minDate]
+    [businessHours, minDate, timezone]
   )
 
   useEffect(() => {
@@ -145,7 +148,7 @@ export function DatePickerModal({
 
     if (!endDate || date >= endDate) {
       const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours)
+      const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
       setEndDate(nextAvailable ?? nextDay)
     }
   }
@@ -160,10 +163,8 @@ export function DatePickerModal({
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const [startH, startM] = startTime.split(':').map(Number)
-    const finalStart = setMinutes(setHours(startDate!, startH), startM)
-    const [endH, endM] = endTime.split(':').map(Number)
-    const finalEnd = setMinutes(setHours(endDate!, endH), endM)
+    const finalStart = buildStoreDate(startDate!, startTime, timezone)
+    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
 
     setGlobalDates(finalStart.toISOString(), finalEnd.toISOString())
     const params = new URLSearchParams()

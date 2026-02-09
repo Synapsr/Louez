@@ -1,8 +1,8 @@
 import { Button, Heading, Section, Text } from '@react-email/components'
-import { format } from 'date-fns'
 import { BaseLayout } from './base-layout'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getEmailTranslations, getDateLocale, getDateFormatPatterns, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import { getEmailTranslations, getDateFormatPatterns, getCurrencyFormatter, type EmailLocale } from '../i18n'
+import { formatEmailDateInStoreTimezone } from '../date-time'
 
 interface NewRequestLandlordEmailProps {
   storeName: string
@@ -18,6 +18,8 @@ interface NewRequestLandlordEmailProps {
   dashboardUrl: string
   locale?: EmailLocale
   currency?: string
+  storeTimezone?: string | null
+  storeCountryCode?: string | null
 }
 
 export function NewRequestLandlordEmail({
@@ -34,10 +36,11 @@ export function NewRequestLandlordEmail({
   dashboardUrl,
   locale = 'fr',
   currency = 'EUR',
+  storeTimezone,
+  storeCountryCode,
 }: NewRequestLandlordEmailProps) {
   const t = getEmailTranslations(locale)
   const messages = t.newRequestLandlord
-  const dateLocale = getDateLocale(locale)
   const datePatterns = getDateFormatPatterns(locale)
   const formatCurrency = getCurrencyFormatter(locale, currency)
 
@@ -70,8 +73,8 @@ export function NewRequestLandlordEmail({
         </Text>
         <Text style={infoRow}>
           <strong>{messages.period}</strong>{' '}
-          {format(startDate, datePatterns.short, { locale: dateLocale })} -{' '}
-          {format(endDate, datePatterns.short, { locale: dateLocale })}
+          {formatEmailDateInStoreTimezone(startDate, locale, datePatterns.short, storeTimezone, storeCountryCode)} -{' '}
+          {formatEmailDateInStoreTimezone(endDate, locale, datePatterns.short, storeTimezone, storeCountryCode)}
         </Text>
         <Text style={infoRow}>
           <strong>{messages.amount}</strong> {formatCurrency(total)}
