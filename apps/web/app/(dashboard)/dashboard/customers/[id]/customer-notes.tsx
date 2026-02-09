@@ -45,11 +45,11 @@ export function CustomerNotes({ customerId, initialNotes }: CustomerNotesProps) 
           rows={4}
         />
         <div className="flex gap-2">
-          <Button onClick={handleSave} disabled={isPending} size="sm">
+          <Button onClick={handleSave} disabled={isPending}>
             <Save className="mr-2 h-4 w-4" />
             {isPending ? t('notes.saving') : t('notes.save')}
           </Button>
-          <Button variant="outline" onClick={handleCancel} size="sm">
+          <Button variant="outline" onClick={handleCancel}>
             <X className="mr-2 h-4 w-4" />
             {t('notes.cancel')}
           </Button>
@@ -67,7 +67,6 @@ export function CustomerNotes({ customerId, initialNotes }: CustomerNotesProps) 
       )}
       <Button
         variant="outline"
-        size="sm"
         className="mt-4"
         onClick={() => setIsEditing(true)}
       >

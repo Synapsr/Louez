@@ -416,14 +416,14 @@ export function CustomerTemplateModal({
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" size="sm" onClick={handleResetAll}>
+            <Button variant="ghost" onClick={handleResetAll}>
               {t('resetAll')}
             </Button>
             <div className="flex-1" />
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tc('cancel')}
             </Button>
-            <Button size="sm" onClick={handleSave}>
+            <Button onClick={handleSave}>
               {tc('save')}
             </Button>
           </DialogFooter>

@@ -1,16 +1,19 @@
-'use client'
+'use client';
 
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { Loader2, Mail, KeyRound, ArrowRight, RotateCcw } from 'lucide-react'
-import { toastManager } from '@louez/ui'
-import { useTranslations } from 'next-intl'
+import { useCallback, useState } from 'react';
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
+import { useRouter } from 'next/navigation';
+
+import { zodResolver } from '@hookform/resolvers/zod';
+import { REGEXP_ONLY_DIGITS } from 'input-otp';
+import { ArrowRight, KeyRound, Loader2, Mail, RotateCcw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+import { toastManager } from '@louez/ui';
+import { Button } from '@louez/ui';
+import { Input } from '@louez/ui';
 import {
   Form,
   FormControl,
@@ -18,125 +21,127 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@louez/ui'
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from '@louez/ui'
-import { REGEXP_ONLY_DIGITS } from 'input-otp'
-import { Card, CardContent } from '@louez/ui'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { sendVerificationCode, verifyCode } from '../actions'
+} from '@louez/ui';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@louez/ui';
+import { Card, CardContent } from '@louez/ui';
+
+import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+
+import { sendVerificationCode, verifyCode } from '../actions';
 
 interface LoginFormProps {
-  storeId: string
-  storeSlug: string
+  storeId: string;
+  storeSlug: string;
 }
 
 export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
-  const router = useRouter()
-  const t = useTranslations('storefront.account')
-  const tErrors = useTranslations('errors')
-  const { getUrl } = useStorefrontUrl(storeSlug)
-  const [step, setStep] = useState<'email' | 'code'>('email')
-  const [email, setEmail] = useState('')
-  const [code, setCode] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const t = useTranslations('storefront.account');
+  const tErrors = useTranslations('errors');
+  const { getUrl } = useStorefrontUrl(storeSlug);
+  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const emailSchema = z.object({
-    email: z.string().email(t('codeError')),
-  })
+    email: z.email(t('codeError')),
+  });
 
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
     defaultValues: { email: '' },
-  })
+  });
 
   const onEmailSubmit = async (data: z.infer<typeof emailSchema>) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const result = await sendVerificationCode(storeId, data.email)
+      const result = await sendVerificationCode(storeId, data.email);
 
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
+        toastManager.add({ title: result.error, type: 'error' });
+        return;
       }
 
-      setEmail(data.email)
-      setStep('code')
-      toastManager.add({ title: t('codeSent'), type: 'success' })
+      setEmail(data.email);
+      setStep('code');
+      toastManager.add({ title: t('codeSent'), type: 'success' });
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors('generic'), type: 'error' });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const onCodeSubmit = useCallback(async (codeValue: string) => {
-    if (codeValue.length !== 6) return
+  const onCodeSubmit = useCallback(
+    async (codeValue: string) => {
+      if (codeValue.length !== 6) return;
 
-    setIsLoading(true)
-    try {
-      const result = await verifyCode(storeId, email, codeValue)
+      setIsLoading(true);
+      try {
+        const result = await verifyCode(storeId, email, codeValue);
 
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
+        if (result.error) {
+          toastManager.add({ title: result.error, type: 'error' });
+          return;
+        }
+
+        toastManager.add({ title: t('loginSuccess'), type: 'success' });
+        router.push(getUrl('/account'));
+        router.refresh();
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' });
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [storeId, email, getUrl, router, t, tErrors],
+  );
 
-      toastManager.add({ title: t('loginSuccess'), type: 'success' })
-      router.push(getUrl('/account'))
-      router.refresh()
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [storeId, email, getUrl, router, t, tErrors])
-
-  const handleCodeChange = useCallback((value: string) => {
-    setCode(value)
-    // Auto-submit when code is complete
-    if (value.length === 6 && !isLoading) {
-      onCodeSubmit(value)
-    }
-  }, [isLoading, onCodeSubmit])
+  const handleCodeChange = useCallback(
+    (value: string) => {
+      setCode(value);
+      // Auto-submit when code is complete
+      if (value.length === 6 && !isLoading) {
+        onCodeSubmit(value);
+      }
+    },
+    [isLoading, onCodeSubmit],
+  );
 
   const handleResendCode = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const result = await sendVerificationCode(storeId, email)
+      const result = await sendVerificationCode(storeId, email);
 
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
+        toastManager.add({ title: result.error, type: 'error' });
+        return;
       }
 
-      toastManager.add({ title: t('newCodeSent'), type: 'success' })
+      toastManager.add({ title: t('newCodeSent'), type: 'success' });
     } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+      toastManager.add({ title: tErrors('generic'), type: 'error' });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (step === 'code') {
     return (
       <Card className="border-0 shadow-lg">
         <CardContent className="p-6 sm:p-8">
           {/* Header */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-3">
-              <KeyRound className="h-6 w-6 text-primary" />
+          <div className="mb-6 text-center">
+            <div className="bg-primary/10 mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full">
+              <KeyRound className="text-primary h-6 w-6" />
             </div>
-            <h2 className="text-lg font-semibold mb-1">{t('enterCode')}</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="mb-1 text-lg font-semibold">{t('enterCode')}</h2>
+            <p className="text-muted-foreground text-sm">
               {t('codeDescription')}{' '}
-              <span className="font-medium text-foreground">{email}</span>
+              <span className="text-foreground font-medium">{email}</span>
             </p>
           </div>
-
           <div className="space-y-6">
             <div className="flex flex-col items-center">
               <InputOTP
@@ -148,19 +153,37 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                 autoFocus
               >
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
-                  <InputOTPSlot index={1} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
-                  <InputOTPSlot index={2} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
-                  <InputOTPSlot index={3} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
-                  <InputOTPSlot index={4} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
-                  <InputOTPSlot index={5} className="h-12 w-10 sm:h-14 sm:w-12 text-lg" />
+                  <InputOTPSlot
+                    index={0}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
+                  <InputOTPSlot
+                    index={1}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
+                  <InputOTPSlot
+                    index={2}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
+                  <InputOTPSlot
+                    index={3}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
+                  <InputOTPSlot
+                    index={4}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
+                  <InputOTPSlot
+                    index={5}
+                    className="h-12 w-10 text-lg sm:h-14 sm:w-12"
+                  />
                 </InputOTPGroup>
               </InputOTP>
             </div>
 
             <Button
               type="button"
-              className="w-full h-11"
+              className="h-11 w-full"
               disabled={isLoading || code.length !== 6}
               onClick={() => onCodeSubmit(code)}
             >
@@ -185,8 +208,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                 <Button
                   type="button"
                   variant="link"
-                  size="sm"
-                  className="p-0 h-auto gap-1"
+                  className="h-auto gap-1 p-0"
                   onClick={handleResendCode}
                   disabled={isLoading}
                 >
@@ -197,10 +219,9 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
                 onClick={() => {
-                  setStep('email')
-                  setCode('')
+                  setStep('email');
+                  setCode('');
                 }}
                 disabled={isLoading}
                 className="text-muted-foreground"
@@ -209,27 +230,31 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               </Button>
             </div>
           </div>
+          <Button>test</Button>
+          azeaze
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
     <Card className="border-0 shadow-lg">
       <CardContent className="p-6 sm:p-8">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-3">
-            <Mail className="h-6 w-6 text-primary" />
+        <div className="mb-6 text-center">
+          <div className="bg-primary/10 mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full">
+            <Mail className="text-primary h-6 w-6" />
           </div>
-          <h2 className="text-lg font-semibold mb-1">{t('yourEmail')}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="mb-1 text-lg font-semibold">{t('yourEmail')}</h2>
+          <p className="text-muted-foreground text-sm">
             {t('loginDescription')}
           </p>
         </div>
-
         <Form {...emailForm}>
-          <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-6">
+          <form
+            onSubmit={emailForm.handleSubmit(onEmailSubmit)}
+            className="space-y-6"
+          >
             <FormField
               control={emailForm.control}
               name="email"
@@ -240,7 +265,6 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                     <Input
                       type="email"
                       placeholder={t('emailPlaceholder')}
-                      className="h-11"
                       {...field}
                     />
                   </FormControl>
@@ -249,7 +273,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               )}
             />
 
-            <Button type="submit" className="w-full h-11" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -264,7 +288,9 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
             </Button>
           </form>
         </Form>
+        <Button>test</Button>
+        azeaze
       </CardContent>
     </Card>
-  )
+  );
 }

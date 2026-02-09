@@ -87,7 +87,6 @@ export function ProductsFilters({
             <Button
               key={option.value}
               variant={isActive ? 'secondary' : 'ghost'}
-              size="sm"
               className="gap-2"
               onClick={() => handleStatusChange(option.value)}
             >

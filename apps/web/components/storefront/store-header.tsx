@@ -41,7 +41,6 @@ export function StoreHeader({
 
         {/* Account button - floating top right */}
         <Button
-          size="sm"
           render={<Link href="/account" />}
           className="pointer-events-auto gap-2 shadow-lg"
         >

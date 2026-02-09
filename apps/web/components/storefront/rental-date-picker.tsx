@@ -62,7 +62,6 @@ function TimeSelector({
           <Button
             key={time}
             variant={value === time ? 'default' : 'outline'}
-            size="sm"
             className="text-xs h-7"
             onClick={() => onChange(time)}
             disabled={disabled}
@@ -231,7 +230,6 @@ export function RentalDatePicker({
                 />
                 <Button
                   className="w-full mt-3"
-                  size="sm"
                   onClick={() => setStartPopoverOpen(false)}
                   disabled={!startDate}
                 >
@@ -277,7 +275,6 @@ export function RentalDatePicker({
                 />
                 <Button
                   className="w-full mt-3"
-                  size="sm"
                   onClick={() => setEndPopoverOpen(false)}
                   disabled={!endDate}
                 >
@@ -408,7 +405,6 @@ export function QuickDateButtons({
         <Button
           key={option.label}
           variant="outline"
-          size="sm"
           onClick={() => {
             const { start, end } = option.getRange()
             onSelect(start, end)

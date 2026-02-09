@@ -55,7 +55,6 @@ export function DownloadContractButton({ href, label }: DownloadContractButtonPr
   return (
     <Button
       variant="outline"
-      size="sm"
       onClick={handleClick}
       disabled={isLoading}
       className="gap-2 self-start"

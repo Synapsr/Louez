@@ -173,7 +173,6 @@ export function DateTimePicker({
         )}
         <div className="border-t p-2 flex justify-end">
           <Button
-            size="sm"
             onClick={() => setIsOpen(false)}
             disabled={!date}
           >

@@ -244,7 +244,6 @@ export function SignaturePad({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
             onClick={clearSignature}
             className="absolute right-2 top-2 h-8 w-8 p-0"
           >

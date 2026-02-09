@@ -107,7 +107,6 @@ export function ReservationsFilters({
             <Button
               key={key}
               variant={isActive ? 'secondary' : 'ghost'}
-              size="sm"
               className="gap-2"
               onClick={() => handleStatusChange(key)}
             >

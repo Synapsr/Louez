@@ -207,7 +207,6 @@ export function PricingTiersEditor({
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={addTier}
                 disabled={disabled}
               >
@@ -467,7 +466,6 @@ export function PricingTiersEditor({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={addTier}
                     className="mt-3"
                     disabled={disabled}

@@ -642,7 +642,6 @@ export function DateSelectionHero({
               <Button
                 key={index}
                 variant="outline"
-                size="sm"
                 onClick={option.onClick}
                 className="text-xs"
               >

@@ -271,7 +271,6 @@ export function PhotoCapture({
               <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
                 <Button
                   variant="destructive"
-                  size="sm"
                   onClick={() => handleRemovePhoto(previewPhoto.id)}
                   className="gap-2"
                 >

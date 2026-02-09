@@ -377,7 +377,7 @@ function ClosurePeriodDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
+      <DialogTrigger render={<Button type="button" variant="outline" />}>
         <Plus className="mr-2 h-4 w-4" />
         {t('addClosure')}
       </DialogTrigger>

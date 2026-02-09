@@ -372,7 +372,7 @@ export function NotificationsForm({
                     onChange={setOwnerPhone}
                     className="flex-1"
                   />
-                  <Button onClick={handleSavePhone} disabled={savingPhone} size="sm">
+                  <Button onClick={handleSavePhone} disabled={savingPhone}>
                     {savingPhone ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
                   </Button>
                 </div>
@@ -381,7 +381,7 @@ export function NotificationsForm({
                 <div className="mt-4 pt-4 border-t flex-1">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-muted-foreground">{t('sms.quotaLabel')}</span>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" render={<Link href="/dashboard/sms" />}>
+                    <Button variant="ghost" className="h-7 text-xs" render={<Link href="/dashboard/sms" />}>
                         {t('sms.manage')}
                         <ExternalLink className="ml-1 h-3 w-3" />
                     </Button>
@@ -393,7 +393,7 @@ export function NotificationsForm({
                         <span className="text-sm font-medium">{t('sms.noCreditsLeft')}</span>
                       </div>
                       <p className="mt-1 text-xs text-destructive/80">{t('sms.noCreditsDescription')}</p>
-                      <Button size="sm" variant="destructive" className="mt-2 w-full" render={<Link href="/dashboard/sms" />}>
+                      <Button variant="destructive" className="mt-2 w-full" render={<Link href="/dashboard/sms" />}>
                         {t('sms.buyCredits')}
                       </Button>
                     </div>
@@ -445,14 +445,13 @@ export function NotificationsForm({
                       onChange={(e) => setDiscordWebhookUrl(e.target.value)}
                       className="flex-1 text-sm"
                     />
-                    <Button onClick={handleSaveWebhook} disabled={savingWebhook} size="sm">
+                    <Button onClick={handleSaveWebhook} disabled={savingWebhook}>
                       {savingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : tc('save')}
                     </Button>
                   </div>
                   {isDiscordConnected && (
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleTestDiscord}
                       disabled={testingDiscord}
                       className="w-full"
@@ -733,7 +732,7 @@ export function NotificationsForm({
                       limit: smsQuota.limit ?? 0,
                     })}
               </span>
-              <Button variant="outline" size="sm" render={<Link href="/dashboard/sms" />}>
+              <Button variant="outline" render={<Link href="/dashboard/sms" />}>
                 {t('sms.buyMore')}
               </Button>
             </AlertDescription>

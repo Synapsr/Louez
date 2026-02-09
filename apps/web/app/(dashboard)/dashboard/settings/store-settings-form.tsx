@@ -405,7 +405,6 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
                   onClick={() => setIsSlugModalOpen(true)}
                   className="shrink-0 ml-2"
                 >

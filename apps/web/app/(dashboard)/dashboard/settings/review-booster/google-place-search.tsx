@@ -173,7 +173,6 @@ export function GooglePlaceSearch({
           </div>
           <Button
             variant="ghost"
-            size="sm"
             onClick={onPlaceClear}
             disabled={disabled}
             className="flex-shrink-0"

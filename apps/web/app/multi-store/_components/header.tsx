@@ -64,7 +64,7 @@ export function MultiStoreHeader({ stores, userEmail, userImage }: MultiStoreHea
         <div className="flex items-center gap-2">
           {/* Quick store access */}
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" className="gap-2" />}>
+            <DropdownMenuTrigger render={<Button variant="outline" className="gap-2" />}>
                 <Store className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('goToAStore')}</span>
                 <ChevronDown className="h-3 w-3 opacity-50" />

@@ -228,7 +228,6 @@ export function RequestPaymentModal({
                 </code>
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={handleCopyLink}
                   className="shrink-0"
                 >

@@ -54,7 +54,7 @@ function CommandDialogViewport({
   return (
     <CommandDialogPrimitive.Viewport
       className={cn(
-        "fixed inset-0 z-50 flex flex-col items-center px-4 py-[max(--spacing(4),4vh)] sm:py-[10vh]",
+        "fixed inset-0 z-50 flex flex-col items-center px-4 py-[max(var(--spacing)*4,4vh)] sm:py-[10vh]",
         className,
       )}
       data-slot="command-dialog-viewport"

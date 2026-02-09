@@ -33,11 +33,11 @@ function Textarea({
         render={(defaultProps) => (
           <textarea
             className={cn(
-              "field-sizing-content min-h-17.5 w-full rounded-[inherit] px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] outline-none max-sm:min-h-20.5",
+              "field-sizing-content min-h-17.5 w-full rounded-[inherit] px-[calc(var(--spacing)*3_-_1px)] py-[calc(var(--spacing)*1.5_-_1px)] outline-none max-sm:min-h-20.5",
               size === "sm" &&
-                "min-h-16.5 px-[calc(--spacing(2.5)-1px)] py-[calc(--spacing(1)-1px)] max-sm:min-h-19.5",
+                "min-h-16.5 px-[calc(var(--spacing)*2.5_-_1px)] py-[calc(var(--spacing)*1_-_1px)] max-sm:min-h-19.5",
               size === "lg" &&
-                "min-h-18.5 py-[calc(--spacing(2)-1px)] max-sm:min-h-21.5",
+                "min-h-18.5 py-[calc(var(--spacing)*2_-_1px)] max-sm:min-h-21.5",
             )}
             data-slot="textarea"
             {...mergeProps(defaultProps, props)}

@@ -779,7 +779,6 @@ export function UnifiedPaymentSection({
                   <div className="flex gap-2">
                     {depositStatusVal === 'card_saved' && (
                       <Button
-                        size="sm"
                         onClick={handleCreateHold}
                         disabled={isLoading}
                         className="flex-1"
@@ -797,7 +796,6 @@ export function UnifiedPaymentSection({
                       <>
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => setReleaseDialogOpen(true)}
                           disabled={isLoading}
                           className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
@@ -807,7 +805,6 @@ export function UnifiedPaymentSection({
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => {
                             setCaptureAmount(deposit.toFixed(2))
                             setCaptureModalOpen(true)
@@ -866,7 +863,6 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => setDamageModalOpen(true)}
@@ -879,7 +875,6 @@ export function UnifiedPaymentSection({
           {/* Request Payment Button */}
           {stripeConfigured && (rentalRemaining >= 0.5 || (deposit > 0 && depositStatusVal !== 'authorized' && depositStatusVal !== 'captured')) && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
               onClick={() => setRequestPaymentModalOpen(true)}
@@ -1009,7 +1004,6 @@ export function UnifiedPaymentSection({
               {hasMorePayments && !historyExpanded && (
                 <Button
                   variant="ghost"
-                  size="sm"
                   className="w-full mt-2 text-xs"
                   onClick={() => setHistoryExpanded(true)}
                 >

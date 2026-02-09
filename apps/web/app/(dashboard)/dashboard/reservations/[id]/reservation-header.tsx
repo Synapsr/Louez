@@ -264,7 +264,6 @@ export function ReservationHeader({
             {/* Email button */}
             <Button
               variant="outline"
-              size="sm"
               onClick={() => setEmailModalOpen(true)}
               className="hidden sm:flex"
             >
@@ -275,7 +274,6 @@ export function ReservationHeader({
             {/* Access Link button */}
             <Button
               variant="outline"
-              size="sm"
               onClick={handleSendAccessLink}
               disabled={isSendingAccessLink}
               className="hidden sm:flex"
@@ -292,7 +290,6 @@ export function ReservationHeader({
             {smsConfigured && customer.phone && (
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleSendAccessLinkSms}
                 disabled={isSendingAccessLinkSms}
                 className="hidden sm:flex"
@@ -310,7 +307,6 @@ export function ReservationHeader({
             {hasContract && (
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleDownloadContract}
                 className="hidden sm:flex"
               >

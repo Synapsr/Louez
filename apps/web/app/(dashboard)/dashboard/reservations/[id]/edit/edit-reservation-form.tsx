@@ -607,10 +607,10 @@ export function EditReservationForm({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="outline" size="sm">
+                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="outline">
                   {tCommon('cancel')}
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={isLoading || !hasChanges}>
+                <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -705,7 +705,6 @@ export function EditReservationForm({
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => setShowCustomItemDialog(true)}
                       >
                         <PenLine className="h-4 w-4 mr-2" />

@@ -273,7 +273,6 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleResendInvitation(invitation.id)}
                         disabled={isPending}
                       >
@@ -282,7 +281,6 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleCancelInvitation(invitation.id)}
                         disabled={isPending}
                       >

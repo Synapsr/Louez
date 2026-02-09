@@ -143,7 +143,6 @@ export function RichTextEditor({
           <DropdownMenuTrigger render={<Button
               type="button"
               variant="ghost"
-              size="sm"
               className="h-8 px-2 text-xs"
               disabled={disabled}
             />}>
@@ -189,7 +188,6 @@ export function RichTextEditor({
         <div className="bg-border mx-1 h-6 w-px" />
 
         <Toggle
-          size="sm"
           pressed={editor.isActive('bold')}
           onPressedChange={() => editor.chain().focus().toggleBold().run()}
           disabled={disabled}
@@ -199,7 +197,6 @@ export function RichTextEditor({
         </Toggle>
 
         <Toggle
-          size="sm"
           pressed={editor.isActive('italic')}
           onPressedChange={() => editor.chain().focus().toggleItalic().run()}
           disabled={disabled}
@@ -211,7 +208,6 @@ export function RichTextEditor({
         <div className="bg-border mx-1 h-6 w-px" />
 
         <Toggle
-          size="sm"
           pressed={editor.isActive('bulletList')}
           onPressedChange={() => editor.chain().focus().toggleBulletList().run()}
           disabled={disabled}
@@ -221,7 +217,6 @@ export function RichTextEditor({
         </Toggle>
 
         <Toggle
-          size="sm"
           pressed={editor.isActive('orderedList')}
           onPressedChange={() => editor.chain().focus().toggleOrderedList().run()}
           disabled={disabled}
@@ -233,7 +228,6 @@ export function RichTextEditor({
         <div className="bg-border mx-1 h-6 w-px" />
 
         <Toggle
-          size="sm"
           pressed={editor.isActive('blockquote')}
           onPressedChange={() => editor.chain().focus().toggleBlockquote().run()}
           disabled={disabled}
@@ -245,7 +239,6 @@ export function RichTextEditor({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
           disabled={disabled}
           className="h-8 w-8 p-0"
@@ -258,7 +251,6 @@ export function RichTextEditor({
 
         <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
           <PopoverTrigger render={<Toggle
-              size="sm"
               pressed={editor.isActive('link')}
               disabled={disabled}
               aria-label={t('addLink')}
@@ -273,7 +265,7 @@ export function RichTextEditor({
                 onChange={(e) => setLinkUrl(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && setLink()}
               />
-              <Button size="sm" onClick={setLink}>
+              <Button onClick={setLink}>
                 OK
               </Button>
             </div>
@@ -282,7 +274,6 @@ export function RichTextEditor({
 
         {editor.isActive('link') && (
           <Toggle
-            size="sm"
             pressed={false}
             onPressedChange={() => editor.chain().focus().unsetLink().run()}
             disabled={disabled}
@@ -297,7 +288,6 @@ export function RichTextEditor({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           onClick={() => editor.chain().focus().undo().run()}
           disabled={disabled || !editor.can().undo()}
           className="h-8 w-8 p-0"
@@ -308,7 +298,6 @@ export function RichTextEditor({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           onClick={() => editor.chain().focus().redo().run()}
           disabled={disabled || !editor.can().redo()}
           className="h-8 w-8 p-0"
