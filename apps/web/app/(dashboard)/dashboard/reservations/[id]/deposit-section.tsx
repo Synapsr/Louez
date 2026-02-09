@@ -260,7 +260,7 @@ export function DepositSection({
         return {
           icon: Banknote,
           iconClass: 'text-red-500',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
           badgeClass: '',
           label: t('status.captured'),
         }
@@ -276,7 +276,7 @@ export function DepositSection({
         return {
           icon: ShieldX,
           iconClass: 'text-red-500',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
           badgeClass: '',
           label: t('status.failed'),
         }

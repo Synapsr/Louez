@@ -304,9 +304,9 @@ export function UnitTrackingEditor({
                           />
                           <Select
                             value={unit.status || 'available'}
-                            onValueChange={(value) =>
-                              updateUnit(index, 'status', value as UnitStatus)
-                            }
+                            onValueChange={(value) => {
+                              if (value !== null) updateUnit(index, 'status', value as UnitStatus)
+                            }}
                             disabled={disabled}
                           >
                             <SelectTrigger className="w-[140px]">

@@ -294,7 +294,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   <FormItem>
                     <FormLabel>{t('country')}</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
+                      onValueChange={(value) => { if (value !== null) field.onChange(value) }}
                       defaultValue={field.value}
                     >
                       <FormControl>

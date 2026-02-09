@@ -62,7 +62,7 @@ export function MultiStorePeriodFilter({ className }: MultiStorePeriodFilterProp
 
       {/* Select (mobile) */}
       <div className="md:hidden">
-        <Select value={currentPeriod} onValueChange={(v) => handlePeriodChange(v as Period)}>
+        <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[140px]">
             <SelectValue />
           </SelectTrigger>

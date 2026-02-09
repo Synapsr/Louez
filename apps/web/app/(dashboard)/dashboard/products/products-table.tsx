@@ -111,11 +111,12 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
       if (result.error) {
         toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(
-          newStatus === 'active'
+        toastManager.add({
+          title: newStatus === 'active'
             ? t('productPublished')
-            : t('productUnpublished')
-        )
+            : t('productUnpublished'),
+          type: 'success',
+        })
       }
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })

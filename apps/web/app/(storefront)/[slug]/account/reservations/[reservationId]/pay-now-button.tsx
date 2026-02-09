@@ -24,7 +24,7 @@ export function PayNowButton({ storeSlug, reservationId }: PayNowButtonProps) {
       const result = await createReservationPaymentSession(storeSlug, reservationId)
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
         setIsLoading(false)
         return
       }

@@ -302,7 +302,7 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.recorded'), type: 'success' })
         setPaymentModalOpen(false)
@@ -337,7 +337,7 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
         setDepositReturnModalOpen(false)
@@ -372,7 +372,7 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
         setDamageModalOpen(false)
@@ -394,7 +394,7 @@ export function UnifiedPaymentSection({
       const result = await deletePayment(paymentToDelete.id)
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.deleted'), type: 'success' })
         setDeleteDialogOpen(false)
@@ -633,7 +633,7 @@ export function UnifiedPaymentSection({
                 </Badge>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <Badge variant="destructive" className="font-mono text-xs">
+                  <Badge variant="error" className="font-mono text-xs">
                     -{rentalRemaining.toFixed(2)}{currencySymbol}
                   </Badge>
                   <Tooltip>
@@ -1038,7 +1038,7 @@ export function UnifiedPaymentSection({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
-              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+              <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1081,7 +1081,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1179,7 +1179,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1253,7 +1253,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

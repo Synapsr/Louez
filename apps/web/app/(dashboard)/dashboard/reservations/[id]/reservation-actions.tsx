@@ -83,7 +83,7 @@ export function ReservationActions({
     try {
       const result = await updateReservationStatus(reservationId, newStatus, reason)
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -118,7 +118,7 @@ export function ReservationActions({
     try {
       const result = await cancelReservation(reservationId)
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('reservationCancelled'), type: 'success' })
         router.refresh()

@@ -315,7 +315,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                     <FormItem>
                       <FormLabel>{t('storeSettings.country')}</FormLabel>
                       <Select
-                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                        onValueChange={(value) => { if (value !== null) handleCountryChange(value, field.onChange) }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -353,7 +353,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                     <FormItem>
                       <FormLabel>{t('storeSettings.currency')}</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => { if (value !== null) field.onChange(value) }}
                         value={field.value}
                       >
                         <FormControl>
@@ -510,7 +510,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                       <FormItem>
                         <FormLabel>{t('billingAddress.country')}</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValueChange={(value) => { if (value !== null) field.onChange(value) }}
                           value={field.value}
                         >
                           <FormControl>
@@ -590,6 +590,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                       <FormLabel>{t('reservationSettings.mode')}</FormLabel>
                       <Select
                         onValueChange={(value) => {
+                          if (value === null) return
                           if (value === 'payment' && !stripeChargesEnabled) {
                             setIsStripeRequiredDialogOpen(true)
                             return
@@ -629,7 +630,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                     <FormItem>
                       <FormLabel>{t('reservationSettings.pricingMode')}</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => { if (value !== null) field.onChange(value) }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -697,7 +698,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                           <FormControl>
                             <Slider
                               value={[field.value]}
-                              onValueChange={([value]) => field.onChange(value)}
+                              onValueChange={(value) => field.onChange(Array.isArray(value) ? value[0] : value)}
                               min={10}
                               max={100}
                               step={5}

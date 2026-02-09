@@ -57,7 +57,8 @@ export function ReservationsFilters({
     router.push(`/dashboard/reservations?${createQueryString('status', value)}`)
   }
 
-  const handlePeriodChange = (value: string) => {
+  const handlePeriodChange = (value: string | null) => {
+    if (value === null) return
     router.push(`/dashboard/reservations?${createQueryString('period', value)}`)
   }
 

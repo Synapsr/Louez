@@ -162,7 +162,7 @@ export function InspectionView({
                   </div>
                 </div>
                 <Badge
-                  variant={inspection.hasDamage ? 'destructive' : 'default'}
+                  variant={inspection.hasDamage ? 'error' : 'default'}
                   className="ml-auto"
                 >
                   {t(`status.${inspection.status}`)}

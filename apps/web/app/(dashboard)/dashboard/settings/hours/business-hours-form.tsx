@@ -119,7 +119,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {form.formState.errors.root && (
-            <Alert variant="destructive">
+            <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 {form.formState.errors.root.message}
@@ -274,7 +274,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.openTime ?? '09:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
+              if (value !== null) form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">
@@ -292,7 +292,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.closeTime ?? '18:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
+              if (value !== null) form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">
@@ -389,7 +389,7 @@ function ClosurePeriodDialog({
 
         <div className="space-y-4 py-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>

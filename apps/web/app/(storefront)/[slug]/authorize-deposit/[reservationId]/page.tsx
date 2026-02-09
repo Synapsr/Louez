@@ -105,7 +105,7 @@ export default async function AuthorizeDepositPage({
             </div>
           )}
 
-          <Alert variant="destructive">
+          <Alert variant="error">
             <AlertDescription>
               {t(`errors.${errorKey}`)}
             </AlertDescription>

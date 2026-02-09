@@ -194,7 +194,7 @@ export function SmsContent({
 
       {/* Cancelled Alert */}
       {showCancelledAlert && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <XCircle className="h-4 w-4" />
           <AlertDescription>{t('topup.cancelled')}</AlertDescription>
         </Alert>
@@ -252,7 +252,7 @@ export function SmsContent({
             </div>
             <div className="flex items-center gap-2">
               {isAtLimit && (
-                <Badge variant="destructive" className="flex items-center gap-1">
+                <Badge variant="error" className="flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   {t('quota.limitReached')}
                 </Badge>
@@ -515,7 +515,7 @@ export function SmsContent({
                     {t('status.sent')}
                   </Badge>
                 ) : (
-                  <Badge variant="destructive">
+                  <Badge variant="error">
                     <XCircle className="mr-1 h-3 w-3" />
                     {t('status.failed')}
                   </Badge>

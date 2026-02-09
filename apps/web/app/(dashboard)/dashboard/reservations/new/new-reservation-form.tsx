@@ -1260,7 +1260,7 @@ export function NewReservationForm({
                             </div>
                             <div className="flex items-center gap-2 mt-1">
                               {isOutOfStock ? (
-                                <Badge variant="destructive" className="text-xs">
+                                <Badge variant="error" className="text-xs">
                                   {t('outOfStock')}
                                 </Badge>
                               ) : (

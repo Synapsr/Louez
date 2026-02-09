@@ -635,9 +635,9 @@ export function NotificationsForm({
                   </label>
                   <Select
                     value={pickupReminderHours.toString()}
-                    onValueChange={(value) =>
-                      handleReminderTimingChange('pickup', parseInt(value, 10))
-                    }
+                    onValueChange={(value) => {
+                      if (value !== null) handleReminderTimingChange('pickup', parseInt(value, 10))
+                    }}
                     disabled={savingReminderSettings}
                   >
                     <SelectTrigger className="w-full">
@@ -664,9 +664,9 @@ export function NotificationsForm({
                   </label>
                   <Select
                     value={returnReminderHours.toString()}
-                    onValueChange={(value) =>
-                      handleReminderTimingChange('return', parseInt(value, 10))
-                    }
+                    onValueChange={(value) => {
+                      if (value !== null) handleReminderTimingChange('return', parseInt(value, 10))
+                    }}
                     disabled={savingReminderSettings}
                   >
                     <SelectTrigger className="w-full">
@@ -722,7 +722,7 @@ export function NotificationsForm({
 
         {/* SMS Warning */}
         {(smsLimitReached || smsLow) && (
-          <Alert variant={smsLimitReached ? 'destructive' : 'default'}>
+          <Alert variant={smsLimitReached ? 'error' : 'default'}>
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
               <span>

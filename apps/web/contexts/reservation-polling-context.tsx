@@ -125,7 +125,6 @@ export function ReservationPollingProvider({
           title: t('newReservation', { number: data.latestReservation!.number }),
           description: t('newReservationDescription'),
           type: 'info',
-          duration: 10000,
         })
 
         // Refresh the page data

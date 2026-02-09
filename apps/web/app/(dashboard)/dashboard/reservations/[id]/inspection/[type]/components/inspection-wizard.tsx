@@ -410,7 +410,7 @@ function StepSummary({
                     <span className="text-sm font-medium">{item.product.name}</span>
                   </div>
                   <Badge
-                    variant={inspection.condition === 'damage' ? 'destructive' : 'secondary'}
+                    variant={inspection.condition === 'damage' ? 'error' : 'secondary'}
                   >
                     {t(`conditions.${inspection.condition}`)}
                   </Badge>

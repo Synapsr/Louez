@@ -52,10 +52,10 @@ function PlanBadge({ plan }: { plan: string }) {
 function StatusBadge({ status }: { status: string }) {
   const t = useTranslations('dashboard.referrals.list.status')
 
-  const variants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  const variants: Record<string, 'default' | 'secondary' | 'error' | 'outline'> = {
     active: 'default',
     cancelled: 'secondary',
-    past_due: 'destructive',
+    past_due: 'error',
     trialing: 'outline',
   }
 

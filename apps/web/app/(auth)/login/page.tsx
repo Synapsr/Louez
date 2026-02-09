@@ -1,164 +1,189 @@
-'use client'
+'use client';
 
-import { Suspense } from 'react'
-import { authClient } from '@louez/auth/client'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { env } from '@/env'
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Separator } from '@louez/ui'
-import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
-import { Package, Calendar, Users, BarChart3, ArrowRight, Loader2, Mail, CheckCircle2, AlertCircle } from 'lucide-react'
-import { Alert, AlertDescription } from '@louez/ui'
-import { Logo } from '@/components/ui/logo'
+import { Suspense } from 'react';
+import { useEffect, useState } from 'react';
+
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+
+import {
+  AlertCircle,
+  ArrowRight,
+  BarChart3,
+  Calendar,
+  CheckCircle2,
+  Loader2,
+  Mail,
+  Package,
+  Users,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { authClient } from '@louez/auth/client';
+import { Button } from '@louez/ui';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@louez/ui';
+import { Input } from '@louez/ui';
+import { Label } from '@louez/ui';
+import { Separator } from '@louez/ui';
+import { Alert, AlertDescription } from '@louez/ui';
+import { Logo } from '@louez/ui';
+
+import { env } from '@/env';
 
 const features = [
   { icon: Package, labelKey: 'featureProducts' },
   { icon: Calendar, labelKey: 'featureReservations' },
   { icon: Users, labelKey: 'featureCustomers' },
   { icon: BarChart3, labelKey: 'featureStats' },
-]
+];
 
 /**
  * Validates redirect URLs to prevent open redirect attacks
  * Only allows relative paths or URLs pointing to the same domain/subdomains
  */
 function isValidRedirectUrl(url: string | null): string {
-  const defaultUrl = '/dashboard'
+  const defaultUrl = '/dashboard';
 
-  if (!url) return defaultUrl
+  if (!url) return defaultUrl;
 
   // Allow relative paths that start with / but not //
   // The regex ensures: starts with /, followed by alphanumeric, hyphen, underscore, or /
   // This prevents protocol-relative URLs like //evil.com
   if (/^\/(?!\/)[a-zA-Z0-9\-_/?&=#%]*$/.test(url)) {
-    return url
+    return url;
   }
 
   // For absolute URLs, validate they point to our domain
   try {
-    const parsed = new URL(url)
-    const appUrl = env.NEXT_PUBLIC_APP_URL
-    const appDomain = new URL(appUrl).hostname
+    const parsed = new URL(url);
+    const appUrl = env.NEXT_PUBLIC_APP_URL;
+    const appDomain = new URL(appUrl).hostname;
 
     // Check if the redirect URL is for our domain (or subdomains)
-    if (parsed.hostname === appDomain || parsed.hostname.endsWith(`.${appDomain}`)) {
-      return url
+    if (
+      parsed.hostname === appDomain ||
+      parsed.hostname.endsWith(`.${appDomain}`)
+    ) {
+      return url;
     }
   } catch {
     // Invalid URL format - fall through to default
   }
 
   // Reject any other URLs (external domains, invalid formats)
-  return defaultUrl
+  return defaultUrl;
 }
 
 function LoginForm() {
-  const t = useTranslations('auth')
-  const searchParams = useSearchParams()
-  const callbackUrl = isValidRedirectUrl(searchParams.get('callbackUrl'))
-  const error = searchParams.get('error')
-  const [email, setEmail] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [emailSent, setEmailSent] = useState(false)
-  const [loginMethod, setLoginMethod] = useState<'magic-link' | 'otp'>('magic-link')
-  const [otpSent, setOtpSent] = useState(false)
-  const [otp, setOtp] = useState('')
+  const t = useTranslations('auth');
+  const searchParams = useSearchParams();
+  const callbackUrl = isValidRedirectUrl(searchParams.get('callbackUrl'));
+  const error = searchParams.get('error');
+  const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<'magic-link' | 'otp'>(
+    'magic-link',
+  );
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState('');
 
   // Persist referral code in a cookie so it survives OAuth/magic-link redirects
   useEffect(() => {
-    const ref = searchParams.get('ref')
+    const ref = searchParams.get('ref');
     if (ref && /^LOUEZ[A-HJ-NP-Z2-9]{7}$/.test(ref)) {
-      document.cookie = `louez_referral=${ref}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`
+      document.cookie = `louez_referral=${ref}; path=/; max-age=${60 * 60 * 24 * 7}; samesite=lax`;
     }
-  }, [searchParams])
+  }, [searchParams]);
 
   // Map OAuth errors to user-friendly messages
   const getErrorMessage = (errorCode: string | null) => {
-    if (!errorCode) return null
+    if (!errorCode) return null;
     switch (errorCode) {
       case 'OAuthAccountNotLinked':
-        return t('errors.accountNotLinked')
+        return t('errors.accountNotLinked');
       case 'OAuthSignin':
       case 'OAuthCallback':
-        return t('errors.oauthError')
+        return t('errors.oauthError');
       case 'AccessDenied':
-        return t('errors.accessDenied')
+        return t('errors.accessDenied');
       case 'Verification':
-        return t('errors.verification')
+        return t('errors.verification');
       default:
-        return t('errors.default')
+        return t('errors.default');
     }
-  }
+  };
 
-  const errorMessage = getErrorMessage(error)
+  const errorMessage = getErrorMessage(error);
 
   async function handleEmailSignIn(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     if (loginMethod === 'magic-link') {
       await authClient.signIn.magicLink({
         email,
         callbackURL: callbackUrl,
-      })
-      setEmailSent(true)
+      });
+      setEmailSent(true);
     } else {
       // OTP flow - send the code
       await authClient.emailOtp.sendVerificationOtp({
         email,
         type: 'sign-in',
-      })
-      setOtpSent(true)
+      });
+      setOtpSent(true);
     }
 
-    setIsLoading(false)
+    setIsLoading(false);
   }
 
   async function handleOtpVerify(e: React.FormEvent) {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     const { error } = await authClient.signIn.emailOtp({
       email,
       otp,
-    })
+    });
 
     if (error) {
-      setIsLoading(false)
+      setIsLoading(false);
       // Could show error toast here
-      return
+      return;
     }
 
-    window.location.href = callbackUrl
+    window.location.href = callbackUrl;
   }
 
   async function handleGoogleSignIn() {
-    setIsLoading(true)
+    setIsLoading(true);
     await authClient.signIn.social({
       provider: 'google',
       callbackURL: callbackUrl,
-    })
+    });
   }
 
   return (
     <div className="w-full max-w-md space-y-8">
       {/* Mobile Logo */}
-      <div className="lg:hidden text-center mb-8">
+      <div className="mb-8 text-center lg:hidden">
         <Link href="/">
-          <Logo className="h-7 w-auto mx-auto" />
+          <Logo className="mx-auto h-7 w-auto" />
         </Link>
       </div>
 
       {otpSent ? (
-        <Card className="border-0 shadow-none lg:shadow lg:border">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="h-8 w-8 text-primary" />
+        <Card className="border-0 shadow-none lg:border lg:shadow">
+          <CardHeader className="space-y-4 text-center">
+            <div className="bg-primary/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Mail className="text-primary h-8 w-8" />
             </div>
             <CardTitle className="text-2xl">{t('enterCode')}</CardTitle>
             <CardDescription className="text-base">
@@ -175,13 +200,13 @@ function LoginForm() {
                 placeholder="000000"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                className="h-14 text-center text-2xl tracking-[0.5em] font-mono"
+                className="h-14 text-center font-mono text-2xl tracking-[0.5em]"
                 autoFocus
                 disabled={isLoading}
               />
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-medium"
+                className="h-12 w-full text-base font-medium"
                 disabled={isLoading || otp.length !== 6}
               >
                 {isLoading ? (
@@ -196,18 +221,21 @@ function LoginForm() {
             </form>
             <Button
               variant="outline"
-              onClick={() => { setOtpSent(false); setOtp('') }}
-              className="w-full mt-3"
+              onClick={() => {
+                setOtpSent(false);
+                setOtp('');
+              }}
+              className="mt-3 w-full"
             >
               {t('tryDifferentEmail')}
             </Button>
           </CardContent>
         </Card>
       ) : emailSent ? (
-        <Card className="border-0 shadow-none lg:shadow lg:border">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Mail className="h-8 w-8 text-primary" />
+        <Card className="border-0 shadow-none lg:border lg:shadow">
+          <CardHeader className="space-y-4 text-center">
+            <div className="bg-primary/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
+              <Mail className="text-primary h-8 w-8" />
             </div>
             <CardTitle className="text-2xl">{t('checkEmail')}</CardTitle>
             <CardDescription className="text-base">
@@ -215,7 +243,7 @@ function LoginForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-center">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {t('clickLinkToSignIn')}
             </p>
             <Button
@@ -228,16 +256,18 @@ function LoginForm() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-0 shadow-none lg:shadow lg:border">
-          <CardHeader className="text-center space-y-2">
-            <CardTitle className="text-2xl font-bold">{t('loginTitle')}</CardTitle>
+        <Card className="border-0 shadow-none lg:border lg:shadow">
+          <CardHeader className="space-y-2 text-center">
+            <CardTitle className="text-2xl font-bold">
+              {t('loginTitle')}
+            </CardTitle>
             <CardDescription className="text-base">
               {t('loginDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {errorMessage && (
-              <Alert variant="destructive">
+              <Alert variant="error">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errorMessage}</AlertDescription>
               </Alert>
@@ -245,7 +275,7 @@ function LoginForm() {
 
             <Button
               variant="outline"
-              className="w-full h-12 text-base font-medium"
+              className="h-12 w-full text-base font-medium"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
             >
@@ -275,7 +305,9 @@ function LoginForm() {
                 <Separator className="w-full" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground">{t('or')}</span>
+                <span className="bg-card text-muted-foreground px-3">
+                  {t('or')}
+                </span>
               </div>
             </div>
 
@@ -318,7 +350,7 @@ function LoginForm() {
               </div>
               <Button
                 type="submit"
-                className="w-full h-12 text-base font-medium group"
+                className="group h-12 w-full text-base font-medium"
                 disabled={isLoading || !email}
               >
                 {isLoading ? (
@@ -328,16 +360,18 @@ function LoginForm() {
                   </>
                 ) : (
                   <>
-                    {loginMethod === 'otp' ? t('sendCode') || t('continueWithEmail') : t('continueWithEmail')}
+                    {loginMethod === 'otp'
+                      ? t('sendCode') || t('continueWithEmail')
+                      : t('continueWithEmail')}
                     <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </>
                 )}
               </Button>
             </form>
 
-            <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4">
-              <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">
+            <div className="bg-muted/50 flex items-start gap-3 rounded-lg p-4">
+              <CheckCircle2 className="text-primary mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-muted-foreground text-sm">
                 {t('linkWillBeSent')}
               </p>
             </div>
@@ -345,48 +379,54 @@ function LoginForm() {
         </Card>
       )}
 
-      <p className="text-center text-sm text-muted-foreground">
+      <p className="text-muted-foreground text-center text-sm">
         {t('termsAgreement')}{' '}
-        <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
+        <Link
+          href="/terms"
+          className="hover:text-primary underline underline-offset-4"
+        >
           {t('termsOfService')}
         </Link>{' '}
         {t('and')}{' '}
-        <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
+        <Link
+          href="/privacy"
+          className="hover:text-primary underline underline-offset-4"
+        >
           {t('privacyPolicy')}
         </Link>
       </p>
     </div>
-  )
+  );
 }
 
 function LoginFormFallback() {
   return (
     <div className="w-full max-w-md space-y-8">
-      <Card className="border-0 shadow-none lg:shadow lg:border">
-        <CardHeader className="text-center space-y-2">
-          <div className="h-8 bg-muted rounded animate-pulse mx-auto w-32" />
-          <div className="h-4 bg-muted rounded animate-pulse mx-auto w-48" />
+      <Card className="border-0 shadow-none lg:border lg:shadow">
+        <CardHeader className="space-y-2 text-center">
+          <div className="bg-muted mx-auto h-8 w-32 animate-pulse rounded" />
+          <div className="bg-muted mx-auto h-4 w-48 animate-pulse rounded" />
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="h-12 bg-muted rounded animate-pulse" />
-          <div className="h-12 bg-muted rounded animate-pulse" />
+          <div className="bg-muted h-12 animate-pulse rounded" />
+          <div className="bg-muted h-12 animate-pulse rounded" />
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export default function LoginPage() {
-  const t = useTranslations('auth')
+  const t = useTranslations('auth');
 
   return (
-    <div className="min-h-screen flex">
+    <div className="flex min-h-screen">
       {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 text-primary-foreground p-12 flex-col justify-between relative overflow-hidden">
+      <div className="from-primary via-primary/90 to-primary/80 text-primary-foreground relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br p-12 lg:flex lg:w-1/2">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white/20 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+          <div className="absolute top-0 left-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
+          <div className="absolute right-0 bottom-0 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
         </div>
 
         <div className="relative z-10">
@@ -397,42 +437,42 @@ export default function LoginPage() {
 
         <div className="relative z-10 space-y-8">
           <div>
-            <h1 className="text-4xl font-bold leading-tight mb-4">
+            <h1 className="mb-4 text-4xl leading-tight font-bold">
               {t('heroTitle')}
             </h1>
-            <p className="text-lg text-primary-foreground/80 max-w-md">
+            <p className="text-primary-foreground/80 max-w-md text-lg">
               {t('heroSubtitle')}
             </p>
           </div>
 
           <div className="space-y-4">
             {features.map((feature) => {
-              const Icon = feature.icon
+              const Icon = feature.icon;
               return (
                 <div key={feature.labelKey} className="flex items-center gap-3">
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10 backdrop-blur-sm">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="text-primary-foreground/90">{t(feature.labelKey)}</span>
+                  <span className="text-primary-foreground/90">
+                    {t(feature.labelKey)}
+                  </span>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
 
         <div className="relative z-10">
-          <p className="text-sm text-primary-foreground/60">
-            {t('trustedBy')}
-          </p>
+          <p className="text-primary-foreground/60 text-sm">{t('trustedBy')}</p>
         </div>
       </div>
 
       {/* Right Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-background">
+      <div className="bg-background flex flex-1 items-center justify-center p-6 lg:p-12">
         <Suspense fallback={<LoginFormFallback />}>
           <LoginForm />
         </Suspense>
       </div>
     </div>
-  )
+  );
 }

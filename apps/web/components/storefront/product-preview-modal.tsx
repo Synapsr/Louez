@@ -334,7 +334,7 @@ export function ProductPreviewModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent variant="storefront" className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogHeader className="sr-only">
           <DialogTitle>{product.name}</DialogTitle>
         </DialogHeader>
@@ -473,7 +473,7 @@ export function ProductPreviewModal({
                   </h2>
                 </div>
                 {product.quantity === 0 && (
-                  <Badge variant="destructive" className="shrink-0 text-xs">
+                  <Badge variant="error" className="shrink-0 text-xs">
                     {tProduct('unavailable')}
                   </Badge>
                 )}
