@@ -7,13 +7,16 @@
 # Image size: ~150MB | Startup: <5s | Non-root user
 #
 # Features:
-# - Automatic database migrations at container startup
+# - Dedicated migrator target (run separately from app)
 # - Health checks for container orchestrators
 # - Non-root user for security
 # - Turborepo monorepo support
 #
 # Build:  docker build -f docker/Dockerfile.web -t louez-web .
 # Run:    docker run -p 3000:3000 --env-file .env louez-web
+# Migrate: docker build -f docker/Dockerfile.web --target migrator -t louez-migrator .
+# EasyPanel (no build target): use docker/Dockerfile.web for app and
+# docker/Dockerfile.web.migrator for migrations.
 # =============================================================================
 
 # -----------------------------------------------------------------------------
@@ -28,10 +31,11 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy workspace configuration files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 
 # Copy all package.json files for workspace packages
 COPY packages/api/package.json ./packages/api/
+COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
@@ -61,6 +65,7 @@ ARG DATABASE_URL
 # Copy dependencies
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
@@ -84,10 +89,30 @@ ENV DATABASE_URL=${DATABASE_URL}
 RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 # -----------------------------------------------------------------------------
-# Stage 3: Runner (Production)
+# Stage 3: Migrator
+# One-off image used to run database migrations
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS migrator
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Keep pnpm virtual store + workspace links so migrate.mjs can resolve mysql2 deps
+COPY --from=deps /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+
+# Place migration script under apps/web so module resolution uses apps/web/node_modules
+COPY --from=builder /app/docker/migrate.mjs ./apps/web/docker/migrate.mjs
+COPY --from=builder /app/packages/db/src/migrations ./migrations
+
+CMD ["node", "apps/web/docker/migrate.mjs"]
+
+# -----------------------------------------------------------------------------
+# Stage 4: App (Production)
 # Minimal image with only the standalone build output
 # -----------------------------------------------------------------------------
-FROM node:20-alpine AS runner
+FROM node:20-alpine AS app
 
 WORKDIR /app
 
@@ -110,14 +135,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 # Copy public assets (static files) - must match monorepo structure
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
-# Copy database migration script and SQL files
-COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
-COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
-
-# Copy and prepare entrypoint script
-COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
-RUN chmod +x ./docker/entrypoint.sh
-
 # Switch to non-root user
 USER nextjs
 
@@ -128,5 +145,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD sh -c "wget --no-verbose --tries=1 --spider http://localhost:\${PORT:-3000}/api/health || exit 1"
 
-# Start with entrypoint (runs migrations then starts server)
-ENTRYPOINT ["./docker/entrypoint.sh"]
+# Start standalone Next.js server
+CMD ["node", "apps/web/server.js"]

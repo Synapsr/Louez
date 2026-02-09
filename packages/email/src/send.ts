@@ -3,10 +3,24 @@ import nodemailer from 'nodemailer'
 import { env } from './env'
 import type { SendEmailOptions } from './types'
 
+function toBoolean(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  return String(value).toLowerCase() === 'true'
+}
+
+function toPort(value: unknown): number {
+  const parsed = Number(value)
+  if (Number.isFinite(parsed) && parsed > 0) return parsed
+  return 587
+}
+
+const smtpPort = toPort(env.SMTP_PORT)
+const smtpSecure = toBoolean(env.SMTP_SECURE)
+
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_SECURE,
+  port: smtpPort,
+  secure: smtpSecure,
   auth: {
     user: env.SMTP_USER,
     pass: env.SMTP_PASSWORD,
