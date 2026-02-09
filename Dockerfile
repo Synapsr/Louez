@@ -17,6 +17,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 COPY packages/api/package.json ./packages/api/
+COPY packages/auth/package.json ./packages/auth/
 COPY packages/config/package.json ./packages/config/
 COPY packages/types/package.json ./packages/types/
 COPY packages/utils/package.json ./packages/utils/
@@ -28,10 +29,20 @@ COPY packages/pdf/package.json ./packages/pdf/
 COPY apps/web/package.json ./apps/web/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
+# Prepare de-symlinked runtime deps needed by docker/migrate.mjs.
+# Copy the full mysql2 dependency subtree (includes sqlstring, iconv-lite, etc.).
+RUN set -eux; \
+    mkdir -p /app/migrate-node-modules/node_modules; \
+    cp -RL /app/apps/web/node_modules/drizzle-orm /app/migrate-node-modules/node_modules/drizzle-orm; \
+    MYSQL2_NODE_MODULES_DIR="$(find /app/node_modules/.pnpm -maxdepth 1 -type d -name 'mysql2@*' | head -n 1)/node_modules"; \
+    test -d "$MYSQL2_NODE_MODULES_DIR"; \
+    cp -RL "$MYSQL2_NODE_MODULES_DIR/." /app/migrate-node-modules/node_modules/
+
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
 COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
 COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
 COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
@@ -62,8 +73,7 @@ COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migrate.mjs
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
 # Copy node_modules required by migrate.mjs (not included in standalone output)
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/mysql2 ./node_modules/mysql2
+COPY --from=deps --chown=nextjs:nodejs /app/migrate-node-modules/node_modules/ ./node_modules/
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
 RUN chmod +x ./docker/entrypoint.sh
 USER nextjs
