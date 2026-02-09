@@ -7,14 +7,20 @@
     "config": "",
     "css": "../../packages/ui/src/styles/globals.css",
     "baseColor": "neutral",
-    "cssVariables": true
+    "cssVariables": true,
+    "prefix": ""
   },
   "iconLibrary": "lucide",
+  "menuColor": "default",
+  "menuAccent": "subtle",
   "aliases": {
     "components": "@/components",
-    "hooks": "@/hooks",
+    "utils": "@louez/ui/lib/utils",
+    "ui": "@louez/ui/components",
     "lib": "@/lib",
-    "utils": "@louez/utils",
-    "ui": "@louez/ui/components"
+    "hooks": "@/hooks"
+  },
+  "registries": {
+    "@coss": "https://coss.com/ui/r/{name}.json"
   }
 }
