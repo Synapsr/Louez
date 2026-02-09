@@ -46,6 +46,12 @@ COPY apps/web/package.json ./apps/web/
 RUN corepack enable pnpm && \
     pnpm install --frozen-lockfile
 
+# Prepare de-symlinked runtime deps needed by docker/migrate.mjs.
+# pnpm may not hoist these packages to /app/node_modules.
+RUN mkdir -p /app/migrate-node-modules && \
+    cp -RL /app/apps/web/node_modules/drizzle-orm /app/migrate-node-modules/drizzle-orm && \
+    cp -RL /app/apps/web/node_modules/mysql2 /app/migrate-node-modules/mysql2
+
 # -----------------------------------------------------------------------------
 # Stage 2: Builder
 # Build the Next.js application with standalone output using Turborepo
@@ -115,8 +121,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/docker/migrate.mjs ./docker/migra
 COPY --from=builder --chown=nextjs:nodejs /app/packages/db/src/migrations ./migrations
 
 # Copy node_modules required by migrate.mjs (not included in standalone output)
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/drizzle-orm ./node_modules/drizzle-orm
-COPY --from=deps --chown=nextjs:nodejs /app/node_modules/mysql2 ./node_modules/mysql2
+COPY --from=deps --chown=nextjs:nodejs /app/migrate-node-modules/drizzle-orm ./node_modules/drizzle-orm
+COPY --from=deps --chown=nextjs:nodejs /app/migrate-node-modules/mysql2 ./node_modules/mysql2
 
 # Copy and prepare entrypoint script
 COPY --chown=nextjs:nodejs docker/entrypoint.sh ./docker/entrypoint.sh
