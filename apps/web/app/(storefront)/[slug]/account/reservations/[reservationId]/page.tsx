@@ -76,7 +76,7 @@ export default async function ReservationDetailPage({
   const statusConfig: Record<ReservationStatus, {
     label: string
     description: string
-    variant: 'secondary' | 'default' | 'outline' | 'destructive'
+    variant: 'secondary' | 'default' | 'outline' | 'error'
     icon: typeof Clock
     color: string
     bgColor: string
@@ -121,7 +121,7 @@ export default async function ReservationDetailPage({
     cancelled: {
       label: t('status.cancelled'),
       description: t('status.cancelledDescription'),
-      variant: 'destructive',
+      variant: 'error',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-100 dark:bg-red-950/50',
@@ -130,7 +130,7 @@ export default async function ReservationDetailPage({
     rejected: {
       label: t('status.rejected'),
       description: t('status.rejectedDescription'),
-      variant: 'destructive',
+      variant: 'error',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-100 dark:bg-red-950/50',

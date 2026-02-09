@@ -197,7 +197,8 @@ export function CalendarView({
   const currentPeriod = viewMode === 'calendar' ? calendarPeriod : productsPeriod
 
   // Handle period change
-  const handlePeriodChange = (value: string) => {
+  const handlePeriodChange = (value: string | null) => {
+    if (value === null) return
     if (viewMode === 'calendar') {
       setCalendarPeriod(value as CalendarPeriod)
     } else {
@@ -281,7 +282,7 @@ export function CalendarView({
               {/* Right side: Product filter */}
               <Select
                 value={selectedProductId}
-                onValueChange={setSelectedProductId}
+                onValueChange={(value) => { if (value !== null) setSelectedProductId(value) }}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t('filterByProduct')} />

@@ -521,7 +521,7 @@ export function EditReservationForm({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -712,7 +712,7 @@ export function EditReservationForm({
                         {tForm('customItem.button')}
                       </Button>
                       {availableToAdd.length > 0 && (
-                        <Select onValueChange={handleAddProduct}>
+                        <Select onValueChange={(value) => { if (value !== null) handleAddProduct(value as string) }}>
                           <SelectTrigger className="w-[160px] h-9">
                             <Plus className="h-4 w-4 mr-2" />
                             <SelectValue placeholder={t('edit.addItem')} />

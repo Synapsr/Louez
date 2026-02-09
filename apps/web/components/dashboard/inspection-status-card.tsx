@@ -78,7 +78,7 @@ function getStatusConfig(status: InspectionStatus | null, hasDamage?: boolean) {
           icon: AlertCircle,
           color: 'text-red-600 dark:text-red-400',
           bgColor: 'bg-red-50 dark:bg-red-950/30',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
         }
       }
       return {
@@ -93,7 +93,7 @@ function getStatusConfig(status: InspectionStatus | null, hasDamage?: boolean) {
           icon: AlertCircle,
           color: 'text-red-600 dark:text-red-400',
           bgColor: 'bg-red-50 dark:bg-red-950/30',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
         }
       }
       return {

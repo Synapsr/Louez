@@ -131,7 +131,7 @@ function CheckoutForm({
 
       {/* Error message */}
       {errorMessage && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
@@ -227,7 +227,7 @@ export function DepositForm(props: DepositFormProps) {
     return (
       <Card>
         <CardContent className="py-8">
-          <Alert variant="destructive">
+          <Alert variant="error">
             <AlertDescription>
               {error === 'deposit_already_authorized'
                 ? t('errors.alreadyAuthorized')
@@ -259,7 +259,7 @@ export function DepositForm(props: DepositFormProps) {
     return (
       <Card>
         <CardContent className="py-8">
-          <Alert variant="destructive">
+          <Alert variant="error">
             <AlertDescription>
               {t('paymentInitError')}
             </AlertDescription>

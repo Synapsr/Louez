@@ -22,14 +22,12 @@ export function SuccessToast() {
           title: t('successToast.payment'),
           description: t('successToast.paymentDescription'),
           type: 'success',
-          duration: 5000,
         })
       } else if (successType === 'deposit') {
         toastManager.add({
           title: t('successToast.deposit'),
           description: t('successToast.depositDescription'),
           type: 'success',
-          duration: 5000,
         })
       }
 

@@ -206,13 +206,15 @@ function ProductGroup({
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       {/* Product header row */}
       <div className="flex border-b bg-muted/20">
-        <CollapsibleTrigger render={<button
+        <CollapsibleTrigger
+          render={<button
             className={cn(
               'sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r bg-muted/30 px-4 text-left',
               'hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset'
             )}
             style={{ width: PRODUCT_COLUMN_WIDTH, height: PRODUCT_HEADER_HEIGHT }}
-          />}>
+          />}
+        >
             {isExpanded ? (
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             ) : (
@@ -225,7 +227,6 @@ function ProductGroup({
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               {t('productsView.units', { count: totalUnits })}
             </span>
-          </button>
         </CollapsibleTrigger>
 
         {/* Background grid for header */}

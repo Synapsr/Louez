@@ -223,7 +223,7 @@ export function DatePickerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent variant="storefront" className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('modifyDates')}</DialogTitle>
         </DialogHeader>

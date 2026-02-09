@@ -36,13 +36,13 @@ interface CustomerPageProps {
   params: Promise<{ id: string }>
 }
 
-const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariants: Record<string, 'default' | 'secondary' | 'error' | 'outline'> = {
   pending: 'outline',
   confirmed: 'default',
   ongoing: 'default',
   completed: 'secondary',
-  cancelled: 'destructive',
-  rejected: 'destructive',
+  cancelled: 'error',
+  rejected: 'error',
 }
 
 export default async function CustomerPage({ params }: CustomerPageProps) {

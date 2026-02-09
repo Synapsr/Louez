@@ -380,7 +380,7 @@ export default function OnboardingStorePage() {
                       <FormLabel>{t('country')}</FormLabel>
                       <Select
                         value={field.value}
-                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                        onValueChange={(value) => { if (value !== null) handleCountryChange(value, field.onChange) }}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -406,7 +406,7 @@ export default function OnboardingStorePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('currency')}</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value} onValueChange={(value) => { if (value !== null) field.onChange(value) }}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder={t('currencyPlaceholder')} />

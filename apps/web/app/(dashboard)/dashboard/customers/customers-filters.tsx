@@ -36,7 +36,8 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     router.push(`?${params.toString()}`)
   }, 300)
 
-  const handleSortChange = (value: string) => {
+  const handleSortChange = (value: string | null) => {
+    if (value === null) return
     const params = new URLSearchParams(searchParams)
     if (value && value !== 'recent') {
       params.set('sort', value)
@@ -46,7 +47,8 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     router.push(`?${params.toString()}`)
   }
 
-  const handleTypeChange = (value: string) => {
+  const handleTypeChange = (value: string | null) => {
+    if (value === null) return
     const params = new URLSearchParams(searchParams)
     if (value && value !== 'all') {
       params.set('type', value)

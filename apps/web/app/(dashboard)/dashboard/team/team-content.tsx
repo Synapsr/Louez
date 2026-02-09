@@ -81,7 +81,7 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
         const errorKey = result.error.startsWith('dashboard.') || result.error.startsWith('errors.')
           ? result.error
           : `errors.${result.error}`
-        toastManager.add({ title: t(errorKey.replace('dashboard.team.', '', type: 'error' })) || tErrors('generic'))
+        toastManager.add({ title: t(errorKey.replace('dashboard.team.', '')) || tErrors('generic'), type: 'error' })
       } else {
         if (result.type === 'invited') {
           toastManager.add({ title: t('invitationSent'), type: 'success' })
@@ -98,7 +98,7 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
       const result = await removeMember(memberId)
 
       if (result.error) {
-        toastManager.add({ title: t(result.error.replace('dashboard.team.', '', type: 'error' })) || tErrors('generic'))
+        toastManager.add({ title: t(result.error.replace('dashboard.team.', '')) || tErrors('generic'), type: 'error' })
       } else {
         toastManager.add({ title: t('memberRemoved'), type: 'success' })
       }

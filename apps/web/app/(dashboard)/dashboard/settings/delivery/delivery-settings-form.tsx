@@ -242,7 +242,7 @@ export function DeliverySettingsForm({
           <CardContent className="space-y-6">
             {/* Warning if no coordinates */}
             {!hasCoordinates && (
-              <Alert variant="destructive">
+              <Alert variant="error">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>{t('noCoordinatesWarning')}</span>
@@ -661,7 +661,7 @@ export function DeliverySettingsForm({
                 </div>
                 <Slider
                   value={[simDistance]}
-                  onValueChange={([value]) => setSimDistance(value)}
+                  onValueChange={(value) => setSimDistance(Array.isArray(value) ? value[0] : value)}
                   min={1}
                   max={maximumDistance || 100}
                   step={1}
@@ -684,7 +684,7 @@ export function DeliverySettingsForm({
                   </div>
                   <Slider
                     value={[simOrderTotal]}
-                    onValueChange={([value]) => setSimOrderTotal(value)}
+                    onValueChange={(value) => setSimOrderTotal(Array.isArray(value) ? value[0] : value)}
                     min={0}
                     max={Math.max(freeDeliveryThreshold * 1.5, 500)}
                     step={10}

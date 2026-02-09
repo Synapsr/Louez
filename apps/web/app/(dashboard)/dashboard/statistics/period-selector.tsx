@@ -20,7 +20,8 @@ export function PeriodSelector() {
 
   const currentPeriod = (searchParams.get('period') as Period) || 'semester'
 
-  const handlePeriodChange = (value: Period) => {
+  const handlePeriodChange = (value: string | null) => {
+    if (value === null) return
     const params = new URLSearchParams(searchParams.toString())
     params.set('period', value)
     router.push(`/dashboard/statistics?${params.toString()}`)

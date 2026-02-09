@@ -60,7 +60,7 @@ export function PeriodFilter({ className }: PeriodFilterProps) {
 
       {/* Select (mobile) */}
       <div className="sm:hidden">
-        <Select value={currentPeriod} onValueChange={(v) => handlePeriodChange(v as Period)}>
+        <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[120px]">
             <SelectValue />
           </SelectTrigger>

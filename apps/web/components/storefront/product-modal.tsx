@@ -275,7 +275,7 @@ export function ProductModal({
   return (
   <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent variant="storefront" className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogHeader className="sr-only">
           <DialogTitle>{product.name}</DialogTitle>
         </DialogHeader>
@@ -421,7 +421,7 @@ export function ProductModal({
                   <h2 className="text-xl md:text-2xl font-semibold leading-tight">{product.name}</h2>
                 </div>
                 <Badge
-                  variant={isUnavailable ? 'destructive' : 'secondary'}
+                  variant={isUnavailable ? 'error' : 'secondary'}
                   className="shrink-0 text-xs"
                 >
                   {availableQuantity} {t('stock', { count: availableQuantity }).replace(/^\d+\s*/, '')}

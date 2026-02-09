@@ -205,7 +205,7 @@ export function PaymentFlowExplanation({
               </CardTitle>
               <CardDescription>{t('subtitle')}</CardDescription>
             </div>
-            <Badge variant="destructive" className="gap-1">
+            <Badge variant="error" className="gap-1">
               <AlertCircle className="h-3 w-3" />
               {t('modes.configRequired')}
             </Badge>

@@ -196,7 +196,7 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.recorded'), type: 'success' })
         setPaymentModalOpen(false)
@@ -231,7 +231,7 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
         setDepositReturnModalOpen(false)
@@ -266,7 +266,7 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
         setDamageModalOpen(false)
@@ -288,7 +288,7 @@ export function PaymentSummary({
       const result = await deletePayment(paymentToDelete.id)
 
       if (result.error) {
-        toastManager.add({ title: tErrors(result.error, type: 'error' }))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('payment.deleted'), type: 'success' })
         setDeleteDialogOpen(false)
@@ -377,7 +377,7 @@ export function PaymentSummary({
               </Badge>
             ) : (
               <div className="flex items-center gap-1.5">
-                <Badge variant="destructive" className="font-mono text-xs">
+                <Badge variant="error" className="font-mono text-xs">
                   -{rentalRemaining.toFixed(2)}{currencySymbol}
                 </Badge>
                 <Tooltip>
@@ -422,7 +422,7 @@ export function PaymentSummary({
               <div className="flex items-center gap-1.5">
                 {!isDepositFullyCollected ? (
                   <>
-                    <Badge variant="destructive" className="font-mono text-xs">
+                    <Badge variant="error" className="font-mono text-xs">
                       -{depositRemaining.toFixed(2)}{currencySymbol}
                     </Badge>
                     <Tooltip>
@@ -657,7 +657,7 @@ export function PaymentSummary({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
-              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+              <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -700,7 +700,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -799,7 +799,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -873,7 +873,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -404,9 +404,9 @@ export function ReviewBoosterForm({
                       </span>
                       <Select
                         value={settings.emailDelayHours.toString()}
-                        onValueChange={(value) =>
-                          updateSetting('emailDelayHours', parseInt(value))
-                        }
+                        onValueChange={(value) => {
+                          if (value !== null) updateSetting('emailDelayHours', parseInt(value))
+                        }}
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">
@@ -474,9 +474,9 @@ export function ReviewBoosterForm({
                       </span>
                       <Select
                         value={settings.smsDelayHours.toString()}
-                        onValueChange={(value) =>
-                          updateSetting('smsDelayHours', parseInt(value))
-                        }
+                        onValueChange={(value) => {
+                          if (value !== null) updateSetting('smsDelayHours', parseInt(value))
+                        }}
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">

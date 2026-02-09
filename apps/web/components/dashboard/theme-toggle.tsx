@@ -44,7 +44,7 @@ export function ThemeToggle() {
   }
 
   return (
-    <TooltipProvider delayDuration={0}>
+    <TooltipProvider>
       <div className="flex items-center justify-center gap-1 rounded-lg border bg-muted/50 p-1">
         {themes.map((item) => {
           const Icon = item.icon

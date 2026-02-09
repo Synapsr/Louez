@@ -663,7 +663,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <FormItem>
                     <FormLabel>{t('category')}</FormLabel>
                     <div className="flex gap-2">
-                      <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger className="flex-1">
                             <SelectValue placeholder={t('selectCategory')} />
@@ -740,7 +740,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <FormItem>
                       <FormLabel>{t('pricingModeLabel')}</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(value === 'inherit' ? null : value)}
+                        onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
                         value={field.value || 'inherit'}
                       >
                         <FormControl>
@@ -1153,7 +1153,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <FormItem>
                       <FormLabel>{t('category')}</FormLabel>
                       <div className="flex gap-2">
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                        <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder={t('selectCategory')} />
@@ -1235,7 +1235,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         <FormItem>
                           <FormLabel>{t('pricingModeLabel')}</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(value === 'inherit' ? null : value)}
+                            onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
                             value={field.value || 'inherit'}
                           >
                             <FormControl>

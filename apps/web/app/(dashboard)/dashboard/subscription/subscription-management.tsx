@@ -221,7 +221,7 @@ export function SubscriptionManagement({
       case 'trialing':
         return <Badge variant="secondary">{t('status.trialing')}</Badge>
       case 'past_due':
-        return <Badge variant="destructive">{t('status.pastDue')}</Badge>
+        return <Badge variant="error">{t('status.pastDue')}</Badge>
       case 'cancelled':
         return <Badge variant="outline">{t('status.cancelled')}</Badge>
       default:
@@ -319,7 +319,7 @@ export function SubscriptionManagement({
     <div className="space-y-8">
       {/* Alerts */}
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{tCommon('error')}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
@@ -335,7 +335,7 @@ export function SubscriptionManagement({
       )}
 
       {showCanceled && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>{t('alerts.canceledTitle')}</AlertTitle>
           <AlertDescription>{t('alerts.canceledDescription')}</AlertDescription>
@@ -343,7 +343,7 @@ export function SubscriptionManagement({
       )}
 
       {subscription?.cancelAtPeriodEnd && subscription.currentPeriodEnd && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             {t('alerts.cancellingAt', {
@@ -364,7 +364,7 @@ export function SubscriptionManagement({
       )}
 
       {subscription?.status === 'past_due' && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             {t('alerts.pastDue')}

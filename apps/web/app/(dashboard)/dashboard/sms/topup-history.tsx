@@ -63,7 +63,7 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
         )
       case 'failed':
         return (
-          <Badge variant="destructive">
+          <Badge variant="error">
             <XCircle className="mr-1 h-3 w-3" />
             {t('status.failed')}
           </Badge>

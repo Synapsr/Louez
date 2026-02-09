@@ -107,8 +107,8 @@ export function DateTimePicker({
     setDate(selectedDate)
   }
 
-  const handleTimeChange = (time: string) => {
-    if (!date) return
+  const handleTimeChange = (time: string | null) => {
+    if (!date || time === null) return
 
     const [hours, minutes] = time.split(':').map(Number)
     const newDate = new Date(date)

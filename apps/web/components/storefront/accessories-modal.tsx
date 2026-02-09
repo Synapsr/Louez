@@ -137,7 +137,7 @@ export function AccessoriesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent variant="storefront" className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
         {/* Header - fixed */}
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">

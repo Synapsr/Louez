@@ -42,7 +42,7 @@ export function ReservationNotes({
     try {
       const result = await updateReservationNotes(reservationId, notes)
       if (result.error) {
-        toastManager.add({ title: t(result.error, type: 'error' }))
+        toastManager.add({ title: t(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('notes.saved'), type: 'success' })
         setHasChanges(false)

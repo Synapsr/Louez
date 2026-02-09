@@ -241,7 +241,8 @@ export function RentalContent({
     setIsDateModalOpen(true)
   }
 
-  const handleCategoryChange = (value: string) => {
+  const handleCategoryChange = (value: string | null) => {
+    if (value === null) return
     setSelectedCategory(value)
     const params = new URLSearchParams(searchParams.toString())
     if (value === 'all') {
@@ -394,7 +395,7 @@ export function RentalContent({
 
           {/* Business Hours Warning */}
           {businessHoursValidation && !businessHoursValidation.valid && (
-            <Alert variant="destructive" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
+            <Alert variant="error" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
               <AlertTriangle className="h-4 w-4 !text-orange-600 dark:!text-orange-400" />
               <AlertTitle className="text-orange-900 dark:text-orange-100">
                 {t('businessHoursWarning.title')}

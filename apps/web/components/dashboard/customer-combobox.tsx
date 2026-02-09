@@ -105,11 +105,11 @@ export function CustomerCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput
             placeholder={t('placeholder')}
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <CommandList>
             <CommandEmpty>{t('noResults')}</CommandEmpty>

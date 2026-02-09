@@ -145,7 +145,7 @@ export function AddToCartForm({
     if (minRentalHours > 0) {
       const check = validateMinRentalDuration(startDate, endDate, minRentalHours)
       if (!check.valid) {
-        toastManager.add({ title: t('minDurationError', { hours: minRentalHours }, type: 'error' }))
+        toastManager.add({ title: t('minDurationError', { hours: minRentalHours }), type: 'error' })
         return
       }
     }
@@ -178,10 +178,6 @@ export function AddToCartForm({
       toastManager.add({
         title: t('addedToCart', { name: productName }),
         type: 'success',
-        action: {
-          label: t('goToCheckout'),
-          onClick: () => router.push(getUrl('/checkout')),
-        },
       })
     }
   }
