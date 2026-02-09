@@ -3,7 +3,7 @@ import { getMessages } from 'next-intl/server'
 import { redirect } from 'next/navigation'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { Toaster } from '@louez/ui'
+import { ToastProvider } from '@louez/ui'
 import { ThemeProvider } from '@/components/theme-provider'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { GleapProvider } from '@/components/dashboard/gleap-provider'
@@ -61,10 +61,11 @@ export default async function DashboardLayout({
                 : undefined
             }
           >
-            <div className="min-h-screen bg-background">
-              {children}
-            </div>
-            <Toaster />
+            <ToastProvider>
+              <div className="min-h-screen bg-background">
+                {children}
+              </div>
+            </ToastProvider>
           </GleapProvider>
         </ThemeProvider>
       </PostHogProvider>

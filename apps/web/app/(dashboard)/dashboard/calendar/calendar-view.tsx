@@ -239,11 +239,9 @@ export function CalendarView({
                   <Download className="h-4 w-4" />
                 </Button>
 
-                <Button asChild>
-                  <Link href="/dashboard/reservations/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('new')}
-                  </Link>
+                <Button render={<Link href="/dashboard/reservations/new" />}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('new')}
                 </Button>
               </div>
             </div>

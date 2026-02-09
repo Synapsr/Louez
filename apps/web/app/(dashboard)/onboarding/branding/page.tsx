@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Palette, Loader2, Upload, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -69,12 +69,12 @@ export default function OnboardingBrandingPage() {
       if (!file) return
 
       if (!file.type.startsWith('image/')) {
-        toast.error(t('logoError'))
+        toastManager.add({ title: t('logoError'), type: 'error' })
         return
       }
 
       if (file.size > 2 * 1024 * 1024) {
-        toast.error(t('logoSizeError'))
+        toastManager.add({ title: t('logoSizeError'), type: 'error' })
         return
       }
 
@@ -106,7 +106,7 @@ export default function OnboardingBrandingPage() {
           setLogoPreview(url)
         } catch (error) {
           console.error('Logo upload error:', error)
-          toast.error(t('logoUploadError'))
+          toastManager.add({ title: t('logoUploadError'), type: 'error' })
           setLogoPreview(null)
           form.setValue('logoUrl', '')
         } finally {
@@ -128,12 +128,12 @@ export default function OnboardingBrandingPage() {
     try {
       const result = await updateBranding(data)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
         return
       }
       router.push('/onboarding/stripe')
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

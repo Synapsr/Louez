@@ -21,16 +21,18 @@ import {
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { cn } from '@louez/utils'
-import { Button } from './button'
-import { Toggle } from './toggle'
-import { Popover, PopoverContent, PopoverTrigger } from './popover'
 import {
+  Button,
+  Toggle,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './dropdown-menu'
-import { Input } from './input'
+  Input,
+} from '@louez/ui'
 import { useState, useCallback, useEffect } from 'react'
 
 interface RichTextEditorProps {
@@ -138,14 +140,13 @@ export function RichTextEditor({
       <div className="flex flex-wrap items-center gap-1 border-b p-1">
         {/* Heading dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
+          <DropdownMenuTrigger render={<Button
               type="button"
               variant="ghost"
               size="sm"
               className="h-8 px-2 text-xs"
               disabled={disabled}
-            >
+            />}>
               {editor.isActive('heading', { level: 1 })
                 ? 'H1'
                 : editor.isActive('heading', { level: 2 })
@@ -153,7 +154,6 @@ export function RichTextEditor({
                   : editor.isActive('heading', { level: 3 })
                     ? 'H3'
                     : 'Texte'}
-            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
             <DropdownMenuItem
@@ -257,15 +257,13 @@ export function RichTextEditor({
         <div className="bg-border mx-1 h-6 w-px" />
 
         <Popover open={linkPopoverOpen} onOpenChange={setLinkPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Toggle
+          <PopoverTrigger render={<Toggle
               size="sm"
               pressed={editor.isActive('link')}
               disabled={disabled}
               aria-label={t('addLink')}
-            >
+            />}>
               <LinkIcon className="h-4 w-4" />
-            </Toggle>
           </PopoverTrigger>
           <PopoverContent className="w-80" align="start">
             <div className="flex gap-2">

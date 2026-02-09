@@ -367,18 +367,16 @@ export function HeroDatePicker({
               </label>
               <div className="flex rounded-xl border bg-background overflow-hidden h-12">
                 <Popover open={startDateOpen} onOpenChange={handleStartDateOpenChange}>
-                  <PopoverTrigger asChild>
-                    <button
+                  <PopoverTrigger render={<button
                       className={cn(
                         "flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0",
                         !startDate && "text-muted-foreground"
                       )}
-                    >
+                    />}>
                       <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                       <span className="font-medium text-sm truncate">
                         {startDate ? format(startDate, 'd MMM', { locale: fr }) : t('startDate')}
                       </span>
-                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
@@ -395,11 +393,9 @@ export function HeroDatePicker({
                 <div className="w-px bg-border my-2" />
 
                 <Popover open={startTimeOpen} onOpenChange={handleStartTimeOpenChange}>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0">
+                  <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium text-sm">{startTime}</span>
-                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-40 p-0" align="start">
                     <TimeSelector value={startTime} onSelect={handleStartTimeSelect} slots={startTimeSlots} />
@@ -415,18 +411,16 @@ export function HeroDatePicker({
               </label>
               <div className="flex rounded-xl border bg-background overflow-hidden h-12">
                 <Popover open={endDateOpen} onOpenChange={handleEndDateOpenChange}>
-                  <PopoverTrigger asChild>
-                    <button
+                  <PopoverTrigger render={<button
                       className={cn(
                         "flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0",
                         !endDate && "text-muted-foreground"
                       )}
-                    >
+                    />}>
                       <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                       <span className="font-medium text-sm truncate">
                         {endDate ? format(endDate, 'd MMM', { locale: fr }) : t('endDate')}
                       </span>
-                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
@@ -444,11 +438,9 @@ export function HeroDatePicker({
                 <div className="w-px bg-border my-2" />
 
                 <Popover open={endTimeOpen} onOpenChange={handleEndTimeOpenChange}>
-                  <PopoverTrigger asChild>
-                    <button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0">
+                  <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium text-sm">{endTime}</span>
-                    </button>
                   </PopoverTrigger>
                   <PopoverContent className="w-40 p-0" align="end">
                     <TimeSelector

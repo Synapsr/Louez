@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Minus, Plus, ShoppingCart, ImageIcon, ChevronLeft, ChevronRight, TrendingDown, Play } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import {
@@ -187,7 +187,7 @@ export function ProductModal({
           price: product.price,
         },
       })
-      toast.success(tProduct('addedToCart', { name: product.name }))
+      toastManager.add({ title: tProduct('addedToCart', { name: product.name }), type: 'success' })
       onClose()
     } else {
       addItem(
@@ -230,7 +230,7 @@ export function ProductModal({
         onClose()
         setAccessoriesModalOpen(true)
       } else {
-        toast.success(tProduct('addedToCart', { name: product.name }))
+        toastManager.add({ title: tProduct('addedToCart', { name: product.name }), type: 'success' })
         onClose()
       }
     }

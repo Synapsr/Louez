@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Camera, X, Plus, Loader2, ImageIcon, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
 import {
@@ -104,13 +104,13 @@ export function PhotoCapture({
       for (const file of filesToProcess) {
         // Validate file type
         if (!file.type.startsWith('image/')) {
-          toast.error(t('wizard.photoInvalidType'))
+          toastManager.add({ title: t('wizard.photoInvalidType'), type: 'error' })
           continue
         }
 
         // Validate file size (max 20MB before compression)
         if (file.size > 20 * 1024 * 1024) {
-          toast.error(t('wizard.photoTooLarge'))
+          toastManager.add({ title: t('wizard.photoTooLarge'), type: 'error' })
           continue
         }
 
@@ -124,7 +124,7 @@ export function PhotoCapture({
             isUploading: false,
           })
         } catch {
-          toast.error(t('wizard.photoError'))
+          toastManager.add({ title: t('wizard.photoError'), type: 'error' })
         }
       }
 

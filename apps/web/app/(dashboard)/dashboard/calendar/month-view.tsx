@@ -190,8 +190,7 @@ function SpanningReservationBar({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Link
+      <TooltipTrigger render={<Link
           href={`/dashboard/reservations/${reservation.id}`}
           className={cn(
             'absolute flex items-center gap-1.5 px-2 text-xs font-medium text-white transition-all',

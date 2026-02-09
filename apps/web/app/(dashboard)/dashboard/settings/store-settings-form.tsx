@@ -9,7 +9,7 @@ import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { ExternalLink, Pencil, CreditCard, ArrowRight, Info } from 'lucide-react'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { env } from '@/env'
 
 import { Button } from '@louez/ui'
@@ -196,7 +196,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
         form.setError('root', { message: result.error })
         return
       }
-      toast.success(t('settingsSaved'))
+      toastManager.add({ title: t('settingsSaved'), type: 'success' })
       router.refresh()
     })
   }
@@ -728,9 +728,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                           <FormLabel>{t('reservationSettings.minRentalHours')}</FormLabel>
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
+                              <TooltipTrigger render={<Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
                               <TooltipContent side="top" className="max-w-xs">
                                 <p>{t('reservationSettings.minRentalHoursHelp')}</p>
                               </TooltipContent>
@@ -792,9 +790,7 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
                           <FormLabel>{t('reservationSettings.leadTime')}</FormLabel>
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
+                              <TooltipTrigger render={<Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />} />
                               <TooltipContent side="top" className="max-w-xs">
                                 <p>{t('reservationSettings.leadTimeHelp')}</p>
                               </TooltipContent>
@@ -906,11 +902,9 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </p>
           </div>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
-            <Button asChild className="w-full">
-              <Link href="/dashboard/settings/payments">
+            <Button render={<Link href="/dashboard/settings/payments" />} className="w-full">
                 {t('reservationSettings.stripeRequired.configureStripe')}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
             </Button>
             <Button
               variant="ghost"

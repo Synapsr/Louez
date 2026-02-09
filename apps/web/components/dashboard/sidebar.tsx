@@ -201,11 +201,10 @@ function UserMenu({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
+      <DropdownMenuTrigger render={<Button
           variant="ghost"
           className="w-full justify-start gap-3 px-3 py-6 hover:bg-accent/50 transition-colors duration-200"
-        >
+        />}>
           <Avatar className="h-9 w-9 ring-2 ring-border">
             <AvatarImage src={userImage || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
@@ -215,13 +214,10 @@ function UserMenu({
           <div className="flex flex-col items-start min-w-0">
             <span className="truncate text-sm font-medium">{userEmail}</span>
           </div>
-        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem asChild>
-          <Link href="/dashboard/account" className="cursor-pointer">
+        <DropdownMenuItem render={<Link href="/dashboard/account" className="cursor-pointer" />}>
             {t('title')}
-          </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -340,11 +336,9 @@ export function Sidebar({ stores, currentStoreId, storeSlug, userEmail, userImag
           {/* Pending Reservations Alert + New Reservation Button */}
           <div className="p-3 space-y-2">
             <PendingReservationsAlert />
-            <Button asChild className="w-full">
-              <Link href="/dashboard/reservations/new">
+            <Button render={<Link href="/dashboard/reservations/new" />} className="w-full">
                 <Plus className="mr-2 h-4 w-4" />
                 <NewReservationLabel />
-              </Link>
             </Button>
           </div>
           <Separator className="opacity-50" />
@@ -373,11 +367,9 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b bg-card/80 backdrop-blur-sm px-4 lg:hidden">
       <div className="flex items-center gap-3">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="shrink-0">
+          <SheetTrigger render={<Button variant="ghost" size="icon" className="shrink-0" />}>
               <Menu className="h-5 w-5" />
               <span className="sr-only">Menu</span>
-            </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0">
             <div className="flex h-14 items-center justify-between border-b px-4">
@@ -401,11 +393,9 @@ export function MobileHeader({ stores, currentStoreId, storeSlug, userEmail, use
                 {/* Pending Reservations Alert + New Reservation Button */}
                 <div className="p-3 space-y-2">
                   <PendingReservationsAlert onNavigate={() => setOpen(false)} />
-                  <Button asChild className="w-full" onClick={() => setOpen(false)}>
-                    <Link href="/dashboard/reservations/new">
+                  <Button render={<Link href="/dashboard/reservations/new" />} className="w-full" onClick={() => setOpen(false)}>
                       <Plus className="mr-2 h-4 w-4" />
                       <NewReservationLabel />
-                    </Link>
                   </Button>
                 </div>
                 <Separator className="opacity-50" />

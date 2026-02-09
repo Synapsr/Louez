@@ -202,10 +202,8 @@ export function TimelineView({
                 >
                   <Package className="h-4 w-4 text-muted-foreground" />
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="truncate text-sm font-medium">
-                        {product.name}
-                      </span>
+                    <TooltipTrigger render={<span className="truncate text-sm font-medium" />}>
+                      {product.name}
                     </TooltipTrigger>
                     <TooltipContent side="right">
                       <div>

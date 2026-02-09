@@ -14,7 +14,7 @@ import {
   EyeOff,
   Package,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -35,8 +35,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -110,7 +109,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await updateProductStatus(product.id, newStatus)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
         toast.success(
           newStatus === 'active'
@@ -119,7 +118,7 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
         )
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -130,12 +129,12 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await updateProductStatus(product.id, 'archived')
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('productArchived'))
+        toastManager.add({ title: t('productArchived'), type: 'success' })
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -146,12 +145,12 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await duplicateProduct(product.id)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('productDuplicated'))
+        toastManager.add({ title: t('productDuplicated'), type: 'success' })
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -164,12 +163,12 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
     try {
       const result = await deleteProduct(productToDelete.id)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('productDeleted'))
+        toastManager.add({ title: t('productDeleted'), type: 'success' })
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
       setDeleteDialogOpen(false)
@@ -185,8 +184,8 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
         <p className="mt-2 text-sm text-muted-foreground">
           {t('noProductsDescription')}
         </p>
-        <Button asChild className="mt-4">
-          <Link href="/dashboard/products/new">{t('addProduct')}</Link>
+        <Button render={<Link href="/dashboard/products/new" />} className="mt-4">
+          {t('addProduct')}
         </Button>
       </div>
     )
@@ -243,22 +242,18 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
+                      <DropdownMenuTrigger render={<Button
                           variant="ghost"
                           size="icon"
                           disabled={isLoading}
-                        >
+                        />}>
                           <MoreHorizontal className="h-4 w-4" />
                           <span className="sr-only">{tCommon('actions')}</span>
-                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/products/${product.id}`}>
+                        <DropdownMenuItem render={<Link href={`/dashboard/products/${product.id}`} />}>
                             <Pencil className="mr-2 h-4 w-4" />
                             {tCommon('edit')}
-                          </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleDuplicate(product)}
@@ -320,13 +315,13 @@ export function ProductsTable({ products, currency = 'EUR' }: ProductsTableProps
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {tCommon('delete')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

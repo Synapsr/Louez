@@ -14,7 +14,7 @@ import {
   AlertCircle,
   Receipt,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -156,16 +156,16 @@ export function RequestPaymentModal({
       const result = await requestPayment(reservationId, data)
 
       if (result.error) {
-        toast.error(t('error'))
+        toastManager.add({ title: t('error'), type: 'error' })
       } else {
-        toast.success(t('success'))
+        toastManager.add({ title: t('success'), type: 'success' })
         if (result.paymentUrl) {
           setPaymentUrl(result.paymentUrl)
         }
         router.refresh()
       }
     } catch {
-      toast.error(t('error'))
+      toastManager.add({ title: t('error'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -176,10 +176,10 @@ export function RequestPaymentModal({
     try {
       await navigator.clipboard.writeText(paymentUrl)
       setCopied(true)
-      toast.success(t('linkCopied'))
+      toastManager.add({ title: t('linkCopied'), type: 'success' })
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast.error(t('copyFailed'))
+      toastManager.add({ title: t('copyFailed'), type: 'error' })
     }
   }
 

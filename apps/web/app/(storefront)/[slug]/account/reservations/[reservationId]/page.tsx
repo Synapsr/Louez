@@ -183,11 +183,9 @@ export default async function ReservationDetailPage({
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Back Button */}
         <div className="mb-6">
-          <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-            <Link href={`/${slug}/account`}>
+          <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" render={<Link href={`/${slug}/account`} />}>
               <ArrowLeft className="h-4 w-4" />
               {t('backToAccount')}
-            </Link>
           </Button>
         </div>
 
@@ -559,19 +557,15 @@ export default async function ReservationDetailPage({
             </p>
             <div className="flex flex-wrap gap-3">
               {store.email && (
-                <Button variant="outline" size="sm" asChild className="gap-2">
-                  <a href={`mailto:${store.email}`}>
+                <Button variant="outline" size="sm" className="gap-2" render={<a href={`mailto:${store.email}`} />}>
                     <Mail className="h-4 w-4" />
                     {store.email}
-                  </a>
                 </Button>
               )}
               {store.phone && (
-                <Button variant="outline" size="sm" asChild className="gap-2">
-                  <a href={`tel:${store.phone}`}>
+                <Button variant="outline" size="sm" className="gap-2" render={<a href={`tel:${store.phone}`} />}>
                     <Phone className="h-4 w-4" />
                     {store.phone}
-                  </a>
                 </Button>
               )}
             </div>

@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -96,7 +96,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
         form.setError('root', { message: result.error })
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       router.refresh()
     })
   }
@@ -377,11 +377,9 @@ function ClosurePeriodDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addClosure')}
-        </Button>
+      <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
+        <Plus className="mr-2 h-4 w-4" />
+        {t('addClosure')}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

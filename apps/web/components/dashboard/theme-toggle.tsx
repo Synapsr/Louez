@@ -52,8 +52,7 @@ export function ThemeToggle() {
 
           return (
             <Tooltip key={item.value}>
-              <TooltipTrigger asChild>
-                <Button
+              <TooltipTrigger render={<Button
                   variant="ghost"
                   size="icon"
                   className={cn(
@@ -63,10 +62,9 @@ export function ThemeToggle() {
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                   onClick={() => setTheme(item.value)}
-                >
+                />}>
                   <Icon className="h-4 w-4" />
                   <span className="sr-only">{t(item.labelKey)}</span>
-                </Button>
               </TooltipTrigger>
               <TooltipContent side="top" className="text-xs">
                 {t(item.labelKey)}

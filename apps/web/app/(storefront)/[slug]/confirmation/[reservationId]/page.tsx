@@ -284,15 +284,11 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button asChild>
-            <Link href="/account">
+          <Button render={<Link href="/account" />}>
               <User className="mr-2 h-4 w-4" />
               {t('viewMyReservations')}
-            </Link>
           </Button>
-          <Button variant="outline" asChild>
-            <Link href="/">{t('backToStore')}</Link>
-          </Button>
+          <Button variant="outline" render={<Link href="/" />}>{t('backToStore')}</Button>
         </div>
       </div>
     </div>

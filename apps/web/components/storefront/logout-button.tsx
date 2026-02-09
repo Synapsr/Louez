@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { LogOut, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
@@ -26,13 +26,13 @@ export function LogoutButton({ storeSlug }: LogoutButtonProps) {
     try {
       const result = await logout()
       if (result.error) {
-        toast.error(tErrors('logoutError'))
+        toastManager.add({ title: tErrors('logoutError'), type: 'error' })
         return
       }
       router.push(getUrl('/'))
       router.refresh()
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

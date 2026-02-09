@@ -24,7 +24,7 @@ import {
   Truck,
   Store,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations, useLocale } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -304,7 +304,7 @@ export function CheckoutForm({
 
   const onSubmit = async (data: CheckoutFormData) => {
     if (items.length === 0) {
-      toast.error(t('emptyCart'))
+      toastManager.add({ title: t('emptyCart'), type: 'error' })
       return
     }
 
@@ -396,7 +396,7 @@ export function CheckoutForm({
           }
           errorMessage = tErrors(errorKey, params)
         }
-        toast.error(errorMessage)
+        toastManager.add({ title: errorMessage, type: 'error' })
         return
       }
 
@@ -405,11 +405,11 @@ export function CheckoutForm({
       if (reservationMode === 'payment' && result.paymentUrl) {
         window.location.href = result.paymentUrl
       } else {
-        toast.success(t('requestSent'))
+        toastManager.add({ title: t('requestSent'), type: 'success' })
         router.push(getUrl(`/confirmation/${result.reservationId}`))
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsSubmitting(false)
     }
@@ -431,8 +431,8 @@ export function CheckoutForm({
         <ShoppingCart className="h-16 w-16 text-muted-foreground mb-4" />
         <h2 className="text-xl font-semibold mb-2">{t('emptyCart')}</h2>
         <p className="text-muted-foreground mb-6">{t('emptyCartDescription')}</p>
-        <Button asChild>
-          <Link href={getUrl('/catalog')}>{tCart('viewCatalog')}</Link>
+        <Button render={<Link href={getUrl('/catalog')} />}>
+          {tCart('viewCatalog')}
         </Button>
       </div>
     )

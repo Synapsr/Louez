@@ -70,11 +70,9 @@ export default async function LoginPage({ params }: LoginPageProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
         <div className="mb-8">
-          <Button variant="ghost" size="sm" asChild className="gap-2 -ml-2 text-muted-foreground hover:text-foreground">
-            <Link href="/">
+          <Button variant="ghost" size="sm" className="gap-2 -ml-2 text-muted-foreground hover:text-foreground" render={<Link href="/" />}>
               <ArrowLeft className="h-4 w-4" />
               {t('back')}
-            </Link>
           </Button>
         </div>
 

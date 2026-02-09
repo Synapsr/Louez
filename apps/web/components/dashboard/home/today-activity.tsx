@@ -168,11 +168,9 @@ function ActivityCard({
             <CardDescription className="text-sm">{description}</CardDescription>
           </div>
         </div>
-        <Button variant="ghost" size="sm" asChild className="shrink-0 text-muted-foreground hover:text-foreground">
-          <Link href={viewAllHref}>
+        <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground hover:text-foreground" render={<Link href={viewAllHref} />}>
             {t('viewAll')}
             <ArrowRight className="ml-1 h-3 w-3" />
-          </Link>
         </Button>
       </CardHeader>
       <CardContent className="flex-1 pt-0">

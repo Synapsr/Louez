@@ -236,20 +236,18 @@ export function DatePickerModal({
             </label>
             <div className="flex rounded-xl border bg-background overflow-hidden h-12">
               <Popover>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       'flex-1 flex items-center gap-2 px-4 text-left hover:bg-muted/50 transition-colors min-w-0',
                       !startDate && 'text-muted-foreground'
                     )}
-                  >
+                  />}>
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {startDate
                         ? format(startDate, 'EEEE d MMMM yyyy', { locale: fr })
                         : t('startDate')}
                     </span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -266,11 +264,9 @@ export function DatePickerModal({
               <div className="w-px bg-border my-2" />
 
               <Popover>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1.5 px-4 hover:bg-muted/50 transition-colors shrink-0">
+                <PopoverTrigger render={<button className="flex items-center gap-1.5 px-4 hover:bg-muted/50 transition-colors shrink-0" />}>
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium text-sm">{startTime}</span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-40 p-0" align="end">
                   <TimeSelector
@@ -290,20 +286,18 @@ export function DatePickerModal({
             </label>
             <div className="flex rounded-xl border bg-background overflow-hidden h-12">
               <Popover>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       'flex-1 flex items-center gap-2 px-4 text-left hover:bg-muted/50 transition-colors min-w-0',
                       !endDate && 'text-muted-foreground'
                     )}
-                  >
+                  />}>
                     <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
                     <span className="font-medium text-sm truncate">
                       {endDate
                         ? format(endDate, 'EEEE d MMMM yyyy', { locale: fr })
                         : t('endDate')}
                     </span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -322,11 +316,9 @@ export function DatePickerModal({
               <div className="w-px bg-border my-2" />
 
               <Popover>
-                <PopoverTrigger asChild>
-                  <button className="flex items-center gap-1.5 px-4 hover:bg-muted/50 transition-colors shrink-0">
+                <PopoverTrigger render={<button className="flex items-center gap-1.5 px-4 hover:bg-muted/50 transition-colors shrink-0" />}>
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium text-sm">{endTime}</span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-40 p-0" align="end">
                   <TimeSelector

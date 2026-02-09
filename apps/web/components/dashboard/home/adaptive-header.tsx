@@ -61,32 +61,26 @@ export function AdaptiveHeader({
   const getPrimaryCTA = () => {
     if (storeState === 'virgin') {
       return (
-        <Button asChild>
-          <Link href="/dashboard/products/new">
+        <Button render={<Link href="/dashboard/products/new" />}>
             <Package className="mr-2 h-4 w-4" />
             {t('header.cta.addFirstProduct')}
-          </Link>
         </Button>
       )
     }
 
     if (metrics.pendingReservations > 0) {
       return (
-        <Button asChild>
-          <Link href="/dashboard/reservations?status=pending">
+        <Button render={<Link href="/dashboard/reservations?status=pending" />}>
             {t('header.cta.handleRequests', { count: metrics.pendingReservations })}
             <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
         </Button>
       )
     }
 
     return (
-      <Button asChild>
-        <Link href="/dashboard/reservations/new">
+      <Button render={<Link href="/dashboard/reservations/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           {t('header.cta.addReservation')}
-        </Link>
       </Button>
     )
   }

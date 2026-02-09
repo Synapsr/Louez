@@ -14,7 +14,7 @@ import {
   Check,
   Banknote,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -37,8 +37,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -149,13 +148,13 @@ export function DepositSection({
     try {
       const result = await createDepositHold(reservationId)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('holdCreated'))
+        toastManager.add({ title: t('holdCreated'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -164,17 +163,17 @@ export function DepositSection({
   const handleCapture = async () => {
     const captureAmountNum = parseFloat(captureAmount)
     if (isNaN(captureAmountNum) || captureAmountNum <= 0) {
-      toast.error(t('invalidCaptureAmount'))
+      toastManager.add({ title: t('invalidCaptureAmount'), type: 'error' })
       return
     }
 
     if (captureAmountNum > amount) {
-      toast.error(t('captureExceedsDeposit'))
+      toastManager.add({ title: t('captureExceedsDeposit'), type: 'error' })
       return
     }
 
     if (!captureReason.trim()) {
-      toast.error(t('reasonRequired'))
+      toastManager.add({ title: t('reasonRequired'), type: 'error' })
       return
     }
 
@@ -185,16 +184,16 @@ export function DepositSection({
         reason: captureReason,
       })
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('captured'))
+        toastManager.add({ title: t('captured'), type: 'success' })
         setCaptureModalOpen(false)
         setCaptureAmount('')
         setCaptureReason('')
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -205,14 +204,14 @@ export function DepositSection({
     try {
       const result = await releaseDepositHold(reservationId)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('released'))
+        toastManager.add({ title: t('released'), type: 'success' })
         setReleaseDialogOpen(false)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -591,17 +590,17 @@ export function DepositSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>
+            <AlertDialogClose render={<Button variant="outline" />} disabled={isLoading}>
               {tCommon('cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </AlertDialogClose>
+            <AlertDialogClose
+              render={<Button className="bg-emerald-600 text-white hover:bg-emerald-700" />}
               onClick={handleRelease}
               disabled={isLoading}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('confirmRelease')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

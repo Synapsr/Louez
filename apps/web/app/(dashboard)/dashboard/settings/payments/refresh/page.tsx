@@ -52,10 +52,8 @@ export default async function StripeRefreshPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-center">
           <p className="text-muted-foreground">{t('refresh.description')}</p>
-          <Button asChild className="w-full">
-            <Link href="/dashboard/settings/payments">
+          <Button render={<Link href="/dashboard/settings/payments" />} className="w-full">
               {t('refresh.backToSettings')}
-            </Link>
           </Button>
         </CardContent>
       </Card>

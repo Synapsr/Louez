@@ -207,14 +207,12 @@ export function SmsContent({
           <p className="text-muted-foreground">{t('description')}</p>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="min-w-[180px] justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                <span className="capitalize">{formatMonthYear(selectedYear, selectedMonth)}</span>
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="outline" className="min-w-[180px] justify-between" />}>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              <span className="capitalize">{formatMonthYear(selectedYear, selectedMonth)}</span>
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[180px]">
             {availableMonths.map(({ year, month }) => {

@@ -366,11 +366,9 @@ export default async function CatalogPage({
               <p className="text-muted-foreground mb-4">
                 {search ? t('noProductsFor', { search }) : t('noProducts')}
               </p>
-              <Button variant="outline" asChild>
-                <Link href="/#date-picker">
+              <Button variant="outline" render={<Link href="/#date-picker" />}>
                   {t('backToHome')}
                   <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
               </Button>
             </CardContent>
           </Card>

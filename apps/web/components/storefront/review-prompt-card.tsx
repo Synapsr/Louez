@@ -28,11 +28,9 @@ export function ReviewPromptCard({ storeName, reviewUrl }: ReviewPromptCardProps
               {t('description', { name: storeName })}
             </p>
           </div>
-          <Button asChild>
-            <a href={reviewUrl} target="_blank" rel="noopener noreferrer">
+          <Button render={<a href={reviewUrl} target="_blank" rel="noopener noreferrer" />}>
               {t('leaveReview')}
               <ExternalLink className="ml-2 h-4 w-4" />
-            </a>
           </Button>
         </div>
       </CardContent>

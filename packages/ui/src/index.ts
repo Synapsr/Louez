@@ -29,8 +29,8 @@ export * from './components/command'
 // Dialog
 export * from './components/dialog'
 
-// Dropdown Menu
-export * from './components/dropdown-menu'
+// Menu (replaces DropdownMenu)
+export * from './components/menu'
 
 // Form
 export * from './components/form'
@@ -72,8 +72,8 @@ export * from './components/skeleton'
 // Slider
 export * from './components/slider'
 
-// Sonner (Toast)
-export * from './components/sonner'
+// Toast (replaces Sonner)
+export * from './components/toast'
 
 // Stepper
 export * from './components/stepper'
@@ -93,5 +93,14 @@ export * from './components/textarea'
 // Toggle
 export * from './components/toggle'
 
+// Toggle Group
+export { ToggleGroup, ToggleGroupItem, ToggleGroupSeparator } from './components/toggle-group'
+
 // Tooltip
 export * from './components/tooltip'
+
+// Autocomplete
+export * from './components/autocomplete'
+
+// Preview Card
+export * from './components/preview-card'

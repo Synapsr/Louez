@@ -17,15 +17,14 @@ import {
   Shield,
   ClipboardCheck,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -132,7 +131,7 @@ export function SmartReservationActions({
     try {
       const result = await updateReservationStatus(reservationId, newStatus, reason)
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error, type: 'error' }))
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -143,14 +142,14 @@ export function SmartReservationActions({
             })
             .join(' • ')
 
-          toast.warning(warningMessage)
+          toastManager.add({ title: warningMessage, type: 'warning' })
         }
 
-        toast.success(t('statusUpdated'))
+        toastManager.add({ title: t('statusUpdated'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
       setAcknowledgeWarnings(false)
@@ -168,13 +167,13 @@ export function SmartReservationActions({
     try {
       const result = await cancelReservation(reservationId)
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error, type: 'error' }))
       } else {
-        toast.success(t('reservationCancelled'))
+        toastManager.add({ title: t('reservationCancelled'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
       setCancelDialogOpen(false)
@@ -510,14 +509,14 @@ export function SmartReservationActions({
             <AlertDialogDescription>{t('cancelConfirmDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('back')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('back')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleCancel}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('cancelReservation')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -735,13 +734,11 @@ export function SmartReservationActions({
                   : t('smartActions.skipInspectionReturn')}
               </Button>
             )}
-            <Button asChild className="sm:flex-1">
-              <Link
+            <Button render={<Link
                 href={`/dashboard/reservations/${reservationId}/inspection/${inspectionPromptOpen}`}
-              >
-                <ClipboardCheck className="mr-2 h-4 w-4" />
-                {tInspection('smartActions.startInspection')}
-              </Link>
+              />} className="sm:flex-1">
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+              {tInspection('smartActions.startInspection')}
             </Button>
           </DialogFooter>
         </DialogContent>

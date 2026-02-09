@@ -14,7 +14,7 @@ import {
   Settings2,
   FileCheck2,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Switch } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -109,11 +109,11 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
       const result = await updateInspectionSettings(data)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       form.reset(data)
       router.refresh()
     })
