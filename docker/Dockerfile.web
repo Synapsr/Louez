@@ -28,7 +28,7 @@ RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy workspace configuration files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
 
 # Copy all package.json files for workspace packages
 COPY packages/api/package.json ./packages/api/
