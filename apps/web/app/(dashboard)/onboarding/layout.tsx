@@ -1,30 +1,26 @@
-'use client'
+'use client';
 
-import { Progress } from '@louez/ui'
-import { usePathname } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { usePathname } from 'next/navigation';
+
+import { useTranslations } from 'next-intl';
+
+import { Progress } from '@louez/ui';
+
+import { ONBOARDING_STEPS, getOnboardingStepIndex } from './_lib/steps';
 
 export default function OnboardingLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const pathname = usePathname()
-  const t = useTranslations('onboarding')
-
-  const ONBOARDING_STEPS = [
-    { path: '/onboarding', labelKey: 'steps.store' },
-    { path: '/onboarding/branding', labelKey: 'steps.branding' },
-    { path: '/onboarding/stripe', labelKey: 'steps.payment' },
-  ]
-
-  const currentStepIndex = ONBOARDING_STEPS.findIndex(
-    (step) => step.path === pathname
-  )
-  const progress = ((currentStepIndex + 1) / ONBOARDING_STEPS.length) * 100
+  const pathname = usePathname();
+  const t = useTranslations('onboarding');
+  const stepIndex = getOnboardingStepIndex(pathname);
+  const currentStepIndex = stepIndex < 0 ? 0 : stepIndex;
+  const progress = ((currentStepIndex + 1) / ONBOARDING_STEPS.length) * 100;
 
   return (
-    <div className="dashboard min-h-screen bg-muted/30">
+    <div className="dashboard bg-muted/30 min-h-screen">
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -57,5 +53,5 @@ export default function OnboardingLayout({
         {children}
       </div>
     </div>
-  )
+  );
 }

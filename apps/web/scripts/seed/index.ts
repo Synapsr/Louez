@@ -98,11 +98,10 @@ async function getOrCreateUser(
  */
 function generateStoreSettings(config: StoreConfig): StoreSettings {
   const settings: StoreSettings = {
-    pricingMode: config.pricingMode,
     reservationMode: config.reservationMode,
-    minRentalHours: config.pricingMode === 'hour' ? 2 : config.pricingMode === 'week' ? 168 : 24,
-    maxRentalHours: null,
-    advanceNotice: config.pricingMode === 'hour' ? 4 : 24,
+    minRentalMinutes: config.pricingMode === 'hour' ? 120 : config.pricingMode === 'week' ? 10080 : 1440,
+    maxRentalMinutes: null,
+    advanceNoticeMinutes: config.pricingMode === 'hour' ? 240 : 1440,
     requireCustomerAddress: config.reservationMode === 'payment',
     pendingBlocksAvailability: config.reservationMode === 'request',
     onlinePaymentDepositPercentage: config.onlinePaymentDepositPercentage,

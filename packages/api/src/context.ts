@@ -68,8 +68,25 @@ export type CustomerData = {
 export interface BaseContext {
   headers: Headers;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
-  getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
+  getCustomerSession?: (
+    storeSlug: string,
+  ) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
+  notifyStoreCreated?: (store: {
+    id: string;
+    name: string;
+    slug: string;
+  }) => Promise<void>;
+  uploadImageToStorage?: (params: {
+    key: string;
+    body: Buffer;
+    contentType: string;
+  }) => Promise<string>;
+  getStorageKey?: (
+    storeId: string,
+    type: 'logo' | 'products' | 'documents' | 'inspections',
+    ...parts: string[]
+  ) => string;
 }
 
 /**

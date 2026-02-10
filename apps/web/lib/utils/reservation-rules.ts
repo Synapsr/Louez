@@ -2,10 +2,11 @@ import type { StoreSettings } from '@louez/types'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime } from '@/lib/utils/duration'
 import {
-  getMaxRentalHours,
-  getMinRentalHours,
-  validateMaxRentalDuration,
-  validateMinRentalDuration,
+  formatDurationFromMinutes,
+  getMaxRentalMinutes,
+  getMinRentalMinutes,
+  validateMaxRentalDurationMinutes,
+  validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration'
 
 export type ReservationValidationWarningCode =
@@ -53,38 +54,46 @@ export function evaluateReservationRules({
     })
   }
 
-  const advanceNoticeHours = storeSettings?.advanceNotice || 0
-  if (advanceNoticeHours > 0) {
-    const minimumStartTime = getMinStartDateTime(advanceNoticeHours)
+  const advanceNoticeMinutes = storeSettings?.advanceNoticeMinutes || 0
+  if (advanceNoticeMinutes > 0) {
+    const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes)
     if (startDate < minimumStartTime) {
       warnings.push({
         code: 'advance_notice',
         key: 'errors.advanceNoticeViolation',
-        params: { hours: advanceNoticeHours },
+        params: { duration: formatDurationFromMinutes(advanceNoticeMinutes) },
       })
     }
   }
 
-  const minRentalHours = getMinRentalHours(storeSettings)
-  if (minRentalHours > 0) {
-    const minCheck = validateMinRentalDuration(startDate, endDate, minRentalHours)
+  const minRentalMinutes = getMinRentalMinutes(storeSettings)
+  if (minRentalMinutes > 0) {
+    const minCheck = validateMinRentalDurationMinutes(
+      startDate,
+      endDate,
+      minRentalMinutes
+    )
     if (!minCheck.valid) {
       warnings.push({
         code: 'min_duration',
         key: 'errors.minRentalDurationViolation',
-        params: { hours: minRentalHours },
+        params: { duration: formatDurationFromMinutes(minRentalMinutes) },
       })
     }
   }
 
-  const maxRentalHours = getMaxRentalHours(storeSettings)
-  if (maxRentalHours !== null) {
-    const maxCheck = validateMaxRentalDuration(startDate, endDate, maxRentalHours)
+  const maxRentalMinutes = getMaxRentalMinutes(storeSettings)
+  if (maxRentalMinutes !== null) {
+    const maxCheck = validateMaxRentalDurationMinutes(
+      startDate,
+      endDate,
+      maxRentalMinutes
+    )
     if (!maxCheck.valid) {
       warnings.push({
         code: 'max_duration',
         key: 'errors.maxRentalDurationViolation',
-        params: { hours: maxRentalHours },
+        params: { duration: formatDurationFromMinutes(maxRentalMinutes) },
       })
     }
   }
@@ -104,11 +113,11 @@ export function formatReservationWarningsForLog(
           ? `outside business hours (${warning.details})`
           : 'outside business hours'
       case 'advance_notice':
-        return `advance notice not met (${warning.params?.hours ?? '?'}h)`
+        return `advance notice not met (${warning.params?.duration ?? '?'})`
       case 'min_duration':
-        return `minimum duration not met (${warning.params?.hours ?? '?'}h)`
+        return `minimum duration not met (${warning.params?.duration ?? '?'})`
       case 'max_duration':
-        return `maximum duration exceeded (${warning.params?.hours ?? '?'}h)`
+        return `maximum duration exceeded (${warning.params?.duration ?? '?'})`
       default:
         return warning.key
     }

@@ -42,9 +42,10 @@ export async function updateInspectionSettings(
 
   // Get current settings and merge
   const currentSettings: StoreSettings = store.settings || {
-    pricingMode: 'day',
     reservationMode: 'request',
-    advanceNotice: 24,
+    minRentalMinutes: 60,
+    maxRentalMinutes: null,
+    advanceNoticeMinutes: 1440,
   }
 
   await db

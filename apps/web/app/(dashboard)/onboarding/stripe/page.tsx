@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-
 import { useRouter } from 'next/navigation';
 
 import { useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
 import {
   CheckCircle2,
   CreditCard,
@@ -26,18 +25,37 @@ import {
 } from '@louez/ui';
 import { Radio, RadioGroup } from '@louez/ui';
 import { Label } from '@louez/ui';
-import { type StripeSetupInput, stripeSetupSchema } from '@louez/validations';
+import { stripeSetupSchema } from '@louez/validations';
+
+import { orpc } from '@/lib/orpc/react';
 
 import { useAppForm } from '@/hooks/form/form';
 
-import { completeOnboarding } from '../actions';
+function resolveErrorMessage(
+  tErrors: (key: string) => string,
+  error: unknown,
+): string {
+  if (error instanceof Error) {
+    if (error.message.startsWith('errors.')) {
+      return tErrors(error.message.replace('errors.', ''));
+    }
+    if (error.message.trim().length > 0) {
+      return error.message;
+    }
+  }
+
+  return tErrors('generic');
+}
 
 export default function OnboardingStripePage() {
   const router = useRouter();
   const t = useTranslations('onboarding.stripe');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
-  const [isLoading, setIsLoading] = useState(false);
+
+  const completeOnboardingMutation = useMutation(
+    orpc.dashboard.onboarding.complete.mutationOptions(),
+  );
 
   const form = useAppForm({
     defaultValues: {
@@ -47,24 +65,17 @@ export default function OnboardingStripePage() {
       onSubmit: stripeSetupSchema,
     },
     onSubmit: async ({ value }) => {
-      setIsLoading(true);
       try {
-        const result = await completeOnboarding(value);
-        if (result.error) {
-          toastManager.add({
-            title: tErrors(result.error.replace('errors.', '')),
-            type: 'error',
-          });
-          return;
-        }
+        await completeOnboardingMutation.mutateAsync(value);
         toastManager.add({ title: t('configComplete'), type: 'success' });
         // Signal the welcome animation via sessionStorage (more reliable than URL params)
         sessionStorage.setItem('louez-show-welcome', '1');
         router.push('/dashboard');
-      } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' });
-      } finally {
-        setIsLoading(false);
+      } catch (error) {
+        toastManager.add({
+          title: resolveErrorMessage(tErrors, error),
+          type: 'error',
+        });
       }
     },
   });
@@ -89,10 +100,10 @@ export default function OnboardingStripePage() {
                 <div className="space-y-2">
                   <Label>{t('title')}</Label>
                   <RadioGroup
+                    value={field.state.value}
                     onValueChange={(value) =>
                       field.handleChange(value as 'request' | 'payment')
                     }
-                    defaultValue={field.state.value}
                     className="space-y-3"
                   >
                     <Label className="border-muted bg-popover hover:bg-accent has-data-checked:border-primary has-data-checked:bg-accent/50 flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4">
@@ -176,12 +187,19 @@ export default function OnboardingStripePage() {
                 type="button"
                 variant="outline"
                 className="flex-1"
-                onClick={() => router.push('/onboarding/product')}
+                onClick={() => router.push('/onboarding/branding')}
+                disabled={completeOnboardingMutation.isPending}
               >
                 {tCommon('back')}
               </Button>
-              <Button type="submit" className="flex-1" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button
+                type="submit"
+                className="flex-1"
+                disabled={completeOnboardingMutation.isPending}
+              >
+                {completeOnboardingMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 {tCommon('confirm')}
               </Button>
             </div>

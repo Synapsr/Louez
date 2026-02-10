@@ -14,7 +14,7 @@ export interface BusinessHoursValidation {
 export interface AdvanceNoticeValidation {
   valid: boolean
   minimumStartTime?: string
-  advanceNoticeHours?: number
+  advanceNoticeMinutes?: number
 }
 
 export interface AvailabilityResponse {

@@ -1,57 +1,28 @@
 /**
- * Rental duration utilities
- *
- * Handles minimum/maximum rental duration validation and backward
- * compatibility with the legacy minDuration/maxDuration fields
- * (which were relative to the store's pricingMode).
- *
- * New fields (minRentalHours / maxRentalHours) are always in hours.
+ * Rental duration utilities in minutes.
  */
 
-import type { StoreSettings, PricingMode } from '@louez/types'
+import type { StoreSettings } from '@louez/types'
 
-const HOURS_PER_UNIT: Record<PricingMode, number> = {
-  hour: 1,
-  day: 24,
-  week: 168,
-}
-
-/**
- * Get the effective minimum rental duration in hours.
- * Falls back to converting legacy minDuration based on pricingMode.
- */
-export function getMinRentalHours(settings: StoreSettings | null | undefined): number {
-  if (!settings) return 1
-
-  if (settings.minRentalHours !== undefined && settings.minRentalHours !== null) {
-    return settings.minRentalHours
+export function getMinRentalMinutes(settings: StoreSettings | null | undefined): number {
+  if (!settings) return 60
+  if (
+    settings.minRentalMinutes !== undefined &&
+    settings.minRentalMinutes !== null
+  ) {
+    return settings.minRentalMinutes
   }
-
-  // Legacy fallback: convert minDuration * pricingMode unit to hours
-  const legacyDuration = settings.minDuration ?? 1
-  const multiplier = HOURS_PER_UNIT[settings.pricingMode] ?? 24
-  return legacyDuration * multiplier
+  return 60
 }
 
-/**
- * Get the effective maximum rental duration in hours.
- * Falls back to converting legacy maxDuration based on pricingMode.
- * Returns null if there is no maximum.
- */
-export function getMaxRentalHours(settings: StoreSettings | null | undefined): number | null {
+export function getMaxRentalMinutes(
+  settings: StoreSettings | null | undefined
+): number | null {
   if (!settings) return null
-
-  if (settings.maxRentalHours !== undefined) {
-    return settings.maxRentalHours
+  if (settings.maxRentalMinutes !== undefined) {
+    return settings.maxRentalMinutes
   }
-
-  // Legacy fallback
-  if (settings.maxDuration === null || settings.maxDuration === undefined) {
-    return null
-  }
-
-  const multiplier = HOURS_PER_UNIT[settings.pricingMode] ?? 24
-  return settings.maxDuration * multiplier
+  return null
 }
 
 /**
@@ -66,30 +37,48 @@ export function getRentalDurationHours(
   return (end.getTime() - start.getTime()) / (1000 * 60 * 60)
 }
 
+/**
+ * Format a duration in minutes as a compact string for UI messaging.
+ * Examples: 30 -> "30 min", 120 -> "2h", 1440 -> "1d"
+ */
+export function formatDurationFromMinutes(minutes: number): string {
+  const safeMinutes = Math.max(0, Math.ceil(minutes))
+
+  if (safeMinutes >= 1440 && safeMinutes % 1440 === 0) {
+    return `${safeMinutes / 1440}d`
+  }
+
+  if (safeMinutes >= 60 && safeMinutes % 60 === 0) {
+    return `${safeMinutes / 60}h`
+  }
+
+  return `${safeMinutes} min`
+}
+
 interface DurationValidationResult {
   valid: boolean
-  actualHours: number
-  requiredHours: number
+  actualMinutes: number
+  requiredMinutes: number
 }
 
 /**
  * Validate that a rental period meets the minimum duration requirement.
  * Returns valid: true immediately when minHours <= 0 (no restriction).
  */
-export function validateMinRentalDuration(
+export function validateMinRentalDurationMinutes(
   startDate: Date | string,
   endDate: Date | string,
-  minHours: number
+  minMinutes: number
 ): DurationValidationResult {
-  if (minHours <= 0) {
-    return { valid: true, actualHours: 0, requiredHours: 0 }
+  if (minMinutes <= 0) {
+    return { valid: true, actualMinutes: 0, requiredMinutes: 0 }
   }
 
-  const actualHours = getRentalDurationHours(startDate, endDate)
+  const actualMinutes = getRentalDurationHours(startDate, endDate) * 60
   return {
-    valid: actualHours >= minHours,
-    actualHours: Math.round(actualHours * 10) / 10,
-    requiredHours: minHours,
+    valid: actualMinutes >= minMinutes,
+    actualMinutes: Math.round(actualMinutes),
+    requiredMinutes: minMinutes,
   }
 }
 
@@ -97,19 +86,19 @@ export function validateMinRentalDuration(
  * Validate that a rental period does not exceed the maximum duration.
  * Returns valid: true immediately when maxHours is null (no limit).
  */
-export function validateMaxRentalDuration(
+export function validateMaxRentalDurationMinutes(
   startDate: Date | string,
   endDate: Date | string,
-  maxHours: number | null
+  maxMinutes: number | null
 ): DurationValidationResult {
-  if (maxHours === null) {
-    return { valid: true, actualHours: 0, requiredHours: 0 }
+  if (maxMinutes === null) {
+    return { valid: true, actualMinutes: 0, requiredMinutes: 0 }
   }
 
-  const actualHours = getRentalDurationHours(startDate, endDate)
+  const actualMinutes = getRentalDurationHours(startDate, endDate) * 60
   return {
-    valid: actualHours <= maxHours,
-    actualHours: Math.round(actualHours * 10) / 10,
-    requiredHours: maxHours,
+    valid: actualMinutes <= maxMinutes,
+    actualMinutes: Math.round(actualMinutes),
+    requiredMinutes: maxMinutes,
   }
 }

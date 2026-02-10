@@ -42,7 +42,7 @@ export interface GeneratedProduct {
   images: string[]
   price: string
   deposit: string
-  pricingMode: 'hour' | 'day' | 'week' | null
+  pricingMode: 'hour' | 'day' | 'week'
   videoUrl: string | null
   taxSettings: { inheritFromStore: boolean; customRate?: number } | null
   enforceStrictTiers: boolean
@@ -190,10 +190,10 @@ export function generateProducts(
     // Determine if this product should track units
     const shouldTrackUnits = storeConfig.trackUnits && (template.trackUnits ?? false)
 
-    // Generate pricing mode (null to inherit from store, or override for some products)
-    let pricingMode: 'hour' | 'day' | 'week' | null = null
+    // Generate pricing mode (always explicit at product level)
+    let pricingMode: 'hour' | 'day' | 'week' = storeConfig.pricingMode
     if (chance(0.2)) {
-      // 20% of products override the store pricing mode
+      // 20% of products override the store default mode
       const modes: ('hour' | 'day' | 'week')[] = ['hour', 'day', 'week']
       pricingMode = pickRandom(modes.filter((m) => m !== storeConfig.pricingMode))
     }

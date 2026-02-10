@@ -6,7 +6,6 @@ import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getCustomerSession } from '../../actions'
-import { calculateDuration } from '@louez/utils'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 
 export async function createReservationPaymentSession(
@@ -70,19 +69,12 @@ export async function createReservationPaymentSession(
 
     const currency = store.settings?.currency || 'EUR'
 
-    // Calculate duration
-    const duration = calculateDuration(
-      reservation.startDate,
-      reservation.endDate,
-      store.settings?.pricingMode || 'day'
-    )
-
     // Build line items from reservation items
     const lineItems = reservation.items.map((item) => ({
       name: item.productSnapshot.name,
       description: item.productSnapshot.description || undefined,
-      quantity: item.quantity,
-      unitAmount: toStripeCents(parseFloat(item.unitPrice) * duration, currency),
+      quantity: 1,
+      unitAmount: toStripeCents(parseFloat(item.totalPrice), currency),
     }))
 
     // Create checkout session

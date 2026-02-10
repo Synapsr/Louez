@@ -40,7 +40,6 @@ interface AccessoriesModalProps {
   productName: string
   accessories: Accessory[]
   storeSlug: string
-  storePricingMode: PricingMode
   currency?: string
 }
 
@@ -50,7 +49,6 @@ export function AccessoriesModal({
   productName,
   accessories,
   storeSlug,
-  storePricingMode,
   currency = 'EUR',
 }: AccessoriesModalProps) {
   const t = useTranslations('storefront.accessories')
@@ -96,7 +94,7 @@ export function AccessoriesModal({
     const addedNames: string[] = []
     for (const accessory of availableAccessories) {
       if (selectedIds.has(accessory.id)) {
-        const effectivePricingMode = accessory.pricingMode || storePricingMode
+        const effectivePricingMode: PricingMode = accessory.pricingMode ?? 'day'
         addItem(
           {
             productId: accessory.id,
@@ -192,7 +190,7 @@ export function AccessoriesModal({
             >
               {availableAccessories.map((accessory) => {
                 const isSelected = selectedIds.has(accessory.id)
-                const effectivePricingMode = accessory.pricingMode || storePricingMode
+                const effectivePricingMode: PricingMode = accessory.pricingMode ?? 'day'
 
                 return (
                   <button

@@ -343,7 +343,7 @@ export default async function RentalPage({
       )
     : productsList
 
-  const pricingMode = store.settings?.pricingMode || 'day'
+  const pricingMode = 'day' as const
 
   return (
     <div className="min-h-screen">

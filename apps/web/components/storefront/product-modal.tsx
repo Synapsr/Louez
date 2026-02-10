@@ -126,7 +126,7 @@ export function ProductModal({
 
   const price = parseFloat(product.price)
   const deposit = product.deposit ? parseFloat(product.deposit) : 0
-  const effectivePricingMode = product.pricingMode || pricingMode
+  const effectivePricingMode = product.pricingMode ?? 'day'
   const duration = calculateDuration(startDate, endDate, effectivePricingMode)
   const { days, hours } = getDetailedDuration(startDate, endDate)
 
@@ -594,7 +594,6 @@ export function ProductModal({
         })),
       }))}
       storeSlug={storeSlug}
-      storePricingMode={pricingMode}
       currency={currency}
     />
   </>

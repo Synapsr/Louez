@@ -153,7 +153,7 @@ export function LoginForm({
     onSubmit: ({ value }) => {
       setRootError(null);
 
-      void verifyOtpMutation.mutateAsync({
+      verifyOtpMutation.mutate({
         email: submittedEmail,
         otp: value.otp,
       });
@@ -221,16 +221,16 @@ export function LoginForm({
     validators: {
       onSubmit: emailSchema,
     },
-    onSubmit: async ({ value }) => {
+    onSubmit: ({ value }) => {
       setRootError(null);
 
-      await sendOtpMutation.mutateAsync(value.email);
+      sendOtpMutation.mutate(value.email);
     },
   });
 
   function handleGoogleSignIn() {
     setRootError(null);
-    void googleSignInMutation.mutateAsync();
+    googleSignInMutation.mutate();
   }
 
   if (otpSent) {

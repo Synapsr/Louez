@@ -56,7 +56,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
     notFound()
   }
 
-  const pricingMode = store.settings?.pricingMode || 'day'
+  const pricingMode = 'day' as const
   const reservationMode = store.settings?.reservationMode || 'payment'
   const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
   const taxSettings = store.settings?.tax

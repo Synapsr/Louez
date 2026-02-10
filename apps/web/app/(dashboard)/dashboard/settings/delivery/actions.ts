@@ -50,9 +50,10 @@ export async function updateDeliverySettings(data: DeliverySettingsInput) {
   }
 
   const currentSettings = store.settings || {
-    pricingMode: 'day' as const,
     reservationMode: 'payment' as const,
-    advanceNotice: 24,
+    minRentalMinutes: 60,
+    maxRentalMinutes: null,
+    advanceNoticeMinutes: 1440,
   }
 
   await db

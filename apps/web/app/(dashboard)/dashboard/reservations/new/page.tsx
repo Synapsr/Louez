@@ -84,9 +84,8 @@ export default async function NewReservationPage() {
       <NewReservationForm
         customers={customersList}
         products={productsList}
-        pricingMode={store.settings?.pricingMode || 'day'}
         businessHours={store.settings?.businessHours}
-        advanceNotice={store.settings?.advanceNotice || 0}
+        advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         existingReservations={activeReservations}
       />
     </div>

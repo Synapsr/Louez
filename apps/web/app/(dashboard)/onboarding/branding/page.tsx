@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useMutation } from '@tanstack/react-query';
 import { Loader2, Palette, Upload, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -17,13 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui';
-import { Radio, RadioGroup } from '@louez/ui';
 import { Label } from '@louez/ui';
+import { Radio, RadioGroup } from '@louez/ui';
 import { type BrandingInput, createBrandingSchema } from '@louez/validations';
 
-import { useAppForm } from '@/hooks/form/form';
+import { orpc } from '@/lib/orpc/react';
 
-import { updateBranding } from '../actions';
+import { useAppForm } from '@/hooks/form/form';
 
 const PRESET_COLORS = [
   '#0066FF',
@@ -36,49 +37,89 @@ const PRESET_COLORS = [
   '#84CC16',
 ];
 
+async function readFileAsDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => resolve(event.target?.result as string);
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function resolveErrorMessage(
+  tErrors: (key: string) => string,
+  error: unknown,
+): string {
+  if (error instanceof Error) {
+    if (error.message.startsWith('errors.')) {
+      return tErrors(error.message.replace('errors.', ''));
+    }
+    if (error.message.trim().length > 0) {
+      return error.message;
+    }
+  }
+
+  return tErrors('generic');
+}
+
+function getFieldErrorText(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return String(error);
+}
+
 export default function OnboardingBrandingPage() {
   const router = useRouter();
   const t = useTranslations('onboarding.branding');
   const tCommon = useTranslations('common');
   const tErrors = useTranslations('errors');
   const tValidation = useTranslations('validation');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   const brandingSchema = createBrandingSchema(tValidation);
+
+  const uploadImageMutation = useMutation(
+    orpc.dashboard.onboarding.uploadImage.mutationOptions(),
+  );
+  const updateBrandingMutation = useMutation(
+    orpc.dashboard.onboarding.updateBranding.mutationOptions(),
+  );
 
   const form = useAppForm({
     defaultValues: {
       logoUrl: '',
       primaryColor: '#0066FF',
       theme: 'light' as 'light' | 'dark',
-    },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validators: { onSubmit: brandingSchema as any },
+    } as BrandingInput,
+    validators: { onSubmit: brandingSchema },
     onSubmit: async ({ value }) => {
-      setIsLoading(true);
       try {
-        const result = await updateBranding(value);
-        if (result.error) {
-          toastManager.add({
-            title: tErrors(result.error.replace('errors.', '')),
-            type: 'error',
-          });
-          return;
-        }
+        await updateBrandingMutation.mutateAsync(value);
         router.push('/onboarding/stripe');
-      } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' });
-      } finally {
-        setIsLoading(false);
+      } catch (error) {
+        toastManager.add({
+          title: resolveErrorMessage(tErrors, error),
+          type: 'error',
+        });
       }
     },
   });
 
   const handleLogoUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = '';
+
       if (!file) return;
 
       if (!file.type.startsWith('image/')) {
@@ -91,50 +132,39 @@ export default function OnboardingBrandingPage() {
         return;
       }
 
-      // Convert to base64 for upload
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const dataUri = event.target?.result as string;
+      const previousLogoPreview = logoPreview;
+
+      try {
+        const dataUri = await readFileAsDataUri(file);
         setLogoPreview(dataUri);
-        setIsUploading(true);
 
-        try {
-          const response = await fetch('/api/upload/image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              image: dataUri,
-              type: 'logo',
-              filename: 'store-logo',
-            }),
-          });
+        const uploaded = await uploadImageMutation.mutateAsync({
+          image: dataUri,
+          type: 'logo',
+          filename: 'store-logo',
+        });
 
-          if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Upload failed');
-          }
-
-          const { url } = await response.json();
-          form.setFieldValue('logoUrl', url);
-          setLogoPreview(url);
-        } catch (error) {
-          console.error('Logo upload error:', error);
-          toastManager.add({ title: t('logoUploadError'), type: 'error' });
-          setLogoPreview(null);
-          form.setFieldValue('logoUrl', '');
-        } finally {
-          setIsUploading(false);
-        }
-      };
-      reader.readAsDataURL(file);
+        form.setFieldValue('logoUrl', uploaded.url);
+        setLogoPreview(uploaded.url);
+      } catch (error) {
+        toastManager.add({
+          title: resolveErrorMessage(tErrors, error),
+          type: 'error',
+        });
+        setLogoPreview(previousLogoPreview);
+        form.setFieldValue('logoUrl', '');
+      }
     },
-    [form, t],
+    [form, logoPreview, t, tErrors, uploadImageMutation],
   );
 
-  const removeLogo = () => {
+  const removeLogo = useCallback(() => {
     setLogoPreview(null);
     form.setFieldValue('logoUrl', '');
-  };
+  }, [form]);
+
+  const isBusy =
+    updateBrandingMutation.isPending || uploadImageMutation.isPending;
 
   return (
     <Card>
@@ -148,7 +178,6 @@ export default function OnboardingBrandingPage() {
       <CardContent>
         <form.AppForm>
           <form.Form className="space-y-6">
-            {/* Logo Upload */}
             <form.Field name="logoUrl">
               {() => (
                 <div className="space-y-2">
@@ -161,12 +190,12 @@ export default function OnboardingBrandingPage() {
                           alt="Logo preview"
                           className="h-24 w-24 rounded-lg border object-contain"
                         />
-                        {isUploading && (
+                        {uploadImageMutation.isPending && (
                           <div className="bg-background/80 absolute inset-0 flex items-center justify-center rounded-lg">
                             <Loader2 className="text-primary h-6 w-6 animate-spin" />
                           </div>
                         )}
-                        {!isUploading && (
+                        {!uploadImageMutation.isPending && (
                           <Button
                             type="button"
                             variant="destructive"
@@ -200,7 +229,6 @@ export default function OnboardingBrandingPage() {
               )}
             </form.Field>
 
-            {/* Primary Color */}
             <form.Field name="primaryColor">
               {(field) => (
                 <div className="space-y-2">
@@ -230,33 +258,33 @@ export default function OnboardingBrandingPage() {
                       />
                       <Input
                         value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
+                        onChange={(event) =>
+                          field.handleChange(event.target.value)
+                        }
                         onBlur={field.handleBlur}
                         placeholder="#0066FF"
                         className="font-mono"
                       />
                     </div>
                   </div>
-                  {field.state.meta.errors &&
-                    field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm font-medium">
-                        {field.state.meta.errors[0]}
-                      </p>
-                    )}
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-destructive text-sm font-medium">
+                      {getFieldErrorText(field.state.meta.errors[0])}
+                    </p>
+                  )}
                 </div>
               )}
             </form.Field>
 
-            {/* Theme */}
             <form.Field name="theme">
               {(field) => (
                 <div className="space-y-2">
                   <Label>{t('theme')}</Label>
                   <RadioGroup
+                    value={field.state.value}
                     onValueChange={(value) =>
                       field.handleChange(value as 'light' | 'dark')
                     }
-                    defaultValue={field.state.value}
                     className="grid grid-cols-2 gap-4"
                   >
                     <Label className="hover:bg-accent/50 has-data-checked:border-primary/48 has-data-checked:bg-accent/50 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 p-4">
@@ -274,12 +302,11 @@ export default function OnboardingBrandingPage() {
                       </span>
                     </Label>
                   </RadioGroup>
-                  {field.state.meta.errors &&
-                    field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm font-medium">
-                        {field.state.meta.errors[0]}
-                      </p>
-                    )}
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-destructive text-sm font-medium">
+                      {getFieldErrorText(field.state.meta.errors[0])}
+                    </p>
+                  )}
                 </div>
               )}
             </form.Field>
@@ -290,11 +317,12 @@ export default function OnboardingBrandingPage() {
                 variant="outline"
                 className="flex-1"
                 onClick={() => router.push('/onboarding')}
+                disabled={isBusy}
               >
                 {tCommon('back')}
               </Button>
-              <Button type="submit" className="flex-1" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" className="flex-1" disabled={isBusy}>
+                {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {tCommon('next')}
               </Button>
             </div>

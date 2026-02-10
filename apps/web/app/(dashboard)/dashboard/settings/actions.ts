@@ -34,13 +34,12 @@ interface StoreSettingsInput {
   billingPostalCode?: string
   billingCountry?: string
   // Settings
-  pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
   pendingBlocksAvailability: boolean
   onlinePaymentDepositPercentage: number
-  minRentalHours: number
-  maxRentalHours: number | null
-  advanceNotice: number
+  minRentalMinutes: number
+  maxRentalMinutes: number | null
+  advanceNoticeMinutes: number
   requireCustomerAddress: boolean
 }
 
@@ -63,13 +62,12 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
         latitude: data.latitude?.toString() || null,
         longitude: data.longitude?.toString() || null,
         settings: {
-          pricingMode: data.pricingMode,
           reservationMode: data.reservationMode,
           pendingBlocksAvailability: data.pendingBlocksAvailability,
           onlinePaymentDepositPercentage: data.onlinePaymentDepositPercentage,
-          minRentalHours: data.minRentalHours,
-          maxRentalHours: data.maxRentalHours,
-          advanceNotice: data.advanceNotice,
+          minRentalMinutes: data.minRentalMinutes,
+          maxRentalMinutes: data.maxRentalMinutes,
+          advanceNoticeMinutes: data.advanceNoticeMinutes,
           requireCustomerAddress: data.requireCustomerAddress,
           businessHours: store.settings?.businessHours,
           country: data.country,

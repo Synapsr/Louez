@@ -13,8 +13,8 @@ const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sat: 6,
 }
 
-function getMinStartDateTime(advanceNoticeHours: number = 0): Date {
-  return new Date(Date.now() + advanceNoticeHours * 60 * 60 * 1000)
+function getMinStartDateTime(advanceNoticeMinutes: number = 0): Date {
+  return new Date(Date.now() + advanceNoticeMinutes * 60 * 1000)
 }
 
 function dateRangesOverlap(
@@ -172,12 +172,12 @@ export async function getStorefrontAvailability(
     store.settings?.timezone,
   )
 
-  const advanceNoticeHours = store.settings?.advanceNotice || 0
-  const minimumStartTime = getMinStartDateTime(advanceNoticeHours)
+  const advanceNoticeMinutes = store.settings?.advanceNoticeMinutes || 0
+  const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes)
   const advanceNoticeValidation = {
     valid: startDate >= minimumStartTime,
     minimumStartTime: minimumStartTime.toISOString(),
-    advanceNoticeHours,
+    advanceNoticeMinutes,
   }
 
   const productsWhere = productIds?.length

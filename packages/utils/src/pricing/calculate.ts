@@ -233,13 +233,3 @@ export function snapToNearestTier(
     availableDurations[availableDurations.length - 1]
   )
 }
-
-/**
- * Get effective pricing mode for a product (product-specific or store default)
- */
-export function getEffectivePricingMode(
-  productPricingMode: PricingMode | null | undefined,
-  storePricingMode: PricingMode
-): PricingMode {
-  return productPricingMode ?? storePricingMode
-}

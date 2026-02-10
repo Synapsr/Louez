@@ -39,11 +39,10 @@ export async function updateTaxSettings(data: TaxSettingsInput) {
   }
 
   const currentSettings = store.settings || {
-    pricingMode: 'day' as const,
     reservationMode: 'payment' as const,
-    minDuration: 1,
-    maxDuration: null,
-    advanceNotice: 24,
+    minRentalMinutes: 60,
+    maxRentalMinutes: null,
+    advanceNoticeMinutes: 1440,
   }
 
   await db

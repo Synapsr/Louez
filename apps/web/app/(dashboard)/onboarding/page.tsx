@@ -26,7 +26,6 @@ import {
 } from '@louez/ui';
 import { type StoreInfoInput, createStoreInfoSchema } from '@louez/validations';
 
-import { FormRadioCardGroup } from '@/components/form/form-radio-card-group';
 import { FormStoreNameSlug } from '@/components/form/form-store-name-slug';
 import { AddressInput } from '@/components/ui/address-input';
 
@@ -94,7 +93,6 @@ export default function OnboardingStorePage() {
     defaultValues: {
       name: '',
       slug: '',
-      pricingMode: 'day' as 'day' | 'hour',
       country: ONBOARDING_FALLBACK_COUNTRY,
       currency: getDefaultCurrencyForCountry(ONBOARDING_FALLBACK_COUNTRY) as string,
       address: '',
@@ -201,30 +199,6 @@ export default function OnboardingStorePage() {
                     />
                   )}
                 </form.Field>
-              )}
-            </form.Field>
-
-            <form.Field name="pricingMode">
-              {(field) => (
-                <FormRadioCardGroup<'day' | 'hour'>
-                  value={field.state.value}
-                  errors={field.state.meta.errors}
-                  onChange={field.handleChange}
-                  options={[
-                    {
-                      value: 'day',
-                      label: t('pricingDay'),
-                      description: t('pricingDayDesc'),
-                    },
-                    {
-                      value: 'hour',
-                      label: t('pricingHour'),
-                      description: t('pricingHourDesc'),
-                    },
-                  ]}
-                  label={t('pricingMode')}
-                  helpText={t('pricingModeHelp')}
-                />
               )}
             </form.Field>
 

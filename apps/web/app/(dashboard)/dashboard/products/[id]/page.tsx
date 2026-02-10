@@ -85,7 +85,6 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
       <ProductForm
         product={{ ...product, accessoryIds }}
         categories={categoriesList}
-        pricingMode={store.settings?.pricingMode || 'day'}
         storeTaxSettings={store.settings?.tax}
         availableAccessories={availableAccessories}
       />

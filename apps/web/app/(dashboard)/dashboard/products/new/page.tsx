@@ -31,7 +31,6 @@ export default async function NewProductPage() {
 
       <ProductForm
         categories={categoriesList}
-        pricingMode={store.settings?.pricingMode || 'day'}
         storeTaxSettings={store.settings?.tax}
       />
     </div>

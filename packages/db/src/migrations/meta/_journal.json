@@ -176,6 +176,13 @@
       "when": 1770630729522,
       "tag": "0024_better_auth_migration",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1770738083460,
+      "tag": "0025_bent_snowbird",
+      "breakpoints": true
     }
   ]
 }

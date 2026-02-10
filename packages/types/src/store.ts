@@ -125,17 +125,13 @@ export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
 // ============================================================================
 
 export interface StoreSettings {
-  pricingMode: 'day' | 'hour' | 'week'
   reservationMode: 'payment' | 'request'
-  /** @deprecated Use minRentalHours instead. Kept for backward compat reading. */
-  minDuration?: number
-  /** @deprecated Use maxRentalHours instead. Kept for backward compat reading. */
-  maxDuration?: number | null
-  /** Minimum rental duration in hours. 0 = no restriction. Default: 1. */
-  minRentalHours?: number
-  /** Maximum rental duration in hours. null = no limit. */
-  maxRentalHours?: number | null
-  advanceNotice: number
+  /** Minimum rental duration in minutes. 0 = no restriction. Default: 60. */
+  minRentalMinutes?: number
+  /** Maximum rental duration in minutes. null = no limit. */
+  maxRentalMinutes?: number | null
+  /** Minimum notice before start in minutes. Default: 1440 (24h). */
+  advanceNoticeMinutes: number
   requireCustomerAddress?: boolean
   /**
    * Controls whether pending (unanswered) reservation requests block availability.

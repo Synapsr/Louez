@@ -9,7 +9,6 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { getEffectivePricingMode } from '@louez/utils'
 import { useStoreCurrency } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 
@@ -31,18 +30,16 @@ interface ProductCardProps {
     pricingTiers?: PricingTier[]
   }
   storeSlug: string
-  pricingMode: 'day' | 'hour' | 'week'
 }
 
-export function ProductCard({ product, pricingMode: storePricingMode }: ProductCardProps) {
+export function ProductCard({ product }: ProductCardProps) {
   const t = useTranslations('storefront.product')
   const tCatalog = useTranslations('storefront.catalog')
   const currency = useStoreCurrency()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
-  // Effective pricing mode for this product
-  const pricingMode = getEffectivePricingMode(product.pricingMode, storePricingMode)
+  const pricingMode: PricingMode = product.pricingMode ?? 'day'
 
   // Calculate max discount from tiers
   const maxDiscount = product.pricingTiers?.length

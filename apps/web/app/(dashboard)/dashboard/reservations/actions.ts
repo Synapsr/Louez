@@ -45,7 +45,7 @@ import {
   generatePricingBreakdown,
   type PricingTier,
 } from '@louez/utils'
-import type { PricingBreakdown } from '@louez/types'
+import type { PricingBreakdown, PricingMode } from '@louez/types'
 import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
@@ -53,6 +53,13 @@ import {
 
 async function getStoreForUser() {
   return getCurrentStore()
+}
+
+function toPricingMode(value: unknown): PricingMode {
+  if (value === 'hour' || value === 'day' || value === 'week') {
+    return value
+  }
+  return 'day'
 }
 
 type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
@@ -456,6 +463,7 @@ interface CreateReservationData {
     unitPrice: number
     deposit: number
     quantity: number
+    pricingMode: PricingMode
   }>
   internalNotes?: string
   sendConfirmationEmail?: boolean
@@ -499,12 +507,6 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: 'errors.customerRequired' }
   }
 
-  // Get store pricing mode
-  const storePricingMode = store.settings?.pricingMode || 'day'
-
-  // Calculate duration based on store pricing mode
-  const duration = calculateDuration(data.startDate, data.endDate, storePricingMode)
-
   // Calculate totals
   let subtotalAmount = 0
   let depositAmount = 0
@@ -527,7 +529,8 @@ export async function createManualReservation(data: CreateReservationData) {
       }
 
       // Get effective pricing mode for this product
-      const effectivePricingMode = product.pricingMode || storePricingMode
+      const effectivePricingMode = toPricingMode(product.pricingMode)
+      const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode)
 
       // Convert pricing tiers to the expected format
       const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
@@ -583,6 +586,7 @@ export async function createManualReservation(data: CreateReservationData) {
 
   // Process custom items (no tiered pricing for custom items)
   const customItemDetails = (data.customItems || []).map((item) => {
+    const duration = calculateDuration(data.startDate, data.endDate, item.pricingMode)
     const totalPrice = item.unitPrice * duration * item.quantity
     const totalDeposit = item.deposit * item.quantity
 
@@ -596,6 +600,20 @@ export async function createManualReservation(data: CreateReservationData) {
       unitPrice: item.unitPrice.toFixed(2),
       depositPerUnit: item.deposit.toFixed(2),
       totalPrice: totalPrice.toFixed(2),
+      pricingBreakdown: {
+        basePrice: item.unitPrice,
+        effectivePrice: item.unitPrice,
+        duration,
+        pricingMode: item.pricingMode,
+        discountPercent: null,
+        discountAmount: 0,
+        tierApplied: null,
+        taxRate: null,
+        taxAmount: null,
+        subtotalExclTax: null,
+        subtotalInclTax: null,
+        isManualOverride: true,
+      } satisfies PricingBreakdown,
       isCustomItem: true,
     }
   })
@@ -649,6 +667,7 @@ export async function createManualReservation(data: CreateReservationData) {
       unitPrice: customItem.unitPrice,
       depositPerUnit: customItem.depositPerUnit,
       totalPrice: customItem.totalPrice,
+      pricingBreakdown: customItem.pricingBreakdown,
       productSnapshot: {
         name: customItem.name,
         description: customItem.description,
@@ -813,6 +832,7 @@ interface UpdateReservationItem {
   unitPrice: number
   depositPerUnit: number
   isManualPrice?: boolean
+  pricingMode?: PricingMode
   productSnapshot: {
     name: string
     description?: string | null
@@ -881,10 +901,6 @@ export async function updateReservation(
     storeSettings: store.settings,
   })
 
-  // Get store pricing mode
-  const storePricingMode = store.settings?.pricingMode || 'day'
-  const newDuration = calculateDuration(newStartDate, newEndDate, storePricingMode)
-
   // Calculate new totals
   let newSubtotalAmount = 0
   let newDepositAmount = 0
@@ -900,7 +916,9 @@ export async function updateReservation(
     for (const item of data.items) {
       let pricingBreakdown: PricingBreakdown | null = null
       let finalUnitPrice = item.unitPrice
-      let totalPrice = item.unitPrice * newDuration * item.quantity
+      let itemPricingMode: PricingMode = toPricingMode(item.pricingMode)
+      let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode)
+      let totalPrice = item.unitPrice * duration * item.quantity
 
       // If not manual price and has a productId, calculate with tiers
       if (!item.isManualPrice && item.productId) {
@@ -910,7 +928,9 @@ export async function updateReservation(
         })
 
         if (product) {
-          const effectivePricingMode = product.pricingMode || storePricingMode
+          const effectivePricingMode = toPricingMode(product.pricingMode)
+          itemPricingMode = effectivePricingMode
+          duration = calculateDuration(newStartDate, newEndDate, itemPricingMode)
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration,
@@ -921,12 +941,12 @@ export async function updateReservation(
           const pricing = {
             basePrice: parseFloat(product.price),
             deposit: parseFloat(product.deposit || '0'),
-            pricingMode: effectivePricingMode,
+            pricingMode: itemPricingMode,
             tiers,
           }
 
-          const priceResult = calculateRentalPrice(pricing, newDuration, item.quantity)
-          pricingBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
+          const priceResult = calculateRentalPrice(pricing, duration, item.quantity)
+          pricingBreakdown = generatePricingBreakdown(priceResult, itemPricingMode)
           finalUnitPrice = priceResult.effectivePricePerUnit
           totalPrice = priceResult.subtotal
         }
@@ -934,8 +954,8 @@ export async function updateReservation(
         pricingBreakdown = {
           basePrice: item.unitPrice,
           effectivePrice: item.unitPrice,
-          duration: newDuration,
-          pricingMode: storePricingMode,
+          duration,
+          pricingMode: itemPricingMode,
           discountPercent: null,
           discountAmount: 0,
           tierApplied: null,
@@ -985,7 +1005,8 @@ export async function updateReservation(
         })
 
         if (product) {
-          const effectivePricingMode = product.pricingMode || storePricingMode
+          const effectivePricingMode = toPricingMode(product.pricingMode)
+          const itemDuration = calculateDuration(newStartDate, newEndDate, effectivePricingMode)
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration,
@@ -1000,7 +1021,7 @@ export async function updateReservation(
             tiers,
           }
 
-          const priceResult = calculateRentalPrice(pricing, newDuration, item.quantity)
+          const priceResult = calculateRentalPrice(pricing, itemDuration, item.quantity)
           const newBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
           finalUnitPrice = priceResult.effectivePricePerUnit
           totalPrice = priceResult.subtotal
@@ -1014,7 +1035,9 @@ export async function updateReservation(
             })
             .where(eq(reservationItems.id, item.id))
         } else {
-          totalPrice = finalUnitPrice * newDuration * item.quantity
+          const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode)
+          const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode)
+          totalPrice = finalUnitPrice * itemDuration * item.quantity
           await db
             .update(reservationItems)
             .set({ totalPrice: totalPrice.toFixed(2) })
@@ -1022,10 +1045,21 @@ export async function updateReservation(
         }
       } else {
         // Manual price - just multiply by new duration
-        totalPrice = finalUnitPrice * newDuration * item.quantity
+        const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode)
+        const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode)
+        totalPrice = finalUnitPrice * itemDuration * item.quantity
         await db
           .update(reservationItems)
-          .set({ totalPrice: totalPrice.toFixed(2) })
+          .set({
+            totalPrice: totalPrice.toFixed(2),
+            pricingBreakdown: pricingBreakdown
+              ? {
+                  ...pricingBreakdown,
+                  duration: itemDuration,
+                  pricingMode: fallbackPricingMode,
+                } as PricingBreakdown
+              : null,
+          })
           .where(eq(reservationItems.id, item.id))
       }
 
