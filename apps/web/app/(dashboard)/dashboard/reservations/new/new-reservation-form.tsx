@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
+import { useStore } from '@tanstack/react-form'
 import { format } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
 import { useLocale } from 'next-intl'
@@ -41,14 +41,6 @@ import {
   CardTitle,
 } from '@louez/ui'
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -80,6 +72,7 @@ import { findApplicableTier } from '@/lib/pricing/calculate'
 import { createManualReservation } from '../actions'
 import type { BusinessHours } from '@louez/types'
 import type { PricingTier } from '@louez/types'
+import { useAppForm } from '@/hooks/form/form'
 
 interface Customer {
   id: string
@@ -371,25 +364,73 @@ export function NewReservationForm({
     newPrice: '',
   })
 
-  const form = useForm<FormData>({
+  const form = useAppForm({
     defaultValues: {
-      customerType: customers.length > 0 ? 'existing' : 'new',
+      customerType: (customers.length > 0 ? 'existing' : 'new') as 'existing' | 'new',
       customerId: '',
       email: '',
       firstName: '',
       lastName: '',
       phone: '',
-      startDate: undefined,
-      endDate: undefined,
+      startDate: undefined as Date | undefined,
+      endDate: undefined as Date | undefined,
       internalNotes: '',
+    },
+    onSubmit: async ({ value }) => {
+      // Ensure we're on the confirmation step before submitting
+      if (currentStep !== STEPS.length - 1) {
+        return
+      }
+
+      if (!validateCurrentStep()) return
+
+      setIsLoading(true)
+      try {
+        const result = await createManualReservation({
+          customerId: value.customerType === 'existing' ? value.customerId : undefined,
+          newCustomer:
+            value.customerType === 'new'
+              ? {
+                  email: value.email,
+                  firstName: value.firstName,
+                  lastName: value.lastName,
+                  phone: value.phone || undefined,
+                }
+              : undefined,
+          startDate: value.startDate!,
+          endDate: value.endDate!,
+          items: selectedProducts,
+          customItems: customItems.map((item) => ({
+            name: item.name,
+            description: item.description,
+            unitPrice: item.unitPrice,
+            deposit: item.deposit,
+            quantity: item.quantity,
+          })),
+          internalNotes: value.internalNotes || undefined,
+          sendConfirmationEmail,
+        })
+
+        if (result.error) {
+          toastManager.add({ title: result.error, type: 'error' })
+          return
+        }
+
+        toastManager.add({ title: t('reservationCreated'), type: 'success' })
+        router.push(`/dashboard/reservations/${result.reservationId}`)
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
+      } finally {
+        setIsLoading(false)
+      }
     },
   })
 
-  const watchCustomerType = form.watch('customerType')
-  const watchCustomerId = form.watch('customerId')
-  const watchStartDate = form.watch('startDate')
-  const watchEndDate = form.watch('endDate')
-  const watchedValues = form.watch()
+  const watchCustomerType = useStore(form.store, (s) => s.values.customerType)
+  const watchCustomerId = useStore(form.store, (s) => s.values.customerId)
+  const watchStartDate = useStore(form.store, (s) => s.values.startDate)
+  const watchEndDate = useStore(form.store, (s) => s.values.endDate)
+  const watchedValues = useStore(form.store, (s) => s.values)
 
   // Get selected customer details
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
@@ -766,55 +807,6 @@ export function NewReservationForm({
     }
   }
 
-  async function onSubmit(data: FormData) {
-    // Ensure we're on the confirmation step before submitting
-    if (currentStep !== STEPS.length - 1) {
-      return
-    }
-
-    if (!validateCurrentStep()) return
-
-    setIsLoading(true)
-    try {
-      const result = await createManualReservation({
-        customerId: data.customerType === 'existing' ? data.customerId : undefined,
-        newCustomer:
-          data.customerType === 'new'
-            ? {
-                email: data.email,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                phone: data.phone || undefined,
-              }
-            : undefined,
-        startDate: data.startDate!,
-        endDate: data.endDate!,
-        items: selectedProducts,
-        customItems: customItems.map((item) => ({
-          name: item.name,
-          description: item.description,
-          unitPrice: item.unitPrice,
-          deposit: item.deposit,
-          quantity: item.quantity,
-        })),
-        internalNotes: data.internalNotes || undefined,
-        sendConfirmationEmail,
-      })
-
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
-      }
-
-      toastManager.add({ title: t('reservationCreated'), type: 'success' })
-      router.push(`/dashboard/reservations/${result.reservationId}`)
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const availableProducts = products.filter(
     (p) => !selectedProducts.find((sp) => sp.productId === p.id)
   )
@@ -822,8 +814,9 @@ export function NewReservationForm({
   const pricingUnit = pricingMode === 'hour' ? t('perHour') : t('perDay')
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+    <>
+      <form.AppForm>
+        <form.Form className="space-y-6">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">
@@ -851,149 +844,99 @@ export function NewReservationForm({
                 <CardDescription>{t('customerStepDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="customerType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
-                        >
-                          <label
-                            htmlFor="existing"
-                            className={cn(
-                              'flex items-center space-x-4 rounded-lg border p-4 cursor-pointer transition-colors',
-                              field.value === 'existing'
-                                ? 'border-primary bg-primary/5'
-                                : 'hover:bg-muted/50',
-                              customers.length === 0 && 'opacity-50 cursor-not-allowed'
-                            )}
-                          >
-                            <RadioGroupItem
-                              value="existing"
-                              id="existing"
-                              disabled={customers.length === 0}
-                            />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span className="font-medium">{t('existingCustomer')}</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {t('existingCustomerDescription')}
-                              </p>
-                            </div>
-                          </label>
+                <form.Field name="customerType">
+                  {(field) => (
+                    <RadioGroup
+                      onValueChange={(value) => field.handleChange(value as 'existing' | 'new')}
+                      defaultValue={field.state.value}
+                      className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                    >
+                      <label
+                        htmlFor="existing"
+                        className={cn(
+                          'flex items-center space-x-4 rounded-lg border p-4 cursor-pointer transition-colors',
+                          field.state.value === 'existing'
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50',
+                          customers.length === 0 && 'opacity-50 cursor-not-allowed'
+                        )}
+                      >
+                        <RadioGroupItem
+                          value="existing"
+                          id="existing"
+                          disabled={customers.length === 0}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4" />
+                            <span className="font-medium">{t('existingCustomer')}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {t('existingCustomerDescription')}
+                          </p>
+                        </div>
+                      </label>
 
-                          <label
-                            htmlFor="new"
-                            className={cn(
-                              'flex items-center space-x-4 rounded-lg border p-4 cursor-pointer transition-colors',
-                              field.value === 'new'
-                                ? 'border-primary bg-primary/5'
-                                : 'hover:bg-muted/50'
-                            )}
-                          >
-                            <RadioGroupItem value="new" id="new" />
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <UserPlus className="h-4 w-4" />
-                                <span className="font-medium">{t('newCustomer')}</span>
-                              </div>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                {t('newCustomerDescription')}
-                              </p>
-                            </div>
-                          </label>
-                        </RadioGroup>
-                      </FormControl>
-                    </FormItem>
+                      <label
+                        htmlFor="new"
+                        className={cn(
+                          'flex items-center space-x-4 rounded-lg border p-4 cursor-pointer transition-colors',
+                          field.state.value === 'new'
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <RadioGroupItem value="new" id="new" />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <UserPlus className="h-4 w-4" />
+                            <span className="font-medium">{t('newCustomer')}</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {t('newCustomerDescription')}
+                          </p>
+                        </div>
+                      </label>
+                    </RadioGroup>
                   )}
-                />
+                </form.Field>
 
                 {watchCustomerType === 'existing' && customers.length > 0 && (
-                  <FormField
-                    control={form.control}
-                    name="customerId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('selectCustomer')}</FormLabel>
-                        <FormControl>
-                          <CustomerCombobox
-                            customers={customers}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <form.Field name="customerId">
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label>{t('selectCustomer')}</Label>
+                        <CustomerCombobox
+                          customers={customers}
+                          value={field.state.value}
+                          onValueChange={field.handleChange}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 )}
 
                 {watchCustomerType === 'new' && (
                   <div className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('email')} *</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder={t('emailPlaceholder')}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <form.AppField name="email">
+                      {(field) => <field.Input label={`${t('email')} *`} type="email" placeholder={t('emailPlaceholder')} />}
+                    </form.AppField>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('firstName')} *</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('firstNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('lastName')} *</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('lastNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <form.AppField name="firstName">
+                        {(field) => <field.Input label={`${t('firstName')} *`} placeholder={t('firstNamePlaceholder')} />}
+                      </form.AppField>
+                      <form.AppField name="lastName">
+                        {(field) => <field.Input label={`${t('lastName')} *`} placeholder={t('lastNamePlaceholder')} />}
+                      </form.AppField>
                     </div>
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('phone')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder={t('phonePlaceholder')} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <form.AppField name="phone">
+                      {(field) => <field.Input label={t('phone')} placeholder={t('phonePlaceholder')} />}
+                    </form.AppField>
                   </div>
                 )}
               </CardContent>
@@ -1014,61 +957,61 @@ export function NewReservationForm({
               </CardHeader>
               <CardContent>
                 <div className="grid gap-6 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => {
-                      const timeSlots = getTimeSlotsForDate(field.value)
+                  <form.Field name="startDate">
+                    {(field) => {
+                      const timeSlots = getTimeSlotsForDate(field.state.value)
                       return (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>{t('startDate')}</FormLabel>
-                          <FormControl>
-                            <DateTimePicker
-                              date={field.value}
-                              setDate={field.onChange}
-                              placeholder={t('pickDate')}
-                              showTime={true}
-                              minTime={timeSlots.minTime}
-                              maxTime={timeSlots.maxTime}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                        <div className="flex flex-col space-y-2">
+                          <Label>{t('startDate')}</Label>
+                          <DateTimePicker
+                            date={field.state.value}
+                            setDate={field.handleChange}
+                            placeholder={t('pickDate')}
+                            showTime={true}
+                            minTime={timeSlots.minTime}
+                            maxTime={timeSlots.maxTime}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-sm font-medium text-destructive">
+                              {String(field.state.meta.errors[0])}
+                            </p>
+                          )}
+                        </div>
                       )
                     }}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => {
-                      const timeSlots = getTimeSlotsForDate(field.value)
+                  </form.Field>
+                  <form.Field name="endDate">
+                    {(field) => {
+                      const timeSlots = getTimeSlotsForDate(field.state.value)
                       return (
-                        <FormItem className="flex flex-col">
-                          <FormLabel>{t('endDate')}</FormLabel>
-                          <FormControl>
-                            <DateTimePicker
-                              date={field.value}
-                              setDate={field.onChange}
-                              placeholder={t('pickDate')}
-                              disabledDates={(date) => {
-                                // Only block dates before start date (logical constraint)
-                                if (watchStartDate) {
-                                  const startDay = new Date(watchStartDate)
-                                  startDay.setHours(0, 0, 0, 0)
-                                  return date < startDay
-                                }
-                                return false
-                              }}
-                              showTime={true}
-                              minTime={timeSlots.minTime}
-                              maxTime={timeSlots.maxTime}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                        <div className="flex flex-col space-y-2">
+                          <Label>{t('endDate')}</Label>
+                          <DateTimePicker
+                            date={field.state.value}
+                            setDate={field.handleChange}
+                            placeholder={t('pickDate')}
+                            disabledDates={(date) => {
+                              // Only block dates before start date (logical constraint)
+                              if (watchStartDate) {
+                                const startDay = new Date(watchStartDate)
+                                startDay.setHours(0, 0, 0, 0)
+                                return date < startDay
+                              }
+                              return false
+                            }}
+                            showTime={true}
+                            minTime={timeSlots.minTime}
+                            maxTime={timeSlots.maxTime}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-sm font-medium text-destructive">
+                              {String(field.state.meta.errors[0])}
+                            </p>
+                          )}
+                        </div>
                       )
                     }}
-                  />
+                  </form.Field>
                 </div>
 
                 {watchStartDate && watchEndDate && duration > 0 && (
@@ -1720,22 +1663,9 @@ export function NewReservationForm({
                     <CardDescription>{t('notesHint')}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <FormField
-                      control={form.control}
-                      name="internalNotes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Textarea
-                              placeholder={t('notesPlaceholder')}
-                              className="min-h-[120px] resize-none"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <form.AppField name="internalNotes">
+                      {(field) => <field.Textarea placeholder={t('notesPlaceholder')} className="min-h-[120px] resize-none" />}
+                    </form.AppField>
                   </CardContent>
                 </Card>
 
@@ -1813,7 +1743,8 @@ export function NewReservationForm({
             )}
           </div>
         </StepActions>
-      </form>
+        </form.Form>
+      </form.AppForm>
 
       {/* Custom Item Dialog */}
       <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
@@ -2051,6 +1982,6 @@ export function NewReservationForm({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Form>
+    </>
   )
 }
