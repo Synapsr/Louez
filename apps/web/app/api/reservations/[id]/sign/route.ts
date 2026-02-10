@@ -1,136 +1,110 @@
+import {
+  ApiServiceError,
+  getReservationSigningContext,
+  signReservationAsAdmin,
+  signReservationAsCustomer,
+} from '@louez/api/services'
+import { reservationSignInputSchema } from '@louez/validations'
 import { NextResponse } from 'next/server'
-import { headers, cookies } from 'next/headers'
-import { db } from '@louez/db'
-import { reservations, customerSessions } from '@louez/db'
-import { eq, and, gt } from 'drizzle-orm'
-import { generateContract } from '@/lib/pdf/generate'
+import { cookies } from 'next/headers'
+import { db, customerSessions } from '@louez/db'
+import { and, eq, gt } from 'drizzle-orm'
 import { auth } from '@/lib/auth'
 import { verifyStoreAccess } from '@/lib/store-context'
-import { getClientIp } from '@/lib/request'
+import { generateContract } from '@/lib/pdf/generate'
 
-/**
- * POST /api/reservations/[id]/sign
- *
- * Signs a reservation contract. Requires authentication via:
- * - Customer session cookie (for customers signing their own reservations)
- * - Dashboard admin session (for store members signing on behalf)
- */
+function statusFromServiceCode(code: ApiServiceError['code']) {
+  switch (code) {
+    case 'BAD_REQUEST':
+      return 400
+    case 'UNAUTHORIZED':
+      return 401
+    case 'FORBIDDEN':
+      return 403
+    case 'NOT_FOUND':
+      return 404
+    default:
+      return 500
+  }
+}
+
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  const { id: reservationId } = await params
+  const { id } = await params
+  const parsed = reservationSignInputSchema.safeParse({ reservationId: id })
 
-  // Validate reservation ID format (nanoid 21 chars)
-  if (!reservationId || reservationId.length !== 21) {
-    return NextResponse.json(
-      { error: 'Invalid reservation ID' },
-      { status: 400 }
-    )
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'errors.invalidData' }, { status: 400 })
   }
 
-  // Get reservation with store info
-  const reservation = await db.query.reservations.findFirst({
-    where: eq(reservations.id, reservationId),
-    with: {
-      store: true,
-    },
-  })
+  try {
+    const { reservationId } = parsed.data
+    const reservation = await getReservationSigningContext(reservationId)
 
-  if (!reservation) {
-    return NextResponse.json(
-      { error: 'Reservation not found' },
-      { status: 404 }
-    )
-  }
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get('customer_session')?.value
 
-  // Check if already signed
-  if (reservation.signedAt) {
-    return NextResponse.json(
-      { error: 'Contract already signed' },
-      { status: 400 }
-    )
-  }
+    if (sessionToken) {
+      const customerSession = await db.query.customerSessions.findFirst({
+        where: and(
+          eq(customerSessions.token, sessionToken),
+          gt(customerSessions.expiresAt, new Date()),
+        ),
+        with: {
+          customer: true,
+        },
+      })
 
-  // ===== AUTHENTICATION =====
-  // Try customer session first (for storefront signing)
-  const cookieStore = await cookies()
-  const sessionToken = cookieStore.get('customer_session')?.value
-
-  let isAuthorized = false
-  let signerType: 'customer' | 'admin' = 'customer'
-
-  if (sessionToken) {
-    // Validate customer session
-    const session = await db.query.customerSessions.findFirst({
-      where: and(
-        eq(customerSessions.token, sessionToken),
-        gt(customerSessions.expiresAt, new Date())
-      ),
-      with: {
-        customer: true,
-      },
-    })
-
-    // Customer must match the reservation's customer AND store
-    if (
-      session?.customer &&
-      session.customer.id === reservation.customerId &&
-      session.customer.storeId === reservation.storeId
-    ) {
-      isAuthorized = true
-      signerType = 'customer'
-    }
-  }
-
-  // If not authorized as customer, try dashboard admin
-  if (!isAuthorized) {
-    const dashboardSession = await auth()
-
-    if (dashboardSession?.user?.id) {
-      // Verify user has access to this specific store
-      const storeAccess = await verifyStoreAccess(reservation.storeId)
-
-      if (storeAccess) {
-        isAuthorized = true
-        signerType = 'admin'
+      if (
+        customerSession?.customer &&
+        customerSession.customer.id === reservation.customerId &&
+        customerSession.customer.storeId === reservation.storeId
+      ) {
+        return NextResponse.json(
+          await signReservationAsCustomer({
+            reservationId,
+            storeId: reservation.storeId,
+            customerId: customerSession.customer.id,
+            headers: request.headers,
+            regenerateContract: async (idToRegenerate: string) => {
+              await generateContract({ reservationId: idToRegenerate, regenerate: true })
+            },
+          }),
+        )
       }
     }
-  }
 
-  // Reject if not authorized
-  if (!isAuthorized) {
+    const dashboardSession = await auth()
+    if (!dashboardSession?.user?.id) {
+      return NextResponse.json({ error: 'errors.unauthenticated' }, { status: 401 })
+    }
+
+    const hasAccess = await verifyStoreAccess(reservation.storeId)
+    if (!hasAccess) {
+      return NextResponse.json({ error: 'errors.unauthorized' }, { status: 403 })
+    }
+
     return NextResponse.json(
-      { error: 'Unauthorized - Please sign in to sign this contract' },
-      { status: 401 }
+      await signReservationAsAdmin({
+        reservationId,
+        storeId: reservation.storeId,
+        headers: request.headers,
+        regenerateContract: async (idToRegenerate: string) => {
+          await generateContract({ reservationId: idToRegenerate, regenerate: true })
+        },
+      }),
     )
-  }
-
-  // Get client IP for audit trail (supports Cloudflare, Traefik, nginx, etc.)
-  const headersList = await headers()
-  const ip = getClientIp(headersList)
-
-  // Update reservation with signature (with store isolation)
-  const updated = await db
-    .update(reservations)
-    .set({
-      signedAt: new Date(),
-      signatureIp: ip,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(reservations.id, reservationId),
-        eq(reservations.storeId, reservation.storeId) // Ensure store isolation
+  } catch (error) {
+    if (error instanceof ApiServiceError) {
+      return NextResponse.json(
+        { error: error.key, details: error.details },
+        { status: statusFromServiceCode(error.code) },
       )
-    )
+    }
 
-  // Regenerate contract PDF with signature
-  await generateContract({ reservationId, regenerate: true })
-
-  return NextResponse.json({
-    success: true,
-    signedBy: signerType,
-    signedAt: new Date().toISOString(),
-  })
+    console.error('Reservation sign error:', error)
+    return NextResponse.json({ error: 'errors.internalServerError' }, { status: 500 })
+  }
 }
