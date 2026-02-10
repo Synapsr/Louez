@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Globe, Store } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -42,6 +42,7 @@ import {
   detectCountryFromBrowser,
   getBrowserLanguage,
 } from '@/lib/utils/util.browser-country-detection';
+import { orpc } from '@/lib/orpc/react';
 
 import { useAppForm } from '@/hooks/form/form';
 
@@ -129,7 +130,62 @@ export default function OnboardingStorePage() {
     },
   });
 
+  const draftQuery = useQuery({
+    ...orpc.dashboard.onboarding.getDraft.queryOptions({
+      input: {},
+    }),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const hasHydratedDraft = useRef(false);
   const hasAppliedBrowserDefaults = useRef(false);
+  const formValues = useStore(form.store, (s) => s.values);
+
+  useEffect(() => {
+    if (hasHydratedDraft.current) return;
+
+    const draft = draftQuery.data?.store;
+    if (!draft) return;
+
+    const hasLocalInput = Boolean(
+      formValues.name ||
+        formValues.slug ||
+        formValues.address ||
+        formValues.email ||
+        formValues.phone,
+    );
+    if (hasLocalInput) {
+      hasHydratedDraft.current = true;
+      return;
+    }
+
+    form.setFieldValue('name', draft.name || '');
+    form.setFieldValue('slug', draft.slug || '');
+    form.setFieldValue('address', draft.address || '');
+    form.setFieldValue('latitude', draft.latitude ?? null);
+    form.setFieldValue('longitude', draft.longitude ?? null);
+    form.setFieldValue('email', draft.email || '');
+    form.setFieldValue('phone', draft.phone || '');
+    if (draft.country) {
+      form.setFieldValue('country', draft.country);
+    }
+    if (draft.currency) {
+      form.setFieldValue('currency', draft.currency);
+    }
+
+    hasHydratedDraft.current = true;
+    hasAppliedBrowserDefaults.current = true;
+  }, [
+    draftQuery.data,
+    form,
+    formValues.address,
+    formValues.email,
+    formValues.name,
+    formValues.phone,
+    formValues.slug,
+  ]);
 
   useEffect(() => {
     if (hasAppliedBrowserDefaults.current) return;
@@ -143,8 +199,8 @@ export default function OnboardingStorePage() {
     hasAppliedBrowserDefaults.current = true;
   }, [form]);
 
-  const latitude = useStore(form.store, (s) => s.values.latitude);
-  const longitude = useStore(form.store, (s) => s.values.longitude);
+  const latitude = formValues.latitude;
+  const longitude = formValues.longitude;
   const domain = env.NEXT_PUBLIC_APP_DOMAIN;
 
   const handleCountryChange = (
