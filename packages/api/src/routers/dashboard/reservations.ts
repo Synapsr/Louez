@@ -1,6 +1,9 @@
-import { dashboardReservationPollInputSchema } from '@louez/validations'
+import {
+  dashboardReservationPollInputSchema,
+  reservationSignInputSchema,
+} from '@louez/validations'
 import { dashboardProcedure } from '../../procedures'
-import { getReservationPollData } from '../../services'
+import { getReservationPollData, signReservationAsAdmin } from '../../services'
 import { toORPCError } from '../../utils/orpc-error'
 
 const poll = dashboardProcedure
@@ -15,6 +18,22 @@ const poll = dashboardProcedure
     }
   })
 
+const sign = dashboardProcedure
+  .input(reservationSignInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      return await signReservationAsAdmin({
+        reservationId: input.reservationId,
+        storeId: context.store.id,
+        headers: context.headers,
+        regenerateContract: context.regenerateContract,
+      })
+    } catch (error) {
+      throw toORPCError(error)
+    }
+  })
+
 export const dashboardReservationsRouter = {
   poll,
+  sign,
 }

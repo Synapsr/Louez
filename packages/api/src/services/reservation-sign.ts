@@ -4,50 +4,33 @@ import { ApiServiceError } from './errors'
 
 function getClientIp(headers: Headers): string {
   const cfConnectingIp = headers.get('cf-connecting-ip')
-  if (cfConnectingIp) {
-    return cfConnectingIp.trim()
-  }
+  if (cfConnectingIp) return cfConnectingIp.trim()
 
   const trueClientIp = headers.get('true-client-ip')
-  if (trueClientIp) {
-    return trueClientIp.trim()
-  }
+  if (trueClientIp) return trueClientIp.trim()
 
   const realIp = headers.get('x-real-ip')
-  if (realIp) {
-    return realIp.trim()
-  }
+  if (realIp) return realIp.trim()
 
   const forwardedFor = headers.get('x-forwarded-for')
   if (forwardedFor) {
     const firstIp = forwardedFor.split(',')[0]?.trim()
-    if (firstIp) {
-      return firstIp
-    }
+    if (firstIp) return firstIp
   }
 
   return 'unknown'
 }
 
-interface SignReservationAsCustomerParams {
-  reservationId: string
+export interface ReservationSigningContext {
+  id: string
   storeId: string
   customerId: string
-  headers: Headers
-  regenerateContract?: (reservationId: string) => Promise<void>
+  signedAt: Date | null
 }
 
-export async function signReservationAsCustomer(
-  params: SignReservationAsCustomerParams,
-) {
-  const {
-    reservationId,
-    storeId,
-    customerId,
-    headers,
-    regenerateContract,
-  } = params
-
+export async function getReservationSigningContext(
+  reservationId: string,
+): Promise<ReservationSigningContext> {
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, reservationId),
     columns: {
@@ -62,14 +45,32 @@ export async function signReservationAsCustomer(
     throw new ApiServiceError('NOT_FOUND', 'errors.reservationNotFound')
   }
 
-  if (reservation.signedAt) {
-    throw new ApiServiceError('BAD_REQUEST', 'errors.contractAlreadySigned')
-  }
+  return reservation
+}
 
-  if (reservation.storeId !== storeId || reservation.customerId !== customerId) {
-    throw new ApiServiceError('FORBIDDEN', 'errors.unauthorized')
-  }
+interface SignReservationByCustomerParams {
+  reservationId: string
+  storeId: string
+  customerId: string
+  headers: Headers
+  regenerateContract?: (reservationId: string) => Promise<void>
+}
 
+interface SignReservationByAdminParams {
+  reservationId: string
+  storeId: string
+  headers: Headers
+  regenerateContract?: (reservationId: string) => Promise<void>
+}
+
+async function persistSignature(params: {
+  reservationId: string
+  storeId: string
+  signedBy: 'customer' | 'admin'
+  headers: Headers
+  regenerateContract?: (reservationId: string) => Promise<void>
+}) {
+  const { reservationId, storeId, signedBy, headers, regenerateContract } = params
   const signedAt = new Date()
 
   await db
@@ -79,9 +80,7 @@ export async function signReservationAsCustomer(
       signatureIp: getClientIp(headers),
       updatedAt: signedAt,
     })
-    .where(
-      and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)),
-    )
+    .where(and(eq(reservations.id, reservationId), eq(reservations.storeId, storeId)))
 
   if (regenerateContract) {
     try {
@@ -93,7 +92,55 @@ export async function signReservationAsCustomer(
 
   return {
     success: true as const,
-    signedBy: 'customer' as const,
+    signedBy,
     signedAt: signedAt.toISOString(),
   }
+}
+
+export async function signReservationAsCustomer(
+  params: SignReservationByCustomerParams,
+) {
+  const { reservationId, storeId, customerId, headers, regenerateContract } = params
+
+  const reservation = await getReservationSigningContext(reservationId)
+
+  if (reservation.signedAt) {
+    throw new ApiServiceError('BAD_REQUEST', 'errors.contractAlreadySigned')
+  }
+
+  if (reservation.storeId !== storeId || reservation.customerId !== customerId) {
+    throw new ApiServiceError('FORBIDDEN', 'errors.unauthorized')
+  }
+
+  return persistSignature({
+    reservationId,
+    storeId: reservation.storeId,
+    headers,
+    signedBy: 'customer',
+    regenerateContract,
+  })
+}
+
+export async function signReservationAsAdmin(
+  params: SignReservationByAdminParams,
+) {
+  const { reservationId, storeId, headers, regenerateContract } = params
+
+  const reservation = await getReservationSigningContext(reservationId)
+
+  if (reservation.signedAt) {
+    throw new ApiServiceError('BAD_REQUEST', 'errors.contractAlreadySigned')
+  }
+
+  if (reservation.storeId !== storeId) {
+    throw new ApiServiceError('FORBIDDEN', 'errors.unauthorized')
+  }
+
+  return persistSignature({
+    reservationId,
+    storeId: reservation.storeId,
+    headers,
+    signedBy: 'admin',
+    regenerateContract,
+  })
 }
