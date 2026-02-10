@@ -61,7 +61,6 @@ next-env.d.ts
 .claude/
 
 # Internal documentation (not for public release)
-docs/
 tasks/
 specs/
 SPECIFICATIONS*.md
