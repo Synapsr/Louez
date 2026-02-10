@@ -1,9 +1,7 @@
 'use client'
 
-import { useCallback, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import {
@@ -15,6 +13,7 @@ import {
   FileCheck2,
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
+import { useStore } from '@tanstack/react-form'
 
 import { Switch } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -25,19 +24,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-} from '@louez/ui'
 import { RadioGroup, RadioGroupItem } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { updateInspectionSettings } from './actions'
 import type { StoreSettings, InspectionSettings } from '@louez/types'
+import { useAppForm } from '@/hooks/form/form'
+import { RootError } from '@/components/form/root-error'
 
 const INSPECTION_MODES = ['optional', 'recommended', 'required'] as const
 
@@ -84,8 +77,8 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
     maxPhotosPerItem: 10,
   }
 
-  const form = useForm<InspectionSettingsInput>({
-    resolver: zodResolver(inspectionSettingsSchema),
+  const [rootError, setRootError] = useState<string | null>(null)
+  const form = useAppForm({
     defaultValues: {
       enabled: currentInspection.enabled,
       mode: currentInspection.mode || 'optional',
@@ -93,260 +86,238 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
       autoGeneratePdf: currentInspection.autoGeneratePdf,
       maxPhotosPerItem: currentInspection.maxPhotosPerItem,
     },
+    validators: { onSubmit: inspectionSettingsSchema },
+    onSubmit: async ({ value }) => {
+      setRootError(null)
+      startTransition(async () => {
+        const result = await updateInspectionSettings(value)
+        if (result.error) {
+          setRootError(result.error)
+          return
+        }
+        toastManager.add({ title: t('saved'), type: 'success' })
+        router.refresh()
+      })
+    },
   })
 
-  const { isDirty } = form.formState
-
-  const handleReset = useCallback(() => {
-    form.reset()
-  }, [form])
-
-  const isEnabled = form.watch('enabled')
-  const mode = form.watch('mode')
-
-  async function onSubmit(data: InspectionSettingsInput) {
-    startTransition(async () => {
-      const result = await updateInspectionSettings(data)
-
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
-      }
-
-      toastManager.add({ title: t('saved'), type: 'success' })
-      form.reset(data)
-      router.refresh()
-    })
-  }
+  const isDirty = useStore(form.store, (s) => s.isDirty)
+  const isEnabled = useStore(form.store, (s) => s.values.enabled)
+  const mode = useStore(form.store, (s) => s.values.mode)
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Enable Section */}
+    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+      <RootError error={rootError} />
+
+      {/* Enable Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ClipboardCheck className="h-5 w-5 text-primary" />
+            {t('enableSection')}
+          </CardTitle>
+          <CardDescription>{t('enableSectionDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form.Field name="enabled">
+            {(field) => (
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <Label htmlFor={field.name} className="text-base">{t('enabled')}</Label>
+                  <p className="text-muted-foreground text-sm">{t('enabledDescription')}</p>
+                </div>
+                <Switch
+                  checked={field.state.value}
+                  onCheckedChange={(checked) => field.handleChange(checked)}
+                />
+              </div>
+            )}
+          </form.Field>
+        </CardContent>
+      </Card>
+
+      {/* Mode Section */}
+      {isEnabled && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardCheck className="h-5 w-5 text-primary" />
-              {t('enableSection')}
+              <Settings2 className="h-5 w-5 text-primary" />
+              {t('modeSection')}
             </CardTitle>
-            <CardDescription>{t('enableSectionDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <FormField
-              control={form.control}
-              name="enabled"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">{t('enabled')}</FormLabel>
-                    <FormDescription>{t('enabledDescription')}</FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
+            <form.Field name="mode">
+              {(field) => (
+                <div className="grid gap-2">
+                  <RadioGroup
+                    value={field.state.value}
+                    onValueChange={(val) => field.handleChange(val)}
+                    className="space-y-3"
+                  >
+                    <label
+                      htmlFor="optional"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                    >
+                      <RadioGroupItem
+                        value="optional"
+                        id="optional"
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <span className="text-base font-medium">
+                          {t('modeOptional')}
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          {t('modeOptionalDescription')}
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      htmlFor="recommended"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                    >
+                      <RadioGroupItem
+                        value="recommended"
+                        id="recommended"
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <span className="text-base font-medium">
+                          {t('modeRecommended')}
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          {t('modeRecommendedDescription')}
+                        </p>
+                      </div>
+                    </label>
+
+                    <label
+                      htmlFor="required"
+                      className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                    >
+                      <RadioGroupItem
+                        value="required"
+                        id="required"
+                        className="mt-1"
+                      />
+                      <div className="flex-1">
+                        <span className="text-base font-medium">
+                          {t('modeRequired')}
+                        </span>
+                        <p className="text-sm text-muted-foreground">
+                          {t('modeRequiredDescription')}
+                        </p>
+                      </div>
+                    </label>
+                  </RadioGroup>
+                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                </div>
               )}
-            />
+            </form.Field>
           </CardContent>
         </Card>
+      )}
 
-        {/* Mode Section */}
-        {isEnabled && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings2 className="h-5 w-5 text-primary" />
-                {t('modeSection')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="mode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <RadioGroup
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        className="space-y-3"
-                      >
-                        <label
-                          htmlFor="optional"
-                          className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-                        >
-                          <RadioGroupItem
-                            value="optional"
-                            id="optional"
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <span className="text-base font-medium">
-                              {t('modeOptional')}
-                            </span>
-                            <p className="text-sm text-muted-foreground">
-                              {t('modeOptionalDescription')}
-                            </p>
-                          </div>
-                        </label>
-
-                        <label
-                          htmlFor="recommended"
-                          className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-                        >
-                          <RadioGroupItem
-                            value="recommended"
-                            id="recommended"
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <span className="text-base font-medium">
-                              {t('modeRecommended')}
-                            </span>
-                            <p className="text-sm text-muted-foreground">
-                              {t('modeRecommendedDescription')}
-                            </p>
-                          </div>
-                        </label>
-
-                        <label
-                          htmlFor="required"
-                          className="flex cursor-pointer items-start space-x-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
-                        >
-                          <RadioGroupItem
-                            value="required"
-                            id="required"
-                            className="mt-1"
-                          />
-                          <div className="flex-1">
-                            <span className="text-base font-medium">
-                              {t('modeRequired')}
-                            </span>
-                            <p className="text-sm text-muted-foreground">
-                              {t('modeRequiredDescription')}
-                            </p>
-                          </div>
-                        </label>
-                      </RadioGroup>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Signature & PDF Section */}
-        {isEnabled && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileCheck2 className="h-5 w-5 text-primary" />
-                {t('signatureSection')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="requireCustomerSignature"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="flex items-center gap-3">
-                      <PenLine className="h-5 w-5 text-muted-foreground" />
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          {t('requireCustomerSignature')}
-                        </FormLabel>
-                        <FormDescription>
-                          {t('requireCustomerSignatureDescription')}
-                        </FormDescription>
-                      </div>
+      {/* Signature & PDF Section */}
+      {isEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileCheck2 className="h-5 w-5 text-primary" />
+              {t('signatureSection')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form.Field name="requireCustomerSignature">
+              {(field) => (
+                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-3">
+                    <PenLine className="h-5 w-5 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor={field.name} className="text-base">
+                        {t('requireCustomerSignature')}
+                      </Label>
+                      <p className="text-muted-foreground text-sm">
+                        {t('requireCustomerSignatureDescription')}
+                      </p>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                  </div>
+                  <Switch
+                    checked={field.state.value}
+                    onCheckedChange={(checked) => field.handleChange(checked)}
+                  />
+                </div>
+              )}
+            </form.Field>
 
-              <FormField
-                control={form.control}
-                name="autoGeneratePdf"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="flex items-center gap-3">
-                      <FileText className="h-5 w-5 text-muted-foreground" />
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">
-                          {t('autoGeneratePdf')}
-                        </FormLabel>
-                        <FormDescription>
-                          {t('autoGeneratePdfDescription')}
-                        </FormDescription>
-                      </div>
+            <form.Field name="autoGeneratePdf">
+              {(field) => (
+                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div className="space-y-0.5">
+                      <Label htmlFor={field.name} className="text-base">
+                        {t('autoGeneratePdf')}
+                      </Label>
+                      <p className="text-muted-foreground text-sm">
+                        {t('autoGeneratePdfDescription')}
+                      </p>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )}
+                  </div>
+                  <Switch
+                    checked={field.state.value}
+                    onCheckedChange={(checked) => field.handleChange(checked)}
+                  />
+                </div>
+              )}
+            </form.Field>
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Photos Section */}
-        {isEnabled && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Camera className="h-5 w-5 text-primary" />
-                {t('maxPhotosPerItem')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="maxPhotosPerItem"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormDescription className="mb-4">
-                      {t('maxPhotosPerItemDescription')}
-                    </FormDescription>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={50}
-                        className="w-32"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value, 10) || 1)
-                        }
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )}
+      {/* Photos Section */}
+      {isEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Camera className="h-5 w-5 text-primary" />
+              {t('maxPhotosPerItem')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form.Field name="maxPhotosPerItem">
+              {(field) => (
+                <div className="grid gap-2">
+                  <p className="text-muted-foreground text-sm mb-4">
+                    {t('maxPhotosPerItemDescription')}
+                  </p>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    className="w-32"
+                    id={field.name}
+                    name={field.name}
+                    value={field.state.value}
+                    onBlur={field.handleBlur}
+                    onChange={(e) =>
+                      field.handleChange(parseInt(e.target.value, 10) || 1)
+                    }
+                  />
+                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                </div>
+              )}
+            </form.Field>
+          </CardContent>
+        </Card>
+      )}
 
-        <FloatingSaveBar
-          isDirty={isDirty}
-          isLoading={isPending}
-          onReset={handleReset}
-        />
-      </form>
-    </Form>
+      <FloatingSaveBar
+        isDirty={isDirty}
+        isLoading={isPending}
+        onReset={() => form.reset()}
+      />
+    </form>
   )
 }

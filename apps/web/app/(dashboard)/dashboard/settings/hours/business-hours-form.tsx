@@ -1,14 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useForm, useFieldArray } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useTransition, useState, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
+import { useStore } from '@tanstack/react-form'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -18,9 +17,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@louez/ui'
-import {
-  Form,
 } from '@louez/ui'
 import {
   Select,
@@ -45,11 +41,14 @@ import {
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Textarea } from '@louez/ui'
+import { Label } from '@louez/ui'
 import { updateBusinessHours } from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
+import { RootError } from '@/components/form/root-error'
 import { businessHoursSchema, defaultBusinessHours, type BusinessHoursInput } from '@louez/validations'
 import { generateTimeSlots, DAY_KEYS } from '@/lib/utils/business-hours'
 import type { StoreSettings } from '@louez/types'
+import { useAppForm } from '@/hooks/form/form'
 
 interface Store {
   id: string
@@ -69,37 +68,33 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
 
   const businessHours = store.settings?.businessHours || defaultBusinessHours
 
-  const form = useForm<BusinessHoursInput>({
-    resolver: zodResolver(businessHoursSchema),
+  const [rootError, setRootError] = useState<string | null>(null)
+  const form = useAppForm({
     defaultValues: businessHours,
+    validators: { onSubmit: businessHoursSchema },
+    onSubmit: async ({ value }) => {
+      setRootError(null)
+      startTransition(async () => {
+        const result = await updateBusinessHours(value)
+        if (result.error) {
+          setRootError(result.error)
+          return
+        }
+        toastManager.add({ title: t('saved'), type: 'success' })
+        router.refresh()
+      })
+    },
   })
 
-  const { isDirty } = form.formState
+  const isDirty = useStore(form.store, (s) => s.isDirty)
 
   const handleReset = useCallback(() => {
     form.reset()
   }, [form])
 
-  const isEnabled = form.watch('enabled')
-
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'closurePeriods',
-  })
+  const isEnabled = useStore(form.store, (s) => s.values.enabled)
 
   const timeSlots = generateTimeSlots('00:00', '23:30', 30)
-
-  const onSubmit = (data: BusinessHoursInput) => {
-    startTransition(async () => {
-      const result = await updateBusinessHours(data)
-      if (result.error) {
-        form.setError('root', { message: result.error })
-        return
-      }
-      toastManager.add({ title: t('saved'), type: 'success' })
-      router.refresh()
-    })
-  }
 
   const addClosurePeriod = (data: {
     name: string
@@ -107,135 +102,136 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
     endDate: string
     reason?: string
   }) => {
-    append({
+    form.pushFieldValue('closurePeriods', {
       id: crypto.randomUUID(),
       ...data,
     })
     setClosureDialogOpen(false)
   }
 
+  const removeClosurePeriod = (index: number) => {
+    form.removeFieldValue('closurePeriods', index)
+  }
+
+  const closurePeriods = useStore(form.store, (s) => s.values.closurePeriods)
+
   return (
     <div className="space-y-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {form.formState.errors.root && (
-            <Alert variant="error">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {form.formState.errors.root.message}
-              </AlertDescription>
-            </Alert>
-          )}
+      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+        <RootError error={rootError} />
 
-          {/* Two-column layout on desktop */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Weekly Schedule - Left column */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>{t('weeklySchedule')}</CardTitle>
-                    <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">
-                      {isEnabled ? t('enabled') : t('disabled')}
-                    </span>
-                    <Switch
-                      checked={isEnabled}
-                      onCheckedChange={(checked) => form.setValue('enabled', checked, { shouldDirty: true })}
-                    />
-                  </div>
+        {/* Two-column layout on desktop */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Weekly Schedule - Left column */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t('weeklySchedule')}</CardTitle>
+                  <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent className={`space-y-3 ${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-                {DAY_KEYS.map((dayKey) => (
-                  <DayScheduleRow
-                    key={dayKey}
-                    dayKey={dayKey}
-                    form={form}
-                    t={t}
-                    timeSlots={timeSlots}
-                  />
-                ))}
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {isEnabled ? t('enabled') : t('disabled')}
+                  </span>
+                  <form.Field name="enabled">
+                    {(field) => (
+                      <Switch
+                        checked={field.state.value}
+                        onCheckedChange={(checked) => field.handleChange(checked)}
+                      />
+                    )}
+                  </form.Field>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className={`space-y-3 ${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              {DAY_KEYS.map((dayKey) => (
+                <DayScheduleRow
+                  key={dayKey}
+                  dayKey={dayKey}
+                  form={form}
+                  t={t}
+                  timeSlots={timeSlots}
+                />
+              ))}
+            </CardContent>
+          </Card>
 
-            {/* Closure Periods - Right column */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>{t('closurePeriods')}</CardTitle>
-                    <CardDescription>{t('closurePeriodsDescription')}</CardDescription>
-                  </div>
-                  <ClosurePeriodDialog
-                    open={closureDialogOpen}
-                    onOpenChange={setClosureDialogOpen}
-                    onAdd={addClosurePeriod}
-                    t={t}
-                    tCommon={tCommon}
-                  />
+          {/* Closure Periods - Right column */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t('closurePeriods')}</CardTitle>
+                  <CardDescription>{t('closurePeriodsDescription')}</CardDescription>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {fields.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="rounded-full bg-muted p-3 mb-4">
-                      <CalendarX2 className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {t('noClosure')}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
-                      {t('noClosureDescription')}
-                    </p>
+                <ClosurePeriodDialog
+                  open={closureDialogOpen}
+                  onOpenChange={setClosureDialogOpen}
+                  onAdd={addClosurePeriod}
+                  t={t}
+                  tCommon={tCommon}
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {closurePeriods.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="rounded-full bg-muted p-3 mb-4">
+                    <CalendarX2 className="h-6 w-6 text-muted-foreground" />
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {fields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className="flex items-center justify-between rounded-lg border p-3"
-                      >
-                        <div className="space-y-1 min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                            <span className="font-medium truncate">{field.name}</span>
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {format(new Date(field.startDate), 'dd MMM yyyy', { locale: fr })}
-                            {' - '}
-                            {format(new Date(field.endDate), 'dd MMM yyyy', { locale: fr })}
-                          </p>
-                          {field.reason && (
-                            <p className="text-xs text-muted-foreground truncate">{field.reason}</p>
-                          )}
+                  <p className="text-sm font-medium text-muted-foreground">
+                    {t('noClosure')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                    {t('noClosureDescription')}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {closurePeriods.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <div className="space-y-1 min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="font-medium truncate">{field.name}</span>
                         </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0"
-                          onClick={() => remove(index)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(field.startDate), 'dd MMM yyyy', { locale: fr })}
+                          {' - '}
+                          {format(new Date(field.endDate), 'dd MMM yyyy', { locale: fr })}
+                        </p>
+                        {field.reason && (
+                          <p className="text-xs text-muted-foreground truncate">{field.reason}</p>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => removeClosurePeriod(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-          <FloatingSaveBar
-            isDirty={isDirty}
-            isLoading={isPending}
-            onReset={handleReset}
-          />
-        </form>
-      </Form>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={handleReset}
+        />
+      </form>
     </div>
   )
 }
@@ -248,22 +244,26 @@ function DayScheduleRow({
   timeSlots,
 }: {
   dayKey: 0 | 1 | 2 | 3 | 4 | 5 | 6
-  form: ReturnType<typeof useForm<BusinessHoursInput>>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  form: any
   t: ReturnType<typeof useTranslations>
   timeSlots: string[]
 }) {
-  const schedule = form.watch('schedule')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const schedule = useStore(form.store, (s: any) => s.values.schedule)
   const isOpen = schedule[dayKey]?.isOpen ?? false
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4">
       <div className="flex items-center gap-3 min-w-[140px]">
-        <Switch
-          checked={isOpen}
-          onCheckedChange={(checked) => {
-            form.setValue(`schedule.${dayKey}.isOpen` as any, checked, { shouldDirty: true })
-          }}
-        />
+        <form.Field name={`schedule.${dayKey}.isOpen` as any}>
+          {(field: any) => (
+            <Switch
+              checked={field.state.value}
+              onCheckedChange={(checked) => field.handleChange(checked)}
+            />
+          )}
+        </form.Field>
         <span className={`font-medium ${!isOpen ? 'text-muted-foreground' : ''}`}>
           {t(`days.${dayKey}`)}
         </span>
@@ -271,41 +271,49 @@ function DayScheduleRow({
 
       {isOpen ? (
         <div className="flex items-center gap-2 flex-1">
-          <Select
-            value={schedule[dayKey]?.openTime ?? '09:00'}
-            onValueChange={(value) => {
-              if (value !== null) form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
-            }}
-          >
-            <SelectTrigger className="flex-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {timeSlots.map((time) => (
-                <SelectItem key={time} value={time}>
-                  {time}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <form.Field name={`schedule.${dayKey}.openTime` as any}>
+            {(field: any) => (
+              <Select
+                value={field.state.value}
+                onValueChange={(value) => {
+                  if (value !== null) field.handleChange(value)
+                }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </form.Field>
           <span className="text-muted-foreground">-</span>
-          <Select
-            value={schedule[dayKey]?.closeTime ?? '18:00'}
-            onValueChange={(value) => {
-              if (value !== null) form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
-            }}
-          >
-            <SelectTrigger className="flex-1">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {timeSlots.map((time) => (
-                <SelectItem key={time} value={time}>
-                  {time}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <form.Field name={`schedule.${dayKey}.closeTime` as any}>
+            {(field: any) => (
+              <Select
+                value={field.state.value}
+                onValueChange={(value) => {
+                  if (value !== null) field.handleChange(value)
+                }}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeSlots.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </form.Field>
         </div>
       ) : (
         <Badge variant="secondary" className="text-muted-foreground">

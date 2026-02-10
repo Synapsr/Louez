@@ -2,8 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, type FieldErrors } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useStore } from '@tanstack/react-form'
 import {
   Loader2,
   Upload,
@@ -30,15 +29,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui'
+import { Label } from '@louez/ui'
 import {
   Select,
   SelectContent,
@@ -72,6 +63,7 @@ import { Switch } from '@louez/ui'
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
 import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
 import { Link2, Puzzle } from 'lucide-react'
+import { useAppForm } from '@/hooks/form/form'
 
 interface Category {
   id: string
@@ -167,29 +159,50 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     status: unit.status,
   })) ?? []
 
-  const form = useForm<ProductInput>({
-    resolver: zodResolver(productSchema),
+  const form = useAppForm({
     defaultValues: {
       name: product?.name || '',
       description: product?.description || '',
-      categoryId: product?.categoryId || null,
+      categoryId: product?.categoryId || null as string | null,
       price: product?.price || '',
       deposit: product?.deposit || '',
       quantity: product?.quantity?.toString() || '1',
-      status: product?.status || 'draft',
-      images: product?.images ?? [],
-      pricingMode: product?.pricingMode || null,
+      status: (product?.status || 'draft') as 'draft' | 'active' | 'archived',
+      images: product?.images ?? [] as string[],
+      pricingMode: (product?.pricingMode || null) as PricingMode | null,
       pricingTiers: initialPricingTiers,
       enforceStrictTiers: product?.enforceStrictTiers || false,
-      taxSettings: product?.taxSettings || { inheritFromStore: true },
+      taxSettings: product?.taxSettings || { inheritFromStore: true } as ProductTaxSettings,
       videoUrl: product?.videoUrl || '',
-      accessoryIds: product?.accessoryIds || [],
+      accessoryIds: product?.accessoryIds || [] as string[],
       trackUnits: product?.trackUnits || false,
       units: initialUnits,
     },
+    validators: { onSubmit: productSchema as any },
+    onSubmit: async ({ value }) => {
+      setIsLoading(true)
+      try {
+        const result = product
+          ? await updateProduct(product.id, value as ProductInput)
+          : await createProduct(value as ProductInput)
+
+        if (result.error) {
+          toastManager.add({ title: result.error, type: 'error' })
+          return
+        }
+
+        toastManager.add({ title: product ? t('productUpdated') : t('productCreated'), type: 'success' })
+        router.push('/dashboard/products')
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
+      } finally {
+        setIsLoading(false)
+      }
+    },
   })
 
-  const { isDirty } = form.formState
+  const watchedValues = useStore(form.store, (s) => s.values)
+  const isDirty = useStore(form.store, (s) => s.isDirty)
 
   const processFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -246,7 +259,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
         if (uploadedUrls.length > 0) {
           const updatedPreviews = [...imagesPreviews, ...uploadedUrls]
           setImagesPreviews(updatedPreviews)
-          form.setValue('images', updatedPreviews, { shouldDirty: true })
+          form.setFieldValue('images', updatedPreviews)
         }
       } catch (error) {
         console.error('Image upload error:', error)
@@ -301,7 +314,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   const removeImage = (index: number) => {
     const newPreviews = imagesPreviews.filter((_, i) => i !== index)
     setImagesPreviews(newPreviews)
-    form.setValue('images', newPreviews, { shouldDirty: true })
+    form.setFieldValue('images', newPreviews)
   }
 
   const setMainImage = (index: number) => {
@@ -310,7 +323,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     const [moved] = newPreviews.splice(index, 1)
     newPreviews.unshift(moved)
     setImagesPreviews(newPreviews)
-    form.setValue('images', newPreviews, { shouldDirty: true })
+    form.setFieldValue('images', newPreviews)
   }
 
   const handleReset = useCallback(() => {
@@ -340,7 +353,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   }
 
   const validateCurrentStep = async (): Promise<boolean> => {
-    let fieldsToValidate: (keyof ProductInput)[] = []
+    let fieldsToValidate: string[] = []
 
     switch (currentStep) {
       case 0: // Photos
@@ -357,8 +370,17 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
         break
     }
 
-    const result = await form.trigger(fieldsToValidate)
-    return result
+    const results = await Promise.all(
+      fieldsToValidate.map((field) => form.validateField(field as any, 'submit'))
+    )
+
+    // Check if any field has errors
+    const hasErrors = fieldsToValidate.some((field) => {
+      const fieldState = form.getFieldMeta(field as any)
+      return fieldState?.errors && fieldState.errors.length > 0
+    })
+
+    return !hasErrors
   }
 
   const goToNextStep = async () => {
@@ -374,49 +396,6 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     }
   }
 
-  function onInvalid(errors: FieldErrors<ProductInput>) {
-    toastManager.add({ title: t('validationError'), type: 'error' })
-
-    // In stepper mode: navigate to the first step with errors
-    if (!isEditMode) {
-      const errorFields = Object.keys(errors)
-      const stepForField = (field: string): number => {
-        if (['images', 'videoUrl'].includes(field)) return 0
-        if (['name', 'description', 'categoryId'].includes(field)) return 1
-        if (['price', 'deposit', 'quantity', 'pricingMode', 'pricingTiers', 'taxSettings', 'trackUnits', 'units', 'enforceStrictTiers'].includes(field)) return 2
-        if (['status'].includes(field)) return 3
-        return currentStep
-      }
-
-      const firstErrorStep = Math.min(...errorFields.map(stepForField))
-      if (firstErrorStep < currentStep) {
-        setCurrentStep(firstErrorStep)
-      }
-    }
-  }
-
-  async function onSubmit(data: ProductInput) {
-    setIsLoading(true)
-    try {
-      const result = product
-        ? await updateProduct(product.id, data)
-        : await createProduct(data)
-
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-        return
-      }
-
-      toastManager.add({ title: product ? t('productUpdated') : t('productCreated'), type: 'success' })
-      router.push('/dashboard/products')
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const watchedValues = form.watch()
   const selectedCategory = categories.find((c) => c.id === watchedValues.categoryId)
 
   // Effective pricing mode (product-specific or store default)
@@ -434,13 +413,10 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
   // Render image upload section (shared between modes)
   const renderImageUpload = () => (
-    <FormField
-      control={form.control}
-      name="images"
-      render={() => (
-        <FormItem>
-          <FormControl>
-            <div className="space-y-4">
+    <form.Field name="images">
+      {(field) => (
+        <div>
+          <div className="space-y-4">
               {/* Large upload zone when no images */}
               {imagesPreviews.length === 0 && (
                 <label
@@ -562,22 +538,24 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                 </div>
               )}
 
-              <p className="text-xs text-muted-foreground">
-                {t('imagesHint', { count: 5 - imagesPreviews.length })}
-              </p>
-            </div>
-          </FormControl>
-          <FormMessage />
-        </FormItem>
+            <p className="text-xs text-muted-foreground">
+              {t('imagesHint', { count: 5 - imagesPreviews.length })}
+            </p>
+          </div>
+          {field.state.meta.errors.length > 0 && (
+            <p className="text-sm font-medium text-destructive">
+              {String(field.state.meta.errors[0])}
+            </p>
+          )}
+        </div>
       )}
-    />
+    </form.Field>
   )
 
   // Edit mode: simple form without stepper
   if (isEditMode) {
     return (
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
           {/* Photos */}
           <Card>
             <CardHeader>
@@ -592,26 +570,28 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
               {/* YouTube Video URL */}
               <div className="pt-4 border-t">
-                <FormField
-                  control={form.control}
-                  name="videoUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
+                <form.Field name="videoUrl">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2">
                         <Video className="h-4 w-4" />
                         {t('videoUrl')}
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder={t('videoUrlPlaceholder')}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormDescription>{t('videoUrlHelp')}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                      </Label>
+                      <Input
+                        placeholder={t('videoUrlPlaceholder')}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      <p className="text-sm text-muted-foreground">{t('videoUrlHelp')}</p>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
               </div>
             </CardContent>
           </Card>
@@ -623,52 +603,56 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               <CardDescription>{t('informationDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('name')}</FormLabel>
-                    <FormControl>
-                      <Input placeholder={t('namePlaceholder')} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+              <form.Field name="name">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label>{t('name')}</Label>
+                    <Input
+                      placeholder={t('namePlaceholder')}
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {String(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
                 )}
-              />
+              </form.Field>
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('description')}</FormLabel>
-                    <FormControl>
-                      <RichTextEditor
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        placeholder={t('descriptionPlaceholder')}
-                      />
-                    </FormControl>
-                    <FormDescription>{t('descriptionHint')}</FormDescription>
-                    <FormMessage />
-                  </FormItem>
+              <form.Field name="description">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label>{t('description')}</Label>
+                    <RichTextEditor
+                      value={field.state.value || ''}
+                      onChange={field.handleChange}
+                      placeholder={t('descriptionPlaceholder')}
+                    />
+                    <p className="text-sm text-muted-foreground">{t('descriptionHint')}</p>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {String(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
                 )}
-              />
+              </form.Field>
 
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('category')}</FormLabel>
+              <form.Field name="categoryId">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label>{t('category')}</Label>
                     <div className="flex gap-2">
-                      <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
-                        <FormControl>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder={t('selectCategory')} />
-                          </SelectTrigger>
-                        </FormControl>
+                      <Select
+                        onValueChange={(value) => { if (value !== null) field.handleChange(value) }}
+                        value={field.state.value || undefined}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder={t('selectCategory')} />
+                        </SelectTrigger>
                         <SelectContent>
                           {categories.map((category) => (
                             <SelectItem key={category.id} value={category.id}>
@@ -715,11 +699,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         </DialogContent>
                       </Dialog>
                     </div>
-                    <FormDescription>{t('categoryOptional')}</FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                    <p className="text-sm text-muted-foreground">{t('categoryOptional')}</p>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {String(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
                 )}
-              />
+              </form.Field>
             </CardContent>
           </Card>
 
@@ -733,21 +721,17 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Pricing Mode first - determines the price label */}
-                <FormField
-                  control={form.control}
-                  name="pricingMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('pricingModeLabel')}</FormLabel>
+                <form.Field name="pricingMode">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label>{t('pricingModeLabel')}</Label>
                       <Select
-                        onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
-                        value={field.value || 'inherit'}
+                        onValueChange={(value) => { if (value !== null) field.handleChange((value === 'inherit' ? null : value) as any) }}
+                        value={field.state.value || 'inherit'}
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('pricingModeInherit')} />
-                          </SelectTrigger>
-                        </FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t('pricingModeInherit')} />
+                        </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="inherit">
                             {t('pricingModeInherit')} ({t(`pricingModes.${pricingMode}`)})
@@ -757,62 +741,70 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                           <SelectItem value="week">{t('pricingModes.week')}</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>{t('pricingModeHelp')}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                      <p className="text-sm text-muted-foreground">{t('pricingModeHelp')}</p>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
 
                 <Separator />
 
                 {/* Price and Deposit */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="price"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{priceLabel}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              placeholder={t('pricePlaceholder')}
-                              className="pr-8 text-lg font-semibold"
-                              {...field}
-                            />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                              {currencySymbol}
-                            </span>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <form.Field name="price">
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label>{priceLabel}</Label>
+                        <div className="relative">
+                          <Input
+                            placeholder={t('pricePlaceholder')}
+                            className="pr-8 text-lg font-semibold"
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                            {currencySymbol}
+                          </span>
+                        </div>
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
 
-                  <FormField
-                    control={form.control}
-                    name="deposit"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('deposit')}</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              placeholder={t('depositPlaceholder')}
-                              className="pr-8"
-                              {...field}
-                            />
-                            <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                              {currencySymbol}
-                            </span>
-                          </div>
-                        </FormControl>
-                        <FormDescription>{t('depositHelp')}</FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                  <form.Field name="deposit">
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label>{t('deposit')}</Label>
+                        <div className="relative">
+                          <Input
+                            placeholder={t('depositPlaceholder')}
+                            className="pr-8"
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                            {currencySymbol}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{t('depositHelp')}</p>
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 </div>
 
                 {/* Tax Settings - only show if taxes are enabled at store level */}
@@ -820,57 +812,52 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <>
                     <Separator />
                     <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="taxSettings.inheritFromStore"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <form.Field name={"taxSettings.inheritFromStore" as any}>
+                        {(field) => (
+                          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
                             <div className="space-y-0.5">
-                              <FormLabel className="text-base">{t('inheritTax')}</FormLabel>
-                              <FormDescription>
+                              <Label className="text-base">{t('inheritTax')}</Label>
+                              <p className="text-sm text-muted-foreground">
                                 {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
-                              </FormDescription>
+                              </p>
                             </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
+                            <Switch
+                              checked={field.state.value}
+                              onCheckedChange={(checked) => field.handleChange(checked as any)}
+                            />
+                          </div>
                         )}
-                      />
+                      </form.Field>
 
                       {!watchedValues.taxSettings?.inheritFromStore && (
-                        <FormField
-                          control={form.control}
-                          name="taxSettings.customRate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{t('customTaxRate')}</FormLabel>
-                              <FormControl>
-                                <div className="relative w-32">
-                                  <Input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    step="0.01"
-                                    placeholder="20"
-                                    className="pr-8"
-                                    {...field}
-                                    value={field.value ?? ''}
-                                    onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                  />
-                                  <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                    %
-                                  </span>
-                                </div>
-                              </FormControl>
-                              <FormDescription>{t('customTaxRateDescription')}</FormDescription>
-                              <FormMessage />
-                            </FormItem>
+                        <form.Field name={"taxSettings.customRate" as any}>
+                          {(field) => (
+                            <div className="space-y-2">
+                              <Label>{t('customTaxRate')}</Label>
+                              <div className="relative w-32">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  placeholder="20"
+                                  className="pr-8"
+                                  value={field.state.value ?? ''}
+                                  onChange={(e) => field.handleChange((e.target.value ? parseFloat(e.target.value) : undefined) as any)}
+                                />
+                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                              <p className="text-sm text-muted-foreground">{t('customTaxRateDescription')}</p>
+                              {field.state.meta.errors.length > 0 && (
+                                <p className="text-sm font-medium text-destructive">
+                                  {String(field.state.meta.errors[0])}
+                                </p>
+                              )}
+                            </div>
                           )}
-                        />
+                        </form.Field>
                       )}
                     </div>
                   </>
@@ -887,11 +874,11 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               <CardContent>
                 <UnitTrackingEditor
                   trackUnits={watchedValues.trackUnits || false}
-                  onTrackUnitsChange={(value) => form.setValue('trackUnits', value, { shouldDirty: true })}
+                  onTrackUnitsChange={(value) => form.setFieldValue('trackUnits', value)}
                   units={watchedValues.units || []}
-                  onChange={(units) => form.setValue('units', units, { shouldDirty: true })}
+                  onChange={(units) => form.setFieldValue('units', units)}
                   quantity={watchedValues.quantity || '1'}
-                  onQuantityChange={(value) => form.setValue('quantity', value, { shouldDirty: true })}
+                  onQuantityChange={(value) => form.setFieldValue('quantity', value)}
                   disabled={isLoading}
                 />
               </CardContent>
@@ -903,26 +890,26 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             {/* Progressive Discounts */}
             <Card>
               <CardContent className="pt-6">
-                <FormField
-                  control={form.control}
-                  name="pricingTiers"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <PricingTiersEditor
-                          basePrice={basePrice}
-                          pricingMode={effectivePricingMode}
-                          tiers={field.value || []}
-                          onChange={field.onChange}
-                          enforceStrictTiers={form.watch('enforceStrictTiers') || false}
-                          onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value, { shouldDirty: true })}
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <form.Field name="pricingTiers">
+                  {(field) => (
+                    <div>
+                      <PricingTiersEditor
+                        basePrice={basePrice}
+                        pricingMode={effectivePricingMode}
+                        tiers={field.state.value || []}
+                        onChange={field.handleChange}
+                        enforceStrictTiers={watchedValues.enforceStrictTiers || false}
+                        onEnforceStrictTiersChange={(value) => form.setFieldValue('enforceStrictTiers', value)}
+                        disabled={isLoading}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
               </CardContent>
             </Card>
 
@@ -937,24 +924,24 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               </CardHeader>
               <CardContent>
                 {availableAccessories.length > 0 ? (
-                  <FormField
-                    control={form.control}
-                    name="accessoryIds"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <AccessoriesSelector
-                            availableProducts={availableAccessories}
-                            selectedIds={field.value || []}
-                            onChange={field.onChange}
-                            currency={currency}
-                            disabled={isLoading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <form.Field name="accessoryIds">
+                    {(field) => (
+                      <div>
+                        <AccessoriesSelector
+                          availableProducts={availableAccessories}
+                          selectedIds={field.state.value || []}
+                          onChange={field.handleChange}
+                          currency={currency}
+                          disabled={isLoading}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-center">
                     <div className="mb-3 rounded-full bg-muted p-3">
@@ -979,58 +966,58 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               <CardDescription>{t('publicationDescription')}</CardDescription>
             </CardHeader>
             <CardContent>
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="grid gap-4 sm:grid-cols-3"
+              <form.Field name="status">
+                {(field) => (
+                  <div>
+                    <RadioGroup
+                      onValueChange={(value) => field.handleChange(value)}
+                      defaultValue={field.state.value}
+                      className="grid gap-4 sm:grid-cols-3"
+                    >
+                      <label
+                        htmlFor="active-edit"
+                        className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
+                          field.state.value === 'active'
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        }`}
                       >
-                        <label
-                          htmlFor="active-edit"
-                          className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                            field.value === 'active'
-                              ? 'border-primary bg-primary/5'
-                              : 'hover:bg-muted/50'
-                          }`}
-                        >
-                          <RadioGroupItem value="active" id="active-edit" />
-                          <span className="font-medium">{t('statusActive')}</span>
-                        </label>
+                        <RadioGroupItem value="active" id="active-edit" />
+                        <span className="font-medium">{t('statusActive')}</span>
+                      </label>
 
-                        <label
-                          htmlFor="draft-edit"
-                          className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                            field.value === 'draft'
-                              ? 'border-primary bg-primary/5'
-                              : 'hover:bg-muted/50'
-                          }`}
-                        >
-                          <RadioGroupItem value="draft" id="draft-edit" />
-                          <span className="font-medium">{t('statusDraft')}</span>
-                        </label>
+                      <label
+                        htmlFor="draft-edit"
+                        className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
+                          field.state.value === 'draft'
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <RadioGroupItem value="draft" id="draft-edit" />
+                        <span className="font-medium">{t('statusDraft')}</span>
+                      </label>
 
-                        <label
-                          htmlFor="archived-edit"
-                          className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
-                            field.value === 'archived'
-                              ? 'border-primary bg-primary/5'
-                              : 'hover:bg-muted/50'
-                          }`}
-                        >
-                          <RadioGroupItem value="archived" id="archived-edit" />
-                          <span className="font-medium">{t('statusArchived')}</span>
-                        </label>
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                      <label
+                        htmlFor="archived-edit"
+                        className={`flex items-center space-x-3 rounded-lg border p-4 cursor-pointer transition-colors ${
+                          field.state.value === 'archived'
+                            ? 'border-primary bg-primary/5'
+                            : 'hover:bg-muted/50'
+                        }`}
+                      >
+                        <RadioGroupItem value="archived" id="archived-edit" />
+                        <span className="font-medium">{t('statusArchived')}</span>
+                      </label>
+                    </RadioGroup>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm font-medium text-destructive">
+                        {String(field.state.meta.errors[0])}
+                      </p>
+                    )}
+                  </div>
                 )}
-              />
+              </form.Field>
             </CardContent>
           </Card>
 
@@ -1040,14 +1027,12 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             onReset={handleReset}
           />
         </form>
-      </Form>
     )
   }
 
   // Create mode: stepper flow
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">
@@ -1079,26 +1064,28 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
                 {/* YouTube Video URL */}
                 <div className="pt-4 border-t">
-                  <FormField
-                    control={form.control}
-                    name="videoUrl"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
+                  <form.Field name="videoUrl">
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2">
                           <Video className="h-4 w-4" />
                           {t('videoUrl')}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder={t('videoUrlPlaceholder')}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription>{t('videoUrlHelp')}</FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                        </Label>
+                        <Input
+                          placeholder={t('videoUrlPlaceholder')}
+                          value={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          onBlur={field.handleBlur}
+                        />
+                        <p className="text-sm text-muted-foreground">{t('videoUrlHelp')}</p>
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">
+                            {String(field.state.meta.errors[0])}
+                          </p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 </div>
               </CardContent>
             </Card>
@@ -1113,52 +1100,56 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                 <CardDescription>{t('informationDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('name')}</FormLabel>
-                      <FormControl>
-                        <Input placeholder={t('namePlaceholder')} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+                <form.Field name="name">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label>{t('name')}</Label>
+                      <Input
+                        placeholder={t('namePlaceholder')}
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
 
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('description')}</FormLabel>
-                      <FormControl>
-                        <RichTextEditor
-                          value={field.value || ''}
-                          onChange={field.onChange}
-                          placeholder={t('descriptionPlaceholder')}
-                        />
-                      </FormControl>
-                      <FormDescription>{t('descriptionHint')}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                <form.Field name="description">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label>{t('description')}</Label>
+                      <RichTextEditor
+                        value={field.state.value || ''}
+                        onChange={field.handleChange}
+                        placeholder={t('descriptionPlaceholder')}
+                      />
+                      <p className="text-sm text-muted-foreground">{t('descriptionHint')}</p>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
 
-                <FormField
-                  control={form.control}
-                  name="categoryId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('category')}</FormLabel>
+                <form.Field name="categoryId">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label>{t('category')}</Label>
                       <div className="flex gap-2">
-                        <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
-                          <FormControl>
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={t('selectCategory')} />
-                            </SelectTrigger>
-                          </FormControl>
+                        <Select
+                          onValueChange={(value) => { if (value !== null) field.handleChange(value) }}
+                          value={field.state.value || undefined}
+                        >
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder={t('selectCategory')} />
+                          </SelectTrigger>
                           <SelectContent>
                             {categories.map((category) => (
                               <SelectItem key={category.id} value={category.id}>
@@ -1205,11 +1196,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                           </DialogContent>
                         </Dialog>
                       </div>
-                      <FormDescription>{t('categoryOptional')}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                      <p className="text-sm text-muted-foreground">{t('categoryOptional')}</p>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm font-medium text-destructive">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
                   )}
-                />
+                </form.Field>
               </CardContent>
             </Card>
           </StepContent>
@@ -1228,21 +1223,17 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Pricing Mode first */}
-                    <FormField
-                      control={form.control}
-                      name="pricingMode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('pricingModeLabel')}</FormLabel>
+                    <form.Field name="pricingMode">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label>{t('pricingModeLabel')}</Label>
                           <Select
-                            onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
-                            value={field.value || 'inherit'}
+                            onValueChange={(value) => { if (value !== null) field.handleChange(value === 'inherit' ? null : value as any) }}
+                            value={field.state.value || 'inherit'}
                           >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('pricingModeInherit')} />
-                              </SelectTrigger>
-                            </FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('pricingModeInherit')} />
+                            </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="inherit">
                                 {t('pricingModeInherit')} ({t(`pricingModes.${pricingMode}`)})
@@ -1252,62 +1243,64 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                               <SelectItem value="week">{t('pricingModes.week')}</SelectItem>
                             </SelectContent>
                           </Select>
-                          <FormDescription>{t('pricingModeHelp')}</FormDescription>
-                          <FormMessage />
-                        </FormItem>
+                          <p className="text-sm text-muted-foreground">{t('pricingModeHelp')}</p>
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                          )}
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
                     <Separator />
 
                     {/* Price and Deposit */}
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <FormField
-                        control={form.control}
-                        name="price"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{priceLabel}</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  placeholder={t('pricePlaceholder')}
-                                  className="pr-8 text-lg font-semibold"
-                                  {...field}
-                                />
-                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                  {currencySymbol}
-                                </span>
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      <form.Field name="price">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{priceLabel}</Label>
+                            <div className="relative">
+                              <Input
+                                placeholder={t('pricePlaceholder')}
+                                className="pr-8 text-lg font-semibold"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                onBlur={field.handleBlur}
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                                {currencySymbol}
+                              </span>
+                            </div>
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
+                      </form.Field>
 
-                      <FormField
-                        control={form.control}
-                        name="deposit"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('deposit')}</FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  placeholder={t('depositPlaceholder')}
-                                  className="pr-8"
-                                  {...field}
-                                />
-                                <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                  {currencySymbol}
-                                </span>
-                              </div>
-                            </FormControl>
-                            <FormDescription>{t('depositHelp')}</FormDescription>
-                            <FormMessage />
-                          </FormItem>
+                      <form.Field name="deposit">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('deposit')}</Label>
+                            <div className="relative">
+                              <Input
+                                placeholder={t('depositPlaceholder')}
+                                className="pr-8"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                onBlur={field.handleBlur}
+                              />
+                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                                {currencySymbol}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">{t('depositHelp')}</p>
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
+                      </form.Field>
                     </div>
 
                     {/* Tax Settings - only show if taxes are enabled at store level */}
@@ -1315,57 +1308,51 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                       <>
                         <Separator />
                         <div className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="taxSettings.inheritFromStore"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <form.Field name="taxSettings.inheritFromStore">
+                            {(field) => (
+                              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
                                 <div className="space-y-0.5">
-                                  <FormLabel className="text-base">{t('inheritTax')}</FormLabel>
-                                  <FormDescription>
+                                  <Label className="text-base">{t('inheritTax')}</Label>
+                                  <p className="text-sm text-muted-foreground">
                                     {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
-                                  </FormDescription>
+                                  </p>
                                 </div>
-                                <FormControl>
-                                  <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                  />
-                                </FormControl>
-                              </FormItem>
+                                <Switch
+                                  checked={field.state.value}
+                                  onCheckedChange={field.handleChange}
+                                />
+                              </div>
                             )}
-                          />
+                          </form.Field>
 
                           {!watchedValues.taxSettings?.inheritFromStore && (
-                            <FormField
-                              control={form.control}
-                              name="taxSettings.customRate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>{t('customTaxRate')}</FormLabel>
-                                  <FormControl>
-                                    <div className="relative w-32">
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                        placeholder="20"
-                                        className="pr-8"
-                                        {...field}
-                                        value={field.value ?? ''}
-                                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
-                                      />
-                                      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                        %
-                                      </span>
-                                    </div>
-                                  </FormControl>
-                                  <FormDescription>{t('customTaxRateDescription')}</FormDescription>
-                                  <FormMessage />
-                                </FormItem>
+                            <form.Field name="taxSettings.customRate">
+                              {(field) => (
+                                <div className="space-y-2">
+                                  <Label>{t('customTaxRate')}</Label>
+                                  <div className="relative w-32">
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.01"
+                                      placeholder="20"
+                                      className="pr-8"
+                                      value={field.state.value ?? ''}
+                                      onChange={(e) => field.handleChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                                      onBlur={field.handleBlur}
+                                    />
+                                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+                                      %
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">{t('customTaxRateDescription')}</p>
+                                  {field.state.meta.errors.length > 0 && (
+                                    <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                                  )}
+                                </div>
                               )}
-                            />
+                            </form.Field>
                           )}
                         </div>
                       </>
@@ -1382,11 +1369,11 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <CardContent>
                     <UnitTrackingEditor
                       trackUnits={watchedValues.trackUnits || false}
-                      onTrackUnitsChange={(value) => form.setValue('trackUnits', value, { shouldDirty: true })}
+                      onTrackUnitsChange={(value) => form.setFieldValue('trackUnits', value)}
                       units={watchedValues.units || []}
-                      onChange={(units) => form.setValue('units', units, { shouldDirty: true })}
+                      onChange={(units) => form.setFieldValue('units', units)}
                       quantity={watchedValues.quantity || '1'}
-                      onQuantityChange={(value) => form.setValue('quantity', value, { shouldDirty: true })}
+                      onQuantityChange={(value) => form.setFieldValue('quantity', value)}
                       disabled={isLoading}
                     />
                   </CardContent>
@@ -1396,26 +1383,24 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               {/* Progressive Discounts */}
               <Card>
                 <CardContent className="pt-6">
-                  <FormField
-                    control={form.control}
-                    name="pricingTiers"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <PricingTiersEditor
-                            basePrice={basePrice}
-                            pricingMode={effectivePricingMode}
-                            tiers={field.value || []}
-                            onChange={field.onChange}
-                            enforceStrictTiers={form.watch('enforceStrictTiers') || false}
-                            onEnforceStrictTiersChange={(value) => form.setValue('enforceStrictTiers', value, { shouldDirty: true })}
-                            disabled={isLoading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <form.Field name="pricingTiers">
+                    {(field) => (
+                      <div>
+                        <PricingTiersEditor
+                          basePrice={basePrice}
+                          pricingMode={effectivePricingMode}
+                          tiers={field.state.value || []}
+                          onChange={field.handleChange}
+                          enforceStrictTiers={watchedValues.enforceStrictTiers || false}
+                          onEnforceStrictTiersChange={(value) => form.setFieldValue('enforceStrictTiers', value)}
+                          disabled={isLoading}
+                        />
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 </CardContent>
               </Card>
             </div>
@@ -1507,78 +1492,76 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <CardDescription>{t('publicationDescription')}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="space-y-4"
+                  <form.Field name="status">
+                    {(field) => (
+                      <div>
+                        <RadioGroup
+                          onValueChange={(value) => field.handleChange(value as any)}
+                          defaultValue={field.state.value}
+                          className="space-y-4"
+                        >
+                          <label
+                            htmlFor="active"
+                            className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
+                              field.state.value === 'active'
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-muted/50'
+                            }`}
                           >
-                            <label
-                              htmlFor="active"
-                              className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                                field.value === 'active'
-                                  ? 'border-primary bg-primary/5'
-                                  : 'hover:bg-muted/50'
-                              }`}
-                            >
-                              <RadioGroupItem value="active" id="active" className="mt-1" />
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium">{t('statusActive')}</span>
-                                  <Badge variant="default" className="text-xs">
-                                    {t('recommended')}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {t('statusActiveDescription')}
-                                </p>
+                            <RadioGroupItem value="active" id="active" className="mt-1" />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{t('statusActive')}</span>
+                                <Badge variant="default" className="text-xs">
+                                  {t('recommended')}
+                                </Badge>
                               </div>
-                            </label>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {t('statusActiveDescription')}
+                              </p>
+                            </div>
+                          </label>
 
-                            <label
-                              htmlFor="draft"
-                              className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                                field.value === 'draft'
-                                  ? 'border-primary bg-primary/5'
-                                  : 'hover:bg-muted/50'
-                              }`}
-                            >
-                              <RadioGroupItem value="draft" id="draft" className="mt-1" />
-                              <div className="flex-1">
-                                <span className="font-medium">{t('statusDraft')}</span>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {t('statusDraftDescription')}
-                                </p>
-                              </div>
-                            </label>
+                          <label
+                            htmlFor="draft"
+                            className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
+                              field.state.value === 'draft'
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            <RadioGroupItem value="draft" id="draft" className="mt-1" />
+                            <div className="flex-1">
+                              <span className="font-medium">{t('statusDraft')}</span>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {t('statusDraftDescription')}
+                              </p>
+                            </div>
+                          </label>
 
-                            <label
-                              htmlFor="archived"
-                              className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
-                                field.value === 'archived'
-                                  ? 'border-primary bg-primary/5'
-                                  : 'hover:bg-muted/50'
-                              }`}
-                            >
-                              <RadioGroupItem value="archived" id="archived" className="mt-1" />
-                              <div className="flex-1">
-                                <span className="font-medium">{t('statusArchived')}</span>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  {t('statusArchivedDescription')}
-                                </p>
-                              </div>
-                            </label>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                          <label
+                            htmlFor="archived"
+                            className={`flex items-start space-x-4 rounded-lg border p-4 cursor-pointer transition-colors ${
+                              field.state.value === 'archived'
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-muted/50'
+                            }`}
+                          >
+                            <RadioGroupItem value="archived" id="archived" className="mt-1" />
+                            <div className="flex-1">
+                              <span className="font-medium">{t('statusArchived')}</span>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                {t('statusArchivedDescription')}
+                              </p>
+                            </div>
+                          </label>
+                        </RadioGroup>
+                        {field.state.meta.errors.length > 0 && (
+                          <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
+                        )}
+                      </div>
                     )}
-                  />
+                  </form.Field>
                 </CardContent>
               </Card>
             </div>
@@ -1620,6 +1603,5 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
           </div>
         </StepActions>
       </form>
-    </Form>
   )
 }
