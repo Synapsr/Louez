@@ -181,7 +181,8 @@ All commands run through Turborepo. Use `--filter` to target specific packages.
 | `pnpm build --filter=@louez/web` | Build web app only                    |
 | `pnpm type-check`                | TypeScript check (all packages)       |
 | `pnpm type-check:web`            | Type-check web only                   |
-| `pnpm lint`                      | Run ESLint                            |
+| `pnpm lint`                      | Run ESLint + duplicate audit          |
+| `pnpm audit:duplicates`          | Detect exact duplicate files          |
 | `pnpm format`                    | Run Prettier                          |
 | `pnpm clean`                     | Remove build artifacts & node_modules |
 | `pnpm db:push`                   | Sync schema to DB                     |
@@ -251,9 +252,24 @@ function MyComponent() {
 ### Components
 
 - Use `cn()` for conditional classes (from `src/lib/utils.ts`)
-- Prefer shadcn/ui components from `src/components/ui/`
+- Prefer shared primitives from `@louez/ui` first
+- Use `apps/web/components/ui/` only for app-specific composition/wrappers
 - Use CVA for variant-based styling
 - Keep components in appropriate domain folder
+
+### Module Ownership (Critical)
+
+- Follow `docs/architecture/module-ownership.md` as the single source of truth
+- Shared UI tokens/primitives: `packages/ui`
+- Shared types: `packages/types`
+- Shared validations: `packages/validations`
+- Shared pricing logic: `packages/utils/src/pricing`
+- Shared DB schema + migrations: `packages/db/src`
+- Never recreate shared modules under:
+  - `apps/web/lib/pricing/*`
+  - `apps/web/types/*`
+  - `apps/web/lib/validations/*`
+  - `apps/web/lib/db/*`
 
 ### Database
 
@@ -261,11 +277,12 @@ function MyComponent() {
 - All monetary values: DECIMAL(10,2)
 - Always include `storeId` in queries (multi-tenant isolation)
 - Use relations defined in schema for joins
+- Migrations and snapshots live in `packages/db/src/migrations` only
 
 ### Forms
 
 - TanStack Form with Zod validation via `useAppForm` hook
-- Validation schemas in `src/lib/validations/`
+- Shared validation schemas live in `packages/validations`
 - Error messages via i18n keys
 - See details at `docs/FORM_HANDLING.md`
 
@@ -322,10 +339,12 @@ pending → confirmed → ongoing → completed
 
 ## Testing Workflow
 
-1. `pnpm build` - Verify TypeScript compiles
-2. Test dashboard at `localhost:3000`
-3. Test storefront at `localhost:3000/{slug}` (with PREVIEW_MODE=slug)
-4. Check console for runtime errors
+1. `pnpm lint` - Run ESLint and duplicate-audit guardrail
+2. `pnpm type-check:web` - Verify TypeScript compiles
+3. `pnpm build --filter=@louez/web` - Verify production build
+4. Test dashboard at `localhost:3000`
+5. Test storefront at `localhost:3000/{slug}` (with PREVIEW_MODE=slug)
+6. Check console for runtime errors
 
 ## Documentation References
 
@@ -338,4 +357,5 @@ pending → confirmed → ongoing → completed
 - oRPC procedures: `packages/api/src/procedures.ts`
 - oRPC client: `apps/web/lib/orpc/`
 - Email templates: `apps/web/lib/email/templates/`
-- Pricing logic: `apps/web/lib/pricing/`
+- Pricing logic: `packages/utils/src/pricing/`
+- Module ownership rules: `docs/architecture/module-ownership.md`
