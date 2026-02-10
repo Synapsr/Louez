@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Loader2, MapPin, Navigation, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -20,7 +21,7 @@ import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
 import { Label } from '@louez/ui';
 import { Textarea } from '@louez/ui';
-import { cn } from '@louez/utils';
+import { orpc } from '@/lib/orpc/react';
 
 interface AddressMapModalProps {
   open: boolean;
@@ -51,6 +52,7 @@ export function AddressMapModal({
 }: AddressMapModalProps) {
   const t = useTranslations('common.addressModal');
   const tCommon = useTranslations('common');
+  const queryClient = useQueryClient();
 
   // Local state
   const [searchQuery, setSearchQuery] = useState('');
@@ -319,10 +321,11 @@ export function AddressMapModal({
 
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `/api/address/autocomplete?query=${encodeURIComponent(query)}`,
+      const data = await queryClient.fetchQuery(
+        orpc.public.address.autocomplete.queryOptions({
+          input: { query },
+        }),
       );
-      const data = await response.json();
       setSuggestions(data.suggestions || []);
       setShowSuggestions((data.suggestions || []).length > 0);
     } catch (error) {
@@ -331,7 +334,7 @@ export function AddressMapModal({
     } finally {
       setIsSearching(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
@@ -343,10 +346,11 @@ export function AddressMapModal({
   const handleSelectSuggestion = async (suggestion: AddressSuggestion) => {
     setIsSearching(true);
     try {
-      const response = await fetch(
-        `/api/address/details?placeId=${encodeURIComponent(suggestion.placeId)}`,
+      const data = await queryClient.fetchQuery(
+        orpc.public.address.details.queryOptions({
+          input: { placeId: suggestion.placeId },
+        }),
       );
-      const data = await response.json();
 
       if (data.details) {
         setDisplayAddress(data.details.formattedAddress);

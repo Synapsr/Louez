@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -48,11 +49,11 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 import { useCart } from '@/contexts/cart-context';
 
 import type {
-  AvailabilityResponse,
+  BusinessHours,
   BusinessHoursValidation,
   ProductAvailability,
-} from '@/app/api/stores/[slug]/availability/route';
-import type { BusinessHours } from '@louez/types';
+} from '@louez/types';
+import { orpc } from '@/lib/orpc/react';
 
 interface PricingTier {
   id: string;
@@ -133,16 +134,28 @@ export function RentalContent({
   const { setGlobalDates, setPricingMode } = useCart();
   const { getUrl } = useStorefrontUrl(store.slug);
 
-  const [availability, setAvailability] = useState<
-    Map<string, ProductAvailability>
-  >(new Map());
-  const [businessHoursValidation, setBusinessHoursValidation] =
-    useState<BusinessHoursValidation | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '');
   const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+
+  const { data: availabilityData, isLoading } = useQuery(
+    orpc.storefront.availability.get.queryOptions({
+      input: {
+        startDate,
+        endDate,
+      },
+    }),
+  );
+
+  const availability = useMemo(() => {
+    const map = new Map<string, ProductAvailability>();
+    availabilityData?.products.forEach((item) => map.set(item.productId, item));
+    return map;
+  }, [availabilityData]);
+
+  const businessHoursValidation: BusinessHoursValidation | null =
+    availabilityData?.businessHoursValidation || null;
 
   const duration = useMemo(
     () => calculateDuration(startDate, endDate, pricingMode),
@@ -181,35 +194,6 @@ export function RentalContent({
     setGlobalDates(startDate, endDate);
     setPricingMode(pricingMode);
   }, [startDate, endDate, pricingMode, setGlobalDates, setPricingMode]);
-
-  // Fetch availability
-  useEffect(() => {
-    async function fetchAvailability() {
-      setIsLoading(true);
-      try {
-        const params = new URLSearchParams({
-          startDate,
-          endDate,
-        });
-        const res = await fetch(
-          `/api/stores/${store.slug}/availability?${params}`,
-        );
-        if (res.ok) {
-          const data: AvailabilityResponse = await res.json();
-          const map = new Map<string, ProductAvailability>();
-          data.products.forEach((p) => map.set(p.productId, p));
-          setAvailability(map);
-          // Store business hours validation result
-          setBusinessHoursValidation(data.businessHoursValidation || null);
-        }
-      } catch (error) {
-        console.error('Failed to fetch availability:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    fetchAvailability();
-  }, [store.slug, startDate, endDate]);
 
   // Filter products
   const filteredProducts = useMemo(() => {

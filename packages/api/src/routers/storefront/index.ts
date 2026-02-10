@@ -1,3 +1,5 @@
+import { storefrontAvailabilityRouter } from './availability'
+import { storefrontReservationsRouter } from './reservations'
 import { storefrontProcedure } from '../../procedures'
 
 /**
@@ -23,8 +25,6 @@ const storeInfo = storefrontProcedure.handler(async ({ context }) => {
  */
 export const storefrontRouter = {
   storeInfo,
-  // Add more routers here:
-  // availability: availabilityRouter,
-  // cart: cartRouter,
-  // customer: customerRouter,
+  availability: storefrontAvailabilityRouter,
+  reservations: storefrontReservationsRouter,
 }

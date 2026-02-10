@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
+import { useMutation } from '@tanstack/react-query'
 import { FileText, Sparkles, ExternalLink } from 'lucide-react'
 import { env } from '@/env'
 import { Button } from '@louez/ui'
@@ -10,9 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@loue
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { toastManager } from '@louez/ui'
-import Link from 'next/link'
 import { getCgvTemplate, getLegalNoticeTemplate } from '@/lib/legal-templates'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
+import { orpc } from '@/lib/orpc/react'
 
 interface Store {
   id: string
@@ -30,12 +31,14 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('dashboard.settings.legalSettings')
-  const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
-  const [isLoading, setIsLoading] = useState(false)
   const [cgv, setCgv] = useState(store.cgv || '')
   const [legalNotice, setLegalNotice] = useState(store.legalNotice || '')
   const [activeTab, setActiveTab] = useState('cgv')
+
+  const updateLegalMutation = useMutation(
+    orpc.dashboard.settings.updateLegal.mutationOptions(),
+  )
 
   // Track initial values for dirty state detection
   const initialCgv = useMemo(() => store.cgv || '', [store.cgv])
@@ -63,25 +66,17 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
 
     try {
-      const response = await fetch('/api/stores/legal', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cgv, legalNotice }),
+      await updateLegalMutation.mutateAsync({
+        cgv,
+        legalNotice,
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update legal pages')
-      }
 
       toastManager.add({ title: t('updated'), type: 'success' })
       router.refresh()
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -197,7 +192,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
 
       <FloatingSaveBar
         isDirty={isDirty}
-        isLoading={isLoading}
+        isLoading={updateLegalMutation.isPending}
         onReset={handleReset}
       />
     </form>

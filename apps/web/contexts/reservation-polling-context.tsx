@@ -9,21 +9,12 @@ import {
   useState,
   ReactNode,
 } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { toastManager } from '@louez/ui'
+import type { ReservationPollResponse } from '@louez/types'
 import { useTranslations } from 'next-intl'
-
-interface PollResponse {
-  pendingCount: number
-  totalCount: number
-  latestReservation: {
-    id: string
-    number: string
-    status: string
-    createdAt: string
-  } | null
-  timestamp: string
-}
+import { orpc } from '@/lib/orpc/react'
 
 interface ReservationPollingContextValue {
   pendingCount: number
@@ -51,6 +42,7 @@ export function ReservationPollingProvider({
   soundPath = '/sounds/notification.mp3',
 }: ReservationPollingProviderProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const t = useTranslations('dashboard.notifications')
 
   const [pendingCount, setPendingCount] = useState(0)
@@ -85,14 +77,11 @@ export function ReservationPollingProvider({
   const poll = useCallback(async () => {
     try {
       setIsPolling(true)
-      const response = await fetch('/api/reservations/poll', {
-        method: 'GET',
-        cache: 'no-store',
-      })
-
-      if (!response.ok) return
-
-      const data: PollResponse = await response.json()
+      const data: ReservationPollResponse = await queryClient.fetchQuery(
+        orpc.dashboard.reservations.poll.queryOptions({
+          input: {},
+        }),
+      )
 
       // Always update pending count
       setPendingCount(data.pendingCount)
@@ -135,7 +124,7 @@ export function ReservationPollingProvider({
     } finally {
       setIsPolling(false)
     }
-  }, [router, playNotificationSound, t])
+  }, [queryClient, router, playNotificationSound, t])
 
   const refresh = useCallback(async () => {
     await poll()
