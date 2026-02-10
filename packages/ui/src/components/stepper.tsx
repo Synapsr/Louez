@@ -120,11 +120,16 @@ export function Stepper({ steps, currentStep, onStepClick, className }: StepperP
 interface StepContentProps {
   children: React.ReactNode
   className?: string
+  direction?: 'forward' | 'backward'
 }
 
-export function StepContent({ children, className }: StepContentProps) {
+export function StepContent({ children, className, direction = 'forward' }: StepContentProps) {
   return (
-    <div className={cn('animate-in fade-in-50 slide-in-from-right-5 duration-300', className)}>
+    <div className={cn(
+      'animate-in fade-in-50 duration-300',
+      direction === 'forward' ? 'slide-in-from-right-5' : 'slide-in-from-left-5',
+      className,
+    )}>
       {children}
     </div>
   )

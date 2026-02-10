@@ -1,10 +1,16 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import './globals.css';
+
+import { Agentation } from 'agentation';
+
+import { UmamiAnalytics } from '@/components/umami-analytics';
+
+import { ORPCProvider } from '@/lib/orpc/provider';
+
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from '@/messages/fr.json';
-import { UmamiAnalytics } from '@/components/umami-analytics';
-import { ORPCProvider } from '@/lib/orpc/provider';
+
+import './globals.css';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -34,17 +40,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" suppressHydrationWarning>
-      <UmamiAnalytics />
-      <head>
-        <link
-          href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className={`${inter.variable} font-sans antialiased`}>
-        <ORPCProvider>{children}</ORPCProvider>
-      </body>
-    </html>
+    <>
+      {process.env.NODE_ENV === 'development' && <Agentation />}
+
+      <html lang="fr" suppressHydrationWarning>
+        <UmamiAnalytics />
+
+        <head>
+          <link
+            href="https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@800&display=swap"
+            rel="stylesheet"
+          />
+        </head>
+        <body className={`${inter.variable} font-sans antialiased`}>
+          <ORPCProvider>{children}</ORPCProvider>
+        </body>
+      </html>
+    </>
   );
 }

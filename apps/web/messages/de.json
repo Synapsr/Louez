@@ -718,6 +718,7 @@
         "informationDescription": "Geben Sie Ihrem Produkt einen Namen und eine Beschreibung",
         "descriptionHint": "Beschreiben Sie die Eigenschaften, den Zustand und die Nutzungsbedingungen",
         "categoryOptional": "Optional - hilft Kunden, Ihr Produkt zu finden",
+        "noCategories": "Noch keine Kategorien",
         "pricingDescription": "Legen Sie den Mietpreis und den verfügbaren Bestand fest",
         "pricingModeLabel": "Preismodus",
         "pricingModeHelp": "Wählen Sie, ob dieses Produkt andere Preise als der Shop verwendet",

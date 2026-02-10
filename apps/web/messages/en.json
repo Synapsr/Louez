@@ -718,6 +718,7 @@
         "informationDescription": "Give your product a name and description",
         "descriptionHint": "Describe the features, condition and terms of use",
         "categoryOptional": "Optional - helps customers find your product",
+        "noCategories": "No categories yet",
         "pricingDescription": "Set the rental price and available stock",
         "pricingModeLabel": "Pricing mode",
         "pricingModeHelp": "Choose if this product uses different pricing than the store",

@@ -679,6 +679,7 @@
         "informationDescription": "Geef uw product een naam en beschrijving",
         "descriptionHint": "Beschrijf de kenmerken, staat en gebruiksvoorwaarden",
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
+        "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en beschikbare voorraad in",
         "pricingModeLabel": "Prijsmodus",
         "pricingModeHelp": "Kies of dit product andere prijzen gebruikt dan de winkel",

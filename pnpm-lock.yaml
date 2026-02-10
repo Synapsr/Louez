@@ -228,6 +228,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.7)
+      agentation:
+        specifier: ^2.2.0
+        version: 2.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       drizzle-kit:
         specifier: ^0.31.8
         version: 0.31.8
@@ -3165,6 +3168,17 @@ packages:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  agentation@2.2.0:
+    resolution: {integrity: sha512-DIkXtC/XpOdAK/X1qYZMYocSjfU7EKe5bYG5DyxEr2wIuSxEVi2edSQsIWbB+k/S3yvAnnCfpuTkHh8LOvYxgQ==}
+    peerDependencies:
+      react: '>=18.0.0'
+      react-dom: '>=18.0.0'
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -8991,6 +9005,11 @@ snapshots:
       acorn: 8.15.0
 
   acorn@8.15.0: {}
+
+  agentation@2.2.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+    optionalDependencies:
+      react: 19.2.3
+      react-dom: 19.2.3(react@19.2.3)
 
   ajv-formats@3.0.1(ajv@8.17.1):
     optionalDependencies:

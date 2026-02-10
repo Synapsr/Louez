@@ -679,6 +679,7 @@
         "informationDescription": "Nadaj produktowi nazwę i opis",
         "descriptionHint": "Opisz cechy, stan i warunki użytkowania",
         "categoryOptional": "Opcjonalne - pomaga klientom znaleźć produkt",
+        "noCategories": "Brak kategorii",
         "pricingDescription": "Ustaw cenę wynajmu i dostępny stan magazynowy",
         "pricingModeLabel": "Tryb cenowy",
         "pricingModeHelp": "Wybierz, czy produkt używa innego cennika niż sklep",

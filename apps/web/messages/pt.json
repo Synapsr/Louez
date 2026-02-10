@@ -679,6 +679,7 @@
         "informationDescription": "De um nome e uma descricao ao seu produto",
         "descriptionHint": "Descreva as caracteristicas, condicao e termos de uso",
         "categoryOptional": "Opcional - ajuda os clientes a encontrar seu produto",
+        "noCategories": "Nenhuma categoria criada",
         "pricingDescription": "Defina o preco de aluguel e o estoque disponivel",
         "pricingModeLabel": "Modo de precos",
         "pricingModeHelp": "Escolha se este produto usa precos diferentes da loja",

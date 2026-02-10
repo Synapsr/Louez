@@ -81,6 +81,7 @@
     "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "agentation": "^2.2.0",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9",
     "eslint-config-next": "16.1.1-canary.14",

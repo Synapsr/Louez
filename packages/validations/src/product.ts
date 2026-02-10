@@ -49,29 +49,52 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
       .string()
       .min(2, t('minLength', { min: 2 }))
       .max(255, t('maxLength', { max: 255 })),
-    description: z.string().optional(),
-    categoryId: z.string().optional().nullable(),
+    description: z.string(),
+    categoryId: z.string().nullable(),
     price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
-    deposit: z
-      .string()
-      .regex(/^\d+([.,]\d{1,2})?$/, t('positive'))
-      .optional()
-      .or(z.literal('')),
+    deposit: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')).or(z.literal('')),
     quantity: z.string().regex(/^\d+$/, t('integer')),
     status: z.enum(['draft', 'active', 'archived']),
-    images: z.array(imageUrlSchema).optional(),
+    images: z.array(
+      z
+        .string()
+        .refine(
+          (url) =>
+            url.startsWith('http://') ||
+            url.startsWith('https://') ||
+            url.startsWith('data:image/'),
+          t('invalidImageUrl'),
+        ),
+    ),
     pricingMode: z.enum(['hour', 'day', 'week']),
-    pricingTiers: z.array(pricingTierSchema).optional(),
-    enforceStrictTiers: z.boolean().optional(),
-    taxSettings: productTaxSettingsSchema.optional(),
-    videoUrl: z
-      .string()
-      .regex(youtubeUrlRegex, t('invalidYoutubeUrl'))
-      .optional()
-      .or(z.literal('')),
+    pricingTiers: z.array(
+      z.object({
+        id: z.string().optional(),
+        minDuration: z.number().int().min(1, t('minValue', { min: 1 })),
+        discountPercent: z
+          .number()
+          .min(0, t('minValue', { min: 0 }))
+          .max(99, t('maxValue', { max: 99 })),
+      }),
+    ),
+    enforceStrictTiers: z.boolean(),
+    taxSettings: productTaxSettingsSchema,
+    videoUrl: z.string().regex(youtubeUrlRegex, t('invalidYoutubeUrl')).or(z.literal('')),
+    accessoryIds: z.array(z.string()),
     // Unit tracking
-    trackUnits: z.boolean().optional(),
-    units: z.array(productUnitSchema).optional(),
+    trackUnits: z.boolean(),
+    units: z.array(
+      z.object({
+        id: z.string().optional(), // Absent for new units
+        identifier: z.string().max(255, t('maxLength', { max: 255 })),
+        notes: z
+          .string()
+          .max(1000, t('maxLength', { max: 1000 }))
+          .optional()
+          .or(z.literal('')),
+        status: z.enum(['available', 'maintenance', 'retired']).optional(),
+      }),
+    ),
   }).superRefine((data, ctx) => {
     if (data.trackUnits && data.units) {
       for (let i = 0; i < data.units.length; i++) {
