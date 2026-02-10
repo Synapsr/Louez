@@ -162,6 +162,8 @@ export function LoginForm({
 
   const sendOtpMutation = useMutation({
     mutationFn: async (email: string) => {
+      // test error handling
+      // throw new Error('test error');
       const result = await authClient.emailOtp.sendVerificationOtp({
         email,
         type: 'sign-in',
@@ -188,8 +190,9 @@ export function LoginForm({
         provider: 'google',
         callbackURL: callbackUrl,
       });
-
-      if (hasAuthError(result)) {
+      // test error handling
+      // throw new Error('test error');
+      if (result.error) {
         throw createAuthMutationError(getAuthErrorCode(result.error));
       }
     },
@@ -243,13 +246,6 @@ export function LoginForm({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {rootError && (
-            <Alert variant="error">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{rootError}</AlertDescription>
-            </Alert>
-          )}
-
           <otpForm.AppForm>
             <otpForm.Form className="space-y-4">
               <otpForm.Field name="otp">
@@ -303,6 +299,13 @@ export function LoginForm({
           >
             {t('tryDifferentEmail')}
           </Button>
+
+          {rootError && (
+            <Alert variant="error">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{rootError}</AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
     );
@@ -317,13 +320,6 @@ export function LoginForm({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {rootError && (
-          <Alert variant="error">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{rootError}</AlertDescription>
-          </Alert>
-        )}
-
         <Button
           variant="outline"
           className="h-12 w-full text-base font-medium"
@@ -394,6 +390,13 @@ export function LoginForm({
             </Button>
           </emailForm.Form>
         </emailForm.AppForm>
+
+        {rootError && (
+          <Alert variant="error">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{rootError}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );
