@@ -202,8 +202,9 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
 
   return (
     <div className="space-y-6">
-      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
-        <RootError error={rootError} />
+      <form.AppForm>
+        <form.Form className="space-y-6">
+          <RootError error={rootError} />
 
         {/* Store Info */}
         <Card>
@@ -214,22 +215,9 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <form.Field name="name">
-              {(field) => (
-                <div className="grid gap-2">
-                  <Label htmlFor={field.name}>{t('storeSettings.name')} *</Label>
-                  <Input
-                    id={field.name}
-                    value={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="name">
+              {(field) => <field.Input label={`${t('storeSettings.name')} *`} />}
+            </form.AppField>
 
             <form.Field name="description">
               {(field) => (
@@ -248,42 +236,13 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </form.Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <form.Field name="email">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor={field.name}>{t('storeSettings.email')}</Label>
-                    <Input
-                      id={field.name}
-                      type="email"
-                      placeholder="contact@example.com"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
+              <form.AppField name="email">
+                {(field) => <field.Input label={t('storeSettings.email')} type="email" placeholder="contact@example.com" />}
+              </form.AppField>
 
-              <form.Field name="phone">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor={field.name}>{t('storeSettings.phone')}</Label>
-                    <Input
-                      id={field.name}
-                      placeholder="01 23 45 67 89"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
+              <form.AppField name="phone">
+                {(field) => <field.Input label={t('storeSettings.phone')} placeholder="01 23 45 67 89" />}
+              </form.AppField>
             </div>
 
             <form.Field name="address">
@@ -421,82 +380,30 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
-            <form.Field name="billingAddressSameAsStore">
+            <form.AppField name="billingAddressSameAsStore">
               {(field) => (
-                <div className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
-                  <Checkbox
-                    checked={field.state.value}
-                    onCheckedChange={(checked) => field.handleChange(checked)}
-                  />
-                  <div className="space-y-1 leading-none">
-                    <Label htmlFor={field.name} className="text-base cursor-pointer">
-                      {t('billingAddress.sameAsStore')}
-                    </Label>
-                    <p className="text-muted-foreground text-sm">
-                      {t('billingAddress.sameAsStoreDescription')}
-                    </p>
-                  </div>
-                </div>
+                <field.Checkbox
+                  label={t('billingAddress.sameAsStore')}
+                  description={t('billingAddress.sameAsStoreDescription')}
+                />
               )}
-            </form.Field>
+            </form.AppField>
 
             {/* Conditional billing address fields */}
             {!billingAddressSameAsStore && (
               <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-                <form.Field name="billingAddress">
-                  {(field) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor={field.name}>{t('billingAddress.address')}</Label>
-                      <Input
-                        id={field.name}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
-                        placeholder={t('billingAddress.addressPlaceholder')}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                      )}
-                    </div>
-                  )}
-                </form.Field>
+                <form.AppField name="billingAddress">
+                  {(field) => <field.Input label={t('billingAddress.address')} placeholder={t('billingAddress.addressPlaceholder')} />}
+                </form.AppField>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <form.Field name="billingPostalCode">
-                    {(field) => (
-                      <div className="grid gap-2">
-                        <Label htmlFor={field.name}>{t('billingAddress.postalCode')}</Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          placeholder={t('billingAddress.postalCodePlaceholder')}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                        )}
-                      </div>
-                    )}
-                  </form.Field>
+                  <form.AppField name="billingPostalCode">
+                    {(field) => <field.Input label={t('billingAddress.postalCode')} placeholder={t('billingAddress.postalCodePlaceholder')} />}
+                  </form.AppField>
 
-                  <form.Field name="billingCity">
-                    {(field) => (
-                      <div className="grid gap-2">
-                        <Label htmlFor={field.name}>{t('billingAddress.city')}</Label>
-                        <Input
-                          id={field.name}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                          placeholder={t('billingAddress.cityPlaceholder')}
-                        />
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                        )}
-                      </div>
-                    )}
-                  </form.Field>
+                  <form.AppField name="billingCity">
+                    {(field) => <field.Input label={t('billingAddress.city')} placeholder={t('billingAddress.cityPlaceholder')} />}
+                  </form.AppField>
                 </div>
 
                 <form.Field name="billingCountry">
@@ -642,24 +549,14 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
 
             {/* Pending blocks availability - only shown in request mode */}
             {reservationMode === 'request' && (
-              <form.Field name="pendingBlocksAvailability">
+              <form.AppField name="pendingBlocksAvailability">
                 {(field) => (
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <Label htmlFor={field.name} className="text-base">
-                        {t('reservationSettings.pendingBlocksAvailability')}
-                      </Label>
-                      <p className="text-muted-foreground text-sm">
-                        {t('reservationSettings.pendingBlocksAvailabilityDescription')}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={field.state.value}
-                      onCheckedChange={(checked) => field.handleChange(checked)}
-                    />
-                  </div>
+                  <field.Switch
+                    label={t('reservationSettings.pendingBlocksAvailability')}
+                    description={t('reservationSettings.pendingBlocksAvailabilityDescription')}
+                  />
                 )}
-              </form.Field>
+              </form.AppField>
             )}
 
             {/* Online payment deposit percentage - only shown in payment mode */}
@@ -819,33 +716,24 @@ export function StoreSettingsForm({ store, stripeChargesEnabled }: StoreSettings
               </form.Field>
             </div>
 
-            <form.Field name="requireCustomerAddress">
+            <form.AppField name="requireCustomerAddress">
               {(field) => (
-                <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <Label htmlFor={field.name} className="text-base">
-                      {t('reservationSettings.requireAddress')}
-                    </Label>
-                    <p className="text-muted-foreground text-sm">
-                      {t('reservationSettings.requireAddressDescription')}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={field.state.value}
-                    onCheckedChange={(checked) => field.handleChange(checked)}
-                  />
-                </div>
+                <field.Switch
+                  label={t('reservationSettings.requireAddress')}
+                  description={t('reservationSettings.requireAddressDescription')}
+                />
               )}
-            </form.Field>
+            </form.AppField>
           </CardContent>
         </Card>
 
-        <FloatingSaveBar
-          isDirty={isDirty}
-          isLoading={isPending}
-          onReset={() => form.reset()}
-        />
-      </form>
+          <FloatingSaveBar
+            isDirty={isDirty}
+            isLoading={isPending}
+            onReset={() => form.reset()}
+          />
+        </form.Form>
+      </form.AppForm>
 
       <SlugChangeModal
         open={isSlugModalOpen}

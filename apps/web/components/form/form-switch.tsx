@@ -7,10 +7,12 @@ export function FormSwitch({
   label,
   description,
   className,
+  disabled,
 }: {
   label?: string
   description?: string
   className?: string
+  disabled?: boolean
 }) {
   const field = useFieldContext<boolean>()
 
@@ -35,6 +37,7 @@ export function FormSwitch({
         id={field.name}
         checked={field.state.value}
         onCheckedChange={(checked) => field.handleChange(checked)}
+        disabled={disabled}
       />
     </div>
   )

@@ -3,6 +3,8 @@ import { fieldContext, formContext } from './form-context'
 import { FormInput } from '@/components/form/form-input'
 import { FormTextarea } from '@/components/form/form-textarea'
 import { FormSwitch } from '@/components/form/form-switch'
+import { FormSelect } from '@/components/form/form-select'
+import { FormCheckbox } from '@/components/form/form-checkbox'
 import { SubscribeButton } from '@/components/form/subscribe-button'
 import { FormForm } from '@/components/form/form-form'
 
@@ -11,6 +13,8 @@ export const { useAppForm, withForm } = createFormHook({
     Input: FormInput,
     Textarea: FormTextarea,
     Switch: FormSwitch,
+    Select: FormSelect,
+    Checkbox: FormCheckbox,
   },
   formComponents: {
     Form: FormForm,

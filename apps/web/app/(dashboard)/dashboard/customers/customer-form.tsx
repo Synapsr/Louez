@@ -109,8 +109,9 @@ export function CustomerForm({ customer }: CustomerFormProps) {
   const customerType = useStore(form.store, (s) => s.values.customerType)
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
-      <RootError error={rootError} />
+    <form.AppForm>
+      <form.Form className="space-y-6">
+        <RootError error={rootError} />
 
       <Card>
         <CardHeader>
@@ -168,71 +169,19 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           )}
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <form.Field name="firstName">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('firstName')}</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('firstNamePlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="firstName">
+              {(field) => <field.Input label={t('firstName')} placeholder={t('firstNamePlaceholder')} />}
+            </form.AppField>
 
-            <form.Field name="lastName">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('lastName')}</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('lastNamePlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="lastName">
+              {(field) => <field.Input label={t('lastName')} placeholder={t('lastNamePlaceholder')} />}
+            </form.AppField>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <form.Field name="email">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('email')}</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    type="email"
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('emailPlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="email">
+              {(field) => <field.Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} />}
+            </form.AppField>
 
             <form.Field name="phone">
               {(field) => (
@@ -263,69 +212,18 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4">
-          <form.Field name="address">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor={field.name}>{t('address')}</Label>
-                <Input
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value || ''}
-                  onChange={(e) => field.handleChange(e.target.value || undefined)}
-                  onBlur={field.handleBlur}
-                  placeholder={t('addressPlaceholder')}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {field.state.meta.errors[0]}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+          <form.AppField name="address">
+            {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
+          </form.AppField>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <form.Field name="postalCode">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('postalCode')}</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value || undefined)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('postalCodePlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="postalCode">
+              {(field) => <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />}
+            </form.AppField>
 
-            <form.Field name="city">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor={field.name}>{t('city')}</Label>
-                  <Input
-                    id={field.name}
-                    name={field.name}
-                    value={field.state.value || ''}
-                    onChange={(e) => field.handleChange(e.target.value || undefined)}
-                    onBlur={field.handleBlur}
-                    placeholder={t('cityPlaceholder')}
-                  />
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="city">
+              {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
+            </form.AppField>
 
             <form.Field name="country">
               {(field) => (
@@ -366,26 +264,9 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form.Field name="notes">
-            {(field) => (
-              <div className="space-y-2">
-                <Textarea
-                  id={field.name}
-                  name={field.name}
-                  value={field.state.value || ''}
-                  onChange={(e) => field.handleChange(e.target.value || undefined)}
-                  onBlur={field.handleBlur}
-                  placeholder={t('notesPlaceholder')}
-                  rows={4}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {field.state.meta.errors[0]}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+          <form.AppField name="notes">
+            {(field) => <field.Textarea placeholder={t('notesPlaceholder')} rows={4} />}
+          </form.AppField>
         </CardContent>
       </Card>
 
@@ -402,6 +283,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
           {isEditing ? t('save') : t('createCustomer')}
         </Button>
       </div>
-    </form>
+      </form.Form>
+    </form.AppForm>
   )
 }

@@ -555,7 +555,8 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   // Edit mode: simple form without stepper
   if (isEditMode) {
     return (
-      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+      <form.AppForm>
+        <form.Form className="space-y-6">
           {/* Photos */}
           <Card>
             <CardHeader>
@@ -570,28 +571,20 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
               {/* YouTube Video URL */}
               <div className="pt-4 border-t">
-                <form.Field name="videoUrl">
+                <form.AppField name="videoUrl">
                   {(field) => (
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2">
                         <Video className="h-4 w-4" />
                         {t('videoUrl')}
                       </Label>
-                      <Input
+                      <field.Input
                         placeholder={t('videoUrlPlaceholder')}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
                       />
                       <p className="text-sm text-muted-foreground">{t('videoUrlHelp')}</p>
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm font-medium text-destructive">
-                          {String(field.state.meta.errors[0])}
-                        </p>
-                      )}
                     </div>
                   )}
-                </form.Field>
+                </form.AppField>
               </div>
             </CardContent>
           </Card>
@@ -603,24 +596,9 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
               <CardDescription>{t('informationDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form.Field name="name">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label>{t('name')}</Label>
-                    <Input
-                      placeholder={t('namePlaceholder')}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm font-medium text-destructive">
-                        {String(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
+              <form.AppField name="name">
+                {(field) => <field.Input label={t('name')} placeholder={t('namePlaceholder')} />}
+              </form.AppField>
 
               <form.Field name="description">
                 {(field) => (
@@ -755,56 +733,27 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
                 {/* Price and Deposit */}
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <form.Field name="price">
+                  <form.AppField name="price">
                     {(field) => (
-                      <div className="space-y-2">
-                        <Label>{priceLabel}</Label>
-                        <div className="relative">
-                          <Input
-                            placeholder={t('pricePlaceholder')}
-                            className="pr-8 text-lg font-semibold"
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                            {currencySymbol}
-                          </span>
-                        </div>
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-sm font-medium text-destructive">
-                            {String(field.state.meta.errors[0])}
-                          </p>
-                        )}
-                      </div>
+                      <field.Input
+                        label={priceLabel}
+                        suffix={currencySymbol}
+                        placeholder={t('pricePlaceholder')}
+                        className="text-lg font-semibold"
+                      />
                     )}
-                  </form.Field>
+                  </form.AppField>
 
-                  <form.Field name="deposit">
+                  <form.AppField name="deposit">
                     {(field) => (
-                      <div className="space-y-2">
-                        <Label>{t('deposit')}</Label>
-                        <div className="relative">
-                          <Input
-                            placeholder={t('depositPlaceholder')}
-                            className="pr-8"
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                            {currencySymbol}
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{t('depositHelp')}</p>
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-sm font-medium text-destructive">
-                            {String(field.state.meta.errors[0])}
-                          </p>
-                        )}
-                      </div>
+                      <field.Input
+                        label={t('deposit')}
+                        suffix={currencySymbol}
+                        placeholder={t('depositPlaceholder')}
+                        description={t('depositHelp')}
+                      />
                     )}
-                  </form.Field>
+                  </form.AppField>
                 </div>
 
                 {/* Tax Settings - only show if taxes are enabled at store level */}
@@ -812,22 +761,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <>
                     <Separator />
                     <div className="space-y-4">
-                      <form.Field name={"taxSettings.inheritFromStore" as any}>
+                      <form.AppField name={"taxSettings.inheritFromStore" as any}>
                         {(field) => (
-                          <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <Label className="text-base">{t('inheritTax')}</Label>
-                              <p className="text-sm text-muted-foreground">
-                                {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
-                              </p>
-                            </div>
-                            <Switch
-                              checked={field.state.value}
-                              onCheckedChange={(checked) => field.handleChange(checked as any)}
-                            />
-                          </div>
+                          <field.Switch
+                            label={t('inheritTax')}
+                            description={t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
+                          />
                         )}
-                      </form.Field>
+                      </form.AppField>
 
                       {!watchedValues.taxSettings?.inheritFromStore && (
                         <form.Field name={"taxSettings.customRate" as any}>
@@ -1026,13 +967,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             isLoading={isLoading}
             onReset={handleReset}
           />
-        </form>
+        </form.Form>
+      </form.AppForm>
     )
   }
 
   // Create mode: stepper flow
   return (
-    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+    <form.AppForm>
+      <form.Form className="space-y-6">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">
@@ -1064,28 +1007,20 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
                 {/* YouTube Video URL */}
                 <div className="pt-4 border-t">
-                  <form.Field name="videoUrl">
+                  <form.AppField name="videoUrl">
                     {(field) => (
                       <div className="space-y-2">
                         <Label className="flex items-center gap-2">
                           <Video className="h-4 w-4" />
                           {t('videoUrl')}
                         </Label>
-                        <Input
+                        <field.Input
                           placeholder={t('videoUrlPlaceholder')}
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
                         />
                         <p className="text-sm text-muted-foreground">{t('videoUrlHelp')}</p>
-                        {field.state.meta.errors.length > 0 && (
-                          <p className="text-sm font-medium text-destructive">
-                            {String(field.state.meta.errors[0])}
-                          </p>
-                        )}
                       </div>
                     )}
-                  </form.Field>
+                  </form.AppField>
                 </div>
               </CardContent>
             </Card>
@@ -1100,24 +1035,9 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                 <CardDescription>{t('informationDescription')}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <form.Field name="name">
-                  {(field) => (
-                    <div className="space-y-2">
-                      <Label>{t('name')}</Label>
-                      <Input
-                        placeholder={t('namePlaceholder')}
-                        value={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.value)}
-                        onBlur={field.handleBlur}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm font-medium text-destructive">
-                          {String(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </form.Field>
+                <form.AppField name="name">
+                  {(field) => <field.Input label={t('name')} placeholder={t('namePlaceholder')} />}
+                </form.AppField>
 
                 <form.Field name="description">
                   {(field) => (
@@ -1255,52 +1175,27 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
                     {/* Price and Deposit */}
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <form.Field name="price">
+                      <form.AppField name="price">
                         {(field) => (
-                          <div className="space-y-2">
-                            <Label>{priceLabel}</Label>
-                            <div className="relative">
-                              <Input
-                                placeholder={t('pricePlaceholder')}
-                                className="pr-8 text-lg font-semibold"
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                onBlur={field.handleBlur}
-                              />
-                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                {currencySymbol}
-                              </span>
-                            </div>
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
+                          <field.Input
+                            label={priceLabel}
+                            suffix={currencySymbol}
+                            placeholder={t('pricePlaceholder')}
+                            className="text-lg font-semibold"
+                          />
                         )}
-                      </form.Field>
+                      </form.AppField>
 
-                      <form.Field name="deposit">
+                      <form.AppField name="deposit">
                         {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('deposit')}</Label>
-                            <div className="relative">
-                              <Input
-                                placeholder={t('depositPlaceholder')}
-                                className="pr-8"
-                                value={field.state.value}
-                                onChange={(e) => field.handleChange(e.target.value)}
-                                onBlur={field.handleBlur}
-                              />
-                              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
-                                {currencySymbol}
-                              </span>
-                            </div>
-                            <p className="text-sm text-muted-foreground">{t('depositHelp')}</p>
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm font-medium text-destructive">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
+                          <field.Input
+                            label={t('deposit')}
+                            suffix={currencySymbol}
+                            placeholder={t('depositPlaceholder')}
+                            description={t('depositHelp')}
+                          />
                         )}
-                      </form.Field>
+                      </form.AppField>
                     </div>
 
                     {/* Tax Settings - only show if taxes are enabled at store level */}
@@ -1308,22 +1203,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                       <>
                         <Separator />
                         <div className="space-y-4">
-                          <form.Field name="taxSettings.inheritFromStore">
+                          <form.AppField name="taxSettings.inheritFromStore">
                             {(field) => (
-                              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                  <Label className="text-base">{t('inheritTax')}</Label>
-                                  <p className="text-sm text-muted-foreground">
-                                    {t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
-                                  </p>
-                                </div>
-                                <Switch
-                                  checked={field.state.value}
-                                  onCheckedChange={field.handleChange}
-                                />
-                              </div>
+                              <field.Switch
+                                label={t('inheritTax')}
+                                description={t('inheritTaxDescription', { rate: storeTaxSettings.defaultRate })}
+                              />
                             )}
-                          </form.Field>
+                          </form.AppField>
 
                           {!watchedValues.taxSettings?.inheritFromStore && (
                             <form.Field name="taxSettings.customRate">
@@ -1602,6 +1489,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
             )}
           </div>
         </StepActions>
-      </form>
+      </form.Form>
+    </form.AppForm>
   )
 }

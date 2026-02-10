@@ -113,14 +113,8 @@ export default function OnboardingProductPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            form.handleSubmit()
-          }}
-          className="space-y-6"
-        >
+        <form.AppForm>
+          <form.Form className="space-y-6">
           {/* Images */}
           <form.Field name="images">
             {(field) => (
@@ -176,130 +170,42 @@ export default function OnboardingProductPage() {
           </form.Field>
 
           {/* Name */}
-          <form.Field name="name">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor="name">{t('name')}</Label>
-                <Input
-                  id="name"
-                  placeholder={t('namePlaceholder')}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {field.state.meta.errors.join(', ')}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+          <form.AppField name="name">
+            {(field) => <field.Input label={t('name')} placeholder={t('namePlaceholder')} />}
+          </form.AppField>
 
           {/* Description */}
-          <form.Field name="description">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor="description">{t('productDescription')}</Label>
-                <Textarea
-                  id="description"
-                  placeholder={t('productDescriptionPlaceholder')}
-                  className="resize-none"
-                  rows={3}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {field.state.meta.errors.join(', ')}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+          <form.AppField name="description">
+            {(field) => <field.Textarea label={t('productDescription')} placeholder={t('productDescriptionPlaceholder')} rows={3} />}
+          </form.AppField>
 
           {/* Price and Deposit */}
           <div className="grid grid-cols-2 gap-4">
-            <form.Field name="price">
+            <form.AppField name="price">
               {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="price">{t('price')}</Label>
-                  <div className="relative">
-                    <Input
-                      id="price"
-                      placeholder={t('pricePlaceholder')}
-                      className="pr-8"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      €
-                    </span>
-                  </div>
+                <>
+                  <field.Input label={t('price')} placeholder={t('pricePlaceholder')} suffix="€" />
                   <p className="text-sm text-muted-foreground">{t('priceHelp')}</p>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.join(', ')}
-                    </p>
-                  )}
-                </div>
+                </>
               )}
-            </form.Field>
+            </form.AppField>
 
-            <form.Field name="deposit">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="deposit">{t('deposit')}</Label>
-                  <div className="relative">
-                    <Input
-                      id="deposit"
-                      placeholder={t('depositPlaceholder')}
-                      className="pr-8"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                      €
-                    </span>
-                  </div>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors.join(', ')}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
+            <form.AppField name="deposit">
+              {(field) => <field.Input label={t('deposit')} placeholder={t('depositPlaceholder')} suffix="€" />}
+            </form.AppField>
           </div>
 
           {/* Quantity */}
-          <form.Field name="quantity">
+          <form.AppField name="quantity">
             {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor="quantity">{t('quantity')}</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min="1"
-                  placeholder="1"
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
-                />
+              <>
+                <field.Input label={t('quantity')} type="number" min="1" placeholder="1" />
                 <p className="text-sm text-muted-foreground">
                   {t('quantityHelp')}
                 </p>
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {field.state.meta.errors.join(', ')}
-                  </p>
-                )}
-              </div>
+              </>
             )}
-          </form.Field>
+          </form.AppField>
 
           <div className="flex gap-3">
             <Button
@@ -315,7 +221,8 @@ export default function OnboardingProductPage() {
               {tCommon('next')}
             </Button>
           </div>
-        </form>
+          </form.Form>
+        </form.AppForm>
       </CardContent>
     </Card>
   )

@@ -70,14 +70,8 @@ export default function OnboardingStripePage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            form.handleSubmit()
-          }}
-          className="space-y-6"
-        >
+        <form.AppForm>
+          <form.Form className="space-y-6">
           {/* Reservation Mode */}
           <form.Field name="reservationMode">
             {(field) => (
@@ -194,7 +188,8 @@ export default function OnboardingStripePage() {
               {tCommon('confirm')}
             </Button>
           </div>
-        </form>
+          </form.Form>
+        </form.AppForm>
       </CardContent>
     </Card>
   )

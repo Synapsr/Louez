@@ -70,15 +70,9 @@ export function AdminSettingsForm({
   const isDirty = useStore(form.store, (s) => s.isDirty)
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        form.handleSubmit()
-      }}
-      className="space-y-6"
-    >
-      <RootError error={rootError} />
+    <form.AppForm>
+      <form.Form className="space-y-6">
+        <RootError error={rootError} />
 
       <Card>
         <CardHeader>
@@ -177,7 +171,8 @@ export function AdminSettingsForm({
         </CardContent>
       </Card>
 
-      <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
-    </form>
+        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+      </form.Form>
+    </form.AppForm>
   )
 }

@@ -109,8 +109,9 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
   }
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
-      <RootError error={rootError} />
+    <form.AppForm>
+      <form.Form className="space-y-6">
+        <RootError error={rootError} />
 
       <Card>
         <CardHeader>
@@ -124,26 +125,14 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Enable Switch */}
-          <form.Field name="enabled">
+          <form.AppField name="enabled">
             {(field) => (
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor={field.name} className="text-base">
-                    {t('enabled')}
-                  </Label>
-                  <p className="text-muted-foreground text-sm">
-                    {t('enabledDescription')}
-                  </p>
-                </div>
-                <Switch
-                  id={field.name}
-                  checked={field.state.value}
-                  onCheckedChange={(checked) => field.handleChange(checked)}
-                  onBlur={field.handleBlur}
-                />
-              </div>
+              <field.Switch
+                label={t('enabled')}
+                description={t('enabledDescription')}
+              />
             )}
-          </form.Field>
+          </form.AppField>
 
           {/* Configuration - Only when enabled */}
           {isEnabled && (
@@ -323,11 +312,12 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
         </CardContent>
       </Card>
 
-      <FloatingSaveBar
-        isDirty={isDirty}
-        isLoading={isPending}
-        onReset={() => form.reset()}
-      />
-    </form>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={() => form.reset()}
+        />
+      </form.Form>
+    </form.AppForm>
   )
 }
