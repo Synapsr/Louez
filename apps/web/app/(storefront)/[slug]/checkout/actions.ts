@@ -15,13 +15,13 @@ import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { getMinRentalHours, getMaxRentalHours, validateMinRentalDuration, validateMaxRentalDuration } from '@/lib/utils/rental-duration'
-import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@/lib/pricing/tax'
+import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
   calculateRentalPrice,
   calculateDuration as calcDuration,
   getEffectivePricingMode,
-} from '@/lib/pricing/calculate'
-import type { PricingMode } from '@/lib/pricing/types'
+} from '@louez/utils'
+import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 import { env } from '@/env'
 

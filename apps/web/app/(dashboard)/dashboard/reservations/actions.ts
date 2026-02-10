@@ -44,7 +44,7 @@ import {
   calculateDuration,
   generatePricingBreakdown,
   type PricingTier,
-} from '@/lib/pricing'
+} from '@louez/utils'
 import type { PricingBreakdown } from '@louez/types'
 import {
   evaluateReservationRules,

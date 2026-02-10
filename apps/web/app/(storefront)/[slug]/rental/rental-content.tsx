@@ -52,6 +52,7 @@ import type {
   BusinessHoursValidation,
   ProductAvailability,
 } from '@/app/api/stores/[slug]/availability/route';
+import type { BusinessHours } from '@louez/types';
 
 interface PricingTier {
   id: string;
@@ -97,7 +98,7 @@ interface Store {
   name: string;
   theme?: { primaryColor?: string } | null;
   settings?: {
-    businessHours?: import('@/types/store').BusinessHours;
+    businessHours?: BusinessHours;
     advanceNotice?: number;
     timezone?: string;
   } | null;

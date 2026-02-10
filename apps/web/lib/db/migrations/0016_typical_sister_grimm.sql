@@ -1,1 +1,0 @@
-ALTER TABLE `product_pricing_tiers` MODIFY COLUMN `discount_percent` decimal(10,6) NOT NULL;

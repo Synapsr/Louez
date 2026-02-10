@@ -23,7 +23,7 @@ import {
   snapToNearestTier,
   type ProductPricing,
   type PricingTier,
-} from '@/lib/pricing'
+} from '@louez/utils'
 import { getMinStartDate } from '@/lib/utils/duration'
 import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
 import type { PricingMode } from '@louez/types'

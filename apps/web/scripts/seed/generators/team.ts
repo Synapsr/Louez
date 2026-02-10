@@ -13,7 +13,7 @@ export interface GeneratedUser {
   email: string
   name: string
   image: string | null
-  emailVerified: Date | null
+  emailVerified: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -112,7 +112,7 @@ export function generateTeam(
       email,
       name,
       image: chance(0.7) ? generateAvatarUrl(name) : null, // 70% have avatar
-      emailVerified: createdAt,
+      emailVerified: true,
       createdAt,
       updatedAt: now,
     })

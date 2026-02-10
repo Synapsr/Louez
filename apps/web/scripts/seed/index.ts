@@ -43,7 +43,7 @@ import { generatePayments } from './generators/payments'
 import { generateAnalytics } from './generators/analytics'
 
 // Import schema
-import * as schema from '../../lib/db/schema'
+import * as schema from '@louez/db'
 import type {
   StoreSettings,
   StoreTheme,
@@ -52,7 +52,7 @@ import type {
   CustomerNotificationSettings,
   BusinessHours,
   TaxSettings,
-} from '../../types'
+} from '@louez/types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DrizzleDB = ReturnType<typeof drizzle<any>>
@@ -84,7 +84,7 @@ async function getOrCreateUser(
     email,
     name: 'Développeur Louez',
     image: `https://ui-avatars.com/api/?name=Dev&background=0D8ABC&color=fff&size=128`,
-    emailVerified: now,
+    emailVerified: true,
     createdAt: now,
     updatedAt: now,
   })

@@ -29,7 +29,7 @@ import { useState } from 'react'
 
 import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
-import { Logo, LogoIcon } from '@/components/ui/logo'
+import { Logo, LogoIcon } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'

@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { getCustomerSession } from '../../actions'
-import { calculateDuration } from '@/lib/pricing'
+import { calculateDuration } from '@louez/utils'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 
 export async function createReservationPaymentSession(

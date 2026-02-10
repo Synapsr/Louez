@@ -9,7 +9,7 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { getEffectivePricingMode } from '@/lib/pricing'
+import { getEffectivePricingMode } from '@louez/utils'
 import { useStoreCurrency } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 

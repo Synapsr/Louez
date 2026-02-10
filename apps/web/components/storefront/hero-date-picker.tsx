@@ -18,15 +18,12 @@ import { ScrollArea } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
+import { type PricingMode } from '@/lib/utils/duration'
 import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
 import type { BusinessHours } from '@louez/types'
+import { buildDateTimeRange, ensureSelectedTime, useRentalDateCore } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import {
-  isDateAvailable,
-  getAvailableTimeSlots,
-  generateTimeSlots,
   getNextAvailableDate,
-  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface HeroDatePickerProps {
@@ -39,8 +36,6 @@ interface HeroDatePickerProps {
 }
 
 type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
-
-const defaultTimeSlots = generateTimeSlots('07:00', '21:00', 30)
 
 export function HeroDatePicker({
   storeSlug,
@@ -86,56 +81,36 @@ export function HeroDatePicker({
   // When true, don't show end date as selected (allows clicking auto-set date)
   const [hideEndDateSelection, setHideEndDateSelection] = useState(false)
 
-  // Calculate minimum start date based on advance notice setting
-  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
-
-  const startTimeSlots = useMemo(() => {
-    if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
-    // Filter out time slots that are within the advance notice period
-    return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice, timezone])
-
-  // Check if start and end are on the same day
-  const isSameDay = useMemo(() => {
-    if (!startDate || !endDate) return false
-    return startDate.toDateString() === endDate.toDateString()
-  }, [startDate, endDate])
-
-  const endTimeSlots = useMemo(() => {
-    if (!endDate) return defaultTimeSlots
-    const slots = getAvailableTimeSlots(endDate, businessHours, 30, timezone)
-    // When same day, filter out times that are <= start time
-    if (isSameDay && startTime) {
-      return slots.filter(slot => slot > startTime)
-    }
-    return slots
-  }, [endDate, businessHours, isSameDay, startTime, timezone])
-
-  const isDateDisabled = useCallback((date: Date): boolean => {
-    if (date < minDate) return true
-    if (!businessHours?.enabled) return false
-    const availability = isDateAvailable(date, businessHours, timezone)
-    return !availability.available
-  }, [businessHours, minDate, timezone])
+  const {
+    isSameDay,
+    startTimeSlots,
+    endTimeSlots,
+    isDateDisabled,
+  } = useRentalDateCore({
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    businessHours,
+    advanceNotice,
+    timezone,
+  })
 
   useEffect(() => {
     setPricingMode(pricingMode)
   }, [pricingMode, setPricingMode])
 
   useEffect(() => {
-    if (startDate && startTimeSlots.length > 0 && !startTimeSlots.includes(startTime)) {
-      setStartTime(startTimeSlots[0])
+    if (startDate && startTimeSlots.length > 0) {
+      setStartTime((prev) => ensureSelectedTime(prev, startTimeSlots, 'first'))
     }
-  }, [startDate, startTimeSlots, startTime])
+  }, [startDate, startTimeSlots])
 
   useEffect(() => {
-    if (endDate && endTimeSlots.length > 0 && !endTimeSlots.includes(endTime)) {
-      // Default to last available slot (typically closing time)
-      // For same day, endTimeSlots is already filtered to be > startTime
-      setEndTime(endTimeSlots[endTimeSlots.length - 1] || endTimeSlots[0])
+    if (endDate && endTimeSlots.length > 0) {
+      setEndTime((prev) => ensureSelectedTime(prev, endTimeSlots, 'last'))
     }
-  }, [endDate, endTimeSlots, endTime])
+  }, [endDate, endTimeSlots])
 
   const navigateToRental = useCallback((start: Date, end: Date) => {
     setGlobalDates(start.toISOString(), end.toISOString())
@@ -209,8 +184,13 @@ export function HeroDatePicker({
     setEndTimeOpen(false)
     setActiveField(null)
 
-    const finalStart = buildStoreDate(startDate!, startTime, timezone)
-    const finalEnd = buildStoreDate(endDate!, time, timezone)
+    const { start: finalStart, end: finalEnd } = buildDateTimeRange({
+      startDate: startDate!,
+      endDate: endDate!,
+      startTime,
+      endTime: time,
+      timezone,
+    })
 
     navigateToRental(finalStart, finalEnd)
   }
@@ -273,8 +253,13 @@ export function HeroDatePicker({
     if (isSameDay && endTime <= startTime) return false
     // Validate minimum rental duration
     if (minRentalHours > 0) {
-      const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
-      const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
+      const { start: fullStart, end: fullEnd } = buildDateTimeRange({
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        startTime,
+        endTime,
+        timezone,
+      })
       if (!validateMinRentalDuration(fullStart, fullEnd, minRentalHours).valid) return false
     }
     return true
@@ -291,8 +276,13 @@ export function HeroDatePicker({
   const durationWarning = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return null
     if (minRentalHours <= 0) return null
-    const fullStart = buildStoreDate(new Date(startDate), startTime, timezone)
-    const fullEnd = buildStoreDate(new Date(endDate), endTime, timezone)
+    const { start: fullStart, end: fullEnd } = buildDateTimeRange({
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      startTime,
+      endTime,
+      timezone,
+    })
     const check = validateMinRentalDuration(fullStart, fullEnd, minRentalHours)
     if (check.valid) return null
     return t('minDurationWarning', { hours: minRentalHours })
@@ -301,8 +291,13 @@ export function HeroDatePicker({
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const finalStart = buildStoreDate(startDate!, startTime, timezone)
-    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
+    const { start: finalStart, end: finalEnd } = buildDateTimeRange({
+      startDate: startDate!,
+      endDate: endDate!,
+      startTime,
+      endTime,
+      timezone,
+    })
     navigateToRental(finalStart, finalEnd)
   }
 

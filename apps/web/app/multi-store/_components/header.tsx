@@ -7,7 +7,7 @@ import { authClient } from '@louez/auth/client'
 import { LogOut, Store, ChevronDown } from 'lucide-react'
 
 import { Button } from '@louez/ui'
-import { Logo } from '@/components/ui/logo'
+import { Logo } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
 import { ThemeToggle } from '@/components/dashboard/theme-toggle'
 import { LanguageSwitcher } from '@/components/ui/language-switcher'

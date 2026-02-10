@@ -1,1 +1,0 @@
-ALTER TABLE `products` ADD `enforce_strict_tiers` boolean DEFAULT false NOT NULL;
