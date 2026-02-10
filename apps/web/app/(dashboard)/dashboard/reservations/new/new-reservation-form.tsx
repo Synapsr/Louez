@@ -815,7 +815,8 @@ export function NewReservationForm({
 
   return (
     <>
-      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+      <form.AppForm>
+        <form.Form className="space-y-6">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">
@@ -922,81 +923,20 @@ export function NewReservationForm({
 
                 {watchCustomerType === 'new' && (
                   <div className="space-y-4">
-                    <form.Field name="email">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label>{t('email')} *</Label>
-                          <Input
-                            type="email"
-                            placeholder={t('emailPlaceholder')}
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-sm font-medium text-destructive">
-                              {String(field.state.meta.errors[0])}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </form.Field>
+                    <form.AppField name="email">
+                      {(field) => <field.Input label={`${t('email')} *`} type="email" placeholder={t('emailPlaceholder')} />}
+                    </form.AppField>
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <form.Field name="firstName">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('firstName')} *</Label>
-                            <Input
-                              placeholder={t('firstNamePlaceholder')}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm font-medium text-destructive">
-                                {String(field.state.meta.errors[0])}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
-                      <form.Field name="lastName">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('lastName')} *</Label>
-                            <Input
-                              placeholder={t('lastNamePlaceholder')}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm font-medium text-destructive">
-                                {String(field.state.meta.errors[0])}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
+                      <form.AppField name="firstName">
+                        {(field) => <field.Input label={`${t('firstName')} *`} placeholder={t('firstNamePlaceholder')} />}
+                      </form.AppField>
+                      <form.AppField name="lastName">
+                        {(field) => <field.Input label={`${t('lastName')} *`} placeholder={t('lastNamePlaceholder')} />}
+                      </form.AppField>
                     </div>
-                    <form.Field name="phone">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label>{t('phone')}</Label>
-                          <Input
-                            placeholder={t('phonePlaceholder')}
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-sm font-medium text-destructive">
-                              {String(field.state.meta.errors[0])}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </form.Field>
+                    <form.AppField name="phone">
+                      {(field) => <field.Input label={t('phone')} placeholder={t('phonePlaceholder')} />}
+                    </form.AppField>
                   </div>
                 )}
               </CardContent>
@@ -1723,17 +1663,9 @@ export function NewReservationForm({
                     <CardDescription>{t('notesHint')}</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <form.Field name="internalNotes">
-                      {(field) => (
-                        <Textarea
-                          placeholder={t('notesPlaceholder')}
-                          className="min-h-[120px] resize-none"
-                          value={field.state.value}
-                          onChange={(e) => field.handleChange(e.target.value)}
-                          onBlur={field.handleBlur}
-                        />
-                      )}
-                    </form.Field>
+                    <form.AppField name="internalNotes">
+                      {(field) => <field.Textarea placeholder={t('notesPlaceholder')} className="min-h-[120px] resize-none" />}
+                    </form.AppField>
                   </CardContent>
                 </Card>
 
@@ -1811,7 +1743,8 @@ export function NewReservationForm({
             )}
           </div>
         </StepActions>
-      </form>
+        </form.Form>
+      </form.AppForm>
 
       {/* Custom Item Dialog */}
       <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>

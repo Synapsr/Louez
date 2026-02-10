@@ -142,7 +142,8 @@ export default function OnboardingBrandingPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
+        <form.AppForm>
+          <form.Form className="space-y-6">
           {/* Logo Upload */}
           <form.Field name="logoUrl">
             {() => (
@@ -301,7 +302,8 @@ export default function OnboardingBrandingPage() {
               {tCommon('next')}
             </Button>
           </div>
-        </form>
+          </form.Form>
+        </form.AppForm>
       </CardContent>
     </Card>
   )

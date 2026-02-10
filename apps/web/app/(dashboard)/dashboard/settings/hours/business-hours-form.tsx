@@ -117,8 +117,9 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
-        <RootError error={rootError} />
+      <form.AppForm>
+        <form.Form className="space-y-6">
+          <RootError error={rootError} />
 
         {/* Two-column layout on desktop */}
         <div className="grid gap-6 lg:grid-cols-2">
@@ -231,7 +232,8 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
           isLoading={isPending}
           onReset={handleReset}
         />
-      </form>
+        </form.Form>
+      </form.AppForm>
     </div>
   )
 }

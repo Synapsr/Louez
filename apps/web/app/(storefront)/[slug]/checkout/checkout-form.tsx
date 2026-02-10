@@ -486,7 +486,8 @@ export function CheckoutForm({
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Form */}
         <div className="lg:col-span-3">
-            <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }}>
+          <form.AppForm>
+            <form.Form>
               {/* Step 1: Contact */}
               {currentStep === 'contact' && (
                 <Card>
@@ -497,57 +498,17 @@ export function CheckoutForm({
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <form.Field name="firstName">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('firstName')}</Label>
-                            <Input
-                              placeholder={t('firstNamePlaceholder')}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
-                      <form.Field name="lastName">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('lastName')}</Label>
-                            <Input
-                              placeholder={t('lastNamePlaceholder')}
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
+                      <form.AppField name="firstName">
+                        {(field) => <field.Input label={t('firstName')} placeholder={t('firstNamePlaceholder')} />}
+                      </form.AppField>
+                      <form.AppField name="lastName">
+                        {(field) => <field.Input label={t('lastName')} placeholder={t('lastNamePlaceholder')} />}
+                      </form.AppField>
                     </div>
 
-                    <form.Field name="email">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label>{t('email')}</Label>
-                          <Input
-                            type="email"
-                            placeholder={t('emailPlaceholder')}
-                            value={field.state.value}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                          )}
-                        </div>
-                      )}
-                    </form.Field>
+                    <form.AppField name="email">
+                      {(field) => <field.Input label={t('email')} type="email" placeholder={t('emailPlaceholder')} />}
+                    </form.AppField>
 
                     <form.Field name="phone">
                       {(field) => (
@@ -587,22 +548,9 @@ export function CheckoutForm({
 
                     {/* Company name - only shown for business customers */}
                     {isBusinessCustomer && (
-                      <form.Field name="companyName">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('companyName')} *</Label>
-                            <Input
-                              placeholder={t('companyNamePlaceholder')}
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
+                      <form.AppField name="companyName">
+                        {(field) => <field.Input label={`${t('companyName')} *`} placeholder={t('companyNamePlaceholder')} />}
+                      </form.AppField>
                     )}
 
                     <div className="pt-4">
@@ -840,75 +788,22 @@ export function CheckoutForm({
                       <p className="text-sm text-muted-foreground">{t('addressDescription')}</p>
                     </div>
 
-                    <form.Field name="address">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label>{t('address')}</Label>
-                          <Input
-                            placeholder={t('addressPlaceholder')}
-                            value={field.state.value ?? ''}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                          )}
-                        </div>
-                      )}
-                    </form.Field>
+                    <form.AppField name="address">
+                      {(field) => <field.Input label={t('address')} placeholder={t('addressPlaceholder')} />}
+                    </form.AppField>
 
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <form.Field name="postalCode">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('postalCode')}</Label>
-                            <Input
-                              placeholder={t('postalCodePlaceholder')}
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
-                      <form.Field name="city">
-                        {(field) => (
-                          <div className="space-y-2">
-                            <Label>{t('city')}</Label>
-                            <Input
-                              placeholder={t('cityPlaceholder')}
-                              value={field.state.value ?? ''}
-                              onChange={(e) => field.handleChange(e.target.value)}
-                              onBlur={field.handleBlur}
-                            />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                            )}
-                          </div>
-                        )}
-                      </form.Field>
+                      <form.AppField name="postalCode">
+                        {(field) => <field.Input label={t('postalCode')} placeholder={t('postalCodePlaceholder')} />}
+                      </form.AppField>
+                      <form.AppField name="city">
+                        {(field) => <field.Input label={t('city')} placeholder={t('cityPlaceholder')} />}
+                      </form.AppField>
                     </div>
 
-                    <form.Field name="notes">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label>{t('notes')}</Label>
-                          <Textarea
-                            placeholder={t('notesPlaceholder')}
-                            rows={3}
-                            value={field.state.value ?? ''}
-                            onChange={(e) => field.handleChange(e.target.value)}
-                            onBlur={field.handleBlur}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
-                          )}
-                        </div>
-                      )}
-                    </form.Field>
+                    <form.AppField name="notes">
+                      {(field) => <field.Textarea label={t('notes')} placeholder={t('notesPlaceholder')} rows={3} />}
+                    </form.AppField>
 
                     <div className="pt-4 flex gap-3">
                       <Button type="button" variant="outline" onClick={goToPreviousStep} className="flex-1">
@@ -1021,7 +916,8 @@ export function CheckoutForm({
                   </CardContent>
                 </Card>
               )}
-            </form>
+            </form.Form>
+          </form.AppForm>
         </div>
 
         {/* Order Summary - Always visible */}

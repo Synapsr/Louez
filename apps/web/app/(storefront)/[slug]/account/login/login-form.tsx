@@ -223,8 +223,6 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               </Button>
             </div>
           </div>
-          <Button>test</Button>
-          azeaze
         </CardContent>
       </Card>
     );
@@ -243,51 +241,33 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
             {t('loginDescription')}
           </p>
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            emailForm.handleSubmit();
-          }}
-          className="space-y-6"
-        >
-          <emailForm.Field name="email">
-            {(field) => (
-              <div className="space-y-2">
-                <Label htmlFor="email">{t('emailAddress')}</Label>
-                <Input
-                  id="email"
+        <emailForm.AppForm>
+          <emailForm.Form className="space-y-6">
+            <emailForm.AppField name="email">
+              {(field) => (
+                <field.Input
+                  label={t('emailAddress')}
                   type="email"
                   placeholder={t('emailPlaceholder')}
-                  value={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.value)}
-                  onBlur={field.handleBlur}
                 />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-destructive">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                )}
-              </div>
-            )}
-          </emailForm.Field>
+              )}
+            </emailForm.AppField>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t('sending')}
-              </>
-            ) : (
-              <>
-                {t('sendCode')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </Button>
-        </form>
-        <Button>test</Button>
-        azeaze
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t('sending')}
+                </>
+              ) : (
+                <>
+                  {t('sendCode')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </>
+              )}
+            </Button>
+          </emailForm.Form>
+        </emailForm.AppForm>
       </CardContent>
     </Card>
   );

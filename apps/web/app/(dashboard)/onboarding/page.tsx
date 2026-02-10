@@ -194,14 +194,8 @@ export default function OnboardingStorePage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            form.handleSubmit()
-          }}
-          className="space-y-6"
-        >
+        <form.AppForm>
+          <form.Form className="space-y-6">
           {/* Store Name with inline URL preview */}
           <form.Field name="name">
             {(field) => (
@@ -465,53 +459,13 @@ export default function OnboardingStorePage() {
             </form.Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <form.Field name="email">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="flex items-center gap-2">
-                      <Mail className="h-3.5 w-3.5" />
-                      {t('contactEmail')}
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
+              <form.AppField name="email">
+                {(field) => <field.Input label={t('contactEmail')} type="email" placeholder={t('emailPlaceholder')} />}
+              </form.AppField>
 
-              <form.Field name="phone">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="phone" className="flex items-center gap-2">
-                      <Phone className="h-3.5 w-3.5" />
-                      {t('contactPhone')}
-                    </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder={t('phonePlaceholder')}
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
+              <form.AppField name="phone">
+                {(field) => <field.Input label={t('contactPhone')} type="tel" placeholder={t('phonePlaceholder')} />}
+              </form.AppField>
             </div>
           </div>
 
@@ -519,7 +473,8 @@ export default function OnboardingStorePage() {
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {tCommon('next')}
           </Button>
-        </form>
+          </form.Form>
+        </form.AppForm>
       </CardContent>
     </Card>
   )

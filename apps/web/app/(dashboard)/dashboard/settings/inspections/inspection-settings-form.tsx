@@ -106,8 +106,9 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
   const mode = useStore(form.store, (s) => s.values.mode)
 
   return (
-    <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }} className="space-y-6">
-      <RootError error={rootError} />
+    <form.AppForm>
+      <form.Form className="space-y-6">
+        <RootError error={rootError} />
 
       {/* Enable Section */}
       <Card>
@@ -119,20 +120,14 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
           <CardDescription>{t('enableSectionDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <form.Field name="enabled">
+          <form.AppField name="enabled">
             {(field) => (
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <Label htmlFor={field.name} className="text-base">{t('enabled')}</Label>
-                  <p className="text-muted-foreground text-sm">{t('enabledDescription')}</p>
-                </div>
-                <Switch
-                  checked={field.state.value}
-                  onCheckedChange={(checked) => field.handleChange(checked)}
-                />
-              </div>
+              <field.Switch
+                label={t('enabled')}
+                description={t('enabledDescription')}
+              />
             )}
-          </form.Field>
+          </form.AppField>
         </CardContent>
       </Card>
 
@@ -313,11 +308,12 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
         </Card>
       )}
 
-      <FloatingSaveBar
-        isDirty={isDirty}
-        isLoading={isPending}
-        onReset={() => form.reset()}
-      />
-    </form>
+        <FloatingSaveBar
+          isDirty={isDirty}
+          isLoading={isPending}
+          onReset={() => form.reset()}
+        />
+      </form.Form>
+    </form.AppForm>
   )
 }
