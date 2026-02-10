@@ -26,16 +26,7 @@ export async function createStore(data: StoreInfoInput) {
     return { error: 'errors.invalidData' }
   }
 
-  // Check if slug is already taken
-  const existingStore = await db.query.stores.findFirst({
-    where: eq(stores.slug, validated.data.slug),
-  })
-
-  if (existingStore) {
-    return { error: 'errors.slugTaken' }
-  }
-
-  // Check if we're updating an existing incomplete store or creating new
+  // Check if we're updating an existing incomplete store or creating a new one
   const activeStoreId = await getActiveStoreId()
   let storeToUpdate = null
 
@@ -56,6 +47,42 @@ export async function createStore(data: StoreInfoInput) {
       if (store && !store.onboardingCompleted) {
         storeToUpdate = store
       }
+    }
+  }
+
+  // Fallback: if active-store cookie is missing, reuse any incomplete store owned by the user
+  if (!storeToUpdate) {
+    const incompleteOwnedStores = await db.query.stores.findMany({
+      where: and(
+        eq(stores.userId, session.user.id),
+        eq(stores.onboardingCompleted, false)
+      ),
+      orderBy: (storeFields, { desc }) => [desc(storeFields.updatedAt)],
+    })
+
+    if (incompleteOwnedStores.length > 0) {
+      const slugMatchedStore = incompleteOwnedStores.find(
+        (store) => store.slug === validated.data.slug
+      )
+      storeToUpdate = slugMatchedStore ?? incompleteOwnedStores[0]
+    }
+  }
+
+  // Slug conflict check: allow keeping/editing the current incomplete store slug
+  const existingStore = await db.query.stores.findFirst({
+    where: eq(stores.slug, validated.data.slug),
+  })
+  if (existingStore) {
+    const canReuseExistingStore =
+      existingStore.userId === session.user.id &&
+      existingStore.onboardingCompleted === false
+
+    if (!storeToUpdate && canReuseExistingStore) {
+      storeToUpdate = existingStore
+    }
+
+    if (!storeToUpdate || existingStore.id !== storeToUpdate.id) {
+      return { error: 'errors.slugTaken' }
     }
   }
 
@@ -88,6 +115,15 @@ export async function createStore(data: StoreInfoInput) {
         updatedAt: new Date(),
       })
       .where(eq(stores.id, storeToUpdate.id))
+
+    // Ensure the updated store stays active for subsequent onboarding steps
+    const setStoreResult = await setActiveStoreId(storeToUpdate.id)
+    if (!setStoreResult.success) {
+      console.error(
+        '[SECURITY] Failed to set active store after onboarding update:',
+        setStoreResult.error
+      )
+    }
   } else {
     // Resolve referral code from cookie (set during login with ?ref= param)
     const cookieStore = await cookies()

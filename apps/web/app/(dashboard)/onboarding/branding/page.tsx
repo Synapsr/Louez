@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2, Palette, Upload, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -20,7 +20,11 @@ import {
 } from '@louez/ui';
 import { Label } from '@louez/ui';
 import { Radio, RadioGroup } from '@louez/ui';
-import { type BrandingInput, createBrandingSchema } from '@louez/validations';
+import {
+  type BrandingInput,
+  createBrandingSchema,
+  isValidImageUrlClient,
+} from '@louez/validations';
 
 import { orpc } from '@/lib/orpc/react';
 
@@ -91,6 +95,14 @@ export default function OnboardingBrandingPage() {
   const uploadImageMutation = useMutation(
     orpc.dashboard.onboarding.uploadImage.mutationOptions(),
   );
+  const draftQuery = useQuery({
+    ...orpc.dashboard.onboarding.getDraft.queryOptions({
+      input: {},
+    }),
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
   const updateBrandingMutation = useMutation(
     orpc.dashboard.onboarding.updateBranding.mutationOptions(),
   );
@@ -104,7 +116,15 @@ export default function OnboardingBrandingPage() {
     validators: { onSubmit: brandingSchema },
     onSubmit: async ({ value }) => {
       try {
-        await updateBrandingMutation.mutateAsync(value);
+        const sanitizedLogoUrl =
+          value.logoUrl && isValidImageUrlClient(value.logoUrl)
+            ? value.logoUrl
+            : '';
+
+        await updateBrandingMutation.mutateAsync({
+          ...value,
+          logoUrl: sanitizedLogoUrl,
+        });
         router.push('/onboarding/stripe');
       } catch (error) {
         toastManager.add({
@@ -114,6 +134,25 @@ export default function OnboardingBrandingPage() {
       }
     },
   });
+
+  const hasHydratedDraft = useRef(false);
+
+  useEffect(() => {
+    if (hasHydratedDraft.current) return;
+
+    const draft = draftQuery.data?.branding;
+    if (!draft) return;
+
+    const logoUrl =
+      draft.logoUrl && isValidImageUrlClient(draft.logoUrl) ? draft.logoUrl : '';
+
+    form.setFieldValue('logoUrl', logoUrl);
+    form.setFieldValue('primaryColor', draft.primaryColor || '#0066FF');
+    form.setFieldValue('theme', draft.theme === 'dark' ? 'dark' : 'light');
+    setLogoPreview(logoUrl || null);
+
+    hasHydratedDraft.current = true;
+  }, [draftQuery.data, form]);
 
   const handleLogoUpload = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {

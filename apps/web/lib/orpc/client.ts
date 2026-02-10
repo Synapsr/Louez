@@ -2,6 +2,7 @@ import { createORPCClient } from '@orpc/client'
 import { RPCLink } from '@orpc/client/fetch'
 import type { AppRouter } from '@louez/api'
 import type { RouterClient } from '@orpc/server'
+import { env } from '@/env'
 
 /**
  * Extract store slug from the current URL path (for storefront routes)
@@ -35,8 +36,16 @@ function getStoreSlugFromPath(): string | null {
 /**
  * RPC Link configuration for client-server communication
  */
+function getRpcUrl(): string {
+  if (typeof window !== 'undefined') {
+    return new URL('/api/rpc', window.location.origin).toString()
+  }
+
+  return new URL('/api/rpc', env.NEXT_PUBLIC_APP_URL).toString()
+}
+
 const link = new RPCLink({
-  url: '/api/rpc',
+  url: getRpcUrl(),
   headers: () => {
     // Include store slug header for storefront routes
     const storeSlug = getStoreSlugFromPath()
