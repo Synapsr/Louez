@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { dashboardReservationsRouter } from './reservations'
+import { dashboardSettingsRouter } from './settings'
 import { dashboardProcedure } from '../../procedures'
 
 /**
@@ -23,8 +25,6 @@ const ping = dashboardProcedure
  */
 export const dashboardRouter = {
   ping,
-  // Add more routers here:
-  // products: productsRouter,
-  // reservations: reservationsRouter,
-  // analytics: analyticsRouter,
+  settings: dashboardSettingsRouter,
+  reservations: dashboardReservationsRouter,
 }

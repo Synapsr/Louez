@@ -3,6 +3,7 @@ import { onError } from '@orpc/server'
 import { appRouter } from '@louez/api/router'
 import { getCurrentStore } from '@/lib/store-context'
 import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions'
+import { generateContract } from '@/lib/pdf/generate'
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -19,6 +20,9 @@ async function handleRequest(request: Request) {
       headers: request.headers,
       getCurrentStore,
       getCustomerSession,
+      regenerateContract: async (reservationId: string) => {
+        await generateContract({ reservationId, regenerate: true })
+      },
     },
   })
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Loader2, MapPin, Search, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -12,6 +13,7 @@ import { Button } from '@louez/ui';
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
+import { orpc } from '@/lib/orpc/react';
 
 interface AddressInputProps {
   value?: string;
@@ -43,6 +45,7 @@ export function AddressInput({
   className,
 }: AddressInputProps) {
   const t = useTranslations('common.addressInput');
+  const queryClient = useQueryClient();
   const [inputValue, setInputValue] = useState(value);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -79,10 +82,11 @@ export function AddressInput({
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/address/autocomplete?query=${encodeURIComponent(query)}`,
+      const data = await queryClient.fetchQuery(
+        orpc.public.address.autocomplete.queryOptions({
+          input: { query },
+        }),
       );
-      const data = await response.json();
       setSuggestions(data.suggestions || []);
       setIsOpen((data.suggestions || []).length > 0);
       setSelectedIndex(-1);
@@ -92,7 +96,7 @@ export function AddressInput({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
@@ -107,13 +111,14 @@ export function AddressInput({
     }
   };
 
-  const handleSelect = async (suggestion: AddressSuggestion) => {
+  const handleSelect = useCallback(async (suggestion: AddressSuggestion) => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/address/details?placeId=${encodeURIComponent(suggestion.placeId)}`,
+      const data = await queryClient.fetchQuery(
+        orpc.public.address.details.queryOptions({
+          input: { placeId: suggestion.placeId },
+        }),
       );
-      const data = await response.json();
 
       if (data.details) {
         const {
@@ -143,7 +148,7 @@ export function AddressInput({
       setIsLoading(false);
       inputRef.current?.blur();
     }
-  };
+  }, [onChange, queryClient]);
 
   const handleClear = () => {
     setInputValue('');

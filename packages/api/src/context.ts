@@ -69,6 +69,7 @@ export interface BaseContext {
   headers: Headers;
   getCurrentStore?: () => Promise<(StoreData & Record<string, unknown>) | null>;
   getCustomerSession?: (storeSlug: string) => Promise<{ customer: CustomerData } | null>;
+  regenerateContract?: (reservationId: string) => Promise<void>;
 }
 
 /**

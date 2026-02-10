@@ -1,4 +1,5 @@
 export * from './business-hours'
+export * from './api'
 export * from './customer'
 export * from './image'
 export * from './inspection'

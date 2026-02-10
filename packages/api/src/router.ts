@@ -1,4 +1,5 @@
 import { dashboardRouter } from './routers/dashboard'
+import { publicRouter } from './routers/public'
 import { storefrontRouter } from './routers/storefront'
 
 /**
@@ -6,6 +7,7 @@ import { storefrontRouter } from './routers/storefront'
  * Combines all sub-routers for dashboard and storefront
  */
 export const appRouter = {
+  public: publicRouter,
   dashboard: dashboardRouter,
   storefront: storefrontRouter,
 }

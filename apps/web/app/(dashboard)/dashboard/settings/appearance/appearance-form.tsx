@@ -3,12 +3,14 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useMutation } from '@tanstack/react-query'
 import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
 import { Button } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { toastManager } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
+import { orpc } from '@/lib/orpc/react'
 import type { StoreTheme } from '@louez/types'
 
 interface Store {
@@ -67,7 +69,6 @@ function parseHexInput(input: string): string | null {
 export function AppearanceForm({ store }: AppearanceFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.settings.appearanceSettings')
-  const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
 
   const suggestedColors = [
@@ -81,7 +82,6 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     { name: t('colors.indigo'), value: '#4f46e5' },
   ]
 
-  const [isLoading, setIsLoading] = useState(false)
   const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [isUploadingDarkLogo, setIsUploadingDarkLogo] = useState(false)
   const [isUploadingHero, setIsUploadingHero] = useState(false)
@@ -93,6 +93,10 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
   )
   const [heroImages, setHeroImages] = useState<string[]>(store.theme?.heroImages || [])
   const [hexInputValue, setHexInputValue] = useState(primaryColor.replace('#', '').toUpperCase())
+
+  const updateAppearanceMutation = useMutation(
+    orpc.dashboard.settings.updateAppearance.mutationOptions(),
+  )
 
   // Track initial values for dirty state detection
   const initialValues = useMemo(() => ({
@@ -300,33 +304,22 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
 
     try {
-      const response = await fetch('/api/stores/appearance', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          logoUrl: logoPreview,
-          darkLogoUrl: themeMode === 'dark' ? darkLogoPreview : null,
-          theme: {
-            mode: themeMode,
-            primaryColor,
-            heroImages: heroImages.length > 0 ? heroImages : undefined,
-          },
-        }),
+      await updateAppearanceMutation.mutateAsync({
+        logoUrl: logoPreview,
+        darkLogoUrl: themeMode === 'dark' ? darkLogoPreview : null,
+        theme: {
+          mode: themeMode,
+          primaryColor,
+          heroImages: heroImages.length > 0 ? heroImages : undefined,
+        },
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to update appearance')
-      }
 
       toastManager.add({ title: t('updated'), type: 'success' })
       router.refresh()
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -621,7 +614,12 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
 
           <FloatingSaveBar
             isDirty={isDirty}
-            isLoading={isLoading || isUploadingLogo || isUploadingDarkLogo || isUploadingHero}
+            isLoading={
+              updateAppearanceMutation.isPending ||
+              isUploadingLogo ||
+              isUploadingDarkLogo ||
+              isUploadingHero
+            }
             onReset={handleReset}
           />
         </div>
