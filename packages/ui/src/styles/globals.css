@@ -51,6 +51,8 @@
   --radius-4xl: calc(var(--radius) + 16px);
   --animate-skeleton: skeleton 2s -1s infinite linear;
 
+  --thumb-size: var(--spacing)*5;
+
   @keyframes skeleton {
     to {
       background-position: -200% 0;
