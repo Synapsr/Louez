@@ -123,11 +123,11 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
     pricingMode: z.enum(['day', 'hour']),
     country: z.string().length(2),
     currency: z.string().min(3).max(3),
-    address: z.string().optional().or(z.literal('')),
-    latitude: z.number().nullable().optional(),
-    longitude: z.number().nullable().optional(),
-    email: z.string().email(t('email')).optional().or(z.literal('')),
-    phone: z.string().optional().or(z.literal('')),
+    address: z.string().or(z.literal('')),
+    latitude: z.number().nullable(),
+    longitude: z.number().nullable(),
+    email: z.string().email(t('email')).or(z.literal('')),
+    phone: z.string().or(z.literal('')),
   })
 
 export const createBrandingSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>

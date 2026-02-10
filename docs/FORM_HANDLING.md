@@ -258,7 +258,8 @@ export function LoginForm() {
 
 ### Server-side error handling
 
-Use `setFieldMeta` to display server errors on specific fields:
+Use `setFieldMeta` to display server errors on specific fields by setting
+`errorMap.onSubmit` (TanStack derives `meta.errors` from `errorMap`):
 
 ```tsx
 onSubmit: async ({ value }) => {
@@ -269,8 +270,12 @@ onSubmit: async ({ value }) => {
     if (error instanceof Error && error.message.includes("DUPLICATE")) {
       form.setFieldMeta("name", (prev) => ({
         ...prev,
-        errors: ["A folder with this name already exists"],
+        errorMap: {
+          ...prev.errorMap,
+          onSubmit: "A folder with this name already exists",
+        },
       }));
+      return;
     }
     throw error;
   }

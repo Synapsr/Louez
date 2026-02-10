@@ -1,186 +1,289 @@
-'use client'
+'use client';
 
-import { useState, useRef, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useStore } from '@tanstack/react-form'
-import { Store, Loader2, Globe, Mail, Phone, Pencil, Check, X } from 'lucide-react'
-import { toastManager } from '@louez/ui'
-import { useTranslations } from 'next-intl'
-import { env } from '@/env'
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { AddressInput } from '@/components/ui/address-input'
+import { revalidateLogic, useStore } from '@tanstack/react-form';
+import { useMutation } from '@tanstack/react-query';
+import { Globe, Store } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { toastManager } from '@louez/ui';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@louez/ui'
-import { RadioGroup, RadioGroupItem } from '@louez/ui'
-import { Label } from '@louez/ui'
+} from '@louez/ui';
+import { Label } from '@louez/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@louez/ui'
-import { cn } from '@louez/utils'
-import { getCountriesSortedByName, getCountryName, getCountryByCode } from '@/lib/utils/countries'
-import { SUPPORTED_CURRENCIES, getDefaultCurrencyForCountry } from '@/lib/utils/currency'
+} from '@louez/ui';
+import { type StoreInfoInput, createStoreInfoSchema } from '@louez/validations';
 
-import { createStoreInfoSchema, type StoreInfoInput } from '@louez/validations'
-import { createStore } from './actions'
-import { useAppForm } from '@/hooks/form/form'
+import { FormRadioCardGroup } from '@/components/form/form-radio-card-group';
+import { FormStoreNameSlug } from '@/components/form/form-store-name-slug';
+import { AddressInput } from '@/components/ui/address-input';
 
-/**
- * Detect the user's country from browser locale (e.g. "fr-FR" -> "FR")
- */
-function detectCountryFromBrowser(): string {
-  if (typeof navigator === 'undefined') return 'FR'
-  const locale = navigator.language || 'en'
-  const parts = locale.split('-')
-  const regionCode = parts.length > 1 ? parts[1].toUpperCase() : null
-  if (regionCode && getCountryByCode(regionCode)) return regionCode
-  const langToCountry: Record<string, string> = {
-    fr: 'FR', en: 'US', de: 'DE', es: 'ES',
-    it: 'IT', nl: 'NL', pl: 'PL', pt: 'PT',
-    ja: 'JP', zh: 'CN', ko: 'KR',
+import {
+  SUPPORTED_COUNTRIES,
+  getCountriesSortedByName,
+  getCountryByCode,
+  getCountryName,
+} from '@/lib/utils/countries';
+import {
+  SUPPORTED_CURRENCIES,
+  getDefaultCurrencyForCountry,
+} from '@/lib/utils/currency';
+
+import { useAppForm } from '@/hooks/form/form';
+
+import { env } from '@/env';
+
+import { createStore } from './actions';
+
+const FALLBACK_COUNTRY = 'FR';
+
+function extractRegionCode(locale: string): string | null {
+  const normalizedLocale = locale.replace('_', '-');
+
+  try {
+    const region = new Intl.Locale(normalizedLocale).region;
+    return region?.toUpperCase() ?? null;
+  } catch {
+    const parts = normalizedLocale.split('-');
+    const possibleRegion = parts.at(-1)?.toUpperCase();
+
+    if (!possibleRegion || possibleRegion.length !== 2) {
+      return null;
+    }
+
+    return possibleRegion;
   }
-  return langToCountry[parts[0].toLowerCase()] || 'FR'
+}
+
+function getBrowserLocaleCandidates(): string[] {
+  if (typeof navigator === 'undefined') return [];
+
+  return [navigator.language, ...(navigator.languages ?? [])].filter(
+    (locale): locale is string => Boolean(locale),
+  );
+}
+
+function getBrowserTimezone(): string | null {
+  if (typeof Intl === 'undefined') return null;
+
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function getCountryFromTimezone(timezone: string | null): string | null {
+  if (!timezone) return null;
+
+  return (
+    SUPPORTED_COUNTRIES.find((country) => country.timezone === timezone)?.code ??
+    null
+  );
+}
+
+interface BrowserCountryDetection {
+  country: string;
+  source: 'timezone' | 'locale-region' | 'language-map' | 'fallback';
+  localeCandidates: string[];
+  timezone: string | null;
+  matchedLocaleRegion: string | null;
 }
 
 /**
- * Convert store name to a valid URL slug
+ * Detect country from browser locale preferences.
  */
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // Remove accents
-    .replace(/[^a-z0-9\s-]/g, '')    // Remove invalid characters
-    .replace(/\s+/g, '-')            // Replace spaces with hyphens
-    .replace(/-+/g, '-')             // Collapse multiple hyphens
-    .replace(/^-|-$/g, '')           // Remove leading/trailing hyphens
+function detectCountryFromBrowser(): BrowserCountryDetection {
+  const localeCandidates = getBrowserLocaleCandidates();
+  const timezone = getBrowserTimezone();
+  const timezoneCountry = getCountryFromTimezone(timezone);
+
+  if (timezoneCountry) {
+    return {
+      country: timezoneCountry,
+      source: 'timezone',
+      localeCandidates,
+      timezone,
+      matchedLocaleRegion: null,
+    };
+  }
+
+  for (const locale of localeCandidates) {
+    const regionCode = extractRegionCode(locale);
+    if (regionCode && getCountryByCode(regionCode)) {
+      return {
+        country: regionCode,
+        source: 'locale-region',
+        localeCandidates,
+        timezone,
+        matchedLocaleRegion: regionCode,
+      };
+    }
+  }
+
+  const primaryLanguage = localeCandidates[0]?.split(/[-_]/)[0]?.toLowerCase();
+  const langToCountry: Record<string, string> = {
+    fr: 'FR',
+    en: 'US',
+    de: 'DE',
+    es: 'ES',
+    it: 'IT',
+    nl: 'NL',
+    pl: 'PL',
+    pt: 'PT',
+    ja: 'JP',
+    zh: 'CN',
+    ko: 'KR',
+  };
+
+  if (primaryLanguage && langToCountry[primaryLanguage]) {
+    return {
+      country: langToCountry[primaryLanguage],
+      source: 'language-map',
+      localeCandidates,
+      timezone,
+      matchedLocaleRegion: null,
+    };
+  }
+
+  return {
+    country: FALLBACK_COUNTRY,
+    source: 'fallback',
+    localeCandidates,
+    timezone,
+    matchedLocaleRegion: null,
+  };
 }
 
-/**
- * Sanitize slug input - only valid characters
- */
-function sanitizeSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-/, '')
+function getBrowserLanguage(): string {
+  const localeCandidate = getBrowserLocaleCandidates()[0] ?? 'fr';
+  return localeCandidate.split(/[-_]/)[0]?.toLowerCase() || 'fr';
 }
 
 export default function OnboardingStorePage() {
-  const router = useRouter()
-  const t = useTranslations('onboarding.store')
-  const tCommon = useTranslations('common')
-  const tErrors = useTranslations('errors')
-  const tValidation = useTranslations('validation')
-  const [isLoading, setIsLoading] = useState(false)
-  const [isEditingSlug, setIsEditingSlug] = useState(false)
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false)
-  const slugInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter();
+  const t = useTranslations('onboarding.store');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
+  const tValidation = useTranslations('validation');
 
-  const storeInfoSchema = createStoreInfoSchema(tValidation)
+  const storeInfoSchema = createStoreInfoSchema(tValidation);
 
-  const detectedCountry = detectCountryFromBrowser()
+  const mutation = useMutation({
+    mutationFn: async (value: StoreInfoInput) => {
+      const result = await createStore(value);
+      if (result.error) {
+        throw new Error(result.error);
+      }
+      return result;
+    },
+  });
+
+  const setSlugTakenError = () => {
+    form.setFieldMeta('slug', (prev) => ({
+      ...prev,
+      isTouched: true,
+      errorMap: {
+        ...prev.errorMap,
+        onSubmit: tErrors('slugTaken'),
+      },
+    }));
+  };
+
+  const clearSlugSubmitError = () => {
+    form.setFieldMeta('slug', (prev) => ({
+      ...prev,
+      errorMap: {
+        ...prev.errorMap,
+        onSubmit: undefined,
+      },
+    }));
+  };
+
   const form = useAppForm({
     defaultValues: {
       name: '',
       slug: '',
       pricingMode: 'day' as 'day' | 'hour',
-      country: detectedCountry,
-      currency: getDefaultCurrencyForCountry(detectedCountry),
+      country: FALLBACK_COUNTRY,
+      currency: getDefaultCurrencyForCountry(FALLBACK_COUNTRY) as string,
       address: '',
       latitude: null as number | null,
       longitude: null as number | null,
       email: '',
       phone: '',
     },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    validators: { onSubmit: storeInfoSchema as any },
+    validationLogic: revalidateLogic({
+      mode: 'submit',
+      modeAfterSubmission: 'change',
+    }),
+    validators: {
+      onSubmit: storeInfoSchema,
+    },
     onSubmit: async ({ value }) => {
-      setIsLoading(true)
       try {
-        const result = await createStore(value)
-        if (result.error) {
-          toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
-          return
+        await mutation.mutateAsync(value);
+        router.push('/onboarding/branding');
+      } catch (error) {
+        if (error instanceof Error) {
+          // Map server errors to field-level errors
+          if (error.message === 'errors.slugTaken') {
+            setSlugTakenError();
+            return;
+          }
+          // Generic errors as toast
+          const msg = error.message.startsWith('errors.')
+            ? tErrors(error.message.replace('errors.', ''))
+            : tErrors('generic');
+          toastManager.add({ title: msg, type: 'error' });
         }
-        router.push('/onboarding/branding')
-      } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' })
-      } finally {
-        setIsLoading(false)
       }
     },
-  })
+  });
 
-  const currentSlug = useStore(form.store, (s) => s.values.slug)
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
+  const hasAppliedBrowserDefaults = useRef(false);
 
-  /**
-   * Auto-focus slug input when entering edit mode
-   */
   useEffect(() => {
-    if (isEditingSlug && slugInputRef.current) {
-      slugInputRef.current.focus()
-      slugInputRef.current.select()
-    }
-  }, [isEditingSlug])
+    if (hasAppliedBrowserDefaults.current) return;
 
-  /**
-   * Handle store name change - auto-generate slug if not manually edited
-   */
-  const handleNameChange = (value: string, onChange: (value: string) => void) => {
-    onChange(value)
-    if (!slugManuallyEdited) {
-      form.setFieldValue('slug', slugify(value))
-    }
-  }
+    const detection = detectCountryFromBrowser();
+    const detectedCurrency = getDefaultCurrencyForCountry(detection.country);
 
-  /**
-   * Handle slug edit - sanitize and mark as manually edited
-   */
-  const handleSlugEdit = (value: string) => {
-    form.setFieldValue('slug', sanitizeSlug(value))
-    setSlugManuallyEdited(true)
-  }
+    form.setFieldValue('country', detection.country);
+    form.setFieldValue('currency', detectedCurrency);
 
-  /**
-   * Confirm slug edit
-   */
-  const confirmSlugEdit = () => {
-    setIsEditingSlug(false)
-  }
+    hasAppliedBrowserDefaults.current = true;
+  }, [form]);
 
-  /**
-   * Cancel slug edit - revert to auto-generated
-   */
-  const cancelSlugEdit = () => {
-    setIsEditingSlug(false)
-    setSlugManuallyEdited(false)
-    const currentName = form.getFieldValue('name')
-    form.setFieldValue('slug', slugify(currentName))
-  }
+  const latitude = useStore(form.store, (s) => s.values.latitude);
+  const longitude = useStore(form.store, (s) => s.values.longitude);
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
 
-  const handleCountryChange = (newCountry: string, onChange: (value: string) => void) => {
-    onChange(newCountry)
-    form.setFieldValue('currency', getDefaultCurrencyForCountry(newCountry))
-  }
+  const handleCountryChange = (
+    newCountry: string,
+    onChange: (value: string) => void,
+  ) => {
+    onChange(newCountry);
+    form.setFieldValue('currency', getDefaultCurrencyForCountry(newCountry));
+  };
 
-  const locale = typeof navigator !== 'undefined' ? navigator.language.split('-')[0] : 'fr'
-  const sortedCountries = getCountriesSortedByName(locale)
-  const sortedCurrencies = SUPPORTED_CURRENCIES.slice().sort((a, b) => a.name.localeCompare(b.name))
+  const locale = getBrowserLanguage();
+  const sortedCountries = getCountriesSortedByName(locale);
+  const sortedCurrencies = SUPPORTED_CURRENCIES.slice().sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   return (
     <Card>
@@ -189,249 +292,142 @@ export default function OnboardingStorePage() {
           <Store className="text-primary h-6 w-6" />
         </div>
         <CardTitle>{t('title')}</CardTitle>
-        <CardDescription>
-          {t('description')}
-        </CardDescription>
+        <CardDescription>{t('description')}</CardDescription>
       </CardHeader>
       <CardContent>
         <form.AppForm>
           <form.Form className="space-y-6">
-          {/* Store Name with inline URL preview */}
-          <form.Field name="name">
-            {(field) => (
-              <div className="grid gap-2">
-                <Label htmlFor="name">{t('name')}</Label>
-                <Input
-                  id="name"
-                  placeholder={t('namePlaceholder')}
-                  value={field.state.value}
-                  onChange={(e) => handleNameChange(e.target.value, field.handleChange)}
-                  onBlur={field.handleBlur}
-                />
+            {/* Store Name + Slug Preview */}
+            <form.Field name="name">
+              {(nameField) => (
+                <form.Field name="slug">
+                  {(slugField) => (
+                    <FormStoreNameSlug
+                      nameValue={nameField.state.value}
+                      nameErrors={nameField.state.meta.errors}
+                      slugValue={slugField.state.value}
+                      slugErrors={slugField.state.meta.errors}
+                      onNameChange={nameField.handleChange}
+                      onNameBlur={nameField.handleBlur}
+                      onSlugChange={(value) => {
+                        clearSlugSubmitError();
+                        slugField.handleChange(value);
+                      }}
+                      label={t('name')}
+                      namePlaceholder={t('namePlaceholder')}
+                      slugPlaceholder={t('slugPlaceholder')}
+                      slugDefault={t('slugDefault')}
+                      domain={domain}
+                      confirmAriaLabel={tCommon('confirm')}
+                      cancelAriaLabel={tCommon('cancel')}
+                    />
+                  )}
+                </form.Field>
+              )}
+            </form.Field>
 
-                {/* URL Preview - appears when name has content */}
-                {(currentSlug || field.state.value) && (
-                  <div className="pt-1">
-                    {isEditingSlug ? (
-                      /* Edit mode - inline slug input */
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center flex-1 rounded-md border bg-muted/50 px-3 py-1.5">
-                          <input
-                            ref={slugInputRef}
-                            type="text"
-                            value={currentSlug}
-                            onChange={(e) => handleSlugEdit(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                confirmSlugEdit()
-                              }
-                              if (e.key === 'Escape') {
-                                cancelSlugEdit()
-                              }
-                            }}
-                            className="bg-transparent text-sm font-medium outline-none min-w-0 flex-1"
-                            placeholder={t('slugPlaceholder')}
-                          />
-                          <span className="text-muted-foreground text-sm">.{domain}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={confirmSlugEdit}
-                          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label={tCommon('confirm')}
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelSlugEdit}
-                          className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label={tCommon('cancel')}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      /* Display mode - URL preview with edit button on hover */
-                      <div
-                        className="group flex items-center gap-2 cursor-pointer"
-                        onClick={() => setIsEditingSlug(true)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            setIsEditingSlug(true)
-                          }
+            <form.Field name="pricingMode">
+              {(field) => (
+                <FormRadioCardGroup<'day' | 'hour'>
+                  value={field.state.value}
+                  errors={field.state.meta.errors}
+                  onChange={field.handleChange}
+                  options={[
+                    {
+                      value: 'day',
+                      label: t('pricingDay'),
+                      description: t('pricingDayDesc'),
+                    },
+                    {
+                      value: 'hour',
+                      label: t('pricingHour'),
+                      description: t('pricingHourDesc'),
+                    },
+                  ]}
+                  label={t('pricingMode')}
+                  helpText={t('pricingModeHelp')}
+                />
+              )}
+            </form.Field>
+
+            {/* Location & Contact Section */}
+            <div className="space-y-4 border-t pt-4">
+              <div className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
+                <Globe className="h-4 w-4" />
+                {t('locationSection')}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <form.Field name="country">
+                  {(field) => (
+                    <div className="grid gap-2">
+                      <Label htmlFor="country">{t('country')}</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) => {
+                          if (value !== null)
+                            handleCountryChange(value, (v: string) =>
+                              field.handleChange(v),
+                            );
                         }}
                       >
-                        <span className="text-sm text-muted-foreground">
-                          <span className={cn(
-                            "font-medium transition-colors",
-                            "group-hover:text-primary"
-                          )}>
-                            {currentSlug || slugify(field.state.value) || t('slugDefault')}
-                          </span>
-                          <span>.{domain}</span>
-                        </span>
-                        <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </div>
-                    )}
-                  </div>
-                )}
+                        <SelectTrigger id="country">
+                          <SelectValue placeholder={t('countryPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sortedCountries.map((country) => {
+                            const countryName = getCountryName(
+                              country.code,
+                              locale,
+                            );
 
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
+                            return (
+                              <SelectItem
+                                key={country.code}
+                                value={country.code}
+                              >
+                                <span className="sr-only">
+                                  {countryName}
+                                </span>
+                                <span
+                                  aria-hidden
+                                  className="inline-flex items-center gap-2"
+                                >
+                                  <span>{country.flag}</span>
+                                  <span>{countryName}</span>
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-destructive text-sm">
+                          {String(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </form.Field>
 
-          {/* Hidden slug field for form validation */}
-          <form.Field name="slug">
-            {(field) => (
-              <div>
-                <input type="hidden" value={field.state.value} />
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm font-medium text-destructive">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                )}
-              </div>
-            )}
-          </form.Field>
-
-          <form.Field name="pricingMode">
-            {(field) => (
-              <div className="grid gap-2">
-                <Label>{t('pricingMode')}</Label>
-                <RadioGroup
-                  onValueChange={(value) => field.handleChange(value)}
-                  defaultValue={field.state.value}
-                  className="grid grid-cols-2 gap-4"
-                >
-                  <div>
-                    <RadioGroupItem
-                      value="day"
-                      id="day"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="day"
-                      className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-between rounded-md border-2 p-4"
+                <form.AppField name="currency">
+                  {(field) => (
+                    <field.Select
+                      label={t('currency')}
+                      placeholder={t('currencyPlaceholder')}
                     >
-                      <span className="text-lg font-semibold">{t('pricingDay')}</span>
-                      <span className="text-muted-foreground text-sm">
-                        {t('pricingDayDesc')}
-                      </span>
-                    </Label>
-                  </div>
-                  <div>
-                    <RadioGroupItem
-                      value="hour"
-                      id="hour"
-                      className="peer sr-only"
-                    />
-                    <Label
-                      htmlFor="hour"
-                      className="border-muted bg-popover hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer flex-col items-center justify-between rounded-md border-2 p-4"
-                    >
-                      <span className="text-lg font-semibold">{t('pricingHour')}</span>
-                      <span className="text-muted-foreground text-sm">
-                        {t('pricingHourDesc')}
-                      </span>
-                    </Label>
-                  </div>
-                </RadioGroup>
-                <p className="text-muted-foreground text-sm">
-                  {t('pricingModeHelp')}
-                </p>
-                {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm">
-                    {String(field.state.meta.errors[0])}
-                  </p>
-                )}
+                      {sortedCurrencies.map((currency) => (
+                        <SelectItem key={currency.code} value={currency.code}>
+                          {currency.symbol} {currency.name} ({currency.code})
+                        </SelectItem>
+                      ))}
+                    </field.Select>
+                  )}
+                </form.AppField>
               </div>
-            )}
-          </form.Field>
 
-          {/* Location & Contact Section */}
-          <div className="space-y-4 pt-4 border-t">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Globe className="h-4 w-4" />
-              {t('locationSection')}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <form.Field name="country">
+              <form.Field name="address">
                 {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="country">{t('country')}</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) => {
-                        if (value !== null) handleCountryChange(value, (v: string) => field.handleChange(v))
-                      }}
-                    >
-                      <SelectTrigger id="country">
-                        <SelectValue placeholder={t('countryPlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortedCountries.map((country) => (
-                          <SelectItem key={country.code} value={country.code}>
-                            {country.flag} {getCountryName(country.code, locale)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
-
-              <form.Field name="currency">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor="currency">{t('currency')}</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) => {
-                        if (value !== null) field.handleChange(value)
-                      }}
-                    >
-                      <SelectTrigger id="currency">
-                        <SelectValue placeholder={t('currencyPlaceholder')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sortedCurrencies.map((currency) => (
-                          <SelectItem key={currency.code} value={currency.code}>
-                            {currency.symbol} {currency.name} ({currency.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </form.Field>
-            </div>
-
-            <form.Field name="address">
-              {(field) => {
-                const latitude = useStore(form.store, (s) => s.values.latitude)
-                const longitude = useStore(form.store, (s) => s.values.longitude)
-
-                return (
                   <div className="grid gap-2">
                     <Label htmlFor="address">{t('address')}</Label>
                     <AddressInput
@@ -439,9 +435,9 @@ export default function OnboardingStorePage() {
                       latitude={latitude}
                       longitude={longitude}
                       onChange={(address, lat, lng) => {
-                        field.handleChange(address)
-                        form.setFieldValue('latitude', lat)
-                        form.setFieldValue('longitude', lng)
+                        field.handleChange(address);
+                        form.setFieldValue('latitude', lat);
+                        form.setFieldValue('longitude', lng);
                       }}
                       placeholder={t('addressPlaceholder')}
                     />
@@ -454,28 +450,38 @@ export default function OnboardingStorePage() {
                       </p>
                     )}
                   </div>
-                )
-              }}
-            </form.Field>
+                )}
+              </form.Field>
 
-            <div className="grid grid-cols-2 gap-4">
-              <form.AppField name="email">
-                {(field) => <field.Input label={t('contactEmail')} type="email" placeholder={t('emailPlaceholder')} />}
-              </form.AppField>
+              <div className="grid grid-cols-2 gap-4">
+                <form.AppField name="email">
+                  {(field) => (
+                    <field.Input
+                      label={t('contactEmail')}
+                      type="email"
+                      placeholder={t('emailPlaceholder')}
+                    />
+                  )}
+                </form.AppField>
 
-              <form.AppField name="phone">
-                {(field) => <field.Input label={t('contactPhone')} type="tel" placeholder={t('phonePlaceholder')} />}
-              </form.AppField>
+                <form.AppField name="phone">
+                  {(field) => (
+                    <field.Input
+                      label={t('contactPhone')}
+                      type="tel"
+                      placeholder={t('phonePlaceholder')}
+                    />
+                  )}
+                </form.AppField>
+              </div>
             </div>
-          </div>
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {tCommon('next')}
-          </Button>
+            <form.SubscribeButton className="w-full">
+              {tCommon('next')}
+            </form.SubscribeButton>
           </form.Form>
         </form.AppForm>
       </CardContent>
     </Card>
-  )
+  );
 }

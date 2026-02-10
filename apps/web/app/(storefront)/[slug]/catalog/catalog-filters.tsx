@@ -1,25 +1,27 @@
-'use client'
+'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { Search, X } from 'lucide-react'
-import { useDebouncedCallback } from 'use-debounce'
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { Input } from '@louez/ui'
-import { Button } from '@louez/ui'
-import { cn } from '@louez/utils'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
+import { Search, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useDebouncedCallback } from 'use-debounce';
+
+import { Input } from '@louez/ui';
+import { Button } from '@louez/ui';
+import { cn } from '@louez/utils';
+
+import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 interface Category {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface CatalogFiltersProps {
-  storeSlug: string
-  categories: Category[]
-  activeCategoryId?: string
-  searchTerm?: string
+  storeSlug: string;
+  categories: Category[];
+  activeCategoryId?: string;
+  searchTerm?: string;
 }
 
 export function CatalogFilters({
@@ -28,48 +30,47 @@ export function CatalogFilters({
   activeCategoryId,
   searchTerm,
 }: CatalogFiltersProps) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const t = useTranslations('storefront.catalog')
-  const { getUrl } = useStorefrontUrl(storeSlug)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const t = useTranslations('storefront.catalog');
+  const { getUrl } = useStorefrontUrl(storeSlug);
 
   const handleSearch = useDebouncedCallback((term: string) => {
-    const params = new URLSearchParams(searchParams)
+    const params = new URLSearchParams(searchParams);
     if (term) {
-      params.set('search', term)
+      params.set('search', term);
     } else {
-      params.delete('search')
+      params.delete('search');
     }
-    router.push(`${getUrl('/catalog')}?${params.toString()}`)
-  }, 300)
+    router.push(`${getUrl('/catalog')}?${params.toString()}`);
+  }, 300);
 
   const handleCategoryClick = (categoryId?: string) => {
-    const params = new URLSearchParams(searchParams)
+    const params = new URLSearchParams(searchParams);
     if (categoryId) {
-      params.set('category', categoryId)
+      params.set('category', categoryId);
     } else {
-      params.delete('category')
+      params.delete('category');
     }
-    params.delete('search')
-    router.push(`${getUrl('/catalog')}?${params.toString()}`)
-  }
+    params.delete('search');
+    router.push(`${getUrl('/catalog')}?${params.toString()}`);
+  };
 
   const clearFilters = () => {
-    router.push(getUrl('/catalog'))
-  }
+    router.push(getUrl('/catalog'));
+  };
 
-  const hasFilters = activeCategoryId || searchTerm
+  const hasFilters = activeCategoryId || searchTerm;
 
   return (
     <div className="space-y-6">
       {/* Search */}
       <div>
-        <label className="text-sm font-medium mb-2 block">{t('search')}</label>
+        <label className="mb-2 block text-sm font-medium">{t('search')}</label>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder={t('searchPlaceholder')}
-            className="pl-9"
             defaultValue={searchTerm || ''}
             onChange={(e) => handleSearch(e.target.value)}
           />
@@ -78,15 +79,17 @@ export function CatalogFilters({
 
       {/* Categories */}
       <div>
-        <label className="text-sm font-medium mb-2 block">{t('categories')}</label>
+        <label className="mb-2 block text-sm font-medium">
+          {t('categories')}
+        </label>
         <div className="space-y-1">
           <button
             onClick={() => handleCategoryClick()}
             className={cn(
-              'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
+              'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
               !activeCategoryId
                 ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-muted'
+                : 'hover:bg-muted',
             )}
           >
             {t('allProducts')}
@@ -96,10 +99,10 @@ export function CatalogFilters({
               key={category.id}
               onClick={() => handleCategoryClick(category.id)}
               className={cn(
-                'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors',
+                'w-full rounded-lg px-3 py-2 text-left text-sm transition-colors',
                 activeCategoryId === category.id
                   ? 'bg-primary text-primary-foreground'
-                  : 'hover:bg-muted'
+                  : 'hover:bg-muted',
               )}
             >
               {category.name}
@@ -110,15 +113,11 @@ export function CatalogFilters({
 
       {/* Clear Filters */}
       {hasFilters && (
-        <Button
-          variant="outline"
-          onClick={clearFilters}
-          className="w-full"
-        >
+        <Button variant="outline" onClick={clearFilters} className="w-full">
           <X className="mr-2 h-4 w-4" />
           {t('clearFilters')}
         </Button>
       )}
     </div>
-  )
+  );
 }
