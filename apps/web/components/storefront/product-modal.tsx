@@ -24,7 +24,7 @@ import {
   calculateEffectivePrice,
   sortTiersByDuration,
   type ProductPricing,
-} from '@/lib/pricing'
+} from '@louez/utils'
 import { AccessoriesModal } from './accessories-modal'
 
 interface PricingTier {

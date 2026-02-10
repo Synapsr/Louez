@@ -1,1 +1,0 @@
-ALTER TABLE `products` ADD `display_order` int DEFAULT 0;

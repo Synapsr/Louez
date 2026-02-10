@@ -7,7 +7,7 @@
     "dev:web": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "db:seed": "tsx scripts/seed/index.ts"
   },

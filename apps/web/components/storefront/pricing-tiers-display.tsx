@@ -12,7 +12,7 @@ import {
   calculateEffectivePrice,
   sortTiersByDuration,
   getUnitLabel,
-} from '@/lib/pricing'
+} from '@louez/utils'
 
 interface PricingTier {
   id: string

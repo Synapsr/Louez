@@ -36,7 +36,7 @@ import {
   calculateRentalPrice,
   getUnitLabel,
   formatDuration,
-} from '@/lib/pricing'
+} from '@louez/utils'
 
 interface PricingTierInput {
   id?: string

@@ -39,7 +39,7 @@ import { useStoreCurrency } from '@/contexts/store-context'
 import { useCart } from '@/contexts/cart-context'
 import { useAnalytics } from '@/contexts/analytics-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { calculateEffectivePrice, sortTiersByDuration } from '@/lib/pricing'
+import { calculateEffectivePrice, sortTiersByDuration } from '@louez/utils'
 import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@louez/types'
 import {

@@ -1,3 +1,0 @@
-ALTER TABLE `page_views` MODIFY COLUMN `page_type` enum('home','catalog','product','cart','checkout','confirmation','account','rental') NOT NULL;--> statement-breakpoint
-ALTER TABLE `storefront_events` MODIFY COLUMN `storefront_event_type` enum('product_view','add_to_cart','remove_from_cart','update_quantity','checkout_started','checkout_completed','checkout_abandoned','payment_initiated','payment_completed','payment_failed','login_requested','login_completed') NOT NULL;--> statement-breakpoint
-ALTER TABLE `stores` ADD `customer_notification_settings` json;

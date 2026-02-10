@@ -17,7 +17,7 @@ import { ProductCard } from '@/components/storefront/product-card'
 import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
 import { ProductGallery } from './product-gallery'
 import { AddToCartForm } from './add-to-cart-form'
-import { getEffectivePricingMode } from '@/lib/pricing'
+import { getEffectivePricingMode } from '@louez/utils'
 import {
   generateProductMetadata,
   generateProductSchema,

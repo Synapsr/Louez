@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { format, addDays } from 'date-fns'
@@ -24,14 +24,11 @@ import { ScrollArea } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
+import { type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@louez/types'
+import { buildDateTimeRange, ensureSelectedTime, useRentalDateCore } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import {
-  isDateAvailable,
-  getAvailableTimeSlots,
-  generateTimeSlots,
   getNextAvailableDate,
-  buildStoreDate,
 } from '@/lib/utils/business-hours'
 
 interface DatePickerModalProps {
@@ -45,8 +42,6 @@ interface DatePickerModalProps {
   initialStartDate?: string
   initialEndDate?: string
 }
-
-const defaultTimeSlots = generateTimeSlots('07:00', '21:00', 30)
 
 export function DatePickerModal({
   storeSlug,
@@ -102,45 +97,35 @@ export function DatePickerModal({
     }
   }, [isOpen, initialStartDate, initialEndDate])
 
-  const minDate = useMemo(() => getMinStartDate(advanceNotice), [advanceNotice])
-
-  const startTimeSlots = useMemo(() => {
-    if (!startDate) return defaultTimeSlots
-    const businessHoursSlots = getAvailableTimeSlots(startDate, businessHours, 30, timezone)
-    // Filter out time slots that are within the advance notice period
-    return businessHoursSlots.filter(slot => isTimeSlotAvailable(startDate, slot, advanceNotice))
-  }, [startDate, businessHours, advanceNotice, timezone])
-
-  const endTimeSlots = useMemo(() => {
-    if (!endDate) return defaultTimeSlots
-    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
-  }, [endDate, businessHours, timezone])
-
-  const isDateDisabled = useCallback(
-    (date: Date): boolean => {
-      if (date < minDate) return true
-      if (!businessHours?.enabled) return false
-      const availability = isDateAvailable(date, businessHours, timezone)
-      return !availability.available
-    },
-    [businessHours, minDate, timezone]
-  )
+  const {
+    startTimeSlots,
+    endTimeSlots,
+    isDateDisabled,
+  } = useRentalDateCore({
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    businessHours,
+    advanceNotice,
+    timezone,
+  })
 
   useEffect(() => {
     setPricingMode(pricingMode)
   }, [pricingMode, setPricingMode])
 
   useEffect(() => {
-    if (startDate && startTimeSlots.length > 0 && !startTimeSlots.includes(startTime)) {
-      setStartTime(startTimeSlots[0])
+    if (startDate && startTimeSlots.length > 0) {
+      setStartTime((prev) => ensureSelectedTime(prev, startTimeSlots, 'first'))
     }
-  }, [startDate, startTimeSlots, startTime])
+  }, [startDate, startTimeSlots])
 
   useEffect(() => {
-    if (endDate && endTimeSlots.length > 0 && !endTimeSlots.includes(endTime)) {
-      setEndTime(endTimeSlots[endTimeSlots.length - 1] || endTimeSlots[0])
+    if (endDate && endTimeSlots.length > 0) {
+      setEndTime((prev) => ensureSelectedTime(prev, endTimeSlots, 'last'))
     }
-  }, [endDate, endTimeSlots, endTime])
+  }, [endDate, endTimeSlots])
 
   const handleStartDateSelect = (date: Date | undefined) => {
     if (!date) return
@@ -163,8 +148,13 @@ export function DatePickerModal({
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const finalStart = buildStoreDate(startDate!, startTime, timezone)
-    const finalEnd = buildStoreDate(endDate!, endTime, timezone)
+    const { start: finalStart, end: finalEnd } = buildDateTimeRange({
+      startDate: startDate!,
+      endDate: endDate!,
+      startTime,
+      endTime,
+      timezone,
+    })
 
     setGlobalDates(finalStart.toISOString(), finalEnd.toISOString())
     const params = new URLSearchParams()

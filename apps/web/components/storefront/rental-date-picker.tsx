@@ -1,9 +1,9 @@
 'use client'
 
 import * as React from 'react'
-import { format, isSameDay, addDays } from 'date-fns'
+import { format, addDays } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
-import { CalendarIcon, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarIcon, Clock } from 'lucide-react'
 import { useTranslations, useLocale } from 'next-intl'
 
 import { cn } from '@louez/utils'
@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from '@louez/ui'
 import { Label } from '@louez/ui'
+import { applyTimeToDate, createTimeSlots, getTimeFromDate } from '@/components/storefront/date-picker/core/use-rental-date-core'
 
 interface RentalDatePickerProps {
   startDate: Date | undefined
@@ -32,13 +33,7 @@ interface RentalDatePickerProps {
   }
 }
 
-// Time slots for hourly pricing
-const TIME_SLOTS = [
-  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
-  '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
-  '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-  '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
-]
+const TIME_SLOTS = createTimeSlots('08:00', '20:00')
 
 function TimeSelector({
   value,
@@ -99,20 +94,6 @@ export function RentalDatePicker({
   }
 
   const showTime = pricingMode === 'hour'
-
-  // Get current time from date
-  const getTimeFromDate = (date?: Date): string | undefined => {
-    if (!date) return undefined
-    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  }
-
-  // Apply time to date
-  const applyTimeToDate = (date: Date, time: string): Date => {
-    const [hours, minutes] = time.split(':').map(Number)
-    const newDate = new Date(date)
-    newDate.setHours(hours, minutes, 0, 0)
-    return newDate
-  }
 
   // Handle start date selection
   const handleStartDateSelect = (date: Date | undefined) => {

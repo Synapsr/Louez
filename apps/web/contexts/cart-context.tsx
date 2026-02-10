@@ -15,7 +15,7 @@ import {
   findApplicableTier,
   type PricingTier,
   type ProductPricing,
-} from '@/lib/pricing'
+} from '@louez/utils'
 
 interface CartItemPricingTier {
   id: string

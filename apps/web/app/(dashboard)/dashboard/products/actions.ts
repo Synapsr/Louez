@@ -19,7 +19,7 @@ import {
   type ProductUnitInput,
 } from '@louez/validations'
 import { nanoid } from 'nanoid'
-import { validatePricingTiers } from '@/lib/pricing'
+import { validatePricingTiers } from '@louez/utils'
 import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
 
 async function getStoreForUser() {

@@ -15,7 +15,7 @@ import { useStoreCurrency } from '@/contexts/store-context'
 import { AvailabilityBadge, type AvailabilityStatus } from './availability-badge'
 import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
-import { calculateRentalPrice, getEffectivePricingMode, type ProductPricing } from '@/lib/pricing'
+import { calculateRentalPrice, getEffectivePricingMode, type ProductPricing } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 
 interface PricingTier {
