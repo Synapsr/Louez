@@ -9,7 +9,7 @@ import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Info, Truck, AlertTriangle, MapPin, Calculator, Search, Package, Gift } from 'lucide-react'
 import Link from 'next/link'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -162,13 +162,13 @@ export function DeliverySettingsForm({
       const result = await updateDeliverySettings(data)
       if (result.error) {
         if (result.error === 'errors.storeCoordinatesRequired') {
-          toast.error(t('noCoordinatesError'))
+          toastManager.add({ title: t('noCoordinatesError'), type: 'error' })
         } else {
           form.setError('root', { message: result.error })
         }
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       router.refresh()
     })
   }
@@ -242,15 +242,13 @@ export function DeliverySettingsForm({
           <CardContent className="space-y-6">
             {/* Warning if no coordinates */}
             {!hasCoordinates && (
-              <Alert variant="destructive">
+              <Alert variant="error">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="flex items-center justify-between">
                   <span>{t('noCoordinatesWarning')}</span>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/dashboard/settings">
+                  <Button variant="outline" render={<Link href="/dashboard/settings" />}>
                       <MapPin className="mr-2 h-4 w-4" />
                       {t('goToStoreSettings')}
-                    </Link>
                   </Button>
                 </AlertDescription>
               </Alert>
@@ -629,11 +627,9 @@ export function DeliverySettingsForm({
                 </div>
                 {hasCoordinates && (
                   <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="shrink-0">
+                    <DialogTrigger render={<Button variant="outline" className="shrink-0" />}>
                         <Search className="h-4 w-4 mr-2" />
                         {t('simulator.testAddress')}
-                      </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md">
                       <DialogHeader>
@@ -665,7 +661,7 @@ export function DeliverySettingsForm({
                 </div>
                 <Slider
                   value={[simDistance]}
-                  onValueChange={([value]) => setSimDistance(value)}
+                  onValueChange={(value) => setSimDistance(Array.isArray(value) ? value[0] : value)}
                   min={1}
                   max={maximumDistance || 100}
                   step={1}
@@ -688,7 +684,7 @@ export function DeliverySettingsForm({
                   </div>
                   <Slider
                     value={[simOrderTotal]}
-                    onValueChange={([value]) => setSimOrderTotal(value)}
+                    onValueChange={(value) => setSimOrderTotal(Array.isArray(value) ? value[0] : value)}
                     min={0}
                     max={Math.max(freeDeliveryThreshold * 1.5, 500)}
                     step={10}

@@ -23,8 +23,7 @@ import {
 import { Badge } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -32,7 +31,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@louez/ui'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import {
   startStripeOnboarding,
@@ -68,12 +67,12 @@ export function StripeConnectCard({
     try {
       const result = await startStripeOnboarding()
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else if (result.url) {
         window.location.href = result.url
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsConnecting(false)
     }
@@ -84,13 +83,13 @@ export function StripeConnectCard({
     try {
       const result = await syncStripeStatus()
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('synced'))
+        toastManager.add({ title: t('synced'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsSyncing(false)
     }
@@ -101,12 +100,12 @@ export function StripeConnectCard({
     try {
       const result = await getStripeDashboardUrl()
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else if (result.url) {
         window.open(result.url, '_blank')
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsOpeningDashboard(false)
     }
@@ -115,9 +114,9 @@ export function StripeConnectCard({
   const handleDisconnect = async () => {
     const result = await disconnectStripe()
     if (result.error) {
-      toast.error(tErrors(result.error.replace('errors.', '')))
+      toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
     } else {
-      toast.success(t('disconnected'))
+      toastManager.add({ title: t('disconnected'), type: 'success' })
       router.refresh()
     }
   }
@@ -192,11 +191,9 @@ export function StripeConnectCard({
               </Button>
 
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" className="text-destructive">
-                    <Unlink className="mr-2 h-4 w-4" />
-                    {t('disconnect')}
-                  </Button>
+                <AlertDialogTrigger render={<Button variant="ghost" className="text-destructive" />}>
+                  <Unlink className="mr-2 h-4 w-4" />
+                  {t('disconnect')}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -206,13 +203,13 @@ export function StripeConnectCard({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction
+                    <AlertDialogClose render={<Button variant="outline" />}>{t('cancel')}</AlertDialogClose>
+                    <AlertDialogClose
+                      render={<Button variant="destructive" />}
                       onClick={handleDisconnect}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {t('disconnect')}
-                    </AlertDialogAction>
+                    </AlertDialogClose>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -244,11 +241,9 @@ export function StripeConnectCard({
               </Button>
 
               <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" className="text-destructive">
-                    <Unlink className="mr-2 h-4 w-4" />
-                    {t('disconnect')}
-                  </Button>
+                <AlertDialogTrigger render={<Button variant="ghost" className="text-destructive" />}>
+                  <Unlink className="mr-2 h-4 w-4" />
+                  {t('disconnect')}
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
@@ -258,13 +253,13 @@ export function StripeConnectCard({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>{t('cancel')}</AlertDialogCancel>
-                    <AlertDialogAction
+                    <AlertDialogClose render={<Button variant="outline" />}>{t('cancel')}</AlertDialogClose>
+                    <AlertDialogClose
+                      render={<Button variant="destructive" />}
                       onClick={handleDisconnect}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
                       {t('disconnect')}
-                    </AlertDialogAction>
+                    </AlertDialogClose>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>

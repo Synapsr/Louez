@@ -135,17 +135,15 @@ export function PaymentStatusBadge({
       <div className={cn('flex items-center gap-1.5 flex-wrap', className)}>
         {/* Badge statut paiement principal */}
         <Tooltip>
-          <TooltipTrigger asChild>
-            <Badge
+          <TooltipTrigger render={<Badge
               variant="outline"
               className={cn(
                 'cursor-default transition-colors',
                 currentPaymentConfig.className
               )}
-            >
+            />}>
               <PaymentIcon className="h-3 w-3" />
               {currentPaymentConfig.label}
-            </Badge>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">
             {tooltipContent}
@@ -155,17 +153,15 @@ export function PaymentStatusBadge({
         {/* Badge statut caution */}
         {showDetails && currentDepositConfig && (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge
+            <TooltipTrigger render={<Badge
                 variant="outline"
                 className={cn(
                   'cursor-default transition-colors',
                   currentDepositConfig.className
                 )}
-              >
+              />}>
                 <Wallet className="h-3 w-3" />
                 {currentDepositConfig.label}
-              </Badge>
             </TooltipTrigger>
             <TooltipContent side="bottom">
               {depositStatus === 'to_collect' && (

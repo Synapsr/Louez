@@ -3,7 +3,7 @@ import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { auth } from '@/lib/auth'
 import { getUserStores } from '@/lib/store-context'
-import { Toaster } from '@louez/ui'
+import { ToastProvider } from '@louez/ui'
 import { ThemeProvider } from '@/components/theme-provider'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { MultiStoreHeader } from './_components/header'
@@ -42,17 +42,18 @@ export default async function MultiStoreLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="min-h-screen bg-muted/30">
-            <MultiStoreHeader
-              stores={stores}
-              userEmail={session.user.email || ''}
-              userImage={session.user.image}
-            />
-            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-              {children}
-            </main>
-          </div>
-          <Toaster />
+          <ToastProvider>
+            <div className="min-h-screen bg-muted/30">
+              <MultiStoreHeader
+                stores={stores}
+                userEmail={session.user.email || ''}
+                userImage={session.user.image}
+              />
+              <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                {children}
+              </main>
+            </div>
+          </ToastProvider>
         </ThemeProvider>
       </PostHogProvider>
     </NextIntlClientProvider>

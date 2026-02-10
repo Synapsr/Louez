@@ -51,7 +51,6 @@ export function UnifiedPeriodFilter({ className }: UnifiedPeriodFilterProps) {
           <Button
             key={period.value}
             variant={currentPeriod === period.value ? 'default' : 'ghost'}
-            size="sm"
             onClick={() => handlePeriodChange(period.value)}
             className="h-8 px-3"
           >
@@ -62,7 +61,7 @@ export function UnifiedPeriodFilter({ className }: UnifiedPeriodFilterProps) {
 
       {/* Select (mobile) */}
       <div className="md:hidden">
-        <Select value={currentPeriod} onValueChange={(v) => handlePeriodChange(v as Period)}>
+        <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[140px]">
             <SelectValue />
           </SelectTrigger>

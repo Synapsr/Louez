@@ -61,11 +61,9 @@ export default async function CGVPage({ params }: CGVPageProps) {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">
+        <Button variant="ghost" render={<Link href="/" />}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('back')}
-          </Link>
         </Button>
       </div>
 

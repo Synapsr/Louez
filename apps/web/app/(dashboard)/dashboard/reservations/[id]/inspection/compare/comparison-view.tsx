@@ -235,10 +235,8 @@ export function ComparisonView({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/dashboard/reservations/${reservationId}`}>
+          <Button variant="ghost" size="icon" render={<Link href={`/dashboard/reservations/${reservationId}`} />}>
               <ArrowLeft className="h-4 w-4" />
-            </Link>
           </Button>
           <div>
             <h1 className="text-xl font-semibold">{t('comparison.title')}</h1>

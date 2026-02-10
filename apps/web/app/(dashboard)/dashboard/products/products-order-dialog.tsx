@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Reorder, useDragControls } from 'framer-motion'
 import { GripVertical, Package, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import {
@@ -103,13 +103,13 @@ export function ProductsOrderDialog({
       const result = await updateProductsOrder(productIds)
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('orderUpdated'))
+        toastManager.add({ title: t('orderUpdated'), type: 'success' })
         onOpenChange(false)
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

@@ -398,11 +398,9 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                 {t('home.productsDesc')}
               </p>
             </div>
-            <Button variant="outline" className="group self-start" asChild>
-              <Link href="/catalog">
+            <Button variant="outline" className="group self-start" render={<Link href="/catalog" />}>
                 {t('home.viewAll')}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </Link>
             </Button>
           </div>
 
@@ -566,16 +564,14 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       <Button
                         className="w-full"
                         variant="outline"
-                        asChild
-                      >
-                        <a
+                        render={<a
                           href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(storeWithRelations.address)}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                        >
+                        />}
+                      >
                           <MapPin className="mr-2 h-4 w-4" />
                           {t('home.getDirections')}
-                        </a>
                       </Button>
                     </div>
                   </div>
@@ -603,11 +599,9 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                     </p>
                   </div>
                 </div>
-                <Button variant="outline" asChild className="shrink-0 gap-2">
-                  <Link href="/account">
+                <Button variant="outline" className="shrink-0 gap-2" render={<Link href="/account" />}>
                     <KeyRound className="h-4 w-4" />
                     {t('home.accessAccount')}
-                  </Link>
                 </Button>
               </div>
             </CardContent>
@@ -638,11 +632,9 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
             {t('home.readyToRentDesc')}
           </p>
 
-          <Button size="lg" className="mt-8 text-base px-8 h-12 shadow-lg shadow-primary/25" asChild>
-            <Link href="/catalog">
+          <Button size="lg" className="mt-8 text-base px-8 h-12 shadow-lg shadow-primary/25" render={<Link href="/catalog" />}>
               {t('home.exploreCatalog')}
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
           </Button>
         </div>
       </section>

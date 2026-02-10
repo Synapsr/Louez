@@ -89,7 +89,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
   const statusConfig: Record<ReservationStatus, {
     label: string
-    variant: 'secondary' | 'default' | 'outline' | 'destructive'
+    variant: 'secondary' | 'default' | 'outline' | 'error'
     icon: typeof Clock
     color: string
     bgColor: string
@@ -124,14 +124,14 @@ export default async function AccountPage({ params }: AccountPageProps) {
     },
     cancelled: {
       label: t('status.cancelled'),
-      variant: 'destructive',
+      variant: 'error',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/30',
     },
     rejected: {
       label: t('status.rejected'),
-      variant: 'destructive',
+      variant: 'error',
       icon: XCircle,
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/30',

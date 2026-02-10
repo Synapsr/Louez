@@ -162,7 +162,6 @@ export function StoresTable({ stores, translations, limitsMap = {} }: StoresTabl
                   <td className="py-4 text-right">
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={() => handleStoreClick(store.storeId)}
                       className="group/btn border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground"
                     >

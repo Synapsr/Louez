@@ -3,7 +3,7 @@
 import { useState, useTransition, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import {
   Star,
   Lock,
@@ -146,10 +146,10 @@ export function ReviewBoosterForm({
     startTransition(async () => {
       const result = await updateReviewBoosterSettings(settings)
       if (result.error) {
-        toast.error(t('error'))
+        toastManager.add({ title: t('error'), type: 'error' })
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       router.refresh()
     })
   }
@@ -169,9 +169,9 @@ export function ReviewBoosterForm({
   const handleSaveTemplate = async (template: CustomerNotificationTemplate) => {
     const result = await updateReviewBoosterTemplate(template)
     if (result.error) {
-      toast.error(t('error'))
+      toastManager.add({ title: t('error'), type: 'error' })
     } else {
-      toast.success(t('templateSaved'))
+      toastManager.add({ title: t('templateSaved'), type: 'success' })
     }
     setTemplateSheetOpen(false)
     setEditingTemplate(null)
@@ -404,9 +404,9 @@ export function ReviewBoosterForm({
                       </span>
                       <Select
                         value={settings.emailDelayHours.toString()}
-                        onValueChange={(value) =>
-                          updateSetting('emailDelayHours', parseInt(value))
-                        }
+                        onValueChange={(value) => {
+                          if (value !== null) updateSetting('emailDelayHours', parseInt(value))
+                        }}
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">
@@ -426,7 +426,6 @@ export function ReviewBoosterForm({
                     </div>
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleOpenTemplateSheet}
                       className="gap-2"
                     >
@@ -474,9 +473,9 @@ export function ReviewBoosterForm({
                       </span>
                       <Select
                         value={settings.smsDelayHours.toString()}
-                        onValueChange={(value) =>
-                          updateSetting('smsDelayHours', parseInt(value))
-                        }
+                        onValueChange={(value) => {
+                          if (value !== null) updateSetting('smsDelayHours', parseInt(value))
+                        }}
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">
@@ -499,7 +498,6 @@ export function ReviewBoosterForm({
                     </p>
                     <Button
                       variant="outline"
-                      size="sm"
                       onClick={handleOpenTemplateSheet}
                       className="gap-2"
                     >

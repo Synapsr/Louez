@@ -67,7 +67,8 @@ export function ProductsFilters({
     router.push(`/dashboard/products?${createQueryString('status', value)}`)
   }
 
-  const handleCategoryChange = (value: string) => {
+  const handleCategoryChange = (value: string | null) => {
+    if (value === null) return
     router.push(`/dashboard/products?${createQueryString('category', value)}`)
   }
 
@@ -86,7 +87,6 @@ export function ProductsFilters({
             <Button
               key={option.value}
               variant={isActive ? 'secondary' : 'ghost'}
-              size="sm"
               className="gap-2"
               onClick={() => handleStatusChange(option.value)}
             >

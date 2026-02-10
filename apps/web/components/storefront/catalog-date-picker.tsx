@@ -329,18 +329,16 @@ export function CatalogDatePicker({
       {/* Start Date/Time */}
       <div className="flex rounded-lg border bg-background overflow-hidden h-10">
         <Popover open={startDateOpen} onOpenChange={handleStartDateOpenChange}>
-          <PopoverTrigger asChild>
-            <button
+          <PopoverTrigger render={<button
               className={cn(
                 'flex items-center gap-1.5 px-3 text-left hover:bg-muted/50 transition-colors',
                 !startDate && 'text-muted-foreground'
               )}
-            >
+            />}>
               <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
               <span className="text-sm font-medium">
                 {startDate ? format(startDate, 'd MMM', { locale: fr }) : t('startDate')}
               </span>
-            </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
@@ -357,11 +355,9 @@ export function CatalogDatePicker({
         <div className="w-px bg-border my-2" />
 
         <Popover open={startTimeOpen} onOpenChange={handleStartTimeOpenChange}>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors">
+          <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors" />}>
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-sm font-medium">{startTime}</span>
-            </button>
           </PopoverTrigger>
           <PopoverContent className="w-40 p-0" align="start">
             <TimeSelector value={startTime} onSelect={handleStartTimeSelect} slots={startTimeSlots} />
@@ -374,18 +370,16 @@ export function CatalogDatePicker({
       {/* End Date/Time */}
       <div className="flex rounded-lg border bg-background overflow-hidden h-10">
         <Popover open={endDateOpen} onOpenChange={handleEndDateOpenChange}>
-          <PopoverTrigger asChild>
-            <button
+          <PopoverTrigger render={<button
               className={cn(
                 'flex items-center gap-1.5 px-3 text-left hover:bg-muted/50 transition-colors',
                 !endDate && 'text-muted-foreground'
               )}
-            >
+            />}>
               <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
               <span className="text-sm font-medium">
                 {endDate ? format(endDate, 'd MMM', { locale: fr }) : t('endDate')}
               </span>
-            </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
@@ -403,11 +397,9 @@ export function CatalogDatePicker({
         <div className="w-px bg-border my-2" />
 
         <Popover open={endTimeOpen} onOpenChange={handleEndTimeOpenChange}>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors">
+          <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors" />}>
               <Clock className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-sm font-medium">{endTime}</span>
-            </button>
           </PopoverTrigger>
           <PopoverContent className="w-40 p-0" align="end">
             <TimeSelector
@@ -430,7 +422,7 @@ export function CatalogDatePicker({
       )}
 
       {/* Submit Button */}
-      <Button onClick={handleSubmit} disabled={!canSubmit} size="sm" className="h-10 px-4">
+      <Button onClick={handleSubmit} disabled={!canSubmit} className="h-10 px-4">
         {t('viewAvailability')}
         <ArrowRight className="ml-1.5 h-4 w-4" />
       </Button>

@@ -278,11 +278,9 @@ export default async function ReservationDetailPage({
                 )}
               </div>
             </div>
-            <Button variant="ghost" size="sm" className="shrink-0" asChild>
-              <Link href={`/dashboard/customers/${reservation.customer.id}`}>
+            <Button variant="ghost" className="shrink-0" render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}>
                 {t('viewCustomer')}
                 <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-              </Link>
             </Button>
           </div>
 

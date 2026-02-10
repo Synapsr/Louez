@@ -29,8 +29,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -217,19 +216,15 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
 
           {/* Actions */}
           <div className="mt-4 space-y-2">
-            <Button asChild className="w-full" size="lg">
-              <Link href={getUrl('/checkout')}>
+            <Button render={<Link href={getUrl('/checkout')} />} className="w-full" size="lg">
                 {t('checkout')}
                 <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
             </Button>
 
             <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-full text-destructive hover:text-destructive">
+              <AlertDialogTrigger render={<Button variant="ghost" className="w-full text-destructive hover:text-destructive" />}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   {t('clear')}
-                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -239,10 +234,10 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>{t('clearConfirm.cancel')}</AlertDialogCancel>
-                  <AlertDialogAction onClick={clearCart} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  <AlertDialogClose render={<Button variant="outline" />}>{t('clearConfirm.cancel')}</AlertDialogClose>
+                  <AlertDialogClose render={<Button variant="destructive" />} onClick={clearCart}>
                     {t('clearConfirm.confirm')}
-                  </AlertDialogAction>
+                  </AlertDialogClose>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -276,8 +271,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
       {/* Mobile Floating Button + Sheet */}
       <div className="fixed bottom-4 right-4 z-50 lg:hidden">
         <Sheet>
-          <SheetTrigger asChild>
-            <Button size="lg" className="h-14 px-6 shadow-lg rounded-full">
+          <SheetTrigger render={<Button size="lg" className="h-14 px-6 shadow-lg rounded-full" />}>
               <ShoppingCart className="h-5 w-5 mr-2" />
               {t('title')}
               {itemCount > 0 && (
@@ -285,7 +279,6 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                   {itemCount}
                 </Badge>
               )}
-            </Button>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
             <SheetHeader className="pb-4">

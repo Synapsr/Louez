@@ -36,13 +36,13 @@ interface CustomerPageProps {
   params: Promise<{ id: string }>
 }
 
-const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariants: Record<string, 'default' | 'secondary' | 'error' | 'outline'> = {
   pending: 'outline',
   confirmed: 'default',
   ongoing: 'default',
   completed: 'secondary',
-  cancelled: 'destructive',
-  rejected: 'destructive',
+  cancelled: 'error',
+  rejected: 'error',
 }
 
 export default async function CustomerPage({ params }: CustomerPageProps) {
@@ -98,10 +98,8 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/customers">
+          <Button variant="ghost" size="icon" render={<Link href="/dashboard/customers" />}>
               <ArrowLeft className="h-4 w-4" />
-            </Link>
           </Button>
           <div className="space-y-1">
             {customer.customerType === 'business' && customer.companyName ? (
@@ -136,11 +134,9 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
             )}
           </div>
         </div>
-        <Button asChild>
-          <Link href={`/dashboard/customers/${customer.id}/edit`}>
+        <Button render={<Link href={`/dashboard/customers/${customer.id}/edit`} />}>
             <Pencil className="mr-2 h-4 w-4" />
             {tCommon('edit')}
-          </Link>
         </Button>
       </div>
 

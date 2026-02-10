@@ -18,7 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -38,8 +38,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -178,12 +177,12 @@ export function PaymentSummary({
   const handleRecordPayment = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount === 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
     // Only adjustment type can have negative amounts
     if (amount < 0 && paymentType !== 'adjustment') {
-      toast.error(t('payment.negativeAmountOnlyForAdjustment'))
+      toastManager.add({ title: t('payment.negativeAmountOnlyForAdjustment'), type: 'error' })
       return
     }
 
@@ -197,15 +196,15 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.recorded'))
+        toastManager.add({ title: t('payment.recorded'), type: 'success' })
         setPaymentModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -214,12 +213,12 @@ export function PaymentSummary({
   const handleReturnDeposit = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
 
     if (amount > depositToReturn) {
-      toast.error(t('payment.amountExceedsDeposit'))
+      toastManager.add({ title: t('payment.amountExceedsDeposit'), type: 'error' })
       return
     }
 
@@ -232,15 +231,15 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.depositReturned'))
+        toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
         setDepositReturnModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -249,12 +248,12 @@ export function PaymentSummary({
   const handleRecordDamage = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
 
     if (!paymentNotes.trim()) {
-      toast.error(t('payment.damageNotesRequired'))
+      toastManager.add({ title: t('payment.damageNotesRequired'), type: 'error' })
       return
     }
 
@@ -267,15 +266,15 @@ export function PaymentSummary({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.damageRecorded'))
+        toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
         setDamageModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -289,15 +288,15 @@ export function PaymentSummary({
       const result = await deletePayment(paymentToDelete.id)
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.deleted'))
+        toastManager.add({ title: t('payment.deleted'), type: 'success' })
         setDeleteDialogOpen(false)
         setPaymentToDelete(null)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -378,19 +377,17 @@ export function PaymentSummary({
               </Badge>
             ) : (
               <div className="flex items-center gap-1.5">
-                <Badge variant="destructive" className="font-mono text-xs">
+                <Badge variant="error" className="font-mono text-xs">
                   -{rentalRemaining.toFixed(2)}{currencySymbol}
                 </Badge>
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
+                  <TooltipTrigger render={<Button
                       size="icon"
                       variant="outline"
                       className="h-7 w-7"
                       onClick={() => openPaymentModal('rental', rentalRemaining)}
-                    >
+                    />}>
                       <Plus className="h-3.5 w-3.5" />
-                    </Button>
                   </TooltipTrigger>
                   <TooltipContent>{t('payment.recordRental')}</TooltipContent>
                 </Tooltip>
@@ -425,19 +422,17 @@ export function PaymentSummary({
               <div className="flex items-center gap-1.5">
                 {!isDepositFullyCollected ? (
                   <>
-                    <Badge variant="destructive" className="font-mono text-xs">
+                    <Badge variant="error" className="font-mono text-xs">
                       -{depositRemaining.toFixed(2)}{currencySymbol}
                     </Badge>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
+                      <TooltipTrigger render={<Button
                           size="icon"
                           variant="outline"
                           className="h-7 w-7"
                           onClick={() => openPaymentModal('deposit', depositRemaining)}
-                        >
+                        />}>
                           <Plus className="h-3.5 w-3.5" />
-                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>{t('payment.recordDeposit')}</TooltipContent>
                     </Tooltip>
@@ -451,15 +446,13 @@ export function PaymentSummary({
                       {depositToReturn.toFixed(2)}{currencySymbol}
                     </Badge>
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
+                      <TooltipTrigger render={<Button
                           size="icon"
                           variant="outline"
                           className="h-7 w-7 border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950"
                           onClick={openDepositReturnModal}
-                        >
+                        />}>
                           <ArrowDownLeft className="h-3.5 w-3.5" />
-                        </Button>
                       </TooltipTrigger>
                       <TooltipContent>{t('payment.returnDeposit')}</TooltipContent>
                     </Tooltip>
@@ -522,7 +515,6 @@ export function PaymentSummary({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => setDamageModalOpen(true)}
@@ -535,19 +527,16 @@ export function PaymentSummary({
           {/* Payment history collapsible */}
           {payments.length > 0 && (
             <Collapsible open={historyOpen} onOpenChange={setHistoryOpen}>
-              <CollapsibleTrigger asChild>
-                <Button
+              <CollapsibleTrigger render={<Button
                   variant="ghost"
-                  size="sm"
                   className="w-full justify-between text-xs text-muted-foreground hover:text-foreground"
-                >
+                />}>
                   {t('payment.history')} ({payments.length})
                   {historyOpen ? (
                     <ChevronUp className="h-3.5 w-3.5" />
                   ) : (
                     <ChevronDown className="h-3.5 w-3.5" />
                   )}
-                </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="space-y-1.5 mt-2">
                 {payments.map((payment) => (
@@ -626,8 +615,7 @@ export function PaymentSummary({
                       </span>
                       {payment.method !== 'stripe' && (
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               size="icon"
                               variant="ghost"
                               className="h-6 w-6 text-muted-foreground hover:text-destructive"
@@ -635,9 +623,8 @@ export function PaymentSummary({
                                 setPaymentToDelete(payment)
                                 setDeleteDialogOpen(true)
                               }}
-                            >
+                            />}>
                               <Trash2 className="h-3 w-3" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>{tCommon('delete')}</TooltipContent>
                         </Tooltip>
@@ -668,7 +655,7 @@ export function PaymentSummary({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
-              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+              <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -711,7 +698,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -810,7 +797,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -884,7 +871,7 @@ export function PaymentSummary({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethod} onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}>
+              <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -941,14 +928,14 @@ export function PaymentSummary({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleDeletePayment}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {tCommon('delete')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

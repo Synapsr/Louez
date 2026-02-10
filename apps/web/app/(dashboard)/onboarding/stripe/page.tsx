@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { FileCheck, Loader2, CheckCircle2, CreditCard, Settings, Info } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -54,15 +54,15 @@ export default function OnboardingStripePage() {
     try {
       const result = await completeOnboarding(data)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
         return
       }
-      toast.success(t('configComplete'))
+      toastManager.add({ title: t('configComplete'), type: 'success' })
       // Signal the welcome animation via sessionStorage (more reliable than URL params)
       sessionStorage.setItem('louez-show-welcome', '1')
       router.push('/dashboard')
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

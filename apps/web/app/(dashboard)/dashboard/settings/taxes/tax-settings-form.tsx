@@ -7,7 +7,7 @@ import { useTransition, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Info, Receipt } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -100,7 +100,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
         form.setError('root', { message: result.error })
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       router.refresh()
     })
   }

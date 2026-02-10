@@ -241,7 +241,8 @@ export function RentalContent({
     setIsDateModalOpen(true)
   }
 
-  const handleCategoryChange = (value: string) => {
+  const handleCategoryChange = (value: string | null) => {
+    if (value === null) return
     setSelectedCategory(value)
     const params = new URLSearchParams(searchParams.toString())
     if (value === 'all') {
@@ -375,7 +376,6 @@ export function RentalContent({
               {/* Change dates button */}
               <Button
                 variant="outline"
-                size="sm"
                 onClick={handleChangeDates}
                 className="shrink-0 w-full sm:w-auto"
               >
@@ -394,7 +394,7 @@ export function RentalContent({
 
           {/* Business Hours Warning */}
           {businessHoursValidation && !businessHoursValidation.valid && (
-            <Alert variant="destructive" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
+            <Alert variant="error" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
               <AlertTriangle className="h-4 w-4 !text-orange-600 dark:!text-orange-400" />
               <AlertTitle className="text-orange-900 dark:text-orange-100">
                 {t('businessHoursWarning.title')}
@@ -458,7 +458,6 @@ export function RentalContent({
                 {hasFilters && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleClearFilters}
                     className="h-9"
                   >
@@ -469,14 +468,12 @@ export function RentalContent({
               </div>
 
               {/* Mobile filter toggle */}
-              <CollapsibleTrigger asChild className="md:hidden">
-                <Button variant="outline" size="sm">
+              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" />}>
                   <Filter className="h-4 w-4 mr-2" />
                   Filtres
                   <ChevronDown
                     className={`h-4 w-4 ml-2 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
                   />
-                </Button>
               </CollapsibleTrigger>
             </div>
 
@@ -515,7 +512,6 @@ export function RentalContent({
                 {hasFilters && (
                   <Button
                     variant="ghost"
-                    size="sm"
                     onClick={handleClearFilters}
                     className="justify-start"
                   >

@@ -178,7 +178,6 @@ export function CalendarExportModal({
             <p className="text-xs text-muted-foreground">{t('regenerateHint')}</p>
             <Button
               variant="ghost"
-              size="sm"
               onClick={handleRegenerate}
               disabled={regenerating}
             >

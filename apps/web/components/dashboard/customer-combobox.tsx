@@ -69,8 +69,7 @@ export function CustomerCombobox({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
+      <PopoverTrigger render={<Button
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -80,7 +79,7 @@ export function CustomerCombobox({
             className
           )}
           disabled={disabled}
-        >
+        />}>
           {selectedCustomer ? (
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
@@ -104,14 +103,13 @@ export function CustomerCombobox({
             </div>
           )}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0" align="start">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput
             placeholder={t('placeholder')}
             value={searchQuery}
-            onValueChange={setSearchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
           <CommandList>
             <CommandEmpty>{t('noResults')}</CommandEmpty>
@@ -120,8 +118,8 @@ export function CustomerCombobox({
                 <CommandItem
                   key={customer.id}
                   value={customer.id}
-                  onSelect={(currentValue: string) => {
-                    onValueChange(currentValue === value ? '' : currentValue)
+                  onClick={() => {
+                    onValueChange(customer.id === value ? '' : customer.id)
                     setOpen(false)
                     setSearchQuery('')
                   }}

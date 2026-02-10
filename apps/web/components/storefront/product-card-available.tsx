@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Plus, ImageIcon, Minus, Check, TrendingDown } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
@@ -130,7 +130,7 @@ export function ProductCardAvailable({
     if (inCart) {
       if (canAddMore) {
         updateItemQuantity(product.id, cartQuantity + 1)
-        toast.success(t('addedToCart', { name: product.name }))
+        toastManager.add({ title: t('addedToCart', { name: product.name }), type: 'success' })
       }
     } else {
       addItem(
@@ -159,7 +159,7 @@ export function ProductCardAvailable({
       if (availableAccessories.length > 0) {
         setAccessoriesModalOpen(true)
       } else {
-        toast.success(t('addedToCart', { name: product.name }))
+        toastManager.add({ title: t('addedToCart', { name: product.name }), type: 'success' })
       }
     }
   }
@@ -214,7 +214,6 @@ export function ProductCardAvailable({
               availableQuantity={availableQuantity}
               totalQuantity={product.quantity}
               cartQuantity={cartQuantity}
-              size="sm"
             />
           </div>
 

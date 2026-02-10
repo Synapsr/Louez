@@ -8,6 +8,11 @@
     "allowJs": true,
     "jsx": "preserve",
     "noEmit": true,
+    "paths": {
+      "@louez/ui/components/*": ["./src/components/*"],
+      "@louez/ui/lib/*": ["./src/lib/*"],
+      "@louez/ui/hooks/*": ["./src/hooks/*"]
+    },
     "plugins": [
       {
         "name": "next"

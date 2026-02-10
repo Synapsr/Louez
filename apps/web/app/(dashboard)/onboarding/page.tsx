@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Store, Loader2, Globe, Mail, Phone, Pencil, Check, X } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 import { env } from '@/env'
 
@@ -180,12 +180,12 @@ export default function OnboardingStorePage() {
     try {
       const result = await createStore(data)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
         return
       }
       router.push('/onboarding/branding')
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -380,7 +380,7 @@ export default function OnboardingStorePage() {
                       <FormLabel>{t('country')}</FormLabel>
                       <Select
                         value={field.value}
-                        onValueChange={(value) => handleCountryChange(value, field.onChange)}
+                        onValueChange={(value) => { if (value !== null) handleCountryChange(value, field.onChange) }}
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -406,7 +406,7 @@ export default function OnboardingStorePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('currency')}</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
+                      <Select value={field.value} onValueChange={(value) => { if (value !== null) field.onChange(value) }}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder={t('currencyPlaceholder')} />

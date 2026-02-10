@@ -4,7 +4,7 @@ import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Clock, Mail, AlertTriangle, LogIn, UserPlus } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -52,9 +52,9 @@ export function InvitationContent({
       const result = await acceptInvitation(token)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('joinedTeam'))
+        toastManager.add({ title: t('joinedTeam'), type: 'success' })
         router.push('/dashboard')
       }
     })
@@ -169,11 +169,9 @@ export function InvitationContent({
 
           {type === 'login_required' && (
             <>
-              <Button asChild className="w-full" size="lg">
-                <Link href={`/login?callbackUrl=/invitation/${token}`}>
+              <Button className="w-full" size="lg" render={<Link href={`/login?callbackUrl=/invitation/${token}`} />}>
                   <LogIn className="mr-2 h-4 w-4" />
                   {t('login')}
-                </Link>
               </Button>
               <p className="text-xs text-center text-muted-foreground">
                 {t('loginHint')}
@@ -192,10 +190,8 @@ export function InvitationContent({
           )}
 
           {(type === 'expired' || type === 'used') && (
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/">
+            <Button variant="outline" className="w-full" render={<Link href="/" />}>
                 {t('backToHome')}
-              </Link>
             </Button>
           )}
         </CardFooter>

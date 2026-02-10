@@ -3,7 +3,7 @@
 import { useState, useEffect, useTransition } from 'react'
 import { Check, ChevronsUpDown, Package, Loader2, AlertCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -71,7 +71,7 @@ export function UnitAssignmentSelector({
       setIsLoading(true)
       const result = await getAvailableUnitsForReservationItem(reservationItemId)
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         setAvailableUnits(result.units || [])
         setSelectedUnitIds(result.assigned || [])
@@ -121,9 +121,9 @@ export function UnitAssignmentSelector({
       const result = await assignUnitsToReservationItem(reservationItemId, unitIdsToSave)
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('saved'))
+        toastManager.add({ title: t('saved'), type: 'success' })
         setHasChanges(false)
       }
     })
@@ -194,8 +194,7 @@ export function UnitAssignmentSelector({
                 open={openPopovers[index]}
                 onOpenChange={(open) => setOpenPopovers((prev) => ({ ...prev, [index]: open }))}
               >
-                <PopoverTrigger asChild>
-                  <Button
+                <PopoverTrigger render={<Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={openPopovers[index]}
@@ -204,16 +203,14 @@ export function UnitAssignmentSelector({
                       !selectedUnit && 'text-muted-foreground'
                     )}
                     disabled={isPending}
-                  >
+                  />}>
                     {selectedUnit ? (
                       <span className="flex items-center gap-2">
                         <span className="font-medium">{selectedUnit.identifier}</span>
                         {selectedUnit.notes && (
                           <TooltipProvider>
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <AlertCircle className="h-3 w-3 text-muted-foreground" />
-                              </TooltipTrigger>
+                              <TooltipTrigger render={<AlertCircle className="h-3 w-3 text-muted-foreground" />} />
                               <TooltipContent>
                                 <p className="max-w-[200px] text-xs">{selectedUnit.notes}</p>
                               </TooltipContent>
@@ -225,7 +222,6 @@ export function UnitAssignmentSelector({
                       t('selectUnit')
                     )}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[280px] p-0" align="start">
                   <Command>
@@ -237,7 +233,7 @@ export function UnitAssignmentSelector({
                         {selectedUnit && (
                           <CommandItem
                             value="__clear__"
-                            onSelect={() => handleUnitSelect(index, null)}
+                            onClick={() => handleUnitSelect(index, null)}
                             className="text-muted-foreground"
                           >
                             <span className="italic">Clear selection</span>
@@ -247,7 +243,7 @@ export function UnitAssignmentSelector({
                           <CommandItem
                             key={unit.id}
                             value={unit.identifier}
-                            onSelect={() => handleUnitSelect(index, unit.id)}
+                            onClick={() => handleUnitSelect(index, unit.id)}
                           >
                             <Check
                               className={cn(
@@ -279,7 +275,7 @@ export function UnitAssignmentSelector({
       <div className="flex items-center justify-between pt-1">
         <p className="text-xs text-muted-foreground">{t('optional')}</p>
         {hasChanges && (
-          <Button size="sm" onClick={handleSave} disabled={isPending}>
+          <Button onClick={handleSave} disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
             {t('save')}
           </Button>

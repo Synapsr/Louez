@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { CreditCard, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { createReservationPaymentSession } from './actions'
@@ -24,7 +24,7 @@ export function PayNowButton({ storeSlug, reservationId }: PayNowButtonProps) {
       const result = await createReservationPaymentSession(storeSlug, reservationId)
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
         setIsLoading(false)
         return
       }
@@ -33,7 +33,7 @@ export function PayNowButton({ storeSlug, reservationId }: PayNowButtonProps) {
         window.location.href = result.paymentUrl
       }
     } catch {
-      toast.error(tErrors('paymentSessionError'))
+      toastManager.add({ title: tErrors('paymentSessionError'), type: 'error' })
       setIsLoading(false)
     }
   }

@@ -49,7 +49,6 @@ export function PeriodFilter({ className }: PeriodFilterProps) {
           <Button
             key={period.value}
             variant={currentPeriod === period.value ? 'default' : 'ghost'}
-            size="sm"
             onClick={() => handlePeriodChange(period.value)}
             className="h-8 px-3"
           >
@@ -60,7 +59,7 @@ export function PeriodFilter({ className }: PeriodFilterProps) {
 
       {/* Select (mobile) */}
       <div className="sm:hidden">
-        <Select value={currentPeriod} onValueChange={(v) => handlePeriodChange(v as Period)}>
+        <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[120px]">
             <SelectValue />
           </SelectTrigger>

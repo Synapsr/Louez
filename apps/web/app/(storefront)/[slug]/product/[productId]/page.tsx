@@ -293,7 +293,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </span>
               </>
             ) : (
-              <Badge variant="destructive">{tCatalog('unavailable')}</Badge>
+              <Badge variant="error">{tCatalog('unavailable')}</Badge>
             )}
           </div>
 

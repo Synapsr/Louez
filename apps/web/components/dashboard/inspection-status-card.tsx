@@ -78,7 +78,7 @@ function getStatusConfig(status: InspectionStatus | null, hasDamage?: boolean) {
           icon: AlertCircle,
           color: 'text-red-600 dark:text-red-400',
           bgColor: 'bg-red-50 dark:bg-red-950/30',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
         }
       }
       return {
@@ -93,7 +93,7 @@ function getStatusConfig(status: InspectionStatus | null, hasDamage?: boolean) {
           icon: AlertCircle,
           color: 'text-red-600 dark:text-red-400',
           bgColor: 'bg-red-50 dark:bg-red-950/30',
-          badgeVariant: 'destructive' as const,
+          badgeVariant: 'error' as const,
         }
       }
       return {
@@ -183,39 +183,27 @@ function InspectionSlot({
       </div>
 
       {showStartButton && (
-        <Button asChild size="sm">
-          <Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`}>
+        <Button render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
             {t('card.start')}
             <ArrowRight className="ml-2 h-4 w-4" />
-          </Link>
         </Button>
       )}
 
       {showViewButton && (
         <div className="flex items-center gap-1">
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`}>
+          <Button variant="outline" render={<Link href={`/dashboard/reservations/${reservationId}/inspection/${type}`} />}>
               {t('card.view')}
-            </Link>
           </Button>
           {(inspection?.status === 'completed' || inspection?.status === 'signed') && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+              <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
                   <MoreVertical className="h-4 w-4" />
                   <span className="sr-only">{t('card.moreActions')}</span>
-                </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <a
-                    href={`/api/inspections/${inspection.id}/report`}
-                    download
-                    className="flex items-center"
-                  >
+                <DropdownMenuItem render={<a href={`/api/inspections/${inspection.id}/report`} download className="flex items-center" />}>
                     <Download className="mr-2 h-4 w-4" />
                     {t('card.downloadPdf')}
-                  </a>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -300,12 +288,8 @@ export function InspectionStatusCard({
         />
 
         {showCompareButton && (
-          <Button asChild variant="outline" className="w-full">
-            <Link
-              href={`/dashboard/reservations/${reservationId}/inspection/compare`}
-            >
+          <Button variant="outline" className="w-full" render={<Link href={`/dashboard/reservations/${reservationId}/inspection/compare`} />}>
               {t('card.compare')}
-            </Link>
           </Button>
         )}
       </CardContent>

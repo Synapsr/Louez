@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Plus, Trash2, Calendar, AlertCircle, CalendarX2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -96,7 +96,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
         form.setError('root', { message: result.error })
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       router.refresh()
     })
   }
@@ -119,7 +119,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {form.formState.errors.root && (
-            <Alert variant="destructive">
+            <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
                 {form.formState.errors.root.message}
@@ -274,7 +274,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.openTime ?? '09:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
+              if (value !== null) form.setValue(`schedule.${dayKey}.openTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">
@@ -292,7 +292,7 @@ function DayScheduleRow({
           <Select
             value={schedule[dayKey]?.closeTime ?? '18:00'}
             onValueChange={(value) => {
-              form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
+              if (value !== null) form.setValue(`schedule.${dayKey}.closeTime` as any, value, { shouldDirty: true })
             }}
           >
             <SelectTrigger className="flex-1">
@@ -377,11 +377,9 @@ function ClosurePeriodDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button type="button" variant="outline" size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addClosure')}
-        </Button>
+      <DialogTrigger render={<Button type="button" variant="outline" />}>
+        <Plus className="mr-2 h-4 w-4" />
+        {t('addClosure')}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -391,7 +389,7 @@ function ClosurePeriodDialog({
 
         <div className="space-y-4 py-4">
           {error && (
-            <Alert variant="destructive">
+            <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>

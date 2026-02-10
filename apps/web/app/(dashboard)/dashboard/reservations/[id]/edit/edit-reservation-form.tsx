@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import {
   ArrowLeft,
   Loader2,
@@ -360,7 +360,7 @@ export function EditReservationForm({
 
   const handleRemoveItem = (itemId: string) => {
     if (items.length <= 1) {
-      toast.error(t('edit.cannotRemoveLastItem'))
+      toastManager.add({ title: t('edit.cannotRemoveLastItem'), type: 'error' })
       return
     }
     setItems((prev) => prev.filter((item) => item.id !== itemId))
@@ -442,7 +442,7 @@ export function EditReservationForm({
   const handleAddCustomItem = () => {
     const name = customItemForm.name.trim()
     if (!name) {
-      toast.error(tForm('customItem.nameRequired'))
+      toastManager.add({ title: tForm('customItem.nameRequired'), type: 'error' })
       return
     }
 
@@ -452,7 +452,7 @@ export function EditReservationForm({
     const deposit = parseFloat(customItemForm.deposit) || 0
 
     if (totalPrice <= 0 && unitPrice <= 0) {
-      toast.error(tForm('customItem.priceRequired'))
+      toastManager.add({ title: tForm('customItem.priceRequired'), type: 'error' })
       return
     }
 
@@ -476,7 +476,7 @@ export function EditReservationForm({
     setItems((prev) => [...prev, newItem])
     resetCustomItemForm()
     setShowCustomItemDialog(false)
-    toast.success(tForm('customItem.added'))
+    toastManager.add({ title: tForm('customItem.added'), type: 'success' })
   }
 
   const getRuleWarnings = useCallback((): ReservationValidationWarning[] => {
@@ -501,7 +501,7 @@ export function EditReservationForm({
     if (!startDate || !endDate) return
 
     if (items.length === 0) {
-      toast.error(t('edit.noItems'))
+      toastManager.add({ title: t('edit.noItems'), type: 'error' })
       return
     }
     setIsLoading(true)
@@ -521,7 +521,7 @@ export function EditReservationForm({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -536,16 +536,16 @@ export function EditReservationForm({
             .join(' • ')
 
           if (warningMessage) {
-            toast.warning(warningMessage)
+            toastManager.add({ title: warningMessage, type: 'warning' })
           }
         }
 
-        toast.success(t('edit.saved'))
+        toastManager.add({ title: t('edit.saved'), type: 'success' })
         router.push(`/dashboard/reservations/${reservation.id}`)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -553,7 +553,7 @@ export function EditReservationForm({
 
   const handleSave = async () => {
     if (!startDate || !endDate) {
-      toast.error(t('edit.datesRequired'))
+      toastManager.add({ title: t('edit.datesRequired'), type: 'error' })
       return
     }
 
@@ -591,10 +591,8 @@ export function EditReservationForm({
           <div className="container max-w-5xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Button variant="ghost" size="icon" className="shrink-0" asChild>
-                  <Link href={`/dashboard/reservations/${reservation.id}`}>
-                    <ArrowLeft className="h-4 w-4" />
-                  </Link>
+                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="ghost" size="icon" className="shrink-0">
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
                   <div className="flex items-center gap-2">
@@ -609,12 +607,10 @@ export function EditReservationForm({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/dashboard/reservations/${reservation.id}`}>
-                    {tCommon('cancel')}
-                  </Link>
+                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="outline">
+                  {tCommon('cancel')}
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={isLoading || !hasChanges}>
+                <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -709,14 +705,13 @@ export function EditReservationForm({
                     <div className="flex items-center gap-2">
                       <Button
                         variant="outline"
-                        size="sm"
                         onClick={() => setShowCustomItemDialog(true)}
                       >
                         <PenLine className="h-4 w-4 mr-2" />
                         {tForm('customItem.button')}
                       </Button>
                       {availableToAdd.length > 0 && (
-                        <Select onValueChange={handleAddProduct}>
+                        <Select onValueChange={(value) => { if (value !== null) handleAddProduct(value as string) }}>
                           <SelectTrigger className="w-[160px] h-9">
                             <Plus className="h-4 w-4 mr-2" />
                             <SelectValue placeholder={t('edit.addItem')} />
@@ -832,19 +827,17 @@ export function EditReservationForm({
                               </div>
                               {item.product && (
                                 <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
+                                  <TooltipTrigger render={<Button
                                       variant="ghost"
                                       size="icon"
                                       className="h-8 w-8"
                                       onClick={() => handleToggleManualPrice(item.id)}
-                                    >
-                                      {item.isManualPrice ? (
-                                        <Lock className="h-3.5 w-3.5 text-amber-600" />
-                                      ) : (
-                                        <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
-                                      )}
-                                    </Button>
+                                    />}>
+                                    {item.isManualPrice ? (
+                                      <Lock className="h-3.5 w-3.5 text-amber-600" />
+                                    ) : (
+                                      <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
+                                    )}
                                   </TooltipTrigger>
                                   <TooltipContent>
                                     {item.isManualPrice
@@ -864,16 +857,14 @@ export function EditReservationForm({
 
                             {/* Remove */}
                             <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
+                              <TooltipTrigger render={<Button
                                   variant="ghost"
                                   size="icon"
                                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
                                   onClick={() => handleRemoveItem(item.id)}
                                   disabled={items.length <= 1}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                                />}>
+                                <Trash2 className="h-4 w-4" />
                               </TooltipTrigger>
                               <TooltipContent>{tCommon('delete')}</TooltipContent>
                             </Tooltip>

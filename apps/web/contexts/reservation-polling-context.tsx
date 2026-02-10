@@ -10,7 +10,7 @@ import {
   ReactNode,
 } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 interface PollResponse {
@@ -121,9 +121,10 @@ export function ReservationPollingProvider({
         playNotificationSound()
 
         // Show toast notification
-        toast.info(t('newReservation', { number: data.latestReservation!.number }), {
+        toastManager.add({
+          title: t('newReservation', { number: data.latestReservation!.number }),
           description: t('newReservationDescription'),
-          duration: 10000,
+          type: 'info',
         })
 
         // Refresh the page data
