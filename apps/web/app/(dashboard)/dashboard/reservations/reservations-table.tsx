@@ -19,7 +19,7 @@ import {
   AlertCircle,
   CreditCard,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useState } from 'react'
 
 import { Button } from '@louez/ui'
@@ -27,8 +27,7 @@ import { Badge } from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -197,7 +196,7 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
     try {
       const result = await updateReservationStatus(reservation.id, newStatus)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -208,14 +207,14 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
             })
             .join(' • ')
 
-          toast.warning(warningMessage)
+          toastManager.add({ title: warningMessage, type: 'warning' })
         }
 
-        toast.success(t('statusUpdated'))
+        toastManager.add({ title: t('statusUpdated'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
     }
@@ -228,7 +227,7 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
     try {
       const result = await updateReservationStatus(selectedReservation.id, 'rejected')
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
         const warnings = 'warnings' in result ? result.warnings : undefined
         if (warnings && warnings.length > 0) {
@@ -239,14 +238,14 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
             })
             .join(' • ')
 
-          toast.warning(warningMessage)
+          toastManager.add({ title: warningMessage, type: 'warning' })
         }
 
-        toast.success(t('reservationRejected'))
+        toastManager.add({ title: t('reservationRejected'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
       setRejectDialogOpen(false)
@@ -261,13 +260,13 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
     try {
       const result = await cancelReservation(selectedReservation.id)
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('reservationCancelled'))
+        toastManager.add({ title: t('reservationCancelled'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
       setCancelDialogOpen(false)
@@ -299,8 +298,8 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
         <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
           {t('noReservationsDescription')}
         </p>
-        <Button asChild className="mt-6">
-          <Link href="/dashboard/reservations/new">{t('createReservation')}</Link>
+        <Button render={<Link href="/dashboard/reservations/new" />} className="mt-6">
+          {t('createReservation')}
         </Button>
       </div>
     )
@@ -364,8 +363,7 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                         {/* Payment Status Badge */}
                         {showPaymentStatus && (
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Badge
+                            <TooltipTrigger render={<Badge
                                 variant="secondary"
                                 className={`gap-1 text-xs ${
                                   paymentInfo.status === 'paid'
@@ -374,14 +372,13 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                                       ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                       : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                                 }`}
-                              >
+                              />}>
                                 {paymentInfo.status === 'paid' ? (
                                   <CheckCircle className="h-3 w-3" />
                                 ) : (
                                   <AlertCircle className="h-3 w-3" />
                                 )}
                                 {t(`paymentStatus.${paymentInfo.status}`)}
-                              </Badge>
                             </TooltipTrigger>
                             <TooltipContent>
                               <div className="text-xs">
@@ -430,36 +427,30 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {isPending && !hasPendingOnlinePayment && (
                         <div className="flex items-center gap-1.5">
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
+                            <TooltipTrigger render={<Button
                                 variant="default"
                                 className="h-8 gap-1.5 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
                                 onClick={(e) => handleStatusChange(e, reservation, 'confirmed')}
                                 disabled={isLoading}
-                              >
+                              />}>
                                 {loadingAction === `${reservation.id}-confirmed` ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 ) : (
                                   <CheckCircle className="h-3.5 w-3.5" />
                                 )}
                                 <span className="hidden sm:inline">{t('actions.accept')}</span>
-                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>{t('actions.accept')}</TooltipContent>
                           </Tooltip>
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
+                            <TooltipTrigger render={<Button
                                 variant="outline"
                                 className="h-8 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:hover:bg-red-950"
                                 onClick={(e) => openRejectDialog(e, reservation)}
                                 disabled={isLoading}
-                              >
+                              />}>
                                 <XCircle className="h-3.5 w-3.5" />
                                 <span className="hidden sm:inline">{t('actions.reject')}</span>
-                              </Button>
                             </TooltipTrigger>
                             <TooltipContent>{t('actions.reject')}</TooltipContent>
                           </Tooltip>
@@ -482,21 +473,18 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {/* Quick Actions for Confirmed */}
                       {isConfirmed && (
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
+                          <TooltipTrigger render={<Button
                               variant="outline"
                               className="h-8 gap-1.5"
                               onClick={(e) => handleStatusChange(e, reservation, 'ongoing')}
                               disabled={isLoading}
-                            >
+                            />}>
                               {loadingAction === `${reservation.id}-ongoing` ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
                                 <ArrowUpRight className="h-3.5 w-3.5" />
                               )}
                               <span className="hidden sm:inline">{t('actions.markPickedUp')}</span>
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>{t('actions.markPickedUp')}</TooltipContent>
                         </Tooltip>
@@ -505,21 +493,18 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {/* Quick Actions for Ongoing */}
                       {isOngoing && (
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              size="sm"
+                          <TooltipTrigger render={<Button
                               variant="outline"
                               className="h-8 gap-1.5"
                               onClick={(e) => handleStatusChange(e, reservation, 'completed')}
                               disabled={isLoading}
-                            >
+                            />}>
                               {loadingAction === `${reservation.id}-completed` ? (
                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                               ) : (
                                 <ArrowDownRight className="h-3.5 w-3.5" />
                               )}
                               <span className="hidden sm:inline">{t('actions.markReturned')}</span>
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>{t('actions.markReturned')}</TooltipContent>
                         </Tooltip>
@@ -528,7 +513,6 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                       {/* Cancel option for active reservations */}
                       {canCancel && !isPending && (
                         <Button
-                          size="sm"
                           variant="ghost"
                           className="h-7 text-xs text-muted-foreground hover:text-destructive"
                           onClick={(e) => openCancelDialog(e, reservation)}
@@ -556,16 +540,16 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('back')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('back')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleReject}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {loadingAction?.includes('reject') ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               {t('rejectRequest')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -580,16 +564,16 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('back')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('back')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleCancel}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {loadingAction?.includes('cancel') ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : null}
               {t('cancelReservation')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

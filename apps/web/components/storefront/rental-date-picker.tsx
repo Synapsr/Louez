@@ -62,7 +62,6 @@ function TimeSelector({
           <Button
             key={time}
             variant={value === time ? 'default' : 'outline'}
-            size="sm"
             className="text-xs h-7"
             onClick={() => onChange(time)}
             disabled={disabled}
@@ -203,17 +202,15 @@ export function RentalDatePicker({
       <div className="space-y-2">
         <Label className="text-sm font-medium">{translations.startDate}</Label>
         <Popover open={startPopoverOpen} onOpenChange={setStartPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
+          <PopoverTrigger render={<Button
               variant="outline"
               className={cn(
                 'w-full justify-start text-left font-normal h-11',
                 !startDate && 'text-muted-foreground'
               )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{formatDateDisplay(startDate)}</span>
-            </Button>
+            />}>
+            <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{formatDateDisplay(startDate)}</span>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
@@ -233,7 +230,6 @@ export function RentalDatePicker({
                 />
                 <Button
                   className="w-full mt-3"
-                  size="sm"
                   onClick={() => setStartPopoverOpen(false)}
                   disabled={!startDate}
                 >
@@ -249,17 +245,15 @@ export function RentalDatePicker({
       <div className="space-y-2">
         <Label className="text-sm font-medium">{translations.endDate}</Label>
         <Popover open={endPopoverOpen} onOpenChange={setEndPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button
+          <PopoverTrigger render={<Button
               variant="outline"
               className={cn(
                 'w-full justify-start text-left font-normal h-11',
                 !endDate && 'text-muted-foreground'
               )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
-              <span className="truncate">{formatDateDisplay(endDate)}</span>
-            </Button>
+            />}>
+            <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+            <span className="truncate">{formatDateDisplay(endDate)}</span>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
@@ -281,7 +275,6 @@ export function RentalDatePicker({
                 />
                 <Button
                   className="w-full mt-3"
-                  size="sm"
                   onClick={() => setEndPopoverOpen(false)}
                   disabled={!endDate}
                 >
@@ -412,7 +405,6 @@ export function QuickDateButtons({
         <Button
           key={option.label}
           variant="outline"
-          size="sm"
           onClick={() => {
             const { start, end } = option.getRange()
             onSelect(start, end)

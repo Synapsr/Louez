@@ -294,15 +294,13 @@ export function CustomerTemplateModal({
                           {t('customized')}
                         </Badge>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
                               onClick={handleResetSubject}
-                            >
+                            />}>
                               <RotateCcw className="h-3 w-3" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{t('resetToDefault')}</p>
@@ -336,15 +334,13 @@ export function CustomerTemplateModal({
                         {t('customized')}
                       </Badge>
                       <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
+                        <TooltipTrigger render={<Button
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6"
                             onClick={handleResetEmailMessage}
-                          >
+                          />}>
                             <RotateCcw className="h-3 w-3" />
-                          </Button>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>{t('clearMessage')}</p>
@@ -383,15 +379,13 @@ export function CustomerTemplateModal({
                           {t('customized')}
                         </Badge>
                         <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
+                          <TooltipTrigger render={<Button
                               variant="ghost"
                               size="icon"
                               className="h-6 w-6"
                               onClick={handleResetSms}
-                            >
+                            />}>
                               <RotateCcw className="h-3 w-3" />
-                            </Button>
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{t('resetToDefault')}</p>
@@ -422,14 +416,14 @@ export function CustomerTemplateModal({
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="ghost" size="sm" onClick={handleResetAll}>
+            <Button variant="ghost" onClick={handleResetAll}>
               {t('resetAll')}
             </Button>
             <div className="flex-1" />
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               {tc('cancel')}
             </Button>
-            <Button size="sm" onClick={handleSave}>
+            <Button onClick={handleSave}>
               {tc('save')}
             </Button>
           </DialogFooter>

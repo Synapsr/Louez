@@ -18,7 +18,7 @@ import {
   Package,
   Video,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -206,12 +206,12 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
           const file = fileArray[i]
 
           if (!file.type.startsWith('image/')) {
-            toast.error(t('imageError'))
+            toastManager.add({ title: t('imageError'), type: 'error' })
             continue
           }
 
           if (file.size > 15 * 1024 * 1024) {
-            toast.error(t('imageSizeError'))
+            toastManager.add({ title: t('imageSizeError'), type: 'error' })
             continue
           }
 
@@ -250,7 +250,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
         }
       } catch (error) {
         console.error('Image upload error:', error)
-        toast.error(t('imageUploadError'))
+        toastManager.add({ title: t('imageUploadError'), type: 'error' })
       } finally {
         setIsUploadingImages(false)
       }
@@ -325,15 +325,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
     try {
       const result = await createCategory({ name: newCategoryName.trim() })
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
       } else {
-        toast.success(t('categoryCreated'))
+        toastManager.add({ title: t('categoryCreated'), type: 'success' })
         setNewCategoryName('')
         setCategoryDialogOpen(false)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsCreatingCategory(false)
     }
@@ -375,7 +375,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
   }
 
   function onInvalid(errors: FieldErrors<ProductInput>) {
-    toast.error(t('validationError'))
+    toastManager.add({ title: t('validationError'), type: 'error' })
 
     // In stepper mode: navigate to the first step with errors
     if (!isEditMode) {
@@ -403,14 +403,14 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
         : await createProduct(data)
 
       if (result.error) {
-        toast.error(result.error)
+        toastManager.add({ title: result.error, type: 'error' })
         return
       }
 
-      toast.success(product ? t('productUpdated') : t('productCreated'))
+      toastManager.add({ title: product ? t('productUpdated') : t('productCreated'), type: 'success' })
       router.push('/dashboard/products')
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -663,7 +663,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                   <FormItem>
                     <FormLabel>{t('category')}</FormLabel>
                     <div className="flex gap-2">
-                      <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger className="flex-1">
                             <SelectValue placeholder={t('selectCategory')} />
@@ -678,10 +678,8 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         </SelectContent>
                       </Select>
                       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button type="button" variant="outline" size="icon">
-                            <Plus className="h-4 w-4" />
-                          </Button>
+                        <DialogTrigger render={<Button type="button" variant="outline" size="icon" />}>
+                          <Plus className="h-4 w-4" />
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
@@ -742,7 +740,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <FormItem>
                       <FormLabel>{t('pricingModeLabel')}</FormLabel>
                       <Select
-                        onValueChange={(value) => field.onChange(value === 'inherit' ? null : value)}
+                        onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
                         value={field.value || 'inherit'}
                       >
                         <FormControl>
@@ -1155,7 +1153,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <FormItem>
                       <FormLabel>{t('category')}</FormLabel>
                       <div className="flex gap-2">
-                        <Select onValueChange={field.onChange} value={field.value || undefined}>
+                        <Select onValueChange={(value) => { if (value !== null) field.onChange(value) }} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder={t('selectCategory')} />
@@ -1170,10 +1168,8 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                           </SelectContent>
                         </Select>
                         <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button type="button" variant="outline" size="icon">
+                          <DialogTrigger render={<Button type="button" variant="outline" size="icon" />}>
                               <Plus className="h-4 w-4" />
-                            </Button>
                           </DialogTrigger>
                           <DialogContent>
                             <DialogHeader>
@@ -1239,7 +1235,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         <FormItem>
                           <FormLabel>{t('pricingModeLabel')}</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange(value === 'inherit' ? null : value)}
+                            onValueChange={(value) => { if (value !== null) field.onChange(value === 'inherit' ? null : value) }}
                             value={field.value || 'inherit'}
                           >
                             <FormControl>

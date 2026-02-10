@@ -99,11 +99,9 @@ export function ProductsPageContent({
           <p className="text-muted-foreground">{t('description')}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/dashboard/categories">
+          <Button variant="outline" render={<Link href="/dashboard/categories" />}>
               <FolderOpen className="mr-2 h-4 w-4" />
               {t('manageCategories')}
-            </Link>
           </Button>
           {isAtLimit ? (
             <Button onClick={() => setShowUpgradeModal(true)}>
@@ -111,11 +109,9 @@ export function ProductsPageContent({
               {t('addProduct')}
             </Button>
           ) : (
-            <Button asChild>
-              <Link href="/dashboard/products/new" onClick={handleAddProductClick}>
+            <Button render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}>
                 <Plus className="mr-2 h-4 w-4" />
                 {t('addProduct')}
-              </Link>
             </Button>
           )}
         </div>
@@ -143,7 +139,6 @@ export function ProductsPageContent({
         {products.length > 1 && (
           <Button
             variant="outline"
-            size="sm"
             onClick={() => setShowOrderDialog(true)}
           >
             <ArrowUpDown className="mr-2 h-4 w-4" />

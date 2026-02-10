@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import {
   ArrowLeft,
   ArrowRight,
@@ -410,7 +410,7 @@ function StepSummary({
                     <span className="text-sm font-medium">{item.product.name}</span>
                   </div>
                   <Badge
-                    variant={inspection.condition === 'damage' ? 'destructive' : 'secondary'}
+                    variant={inspection.condition === 'damage' ? 'error' : 'secondary'}
                   >
                     {t(`conditions.${inspection.condition}`)}
                   </Badge>
@@ -668,13 +668,13 @@ export function InspectionWizard({
         }
       }
 
-      toast.success(t('wizard.inspectionComplete'))
+      toastManager.add({ title: t('wizard.inspectionComplete'), type: 'success' })
       onComplete?.()
       router.push(`/dashboard/reservations/${reservationId}`)
       router.refresh()
     } catch (error) {
       console.error('Inspection error:', error)
-      toast.error(t('wizard.inspectionError'))
+      toastManager.add({ title: t('wizard.inspectionError'), type: 'error' })
     } finally {
       setIsSubmitting(false)
     }

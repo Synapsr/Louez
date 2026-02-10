@@ -124,11 +124,9 @@ export function ReservationsPageContent({
             {t('addReservation')}
           </Button>
         ) : (
-          <Button asChild>
-            <Link href="/dashboard/reservations/new" onClick={handleAddReservationClick}>
+          <Button render={<Link href="/dashboard/reservations/new" onClick={handleAddReservationClick} />}>
               <Plus className="mr-2 h-4 w-4" />
               {t('addReservation')}
-            </Link>
           </Button>
         )}
       </div>

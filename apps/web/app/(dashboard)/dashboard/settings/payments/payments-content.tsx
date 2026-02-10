@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { StripeConnectCard } from './stripe-connect-card'
 import { PaymentFlowExplanation } from './payment-flow-explanation'
@@ -29,12 +29,12 @@ export function PaymentsContent({
     try {
       const result = await startStripeOnboarding()
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else if (result.url) {
         window.location.href = result.url
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsConnecting(false)
     }

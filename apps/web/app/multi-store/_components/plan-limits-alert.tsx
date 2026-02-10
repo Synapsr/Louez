@@ -82,12 +82,11 @@ export function PlanLimitsAlert({ limits, translations }: PlanLimitsAlertProps) 
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <CollapsibleTrigger asChild>
-              <Button
+            <CollapsibleTrigger render={<Button
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-amber-700 hover:bg-amber-200/50 hover:text-amber-900 dark:text-amber-300 dark:hover:bg-amber-800/30"
-              >
+              />}>
                 <ChevronDown
                   className={cn(
                     'h-4 w-4 transition-transform duration-200',
@@ -95,7 +94,6 @@ export function PlanLimitsAlert({ limits, translations }: PlanLimitsAlertProps) 
                   )}
                 />
                 <span className="sr-only">Toggle</span>
-              </Button>
             </CollapsibleTrigger>
             <Button
               variant="ghost"
@@ -147,7 +145,6 @@ export function PlanLimitsAlert({ limits, translations }: PlanLimitsAlertProps) 
                   </div>
                   <Button
                     variant="outline"
-                    size="sm"
                     onClick={() => handleUpgradeClick(limit.storeId)}
                     className="shrink-0 border-amber-300 bg-white text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
                   >

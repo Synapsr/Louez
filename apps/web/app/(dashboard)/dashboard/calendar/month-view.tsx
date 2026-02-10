@@ -190,8 +190,8 @@ function SpanningReservationBar({
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Link
+      <TooltipTrigger
+        render={<Link
           href={`/dashboard/reservations/${reservation.id}`}
           className={cn(
             'absolute flex items-center gap-1.5 px-2 text-xs font-medium text-white transition-all',
@@ -207,7 +207,8 @@ function SpanningReservationBar({
             top: topOffset,
             height: BAR_HEIGHT,
           }}
-        >
+        />}
+      >
           {continuesBefore && (
             <span className="mr-0.5 text-white/70">◂</span>
           )}
@@ -218,7 +219,6 @@ function SpanningReservationBar({
           {continuesAfter && (
             <span className="ml-auto text-white/70">▸</span>
           )}
-        </Link>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-xs">
         <div className="space-y-1">

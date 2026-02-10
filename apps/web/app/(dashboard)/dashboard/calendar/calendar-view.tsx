@@ -197,7 +197,8 @@ export function CalendarView({
   const currentPeriod = viewMode === 'calendar' ? calendarPeriod : productsPeriod
 
   // Handle period change
-  const handlePeriodChange = (value: string) => {
+  const handlePeriodChange = (value: string | null) => {
+    if (value === null) return
     if (viewMode === 'calendar') {
       setCalendarPeriod(value as CalendarPeriod)
     } else {
@@ -220,7 +221,7 @@ export function CalendarView({
                 <Button variant="outline" size="icon" onClick={goToNext}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="sm" onClick={goToToday}>
+                <Button variant="outline" onClick={goToToday}>
                   {t('today')}
                 </Button>
                 <span className="ml-2 text-lg font-semibold capitalize">
@@ -239,11 +240,9 @@ export function CalendarView({
                   <Download className="h-4 w-4" />
                 </Button>
 
-                <Button asChild>
-                  <Link href="/dashboard/reservations/new">
-                    <Plus className="mr-2 h-4 w-4" />
-                    {t('new')}
-                  </Link>
+                <Button render={<Link href="/dashboard/reservations/new" />}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('new')}
                 </Button>
               </div>
             </div>
@@ -283,7 +282,7 @@ export function CalendarView({
               {/* Right side: Product filter */}
               <Select
                 value={selectedProductId}
-                onValueChange={setSelectedProductId}
+                onValueChange={(value) => { if (value !== null) setSelectedProductId(value) }}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t('filterByProduct')} />

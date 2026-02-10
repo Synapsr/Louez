@@ -24,7 +24,7 @@ import {
   X,
   Send,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { formatDistanceToNow } from 'date-fns'
 import { fr } from 'date-fns/locale'
 
@@ -46,8 +46,7 @@ import {
 } from '@louez/ui'
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
+  AlertDialogClose,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -285,11 +284,11 @@ export function UnifiedPaymentSection({
   const handleRecordPayment = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount === 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
     if (amount < 0 && paymentType !== 'adjustment') {
-      toast.error(t('payment.negativeAmountOnlyForAdjustment'))
+      toastManager.add({ title: t('payment.negativeAmountOnlyForAdjustment'), type: 'error' })
       return
     }
 
@@ -303,15 +302,15 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.recorded'))
+        toastManager.add({ title: t('payment.recorded'), type: 'success' })
         setPaymentModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -320,12 +319,12 @@ export function UnifiedPaymentSection({
   const handleReturnDeposit = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
 
     if (amount > depositToReturn) {
-      toast.error(t('payment.amountExceedsDeposit'))
+      toastManager.add({ title: t('payment.amountExceedsDeposit'), type: 'error' })
       return
     }
 
@@ -338,15 +337,15 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.depositReturned'))
+        toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
         setDepositReturnModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -355,12 +354,12 @@ export function UnifiedPaymentSection({
   const handleRecordDamage = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error(t('payment.invalidAmount'))
+      toastManager.add({ title: t('payment.invalidAmount'), type: 'error' })
       return
     }
 
     if (!paymentNotes.trim()) {
-      toast.error(t('payment.damageNotesRequired'))
+      toastManager.add({ title: t('payment.damageNotesRequired'), type: 'error' })
       return
     }
 
@@ -373,15 +372,15 @@ export function UnifiedPaymentSection({
       })
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.damageRecorded'))
+        toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
         setDamageModalOpen(false)
         resetForm()
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -395,15 +394,15 @@ export function UnifiedPaymentSection({
       const result = await deletePayment(paymentToDelete.id)
 
       if (result.error) {
-        toast.error(tErrors(result.error))
+        toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        toast.success(t('payment.deleted'))
+        toastManager.add({ title: t('payment.deleted'), type: 'success' })
         setDeleteDialogOpen(false)
         setPaymentToDelete(null)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -415,13 +414,13 @@ export function UnifiedPaymentSection({
     try {
       const result = await createDepositHold(reservationId)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('deposit.holdCreated'))
+        toastManager.add({ title: t('deposit.holdCreated'), type: 'success' })
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -430,17 +429,17 @@ export function UnifiedPaymentSection({
   const handleCapture = async () => {
     const captureAmountNum = parseFloat(captureAmount)
     if (isNaN(captureAmountNum) || captureAmountNum <= 0) {
-      toast.error(t('deposit.invalidCaptureAmount'))
+      toastManager.add({ title: t('deposit.invalidCaptureAmount'), type: 'error' })
       return
     }
 
     if (captureAmountNum > deposit) {
-      toast.error(t('deposit.captureExceedsDeposit'))
+      toastManager.add({ title: t('deposit.captureExceedsDeposit'), type: 'error' })
       return
     }
 
     if (!captureReason.trim()) {
-      toast.error(t('deposit.reasonRequired'))
+      toastManager.add({ title: t('deposit.reasonRequired'), type: 'error' })
       return
     }
 
@@ -451,16 +450,16 @@ export function UnifiedPaymentSection({
         reason: captureReason,
       })
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('deposit.captured'))
+        toastManager.add({ title: t('deposit.captured'), type: 'success' })
         setCaptureModalOpen(false)
         setCaptureAmount('')
         setCaptureReason('')
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -471,14 +470,14 @@ export function UnifiedPaymentSection({
     try {
       const result = await releaseDepositHold(reservationId)
       if (result.error) {
-        toast.error(tErrors(result.error.replace('errors.', '')))
+        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
       } else {
-        toast.success(t('deposit.released'))
+        toastManager.add({ title: t('deposit.released'), type: 'success' })
         setReleaseDialogOpen(false)
         router.refresh()
       }
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -634,19 +633,17 @@ export function UnifiedPaymentSection({
                 </Badge>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <Badge variant="destructive" className="font-mono text-xs">
+                  <Badge variant="error" className="font-mono text-xs">
                     -{rentalRemaining.toFixed(2)}{currencySymbol}
                   </Badge>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
+                    <TooltipTrigger render={<Button
                         size="icon"
                         variant="outline"
                         className="h-7 w-7"
                         onClick={() => openPaymentModal('rental', rentalRemaining)}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                      />}>
+                      <Plus className="h-3.5 w-3.5" />
                     </TooltipTrigger>
                     <TooltipContent>{t('payment.recordRental')}</TooltipContent>
                   </Tooltip>
@@ -681,15 +678,13 @@ export function UnifiedPaymentSection({
                 </div>
                 {!isDepositFullyCollected && (
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
+                    <TooltipTrigger render={<Button
                         size="icon"
                         variant="outline"
                         className="h-7 w-7"
                         onClick={() => openPaymentModal('deposit', depositRemaining)}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                      />}>
+                      <Plus className="h-3.5 w-3.5" />
                     </TooltipTrigger>
                     <TooltipContent>{t('payment.recordDeposit')}</TooltipContent>
                   </Tooltip>
@@ -712,15 +707,13 @@ export function UnifiedPaymentSection({
                   </div>
                   {depositToReturn > 0 && (
                     <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
+                      <TooltipTrigger render={<Button
                           size="icon"
                           variant="outline"
                           className="h-7 w-7 border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950"
                           onClick={openDepositReturnModal}
-                        >
-                          <ArrowDownLeft className="h-3.5 w-3.5" />
-                        </Button>
+                        />}>
+                        <ArrowDownLeft className="h-3.5 w-3.5" />
                       </TooltipTrigger>
                       <TooltipContent>{t('payment.returnDeposit')}</TooltipContent>
                     </Tooltip>
@@ -786,7 +779,6 @@ export function UnifiedPaymentSection({
                   <div className="flex gap-2">
                     {depositStatusVal === 'card_saved' && (
                       <Button
-                        size="sm"
                         onClick={handleCreateHold}
                         disabled={isLoading}
                         className="flex-1"
@@ -804,7 +796,6 @@ export function UnifiedPaymentSection({
                       <>
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => setReleaseDialogOpen(true)}
                           disabled={isLoading}
                           className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
@@ -814,7 +805,6 @@ export function UnifiedPaymentSection({
                         </Button>
                         <Button
                           variant="outline"
-                          size="sm"
                           onClick={() => {
                             setCaptureAmount(deposit.toFixed(2))
                             setCaptureModalOpen(true)
@@ -873,7 +863,6 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
               onClick={() => setDamageModalOpen(true)}
@@ -886,7 +875,6 @@ export function UnifiedPaymentSection({
           {/* Request Payment Button */}
           {stripeConfigured && (rentalRemaining >= 0.5 || (deposit > 0 && depositStatusVal !== 'authorized' && depositStatusVal !== 'captured')) && (
             <Button
-              size="sm"
               variant="outline"
               className="w-full text-xs border-primary/50 text-primary hover:bg-primary/5"
               onClick={() => setRequestPaymentModalOpen(true)}
@@ -988,8 +976,7 @@ export function UnifiedPaymentSection({
                         </span>
                         {payment.method !== 'stripe' && (
                           <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
+                            <TooltipTrigger render={<Button
                                 size="icon"
                                 variant="ghost"
                                 className="h-6 w-6 text-muted-foreground hover:text-destructive"
@@ -997,9 +984,8 @@ export function UnifiedPaymentSection({
                                   setPaymentToDelete(payment)
                                   setDeleteDialogOpen(true)
                                 }}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+                              />}>
+                              <Trash2 className="h-3 w-3" />
                             </TooltipTrigger>
                             <TooltipContent>{tCommon('delete')}</TooltipContent>
                           </Tooltip>
@@ -1018,7 +1004,6 @@ export function UnifiedPaymentSection({
               {hasMorePayments && !historyExpanded && (
                 <Button
                   variant="ghost"
-                  size="sm"
                   className="w-full mt-2 text-xs"
                   onClick={() => setHistoryExpanded(true)}
                 >
@@ -1047,7 +1032,7 @@ export function UnifiedPaymentSection({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
-              <Select value={paymentType} onValueChange={(v) => setPaymentType(v as PaymentType)}>
+              <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1090,7 +1075,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1188,7 +1173,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1262,7 +1247,7 @@ export function UnifiedPaymentSection({
 
             <div className="space-y-2">
               <Label>{t('payment.method')}</Label>
-              <Select value={paymentMethodType} onValueChange={(v) => setPaymentMethodType(v as PaymentMethod)}>
+              <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -1319,14 +1304,14 @@ export function UnifiedPaymentSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
-            <AlertDialogAction
+            <AlertDialogClose render={<Button variant="outline" />}>{tCommon('cancel')}</AlertDialogClose>
+            <AlertDialogClose
+              render={<Button variant="destructive" />}
               onClick={handleDeletePayment}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {tCommon('delete')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1423,17 +1408,17 @@ export function UnifiedPaymentSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>
+            <AlertDialogClose render={<Button variant="outline" />} disabled={isLoading}>
               {tCommon('cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </AlertDialogClose>
+            <AlertDialogClose
+              render={<Button className="bg-emerald-600 text-white hover:bg-emerald-700" />}
               onClick={handleRelease}
               disabled={isLoading}
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
             >
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t('deposit.confirmRelease')}
-            </AlertDialogAction>
+            </AlertDialogClose>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

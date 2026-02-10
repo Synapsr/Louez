@@ -126,7 +126,8 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
       [onChange]
     )
 
-    const handleCountryChange = (iso: string) => {
+    const handleCountryChange = (iso: string | null) => {
+      if (iso === null) return
       setSelectedCountry(iso)
       emitChange(iso, nationalNumber)
     }

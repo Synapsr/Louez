@@ -131,16 +131,12 @@ export default async function DepositSuccessPage({ params }: SuccessPageProps) {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild>
-                <Link href={`/${slug}/account`}>
+              <Button render={<Link href={`/${slug}/account`} />}>
                   {t('success.viewReservations')}
-                </Link>
               </Button>
-              <Button variant="outline" asChild>
-                <Link href={`/${slug}`}>
+              <Button variant="outline" render={<Link href={`/${slug}`} />}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   {t('backToStore')}
-                </Link>
               </Button>
             </div>
           </CardContent>

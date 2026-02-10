@@ -41,14 +41,11 @@ export function StoreHeader({
 
         {/* Account button - floating top right */}
         <Button
-          size="sm"
-          asChild
+          render={<Link href="/account" />}
           className="pointer-events-auto gap-2 shadow-lg"
         >
-          <Link href="/account">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">{t('myAccount')}</span>
-          </Link>
         </Button>
       </div>
     </header>

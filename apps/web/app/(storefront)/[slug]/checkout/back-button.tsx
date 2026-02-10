@@ -13,7 +13,6 @@ export function BackButton() {
   return (
     <Button
       variant="ghost"
-      size="sm"
       onClick={() => router.back()}
       className="mb-6"
     >

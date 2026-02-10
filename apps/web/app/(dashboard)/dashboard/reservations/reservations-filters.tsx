@@ -57,7 +57,8 @@ export function ReservationsFilters({
     router.push(`/dashboard/reservations?${createQueryString('status', value)}`)
   }
 
-  const handlePeriodChange = (value: string) => {
+  const handlePeriodChange = (value: string | null) => {
+    if (value === null) return
     router.push(`/dashboard/reservations?${createQueryString('period', value)}`)
   }
 
@@ -106,7 +107,6 @@ export function ReservationsFilters({
             <Button
               key={key}
               variant={isActive ? 'secondary' : 'ghost'}
-              size="sm"
               className="gap-2"
               onClick={() => handleStatusChange(key)}
             >

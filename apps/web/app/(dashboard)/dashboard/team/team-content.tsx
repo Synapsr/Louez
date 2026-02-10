@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { Mail, MoreHorizontal, UserPlus, Users, Clock, Send, X, Crown, User as UserIcon, Zap, Lock, ArrowRight } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import Link from 'next/link'
 
 import { Button } from '@louez/ui'
@@ -81,12 +81,12 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
         const errorKey = result.error.startsWith('dashboard.') || result.error.startsWith('errors.')
           ? result.error
           : `errors.${result.error}`
-        toast.error(t(errorKey.replace('dashboard.team.', '')) || tErrors('generic'))
+        toastManager.add({ title: t(errorKey.replace('dashboard.team.', '')) || tErrors('generic'), type: 'error' })
       } else {
         if (result.type === 'invited') {
-          toast.success(t('invitationSent'))
+          toastManager.add({ title: t('invitationSent'), type: 'success' })
         } else {
-          toast.success(t('memberAdded'))
+          toastManager.add({ title: t('memberAdded'), type: 'success' })
         }
         setEmail('')
       }
@@ -98,9 +98,9 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
       const result = await removeMember(memberId)
 
       if (result.error) {
-        toast.error(t(result.error.replace('dashboard.team.', '')) || tErrors('generic'))
+        toastManager.add({ title: t(result.error.replace('dashboard.team.', '')) || tErrors('generic'), type: 'error' })
       } else {
-        toast.success(t('memberRemoved'))
+        toastManager.add({ title: t('memberRemoved'), type: 'success' })
       }
     })
   }
@@ -110,9 +110,9 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
       const result = await cancelInvitation(invitationId)
 
       if (result.error) {
-        toast.error(tErrors('generic'))
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
       } else {
-        toast.success(t('invitationCancelled'))
+        toastManager.add({ title: t('invitationCancelled'), type: 'success' })
       }
     })
   }
@@ -122,9 +122,9 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
       const result = await resendInvitation(invitationId)
 
       if (result.error) {
-        toast.error(tErrors('generic'))
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
       } else {
-        toast.success(t('invitationResent'))
+        toastManager.add({ title: t('invitationResent'), type: 'success' })
       }
     })
   }
@@ -182,12 +182,10 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                       {t('featureNotAvailableDescription')}
                     </p>
                   </div>
-                  <Button asChild className="shrink-0 gap-2">
-                    <Link href="/dashboard/subscription">
-                      <Zap className="h-4 w-4" />
-                      {t('upgradeToPro')}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
+                  <Button render={<Link href="/dashboard/subscription" />} className="shrink-0 gap-2">
+                    <Zap className="h-4 w-4" />
+                    {t('upgradeToPro')}
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -204,12 +202,10 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                       {t('limitReachedDescription', { current: limits?.current ?? 0, limit: limits?.limit ?? 0 })}
                     </p>
                   </div>
-                  <Button asChild className="shrink-0 gap-2">
-                    <Link href="/dashboard/subscription">
-                      <Zap className="h-4 w-4" />
-                      {t('upgradeForMore')}
-                      <ArrowRight className="h-4 w-4" />
-                    </Link>
+                  <Button render={<Link href="/dashboard/subscription" />} className="shrink-0 gap-2">
+                    <Zap className="h-4 w-4" />
+                    {t('upgradeForMore')}
+                    <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -277,7 +273,6 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                     <div className="flex items-center gap-2">
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleResendInvitation(invitation.id)}
                         disabled={isPending}
                       >
@@ -286,7 +281,6 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                       </Button>
                       <Button
                         variant="ghost"
-                        size="sm"
                         onClick={() => handleCancelInvitation(invitation.id)}
                         disabled={isPending}
                       >
@@ -364,10 +358,8 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
                     </div>
                     {canManageMembers && member.role !== 'owner' && (
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
+                        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+                          <MoreHorizontal className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem

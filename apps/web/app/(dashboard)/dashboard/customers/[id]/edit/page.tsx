@@ -38,10 +38,8 @@ export default async function EditCustomerPage({ params }: EditCustomerPageProps
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={`/dashboard/customers/${customer.id}`}>
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
+        <Button render={<Link href={`/dashboard/customers/${customer.id}`} />} variant="ghost" size="icon">
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">

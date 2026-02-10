@@ -2,9 +2,12 @@
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
 
+@import "@louez/ui/styles";
+
+/*
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
+ @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
@@ -120,12 +123,14 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
 }
 
-/* Dashboard theme with primary blue color #2b62ef */
+
+*/
 .dashboard {
   --primary: oklch(0.546 0.228 264);
   --primary-foreground: oklch(0.985 0 0);
@@ -148,24 +153,32 @@
    ============================================================================= */
 
 @keyframes gradient-shift {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translate(0%, 0%) rotate(0deg);
   }
+
   25% {
     transform: translate(2%, 2%) rotate(1deg);
   }
+
   50% {
     transform: translate(-1%, 1%) rotate(-1deg);
   }
+
   75% {
     transform: translate(1%, -2%) rotate(0.5deg);
   }
 }
 
 @keyframes gradient-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.4;
   }
+
   50% {
     opacity: 0.6;
   }
@@ -193,12 +206,10 @@
   height: 50vh;
   top: -5%;
   right: 0;
-  background: radial-gradient(
-    circle at center,
-    oklch(0.75 0.12 264 / 0.07) 0%,
-    oklch(0.65 0.16 264 / 0.04) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.75 0.12 264 / 0.07) 0%,
+      oklch(0.65 0.16 264 / 0.04) 40%,
+      transparent 70%);
   animation-delay: 0s;
 }
 
@@ -207,12 +218,10 @@
   height: 45vh;
   bottom: 10%;
   left: 0;
-  background: radial-gradient(
-    circle at center,
-    oklch(0.7 0.1 220 / 0.05) 0%,
-    oklch(0.75 0.15 300 / 0.03) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.7 0.1 220 / 0.05) 0%,
+      oklch(0.75 0.15 300 / 0.03) 40%,
+      transparent 70%);
   animation-delay: -10s;
 }
 
@@ -225,40 +234,32 @@
   left: 25%;
   border-radius: 50%;
   filter: blur(80px);
-  background: radial-gradient(
-    circle at center,
-    oklch(0.65 0.08 200 / 0.04) 0%,
-    transparent 60%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.65 0.08 200 / 0.04) 0%,
+      transparent 60%);
   animation: gradient-shift 25s ease-in-out infinite reverse, gradient-pulse 12s ease-in-out infinite;
   animation-delay: -5s;
 }
 
 /* Dark mode adjustments */
 .dark .dashboard-gradient-mesh::before {
-  background: radial-gradient(
-    circle at center,
-    oklch(0.45 0.16 258 / 0.1) 0%,
-    oklch(0.35 0.18 258 / 0.06) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.45 0.16 258 / 0.1) 0%,
+      oklch(0.35 0.18 258 / 0.06) 40%,
+      transparent 70%);
 }
 
 .dark .dashboard-gradient-mesh::after {
-  background: radial-gradient(
-    circle at center,
-    oklch(0.4 0.12 220 / 0.08) 0%,
-    oklch(0.45 0.18 300 / 0.05) 40%,
-    transparent 70%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.4 0.12 220 / 0.08) 0%,
+      oklch(0.45 0.18 300 / 0.05) 40%,
+      transparent 70%);
 }
 
 .dark .dashboard-gradient-mesh .gradient-orb {
-  background: radial-gradient(
-    circle at center,
-    oklch(0.35 0.12 200 / 0.06) 0%,
-    transparent 60%
-  );
+  background: radial-gradient(circle at center,
+      oklch(0.35 0.12 200 / 0.06) 0%,
+      transparent 60%);
 }
 
 /* =============================================================================
@@ -339,20 +340,21 @@
    ============================================================================= */
 
 .progress-gradient {
-  background: linear-gradient(
-    90deg,
-    oklch(0.52 0.22 264) 0%,
-    oklch(0.58 0.20 264) 50%,
-    oklch(0.55 0.18 264) 100%
-  );
+  background: linear-gradient(90deg,
+      oklch(0.52 0.22 264) 0%,
+      oklch(0.58 0.20 264) 50%,
+      oklch(0.55 0.18 264) 100%);
   background-size: 200% 100%;
   animation: progress-shimmer 3s ease-in-out infinite;
 }
 
 @keyframes progress-shimmer {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -375,20 +377,16 @@
 .storefront-header-wrapper {
   padding: 1.5rem;
   border-radius: 0.75rem 0.75rem 0 0;
-  background: linear-gradient(
-    135deg,
-    oklch(0.96 0.04 264 / 0.4) 0%,
-    oklch(0.98 0.02 264 / 0.2) 100%
-  );
+  background: linear-gradient(135deg,
+      oklch(0.96 0.04 264 / 0.4) 0%,
+      oklch(0.98 0.02 264 / 0.2) 100%);
   border-bottom: 1px solid oklch(0 0 0 / 0.04);
 }
 
 .dark .storefront-header-wrapper {
-  background: linear-gradient(
-    135deg,
-    oklch(0.28 0.05 258 / 0.35) 0%,
-    oklch(0.24 0.03 258 / 0.2) 100%
-  );
+  background: linear-gradient(135deg,
+      oklch(0.28 0.05 258 / 0.35) 0%,
+      oklch(0.24 0.03 258 / 0.2) 100%);
   border-bottom: 1px solid oklch(1 1 1 / 0.04);
 }
 
@@ -651,6 +649,7 @@
     opacity: 0;
     transform: translateY(16px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -693,8 +692,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* Checklist items */
@@ -832,6 +836,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -841,6 +846,7 @@
   from {
     opacity: 1;
   }
+
   to {
     opacity: 0;
   }
@@ -955,6 +961,7 @@
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
+
   .welcome-overlay,
   .welcome-overlay__title,
   .welcome-overlay__subtitle,

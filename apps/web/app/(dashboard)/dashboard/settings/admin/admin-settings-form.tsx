@@ -7,7 +7,7 @@ import { useTransition, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Shield, Percent } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 
 import { Input } from '@louez/ui'
 import {
@@ -74,7 +74,7 @@ export function AdminSettingsForm({
         form.setError('root', { message: result.error })
         return
       }
-      toast.success(t('saved'))
+      toastManager.add({ title: t('saved'), type: 'success' })
       form.reset(data)
       router.refresh()
     })

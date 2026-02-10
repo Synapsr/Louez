@@ -525,7 +525,6 @@ export function ActivityTimelineV2({
         {hasMoreActivities && (
           <Button
             variant="ghost"
-            size="sm"
             className="w-full mt-3 text-xs"
             onClick={() => setIsExpanded(!isExpanded)}
           >

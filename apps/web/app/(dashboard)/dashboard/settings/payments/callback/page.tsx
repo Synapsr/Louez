@@ -64,10 +64,8 @@ export default async function StripeCallbackPage() {
               ? t('callback.successDescription')
               : t('callback.incompleteDescription')}
           </p>
-          <Button asChild className="w-full">
-            <Link href="/dashboard/settings/payments">
+          <Button render={<Link href="/dashboard/settings/payments" />} className="w-full">
               {t('callback.backToSettings')}
-            </Link>
           </Button>
         </CardContent>
       </Card>

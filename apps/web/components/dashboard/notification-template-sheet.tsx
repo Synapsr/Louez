@@ -684,10 +684,10 @@ export function NotificationTemplateSheet({
 
         {/* Footer */}
         <div className="border-t px-6 py-4 flex justify-end gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             {tc('cancel')}
           </Button>
-          <Button size="sm" onClick={handleSave}>
+          <Button onClick={handleSave}>
             {tc('save')}
           </Button>
         </div>

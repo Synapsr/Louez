@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
 import { Button } from '@louez/ui'
 import { Label } from '@louez/ui'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreTheme } from '@louez/types'
@@ -151,11 +151,11 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error(t('fileTooLarge'))
+      toastManager.add({ title: t('fileTooLarge'), type: 'error' })
       return
     }
     if (!file.type.startsWith('image/')) {
-      toast.error(t('fileNotImage'))
+      toastManager.add({ title: t('fileNotImage'), type: 'error' })
       return
     }
 
@@ -169,7 +169,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
       if (url) {
         setLogoPreview(url)
       } else {
-        toast.error(tErrors('generic'))
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
         setLogoPreview(store.logoUrl)
       }
       setIsUploadingLogo(false)
@@ -186,11 +186,11 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     if (!file) return
 
     if (file.size > 2 * 1024 * 1024) {
-      toast.error(t('fileTooLarge'))
+      toastManager.add({ title: t('fileTooLarge'), type: 'error' })
       return
     }
     if (!file.type.startsWith('image/')) {
-      toast.error(t('fileNotImage'))
+      toastManager.add({ title: t('fileNotImage'), type: 'error' })
       return
     }
 
@@ -204,7 +204,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
       if (url) {
         setDarkLogoPreview(url)
       } else {
-        toast.error(tErrors('generic'))
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
         setDarkLogoPreview(store.darkLogoUrl)
       }
       setIsUploadingDarkLogo(false)
@@ -231,11 +231,11 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
       for (let i = 0; i < maxNew; i++) {
         const file = files[i]
         if (!file.type.startsWith('image/')) {
-          toast.error(t('fileNotImage'))
+          toastManager.add({ title: t('fileNotImage'), type: 'error' })
           continue
         }
         if (file.size > 5 * 1024 * 1024) {
-          toast.error(t('fileTooLarge'))
+          toastManager.add({ title: t('fileTooLarge'), type: 'error' })
           continue
         }
 
@@ -260,7 +260,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
         setHeroImages(prev => [...prev, ...successfulUploads])
       }
       if (successfulUploads.length < uploadPromises.length) {
-        toast.error(tErrors('generic'))
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
       }
 
       setIsUploadingHero(false)
@@ -321,10 +321,10 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
         throw new Error('Failed to update appearance')
       }
 
-      toast.success(t('updated'))
+      toastManager.add({ title: t('updated'), type: 'success' })
       router.refresh()
     } catch {
-      toast.error(tErrors('generic'))
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setIsLoading(false)
     }

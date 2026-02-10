@@ -194,7 +194,7 @@ export function SmsContent({
 
       {/* Cancelled Alert */}
       {showCancelledAlert && (
-        <Alert variant="destructive">
+        <Alert variant="error">
           <XCircle className="h-4 w-4" />
           <AlertDescription>{t('topup.cancelled')}</AlertDescription>
         </Alert>
@@ -207,14 +207,12 @@ export function SmsContent({
           <p className="text-muted-foreground">{t('description')}</p>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="min-w-[180px] justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="h-4 w-4" />
-                <span className="capitalize">{formatMonthYear(selectedYear, selectedMonth)}</span>
-              </div>
-              <ChevronDown className="h-4 w-4 opacity-50" />
-            </Button>
+          <DropdownMenuTrigger render={<Button variant="outline" className="min-w-[180px] justify-between" />}>
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4" />
+              <span className="capitalize">{formatMonthYear(selectedYear, selectedMonth)}</span>
+            </div>
+            <ChevronDown className="h-4 w-4 opacity-50" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[180px]">
             {availableMonths.map(({ year, month }) => {
@@ -254,13 +252,13 @@ export function SmsContent({
             </div>
             <div className="flex items-center gap-2">
               {isAtLimit && (
-                <Badge variant="destructive" className="flex items-center gap-1">
+                <Badge variant="error" className="flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
                   {t('quota.limitReached')}
                 </Badge>
               )}
               {isCurrentMonth && (
-                <Button size="sm" onClick={() => setShowTopupModal(true)}>
+                <Button onClick={() => setShowTopupModal(true)}>
                   <Plus className="mr-1.5 h-4 w-4" />
                   {t('quota.topup')}
                 </Button>
@@ -346,7 +344,7 @@ export function SmsContent({
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {quotaStatus.canTopup ? t('quota.topupMessage') : t('quota.upgradeMessage')}
               </p>
-              <Button variant="outline" size="sm" onClick={() => setShowTopupModal(true)}>
+              <Button variant="outline" onClick={() => setShowTopupModal(true)}>
                 {quotaStatus.canTopup ? t('quota.topupNow') : t('quota.upgradePlan')}
                 <Plus className="ml-1 h-3 w-3" />
               </Button>
@@ -359,7 +357,7 @@ export function SmsContent({
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 {t('quota.nearLimit', { count: planLimit ? planLimit - displayCurrent : 0 })}
               </p>
-              <Button variant="ghost" size="sm" onClick={() => setShowTopupModal(true)}>
+              <Button variant="ghost" onClick={() => setShowTopupModal(true)}>
                 {t('quota.topup')}
                 <Plus className="ml-1 h-3 w-3" />
               </Button>
@@ -454,7 +452,6 @@ export function SmsContent({
                       <TableCell>
                         <Button
                           variant="ghost"
-                          size="sm"
                           className="h-8 w-8 p-0"
                           onClick={(e) => {
                             e.stopPropagation()
@@ -517,7 +514,7 @@ export function SmsContent({
                     {t('status.sent')}
                   </Badge>
                 ) : (
-                  <Badge variant="destructive">
+                  <Badge variant="error">
                     <XCircle className="mr-1 h-3 w-3" />
                     {t('status.failed')}
                   </Badge>

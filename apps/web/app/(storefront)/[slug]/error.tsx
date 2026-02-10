@@ -37,11 +37,9 @@ export default function StorefrontError({
             <RefreshCw className="mr-2 h-4 w-4" />
             {t('retry')}
           </Button>
-          <Button asChild variant="outline" className="w-full">
-            <Link href="/">
+          <Button variant="outline" className="w-full" render={<Link href="/" />}>
               <Home className="mr-2 h-4 w-4" />
               {t('backToHome')}
-            </Link>
           </Button>
         </CardContent>
       </Card>

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 export function SuccessToast() {
@@ -18,14 +18,16 @@ export function SuccessToast() {
       hasShown.current = true
 
       if (successType === 'payment') {
-        toast.success(t('successToast.payment'), {
+        toastManager.add({
+          title: t('successToast.payment'),
           description: t('successToast.paymentDescription'),
-          duration: 5000,
+          type: 'success',
         })
       } else if (successType === 'deposit') {
-        toast.success(t('successToast.deposit'), {
+        toastManager.add({
+          title: t('successToast.deposit'),
           description: t('successToast.depositDescription'),
-          duration: 5000,
+          type: 'success',
         })
       }
 

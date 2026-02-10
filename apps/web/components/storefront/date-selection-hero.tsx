@@ -486,18 +486,16 @@ export function DateSelectionHero({
             )}>
               {/* Start Date */}
               <Popover open={startDateOpen} onOpenChange={handleStartDateOpenChange}>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       "flex-1 flex items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
                       !startDate && "text-muted-foreground"
                     )}
-                  >
+                  />}>
                     <CalendarIcon className="h-4 w-4 shrink-0" />
                     <span className="font-medium">
                       {startDate ? format(startDate, 'EEE d MMM', { locale: fr }) : t('startDate')}
                     </span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -514,16 +512,14 @@ export function DateSelectionHero({
               {/* Start Time */}
               <div className="w-px bg-border" />
               <Popover open={startTimeOpen} onOpenChange={handleStartTimeOpenChange}>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       "flex items-center gap-2 px-4 py-3 hover:bg-muted/50 transition-colors min-w-[100px]",
                       activeField === 'startTime' && "bg-muted/30"
                     )}
-                  >
+                  />}>
                     <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="font-medium">{startTime}</span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-0" align="start">
                   <TimeSelector value={startTime} onSelect={handleStartTimeSelect} slots={startTimeSlots} />
@@ -548,18 +544,16 @@ export function DateSelectionHero({
             )}>
               {/* End Date */}
               <Popover open={endDateOpen} onOpenChange={handleEndDateOpenChange}>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       "flex-1 flex items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors",
                       !endDate && "text-muted-foreground"
                     )}
-                  >
+                  />}>
                     <CalendarIcon className="h-4 w-4 shrink-0" />
                     <span className="font-medium">
                       {endDate ? format(endDate, 'EEE d MMM', { locale: fr }) : t('endDate')}
                     </span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
@@ -576,16 +570,14 @@ export function DateSelectionHero({
               {/* End Time */}
               <div className="w-px bg-border" />
               <Popover open={endTimeOpen} onOpenChange={handleEndTimeOpenChange}>
-                <PopoverTrigger asChild>
-                  <button
+                <PopoverTrigger render={<button
                     className={cn(
                       "flex items-center gap-2 px-4 py-3 hover:bg-muted/50 transition-colors min-w-[100px]",
                       activeField === 'endTime' && "bg-muted/30"
                     )}
-                  >
+                  />}>
                     <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
                     <span className="font-medium">{endTime}</span>
-                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-44 p-0" align="end">
                   <TimeSelector
@@ -650,7 +642,6 @@ export function DateSelectionHero({
               <Button
                 key={index}
                 variant="outline"
-                size="sm"
                 onClick={option.onClick}
                 className="text-xs"
               >

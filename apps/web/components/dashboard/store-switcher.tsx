@@ -12,6 +12,7 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
+  CommandGroupLabel,
   CommandInput,
   CommandItem,
   CommandList,
@@ -136,15 +137,14 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
+      <PopoverTrigger render={<Button
           variant="ghost"
           role="combobox"
           aria-expanded={open}
           aria-label={t('selectStore')}
           className="w-full justify-between px-3 py-2 h-auto"
           disabled={isPending}
-        >
+        />}>
           <div className="flex items-center gap-3 min-w-0">
             <StoreLogo
               logoUrl={currentStore?.logoUrl || null}
@@ -159,7 +159,6 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             </div>
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[260px] p-0" align="start" sideOffset={8}>
         <Command>
@@ -168,16 +167,17 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
           )}
           <CommandList>
             <CommandEmpty>{t('noStoresFound')}</CommandEmpty>
-            <CommandGroup heading={t('yourStores')}>
+            <CommandGroup>
+              <CommandGroupLabel>{t('yourStores')}</CommandGroupLabel>
               {stores.map((store) => (
                 <CommandItem
                   key={store.id}
                   value={store.id}
-                  onSelect={() => handleStoreSelect(store.id)}
+                  onClick={() => handleStoreSelect(store.id)}
                   className="cursor-pointer py-2"
                 >
                   <div className="mr-3">
-                    <StoreLogo logoUrl={store.logoUrl} name={store.name} size="sm" />
+                    <StoreLogo logoUrl={store.logoUrl} name={store.name} />
                   </div>
                   <div className="flex flex-col flex-1 min-w-0">
                     <span className="truncate text-sm">{store.name}</span>
@@ -194,7 +194,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                 <CommandSeparator />
                 <CommandGroup>
                   <CommandItem
-                    onSelect={handleMultiStoreView}
+                    onClick={handleMultiStoreView}
                     className="cursor-pointer py-2"
                   >
                     <div className="flex h-6 w-6 items-center justify-center mr-3 rounded-md bg-primary/10">
@@ -208,7 +208,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             <CommandSeparator />
             <CommandGroup>
               <CommandItem
-                onSelect={handleCreateStore}
+                onClick={handleCreateStore}
                 className="cursor-pointer py-2"
               >
                 <div className="flex h-6 w-6 items-center justify-center mr-3 rounded-md border border-dashed">

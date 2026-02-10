@@ -1,24 +1,28 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import * as LabelPrimitive from "@radix-ui/react-label"
+import { mergeProps } from "@base-ui/react/merge-props";
+import { useRender } from "@base-ui/react/use-render";
 
-import { cn } from "@louez/utils"
+import { cn } from "@louez/utils";
 
 function Label({
   className,
+  render,
   ...props
-}: React.ComponentProps<typeof LabelPrimitive.Root>) {
-  return (
-    <LabelPrimitive.Root
-      data-slot="label"
-      className={cn(
-        "flex items-center gap-2 text-sm leading-none font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
-        className
-      )}
-      {...props}
-    />
-  )
+}: useRender.ComponentProps<"label">) {
+  const defaultProps = {
+    className: cn(
+      "inline-flex items-center gap-2 text-base/4.5 sm:text-sm/4 font-medium text-foreground",
+      className,
+    ),
+    "data-slot": "label",
+  };
+
+  return useRender({
+    defaultTagName: "label",
+    props: mergeProps<"label">(defaultProps, props),
+    render,
+  });
 }
 
-export { Label }
+export { Label };

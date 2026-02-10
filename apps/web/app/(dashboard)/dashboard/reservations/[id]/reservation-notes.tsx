@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -42,13 +42,13 @@ export function ReservationNotes({
     try {
       const result = await updateReservationNotes(reservationId, notes)
       if (result.error) {
-        toast.error(t(result.error))
+        toastManager.add({ title: t(result.error), type: 'error' })
       } else {
-        toast.success(t('notes.saved'))
+        toastManager.add({ title: t('notes.saved'), type: 'success' })
         setHasChanges(false)
       }
     } catch {
-      toast.error(t('notes.error'))
+      toastManager.add({ title: t('notes.error'), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -73,7 +73,6 @@ export function ReservationNotes({
           <Button
             onClick={handleSave}
             disabled={isLoading}
-            size="sm"
             className="w-full"
           >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
