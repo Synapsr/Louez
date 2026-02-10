@@ -1,45 +1,48 @@
-'use client'
+'use client';
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { useTranslations } from 'next-intl'
-import { Check, ChevronsUpDown, Plus, Shield, Building2 } from 'lucide-react'
+import { useMemo, useState, useTransition } from 'react';
 
-import { cn } from '@louez/utils'
-import { Button } from '@louez/ui'
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+
+import { Building2, Check, ChevronsUpDown, Plus, Shield } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button, CommandEmpty, PopoverPopup } from '@louez/ui';
 import {
   Command,
-  CommandEmpty,
   CommandGroup,
   CommandGroupLabel,
   CommandInput,
   CommandItem,
   CommandList,
   CommandSeparator,
-} from '@louez/ui'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@louez/ui'
-import { switchStore } from '@/app/(dashboard)/dashboard/actions'
+} from '@louez/ui';
+import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
+import { cn } from '@louez/utils';
+
+import { switchStore } from '@/app/(dashboard)/dashboard/actions';
 
 function StoreLogo({
   logoUrl,
   name,
   size = 'md',
 }: {
-  logoUrl: string | null
-  name: string
-  size?: 'sm' | 'md'
+  logoUrl: string | null;
+  name: string;
+  size?: 'sm' | 'md';
 }) {
-  const dimensions = size === 'sm' ? 'h-6 w-10' : 'h-8 w-12'
-  const textSize = size === 'sm' ? 'text-[10px]' : 'text-sm'
+  const dimensions = size === 'sm' ? 'size-6' : 'size-8';
+  const textSize = size === 'sm' ? 'text-[10px]' : 'text-sm';
 
   if (logoUrl) {
     return (
-      <div className={cn('relative shrink-0', dimensions)}>
+      <div
+        className={cn(
+          'relative shrink-0 overflow-hidden rounded-md',
+          dimensions,
+        )}
+      >
         <Image
           src={logoUrl}
           alt={name}
@@ -48,41 +51,41 @@ function StoreLogo({
           sizes={size === 'sm' ? '40px' : '48px'}
         />
       </div>
-    )
+    );
   }
 
   return (
     <div
       className={cn(
-        'flex items-center justify-center shrink-0 rounded-md bg-primary/10 text-primary font-medium',
-        size === 'sm' ? 'h-6 w-6' : 'h-8 w-8',
-        textSize
+        'bg-primary/10 text-primary flex shrink-0 items-center justify-center rounded-md font-medium',
+        size === 'sm' ? 'size-6' : 'size-8',
+        textSize,
       )}
     >
       {name.charAt(0).toUpperCase()}
     </div>
-  )
+  );
 }
 
 interface StoreWithRole {
-  id: string
-  name: string
-  slug: string
-  logoUrl: string | null
-  role: 'owner' | 'member' | 'platform_admin'
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl: string | null;
+  role: 'owner' | 'member' | 'platform_admin';
 }
 
 interface StoreSwitcherProps {
-  stores: StoreWithRole[]
-  currentStoreId: string
+  stores: StoreWithRole[];
+  currentStoreId: string;
 }
 
 function RoleBadge({
   role,
   t,
 }: {
-  role: StoreWithRole['role']
-  t: ReturnType<typeof useTranslations<'dashboard.storeSwitcher'>>
+  role: StoreWithRole['role'];
+  t: ReturnType<typeof useTranslations<'dashboard.storeSwitcher'>>;
 }) {
   if (role === 'platform_admin') {
     return (
@@ -90,101 +93,132 @@ function RoleBadge({
         <Shield className="h-3 w-3" />
         {t('roles.platform_admin')}
       </span>
-    )
+    );
   }
 
   return (
-    <span className="text-xs text-muted-foreground capitalize">
+    <span className="text-muted-foreground text-xs capitalize">
       {t(`roles.${role}`)}
     </span>
-  )
+  );
 }
 
 export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
-  const t = useTranslations('dashboard.storeSwitcher')
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const t = useTranslations('dashboard.storeSwitcher');
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-  const currentStore = stores.find((s) => s.id === currentStoreId)
+  const currentStore = stores.find((s) => s.id === currentStoreId);
+
+  const filteredStores = useMemo(() => {
+    if (!searchQuery) return stores;
+    const query = searchQuery.toLowerCase();
+    return stores.filter((store) => store.name.toLowerCase().includes(query));
+  }, [stores, searchQuery]);
 
   const handleStoreSelect = (storeId: string) => {
     if (storeId === currentStoreId) {
-      setOpen(false)
-      return
+      setOpen(false);
+      return;
     }
 
     startTransition(async () => {
-      const result = await switchStore(storeId)
+      const result = await switchStore(storeId);
       if (result.success) {
-        setOpen(false)
-        router.refresh()
+        setOpen(false);
+        router.refresh();
       }
-    })
-  }
+    });
+  };
 
   const handleCreateStore = () => {
-    setOpen(false)
-    router.push('/onboarding?new=true')
-  }
+    setOpen(false);
+    router.push('/onboarding?new=true');
+  };
 
   const handleMultiStoreView = () => {
-    setOpen(false)
-    router.push('/multi-store')
-  }
+    setOpen(false);
+    router.push('/multi-store');
+  };
 
-  const showMultiStore = stores.length >= 2
+  const showMultiStore = stores.length >= 2;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<Button
-          variant="ghost"
-          role="combobox"
-          aria-expanded={open}
-          aria-label={t('selectStore')}
-          className="w-full justify-between px-3 py-2 h-auto"
-          disabled={isPending}
-        />}>
-          <div className="flex items-center gap-3 min-w-0">
-            <StoreLogo
-              logoUrl={currentStore?.logoUrl || null}
-              name={currentStore?.name || '?'}
-              size="md"
-            />
-            <div className="flex flex-col items-start min-w-0">
-              <span className="truncate font-medium text-sm">
-                {currentStore?.name || t('selectStore')}
-              </span>
-              {currentStore && <RoleBadge role={currentStore.role} t={t} />}
-            </div>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) setSearchQuery('');
+      }}
+    >
+      <PopoverTrigger
+        render={
+          <Button
+            variant="ghost"
+            role="combobox"
+            aria-expanded={open}
+            aria-label={t('selectStore')}
+            className="h-auto w-full justify-between px-3 py-2"
+            disabled={isPending}
+          />
+        }
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <StoreLogo
+            logoUrl={currentStore?.logoUrl || null}
+            name={currentStore?.name || '?'}
+            size="md"
+          />
+          <div className="flex min-w-0 flex-col items-start">
+            <span className="truncate text-sm font-medium">
+              {currentStore?.name || t('selectStore')}
+            </span>
+            {currentStore && <RoleBadge role={currentStore.role} t={t} />}
           </div>
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </div>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent className="w-[260px] p-0" align="start" sideOffset={8}>
-        <Command>
+      <PopoverPopup
+        className="w-[260px] p-0 *:pt-0 *:pb-1.5"
+        align="start"
+        sideOffset={8}
+      >
+        <Command open filter={null}>
           {stores.length > 5 && (
-            <CommandInput placeholder={t('searchStores')} className="h-9" />
+            <div className="border-b py-1.5">
+              <CommandInput
+                placeholder={t('searchStores')}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           )}
-          <CommandList>
-            <CommandEmpty>{t('noStoresFound')}</CommandEmpty>
+          <CommandList className="max-h-[300px]">
+            {filteredStores.length === 0 && searchQuery && (
+              <div className="text-muted-foreground py-6 text-center text-sm">
+                {t('noStoresFound')}
+              </div>
+            )}
             <CommandGroup>
               <CommandGroupLabel>{t('yourStores')}</CommandGroupLabel>
-              {stores.map((store) => (
+              {filteredStores.map((store) => (
                 <CommandItem
                   key={store.id}
-                  value={store.id}
+                  value={store.name}
                   onClick={() => handleStoreSelect(store.id)}
                   className="cursor-pointer py-2"
                 >
                   <div className="mr-3">
                     <StoreLogo logoUrl={store.logoUrl} name={store.name} />
                   </div>
-                  <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex min-w-0 flex-1 flex-col">
                     <span className="truncate text-sm">{store.name}</span>
                     <RoleBadge role={store.role} t={t} />
                   </div>
                   {store.id === currentStoreId && (
-                    <Check className="ml-2 h-4 w-4 text-primary shrink-0" />
+                    <Check className="text-primary ml-2 h-4 w-4 shrink-0" />
                   )}
                 </CommandItem>
               ))}
@@ -197,8 +231,8 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                     onClick={handleMultiStoreView}
                     className="cursor-pointer py-2"
                   >
-                    <div className="flex h-6 w-6 items-center justify-center mr-3 rounded-md bg-primary/10">
-                      <Building2 className="h-3.5 w-3.5 text-primary" />
+                    <div className="bg-primary/10 mr-3 flex size-6 items-center justify-center rounded-md md:size-8">
+                      <Building2 className="text-primary h-4" />
                     </div>
                     <span className="text-sm">{t('multiStoreView')}</span>
                   </CommandItem>
@@ -211,7 +245,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
                 onClick={handleCreateStore}
                 className="cursor-pointer py-2"
               >
-                <div className="flex h-6 w-6 items-center justify-center mr-3 rounded-md border border-dashed">
+                <div className="mr-3 flex h-6 w-6 items-center justify-center rounded-md border border-dashed">
                   <Plus className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-sm">{t('createNewStore')}</span>
@@ -219,7 +253,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             </CommandGroup>
           </CommandList>
         </Command>
-      </PopoverContent>
+      </PopoverPopup>
     </Popover>
-  )
+  );
 }
