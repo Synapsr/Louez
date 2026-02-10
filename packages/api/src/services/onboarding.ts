@@ -30,6 +30,10 @@ interface CompleteOnboardingParams {
   }) => Promise<void>;
 }
 
+interface GetOnboardingDraftParams {
+  storeId: string;
+}
+
 interface UploadOnboardingImageParams {
   storeId: string;
   image: string;
@@ -135,6 +139,54 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
   }
 
   return { success: true as const };
+}
+
+export async function getOnboardingDraft(params: GetOnboardingDraftParams) {
+  const { storeId } = params;
+
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, storeId),
+  });
+
+  if (!store) {
+    throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound');
+  }
+
+  const settings = store.settings;
+  const country = settings?.country ?? null;
+  const currency = settings?.currency ?? null;
+
+  const latitude =
+    store.latitude !== null && store.latitude !== undefined
+      ? Number(store.latitude)
+      : null;
+  const longitude =
+    store.longitude !== null && store.longitude !== undefined
+      ? Number(store.longitude)
+      : null;
+
+  const theme = store.theme;
+  const primaryColor = theme?.primaryColor ?? '#0066FF';
+  const mode = theme?.mode === 'dark' ? 'dark' : 'light';
+
+  return {
+    store: {
+      name: store.name,
+      slug: store.slug,
+      country,
+      currency,
+      address: store.address ?? '',
+      latitude: Number.isFinite(latitude) ? latitude : null,
+      longitude: Number.isFinite(longitude) ? longitude : null,
+      email: store.email ?? '',
+      phone: store.phone ?? '',
+    },
+    branding: {
+      logoUrl: store.logoUrl ?? '',
+      primaryColor,
+      theme: mode as 'light' | 'dark',
+    },
+  };
 }
 
 export async function uploadOnboardingImage(
