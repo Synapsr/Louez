@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useAppForm } from '@/hooks/form/form'
+import { useStore } from '@tanstack/react-form'
 import { z } from 'zod'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -24,7 +24,7 @@ import {
   Truck,
   Store,
 } from 'lucide-react'
-import { toastManager } from '@louez/ui'
+import { toastManager, Label } from '@louez/ui'
 import { useTranslations, useLocale } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -32,14 +32,6 @@ import { Input } from '@louez/ui'
 import { Textarea } from '@louez/ui'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Checkbox } from '@louez/ui'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
 import { Separator } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -245,10 +237,7 @@ export function CheckoutForm({
     }
   })
 
-  type CheckoutFormData = z.infer<typeof checkoutSchema>
-
-  const form = useForm<CheckoutFormData>({
-    resolver: zodResolver(checkoutSchema),
+  const form = useAppForm({
     defaultValues: {
       email: '',
       firstName: '',
@@ -262,25 +251,146 @@ export function CheckoutForm({
       notes: '',
       acceptCgv: false,
     },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    validators: { onSubmit: checkoutSchema as any },
+    onSubmit: async ({ value }) => {
+      if (items.length === 0) {
+        toastManager.add({ title: t('emptyCart'), type: 'error' })
+        return
+      }
+
+      setIsSubmitting(true)
+
+      try {
+        // Calculate total with delivery fee
+        const totalWithDelivery = getTotal() + (deliveryOption === 'delivery' ? deliveryFee : 0)
+
+        const result = await createReservation({
+          storeId,
+          customer: {
+            email: value.email,
+            firstName: value.firstName,
+            lastName: value.lastName,
+            phone: value.phone,
+            customerType: value.isBusinessCustomer ? 'business' : 'individual',
+            companyName: value.isBusinessCustomer ? value.companyName : undefined,
+            address: value.address,
+            city: value.city,
+            postalCode: value.postalCode,
+          },
+          items: items.map((item) => {
+            // Calculate effective unit price with tiered pricing
+            const itemPricingMode = item.productPricingMode || pricingMode
+            const duration = calculateDuration(item.startDate, item.endDate, itemPricingMode)
+
+            let effectiveUnitPrice = item.price
+            if (item.pricingTiers && item.pricingTiers.length > 0) {
+              const pricing: ProductPricing = {
+                basePrice: item.price,
+                deposit: item.deposit,
+                pricingMode: itemPricingMode,
+                tiers: item.pricingTiers.map((t, i) => ({
+                  ...t,
+                  displayOrder: i,
+                })),
+              }
+              const result = calculateRentalPrice(pricing, duration, item.quantity)
+              effectiveUnitPrice = result.effectivePricePerUnit
+            }
+
+            return {
+              productId: item.productId,
+              quantity: item.quantity,
+              startDate: item.startDate,
+              endDate: item.endDate,
+              unitPrice: effectiveUnitPrice,
+              depositPerUnit: item.deposit,
+              productSnapshot: {
+                name: item.productName,
+                description: null,
+                images: item.productImage ? [item.productImage] : [],
+              },
+            }
+          }),
+          customerNotes: value.notes,
+          subtotalAmount: getSubtotal(),
+          depositAmount: getTotalDeposit(),
+          totalAmount: totalWithDelivery,
+          locale,
+          // Delivery data
+          delivery: deliveryOption === 'delivery' && deliveryAddress.latitude && deliveryAddress.longitude
+            ? {
+                option: 'delivery',
+                address: deliveryAddress.address,
+                city: deliveryAddress.city,
+                postalCode: deliveryAddress.postalCode,
+                country: deliveryAddress.country,
+                latitude: deliveryAddress.latitude,
+                longitude: deliveryAddress.longitude,
+              }
+            : { option: 'pickup' },
+        })
+
+        if (result.error) {
+          // Translate the error message if it's an i18n key
+          let errorMessage = result.error
+          if (result.error.startsWith('errors.')) {
+            const errorKey = result.error.replace('errors.', '')
+            // Filter out undefined/null values from errorParams for translation
+            const params: Record<string, string | number> = {}
+            if (result.errorParams) {
+              for (const [key, value] of Object.entries(result.errorParams)) {
+                if (value !== undefined && value !== null && (typeof value === 'string' || typeof value === 'number')) {
+                  params[key] = value
+                }
+              }
+            }
+            errorMessage = tErrors(errorKey, params)
+          }
+          toastManager.add({ title: errorMessage, type: 'error' })
+          return
+        }
+
+        clearCart()
+
+        if (reservationMode === 'payment' && result.paymentUrl) {
+          window.location.href = result.paymentUrl
+        } else {
+          toastManager.add({ title: t('requestSent'), type: 'success' })
+          router.push(getUrl(`/confirmation/${result.reservationId}`))
+        }
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
   })
 
-  const isBusinessCustomer = form.watch('isBusinessCustomer')
+  const isBusinessCustomer = useStore(form.store, (s) => s.values.isBusinessCustomer)
 
   const currentStepIndex = steps.findIndex((s) => s.id === currentStep)
 
   const validateCurrentStep = async (): Promise<boolean> => {
     if (currentStep === 'contact') {
-      const fieldsToValidate: (keyof CheckoutFormData)[] = ['firstName', 'lastName', 'email', 'phone']
-      if (form.getValues('isBusinessCustomer')) {
+      const fieldsToValidate: string[] = ['firstName', 'lastName', 'email', 'phone']
+      if (form.getFieldValue('isBusinessCustomer')) {
         fieldsToValidate.push('companyName')
       }
-      return form.trigger(fieldsToValidate)
+      // Validate each field
+      const results = await Promise.all(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fieldsToValidate.map((fieldName) => form.validateField(fieldName as any, 'submit'))
+      )
+      // Check if any field has errors
+      return results.every((r) => r.length === 0)
     }
     if (currentStep === 'address') {
       return true // All optional
     }
     if (currentStep === 'confirm') {
-      return form.trigger('acceptCgv')
+      const result = await form.validateField('acceptCgv', 'submit')
+      return result.length === 0
     }
     return true
   }
@@ -299,119 +409,6 @@ export function CheckoutForm({
     const prevIndex = currentStepIndex - 1
     if (prevIndex >= 0) {
       setCurrentStep(steps[prevIndex].id)
-    }
-  }
-
-  const onSubmit = async (data: CheckoutFormData) => {
-    if (items.length === 0) {
-      toastManager.add({ title: t('emptyCart'), type: 'error' })
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      // Calculate total with delivery fee
-      const totalWithDelivery = getTotal() + (deliveryOption === 'delivery' ? deliveryFee : 0)
-
-      const result = await createReservation({
-        storeId,
-        customer: {
-          email: data.email,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          phone: data.phone,
-          customerType: data.isBusinessCustomer ? 'business' : 'individual',
-          companyName: data.isBusinessCustomer ? data.companyName : undefined,
-          address: data.address,
-          city: data.city,
-          postalCode: data.postalCode,
-        },
-        items: items.map((item) => {
-          // Calculate effective unit price with tiered pricing
-          const itemPricingMode = item.productPricingMode || pricingMode
-          const duration = calculateDuration(item.startDate, item.endDate, itemPricingMode)
-
-          let effectiveUnitPrice = item.price
-          if (item.pricingTiers && item.pricingTiers.length > 0) {
-            const pricing: ProductPricing = {
-              basePrice: item.price,
-              deposit: item.deposit,
-              pricingMode: itemPricingMode,
-              tiers: item.pricingTiers.map((t, i) => ({
-                ...t,
-                displayOrder: i,
-              })),
-            }
-            const result = calculateRentalPrice(pricing, duration, item.quantity)
-            effectiveUnitPrice = result.effectivePricePerUnit
-          }
-
-          return {
-            productId: item.productId,
-            quantity: item.quantity,
-            startDate: item.startDate,
-            endDate: item.endDate,
-            unitPrice: effectiveUnitPrice,
-            depositPerUnit: item.deposit,
-            productSnapshot: {
-              name: item.productName,
-              description: null,
-              images: item.productImage ? [item.productImage] : [],
-            },
-          }
-        }),
-        customerNotes: data.notes,
-        subtotalAmount: getSubtotal(),
-        depositAmount: getTotalDeposit(),
-        totalAmount: totalWithDelivery,
-        locale,
-        // Delivery data
-        delivery: deliveryOption === 'delivery' && deliveryAddress.latitude && deliveryAddress.longitude
-          ? {
-              option: 'delivery',
-              address: deliveryAddress.address,
-              city: deliveryAddress.city,
-              postalCode: deliveryAddress.postalCode,
-              country: deliveryAddress.country,
-              latitude: deliveryAddress.latitude,
-              longitude: deliveryAddress.longitude,
-            }
-          : { option: 'pickup' },
-      })
-
-      if (result.error) {
-        // Translate the error message if it's an i18n key
-        let errorMessage = result.error
-        if (result.error.startsWith('errors.')) {
-          const errorKey = result.error.replace('errors.', '')
-          // Filter out undefined/null values from errorParams for translation
-          const params: Record<string, string | number> = {}
-          if (result.errorParams) {
-            for (const [key, value] of Object.entries(result.errorParams)) {
-              if (value !== undefined && value !== null && (typeof value === 'string' || typeof value === 'number')) {
-                params[key] = value
-              }
-            }
-          }
-          errorMessage = tErrors(errorKey, params)
-        }
-        toastManager.add({ title: errorMessage, type: 'error' })
-        return
-      }
-
-      clearCart()
-
-      if (reservationMode === 'payment' && result.paymentUrl) {
-        window.location.href = result.paymentUrl
-      } else {
-        toastManager.add({ title: t('requestSent'), type: 'success' })
-        router.push(getUrl(`/confirmation/${result.reservationId}`))
-      }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -489,8 +486,7 @@ export function CheckoutForm({
       <div className="grid lg:grid-cols-5 gap-6">
         {/* Form */}
         <div className="lg:col-span-3">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form onSubmit={(e) => { e.preventDefault(); e.stopPropagation(); form.handleSubmit() }}>
               {/* Step 1: Contact */}
               {currentStep === 'contact' && (
                 <Card>
@@ -501,105 +497,112 @@ export function CheckoutForm({
                     </div>
 
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('firstName')}</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('firstNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      <form.Field name="firstName">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('firstName')}</Label>
+                            <Input
+                              placeholder={t('firstNamePlaceholder')}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('lastName')}</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('lastNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      </form.Field>
+                      <form.Field name="lastName">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('lastName')}</Label>
+                            <Input
+                              placeholder={t('lastNamePlaceholder')}
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
+                      </form.Field>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('email')}</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder={t('emailPlaceholder')} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <form.Field name="email">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label>{t('email')}</Label>
+                          <Input
+                            type="email"
+                            placeholder={t('emailPlaceholder')}
+                            value={field.state.value}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          )}
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('phone')}</FormLabel>
-                          <FormControl>
-                            <PhoneInput
-                              value={field.value}
-                              onChange={field.onChange}
-                              placeholder={t('phonePlaceholder')}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <form.Field name="phone">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label>{t('phone')}</Label>
+                          <PhoneInput
+                            value={field.state.value}
+                            onChange={(value) => field.handleChange(value)}
+                            placeholder={t('phonePlaceholder')}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          )}
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
                     {/* Business customer checkbox - simple inline style */}
-                    <FormField
-                      control={form.control}
-                      name="isBusinessCustomer"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={(checked) => {
-                                field.onChange(checked)
-                                if (!checked) {
-                                  form.setValue('companyName', '')
-                                }
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
+                    <form.Field name="isBusinessCustomer">
+                      {(field) => (
+                        <div className="flex flex-row items-center space-x-2 space-y-0">
+                          <Checkbox
+                            checked={field.state.value}
+                            onCheckedChange={(checked) => {
+                              field.handleChange(checked as boolean)
+                              if (!checked) {
+                                form.setFieldValue('companyName', '')
+                              }
+                            }}
+                          />
+                          <Label className="text-sm font-normal cursor-pointer">
                             {t('isBusinessCustomer')}
-                          </FormLabel>
-                        </FormItem>
+                          </Label>
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
                     {/* Company name - only shown for business customers */}
                     {isBusinessCustomer && (
-                      <FormField
-                        control={form.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('companyName')} *</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('companyNamePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      <form.Field name="companyName">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('companyName')} *</Label>
+                            <Input
+                              placeholder={t('companyNamePlaceholder')}
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
+                      </form.Field>
                     )}
 
                     <div className="pt-4">
@@ -837,62 +840,75 @@ export function CheckoutForm({
                       <p className="text-sm text-muted-foreground">{t('addressDescription')}</p>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('address')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder={t('addressPlaceholder')} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <form.Field name="address">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label>{t('address')}</Label>
+                          <Input
+                            placeholder={t('addressPlaceholder')}
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          )}
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="postalCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('postalCode')}</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('postalCodePlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      <form.Field name="postalCode">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('postalCode')}</Label>
+                            <Input
+                              placeholder={t('postalCodePlaceholder')}
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('city')}</FormLabel>
-                            <FormControl>
-                              <Input placeholder={t('cityPlaceholder')} {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      </form.Field>
+                      <form.Field name="city">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label>{t('city')}</Label>
+                            <Input
+                              placeholder={t('cityPlaceholder')}
+                              value={field.state.value ?? ''}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            )}
+                          </div>
                         )}
-                      />
+                      </form.Field>
                     </div>
 
-                    <FormField
-                      control={form.control}
-                      name="notes"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('notes')}</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder={t('notesPlaceholder')} rows={3} {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <form.Field name="notes">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label>{t('notes')}</Label>
+                          <Textarea
+                            placeholder={t('notesPlaceholder')}
+                            rows={3}
+                            value={field.state.value ?? ''}
+                            onChange={(e) => field.handleChange(e.target.value)}
+                            onBlur={field.handleBlur}
+                          />
+                          {field.state.meta.errors.length > 0 && (
+                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          )}
+                        </div>
                       )}
-                    />
+                    </form.Field>
 
                     <div className="pt-4 flex gap-3">
                       <Button type="button" variant="outline" onClick={goToPreviousStep} className="flex-1">
@@ -929,20 +945,20 @@ export function CheckoutForm({
                           {t('modify')}
                         </Button>
                       </div>
-                      {form.getValues('isBusinessCustomer') && form.getValues('companyName') && (
-                        <p className="text-sm font-medium">{form.getValues('companyName')}</p>
+                      {form.getFieldValue('isBusinessCustomer') && form.getFieldValue('companyName') && (
+                        <p className="text-sm font-medium">{form.getFieldValue('companyName')}</p>
                       )}
                       <p className="text-sm">
-                        {form.getValues('firstName')} {form.getValues('lastName')}
-                        {form.getValues('isBusinessCustomer') && (
+                        {form.getFieldValue('firstName')} {form.getFieldValue('lastName')}
+                        {form.getFieldValue('isBusinessCustomer') && (
                           <span className="text-muted-foreground"> ({t('contact')})</span>
                         )}
                       </p>
-                      <p className="text-sm text-muted-foreground">{form.getValues('email')}</p>
-                      <p className="text-sm text-muted-foreground">{form.getValues('phone')}</p>
-                      {form.getValues('address') && (
+                      <p className="text-sm text-muted-foreground">{form.getFieldValue('email')}</p>
+                      <p className="text-sm text-muted-foreground">{form.getFieldValue('phone')}</p>
+                      {form.getFieldValue('address') && (
                         <p className="text-sm text-muted-foreground">
-                          {form.getValues('address')}, {form.getValues('postalCode')} {form.getValues('city')}
+                          {form.getFieldValue('address')}, {form.getFieldValue('postalCode')} {form.getFieldValue('city')}
                         </p>
                       )}
                     </div>
@@ -958,21 +974,22 @@ export function CheckoutForm({
                         </div>
                       )}
 
-                      <FormField
-                        control={form.control}
-                        name="acceptCgv"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
+                      <form.Field name="acceptCgv">
+                        {(field) => (
+                          <div className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
+                            <Checkbox
+                              checked={field.state.value}
+                              onCheckedChange={(checked) => field.handleChange(checked as boolean)}
+                            />
                             <div className="space-y-1 leading-none">
-                              <FormLabel className="cursor-pointer">{t('acceptCgv')}</FormLabel>
-                              <FormMessage />
+                              <Label className="cursor-pointer">{t('acceptCgv')}</Label>
+                              {field.state.meta.errors.length > 0 && (
+                                <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                              )}
                             </div>
-                          </FormItem>
+                          </div>
                         )}
-                      />
+                      </form.Field>
                     </div>
 
                     <div className="pt-2 flex gap-3">
@@ -1005,7 +1022,6 @@ export function CheckoutForm({
                 </Card>
               )}
             </form>
-          </Form>
         </div>
 
         {/* Order Summary - Always visible */}

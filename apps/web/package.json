@@ -14,7 +14,6 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.964.0",
     "@aws-sdk/s3-request-presigner": "^3.964.0",
-    "@hookform/resolvers": "^5.2.2",
     "@louez/api": "workspace:*",
     "@louez/auth": "workspace:*",
     "@louez/config": "workspace:*",
@@ -33,6 +32,7 @@
     "@stripe/react-stripe-js": "^5.5.0",
     "@stripe/stripe-js": "^8.6.4",
     "@t3-oss/env-nextjs": "^0.13.10",
+    "@tanstack/react-form": "^1.28.0",
     "@tanstack/react-query": "^5.90.20",
     "@tiptap/extension-link": "^3.15.3",
     "@tiptap/extension-placeholder": "^3.15.3",
@@ -63,7 +63,6 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "19.2.3",
     "react-email": "^5.1.1",
-    "react-hook-form": "^7.70.0",
     "recharts": "^3.6.0",
     "sharp": "^0.34.5",
     "stripe": "^20.1.1",
