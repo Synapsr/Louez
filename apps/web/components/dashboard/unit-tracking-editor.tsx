@@ -188,7 +188,7 @@ export function UnitTrackingEditor({
     <div className="space-y-4">
       {/* Quantity field (only shown when tracking is disabled) */}
       {!trackUnits && (
-        <div className="space-y-2">
+        <div className="grid gap-2">
           <Label htmlFor="quantity">{t('quantityLabel')}</Label>
           <Input
             id="quantity"

@@ -1,16 +1,25 @@
-'use client'
+'use client';
 
-import { useFieldContext } from '@/hooks/form/form-context'
-import { Input, Label, type InputProps } from '@louez/ui'
+import { Input, type InputProps, Label } from '@louez/ui';
+
+import { useFieldContext } from '@/hooks/form/form-context';
 
 export function FormInput({
   label,
   description,
   suffix,
+  className,
   ...props
-}: { label?: string; description?: string; suffix?: React.ReactNode } & InputProps) {
-  const field = useFieldContext<string>()
-  const errors = field.state.meta.errors
+}: {
+  label?: string;
+  description?: string;
+  suffix?: React.ReactNode;
+} & InputProps) {
+  const field = useFieldContext<string>();
+  const errors = field.state.meta.errors;
+  const error = errors[0];
+
+  console.log({ error, errors });
 
   const inputElement = (
     <Input
@@ -20,10 +29,10 @@ export function FormInput({
       onChange={(e) => field.handleChange(e.target.value)}
       onBlur={field.handleBlur}
       aria-invalid={errors.length > 0}
-      {...(suffix ? { className: `pr-8 ${props.className ?? ''}`.trim() } : {})}
       {...props}
+      className={suffix ? `pr-8 ${className ?? ''}`.trim() : className}
     />
-  )
+  );
 
   return (
     <div className="grid gap-2">
@@ -35,7 +44,7 @@ export function FormInput({
       {suffix ? (
         <div className="relative">
           {inputElement}
-          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">
+          <span className="text-muted-foreground pointer-events-none absolute inset-y-0 right-3 flex items-center">
             {suffix}
           </span>
         </div>
@@ -45,11 +54,11 @@ export function FormInput({
       {description && (
         <p className="text-muted-foreground text-sm">{description}</p>
       )}
-      {errors.length > 0 && (
+      {error && (
         <p className="text-destructive text-sm">
-          {typeof errors[0] === 'string' ? errors[0] : String(errors[0])}
+          {typeof error === 'string' ? error : String(error.message)}
         </p>
       )}
     </div>
-  )
+  );
 }

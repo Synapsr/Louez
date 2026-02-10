@@ -679,6 +679,7 @@
         "informationDescription": "Dai un nome e una descrizione al tuo prodotto",
         "descriptionHint": "Descrivi le caratteristiche, le condizioni e i termini d'uso",
         "categoryOptional": "Opzionale - aiuta i clienti a trovare il tuo prodotto",
+        "noCategories": "Nessuna categoria creata",
         "pricingDescription": "Imposta il prezzo di noleggio e lo stock disponibile",
         "pricingModeLabel": "Modalita di prezzo",
         "pricingModeHelp": "Scegli se questo prodotto utilizza prezzi diversi dal negozio",
