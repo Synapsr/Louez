@@ -1,13 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useTransition, useCallback } from 'react'
+import { useTransition, useState } from 'react'
 import { useTranslations } from 'next-intl'
 import { z } from 'zod'
 import { Shield, Percent } from 'lucide-react'
-import { toastManager } from '@louez/ui'
+import { toastManager, Label } from '@louez/ui'
+import { useStore } from '@tanstack/react-form'
 
 import { Input } from '@louez/ui'
 import {
@@ -17,17 +16,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui'
 import { updateAdminSettings } from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
+import { useAppForm } from '@/hooks/form/form'
+import { RootError } from '@/components/form/root-error'
 
 const adminSettingsSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
@@ -51,143 +43,136 @@ export function AdminSettingsForm({
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const t = useTranslations('dashboard.settings.admin')
+  const [rootError, setRootError] = useState<string | null>(null)
 
-  const form = useForm<AdminSettingsInput>({
-    resolver: zodResolver(adminSettingsSchema),
+  const form = useAppForm({
     defaultValues: {
       trialDays,
       discountPercent,
       discountDurationMonths,
     },
+    validators: { onSubmit: adminSettingsSchema },
+    onSubmit: async ({ value }) => {
+      setRootError(null)
+      startTransition(async () => {
+        const result = await updateAdminSettings(value)
+        if (result.error) {
+          setRootError(result.error)
+          return
+        }
+        toastManager.add({ title: t('saved'), type: 'success' })
+        form.reset()
+        router.refresh()
+      })
+    },
   })
 
-  const { isDirty } = form.formState
-
-  const handleReset = useCallback(() => {
-    form.reset()
-  }, [form])
-
-  const onSubmit = (data: AdminSettingsInput) => {
-    startTransition(async () => {
-      const result = await updateAdminSettings(data)
-      if (result.error) {
-        form.setError('root', { message: result.error })
-        return
-      }
-      toastManager.add({ title: t('saved'), type: 'success' })
-      form.reset(data)
-      router.refresh()
-    })
-  }
+  const isDirty = useStore(form.store, (s) => s.isDirty)
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {form.formState.errors.root && (
-          <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
-            {form.formState.errors.root.message}
-          </div>
-        )}
+    <form.AppForm>
+      <form.Form className="space-y-6">
+        <RootError error={rootError} />
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              {t('trialSection')}
-            </CardTitle>
-            <CardDescription>{t('trialSectionDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormField
-              control={form.control}
-              name="trialDays"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('trialDays')}</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={365}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">{t('days')}</span>
-                    </div>
-                  </FormControl>
-                  <FormDescription>{t('trialDaysDescription')}</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            {t('trialSection')}
+          </CardTitle>
+          <CardDescription>{t('trialSectionDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form.Field name="trialDays">
+            {(field) => (
+              <div className="grid gap-2">
+                <Label htmlFor={field.name}>{t('trialDays')}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    min={0}
+                    max={365}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(parseInt(e.target.value) || 0)}
+                    onBlur={field.handleBlur}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">{t('days')}</span>
+                </div>
+                <p className="text-muted-foreground text-sm">{t('trialDaysDescription')}</p>
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                )}
+              </div>
+            )}
+          </form.Field>
+        </CardContent>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Percent className="h-5 w-5" />
-              {t('discountSection')}
-            </CardTitle>
-            <CardDescription>{t('discountSectionDescription')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <FormField
-              control={form.control}
-              name="discountPercent"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('discountPercent')}</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">%</span>
-                    </div>
-                  </FormControl>
-                  <FormDescription>{t('discountPercentDescription')}</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-5 w-5" />
+            {t('discountSection')}
+          </CardTitle>
+          <CardDescription>{t('discountSectionDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <form.Field name="discountPercent">
+            {(field) => (
+              <div className="grid gap-2">
+                <Label htmlFor={field.name}>{t('discountPercent')}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(parseInt(e.target.value) || 0)}
+                    onBlur={field.handleBlur}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <p className="text-muted-foreground text-sm">{t('discountPercentDescription')}</p>
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                )}
+              </div>
+            )}
+          </form.Field>
 
-            <FormField
-              control={form.control}
-              name="discountDurationMonths"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('discountDuration')}</FormLabel>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        min={0}
-                        max={120}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                        className="w-24"
-                      />
-                      <span className="text-sm text-muted-foreground">{t('months')}</span>
-                    </div>
-                  </FormControl>
-                  <FormDescription>{t('discountDurationDescription')}</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
+          <form.Field name="discountDurationMonths">
+            {(field) => (
+              <div className="grid gap-2">
+                <Label htmlFor={field.name}>{t('discountDuration')}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={field.name}
+                    type="number"
+                    min={0}
+                    max={120}
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(parseInt(e.target.value) || 0)}
+                    onBlur={field.handleBlur}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">{t('months')}</span>
+                </div>
+                <p className="text-muted-foreground text-sm">{t('discountDurationDescription')}</p>
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                )}
+              </div>
+            )}
+          </form.Field>
+        </CardContent>
+      </Card>
 
-        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={handleReset} />
-      </form>
-    </Form>
+        <FloatingSaveBar isDirty={isDirty} isLoading={isPending} onReset={() => form.reset()} />
+      </form.Form>
+    </form.AppForm>
   )
 }

@@ -32,9 +32,6 @@ export * from './components/dialog'
 // Menu (replaces DropdownMenu)
 export * from './components/menu'
 
-// Form
-export * from './components/form'
-
 // Input
 export * from './components/input'
 export * from './components/input-otp'

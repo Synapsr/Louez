@@ -4,27 +4,19 @@ import { useCallback, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import { REGEXP_ONLY_DIGITS } from 'input-otp';
 import { ArrowRight, KeyRound, Loader2, Mail, RotateCcw } from 'lucide-react';
 import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui';
+import { Label } from '@louez/ui';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
 
+import { useAppForm } from '@/hooks/form/form';
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { sendVerificationCode, verifyCode } from '../actions';
@@ -45,33 +37,34 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const emailSchema = z.object({
-    email: z.email(t('codeError')),
+    email: z.string().email(t('codeError')),
   });
 
-  const emailForm = useForm<z.infer<typeof emailSchema>>({
-    resolver: zodResolver(emailSchema),
+  const emailForm = useAppForm({
     defaultValues: { email: '' },
-  });
+    validators: {
+      onSubmit: emailSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setIsLoading(true);
+      try {
+        const result = await sendVerificationCode(storeId, value.email);
 
-  const onEmailSubmit = async (data: z.infer<typeof emailSchema>) => {
-    setIsLoading(true);
-    try {
-      const result = await sendVerificationCode(storeId, data.email);
+        if (result.error) {
+          toastManager.add({ title: result.error, type: 'error' });
+          return;
+        }
 
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' });
-        return;
+        setEmail(value.email);
+        setStep('code');
+        toastManager.add({ title: t('codeSent'), type: 'success' });
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' });
+      } finally {
+        setIsLoading(false);
       }
-
-      setEmail(data.email);
-      setStep('code');
-      toastManager.add({ title: t('codeSent'), type: 'success' });
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+  });
 
   const onCodeSubmit = useCallback(
     async (codeValue: string) => {
@@ -230,8 +223,6 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
               </Button>
             </div>
           </div>
-          <Button>test</Button>
-          azeaze
         </CardContent>
       </Card>
     );
@@ -250,28 +241,17 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
             {t('loginDescription')}
           </p>
         </div>
-        <Form {...emailForm}>
-          <form
-            onSubmit={emailForm.handleSubmit(onEmailSubmit)}
-            className="space-y-6"
-          >
-            <FormField
-              control={emailForm.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('emailAddress')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder={t('emailPlaceholder')}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+        <emailForm.AppForm>
+          <emailForm.Form className="space-y-6">
+            <emailForm.AppField name="email">
+              {(field) => (
+                <field.Input
+                  label={t('emailAddress')}
+                  type="email"
+                  placeholder={t('emailPlaceholder')}
+                />
               )}
-            />
+            </emailForm.AppField>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
@@ -286,10 +266,8 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
                 </>
               )}
             </Button>
-          </form>
-        </Form>
-        <Button>test</Button>
-        azeaze
+          </emailForm.Form>
+        </emailForm.AppForm>
       </CardContent>
     </Card>
   );

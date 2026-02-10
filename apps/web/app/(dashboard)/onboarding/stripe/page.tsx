@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useStore } from '@tanstack/react-form'
 import { FileCheck, Loader2, CheckCircle2, CreditCard, Settings, Info } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
@@ -16,19 +15,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@louez/ui'
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@louez/ui'
 import { RadioGroup, RadioGroupItem } from '@louez/ui'
 import { Label } from '@louez/ui'
 
 import { stripeSetupSchema, type StripeSetupInput } from '@louez/validations'
 import { completeOnboarding } from '../actions'
+import { useAppForm } from '@/hooks/form/form'
 
 export default function OnboardingStripePage() {
   const router = useRouter()
@@ -37,36 +29,34 @@ export default function OnboardingStripePage() {
   const tErrors = useTranslations('errors')
   const [isLoading, setIsLoading] = useState(false)
 
-  const form = useForm<StripeSetupInput>({
-    resolver: zodResolver(stripeSetupSchema),
+  const form = useAppForm({
     defaultValues: {
-      reservationMode: 'request',
+      reservationMode: 'request' as 'request' | 'payment',
+    },
+    validators: {
+      onSubmit: stripeSetupSchema,
+    },
+    onSubmit: async ({ value }) => {
+      setIsLoading(true)
+      try {
+        const result = await completeOnboarding(value)
+        if (result.error) {
+          toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
+          return
+        }
+        toastManager.add({ title: t('configComplete'), type: 'success' })
+        // Signal the welcome animation via sessionStorage (more reliable than URL params)
+        sessionStorage.setItem('louez-show-welcome', '1')
+        router.push('/dashboard')
+      } catch {
+        toastManager.add({ title: tErrors('generic'), type: 'error' })
+      } finally {
+        setIsLoading(false)
+      }
     },
   })
 
-  const reservationMode = useWatch({
-    control: form.control,
-    name: 'reservationMode',
-  })
-
-  async function onSubmit(data: StripeSetupInput) {
-    setIsLoading(true)
-    try {
-      const result = await completeOnboarding(data)
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
-        return
-      }
-      toastManager.add({ title: t('configComplete'), type: 'success' })
-      // Signal the welcome animation via sessionStorage (more reliable than URL params)
-      sessionStorage.setItem('louez-show-welcome', '1')
-      router.push('/dashboard')
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const reservationMode = useStore(form.store, (s) => s.values.reservationMode)
 
   return (
     <Card>
@@ -80,128 +70,126 @@ export default function OnboardingStripePage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Reservation Mode */}
-            <FormField
-              control={form.control}
-              name="reservationMode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('title')}</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="space-y-3"
+        <form.AppForm>
+          <form.Form className="space-y-6">
+          {/* Reservation Mode */}
+          <form.Field name="reservationMode">
+            {(field) => (
+              <div className="space-y-2">
+                <Label>{t('title')}</Label>
+                <RadioGroup
+                  onValueChange={(value) => field.handleChange(value as 'request' | 'payment')}
+                  defaultValue={field.state.value}
+                  className="space-y-3"
+                >
+                  <div>
+                    <RadioGroupItem
+                      value="request"
+                      id="request"
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor="request"
+                      className="border-muted bg-popover hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4"
                     >
-                      <div>
-                        <RadioGroupItem
-                          value="request"
-                          id="request"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="request"
-                          className="border-muted bg-popover hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4"
-                        >
-                          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                            <CheckCircle2 className="text-primary h-5 w-5" />
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{t('requestMode')}</p>
-                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                {t('recommended')}
-                              </span>
-                            </div>
-                            <p className="text-muted-foreground text-sm">
-                              {t('requestModeDescription')}
-                            </p>
-                          </div>
-                        </Label>
+                      <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                        <CheckCircle2 className="text-primary h-5 w-5" />
                       </div>
-                      <div>
-                        <RadioGroupItem
-                          value="payment"
-                          id="payment"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="payment"
-                          className="border-muted bg-popover hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4"
-                        >
-                          <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                            <CreditCard className="text-primary h-5 w-5" />
-                          </div>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{t('paymentMode')}</p>
-                            </div>
-                            <p className="text-muted-foreground text-sm">
-                              {t('paymentModeDescription')}
-                            </p>
-                          </div>
-                        </Label>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{t('requestMode')}</p>
+                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                            {t('recommended')}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                          {t('requestModeDescription')}
+                        </p>
                       </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Info Box - changes based on selected mode */}
-            {reservationMode === 'request' ? (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
-                <div className="flex gap-3">
-                  <Info className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                      {t('howItWorks')}
-                    </p>
-                    <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
-                      <li>{t('step1')}</li>
-                      <li>{t('step2')}</li>
-                      <li>{t('step3')}</li>
-                      <li>{t('step4')}</li>
-                      <li>{t('step5')}</li>
-                    </ul>
+                    </Label>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-950/20">
-                <div className="flex gap-3">
-                  <Settings className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-400" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
-                      {t('paymentSetupTitle')}
-                    </p>
-                    <p className="text-sm text-violet-700 dark:text-violet-300">
-                      {t('paymentSetupDescription')}
-                    </p>
+                  <div>
+                    <RadioGroupItem
+                      value="payment"
+                      id="payment"
+                      className="peer sr-only"
+                    />
+                    <Label
+                      htmlFor="payment"
+                      className="border-muted bg-popover hover:bg-accent peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary flex cursor-pointer items-start gap-4 rounded-lg border-2 p-4"
+                    >
+                      <div className="bg-primary/10 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
+                        <CreditCard className="text-primary h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium">{t('paymentMode')}</p>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                          {t('paymentModeDescription')}
+                        </p>
+                      </div>
+                    </Label>
                   </div>
-                </div>
+                </RadioGroup>
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-destructive text-sm">{field.state.meta.errors.join(', ')}</p>
+                )}
               </div>
             )}
+          </form.Field>
 
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="flex-1"
-                onClick={() => router.push('/onboarding/product')}
-              >
-                {tCommon('back')}
-              </Button>
-              <Button type="submit" className="flex-1" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {tCommon('confirm')}
-              </Button>
+          {/* Info Box - changes based on selected mode */}
+          {reservationMode === 'request' ? (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/20">
+              <div className="flex gap-3">
+                <Info className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                    {t('howItWorks')}
+                  </p>
+                  <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+                    <li>{t('step1')}</li>
+                    <li>{t('step2')}</li>
+                    <li>{t('step3')}</li>
+                    <li>{t('step4')}</li>
+                    <li>{t('step5')}</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-          </form>
-        </Form>
+          ) : (
+            <div className="rounded-lg border border-violet-200 bg-violet-50 p-4 dark:border-violet-900 dark:bg-violet-950/20">
+              <div className="flex gap-3">
+                <Settings className="h-5 w-5 shrink-0 text-violet-600 dark:text-violet-400" />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-violet-800 dark:text-violet-200">
+                    {t('paymentSetupTitle')}
+                  </p>
+                  <p className="text-sm text-violet-700 dark:text-violet-300">
+                    {t('paymentSetupDescription')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              onClick={() => router.push('/onboarding/product')}
+            >
+              {tCommon('back')}
+            </Button>
+            <Button type="submit" className="flex-1" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {tCommon('confirm')}
+            </Button>
+          </div>
+          </form.Form>
+        </form.AppForm>
       </CardContent>
     </Card>
   )
