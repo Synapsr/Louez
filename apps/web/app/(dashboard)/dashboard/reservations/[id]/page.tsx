@@ -347,7 +347,8 @@ export default async function ReservationDetailPage({
                             {item.quantity}
                           </TableCell>
                           <TableCell className="text-right text-muted-foreground align-top pt-4">
-                            {parseFloat(item.unitPrice).toFixed(2)}{currencySymbol}/{store.settings?.pricingMode === 'hour' ? 'h' : 'j'}
+                            {parseFloat(item.unitPrice).toFixed(2)}
+                            {currencySymbol}/u
                           </TableCell>
                           <TableCell className="text-right font-medium align-top pt-4">
                             {parseFloat(item.totalPrice).toFixed(2)}{currencySymbol}

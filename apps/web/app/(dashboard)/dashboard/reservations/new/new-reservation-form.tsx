@@ -69,8 +69,9 @@ import { isWithinBusinessHours, getDaySchedule } from '@/lib/utils/business-hour
 import { getDetailedDuration, getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
 import { Alert, AlertDescription } from '@louez/ui'
 import { findApplicableTier } from '@louez/utils'
+import { formatDurationFromMinutes } from '@/lib/utils/rental-duration'
 import { createManualReservation } from '../actions'
-import type { BusinessHours } from '@louez/types'
+import type { BusinessHours, PricingMode } from '@louez/types'
 import type { PricingTier } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 
@@ -95,6 +96,7 @@ interface Product {
   price: string
   deposit: string | null
   quantity: number
+  pricingMode: PricingMode | null
   images: string[] | null
   pricingTiers: ProductPricingTier[]
 }
@@ -114,6 +116,7 @@ interface CustomItem {
   unitPrice: number
   deposit: number
   quantity: number
+  pricingMode: PricingMode
 }
 
 // Warning types for flexible date selection
@@ -135,9 +138,8 @@ interface AvailabilityWarning {
 interface NewReservationFormProps {
   customers: Customer[]
   products: Product[]
-  pricingMode: 'day' | 'hour' | 'week'
   businessHours?: BusinessHours
-  advanceNotice?: number
+  advanceNoticeMinutes?: number
   existingReservations?: Array<{
     id: string
     startDate: Date
@@ -162,9 +164,8 @@ interface FormData {
 export function NewReservationForm({
   customers,
   products,
-  pricingMode,
   businessHours,
-  advanceNotice = 0,
+  advanceNoticeMinutes = 0,
   existingReservations = [],
 }: NewReservationFormProps) {
   const router = useRouter()
@@ -181,7 +182,10 @@ export function NewReservationForm({
   const [availabilityWarnings, setAvailabilityWarnings] = useState<AvailabilityWarning[]>([])
 
   // Calculate minimum start date based on advance notice setting (for warning, not blocking)
-  const minDateTime = useMemo(() => getMinStartDateTime(advanceNotice), [advanceNotice])
+  const minDateTime = useMemo(
+    () => getMinStartDateTime(advanceNoticeMinutes),
+    [advanceNoticeMinutes]
+  )
 
   // Check period warnings when dates change
   const checkPeriodWarnings = useCallback((startDate: Date | undefined, endDate: Date | undefined) => {
@@ -194,7 +198,9 @@ export function NewReservationForm({
           type: 'advance_notice',
           field: 'start',
           message: t('warnings.advanceNotice'),
-          details: t('warnings.advanceNoticeDetails', { hours: advanceNotice }),
+          details: t('warnings.advanceNoticeDetails', {
+            duration: formatDurationFromMinutes(advanceNoticeMinutes),
+          }),
         })
       }
 
@@ -268,7 +274,7 @@ export function NewReservationForm({
     }
 
     setPeriodWarnings(warnings)
-  }, [businessHours, minDateTime, advanceNotice, t])
+  }, [businessHours, minDateTime, advanceNoticeMinutes, t])
 
   // Check availability warnings when dates and products change
   const checkAvailabilityWarnings = useCallback((
@@ -347,6 +353,7 @@ export function NewReservationForm({
     totalPrice: '',
     deposit: '',
     quantity: '1',
+    pricingMode: 'day' as PricingMode,
   })
   const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
@@ -357,11 +364,15 @@ export function NewReservationForm({
     productId: string | null
     currentPrice: number
     newPrice: string
+    pricingMode: PricingMode
+    duration: number
   }>({
     isOpen: false,
     productId: null,
     currentPrice: 0,
     newPrice: '',
+    pricingMode: 'day',
+    duration: 0,
   })
 
   const form = useAppForm({
@@ -406,6 +417,7 @@ export function NewReservationForm({
             unitPrice: item.unitPrice,
             deposit: item.deposit,
             quantity: item.quantity,
+            pricingMode: item.pricingMode,
           })),
           internalNotes: value.internalNotes || undefined,
           sendConfirmationEmail,
@@ -432,34 +444,30 @@ export function NewReservationForm({
   const watchEndDate = useStore(form.store, (s) => s.values.endDate)
   const watchedValues = useStore(form.store, (s) => s.values)
 
+  const calculateDurationForMode = useCallback(
+    (startDate: Date, endDate: Date, mode: PricingMode): number => {
+      const diffMs = endDate.getTime() - startDate.getTime()
+      if (mode === 'hour') {
+        return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
+      }
+      if (mode === 'week') {
+        return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
+      }
+      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+    },
+    []
+  )
+
   // Get selected customer details
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
 
-  // Calculate duration based on pricing mode
-  // Uses Math.ceil (round up) - industry standard: any partial period = full period billed
-  const { duration, durationUnit } = useMemo(() => {
+  // Human-readable period summary uses day units, while item pricing uses each item's pricing mode.
+  const duration = useMemo(() => {
     if (!watchStartDate || !watchEndDate) {
-      return { duration: 0, durationUnit: 'days' as const }
+      return 0
     }
-
-    const diffMs = watchEndDate.getTime() - watchStartDate.getTime()
-
-    let durationCount: number
-    let unit: 'hours' | 'days' | 'weeks'
-
-    if (pricingMode === 'hour') {
-      durationCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
-      unit = 'hours'
-    } else if (pricingMode === 'week') {
-      durationCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
-      unit = 'weeks'
-    } else {
-      durationCount = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
-      unit = 'days'
-    }
-
-    return { duration: durationCount, durationUnit: unit }
-  }, [watchStartDate, watchEndDate, pricingMode])
+    return calculateDurationForMode(watchStartDate, watchEndDate, 'day')
+  }, [watchStartDate, watchEndDate, calculateDurationForMode])
 
   // Get detailed duration breakdown for transparency
   const detailedDuration = useMemo(() => {
@@ -505,8 +513,15 @@ export function NewReservationForm({
           displayOrder: tier.displayOrder || 0,
         }))
 
+        const productPricingMode = (product.pricingMode ?? 'day') as PricingMode
+        const productDuration = calculateDurationForMode(
+          watchStartDate,
+          watchEndDate,
+          productPricingMode
+        )
+
         // Find applicable tier
-        const applicableTier = findApplicableTier(productTiers, duration)
+        const applicableTier = findApplicableTier(productTiers, productDuration)
         const calculatedPrice = applicableTier
           ? basePrice * (1 - applicableTier.discountPercent / 100)
           : basePrice
@@ -516,15 +531,20 @@ export function NewReservationForm({
           ? item.priceOverride.unitPrice
           : calculatedPrice
 
-        originalAmount += basePrice * duration * item.quantity
-        subtotalAmount += effectivePrice * duration * item.quantity
+        originalAmount += basePrice * productDuration * item.quantity
+        subtotalAmount += effectivePrice * productDuration * item.quantity
         depositAmount += productDeposit * item.quantity
       }
     }
 
     // Calculate for custom items (no tiered pricing)
     for (const item of customItems) {
-      const itemTotal = item.unitPrice * duration * item.quantity
+      const itemDuration = calculateDurationForMode(
+        watchStartDate,
+        watchEndDate,
+        item.pricingMode
+      )
+      const itemTotal = item.unitPrice * itemDuration * item.quantity
       subtotalAmount += itemTotal
       originalAmount += itemTotal
       depositAmount += item.deposit * item.quantity
@@ -536,10 +556,7 @@ export function NewReservationForm({
       deposit: depositAmount,
       totalSavings: originalAmount - subtotalAmount,
     }
-  }, [watchStartDate, watchEndDate, selectedProducts, customItems, products, duration, hasItems])
-
-  // Backward compatibility alias
-  const days = duration
+  }, [watchStartDate, watchEndDate, selectedProducts, customItems, products, duration, hasItems, calculateDurationForMode])
 
   const addProduct = (productId: string) => {
     const existing = selectedProducts.find((p) => p.productId === productId)
@@ -581,23 +598,33 @@ export function NewReservationForm({
       totalPrice: '',
       deposit: '',
       quantity: '1',
+      pricingMode: 'day',
     })
   }
+
+  const customItemDuration = useMemo(() => {
+    if (!watchStartDate || !watchEndDate) return 0
+    return calculateDurationForMode(
+      watchStartDate,
+      watchEndDate,
+      customItemForm.pricingMode
+    )
+  }, [watchStartDate, watchEndDate, customItemForm.pricingMode, calculateDurationForMode])
 
   // Calculate unit price from total price
   const calculateUnitPriceFromTotal = (totalPrice: string, qty: string) => {
     const total = parseFloat(totalPrice)
     const quantity = parseInt(qty) || 1
-    if (isNaN(total) || total <= 0 || duration <= 0) return ''
-    return (total / (quantity * duration)).toFixed(2)
+    if (isNaN(total) || total <= 0 || customItemDuration <= 0) return ''
+    return (total / (quantity * customItemDuration)).toFixed(2)
   }
 
   // Calculate total price from unit price
   const calculateTotalFromUnitPrice = (unitPrice: string, qty: string) => {
     const unit = parseFloat(unitPrice)
     const quantity = parseInt(qty) || 1
-    if (isNaN(unit) || unit <= 0 || duration <= 0) return ''
-    return (unit * quantity * duration).toFixed(2)
+    if (isNaN(unit) || unit <= 0 || customItemDuration <= 0) return ''
+    return (unit * quantity * customItemDuration).toFixed(2)
   }
 
   // Handle unit price change
@@ -650,7 +677,11 @@ export function NewReservationForm({
         toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
         return
       }
-      unitPrice = totalPrice / (quantity * duration)
+      if (customItemDuration <= 0) {
+        toastManager.add({ title: t('customItem.selectPeriodFirst'), type: 'error' })
+        return
+      }
+      unitPrice = totalPrice / (quantity * customItemDuration)
     } else {
       unitPrice = parseFloat(customItemForm.unitPrice)
       if (isNaN(unitPrice) || unitPrice <= 0) {
@@ -674,6 +705,7 @@ export function NewReservationForm({
       unitPrice,
       deposit,
       quantity,
+      pricingMode: customItemForm.pricingMode,
     }
 
     setCustomItems([...customItems, newItem])
@@ -701,13 +733,20 @@ export function NewReservationForm({
   }
 
   // Price override functions
-  const openPriceOverrideDialog = (productId: string, calculatedPrice: number) => {
+  const openPriceOverrideDialog = (
+    productId: string,
+    calculatedPrice: number,
+    pricingMode: PricingMode,
+    duration: number
+  ) => {
     const existingOverride = selectedProducts.find((p) => p.productId === productId)?.priceOverride
     setPriceOverrideDialog({
       isOpen: true,
       productId,
       currentPrice: calculatedPrice,
       newPrice: existingOverride ? existingOverride.unitPrice.toString() : calculatedPrice.toString(),
+      pricingMode,
+      duration,
     })
   }
 
@@ -717,6 +756,8 @@ export function NewReservationForm({
       productId: null,
       currentPrice: 0,
       newPrice: '',
+      pricingMode: 'day',
+      duration: 0,
     })
   }
 
@@ -811,7 +852,28 @@ export function NewReservationForm({
     (p) => !selectedProducts.find((sp) => sp.productId === p.id)
   )
 
-  const pricingUnit = pricingMode === 'hour' ? t('perHour') : t('perDay')
+  const getPricingMode = useCallback(
+    (value: PricingMode | null | undefined): PricingMode => value ?? 'day',
+    []
+  )
+
+  const getPricingUnitLabel = useCallback(
+    (mode: PricingMode) => {
+      if (mode === 'hour') return t('perHour')
+      if (mode === 'week') return t('perWeek')
+      return t('perDay')
+    },
+    [t]
+  )
+
+  const getDurationLabel = useCallback(
+    (mode: PricingMode, count: number) => {
+      if (mode === 'hour') return tCommon('hourUnit', { count })
+      if (mode === 'week') return tCommon('weekUnit', { count })
+      return tCommon('dayUnit', { count })
+    },
+    [tCommon]
+  )
 
   return (
     <>
@@ -1029,7 +1091,7 @@ export function NewReservationForm({
                             {formatStoreDate(watchEndDate, timezone, "d MMMM yyyy HH:mm")}
                           </p>
                           {/* Show detailed breakdown for transparency */}
-                          {detailedDuration && pricingMode === 'day' && (
+                          {detailedDuration && (
                             <p className="text-xs text-muted-foreground mt-1">
                               {detailedDuration.days > 0 && detailedDuration.hours > 0
                                 ? `(${detailedDuration.days}j ${detailedDuration.hours}h ${t('exact')})`
@@ -1045,11 +1107,7 @@ export function NewReservationForm({
                           {duration}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {durationUnit === 'hours'
-                            ? tCommon('hourUnit', { count: duration })
-                            : durationUnit === 'weeks'
-                              ? tCommon('weekUnit', { count: duration })
-                              : tCommon('dayUnit', { count: duration })}
+                          {tCommon('dayUnit', { count: duration })}
                         </p>
                       </div>
                     </div>
@@ -1110,6 +1168,15 @@ export function NewReservationForm({
                     const isOutOfStock = product.quantity === 0
                     const remainingStock = product.quantity - selectedQuantity
                     const canAddMore = remainingStock > 0
+                    const productPricingMode = getPricingMode(product.pricingMode)
+                    const productDuration =
+                      watchStartDate && watchEndDate
+                        ? calculateDurationForMode(
+                            watchStartDate,
+                            watchEndDate,
+                            productPricingMode
+                          )
+                        : 0
 
                     // Convert pricing tiers to the format expected by pricing utils
                     const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
@@ -1119,8 +1186,10 @@ export function NewReservationForm({
                       displayOrder: tier.displayOrder || 0,
                     }))
 
-                    // Find applicable tier based on duration
-                    const applicableTier = duration > 0 ? findApplicableTier(productTiers, duration) : null
+                    // Find applicable tier based on product-specific duration
+                    const applicableTier = productDuration > 0
+                      ? findApplicableTier(productTiers, productDuration)
+                      : null
                     const basePrice = parseFloat(product.price)
                     const hasDiscount = applicableTier && applicableTier.discountPercent > 0
 
@@ -1166,13 +1235,13 @@ export function NewReservationForm({
                               {hasPriceOverride ? (
                                 <>
                                   <span className="text-sm text-muted-foreground line-through">
-                                    {formatCurrency(calculatedPrice)}/{pricingUnit}
+                                    {formatCurrency(calculatedPrice)}/{getPricingUnitLabel(productPricingMode)}
                                   </span>
                                   <span className={cn(
                                     'text-sm font-medium',
                                     effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600'
                                   )}>
-                                    {formatCurrency(effectivePrice)}/{pricingUnit}
+                                    {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
                                   </span>
                                   <Badge variant="secondary" className={cn(
                                     'text-xs',
@@ -1186,10 +1255,10 @@ export function NewReservationForm({
                               ) : hasDiscount ? (
                                 <>
                                   <span className="text-sm text-muted-foreground line-through">
-                                    {formatCurrency(basePrice)}/{pricingUnit}
+                                    {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
                                   </span>
                                   <span className="text-sm font-medium text-green-600">
-                                    {formatCurrency(effectivePrice)}/{pricingUnit}
+                                    {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
                                   </span>
                                   <Badge variant="secondary" className="text-xs bg-green-100 text-green-700">
                                     -{applicableTier.discountPercent}%
@@ -1197,7 +1266,7 @@ export function NewReservationForm({
                                 </>
                               ) : (
                                 <span className="text-sm text-muted-foreground">
-                                  {formatCurrency(basePrice)}/{pricingUnit}
+                                  {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
                                 </span>
                               )}
                             </div>
@@ -1261,18 +1330,25 @@ export function NewReservationForm({
                             )}
                           </div>
                         </div>
-                        {selectedQuantity > 0 && duration > 0 && (
+                        {selectedQuantity > 0 && productDuration > 0 && (
                           <div className="mt-3 pt-3 border-t">
                             <div className="flex justify-between items-center text-sm">
                               <div className="flex items-center gap-2">
                                 <span className="text-muted-foreground">
-                                  {selectedQuantity} × {duration} {durationUnit === 'hours' ? 'h' : durationUnit === 'weeks' ? 'sem' : 'j'}
+                                  {selectedQuantity} × {productDuration} {getDurationLabel(productPricingMode, productDuration)}
                                 </span>
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                  onClick={() => openPriceOverrideDialog(product.id, calculatedPrice)}
+                                  onClick={() =>
+                                    openPriceOverrideDialog(
+                                      product.id,
+                                      calculatedPrice,
+                                      productPricingMode,
+                                      productDuration
+                                    )
+                                  }
                                 >
                                   <PenLine className="h-3 w-3" />
                                 </Button>
@@ -1281,27 +1357,27 @@ export function NewReservationForm({
                                 {hasPriceOverride ? (
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground line-through text-xs">
-                                      {formatCurrency(calculatedPrice * selectedQuantity * duration)}
+                                      {formatCurrency(calculatedPrice * selectedQuantity * productDuration)}
                                     </span>
                                     <span className={cn(
                                       'font-medium',
                                       effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600'
                                     )}>
-                                      {formatCurrency(effectivePrice * selectedQuantity * duration)}
+                                      {formatCurrency(effectivePrice * selectedQuantity * productDuration)}
                                     </span>
                                   </div>
                                 ) : hasDiscount ? (
                                   <div className="flex items-center gap-2">
                                     <span className="text-muted-foreground line-through text-xs">
-                                      {formatCurrency(basePrice * selectedQuantity * duration)}
+                                      {formatCurrency(basePrice * selectedQuantity * productDuration)}
                                     </span>
                                     <span className="font-medium text-green-600">
-                                      {formatCurrency(effectivePrice * selectedQuantity * duration)}
+                                      {formatCurrency(effectivePrice * selectedQuantity * productDuration)}
                                     </span>
                                   </div>
                                 ) : (
                                   <span className="font-medium">
-                                    {formatCurrency(basePrice * selectedQuantity * duration)}
+                                    {formatCurrency(basePrice * selectedQuantity * productDuration)}
                                   </span>
                                 )}
                               </div>
@@ -1315,8 +1391,8 @@ export function NewReservationForm({
                                     : 'text-orange-600'
                                 )}>
                                   {effectivePrice < (hasPriceOverride ? calculatedPrice : basePrice)
-                                    ? `${t('savings')}: ${formatCurrency(((hasPriceOverride ? calculatedPrice : basePrice) - effectivePrice) * selectedQuantity * duration)}`
-                                    : `+${formatCurrency((effectivePrice - calculatedPrice) * selectedQuantity * duration)}`
+                                    ? `${t('savings')}: ${formatCurrency(((hasPriceOverride ? calculatedPrice : basePrice) - effectivePrice) * selectedQuantity * productDuration)}`
+                                    : `+${formatCurrency((effectivePrice - calculatedPrice) * selectedQuantity * productDuration)}`
                                   }
                                 </span>
                               </div>
@@ -1372,7 +1448,13 @@ export function NewReservationForm({
                                 </Badge>
                               </div>
                               <p className="text-sm text-muted-foreground mt-0.5">
-                                {formatCurrency(item.unitPrice)}/{pricingUnit}
+                                {formatCurrency(item.unitPrice)}
+                                /
+                                {item.pricingMode === 'hour'
+                                  ? t('perHour')
+                                  : item.pricingMode === 'week'
+                                    ? 'week'
+                                    : t('perDay')}
                               </p>
                               {item.description && (
                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
@@ -1413,13 +1495,22 @@ export function NewReservationForm({
                               </Button>
                             </div>
                           </div>
-                          {duration > 0 && (
+                          {watchStartDate && watchEndDate && (
                             <div className="mt-3 pt-3 border-t border-border flex justify-between items-center text-sm">
                               <span className="text-muted-foreground">
-                                {item.quantity} × {duration} {durationUnit === 'hours' ? 'h' : durationUnit === 'weeks' ? 'sem' : 'j'}
+                                {item.quantity} × {calculateDurationForMode(watchStartDate, watchEndDate, item.pricingMode)}{' '}
+                                {item.pricingMode === 'hour' ? 'h' : item.pricingMode === 'week' ? 'sem' : 'j'}
                               </span>
                               <span className="font-medium">
-                                {formatCurrency(item.unitPrice * item.quantity * duration)}
+                                {formatCurrency(
+                                  item.unitPrice *
+                                    item.quantity *
+                                    calculateDurationForMode(
+                                      watchStartDate,
+                                      watchEndDate,
+                                      item.pricingMode
+                                    )
+                                )}
                               </span>
                             </div>
                           )}
@@ -1578,11 +1669,7 @@ export function NewReservationForm({
                       <div className="flex justify-between text-sm font-medium">
                         <span>{t('duration')}</span>
                         <span>
-                          {durationUnit === 'hours'
-                            ? t('durationHours', { count: duration })
-                            : durationUnit === 'weeks'
-                              ? t('durationWeeks', { count: duration })
-                              : t('durationDays', { count: duration })}
+                          {t('durationDays', { count: duration })}
                         </span>
                       </div>
                     </div>
@@ -1606,7 +1693,18 @@ export function NewReservationForm({
                           discountPercent: parseFloat(tier.discountPercent),
                           displayOrder: tier.displayOrder || 0,
                         }))
-                        const applicableTier = duration > 0 ? findApplicableTier(productTiers, duration) : null
+                        const productPricingMode = getPricingMode(product.pricingMode)
+                        const productDuration =
+                          watchStartDate && watchEndDate
+                            ? calculateDurationForMode(
+                                watchStartDate,
+                                watchEndDate,
+                                productPricingMode
+                              )
+                            : 0
+                        const applicableTier = productDuration > 0
+                          ? findApplicableTier(productTiers, productDuration)
+                          : null
                         const calculatedPrice = applicableTier
                           ? basePrice * (1 - applicableTier.discountPercent / 100)
                           : basePrice
@@ -1633,7 +1731,7 @@ export function NewReservationForm({
                               <span className="text-muted-foreground">× {item.quantity}</span>
                             </div>
                             <span className={hasPriceOverride ? (effectivePrice < calculatedPrice ? 'text-green-600' : 'text-orange-600') : ''}>
-                              {formatCurrency(effectivePrice * item.quantity * duration)}
+                              {formatCurrency(effectivePrice * item.quantity * productDuration)}
                             </span>
                           </div>
                         )
@@ -1647,7 +1745,19 @@ export function NewReservationForm({
                             </Badge>
                             <span className="text-muted-foreground ml-2">× {item.quantity}</span>
                           </div>
-                          <span>{formatCurrency(item.unitPrice * item.quantity * duration)}</span>
+                          <span>
+                            {watchStartDate && watchEndDate
+                              ? formatCurrency(
+                                  item.unitPrice *
+                                    item.quantity *
+                                    calculateDurationForMode(
+                                      watchStartDate,
+                                      watchEndDate,
+                                      item.pricingMode
+                                    )
+                                )
+                              : formatCurrency(0)}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -1810,12 +1920,38 @@ export function NewReservationForm({
                 </div>
               </div>
             </div>
-            {duration > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="custom-pricing-mode">{t('customItem.pricingPeriod')}</Label>
+              <Select
+                value={customItemForm.pricingMode}
+                onValueChange={(value) =>
+                  setCustomItemForm({
+                    ...customItemForm,
+                    pricingMode: value as PricingMode,
+                  })
+                }
+              >
+                <SelectTrigger id="custom-pricing-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hour">{t('perHour')}</SelectItem>
+                  <SelectItem value="day">{t('perDay')}</SelectItem>
+                  <SelectItem value="week">week</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {customItemDuration > 0 && (
               <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>{t('customItem.pricingPeriod')}</span>
                   <span className="font-medium text-foreground">
-                    {duration} {durationUnit === 'hours' ? 'h' : durationUnit === 'weeks' ? 'sem' : 'j'} × {customItemForm.quantity || 1} unité(s)
+                    {customItemDuration}{' '}
+                    {customItemForm.pricingMode === 'hour'
+                      ? 'h'
+                      : customItemForm.pricingMode === 'week'
+                        ? 'sem'
+                        : 'j'} × {customItemForm.quantity || 1} unité(s)
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -1853,14 +1989,19 @@ export function NewReservationForm({
                         className="pr-12"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        €/{pricingUnit}
+                        €/
+                        {customItemForm.pricingMode === 'hour'
+                          ? t('perHour')
+                          : customItemForm.pricingMode === 'week'
+                            ? 'week'
+                            : t('perDay')}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
-            {duration === 0 && (
+            {customItemDuration === 0 && (
               <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
                 {t('customItem.selectPeriodFirst')}
               </p>
@@ -1903,7 +2044,8 @@ export function NewReservationForm({
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">{t('priceOverride.calculatedPrice')}</span>
                 <span className="font-medium">
-                  {formatCurrency(priceOverrideDialog.currentPrice)}/{pricingUnit}
+                  {formatCurrency(priceOverrideDialog.currentPrice)}/
+                  {getPricingUnitLabel(priceOverrideDialog.pricingMode)}
                 </span>
               </div>
             </div>
@@ -1923,31 +2065,39 @@ export function NewReservationForm({
                   autoFocus
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  €/{pricingUnit}
+                  €/{getPricingUnitLabel(priceOverrideDialog.pricingMode)}
                 </span>
               </div>
             </div>
 
             {/* Total preview */}
-            {duration > 0 && priceOverrideDialog.newPrice && (
+            {priceOverrideDialog.duration > 0 && priceOverrideDialog.newPrice && (
               <div className="rounded-lg border p-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">{t('priceOverride.totalForPeriod')}</span>
                   <span className="font-medium">
-                    {formatCurrency(parseFloat(priceOverrideDialog.newPrice || '0') * duration)}
+                    {formatCurrency(
+                      parseFloat(priceOverrideDialog.newPrice || '0') *
+                        priceOverrideDialog.duration
+                    )}
                   </span>
                 </div>
                 {priceOverrideDialog.currentPrice !== parseFloat(priceOverrideDialog.newPrice || '0') && (
                   <div className="flex justify-between items-center text-xs mt-1">
-                    <span className="text-muted-foreground">vs. {formatCurrency(priceOverrideDialog.currentPrice * duration)}</span>
+                    <span className="text-muted-foreground">
+                      vs.{' '}
+                      {formatCurrency(
+                        priceOverrideDialog.currentPrice * priceOverrideDialog.duration
+                      )}
+                    </span>
                     <span className={cn(
                       parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
                         ? 'text-green-600'
                         : 'text-orange-600'
                     )}>
                       {parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
-                        ? `-${formatCurrency((priceOverrideDialog.currentPrice - parseFloat(priceOverrideDialog.newPrice || '0')) * duration)}`
-                        : `+${formatCurrency((parseFloat(priceOverrideDialog.newPrice || '0') - priceOverrideDialog.currentPrice) * duration)}`
+                        ? `-${formatCurrency((priceOverrideDialog.currentPrice - parseFloat(priceOverrideDialog.newPrice || '0')) * priceOverrideDialog.duration)}`
+                        : `+${formatCurrency((parseFloat(priceOverrideDialog.newPrice || '0') - priceOverrideDialog.currentPrice) * priceOverrideDialog.duration)}`
                       }
                     </span>
                   </div>

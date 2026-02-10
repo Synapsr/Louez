@@ -72,8 +72,8 @@ import {
   getDefaultCurrencyForCountry,
 } from '@/lib/utils/currency';
 import {
-  getMaxRentalHours,
-  getMinRentalHours,
+  getMaxRentalMinutes,
+  getMinRentalMinutes,
 } from '@/lib/utils/rental-duration';
 
 import { useAppForm } from '@/hooks/form/form';
@@ -108,13 +108,12 @@ const createStoreSettingsSchema = (
     billingCountry: z.string(),
 
     // Settings
-    pricingMode: z.enum(['day', 'hour', 'week']),
     reservationMode: z.enum(['payment', 'request']),
     pendingBlocksAvailability: z.boolean(),
     onlinePaymentDepositPercentage: z.number().int().min(10).max(100),
-    minRentalHours: z.number().int().min(0),
-    maxRentalHours: z.number().int().min(1).nullable(),
-    advanceNotice: z.number().min(0),
+    minRentalMinutes: z.number().int().min(0),
+    maxRentalMinutes: z.number().int().min(1).nullable(),
+    advanceNoticeMinutes: z.number().min(0),
     requireCustomerAddress: z.boolean(),
   });
 
@@ -148,16 +147,20 @@ export function StoreSettingsForm({
   const [isStripeRequiredDialogOpen, setIsStripeRequiredDialogOpen] =
     useState(false);
   const [rootError, setRootError] = useState<string | null>(null);
-  const minRentalHoursInit = getMinRentalHours(
+  const minRentalMinutesInit = getMinRentalMinutes(
     store.settings as StoreSettings | null,
   );
-  const advanceNoticeInit =
-    (store.settings as StoreSettings | null)?.advanceNotice ?? 0;
+  const advanceNoticeMinutesInit =
+    (store.settings as StoreSettings | null)?.advanceNoticeMinutes ?? 0;
   const [minDurationUnit, setMinDurationUnit] = useState<'hours' | 'days'>(
-    minRentalHoursInit > 0 && minRentalHoursInit % 24 === 0 ? 'days' : 'hours',
+    minRentalMinutesInit > 0 && minRentalMinutesInit % 1440 === 0
+      ? 'days'
+      : 'hours',
   );
   const [advanceNoticeUnit, setAdvanceNoticeUnit] = useState<'hours' | 'days'>(
-    advanceNoticeInit > 0 && advanceNoticeInit % 24 === 0 ? 'days' : 'hours',
+    advanceNoticeMinutesInit > 0 && advanceNoticeMinutesInit % 1440 === 0
+      ? 'days'
+      : 'hours',
   );
   const t = useTranslations('dashboard.settings');
 
@@ -167,12 +170,23 @@ export function StoreSettingsForm({
 
   const storeSettingsSchema = createStoreSettingsSchema(tValidation);
 
-  const settings = store.settings || {
-    pricingMode: 'day',
-    reservationMode: 'payment',
-    minRentalHours: 1,
-    maxRentalHours: null,
-    advanceNotice: 24,
+  const settings: StoreSettings = {
+    reservationMode: store.settings?.reservationMode ?? 'payment',
+    pendingBlocksAvailability: store.settings?.pendingBlocksAvailability ?? true,
+    onlinePaymentDepositPercentage:
+      store.settings?.onlinePaymentDepositPercentage ?? 100,
+    minRentalMinutes: store.settings?.minRentalMinutes ?? 60,
+    maxRentalMinutes: store.settings?.maxRentalMinutes ?? null,
+    advanceNoticeMinutes: store.settings?.advanceNoticeMinutes ?? 1440,
+    requireCustomerAddress: store.settings?.requireCustomerAddress ?? false,
+    businessHours: store.settings?.businessHours,
+    country: store.settings?.country,
+    timezone: store.settings?.timezone,
+    currency: store.settings?.currency,
+    tax: store.settings?.tax,
+    billingAddress: store.settings?.billingAddress,
+    delivery: store.settings?.delivery,
+    inspection: store.settings?.inspection,
   };
 
   const defaultCountry = settings.country || 'FR';
@@ -197,14 +211,13 @@ export function StoreSettingsForm({
       billingCity: billingAddress.city || '',
       billingPostalCode: billingAddress.postalCode || '',
       billingCountry: billingAddress.country || defaultCountry,
-      pricingMode: settings.pricingMode,
       reservationMode: settings.reservationMode,
       pendingBlocksAvailability: settings.pendingBlocksAvailability ?? true,
       onlinePaymentDepositPercentage:
         settings.onlinePaymentDepositPercentage ?? 100,
-      minRentalHours: getMinRentalHours(settings as StoreSettings),
-      maxRentalHours: getMaxRentalHours(settings as StoreSettings),
-      advanceNotice: settings.advanceNotice,
+      minRentalMinutes: getMinRentalMinutes(settings as StoreSettings),
+      maxRentalMinutes: getMaxRentalMinutes(settings as StoreSettings),
+      advanceNoticeMinutes: settings.advanceNoticeMinutes,
       requireCustomerAddress: settings.requireCustomerAddress ?? false,
     },
     validators: { onSubmit: storeSettingsSchema },
@@ -658,41 +671,6 @@ export function StoreSettingsForm({
                   )}
                 </form.Field>
 
-                <form.Field name="pricingMode">
-                  {(field) => (
-                    <div className="grid gap-2">
-                      <Label htmlFor={field.name}>
-                        {t('reservationSettings.pricingMode')}
-                      </Label>
-                      <Select
-                        onValueChange={(value) => {
-                          if (value !== null) field.handleChange(value);
-                        }}
-                        value={field.state.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="day">
-                            {t('reservationSettings.pricingDay')}
-                          </SelectItem>
-                          <SelectItem value="hour">
-                            {t('reservationSettings.pricingHour')}
-                          </SelectItem>
-                          <SelectItem value="week">
-                            {t('reservationSettings.pricingWeek')}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">
-                          {String(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </form.Field>
               </div>
 
               {/* Pending blocks availability - only shown in request mode */}
@@ -750,12 +728,12 @@ export function StoreSettingsForm({
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <form.Field name="minRentalHours">
+                <form.Field name="minRentalMinutes">
                   {(field) => {
                     const displayValue =
                       minDurationUnit === 'days'
-                        ? Math.round(field.state.value / 24)
-                        : field.state.value;
+                        ? Math.round(field.state.value / 1440)
+                        : Math.round(field.state.value / 60);
                     return (
                       <div className="grid gap-2">
                         <div className="flex items-center gap-1.5">
@@ -792,7 +770,7 @@ export function StoreSettingsForm({
                               const raw = parseInt(e.target.value);
                               if (!isNaN(raw)) {
                                 field.handleChange(
-                                  minDurationUnit === 'days' ? raw * 24 : raw,
+                                  minDurationUnit === 'days' ? raw * 1440 : raw * 60,
                                 );
                               }
                             }}
@@ -803,8 +781,8 @@ export function StoreSettingsForm({
                             onChange={(e) => {
                               const unit = e.target.value as 'hours' | 'days';
                               if (unit === 'days') {
-                                const days = Math.round(field.state.value / 24);
-                                field.handleChange(days * 24);
+                                const days = Math.round(field.state.value / 1440);
+                                field.handleChange(days * 1440);
                               }
                               setMinDurationUnit(unit);
                             }}
@@ -827,12 +805,12 @@ export function StoreSettingsForm({
                   }}
                 </form.Field>
 
-                <form.Field name="advanceNotice">
+                <form.Field name="advanceNoticeMinutes">
                   {(field) => {
                     const displayValue =
                       advanceNoticeUnit === 'days'
-                        ? Math.round(field.state.value / 24)
-                        : field.state.value;
+                        ? Math.round(field.state.value / 1440)
+                        : Math.round(field.state.value / 60);
                     return (
                       <div className="grid gap-2">
                         <div className="flex items-center gap-1.5">
@@ -867,7 +845,7 @@ export function StoreSettingsForm({
                               const raw = parseInt(e.target.value);
                               if (!isNaN(raw)) {
                                 field.handleChange(
-                                  advanceNoticeUnit === 'days' ? raw * 24 : raw,
+                                  advanceNoticeUnit === 'days' ? raw * 1440 : raw * 60,
                                 );
                               }
                             }}
@@ -878,8 +856,8 @@ export function StoreSettingsForm({
                             onChange={(e) => {
                               const unit = e.target.value as 'hours' | 'days';
                               if (unit === 'days') {
-                                const days = Math.round(field.state.value / 24);
-                                field.handleChange(days * 24);
+                                const days = Math.round(field.state.value / 1440);
+                                field.handleChange(days * 1440);
                               }
                               setAdvanceNoticeUnit(unit);
                             }}

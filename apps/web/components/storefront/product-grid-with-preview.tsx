@@ -9,7 +9,6 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { getEffectivePricingMode } from '@louez/utils'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { ProductPreviewModal } from './product-preview-modal'
 import type { PricingMode } from '@louez/types'
@@ -39,7 +38,6 @@ interface Product {
 interface ProductGridWithPreviewProps {
   products: Product[]
   storeSlug: string
-  storePricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
   timezone?: string
@@ -47,11 +45,9 @@ interface ProductGridWithPreviewProps {
 
 function ProductCardInteractive({
   product,
-  storePricingMode,
   onClick,
 }: {
   product: Product
-  storePricingMode: PricingMode
   onClick: () => void
 }) {
   const t = useTranslations('storefront.product')
@@ -60,7 +56,7 @@ function ProductCardInteractive({
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
-  const pricingMode = getEffectivePricingMode(product.pricingMode, storePricingMode)
+  const pricingMode: PricingMode = product.pricingMode ?? 'day'
 
   const maxDiscount = product.pricingTiers?.length
     ? Math.max(...product.pricingTiers.map((t) => parseFloat(t.discountPercent)))
@@ -150,7 +146,6 @@ function ProductCardInteractive({
 export function ProductGridWithPreview({
   products,
   storeSlug,
-  storePricingMode,
   businessHours,
   advanceNotice,
   timezone,
@@ -175,7 +170,6 @@ export function ProductGridWithPreview({
           <ProductCardInteractive
             key={product.id}
             product={product}
-            storePricingMode={storePricingMode}
             onClick={() => handleProductClick(product)}
           />
         ))}
@@ -187,7 +181,6 @@ export function ProductGridWithPreview({
           isOpen={isModalOpen}
           onClose={handleCloseModal}
           storeSlug={storeSlug}
-          storePricingMode={storePricingMode}
           businessHours={businessHours}
           advanceNotice={advanceNotice}
           timezone={timezone}

@@ -63,25 +63,37 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
     getItemCount,
     getSubtotal,
     getTotal,
-    getDuration,
-    pricingMode,
     getTotalSavings,
     getOriginalSubtotal,
   } = useCart()
 
   const itemCount = getItemCount()
-  const duration = getDuration()
+  const tProduct = useTranslations('storefront.product')
 
-  // Format duration label
-  const durationLabel = (() => {
-    const tProduct = useTranslations('storefront.product')
-    if (pricingMode === 'hour') {
+  const getItemDuration = (item: (typeof items)[number]) => {
+    const start = globalStartDate ? new Date(globalStartDate) : new Date(item.startDate)
+    const end = globalEndDate ? new Date(globalEndDate) : new Date(item.endDate)
+    const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+    const diffMs = end.getTime() - start.getTime()
+    if (itemPricingMode === 'hour') return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
+    if (itemPricingMode === 'week') return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
+    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+  }
+
+  const getItemDurationLabel = (item: (typeof items)[number]) => {
+    const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+    const duration = getItemDuration(item)
+    if (itemPricingMode === 'hour') {
       return `${duration} ${duration > 1 ? tProduct('pricingUnit.hour.plural') : tProduct('pricingUnit.hour.singular')}`
-    } else if (pricingMode === 'week') {
+    }
+    if (itemPricingMode === 'week') {
       return `${duration} ${duration > 1 ? tProduct('pricingUnit.week.plural') : tProduct('pricingUnit.week.singular')}`
     }
     return `${duration} ${duration > 1 ? tProduct('pricingUnit.day.plural') : tProduct('pricingUnit.day.singular')}`
-  })()
+  }
+
+  // Format duration label
+  const durationLabel = items.length > 0 ? getItemDurationLabel(items[0]) : ''
 
   const CartContent = () => (
     <>
@@ -139,7 +151,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{item.productName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(item.price * duration, currency)} × {item.quantity}
+                      {formatCurrency(item.price * getItemDuration(item), currency)} × {item.quantity}
                     </p>
 
                     {/* Quantity Controls */}

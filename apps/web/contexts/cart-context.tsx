@@ -33,7 +33,7 @@ export interface CartItem {
   maxQuantity: number
   // Pricing tiers for this product
   pricingTiers?: CartItemPricingTier[]
-  // Product-specific pricing mode (null = use store default)
+  // Product-specific pricing mode
   productPricingMode?: PricingMode | null
   // Legacy fields for backwards compatibility
   startDate: string
@@ -256,17 +256,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return items.reduce((sum, item) => sum + item.quantity, 0)
   }, [items])
 
+  const getItemDuration = useCallback((item: CartItem) => {
+    const start = globalStartDate || item.startDate
+    const end = globalEndDate || item.endDate
+    if (!start || !end) return 1
+    const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+    return calculateDuration(start, end, itemPricingMode)
+  }, [globalStartDate, globalEndDate])
+
   const getDuration = useCallback(() => {
-    if (!globalStartDate || !globalEndDate) return 1
-    return calculateDuration(globalStartDate, globalEndDate, pricingMode)
-  }, [globalStartDate, globalEndDate, pricingMode])
+    if (items.length === 0) return 1
+    return getItemDuration(items[0])
+  }, [items, getItemDuration])
 
   // Calculate subtotal with tiered pricing
   const getSubtotal = useCallback(() => {
-    const duration = getDuration()
     return items.reduce((sum, item) => {
-      // Get effective pricing mode for this item
-      const itemPricingMode = item.productPricingMode || pricingMode
+      const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+      const itemDuration = getItemDuration(item)
 
       // If item has pricing tiers, use tiered calculation
       if (item.pricingTiers && item.pricingTiers.length > 0) {
@@ -279,22 +286,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
             displayOrder: i,
           })),
         }
-        const result = calculateRentalPrice(pricing, duration, item.quantity)
+        const result = calculateRentalPrice(pricing, itemDuration, item.quantity)
         return sum + result.subtotal
       }
 
       // Otherwise use simple calculation
-      return sum + item.price * item.quantity * duration
+      return sum + item.price * item.quantity * itemDuration
     }, 0)
-  }, [items, getDuration, pricingMode])
+  }, [items, getItemDuration])
 
   // Calculate original subtotal (without discounts)
   const getOriginalSubtotal = useCallback(() => {
-    const duration = getDuration()
     return items.reduce((sum, item) => {
-      return sum + item.price * item.quantity * duration
+      return sum + item.price * item.quantity * getItemDuration(item)
     }, 0)
-  }, [items, getDuration])
+  }, [items, getItemDuration])
 
   // Calculate total savings from tiered pricing
   const getTotalSavings = useCallback(() => {

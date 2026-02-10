@@ -83,7 +83,6 @@ interface ProductPreviewModalProps {
   isOpen: boolean
   onClose: () => void
   storeSlug: string
-  storePricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
   timezone?: string
@@ -96,7 +95,6 @@ export function ProductPreviewModal({
   isOpen,
   onClose,
   storeSlug,
-  storePricingMode,
   businessHours,
   advanceNotice = 0,
   timezone,
@@ -143,12 +141,12 @@ export function ProductPreviewModal({
     }
   }, [isOpen, trackEvent, product.id, product.name, product.price, product.category?.name])
 
-  useEffect(() => {
-    setPricingMode(storePricingMode)
-  }, [storePricingMode, setPricingMode])
-
   const price = parseFloat(product.price)
-  const effectivePricingMode = product.pricingMode || storePricingMode
+  const effectivePricingMode: PricingMode = product.pricingMode ?? 'day'
+
+  useEffect(() => {
+    setPricingMode(effectivePricingMode)
+  }, [effectivePricingMode, setPricingMode])
 
   // Normalize tiers
   const tiers = product.pricingTiers?.map((tier, index) => ({

@@ -86,7 +86,6 @@ export default async function EditReservationPage({
     getActiveReservations(store.id, id),
   ])
 
-  const pricingMode = store.settings?.pricingMode || 'day'
   const currency = store.settings?.currency || 'EUR'
 
   return (
@@ -144,7 +143,6 @@ export default async function EditReservationPage({
         })),
       }))}
       existingReservations={existingReservations}
-      pricingMode={pricingMode}
       currency={currency}
       storeSettings={store.settings || null}
     />

@@ -19,7 +19,10 @@ import { cn } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { type PricingMode } from '@/lib/utils/duration'
-import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
+import {
+  formatDurationFromMinutes,
+  validateMinRentalDurationMinutes,
+} from '@/lib/utils/rental-duration'
 import type { BusinessHours } from '@louez/types'
 import { buildDateTimeRange, ensureSelectedTime, useRentalDateCore } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import {
@@ -31,7 +34,7 @@ interface CatalogDatePickerProps {
   pricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
-  minRentalHours?: number
+  minRentalMinutes?: number
   timezone?: string
 }
 
@@ -40,7 +43,7 @@ export function CatalogDatePicker({
   pricingMode,
   businessHours,
   advanceNotice = 0,
-  minRentalHours = 0,
+  minRentalMinutes = 0,
   timezone,
 }: CatalogDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
@@ -231,7 +234,7 @@ export function CatalogDatePicker({
     // For same day, ensure end time is after start time
     if (isSameDay && endTime <= startTime) return false
     // Validate minimum rental duration
-    if (minRentalHours > 0) {
+    if (minRentalMinutes > 0) {
       const { start: fullStart, end: fullEnd } = buildDateTimeRange({
         startDate: new Date(startDate),
         endDate: new Date(endDate),
@@ -239,14 +242,14 @@ export function CatalogDatePicker({
         endTime,
         timezone,
       })
-      if (!validateMinRentalDuration(fullStart, fullEnd, minRentalHours).valid) return false
+      if (!validateMinRentalDurationMinutes(fullStart, fullEnd, minRentalMinutes).valid) return false
     }
     return true
-  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalHours, timezone])
+  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone])
 
   const durationWarning = useMemo(() => {
     if (!startDate || !endDate || !startTime || !endTime) return null
-    if (minRentalHours <= 0) return null
+    if (minRentalMinutes <= 0) return null
     const { start: fullStart, end: fullEnd } = buildDateTimeRange({
       startDate: new Date(startDate),
       endDate: new Date(endDate),
@@ -254,10 +257,12 @@ export function CatalogDatePicker({
       endTime,
       timezone,
     })
-    const check = validateMinRentalDuration(fullStart, fullEnd, minRentalHours)
+    const check = validateMinRentalDurationMinutes(fullStart, fullEnd, minRentalMinutes)
     if (check.valid) return null
-    return t('minDurationWarning', { hours: minRentalHours })
-  }, [startDate, endDate, startTime, endTime, minRentalHours, timezone, t])
+    return t('minDurationWarning', {
+      duration: formatDurationFromMinutes(minRentalMinutes),
+    })
+  }, [startDate, endDate, startTime, endTime, minRentalMinutes, timezone, t])
 
   const handleSubmit = () => {
     if (!canSubmit) return

@@ -12,12 +12,11 @@ import { Badge } from '@louez/ui'
 import { Separator } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
-import { getMinRentalHours } from '@/lib/utils/rental-duration'
+import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { ProductCard } from '@/components/storefront/product-card'
 import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
 import { ProductGallery } from './product-gallery'
 import { AddToCartForm } from './add-to-cart-form'
-import { getEffectivePricingMode } from '@louez/utils'
 import {
   generateProductMetadata,
   generateProductSchema,
@@ -165,8 +164,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       })
     : []
 
-  const storePricingMode = store.settings?.pricingMode || 'day'
-  const effectivePricingMode = getEffectivePricingMode(product.pricingMode, storePricingMode)
+  const effectivePricingMode = product.pricingMode ?? 'day'
   const isAvailable = product.quantity > 0
 
   // Prepare data for JSON-LD schemas
@@ -309,7 +307,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               deposit={product.deposit ? parseFloat(product.deposit) : 0}
               maxQuantity={product.quantity}
               pricingMode={effectivePricingMode}
-              storePricingMode={storePricingMode}
               storeSlug={slug}
               pricingTiers={product.pricingTiers?.map((tier) => ({
                 id: tier.id,
@@ -317,9 +314,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 discountPercent: parseFloat(tier.discountPercent),
               }))}
               enforceStrictTiers={product.enforceStrictTiers ?? false}
-              productPricingMode={product.pricingMode}
-              advanceNotice={storeSettings.advanceNotice || 0}
-              minRentalHours={getMinRentalHours(storeSettings as StoreSettings)}
+              advanceNotice={storeSettings.advanceNoticeMinutes || 0}
+              minRentalMinutes={getMinRentalMinutes(storeSettings as StoreSettings)}
               accessories={availableAccessories}
             />
           )}
@@ -346,7 +342,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   key={relatedProduct.id}
                   product={relatedProduct}
                   storeSlug={slug}
-                  pricingMode={storePricingMode}
                 />
               ))}
             </div>

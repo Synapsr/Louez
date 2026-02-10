@@ -91,7 +91,7 @@ interface Product {
   categoryId: string | null
   price: string
   deposit: string | null
-  pricingMode: PricingMode | null
+  pricingMode: PricingMode
   pricingTiers?: PricingTierData[]
   quantity: number
   status: 'draft' | 'active' | 'archived' | null
@@ -114,13 +114,12 @@ interface AvailableAccessory {
 interface ProductFormProps {
   product?: Product
   categories: Category[]
-  pricingMode: 'day' | 'hour' | 'week'
   currency?: string
   storeTaxSettings?: TaxSettings
   availableAccessories?: AvailableAccessory[]
 }
 
-export function ProductForm({ product, categories, pricingMode, currency = 'EUR', storeTaxSettings, availableAccessories = [] }: ProductFormProps) {
+export function ProductForm({ product, categories, currency = 'EUR', storeTaxSettings, availableAccessories = [] }: ProductFormProps) {
   const router = useRouter()
   const t = useTranslations('dashboard.products.form')
   const tCommon = useTranslations('common')
@@ -169,7 +168,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
       quantity: product?.quantity?.toString() || '1',
       status: (product?.status || 'draft') as 'draft' | 'active' | 'archived',
       images: product?.images ?? [] as string[],
-      pricingMode: (product?.pricingMode || null) as PricingMode | null,
+      pricingMode: (product?.pricingMode ?? 'day') as PricingMode,
       pricingTiers: initialPricingTiers,
       enforceStrictTiers: product?.enforceStrictTiers || false,
       taxSettings: product?.taxSettings || { inheritFromStore: true } as ProductTaxSettings,
@@ -398,8 +397,7 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
 
   const selectedCategory = categories.find((c) => c.id === watchedValues.categoryId)
 
-  // Effective pricing mode (product-specific or store default)
-  const effectivePricingMode: PricingMode = watchedValues.pricingMode || pricingMode
+  const effectivePricingMode: PricingMode = watchedValues.pricingMode
 
   const priceLabel =
     effectivePricingMode === 'day'
@@ -704,16 +702,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                     <div className="space-y-2">
                       <Label>{t('pricingModeLabel')}</Label>
                       <Select
-                        onValueChange={(value) => { if (value !== null) field.handleChange((value === 'inherit' ? null : value) as any) }}
-                        value={field.state.value || 'inherit'}
+                        onValueChange={(value) => {
+                          if (value !== null) field.handleChange(value as PricingMode)
+                        }}
+                        value={field.state.value}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={t('pricingModeInherit')} />
+                          <SelectValue placeholder={t('pricingModeLabel')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="inherit">
-                            {t('pricingModeInherit')} ({t(`pricingModes.${pricingMode}`)})
-                          </SelectItem>
                           <SelectItem value="hour">{t('pricingModes.hour')}</SelectItem>
                           <SelectItem value="day">{t('pricingModes.day')}</SelectItem>
                           <SelectItem value="week">{t('pricingModes.week')}</SelectItem>
@@ -1148,16 +1145,15 @@ export function ProductForm({ product, categories, pricingMode, currency = 'EUR'
                         <div className="space-y-2">
                           <Label>{t('pricingModeLabel')}</Label>
                           <Select
-                            onValueChange={(value) => { if (value !== null) field.handleChange(value === 'inherit' ? null : value as any) }}
-                            value={field.state.value || 'inherit'}
+                            onValueChange={(value) => {
+                              if (value !== null) field.handleChange(value as PricingMode)
+                            }}
+                            value={field.state.value}
                           >
                             <SelectTrigger>
-                              <SelectValue placeholder={t('pricingModeInherit')} />
+                              <SelectValue placeholder={t('pricingModeLabel')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="inherit">
-                                {t('pricingModeInherit')} ({t(`pricingModes.${pricingMode}`)})
-                              </SelectItem>
                               <SelectItem value="hour">{t('pricingModes.hour')}</SelectItem>
                               <SelectItem value="day">{t('pricingModes.day')}</SelectItem>
                               <SelectItem value="week">{t('pricingModes.week')}</SelectItem>

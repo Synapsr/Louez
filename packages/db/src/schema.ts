@@ -218,11 +218,10 @@ export const stores = mysqlTable(
 
     // Configuration
     settings: json('settings').$type<StoreSettings>().default({
-      pricingMode: 'day',
       reservationMode: 'payment',
-      minRentalHours: 1,
-      maxRentalHours: null,
-      advanceNotice: 24,
+      minRentalMinutes: 60,
+      maxRentalMinutes: null,
+      advanceNoticeMinutes: 1440,
     }),
 
     // Theme
@@ -325,8 +324,8 @@ export const products = mysqlTable(
     price: decimal('price', { precision: 10, scale: 2 }).notNull(),
     deposit: decimal('deposit', { precision: 10, scale: 2 }).default('0'),
 
-    // Product-specific pricing mode (null = inherit from store)
-    pricingMode: pricingModeEnum,
+    // Product pricing mode
+    pricingMode: pricingModeEnum.notNull(),
 
     // Video URL (YouTube)
     videoUrl: text('video_url'),

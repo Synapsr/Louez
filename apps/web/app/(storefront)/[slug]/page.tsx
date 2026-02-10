@@ -24,7 +24,7 @@ import {
   stripHtml,
 } from '@/lib/seo'
 import type { StoreTheme, StoreSettings, ReviewBoosterSettings } from '@louez/types'
-import { getMinRentalHours } from '@/lib/utils/rental-duration'
+import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface StorefrontPageProps {
@@ -135,12 +135,14 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
     products: storeProducts,
   }
 
-  const pricingMode = storeWithRelations.settings?.pricingMode || 'day'
+  const pricingMode = 'day' as const
   const primaryColor = storeWithRelations.theme?.primaryColor || '#0066FF'
   const businessHours = storeWithRelations.settings?.businessHours
   const timezone = storeWithRelations.settings?.timezone
-  const advanceNotice = storeWithRelations.settings?.advanceNotice || 0
-  const minRentalHours = getMinRentalHours(storeWithRelations.settings as StoreSettings | null)
+  const advanceNotice = storeWithRelations.settings?.advanceNoticeMinutes || 0
+  const minRentalMinutes = getMinRentalMinutes(
+    storeWithRelations.settings as StoreSettings | null
+  )
   const heroImages = storeWithRelations.theme?.heroImages || []
   const hasHeroImages = heroImages.length > 0
   const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
@@ -264,7 +266,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       pricingMode={pricingMode}
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
-                      minRentalHours={minRentalHours}
+                      minRentalMinutes={minRentalMinutes}
                       timezone={timezone}
                     />
                   </Suspense>
@@ -334,7 +336,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                       pricingMode={pricingMode}
                       businessHours={businessHours}
                       advanceNotice={advanceNotice}
-                      minRentalHours={minRentalHours}
+                      minRentalMinutes={minRentalMinutes}
                       timezone={timezone}
                     />
                   </Suspense>
@@ -408,7 +410,6 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
             <ProductGridWithPreview
               products={storeWithRelations.products}
               storeSlug={slug}
-              storePricingMode={pricingMode}
               businessHours={businessHours}
               advanceNotice={advanceNotice}
               timezone={timezone}

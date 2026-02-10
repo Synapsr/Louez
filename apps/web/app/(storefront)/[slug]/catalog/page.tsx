@@ -19,7 +19,7 @@ import {
   JsonLd,
 } from '@/lib/seo'
 import type { StoreSettings, StoreTheme } from '@louez/types'
-import { getMinRentalHours } from '@/lib/utils/rental-duration'
+import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { PageTracker } from '@/components/storefront/page-tracker'
 
 interface CatalogPageProps {
@@ -236,13 +236,13 @@ export default async function CatalogPage({
       )
     : productsList
 
-  const pricingMode = store.settings?.pricingMode || 'day'
+  const pricingMode = 'day' as const
   const activeCategory = storeCategories.find((c) => c.id === categoryId)
   const settings = (store.settings as StoreSettings) || {}
   const businessHours = settings.businessHours
   const timezone = settings.timezone
-  const advanceNotice = settings.advanceNotice || 0
-  const minRentalHours = getMinRentalHours(settings)
+  const advanceNotice = settings.advanceNoticeMinutes || 0
+  const minRentalMinutes = getMinRentalMinutes(settings)
 
   // Prepare data for JSON-LD
   const storeForSchema = {
@@ -308,12 +308,12 @@ export default async function CatalogPage({
             {/* Date picker */}
             <CatalogDatePicker
               storeSlug={slug}
-              pricingMode={pricingMode}
-              businessHours={businessHours}
-              advanceNotice={advanceNotice}
-              minRentalHours={minRentalHours}
-              timezone={timezone}
-            />
+            pricingMode={pricingMode}
+            businessHours={businessHours}
+            advanceNotice={advanceNotice}
+            minRentalMinutes={minRentalMinutes}
+            timezone={timezone}
+          />
           </div>
 
           {/* Category Pills */}
@@ -354,7 +354,6 @@ export default async function CatalogPage({
           <ProductGridWithPreview
             products={filteredProducts}
             storeSlug={slug}
-            storePricingMode={pricingMode}
             businessHours={businessHours}
             advanceNotice={advanceNotice}
             timezone={timezone}

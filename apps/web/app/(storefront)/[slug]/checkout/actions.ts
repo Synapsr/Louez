@@ -14,12 +14,17 @@ import { notifyNewReservation } from '@/lib/discord/platform-notifications'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
 import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
-import { getMinRentalHours, getMaxRentalHours, validateMinRentalDuration, validateMaxRentalDuration } from '@/lib/utils/rental-duration'
+import {
+  formatDurationFromMinutes,
+  getMinRentalMinutes,
+  getMaxRentalMinutes,
+  validateMinRentalDurationMinutes,
+  validateMaxRentalDurationMinutes,
+} from '@/lib/utils/rental-duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
   calculateRentalPrice,
   calculateDuration as calcDuration,
-  getEffectivePricingMode,
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
@@ -131,37 +136,49 @@ export async function createReservation(input: CreateReservationInput) {
     }
 
     // Validate advance notice
-    const advanceNoticeHours = store.settings?.advanceNotice || 0
-    if (advanceNoticeHours > 0) {
-      const minimumStartTime = getMinStartDateTime(advanceNoticeHours)
+    const advanceNoticeMinutes = store.settings?.advanceNoticeMinutes || 0
+    if (advanceNoticeMinutes > 0) {
+      const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes)
       if (rentalStartDate < minimumStartTime) {
         return {
           error: 'errors.advanceNoticeViolation',
-          errorParams: { hours: advanceNoticeHours },
+          errorParams: { duration: formatDurationFromMinutes(advanceNoticeMinutes) },
         }
       }
     }
 
     // Validate minimum rental duration
-    const minRentalHours = getMinRentalHours(store.settings as StoreSettings | null)
-    if (minRentalHours > 0) {
-      const durationCheck = validateMinRentalDuration(rentalStartDate, rentalEndDate, minRentalHours)
+    const minRentalMinutes = getMinRentalMinutes(
+      store.settings as StoreSettings | null
+    )
+    if (minRentalMinutes > 0) {
+      const durationCheck = validateMinRentalDurationMinutes(
+        rentalStartDate,
+        rentalEndDate,
+        minRentalMinutes
+      )
       if (!durationCheck.valid) {
         return {
           error: 'errors.minRentalDurationViolation',
-          errorParams: { hours: minRentalHours },
+          errorParams: { duration: formatDurationFromMinutes(minRentalMinutes) },
         }
       }
     }
 
     // Validate maximum rental duration
-    const maxRentalHours = getMaxRentalHours(store.settings as StoreSettings | null)
-    if (maxRentalHours !== null) {
-      const maxCheck = validateMaxRentalDuration(rentalStartDate, rentalEndDate, maxRentalHours)
+    const maxRentalMinutes = getMaxRentalMinutes(
+      store.settings as StoreSettings | null
+    )
+    if (maxRentalMinutes !== null) {
+      const maxCheck = validateMaxRentalDurationMinutes(
+        rentalStartDate,
+        rentalEndDate,
+        maxRentalMinutes
+      )
       if (!maxCheck.valid) {
         return {
           error: 'errors.maxRentalDurationViolation',
-          errorParams: { hours: maxRentalHours },
+          errorParams: { duration: formatDurationFromMinutes(maxRentalMinutes) },
         }
       }
     }
@@ -169,9 +186,7 @@ export async function createReservation(input: CreateReservationInput) {
     // ===== SERVER-SIDE PRICE CALCULATION =====
     // Never trust client-provided prices - always recalculate from database
 
-    // Get store pricing mode
     const storeSettings = store.settings as StoreSettings | null
-    const storePricingMode: PricingMode = storeSettings?.pricingMode || 'day'
 
     // Structure to hold server-calculated prices
     interface ServerCalculatedItem {
@@ -211,10 +226,7 @@ export async function createReservation(input: CreateReservationInput) {
       }
 
       // Calculate price from database values (NOT from client input)
-      const productPricingMode = getEffectivePricingMode(
-        product.pricingMode as PricingMode | null,
-        storePricingMode
-      )
+      const productPricingMode = product.pricingMode as PricingMode
       const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
 
       const pricingResult = calculateRentalPrice(

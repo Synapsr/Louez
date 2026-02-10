@@ -205,6 +205,8 @@ Located in `actions.ts` files. Always:
 ### oRPC (Type-Safe API)
 
 For new API calls, use oRPC instead of REST for end-to-end type safety.
+When touching existing app-owned REST endpoints or page-local API logic, prefer migrating that logic into `@louez/api` procedures/services and consume it via `orpc.*` from the web app.
+Keep route handlers for integration-style endpoints where oRPC is not a fit (for example webhooks, third-party callbacks, or transport-specific streaming handlers).
 
 **Defining procedures** (`packages/api/src/routers/`):
 

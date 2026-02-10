@@ -25,7 +25,10 @@ import {
   type PricingTier,
 } from '@louez/utils'
 import { getMinStartDate } from '@/lib/utils/duration'
-import { validateMinRentalDuration } from '@/lib/utils/rental-duration'
+import {
+  formatDurationFromMinutes,
+  validateMinRentalDurationMinutes,
+} from '@/lib/utils/rental-duration'
 import type { PricingMode } from '@louez/types'
 
 interface Accessory {
@@ -51,13 +54,11 @@ interface AddToCartFormProps {
   deposit: number
   maxQuantity: number
   pricingMode: 'day' | 'hour' | 'week'
-  storePricingMode: 'day' | 'hour' | 'week'
   storeSlug: string
   pricingTiers?: { id: string; minDuration: number; discountPercent: number }[]
   enforceStrictTiers?: boolean
-  productPricingMode?: PricingMode | null
   advanceNotice?: number
-  minRentalHours?: number
+  minRentalMinutes?: number
   accessories?: Accessory[]
 }
 
@@ -69,13 +70,11 @@ export function AddToCartForm({
   deposit,
   maxQuantity,
   pricingMode,
-  storePricingMode,
   storeSlug,
   pricingTiers,
   enforceStrictTiers = false,
-  productPricingMode,
   advanceNotice = 0,
-  minRentalHours = 0,
+  minRentalMinutes = 0,
   accessories = [],
 }: AddToCartFormProps) {
   const router = useRouter()
@@ -142,10 +141,13 @@ export function AddToCartForm({
     }
 
     // Validate minimum rental duration
-    if (minRentalHours > 0) {
-      const check = validateMinRentalDuration(startDate, endDate, minRentalHours)
+    if (minRentalMinutes > 0) {
+      const check = validateMinRentalDurationMinutes(startDate, endDate, minRentalMinutes)
       if (!check.valid) {
-        toastManager.add({ title: t('minDurationError', { hours: minRentalHours }), type: 'error' })
+        toastManager.add({
+          title: t('minDurationError', { duration: formatDurationFromMinutes(minRentalMinutes) }),
+          type: 'error',
+        })
         return
       }
     }
@@ -159,13 +161,13 @@ export function AddToCartForm({
         deposit,
         quantity,
         maxQuantity,
-        pricingMode: storePricingMode,
+        pricingMode,
         pricingTiers: pricingTiers?.map((tier) => ({
           id: tier.id,
           minDuration: tier.minDuration,
           discountPercent: tier.discountPercent,
         })),
-        productPricingMode,
+        productPricingMode: pricingMode,
       },
       storeSlug
     )
@@ -311,7 +313,6 @@ export function AddToCartForm({
         productName={productName}
         accessories={availableAccessories}
         storeSlug={storeSlug}
-        storePricingMode={storePricingMode}
         currency={currency}
       />
     </div>

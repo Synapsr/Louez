@@ -15,7 +15,7 @@ import { useStoreCurrency } from '@/contexts/store-context'
 import { AvailabilityBadge, type AvailabilityStatus } from './availability-badge'
 import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
-import { calculateRentalPrice, getEffectivePricingMode, type ProductPricing } from '@louez/utils'
+import { calculateRentalPrice, type ProductPricing } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 
 interface PricingTier {
@@ -92,8 +92,7 @@ export function ProductCardAvailable({
   const deposit = product.deposit ? parseFloat(product.deposit) : 0
   const mainImage = product.images?.[0]
 
-  // Get effective pricing mode for this product
-  const effectivePricingMode = getEffectivePricingMode(product.pricingMode, pricingMode)
+  const effectivePricingMode: PricingMode = product.pricingMode ?? 'day'
 
   // Calculate price with tiered pricing
   const normalizedTiers = normalizeTiers(product.pricingTiers)
@@ -349,7 +348,7 @@ export function ProductCardAvailable({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         storeSlug={storeSlug}
-        pricingMode={pricingMode}
+        pricingMode={effectivePricingMode}
         availableQuantity={availableQuantity}
         startDate={startDate}
         endDate={endDate}
@@ -371,7 +370,6 @@ export function ProductCardAvailable({
           })),
         }))}
         storeSlug={storeSlug}
-        storePricingMode={pricingMode}
         currency={currency}
       />
     </>
