@@ -5,6 +5,7 @@ import { brandingSchema, stripeSetupSchema } from '@louez/validations';
 import { dashboardProcedure } from '../../procedures';
 import {
   completeOnboarding,
+  getOnboardingDraft,
   updateOnboardingBranding,
   uploadOnboardingImage,
 } from '../../services';
@@ -71,7 +72,20 @@ const uploadImage = dashboardProcedure
     }
   });
 
+const getDraft = dashboardProcedure
+  .input(z.object({}))
+  .handler(async ({ context }) => {
+    try {
+      return await getOnboardingDraft({
+        storeId: context.store.id,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
 export const dashboardOnboardingRouter = {
+  getDraft,
   updateBranding,
   complete,
   uploadImage,
