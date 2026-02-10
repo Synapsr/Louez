@@ -1,114 +1,117 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useEffect, useMemo, useState } from 'react';
+
+import { useRouter, useSearchParams } from 'next/navigation';
+
 import {
+  AlertTriangle,
+  ArrowRight,
   CalendarDays,
+  ChevronDown,
+  Clock,
+  Filter,
+  Globe,
   Search,
   X,
-  Clock,
-  ChevronDown,
-  Filter,
-  ArrowRight,
-  AlertTriangle,
-  Globe,
-} from 'lucide-react'
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Badge } from '@louez/ui'
+import { Button } from '@louez/ui';
+import { Input } from '@louez/ui';
+import { Badge } from '@louez/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@louez/ui'
+} from '@louez/ui';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@louez/ui';
+import { Skeleton } from '@louez/ui';
+import { Alert, AlertDescription, AlertTitle } from '@louez/ui';
+
+import { CartSidebar } from '@/components/storefront/cart-sidebar';
+import { DatePickerModal } from '@/components/storefront/date-picker-modal';
+import { PageTracker } from '@/components/storefront/page-tracker';
+import { ProductCardAvailable } from '@/components/storefront/product-card-available';
+
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@louez/ui'
-import { Skeleton } from '@louez/ui'
-import { Alert, AlertDescription, AlertTitle } from '@louez/ui'
-import { ProductCardAvailable } from '@/components/storefront/product-card-available'
-import { CartSidebar } from '@/components/storefront/cart-sidebar'
-import { DatePickerModal } from '@/components/storefront/date-picker-modal'
-import { PageTracker } from '@/components/storefront/page-tracker'
-import { useCart } from '@/contexts/cart-context'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
-import {
-  calculateDuration,
-  getDetailedDuration,
-  formatDateTime,
   type PricingMode,
-} from '@/lib/utils/duration'
+  calculateDuration,
+  formatDateTime,
+  getDetailedDuration,
+} from '@/lib/utils/duration';
+
+import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+
+import { useCart } from '@/contexts/cart-context';
+
 import type {
-  ProductAvailability,
   AvailabilityResponse,
   BusinessHoursValidation,
-} from '@/app/api/stores/[slug]/availability/route'
+  ProductAvailability,
+} from '@/app/api/stores/[slug]/availability/route';
 
 interface PricingTier {
-  id: string
-  minDuration: number
-  discountPercent: string | number
-  displayOrder: number | null
+  id: string;
+  minDuration: number;
+  discountPercent: string | number;
+  displayOrder: number | null;
 }
 
 interface Accessory {
-  id: string
-  name: string
-  price: string
-  deposit: string
-  images: string[] | null
-  quantity: number
-  pricingMode: 'day' | 'hour' | 'week' | null
-  pricingTiers?: PricingTier[]
+  id: string;
+  name: string;
+  price: string;
+  deposit: string;
+  images: string[] | null;
+  quantity: number;
+  pricingMode: 'day' | 'hour' | 'week' | null;
+  pricingTiers?: PricingTier[];
 }
 
 interface Product {
-  id: string
-  name: string
-  description: string | null
-  images: string[] | null
-  price: string
-  deposit: string | null
-  quantity: number
-  category: { id: string; name: string } | null
-  pricingMode?: PricingMode | null
-  pricingTiers?: PricingTier[]
-  videoUrl?: string | null
-  accessories?: Accessory[]
+  id: string;
+  name: string;
+  description: string | null;
+  images: string[] | null;
+  price: string;
+  deposit: string | null;
+  quantity: number;
+  category: { id: string; name: string } | null;
+  pricingMode?: PricingMode | null;
+  pricingTiers?: PricingTier[];
+  videoUrl?: string | null;
+  accessories?: Accessory[];
 }
 
 interface Category {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 interface Store {
-  id: string
-  slug: string
-  name: string
-  theme?: { primaryColor?: string } | null
+  id: string;
+  slug: string;
+  name: string;
+  theme?: { primaryColor?: string } | null;
   settings?: {
-    businessHours?: import('@/types/store').BusinessHours
-    advanceNotice?: number
-    timezone?: string
-  } | null
+    businessHours?: import('@/types/store').BusinessHours;
+    advanceNotice?: number;
+    timezone?: string;
+  } | null;
 }
 
 interface RentalContentProps {
-  store: Store
-  products: Product[]
-  categories: Category[]
-  pricingMode: PricingMode
-  startDate: string
-  endDate: string
-  categoryId?: string
-  searchTerm?: string
+  store: Store;
+  products: Product[];
+  categories: Category[];
+  pricingMode: PricingMode;
+  startDate: string;
+  endDate: string;
+  categoryId?: string;
+  searchTerm?: string;
 }
 
 export function RentalContent({
@@ -121,181 +124,191 @@ export function RentalContent({
   categoryId,
   searchTerm: initialSearchTerm,
 }: RentalContentProps) {
-  const t = useTranslations('storefront.availability')
-  const tFilters = useTranslations('storefront.availability.filters')
-  const tDate = useTranslations('storefront.dateSelection')
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { setGlobalDates, setPricingMode } = useCart()
-  const { getUrl } = useStorefrontUrl(store.slug)
+  const t = useTranslations('storefront.availability');
+  const tFilters = useTranslations('storefront.availability.filters');
+  const tDate = useTranslations('storefront.dateSelection');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { setGlobalDates, setPricingMode } = useCart();
+  const { getUrl } = useStorefrontUrl(store.slug);
 
   const [availability, setAvailability] = useState<
     Map<string, ProductAvailability>
-  >(new Map())
-  const [businessHoursValidation, setBusinessHoursValidation] = useState<BusinessHoursValidation | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '')
-  const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all')
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [isDateModalOpen, setIsDateModalOpen] = useState(false)
+  >(new Map());
+  const [businessHoursValidation, setBusinessHoursValidation] =
+    useState<BusinessHoursValidation | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm || '');
+  const [selectedCategory, setSelectedCategory] = useState(categoryId || 'all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
 
   const duration = useMemo(
     () => calculateDuration(startDate, endDate, pricingMode),
-    [startDate, endDate, pricingMode]
-  )
+    [startDate, endDate, pricingMode],
+  );
 
   // Detailed duration (days + hours)
   const detailedDuration = useMemo(
     () => getDetailedDuration(startDate, endDate),
-    [startDate, endDate]
-  )
+    [startDate, endDate],
+  );
 
   // Format start and end datetime in store timezone
-  const storeTimezone = store.settings?.timezone
-  const startDateTime = useMemo(() => formatDateTime(startDate, { timezone: storeTimezone }), [startDate, storeTimezone])
-  const endDateTime = useMemo(() => formatDateTime(endDate, { timezone: storeTimezone }), [endDate, storeTimezone])
+  const storeTimezone = store.settings?.timezone;
+  const startDateTime = useMemo(
+    () => formatDateTime(startDate, { timezone: storeTimezone }),
+    [startDate, storeTimezone],
+  );
+  const endDateTime = useMemo(
+    () => formatDateTime(endDate, { timezone: storeTimezone }),
+    [endDate, storeTimezone],
+  );
 
   // Detect if user's browser timezone differs from the store's timezone
   const timezoneCity = useMemo(() => {
-    if (!storeTimezone) return null
-    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-    if (browserTimezone === storeTimezone) return null
+    if (!storeTimezone) return null;
+    const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (browserTimezone === storeTimezone) return null;
     // Extract city name from IANA timezone (e.g., "Europe/Paris" → "Paris")
-    const city = storeTimezone.split('/').pop()?.replace(/_/g, ' ')
-    return city || storeTimezone
-  }, [storeTimezone])
+    const city = storeTimezone.split('/').pop()?.replace(/_/g, ' ');
+    return city || storeTimezone;
+  }, [storeTimezone]);
 
   // Set global dates in cart context
   useEffect(() => {
-    setGlobalDates(startDate, endDate)
-    setPricingMode(pricingMode)
-  }, [startDate, endDate, pricingMode, setGlobalDates, setPricingMode])
+    setGlobalDates(startDate, endDate);
+    setPricingMode(pricingMode);
+  }, [startDate, endDate, pricingMode, setGlobalDates, setPricingMode]);
 
   // Fetch availability
   useEffect(() => {
     async function fetchAvailability() {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         const params = new URLSearchParams({
           startDate,
           endDate,
-        })
+        });
         const res = await fetch(
-          `/api/stores/${store.slug}/availability?${params}`
-        )
+          `/api/stores/${store.slug}/availability?${params}`,
+        );
         if (res.ok) {
-          const data: AvailabilityResponse = await res.json()
-          const map = new Map<string, ProductAvailability>()
-          data.products.forEach((p) => map.set(p.productId, p))
-          setAvailability(map)
+          const data: AvailabilityResponse = await res.json();
+          const map = new Map<string, ProductAvailability>();
+          data.products.forEach((p) => map.set(p.productId, p));
+          setAvailability(map);
           // Store business hours validation result
-          setBusinessHoursValidation(data.businessHoursValidation || null)
+          setBusinessHoursValidation(data.businessHoursValidation || null);
         }
       } catch (error) {
-        console.error('Failed to fetch availability:', error)
+        console.error('Failed to fetch availability:', error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-    fetchAvailability()
-  }, [store.slug, startDate, endDate])
+    fetchAvailability();
+  }, [store.slug, startDate, endDate]);
 
   // Filter products
   const filteredProducts = useMemo(() => {
-    let filtered = products
+    let filtered = products;
 
     // Category filter
     if (selectedCategory && selectedCategory !== 'all') {
-      filtered = filtered.filter((p) => p.category?.id === selectedCategory)
+      filtered = filtered.filter((p) => p.category?.id === selectedCategory);
     }
 
     // Search filter
     if (searchTerm) {
-      const term = searchTerm.toLowerCase()
+      const term = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (p) =>
           p.name.toLowerCase().includes(term) ||
-          p.description?.toLowerCase().includes(term)
-      )
+          p.description?.toLowerCase().includes(term),
+      );
     }
 
-    return filtered
-  }, [products, selectedCategory, searchTerm])
+    return filtered;
+  }, [products, selectedCategory, searchTerm]);
 
   // Sort products by availability
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
-      const aAvail = availability.get(a.id)
-      const bAvail = availability.get(b.id)
+      const aAvail = availability.get(a.id);
+      const bAvail = availability.get(b.id);
 
       // Sort by status: available > limited > unavailable
-      const statusOrder = { available: 0, limited: 1, unavailable: 2 }
-      const aStatus = aAvail?.status || 'available'
-      const bStatus = bAvail?.status || 'available'
+      const statusOrder = { available: 0, limited: 1, unavailable: 2 };
+      const aStatus = aAvail?.status || 'available';
+      const bStatus = bAvail?.status || 'available';
 
-      return statusOrder[aStatus] - statusOrder[bStatus]
-    })
-  }, [filteredProducts, availability])
+      return statusOrder[aStatus] - statusOrder[bStatus];
+    });
+  }, [filteredProducts, availability]);
 
   const handleChangeDates = () => {
-    setIsDateModalOpen(true)
-  }
+    setIsDateModalOpen(true);
+  };
 
   const handleCategoryChange = (value: string | null) => {
-    if (value === null) return
-    setSelectedCategory(value)
-    const params = new URLSearchParams(searchParams.toString())
+    if (value === null) return;
+    setSelectedCategory(value);
+    const params = new URLSearchParams(searchParams.toString());
     if (value === 'all') {
-      params.delete('category')
+      params.delete('category');
     } else {
-      params.set('category', value)
+      params.set('category', value);
     }
-    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false })
-  }
+    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false });
+  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value)
-  }
+    setSearchTerm(e.target.value);
+  };
 
   const handleClearFilters = () => {
-    setSearchTerm('')
-    setSelectedCategory('all')
-    const params = new URLSearchParams()
-    params.set('startDate', startDate)
-    params.set('endDate', endDate)
-    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false })
-  }
+    setSearchTerm('');
+    setSelectedCategory('all');
+    const params = new URLSearchParams();
+    params.set('startDate', startDate);
+    params.set('endDate', endDate);
+    router.push(`${getUrl('/rental')}?${params.toString()}`, { scroll: false });
+  };
 
   const hasFilters =
-    searchTerm || (selectedCategory && selectedCategory !== 'all')
+    searchTerm || (selectedCategory && selectedCategory !== 'all');
 
-  const primaryColor = store.theme?.primaryColor || '#0066FF'
+  const primaryColor = store.theme?.primaryColor || '#0066FF';
 
   // Format duration label with days + hours
   const durationLabel = (() => {
-    const { days, hours } = detailedDuration
+    const { days, hours } = detailedDuration;
 
     if (pricingMode === 'hour') {
-      return `${detailedDuration.totalHours}h`
+      return `${detailedDuration.totalHours}h`;
     }
 
     if (days === 0) {
-      return `${hours}h`
+      return `${hours}h`;
     }
 
-    const dayLabel = days === 1 ? tDate('durationDay') : tDate('durationDays')
+    const dayLabel = days === 1 ? tDate('durationDay') : tDate('durationDays');
 
     if (hours === 0) {
-      return `${days} ${dayLabel}`
+      return `${days} ${dayLabel}`;
     }
 
-    return `${days} ${dayLabel} ${tDate('and')} ${hours}h`
-  })()
+    return `${days} ${dayLabel} ${tDate('and')} ${hours}h`;
+  })();
 
   return (
     <div className="container mx-auto px-4 py-4 md:py-6">
-      <PageTracker page="rental" categoryId={selectedCategory !== 'all' ? selectedCategory : undefined} />
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+      <PageTracker
+        page="rental"
+        categoryId={selectedCategory !== 'all' ? selectedCategory : undefined}
+      />
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main Content */}
         <div className="space-y-4">
           {/* Unified Date Header */}
@@ -307,12 +320,12 @@ export function RentalContent({
             }}
           >
             {/* Main date display */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 {/* Start */}
                 <div className="flex items-center gap-2">
                   <div
-                    className="flex items-center justify-center w-8 h-8 rounded-full shrink-0"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                     style={{ backgroundColor: `${primaryColor}20` }}
                   >
                     <CalendarDays
@@ -321,12 +334,12 @@ export function RentalContent({
                     />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                    <p className="text-muted-foreground text-[10px] tracking-wide uppercase">
                       {tDate('startLabel')}
                     </p>
-                    <p className="font-medium text-sm">
+                    <p className="text-sm font-medium">
                       {startDateTime.date}
-                      <span className="text-muted-foreground font-normal ml-1">
+                      <span className="text-muted-foreground ml-1 font-normal">
                         {startDateTime.time}
                       </span>
                     </p>
@@ -334,12 +347,12 @@ export function RentalContent({
                 </div>
 
                 {/* Arrow */}
-                <ArrowRight className="hidden sm:block h-4 w-4 text-muted-foreground shrink-0" />
+                <ArrowRight className="text-muted-foreground hidden h-4 w-4 shrink-0 sm:block" />
 
                 {/* End */}
                 <div className="flex items-center gap-2">
                   <div
-                    className="flex items-center justify-center w-8 h-8 rounded-full shrink-0"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
                     style={{ backgroundColor: `${primaryColor}20` }}
                   >
                     <Clock
@@ -348,12 +361,12 @@ export function RentalContent({
                     />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                    <p className="text-muted-foreground text-[10px] tracking-wide uppercase">
                       {tDate('endLabel')}
                     </p>
-                    <p className="font-medium text-sm">
+                    <p className="text-sm font-medium">
                       {endDateTime.date}
-                      <span className="text-muted-foreground font-normal ml-1">
+                      <span className="text-muted-foreground ml-1 font-normal">
                         {endDateTime.time}
                       </span>
                     </p>
@@ -363,7 +376,7 @@ export function RentalContent({
                 {/* Duration badge */}
                 <Badge
                   variant="secondary"
-                  className="text-xs sm:text-sm px-2.5 py-1 w-fit"
+                  className="w-fit px-2.5 py-1 text-xs sm:text-sm"
                   style={{
                     backgroundColor: `${primaryColor}15`,
                     color: primaryColor,
@@ -377,7 +390,7 @@ export function RentalContent({
               <Button
                 variant="outline"
                 onClick={handleChangeDates}
-                className="shrink-0 w-full sm:w-auto"
+                className="w-full shrink-0 sm:w-auto"
               >
                 {t('changeDates')}
               </Button>
@@ -385,7 +398,7 @@ export function RentalContent({
 
             {/* Timezone notice */}
             {timezoneCity && (
-              <div className="flex items-center gap-1.5 mt-3 pt-3 border-t text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-3 flex items-center gap-1.5 border-t pt-3 text-xs">
                 <Globe className="h-3.5 w-3.5 shrink-0" />
                 <span>{tDate('timezoneNotice', { city: timezoneCity })}</span>
               </div>
@@ -394,7 +407,10 @@ export function RentalContent({
 
           {/* Business Hours Warning */}
           {businessHoursValidation && !businessHoursValidation.valid && (
-            <Alert variant="error" className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100">
+            <Alert
+              variant="error"
+              className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100"
+            >
               <AlertTriangle className="h-4 w-4 !text-orange-600 dark:!text-orange-400" />
               <AlertTitle className="text-orange-900 dark:text-orange-100">
                 {t('businessHoursWarning.title')}
@@ -402,15 +418,16 @@ export function RentalContent({
               <AlertDescription className="text-orange-800 dark:text-orange-200">
                 {businessHoursValidation.errors.map((error) => {
                   // Parse error like "pickup_outside_hours" or "return_day_closed"
-                  const [action, ...reasonParts] = error.split('_')
-                  const reason = reasonParts.join('_')
+                  const [action, ...reasonParts] = error.split('_');
+                  const reason = reasonParts.join('_');
                   return (
                     <span key={error} className="block">
-                      {t(`businessHoursWarning.${action}`)}: {t(`businessHoursWarning.reasons.${reason}`)}
+                      {t(`businessHoursWarning.${action}`)}:{' '}
+                      {t(`businessHoursWarning.reasons.${reason}`)}
                     </span>
-                  )
+                  );
                 })}
-                <span className="block mt-2 text-sm">
+                <span className="mt-2 block text-sm">
                   {t('businessHoursWarning.suggestion')}
                 </span>
               </AlertDescription>
@@ -420,19 +437,19 @@ export function RentalContent({
           {/* Filters */}
           <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
             <div className="flex items-center justify-between gap-4">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {t('productCountPlural', { count: sortedProducts.length })}
               </p>
 
               {/* Desktop filters */}
-              <div className="hidden md:flex items-center gap-2">
+              <div className="hidden items-center gap-2 md:flex">
                 <div className="relative w-48">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
                     placeholder={tFilters('search')}
                     value={searchTerm}
                     onChange={handleSearch}
-                    className="pl-9 h-9"
+                    className="h-9"
                   />
                 </div>
                 {categories.length > 0 && (
@@ -440,7 +457,7 @@ export function RentalContent({
                     value={selectedCategory}
                     onValueChange={handleCategoryChange}
                   >
-                    <SelectTrigger className="w-40 h-9">
+                    <SelectTrigger className="h-9 w-40">
                       <SelectValue placeholder={tFilters('categories')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -461,32 +478,34 @@ export function RentalContent({
                     onClick={handleClearFilters}
                     className="h-9"
                   >
-                    <X className="h-4 w-4 mr-1" />
+                    <X className="mr-1 h-4 w-4" />
                     {tFilters('clearFilters')}
                   </Button>
                 )}
               </div>
 
               {/* Mobile filter toggle */}
-              <CollapsibleTrigger className="md:hidden" render={<Button variant="outline" />}>
-                  <Filter className="h-4 w-4 mr-2" />
-                  Filtres
-                  <ChevronDown
-                    className={`h-4 w-4 ml-2 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
-                  />
+              <CollapsibleTrigger
+                className="md:hidden"
+                render={<Button variant="outline" />}
+              >
+                <Filter className="mr-2 h-4 w-4" />
+                Filtres
+                <ChevronDown
+                  className={`ml-2 h-4 w-4 transition-transform ${filtersOpen ? 'rotate-180' : ''}`}
+                />
               </CollapsibleTrigger>
             </div>
 
             {/* Mobile filters content */}
-            <CollapsibleContent className="md:hidden mt-4">
-              <div className="flex flex-col gap-3 p-4 rounded-lg bg-muted/30">
+            <CollapsibleContent className="mt-4 md:hidden">
+              <div className="bg-muted/30 flex flex-col gap-3 rounded-lg p-4">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <Input
                     placeholder={tFilters('search')}
                     value={searchTerm}
                     onChange={handleSearch}
-                    className="pl-9"
                   />
                 </div>
                 {categories.length > 0 && (
@@ -515,7 +534,7 @@ export function RentalContent({
                     onClick={handleClearFilters}
                     className="justify-start"
                   >
-                    <X className="h-4 w-4 mr-1" />
+                    <X className="mr-1 h-4 w-4" />
                     {tFilters('clearFilters')}
                   </Button>
                 )}
@@ -525,7 +544,7 @@ export function RentalContent({
 
           {/* Products Grid */}
           {isLoading ? (
-            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="space-y-3">
                   <Skeleton className="aspect-square rounded-lg" />
@@ -535,7 +554,7 @@ export function RentalContent({
               ))}
             </div>
           ) : sortedProducts.length === 0 ? (
-            <div className="text-center py-16">
+            <div className="py-16 text-center">
               <p className="text-lg font-medium">{t('empty.title')}</p>
               <p className="text-muted-foreground mt-2">
                 {t('empty.description')}
@@ -549,9 +568,9 @@ export function RentalContent({
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
               {sortedProducts.map((product) => {
-                const avail = availability.get(product.id)
+                const avail = availability.get(product.id);
                 return (
                   <ProductCardAvailable
                     key={product.id}
@@ -565,7 +584,7 @@ export function RentalContent({
                     endDate={endDate}
                     duration={duration}
                   />
-                )
+                );
               })}
             </div>
           )}
@@ -588,5 +607,5 @@ export function RentalContent({
         initialEndDate={endDate}
       />
     </div>
-  )
+  );
 }

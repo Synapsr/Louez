@@ -1,32 +1,34 @@
-'use client'
+'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useTranslations } from 'next-intl'
-import { MapPin, Loader2, X, Search } from 'lucide-react'
-import { useDebouncedCallback } from 'use-debounce'
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { cn } from '@louez/utils'
-import { Input } from '@louez/ui'
-import { Button } from '@louez/ui'
-import { AddressMapModal } from '@/components/ui/address-map-modal'
-import type { AddressSuggestion } from '@louez/types'
+import { Loader2, MapPin, Search, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { useDebouncedCallback } from 'use-debounce';
+
+import type { AddressSuggestion } from '@louez/types';
+import { Input } from '@louez/ui';
+import { Button } from '@louez/ui';
+import { cn } from '@louez/utils';
+
+import { AddressMapModal } from '@/components/ui/address-map-modal';
 
 interface AddressInputProps {
-  value?: string
-  displayAddress?: string
-  additionalInfo?: string
-  latitude?: number | null
-  longitude?: number | null
+  value?: string;
+  displayAddress?: string;
+  additionalInfo?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   onChange: (
     address: string,
     latitude: number | null,
     longitude: number | null,
     displayAddress?: string,
-    additionalInfo?: string
-  ) => void
-  placeholder?: string
-  disabled?: boolean
-  className?: string
+    additionalInfo?: string,
+  ) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
 }
 
 export function AddressInput({
@@ -40,156 +42,172 @@ export function AddressInput({
   disabled,
   className,
 }: AddressInputProps) {
-  const t = useTranslations('common.addressInput')
-  const [inputValue, setInputValue] = useState(value)
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [isOpen, setIsOpen] = useState(false)
-  const [selectedIndex, setSelectedIndex] = useState(-1)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const t = useTranslations('common.addressInput');
+  const [inputValue, setInputValue] = useState(value);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Sync with external value
   useEffect(() => {
-    setInputValue(displayAddress || value)
-  }, [value, displayAddress])
+    setInputValue(displayAddress || value);
+  }, [value, displayAddress]);
 
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false)
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setIsOpen(false);
       }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const searchAddresses = useCallback(async (query: string) => {
     if (query.length < 3) {
-      setSuggestions([])
-      return
+      setSuggestions([]);
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/address/autocomplete?query=${encodeURIComponent(query)}`
-      )
-      const data = await response.json()
-      setSuggestions(data.suggestions || [])
-      setIsOpen((data.suggestions || []).length > 0)
-      setSelectedIndex(-1)
+        `/api/address/autocomplete?query=${encodeURIComponent(query)}`,
+      );
+      const data = await response.json();
+      setSuggestions(data.suggestions || []);
+      setIsOpen((data.suggestions || []).length > 0);
+      setSelectedIndex(-1);
     } catch (error) {
-      console.error('Address search error:', error)
-      setSuggestions([])
+      console.error('Address search error:', error);
+      setSuggestions([]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
-  const debouncedSearch = useDebouncedCallback(searchAddresses, 300)
+  const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value
-    setInputValue(newValue)
-    debouncedSearch(newValue)
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    debouncedSearch(newValue);
 
     // If user types manually, clear coordinates
     if (newValue !== value) {
-      onChange(newValue, null, null, newValue, '')
+      onChange(newValue, null, null, newValue, '');
     }
-  }
+  };
 
   const handleSelect = async (suggestion: AddressSuggestion) => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/address/details?placeId=${encodeURIComponent(suggestion.placeId)}`
-      )
-      const data = await response.json()
+        `/api/address/details?placeId=${encodeURIComponent(suggestion.placeId)}`,
+      );
+      const data = await response.json();
 
       if (data.details) {
-        const { formattedAddress, latitude: lat, longitude: lng } = data.details
-        setInputValue(formattedAddress)
-        onChange(formattedAddress, lat, lng, formattedAddress, '')
+        const {
+          formattedAddress,
+          latitude: lat,
+          longitude: lng,
+        } = data.details;
+        setInputValue(formattedAddress);
+        onChange(formattedAddress, lat, lng, formattedAddress, '');
       } else {
-        setInputValue(suggestion.description)
-        onChange(suggestion.description, null, null, suggestion.description, '')
+        setInputValue(suggestion.description);
+        onChange(
+          suggestion.description,
+          null,
+          null,
+          suggestion.description,
+          '',
+        );
       }
     } catch (error) {
-      console.error('Error fetching address details:', error)
-      setInputValue(suggestion.description)
-      onChange(suggestion.description, null, null, suggestion.description, '')
+      console.error('Error fetching address details:', error);
+      setInputValue(suggestion.description);
+      onChange(suggestion.description, null, null, suggestion.description, '');
     } finally {
-      setSuggestions([])
-      setIsOpen(false)
-      setIsLoading(false)
-      inputRef.current?.blur()
+      setSuggestions([]);
+      setIsOpen(false);
+      setIsLoading(false);
+      inputRef.current?.blur();
     }
-  }
+  };
 
   const handleClear = () => {
-    setInputValue('')
-    onChange('', null, null, '', '')
-    setSuggestions([])
-    setIsOpen(false)
-    inputRef.current?.focus()
-  }
+    setInputValue('');
+    onChange('', null, null, '', '');
+    setSuggestions([]);
+    setIsOpen(false);
+    inputRef.current?.focus();
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) return
+    if (!isOpen) return;
 
     switch (e.key) {
       case 'ArrowDown':
-        e.preventDefault()
+        e.preventDefault();
         setSelectedIndex((prev) =>
-          prev < suggestions.length - 1 ? prev + 1 : prev
-        )
-        break
+          prev < suggestions.length - 1 ? prev + 1 : prev,
+        );
+        break;
       case 'ArrowUp':
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1))
-        break
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+        break;
       case 'Enter':
-        e.preventDefault()
+        e.preventDefault();
         if (selectedIndex >= 0 && suggestions[selectedIndex]) {
-          handleSelect(suggestions[selectedIndex])
+          handleSelect(suggestions[selectedIndex]);
         }
-        break
+        break;
       case 'Escape':
-        setIsOpen(false)
-        setSelectedIndex(-1)
-        break
+        setIsOpen(false);
+        setSelectedIndex(-1);
+        break;
     }
-  }
+  };
 
   const handleModalSave = (data: {
-    address: string
-    displayAddress: string
-    additionalInfo: string
-    latitude: number | null
-    longitude: number | null
+    address: string;
+    displayAddress: string;
+    additionalInfo: string;
+    latitude: number | null;
+    longitude: number | null;
   }) => {
-    setInputValue(data.displayAddress || data.address)
+    setInputValue(data.displayAddress || data.address);
     onChange(
       data.address,
       data.latitude,
       data.longitude,
       data.displayAddress,
-      data.additionalInfo
-    )
-  }
+      data.additionalInfo,
+    );
+  };
 
-  const hasCoordinates = latitude !== null && latitude !== undefined &&
-                        longitude !== null && longitude !== undefined
+  const hasCoordinates =
+    latitude !== null &&
+    latitude !== undefined &&
+    longitude !== null &&
+    longitude !== undefined;
 
   return (
     <>
       <div ref={containerRef} className={cn('relative', className)}>
         <div className="relative">
-          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <MapPin className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             ref={inputRef}
             type="text"
@@ -199,10 +217,7 @@ export function AddressInput({
             onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
-            className={cn(
-              'pl-9',
-              inputValue ? 'pr-[4.5rem]' : 'pr-10'
-            )}
+            className={cn(inputValue ? 'pr-[4.5rem]' : 'pr-10')}
             autoComplete="one-time-code"
             autoCorrect="off"
             autoCapitalize="off"
@@ -210,9 +225,9 @@ export function AddressInput({
             data-form-type="other"
             data-lpignore="true"
           />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5">
             {isLoading && (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
             )}
             {!isLoading && (
               <Button
@@ -220,10 +235,10 @@ export function AddressInput({
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  "h-7 w-7",
+                  'h-7 w-7',
                   hasCoordinates
-                    ? "text-primary hover:text-primary hover:bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? 'text-primary hover:text-primary hover:bg-primary/10'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted',
                 )}
                 onClick={() => setIsModalOpen(true)}
                 title={t('editLocation')}
@@ -236,7 +251,7 @@ export function AddressInput({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground h-7 w-7"
                 onClick={handleClear}
               >
                 <X className="h-3.5 w-3.5" />
@@ -247,7 +262,7 @@ export function AddressInput({
 
         {/* Suggestions dropdown */}
         {isOpen && suggestions.length > 0 && (
-          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover p-1 shadow-md">
+          <div className="bg-popover absolute z-50 mt-1 w-full rounded-md border p-1 shadow-md">
             {suggestions.map((suggestion, index) => (
               <button
                 key={suggestion.placeId}
@@ -257,14 +272,14 @@ export function AddressInput({
                   'flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm transition-colors',
                   index === selectedIndex
                     ? 'bg-accent text-accent-foreground'
-                    : 'hover:bg-accent hover:text-accent-foreground'
+                    : 'hover:bg-accent hover:text-accent-foreground',
                 )}
               >
-                <Search className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                <Search className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium truncate">{suggestion.mainText}</p>
+                  <p className="truncate font-medium">{suggestion.mainText}</p>
                   {suggestion.secondaryText && (
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-muted-foreground truncate text-xs">
                       {suggestion.secondaryText}
                     </p>
                   )}
@@ -287,5 +302,5 @@ export function AddressInput({
         onSave={handleModalSave}
       />
     </>
-  )
+  );
 }
