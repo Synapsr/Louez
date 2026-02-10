@@ -72,7 +72,7 @@ Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
 | Data Fetching | TanStack Query                      |
 | Validation    | Zod                                 |
 | UI            | Tailwind CSS 4, shadcn/ui, Radix UI |
-| Forms         | React Hook Form                     |
+| Forms         | TanStack Form                       |
 | Payments      | Stripe Connect                      |
 | Email         | React Email, Nodemailer             |
 | PDF           | @react-pdf/renderer                 |
@@ -264,10 +264,10 @@ function MyComponent() {
 
 ### Forms
 
-- React Hook Form with Zod resolver
+- TanStack Form with Zod validation via `useAppForm` hook
 - Validation schemas in `src/lib/validations/`
 - Error messages via i18n keys
-- look at the details at docs/FORM_HANDLING.md
+- See details at `docs/FORM_HANDLING.md`
 
 ### Internationalization
 
