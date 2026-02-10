@@ -272,8 +272,20 @@ function MyComponent() {
 ### Internationalization
 
 - Translations in `src/messages/{locale}.json`
-- Use `useTranslations()` hook in components
+- Prefer one `useTranslations()` call per file/component and reuse that single translator across the file
+- Allow exceptions only when Next.js boundaries require it (for example separate server/client translation APIs)
+- Keep related keys grouped in the same message namespace so i18n Ally can detect and manage them consistently
+- Reuse existing translation keys before creating new ones
 - Error keys follow pattern: `errors.{errorType}`
+
+### Reuse Existing Logic
+
+- Reuse existing helpers, UI primitives, and domain logic before introducing new abstractions
+- Prefer extending current patterns over creating parallel implementations for similar behavior
+- Extract helper functions when they are pure, non-UI, and add visual noise in page/component files
+- Keep logic inline when it is tiny and only meaningful next to a single JSX interaction
+- Prefer colocated utils first for feature-specific helpers
+- Move shared helpers to `lib/utils/util.<name>` when they are reused across features
 
 ## Key Domain Concepts
 
