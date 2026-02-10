@@ -284,6 +284,9 @@ function MyComponent() {
 - TanStack Form with Zod validation via `useAppForm` hook
 - Shared validation schemas live in `packages/validations`
 - Error messages via i18n keys
+- For client-side async submissions (auth flows, save actions, etc.), prefer `useMutation` from TanStack Query over manual loading/error `useState`
+- If `mutateAsync` is called from `onSubmit`, handle expected failures explicitly (`try/catch` or use `mutate` + `onError`) to avoid rejected submit promises leaking to logs
+- Keep field values in `useAppForm` when practical; reserve `useState` for flow state (for example, step toggles)
 - See details at `docs/FORM_HANDLING.md`
 
 ### Internationalization
@@ -291,6 +294,7 @@ function MyComponent() {
 - Translations in `src/messages/{locale}.json`
 - Prefer one `useTranslations()` call per file/component and reuse that single translator across the file
 - Allow exceptions only when Next.js boundaries require it (for example separate server/client translation APIs)
+- Prefer calling `useTranslations()` inside each component file instead of passing translator functions through props, to preserve i18n Ally key inference and local type safety
 - Keep related keys grouped in the same message namespace so i18n Ally can detect and manage them consistently
 - Reuse existing translation keys before creating new ones
 - Error keys follow pattern: `errors.{errorType}`
