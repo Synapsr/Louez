@@ -1,27 +1,29 @@
-import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
-import { redirect } from 'next/navigation'
-import { auth } from '@/lib/auth'
-import { getCurrentStore } from '@/lib/store-context'
-import { ToastProvider } from '@louez/ui'
-import { ThemeProvider } from '@/components/theme-provider'
-import { PostHogProvider } from '@/components/posthog-provider'
-import { GleapProvider } from '@/components/dashboard/gleap-provider'
+import { redirect } from 'next/navigation';
+
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+
+import { GleapProvider } from '@/components/dashboard/gleap-provider';
+import { PostHogProvider } from '@/components/posthog-provider';
+import { ThemeProvider } from '@/components/theme-provider';
+
+import { auth } from '@/lib/auth';
+import { getCurrentStore } from '@/lib/store-context';
 
 export default async function DashboardLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   // Redirect to login if not authenticated
   if (!session?.user) {
-    redirect('/login')
+    redirect('/login');
   }
 
-  const store = await getCurrentStore()
-  const messages = await getMessages()
+  const store = await getCurrentStore();
+  const messages = await getMessages();
 
   return (
     <NextIntlClientProvider messages={messages}>
@@ -61,14 +63,10 @@ export default async function DashboardLayout({
                 : undefined
             }
           >
-            <ToastProvider>
-              <div className="min-h-screen bg-background">
-                {children}
-              </div>
-            </ToastProvider>
+            <div className="bg-background min-h-screen">{children}</div>
           </GleapProvider>
         </ThemeProvider>
       </PostHogProvider>
     </NextIntlClientProvider>
-  )
+  );
 }
