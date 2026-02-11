@@ -158,7 +158,10 @@ export function UnitAssignmentSelector({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">{t('title')}</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{t('title')}</span>
+            <span className="text-xs text-muted-foreground">{productName}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {allAssigned ? (

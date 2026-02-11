@@ -14,6 +14,13 @@ import {
   DialogTitle,
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
@@ -26,6 +33,7 @@ import {
   type ProductPricing,
 } from '@louez/utils'
 import { AccessoriesModal } from './accessories-modal'
+import type { CombinationAvailability } from '@louez/types'
 
 interface PricingTier {
   id: string
@@ -70,6 +78,12 @@ interface ProductModalProps {
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
     accessories?: Accessory[]
+    trackUnits?: boolean | null
+    bookingAttributeAxes?: Array<{ key: string; label: string; position: number }> | null
+    units?: Array<{
+      status: 'available' | 'maintenance' | 'retired' | null
+      attributes: Record<string, string> | null
+    }>
   }
   isOpen: boolean
   onClose: () => void
@@ -78,6 +92,7 @@ interface ProductModalProps {
   availableQuantity: number
   startDate: string
   endDate: string
+  availableCombinations?: CombinationAvailability[]
 }
 
 export function ProductModal({
@@ -89,6 +104,7 @@ export function ProductModal({
   availableQuantity,
   startDate,
   endDate,
+  availableCombinations = [],
 }: ProductModalProps) {
   const t = useTranslations('storefront.productModal')
   const tProduct = useTranslations('storefront.product')
@@ -100,6 +116,7 @@ export function ProductModal({
   const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
 
   // Filter available accessories (active with stock and not already in cart)
   const cartProductIds = new Set(cartItems.map((item) => item.productId))
@@ -111,6 +128,7 @@ export function ProductModal({
     if (isOpen) {
       setQuantity(cartItem?.quantity || 1)
       setSelectedImageIndex(0)
+      setSelectedAttributes(cartItem?.selectedAttributes || {})
       // Track product view when modal opens
       trackEvent({
         eventType: 'product_view',
@@ -155,6 +173,36 @@ export function ProductModal({
   const maxQuantity = Math.min(availableQuantity, product.quantity)
   const isInCart = !!cartItem
   const isUnavailable = availableQuantity === 0
+  const bookingAttributeAxes = (product.bookingAttributeAxes || [])
+    .slice()
+    .sort((a, b) => a.position - b.position)
+  const fallbackAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>((acc, axis) => {
+    const values = new Set<string>()
+    for (const unit of product.units || []) {
+      if ((unit.status || 'available') !== 'available') continue
+      const value = unit.attributes?.[axis.key]
+      if (value && value.trim()) {
+        values.add(value.trim())
+      }
+    }
+    acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
+    return acc
+  }, {})
+  const bookingAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>((acc, axis) => {
+    const values = new Set<string>()
+    for (const combination of availableCombinations) {
+      if (combination.availableQuantity <= 0) continue
+      const value = combination.selectedAttributes?.[axis.key]
+      if (value && value.trim()) {
+        values.add(value.trim())
+      }
+    }
+    for (const fallbackValue of fallbackAttributeValues[axis.key] || []) {
+      values.add(fallbackValue)
+    }
+    acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
+    return acc
+  }, {})
 
   const images = product.images && product.images.length > 0 ? product.images : []
 
@@ -208,6 +256,7 @@ export function ProductModal({
               : tier.discountPercent,
           })),
           productPricingMode: product.pricingMode,
+          selectedAttributes,
         },
         storeSlug
       )
@@ -505,6 +554,52 @@ export function ProductModal({
                     )
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Booking attributes */}
+            {bookingAttributeAxes.length > 0 && (
+              <div className="mt-5 rounded-xl border p-4">
+                <p className="mb-3 text-sm font-medium">{tProduct('bookingAttributes')}</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {bookingAttributeAxes.map((axis) => (
+                    <Select
+                      key={axis.key}
+                      value={selectedAttributes[axis.key] || ''}
+                      onValueChange={(value) => {
+                        setSelectedAttributes((prev) => {
+                          if (!value) {
+                            const next = { ...prev }
+                            delete next[axis.key]
+                            return next
+                          }
+
+                          return { ...prev, [axis.key]: value }
+                        })
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={axis.label}>
+                          {selectedAttributes[axis.key] || axis.label}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(bookingAttributeValues[axis.key] || []).length > 0 ? (
+                          (bookingAttributeValues[axis.key] || []).map((value) => (
+                            <SelectItem key={value} value={value} label={value}>
+                              {value}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value={`__empty_${axis.key}`} label={axis.label} disabled>
+                            {tProduct('bookingAttributesNoOptions', { attribute: axis.label })}
+                          </SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  ))}
+                </div>
+                <p className="text-muted-foreground mt-2 text-xs">{tProduct('bookingAttributesHelp')}</p>
               </div>
             )}
           </div>

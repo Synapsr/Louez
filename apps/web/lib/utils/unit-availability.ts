@@ -5,7 +5,7 @@ import {
   reservationItems,
   reservations,
 } from '@louez/db'
-import { and, eq, inArray, or, lte, gte, not } from 'drizzle-orm'
+import { and, eq, inArray, lte, gte, not } from 'drizzle-orm'
 
 export interface AvailableUnit {
   id: string
@@ -39,8 +39,18 @@ export async function getAvailableUnitsForProduct(
   productId: string,
   startDate: Date,
   endDate: Date,
-  excludeReservationId?: string
+  excludeReservationId?: string,
+  combinationKey?: string | null,
 ): Promise<AvailableUnit[]> {
+  const unitConditions = [
+    eq(productUnits.productId, productId),
+    eq(productUnits.status, 'available'),
+  ]
+
+  if (combinationKey) {
+    unitConditions.push(eq(productUnits.combinationKey, combinationKey))
+  }
+
   // 1. Get all units for the product with status 'available'
   const allUnits = await db
     .select({
@@ -50,7 +60,9 @@ export async function getAvailableUnitsForProduct(
       status: productUnits.status,
     })
     .from(productUnits)
-    .where(and(eq(productUnits.productId, productId), eq(productUnits.status, 'available')))
+    .where(
+      and(...unitConditions),
+    )
 
   if (allUnits.length === 0) {
     return []

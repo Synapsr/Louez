@@ -1,5 +1,22 @@
-import { db, products, reservations, stores } from '@louez/db'
-import type { BusinessHours, AvailabilityResponse, ProductAvailability } from '@louez/types'
+import {
+  db,
+  productUnits,
+  products,
+  reservations,
+  stores,
+} from '@louez/db'
+import type {
+  AvailabilityResponse,
+  BookingAttributeAxis,
+  BusinessHours,
+  CombinationAvailability,
+  ProductAvailability,
+  UnitAttributes,
+} from '@louez/types'
+import {
+  DEFAULT_COMBINATION_KEY,
+  getDeterministicCombinationSortValue,
+} from '@louez/utils'
 import { and, eq, gt, inArray, lt } from 'drizzle-orm'
 import { ApiServiceError } from './errors'
 
@@ -141,6 +158,10 @@ interface GetStorefrontAvailabilityParams {
   productIds?: string[]
 }
 
+function getCombinationMapKey(productId: string, combinationKey: string): string {
+  return `${productId}:${combinationKey}`
+}
+
 export async function getStorefrontAvailability(
   params: GetStorefrontAvailabilityParams,
 ): Promise<AvailabilityResponse> {
@@ -220,6 +241,7 @@ export async function getStorefrontAvailability(
   })
 
   const reservedByProduct = new Map<string, number>()
+  const reservedByProductCombination = new Map<string, number>()
 
   for (const reservation of overlappingReservations) {
     if (!dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
@@ -233,26 +255,128 @@ export async function getStorefrontAvailability(
 
       const current = reservedByProduct.get(item.productId) || 0
       reservedByProduct.set(item.productId, current + item.quantity)
+
+      const combinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY
+      const combinationMapKey = getCombinationMapKey(item.productId, combinationKey)
+      const currentCombinationQty = reservedByProductCombination.get(combinationMapKey) || 0
+      reservedByProductCombination.set(combinationMapKey, currentCombinationQty + item.quantity)
     }
   }
 
+  const trackedProductIds = storeProducts.filter((product) => product.trackUnits).map((product) => product.id)
+  const availableUnits = trackedProductIds.length > 0
+    ? await db
+        .select({
+          productId: productUnits.productId,
+          combinationKey: productUnits.combinationKey,
+          attributes: productUnits.attributes,
+        })
+        .from(productUnits)
+        .where(
+          and(
+            inArray(productUnits.productId, trackedProductIds),
+            eq(productUnits.status, 'available'),
+          ),
+        )
+    : []
+
+  const combinationsByProduct = new Map<string, Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>>()
+
+  for (const unit of availableUnits) {
+    const productMap = combinationsByProduct.get(unit.productId) || new Map()
+    const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY
+    const current = productMap.get(combinationKey)
+
+    if (!current) {
+      productMap.set(combinationKey, {
+        totalQuantity: 1,
+        selectedAttributes: (unit.attributes || {}) as UnitAttributes,
+      })
+    } else {
+      current.totalQuantity += 1
+      if (Object.keys(current.selectedAttributes).length === 0 && unit.attributes) {
+        current.selectedAttributes = unit.attributes as UnitAttributes
+      }
+      productMap.set(combinationKey, current)
+    }
+
+    combinationsByProduct.set(unit.productId, productMap)
+  }
+
   const productAvailability: ProductAvailability[] = storeProducts.map((product) => {
+    if (!product.trackUnits) {
+      const reservedQuantity = reservedByProduct.get(product.id) || 0
+      const availableQuantity = Math.max(0, product.quantity - reservedQuantity)
+
+      let status: ProductAvailability['status'] = 'available'
+      if (availableQuantity === 0) {
+        status = 'unavailable'
+      } else if (availableQuantity < product.quantity) {
+        status = 'limited'
+      }
+
+      return {
+        productId: product.id,
+        totalQuantity: product.quantity,
+        reservedQuantity,
+        availableQuantity,
+        status,
+      }
+    }
+
+    const productCombinations = combinationsByProduct.get(product.id) || new Map()
+    const axes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[]
+    const combinations: CombinationAvailability[] = []
+
+    let totalQuantity = 0
+    for (const [combinationKey, combinationData] of productCombinations.entries()) {
+      const reservedQuantity = reservedByProductCombination.get(
+        getCombinationMapKey(product.id, combinationKey),
+      ) || 0
+      const availableQuantity = Math.max(0, combinationData.totalQuantity - reservedQuantity)
+
+      totalQuantity += combinationData.totalQuantity
+
+      let status: CombinationAvailability['status'] = 'available'
+      if (availableQuantity === 0) {
+        status = 'unavailable'
+      } else if (availableQuantity < combinationData.totalQuantity) {
+        status = 'limited'
+      }
+
+      combinations.push({
+        combinationKey,
+        selectedAttributes: combinationData.selectedAttributes || {},
+        totalQuantity: combinationData.totalQuantity,
+        reservedQuantity,
+        availableQuantity,
+        status,
+      })
+    }
+
+    combinations.sort((a, b) => {
+      const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
+      const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
+      return sortA.localeCompare(sortB, 'en')
+    })
+
     const reservedQuantity = reservedByProduct.get(product.id) || 0
-    const availableQuantity = Math.max(0, product.quantity - reservedQuantity)
+    const availableQuantity = Math.max(0, totalQuantity - reservedQuantity)
 
     let status: ProductAvailability['status'] = 'available'
     if (availableQuantity === 0) {
       status = 'unavailable'
-    } else if (availableQuantity < product.quantity) {
+    } else if (availableQuantity < totalQuantity) {
       status = 'limited'
     }
 
     return {
       productId: product.id,
-      totalQuantity: product.quantity,
+      totalQuantity,
       reservedQuantity,
       availableQuantity,
       status,
+      combinations,
     }
   })
 

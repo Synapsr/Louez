@@ -112,6 +112,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
     with: {
       category: true,
       pricingTiers: true,
+      units: {
+        columns: {
+          id: true,
+          status: true,
+          attributes: true,
+        },
+      },
       accessories: {
         orderBy: (acc, { asc }) => [asc(acc.displayOrder)],
         with: {
@@ -166,6 +173,45 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const effectivePricingMode = product.pricingMode ?? 'day'
   const isAvailable = product.quantity > 0
+  const storedBookingAttributeAxes = ((product.bookingAttributeAxes as Array<{
+    key: string
+    label: string
+    position: number
+  }> | null) || []).sort((a, b) => a.position - b.position)
+  const inferredBookingAttributeAxes = storedBookingAttributeAxes.length > 0
+    ? storedBookingAttributeAxes
+    : (() => {
+        const keys = new Set<string>()
+        for (const unit of product.units || []) {
+          const attributes = unit.attributes as Record<string, string> | null | undefined
+          if (!attributes) continue
+          for (const key of Object.keys(attributes)) {
+            if (key.trim()) {
+              keys.add(key.trim())
+            }
+          }
+        }
+        return [...keys]
+          .sort((a, b) => a.localeCompare(b, 'en'))
+          .map((key, index) => ({
+            key,
+            label: key,
+            position: index,
+          }))
+      })()
+  const bookingAttributeAxes = inferredBookingAttributeAxes
+  const bookingAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>((acc, axis) => {
+    const values = new Set<string>()
+    for (const unit of product.units || []) {
+      if ((unit.status || 'available') !== 'available') continue
+      const raw = (unit.attributes as Record<string, string> | null | undefined)?.[axis.key]
+      if (raw && raw.trim()) {
+        values.add(raw.trim())
+      }
+    }
+    acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
+    return acc
+  }, {})
 
   // Prepare data for JSON-LD schemas
   const storeForSchema = {
@@ -317,6 +363,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
               advanceNotice={storeSettings.advanceNoticeMinutes || 0}
               minRentalMinutes={getMinRentalMinutes(storeSettings as StoreSettings)}
               accessories={availableAccessories}
+              trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
+              bookingAttributeAxes={bookingAttributeAxes}
+              bookingAttributeValues={bookingAttributeValues}
             />
           )}
 

@@ -34,10 +34,25 @@ export const productUnitSchema = z.object({
   identifier: z.string().max(255, 'validation.maxLength'),
   notes: z.string().max(1000).optional().or(z.literal('')),
   status: z.enum(['available', 'maintenance', 'retired']).optional(),
+  attributes: z.record(z.string(), z.string()).optional(),
+})
+
+export const bookingAttributeAxisSchema = z.object({
+  key: z
+    .string()
+    .min(1, 'validation.required')
+    .max(32, 'validation.maxLength')
+    .regex(/^[a-z0-9_-]+$/, 'validation.invalidFormat'),
+  label: z
+    .string()
+    .min(1, 'validation.required')
+    .max(50, 'validation.maxLength'),
+  position: z.number().int().min(0),
 })
 
 export type PricingTierInput = z.infer<typeof pricingTierSchema>
 export type ProductUnitInput = z.infer<typeof productUnitSchema>
+export type BookingAttributeAxisInput = z.infer<typeof bookingAttributeAxisSchema>
 
 // Schema factory that accepts translation function
 // YouTube URL validation regex
@@ -93,9 +108,44 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
           .optional()
           .or(z.literal('')),
         status: z.enum(['available', 'maintenance', 'retired']).optional(),
+        attributes: z.record(z.string(), z.string()).optional(),
       }),
     ),
+    bookingAttributeAxes: z.array(
+      z.object({
+        key: z
+          .string()
+          .min(1, t('required'))
+          .max(32, t('maxLength', { max: 32 }))
+          .regex(/^[a-z0-9_-]+$/, t('invalidFormat')),
+        label: z
+          .string()
+          .min(1, t('required'))
+          .max(50, t('maxLength', { max: 50 })),
+        position: z.number().int().min(0),
+      }),
+    ).max(3, t('maxItems', { max: 3 })),
   }).superRefine((data, ctx) => {
+    const axes = data.bookingAttributeAxes || []
+    const normalizedAxisKeys = axes.map((axis) => axis.key.trim().toLowerCase())
+    const duplicateKeys = normalizedAxisKeys.filter((key, index) => normalizedAxisKeys.indexOf(key) !== index)
+
+    if (duplicateKeys.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('duplicateValue'),
+        path: ['bookingAttributeAxes'],
+      })
+    }
+
+    if (!data.trackUnits && axes.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('invalidData'),
+        path: ['bookingAttributeAxes'],
+      })
+    }
+
     if (data.trackUnits && data.units) {
       for (let i = 0; i < data.units.length; i++) {
         if (!data.units[i].identifier || !data.units[i].identifier.trim()) {
@@ -104,6 +154,20 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
             message: t('required'),
             path: ['units', i, 'identifier'],
           })
+        }
+
+        const status = data.units[i].status || 'available'
+        if (status === 'available' && axes.length > 0) {
+          for (const axis of axes) {
+            const value = data.units[i].attributes?.[axis.key]
+            if (!value || !value.trim()) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: t('required'),
+                path: ['units', i, 'attributes', axis.key],
+              })
+            }
+          }
         }
       }
     }
@@ -148,7 +212,28 @@ export const productSchema = z.object({
   // Unit tracking
   trackUnits: z.boolean().optional(),
   units: z.array(productUnitSchema).optional(),
+  bookingAttributeAxes: z.array(bookingAttributeAxisSchema).max(3, 'validation.maxItems').optional(),
 }).superRefine((data, ctx) => {
+  const axes = data.bookingAttributeAxes || []
+  const normalizedAxisKeys = axes.map((axis) => axis.key.trim().toLowerCase())
+  const duplicateKeys = normalizedAxisKeys.filter((key, index) => normalizedAxisKeys.indexOf(key) !== index)
+
+  if (duplicateKeys.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'validation.duplicateValue',
+      path: ['bookingAttributeAxes'],
+    })
+  }
+
+  if (!data.trackUnits && axes.length > 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'validation.invalidData',
+      path: ['bookingAttributeAxes'],
+    })
+  }
+
   if (data.trackUnits && data.units) {
     for (let i = 0; i < data.units.length; i++) {
       if (!data.units[i].identifier || !data.units[i].identifier.trim()) {
@@ -157,6 +242,20 @@ export const productSchema = z.object({
           message: 'validation.required',
           path: ['units', i, 'identifier'],
         })
+      }
+
+      const status = data.units[i].status || 'available'
+      if (status === 'available' && axes.length > 0) {
+        for (const axis of axes) {
+          const value = data.units[i].attributes?.[axis.key]
+          if (!value || !value.trim()) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'validation.required',
+              path: ['units', i, 'attributes', axis.key],
+            })
+          }
+        }
       }
     }
   }

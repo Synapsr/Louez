@@ -11,6 +11,13 @@ import { Button } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Separator } from '@louez/ui'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import { useCart, type CartItem } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
@@ -60,6 +67,9 @@ interface AddToCartFormProps {
   advanceNotice?: number
   minRentalMinutes?: number
   accessories?: Accessory[]
+  trackUnits?: boolean
+  bookingAttributeAxes?: Array<{ key: string; label: string; position: number }>
+  bookingAttributeValues?: Record<string, string[]>
 }
 
 export function AddToCartForm({
@@ -76,6 +86,9 @@ export function AddToCartForm({
   advanceNotice = 0,
   minRentalMinutes = 0,
   accessories = [],
+  trackUnits = false,
+  bookingAttributeAxes = [],
+  bookingAttributeValues = {},
 }: AddToCartFormProps) {
   const router = useRouter()
   const t = useTranslations('storefront.product')
@@ -85,6 +98,7 @@ export function AddToCartForm({
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [quantity, setQuantity] = useState(1)
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
 
   const calculateDuration = () => {
@@ -168,6 +182,7 @@ export function AddToCartForm({
           discountPercent: tier.discountPercent,
         })),
         productPricingMode: pricingMode,
+        selectedAttributes,
       },
       storeSlug
     )
@@ -221,6 +236,52 @@ export function AddToCartForm({
           selectTime: t('selectTime'),
         }}
       />
+
+      {/* Quantity */}
+      {bookingAttributeAxes.length > 0 && (
+        <div className="space-y-2">
+          <Label>{t('bookingAttributes')}</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {bookingAttributeAxes.map((axis) => (
+              <Select
+                key={axis.key}
+                value={selectedAttributes[axis.key] || ''}
+                onValueChange={(value) => {
+                  setSelectedAttributes((prev) => {
+                    if (!value) {
+                      const next = { ...prev }
+                      delete next[axis.key]
+                      return next
+                    }
+
+                    return { ...prev, [axis.key]: value }
+                  })
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={axis.label}>
+                    {selectedAttributes[axis.key] || axis.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {(bookingAttributeValues[axis.key] || []).length > 0 ? (
+                    (bookingAttributeValues[axis.key] || []).map((value) => (
+                      <SelectItem key={value} value={value} label={value}>
+                        {value}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value={`__empty_${axis.key}`} label={axis.label} disabled>
+                      {t('bookingAttributesNoOptions', { attribute: axis.label })}
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">{t('bookingAttributesHelp')}</p>
+        </div>
+      )}
 
       {/* Quantity */}
       <div className="space-y-2">

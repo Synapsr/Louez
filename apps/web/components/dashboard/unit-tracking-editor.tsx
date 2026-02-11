@@ -37,7 +37,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui'
-import { cn } from '@louez/utils'
+import { buildPartialCombinationKey, cn, normalizeAxisKey } from '@louez/utils'
 
 type UnitStatus = 'available' | 'maintenance' | 'retired'
 
@@ -46,11 +46,20 @@ interface ProductUnitInput {
   identifier: string
   notes?: string
   status?: UnitStatus
+  attributes?: Record<string, string>
+}
+
+interface BookingAttributeAxisInput {
+  key: string
+  label: string
+  position: number
 }
 
 interface UnitTrackingEditorProps {
   trackUnits: boolean
   onTrackUnitsChange: (value: boolean) => void
+  bookingAttributeAxes: BookingAttributeAxisInput[]
+  onBookingAttributeAxesChange: (axes: BookingAttributeAxisInput[]) => void
   units: ProductUnitInput[]
   onChange: (units: ProductUnitInput[]) => void
   quantity: string
@@ -61,6 +70,8 @@ interface UnitTrackingEditorProps {
 export function UnitTrackingEditor({
   trackUnits,
   onTrackUnitsChange,
+  bookingAttributeAxes,
+  onBookingAttributeAxesChange,
   units,
   onChange,
   quantity,
@@ -73,6 +84,7 @@ export function UnitTrackingEditor({
   const [bulkPrefix, setBulkPrefix] = useState('')
   const [bulkFrom, setBulkFrom] = useState('1')
   const [bulkTo, setBulkTo] = useState('5')
+  const [newAxisLabel, setNewAxisLabel] = useState('')
   const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({})
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set())
 
@@ -95,6 +107,15 @@ export function UnitTrackingEditor({
     return duplicates
   }, [units])
 
+  const missingAttributeCount = useMemo(() => {
+    if (bookingAttributeAxes.length === 0) return 0
+    return units.filter((unit) => {
+      const status = unit.status || 'available'
+      if (status !== 'available') return false
+      return bookingAttributeAxes.some((axis) => !unit.attributes?.[axis.key]?.trim())
+    }).length
+  }, [bookingAttributeAxes, units])
+
   const handleToggle = (enabled: boolean) => {
     if (!enabled && units.length > 0) {
       setShowDisableConfirm(true)
@@ -108,6 +129,7 @@ export function UnitTrackingEditor({
             identifier: '',
             notes: '',
             status: 'available',
+            attributes: {},
           }))
           onChange(emptyUnits)
         }
@@ -117,22 +139,69 @@ export function UnitTrackingEditor({
 
   const confirmDisable = () => {
     onTrackUnitsChange(false)
+    onBookingAttributeAxesChange([])
     onChange([])
     setShowDisableConfirm(false)
   }
 
   const addUnit = () => {
-    onChange([...units, { identifier: '', notes: '', status: 'available' }])
+    onChange([...units, { identifier: '', notes: '', status: 'available', attributes: {} }])
   }
 
   const removeUnit = (index: number) => {
     onChange(units.filter((_, i) => i !== index))
   }
 
-  const updateUnit = (index: number, field: keyof ProductUnitInput, value: string) => {
+  const updateUnit = (index: number, patch: Partial<ProductUnitInput>) => {
     const newUnits = [...units]
-    newUnits[index] = { ...newUnits[index], [field]: value }
+    newUnits[index] = { ...newUnits[index], ...patch }
     onChange(newUnits)
+  }
+
+  const updateUnitAttribute = (index: number, axisKey: string, value: string) => {
+    const newUnits = [...units]
+    const currentAttributes = newUnits[index].attributes || {}
+    newUnits[index] = {
+      ...newUnits[index],
+      attributes: {
+        ...currentAttributes,
+        [axisKey]: value,
+      },
+    }
+    onChange(newUnits)
+  }
+
+  const addBookingAxis = () => {
+    const label = newAxisLabel.trim()
+    if (!label) return
+
+    const key = normalizeAxisKey(label)
+    if (!key) return
+    if (bookingAttributeAxes.some((axis) => axis.key === key)) return
+    if (bookingAttributeAxes.length >= 3) return
+
+    const nextAxes = [
+      ...bookingAttributeAxes,
+      { key, label, position: bookingAttributeAxes.length },
+    ]
+    onBookingAttributeAxesChange(nextAxes)
+    setNewAxisLabel('')
+  }
+
+  const removeBookingAxis = (key: string) => {
+    const nextAxes = bookingAttributeAxes
+      .filter((axis) => axis.key !== key)
+      .map((axis, index) => ({ ...axis, position: index }))
+    onBookingAttributeAxesChange(nextAxes)
+
+    if (units.length > 0) {
+      const nextUnits = units.map((unit) => {
+        const attributes = { ...(unit.attributes || {}) }
+        delete attributes[key]
+        return { ...unit, attributes }
+      })
+      onChange(nextUnits)
+    }
   }
 
   const handleBulkGenerate = () => {
@@ -146,7 +215,7 @@ export function UnitTrackingEditor({
       const identifier = `${bulkPrefix}${paddedNumber}`
       // Skip if identifier already exists
       if (!units.some((u) => u.identifier.toLowerCase() === identifier.toLowerCase())) {
-        newUnits.push({ identifier, notes: '', status: 'available' })
+        newUnits.push({ identifier, notes: '', status: 'available', attributes: {} })
       }
     }
 
@@ -159,29 +228,6 @@ export function UnitTrackingEditor({
     setBulkFrom('1')
     setBulkTo('5')
     setBulkOpen(false)
-  }
-
-  const getStatusBadge = (status: UnitStatus | undefined) => {
-    switch (status) {
-      case 'maintenance':
-        return (
-          <Badge variant="outline" className="border-amber-500 text-amber-600">
-            {t('statusMaintenance')}
-          </Badge>
-        )
-      case 'retired':
-        return (
-          <Badge variant="outline" className="border-muted-foreground text-muted-foreground">
-            {t('statusRetired')}
-          </Badge>
-        )
-      default:
-        return (
-          <Badge variant="outline" className="border-green-500 text-green-600">
-            {t('statusAvailable')}
-          </Badge>
-        )
-    }
   }
 
   return (
@@ -231,11 +277,66 @@ export function UnitTrackingEditor({
             </span>
           </div>
 
+          <div className="space-y-3 rounded-lg border p-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">{t('bookingAttributesTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('bookingAttributesDescription')}</p>
+              </div>
+              <Badge variant="outline">{bookingAttributeAxes.length}/3</Badge>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Input
+                value={newAxisLabel}
+                onChange={(e) => setNewAxisLabel(e.target.value)}
+                placeholder={t('bookingAttributePlaceholder')}
+                disabled={disabled || bookingAttributeAxes.length >= 3}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addBookingAxis}
+                disabled={disabled || !newAxisLabel.trim() || bookingAttributeAxes.length >= 3}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t('addAttribute')}
+              </Button>
+            </div>
+
+            {bookingAttributeAxes.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {bookingAttributeAxes.map((axis) => (
+                  <Badge key={axis.key} variant="secondary" className="gap-1">
+                    <span>{axis.label}</span>
+                    <button
+                      type="button"
+                      className="rounded-sm hover:bg-black/10 dark:hover:bg-white/10 px-1"
+                      onClick={() => removeBookingAxis(axis.key)}
+                      disabled={disabled}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t('bookingAttributesEmpty')}</p>
+            )}
+          </div>
+
           {/* Duplicate warning */}
           {duplicateIdentifiers.size > 0 && (
             <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
               <span>{t('duplicateIdentifier')}</span>
+            </div>
+          )}
+
+          {missingAttributeCount > 0 && (
+            <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <span>{t('missingAttributesWarning', { count: missingAttributeCount })}</span>
             </div>
           )}
 
@@ -281,6 +382,10 @@ export function UnitTrackingEditor({
                     duplicateIdentifiers.has(unit.identifier.trim().toLowerCase())
                   const isEmpty = touchedUnits.has(index) && !unit.identifier.trim()
                   const isEditingNotes = editingNotes[index]
+                  const combinationLabel = buildPartialCombinationKey(
+                    bookingAttributeAxes,
+                    unit.attributes,
+                  )
 
                   return (
                     <div
@@ -295,7 +400,7 @@ export function UnitTrackingEditor({
                           <Input
                             placeholder={t('identifierPlaceholder')}
                             value={unit.identifier}
-                            onChange={(e) => updateUnit(index, 'identifier', e.target.value)}
+                            onChange={(e) => updateUnit(index, { identifier: e.target.value })}
                             onBlur={() => setTouchedUnits(prev => new Set(prev).add(index))}
                             className={cn('flex-1', (isDuplicate || isEmpty) && 'border-destructive')}
                             disabled={disabled}
@@ -303,7 +408,7 @@ export function UnitTrackingEditor({
                           <Select
                             value={unit.status || 'available'}
                             onValueChange={(value) => {
-                              if (value !== null) updateUnit(index, 'status', value as UnitStatus)
+                              if (value !== null) updateUnit(index, { status: value as UnitStatus })
                             }}
                             disabled={disabled}
                           >
@@ -339,12 +444,42 @@ export function UnitTrackingEditor({
                           <p className="text-xs text-destructive">{t('identifierRequired')}</p>
                         )}
 
+                        {bookingAttributeAxes.length > 0 && (
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {bookingAttributeAxes.map((axis) => (
+                              <div key={axis.key} className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">{axis.label}</Label>
+                                <Input
+                                  value={unit.attributes?.[axis.key] || ''}
+                                  onChange={(e) =>
+                                    updateUnitAttribute(index, axis.key, e.target.value)
+                                  }
+                                  placeholder={t('bookingAttributeValuePlaceholder', { label: axis.label })}
+                                  disabled={disabled}
+                                  className={cn(
+                                    !unit.attributes?.[axis.key]?.trim() &&
+                                      (unit.status || 'available') === 'available' &&
+                                      'border-destructive/60',
+                                  )}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">{t('combinationKey')}:</span>
+                          <Badge variant="outline" className="font-mono text-[11px]">
+                            {combinationLabel}
+                          </Badge>
+                        </div>
+
                         {/* Notes toggle/field */}
                         {isEditingNotes || unit.notes ? (
                           <Textarea
                             placeholder={t('notesPlaceholder')}
                             value={unit.notes || ''}
-                            onChange={(e) => updateUnit(index, 'notes', e.target.value)}
+                            onChange={(e) => updateUnit(index, { notes: e.target.value })}
                             className="min-h-[60px] text-sm"
                             disabled={disabled}
                             onBlur={() => {

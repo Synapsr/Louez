@@ -80,6 +80,9 @@ export function buildReservationPayload({
 
       return {
         productId: item.productId,
+        selectedAttributes: item.selectedAttributes,
+        resolvedCombinationKey: item.resolvedCombinationKey,
+        resolvedAttributes: item.resolvedAttributes,
         quantity: item.quantity,
         startDate: item.startDate,
         endDate: item.endDate,
@@ -89,6 +92,8 @@ export function buildReservationPayload({
           name: item.productName,
           description: null,
           images: item.productImage ? [item.productImage] : [],
+          combinationKey: item.resolvedCombinationKey || null,
+          selectedAttributes: item.resolvedAttributes || item.selectedAttributes || null,
         },
       };
     }),
@@ -113,4 +118,3 @@ export function buildReservationPayload({
         : { option: 'pickup' },
   };
 }
-

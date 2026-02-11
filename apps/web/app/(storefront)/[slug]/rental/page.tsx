@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores, products, categories, productPricingTiers, productAccessories } from '@louez/db'
+import { stores, products, categories, productPricingTiers, productAccessories, productUnits } from '@louez/db'
 import { eq, and, inArray, desc, asc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { storefrontRedirect } from '@/lib/storefront-url'
@@ -142,7 +142,19 @@ export default async function RentalPage({
     pricingMode: 'day' | 'hour' | 'week' | null
     pricingTiers?: PricingTier[]
   }
-  let productsList: (typeof products.$inferSelect & { category: typeof categories.$inferSelect | null; pricingTiers?: PricingTier[]; accessories?: Accessory[] })[] = []
+  interface ProductUnitSummary {
+    status: 'available' | 'maintenance' | 'retired' | null
+    attributes: Record<string, string> | null
+  }
+  let productsList: (
+    typeof products.$inferSelect
+    & {
+      category: typeof categories.$inferSelect | null
+      pricingTiers?: PricingTier[]
+      accessories?: Accessory[]
+      units?: ProductUnitSummary[]
+    }
+  )[] = []
   if (productIds.length > 0) {
     const productIdsArray = productIds.map(p => p.id)
 
@@ -167,6 +179,7 @@ export default async function RentalPage({
         taxSettings: products.taxSettings,
         enforceStrictTiers: products.enforceStrictTiers,
         trackUnits: products.trackUnits,
+        bookingAttributeAxes: products.bookingAttributeAxes,
         categoryName: categories.name,
         categoryStoreId: categories.storeId,
         categoryDescription: categories.description,
@@ -196,6 +209,26 @@ export default async function RentalPage({
         displayOrder: tier.displayOrder,
       })
       pricingTiersByProductId.set(tier.productId, tiers)
+    }
+
+    // Fetch unit attributes for all products (fallback for storefront selectors)
+    const productUnitsResults = await db
+      .select({
+        productId: productUnits.productId,
+        status: productUnits.status,
+        attributes: productUnits.attributes,
+      })
+      .from(productUnits)
+      .where(inArray(productUnits.productId, productIdsArray))
+
+    const productUnitsByProductId = new Map<string, ProductUnitSummary[]>()
+    for (const unit of productUnitsResults) {
+      const units = productUnitsByProductId.get(unit.productId) || []
+      units.push({
+        status: unit.status,
+        attributes: (unit.attributes as Record<string, string> | null) || null,
+      })
+      productUnitsByProductId.set(unit.productId, units)
     }
 
     // Fetch accessories for all products
@@ -317,6 +350,8 @@ export default async function RentalPage({
         taxSettings: row.taxSettings,
         enforceStrictTiers: row.enforceStrictTiers,
         trackUnits: row.trackUnits,
+        bookingAttributeAxes: row.bookingAttributeAxes,
+        units: productUnitsByProductId.get(row.id) || [],
         category: row.categoryId && row.categoryName
           ? {
               id: row.categoryId,

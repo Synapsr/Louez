@@ -17,6 +17,7 @@ import { nanoid } from 'nanoid'
 import type {
   StoreSettings,
   StoreTheme,
+  BookingAttributeAxis,
   EmailSettings,
   ProductSnapshot,
   PricingBreakdown,
@@ -25,6 +26,7 @@ import type {
   GoogleReview,
   NotificationSettings,
   CustomerNotificationSettings,
+  UnitAttributes,
 } from '@louez/types'
 
 // Helper for generating IDs
@@ -344,6 +346,10 @@ export const products = mysqlTable(
     // and assigned to reservations to track exactly which units are rented out
     trackUnits: boolean('track_units').notNull().default(false),
 
+    // Booking attributes (advanced mode with trackUnits=true)
+    // Example: [{ key: 'size', label: 'Size', position: 0 }, ...]
+    bookingAttributeAxes: json('booking_attribute_axes').$type<BookingAttributeAxis[]>(),
+
     // Display order (for manual sorting)
     displayOrder: int('display_order').default(0),
 
@@ -578,11 +584,20 @@ export const reservationItems = mysqlTable(
     // Product snapshot (for history) - also used for custom item name/description
     productSnapshot: json('product_snapshot').$type<ProductSnapshot>().notNull(),
 
+    // Resolved combination key and selected attributes for tracked-unit products.
+    // Null for non-tracked products and custom items.
+    combinationKey: varchar('combination_key', { length: 255 }),
+    selectedAttributes: json('selected_attributes').$type<UnitAttributes>(),
+
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
     reservationIdx: index('reservation_items_reservation_idx').on(
       table.reservationId
+    ),
+    productCombinationIdx: index('reservation_items_product_combination_idx').on(
+      table.productId,
+      table.combinationKey
     ),
   })
 )
@@ -1055,6 +1070,13 @@ export const productUnits = mysqlTable(
     // Optional internal notes (e.g., "Blue frame", "New battery 2025")
     notes: text('notes'),
 
+    // Flexible attributes for the unit (size/color/etc)
+    attributes: json('attributes').$type<UnitAttributes>(),
+
+    // Canonical key derived from product booking axes + unit attributes
+    // "__default" is used when no booking axes are configured
+    combinationKey: varchar('combination_key', { length: 255 }).notNull().default('__default'),
+
     // Unit lifecycle status
     // Note: "rented" is derived from reservation assignments, not stored here
     status: unitStatus.default('available').notNull(),
@@ -1072,6 +1094,11 @@ export const productUnits = mysqlTable(
     ),
     // For quick lookups of available units
     statusIdx: index('product_units_status_idx').on(table.productId, table.status),
+    statusCombinationIdx: index('product_units_status_combination_idx').on(
+      table.productId,
+      table.status,
+      table.combinationKey
+    ),
   })
 )
 
