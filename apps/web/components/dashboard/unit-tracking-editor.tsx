@@ -308,7 +308,9 @@ export function UnitTrackingEditor({
                             disabled={disabled}
                           >
                             <SelectTrigger className="w-[140px]">
-                              <SelectValue />
+                              <SelectValue>
+                                {({ available: t('statusAvailable'), maintenance: t('statusMaintenance'), retired: t('statusRetired') } as const)[unit.status || 'available']}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="available">

@@ -443,7 +443,7 @@ export function ProductForm({
         ...prev,
         isTouched: true,
         errorMap: {
-          ...prev.errorMap,
+          ...prev?.errorMap,
           onSubmit: message,
         },
       }));
@@ -453,7 +453,7 @@ export function ProductForm({
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         errorMap: {
-          ...prev.errorMap,
+          ...prev?.errorMap,
           onSubmit: undefined,
         },
       }));
@@ -768,7 +768,9 @@ export function ProductForm({
                             value={field.state.value || undefined}
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={t('selectCategory')} />
+                              <SelectValue placeholder={t('selectCategory')}>
+                                {categories.find((c) => c.id === field.state.value)?.name}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               {categories.map((category) => (
@@ -887,7 +889,9 @@ export function ProductForm({
                         value={field.state.value}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={t('pricingModeLabel')} />
+                          <SelectValue placeholder={t('pricingModeLabel')}>
+                            {t(`pricingModes.${field.state.value}`)}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="hour">
@@ -1307,7 +1311,9 @@ export function ProductForm({
                               <SelectTrigger className="flex-1">
                                 <SelectValue
                                   placeholder={t('selectCategory')}
-                                />
+                                >
+                                  {categories.find((c) => c.id === field.state.value)?.name}
+                                </SelectValue>
                               </SelectTrigger>
                               <SelectContent>
                                 {categories.map((category) => (
@@ -1433,7 +1439,9 @@ export function ProductForm({
                             <SelectTrigger>
                               <SelectValue
                                 placeholder={t('pricingModeLabel')}
-                              />
+                              >
+                                {t(`pricingModes.${field.state.value}`)}
+                              </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="hour">
