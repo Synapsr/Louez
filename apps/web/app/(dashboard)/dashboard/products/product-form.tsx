@@ -930,7 +930,7 @@ export function ProductForm({
                         onChange={(e) => {
                           form.setFieldMeta('price', (prev) => ({
                             ...prev,
-                            errorMap: { ...prev.errorMap, onSubmit: undefined },
+                            errorMap: { ...prev?.errorMap, onSubmit: undefined },
                           }));
                           field.handleChange(e.target.value);
                         }}
@@ -1028,7 +1028,7 @@ export function ProductForm({
                   onQuantityChange={(value) => {
                     form.setFieldMeta('quantity', (prev) => ({
                       ...prev,
-                      errorMap: { ...prev.errorMap, onSubmit: undefined },
+                      errorMap: { ...prev?.errorMap, onSubmit: undefined },
                     }));
                     form.setFieldValue('quantity', value);
                   }}
@@ -1262,7 +1262,7 @@ export function ProductForm({
                       onChange={(e) => {
                         form.setFieldMeta('name', (prev) => ({
                           ...prev,
-                          errorMap: { ...prev.errorMap, onSubmit: undefined },
+                          errorMap: { ...prev?.errorMap, onSubmit: undefined },
                         }));
                         field.handleChange(e.target.value);
                       }}
@@ -1572,7 +1572,7 @@ export function ProductForm({
                       onQuantityChange={(value) => {
                         form.setFieldMeta('quantity', (prev) => ({
                           ...prev,
-                          errorMap: { ...prev.errorMap, onSubmit: undefined },
+                          errorMap: { ...prev?.errorMap, onSubmit: undefined },
                         }));
                         form.setFieldValue('quantity', value);
                       }}
@@ -1845,12 +1845,12 @@ export function ProductForm({
 
           <div className="flex gap-3">
             {currentStep < STEPS.length - 1 ? (
-              <Button type="button" onClick={goToNextStep}>
+              <Button key="next" type="button" onClick={goToNextStep}>
                 {t('next')}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             ) : (
-              <Button type="submit" disabled={isSaving}>
+              <Button key="submit" type="submit" disabled={isSaving}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 <Check className="mr-2 h-4 w-4" />
                 {product ? t('save') : t('createProduct')}
