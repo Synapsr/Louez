@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
+import { useMutation } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { fr, enUS } from 'date-fns/locale'
 import { useLocale } from 'next-intl'
@@ -150,17 +151,13 @@ interface NewReservationFormProps {
   }>
 }
 
-interface FormData {
-  customerType: 'existing' | 'new'
-  customerId: string
-  email: string
-  firstName: string
-  lastName: string
-  phone: string
-  startDate: Date | undefined
-  endDate: Date | undefined
-  internalNotes: string
-}
+type StepFieldName =
+  | 'customerId'
+  | 'email'
+  | 'firstName'
+  | 'lastName'
+  | 'startDate'
+  | 'endDate'
 
 export function NewReservationForm({
   customers,
@@ -175,6 +172,7 @@ export function NewReservationForm({
   const t = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
 
   const dateLocale = locale === 'fr' ? fr : enUS
 
@@ -343,7 +341,9 @@ export function NewReservationForm({
   ], [t])
 
   const [currentStep, setCurrentStep] = useState(0)
-  const [isLoading, setIsLoading] = useState(false)
+  const [stepDirection, setStepDirection] = useState<'forward' | 'backward'>(
+    'forward'
+  )
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
   const [customItems, setCustomItems] = useState<CustomItem[]>([])
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -376,6 +376,48 @@ export function NewReservationForm({
     duration: 0,
   })
 
+  const createReservationMutation = useMutation({
+    mutationFn: async (
+      value: Parameters<typeof createManualReservation>[0]
+    ) => {
+      const result = await createManualReservation(value)
+
+      if (result.error) {
+        throw new Error(result.error)
+      }
+
+      return result
+    },
+  })
+
+  const getActionErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+      if (error.message.startsWith('errors.')) {
+        return tErrors(error.message.replace('errors.', ''))
+      }
+      return error.message
+    }
+
+    return tErrors('generic')
+  }
+
+  const getFieldErrorMessage = (error: unknown) => {
+    if (typeof error === 'string' && error.length > 0) {
+      return error
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof error.message === 'string'
+    ) {
+      return error.message
+    }
+
+    return tErrors('generic')
+  }
+
   const form = useAppForm({
     defaultValues: {
       customerType: (customers.length > 0 ? 'existing' : 'new') as 'existing' | 'new',
@@ -396,9 +438,8 @@ export function NewReservationForm({
 
       if (!validateCurrentStep()) return
 
-      setIsLoading(true)
       try {
-        const result = await createManualReservation({
+        const result = await createReservationMutation.mutateAsync({
           customerId: value.customerType === 'existing' ? value.customerId : undefined,
           newCustomer:
             value.customerType === 'new'
@@ -424,17 +465,10 @@ export function NewReservationForm({
           sendConfirmationEmail,
         })
 
-        if (result.error) {
-          toastManager.add({ title: result.error, type: 'error' })
-          return
-        }
-
         toastManager.add({ title: t('reservationCreated'), type: 'success' })
         router.push(`/dashboard/reservations/${result.reservationId}`)
-      } catch {
-        toastManager.add({ title: tErrors('generic'), type: 'error' })
-      } finally {
-        setIsLoading(false)
+      } catch (error) {
+        toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
       }
     },
   })
@@ -444,6 +478,7 @@ export function NewReservationForm({
   const watchStartDate = useStore(form.store, (s) => s.values.startDate)
   const watchEndDate = useStore(form.store, (s) => s.values.endDate)
   const watchedValues = useStore(form.store, (s) => s.values)
+  const isSaving = createReservationMutation.isPending
 
   const calculateDurationForMode = useCallback(
     (startDate: Date, endDate: Date, mode: PricingMode): number => {
@@ -802,28 +837,103 @@ export function NewReservationForm({
     toastManager.add({ title: t('priceOverride.priceReset'), type: 'success' })
   }
 
+  const setStepFieldError = (name: StepFieldName, message: string) => {
+    form.setFieldMeta(name, (prev) => ({
+      ...prev,
+      isTouched: true,
+      errorMap: {
+        ...prev?.errorMap,
+        onSubmit: message,
+      },
+    }))
+  }
+
+  const clearStepFieldError = (name: StepFieldName) => {
+    form.setFieldMeta(name, (prev) => ({
+      ...prev,
+      errorMap: {
+        ...prev?.errorMap,
+        onSubmit: undefined,
+      },
+    }))
+  }
+
   const validateCurrentStep = (): boolean => {
+    let isValid = true
+
     switch (currentStep) {
       case 0: // Customer
         if (watchCustomerType === 'existing') {
-          if (!watchCustomerId) {
-            toastManager.add({ title: t('selectCustomerError'), type: 'error' })
-            return false
+          clearStepFieldError('email')
+          clearStepFieldError('firstName')
+          clearStepFieldError('lastName')
+
+          if (!watchCustomerId?.trim()) {
+            setStepFieldError('customerId', tValidation('required'))
+            isValid = false
+          } else {
+            clearStepFieldError('customerId')
           }
         } else {
+          clearStepFieldError('customerId')
+
           const { email, firstName, lastName } = watchedValues
-          if (!email || !firstName || !lastName) {
-            toastManager.add({ title: t('fillCustomerInfoError'), type: 'error' })
-            return false
+
+          if (!email?.trim()) {
+            setStepFieldError('email', tValidation('required'))
+            isValid = false
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            setStepFieldError('email', tValidation('email'))
+            isValid = false
+          } else {
+            clearStepFieldError('email')
+          }
+
+          if (!firstName?.trim()) {
+            setStepFieldError('firstName', tValidation('required'))
+            isValid = false
+          } else {
+            clearStepFieldError('firstName')
+          }
+
+          if (!lastName?.trim()) {
+            setStepFieldError('lastName', tValidation('required'))
+            isValid = false
+          } else {
+            clearStepFieldError('lastName')
           }
         }
-        return true
-      case 1: // Period
-        if (!watchStartDate || !watchEndDate) {
-          toastManager.add({ title: t('selectDatesError'), type: 'error' })
-          return false
+
+        if (!isValid) {
+          toastManager.add({ title: t('fillCustomerInfoError'), type: 'error' })
         }
-        return true
+
+        return isValid
+
+      case 1: // Period
+        if (!watchStartDate) {
+          setStepFieldError('startDate', tValidation('required'))
+          isValid = false
+        } else {
+          clearStepFieldError('startDate')
+        }
+
+        if (!watchEndDate) {
+          setStepFieldError('endDate', tValidation('required'))
+          isValid = false
+        } else if (watchStartDate && watchEndDate < watchStartDate) {
+          setStepFieldError('endDate', tValidation('endDateBeforeStart'))
+          isValid = false
+        } else {
+          clearStepFieldError('endDate')
+        }
+
+        if (!isValid) {
+          toastManager.add({ title: t('selectDatesError'), type: 'error' })
+        }
+
+        return isValid
+
       case 2: // Products
         if (selectedProducts.length === 0 && customItems.length === 0) {
           toastManager.add({ title: t('addProductError'), type: 'error' })
@@ -839,19 +949,17 @@ export function NewReservationForm({
 
   const goToNextStep = () => {
     if (validateCurrentStep() && currentStep < STEPS.length - 1) {
+      setStepDirection('forward')
       setCurrentStep(currentStep + 1)
     }
   }
 
   const goToPreviousStep = () => {
     if (currentStep > 0) {
+      setStepDirection('backward')
       setCurrentStep(currentStep - 1)
     }
   }
-
-  const availableProducts = products.filter(
-    (p) => !selectedProducts.find((sp) => sp.productId === p.id)
-  )
 
   const getPricingMode = useCallback(
     (value: PricingMode | null | undefined): PricingMode => value ?? 'day',
@@ -888,6 +996,7 @@ export function NewReservationForm({
               currentStep={currentStep}
               onStepClick={(step) => {
                 if (step < currentStep) {
+                  setStepDirection('backward')
                   setCurrentStep(step)
                 }
               }}
@@ -897,7 +1006,7 @@ export function NewReservationForm({
 
         {/* Step 1: Customer */}
         {currentStep === 0 && (
-          <StepContent>
+          <StepContent direction={stepDirection}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -972,11 +1081,14 @@ export function NewReservationForm({
                         <CustomerCombobox
                           customers={customers}
                           value={field.state.value}
-                          onValueChange={field.handleChange}
+                          onValueChange={(value) => {
+                            field.handleChange(value)
+                            clearStepFieldError('customerId')
+                          }}
                         />
                         {field.state.meta.errors.length > 0 && (
                           <p className="text-sm font-medium text-destructive">
-                            {String(field.state.meta.errors[0])}
+                            {getFieldErrorMessage(field.state.meta.errors[0])}
                           </p>
                         )}
                       </div>
@@ -1009,7 +1121,7 @@ export function NewReservationForm({
 
         {/* Step 2: Period */}
         {currentStep === 1 && (
-          <StepContent>
+          <StepContent direction={stepDirection}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1028,7 +1140,10 @@ export function NewReservationForm({
                           <Label>{t('startDate')}</Label>
                           <DateTimePicker
                             date={field.state.value}
-                            setDate={field.handleChange}
+                            setDate={(date) => {
+                              field.handleChange(date)
+                              clearStepFieldError('startDate')
+                            }}
                             placeholder={t('pickDate')}
                             showTime={true}
                             minTime={timeSlots.minTime}
@@ -1036,7 +1151,7 @@ export function NewReservationForm({
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
-                              {String(field.state.meta.errors[0])}
+                              {getFieldErrorMessage(field.state.meta.errors[0])}
                             </p>
                           )}
                         </div>
@@ -1051,7 +1166,10 @@ export function NewReservationForm({
                           <Label>{t('endDate')}</Label>
                           <DateTimePicker
                             date={field.state.value}
-                            setDate={field.handleChange}
+                            setDate={(date) => {
+                              field.handleChange(date)
+                              clearStepFieldError('endDate')
+                            }}
                             placeholder={t('pickDate')}
                             disabledDates={(date) => {
                               // Only block dates before start date (logical constraint)
@@ -1068,7 +1186,7 @@ export function NewReservationForm({
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
-                              {String(field.state.meta.errors[0])}
+                              {getFieldErrorMessage(field.state.meta.errors[0])}
                             </p>
                           )}
                         </div>
@@ -1151,7 +1269,7 @@ export function NewReservationForm({
 
         {/* Step 3: Products */}
         {currentStep === 2 && (
-          <StepContent>
+          <StepContent direction={stepDirection}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -1601,7 +1719,7 @@ export function NewReservationForm({
 
         {/* Step 4: Confirmation */}
         {currentStep === 3 && (
-          <StepContent>
+          <StepContent direction={stepDirection}>
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Reservation Summary */}
               <Card>
@@ -1845,8 +1963,8 @@ export function NewReservationForm({
                     {t('sendConfirmationEmail')}
                   </label>
                 </div>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   <Check className="mr-2 h-4 w-4" />
                   {t('create')}
                 </Button>
