@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 
+import { orpc } from '@/lib/orpc/react'
 import { CustomersFilters } from './customers-filters'
 import { CustomersTable } from './customers-table'
 import {
@@ -12,36 +15,47 @@ import {
 } from '@/components/dashboard/upgrade-modal'
 import type { LimitStatus } from '@/lib/plan-limits'
 
-interface Customer {
-  id: string
-  customerType: 'individual' | 'business'
-  email: string
-  firstName: string
-  lastName: string
-  companyName: string | null
-  phone: string | null
-  city: string | null
-  createdAt: Date
-  reservationCount: number
-  totalSpent: string
-  lastReservation: Date | null
-}
-
 interface CustomersPageContentProps {
-  customers: Customer[]
-  totalCount: number
   limits: LimitStatus
   planSlug: string
+  initialTotalCount: number
 }
 
 export function CustomersPageContent({
-  customers,
-  totalCount,
   limits,
   planSlug,
+  initialTotalCount,
 }: CustomersPageContentProps) {
   const t = useTranslations('dashboard.customers')
+  const searchParams = useSearchParams()
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+  const search = searchParams.get('search') || undefined
+  const sort = searchParams.get('sort')
+  const type = searchParams.get('type')
+
+  const customersQuery = useQuery({
+    ...orpc.dashboard.customers.list.queryOptions({
+      input: {
+        search,
+        sort:
+          sort === 'recent' ||
+          sort === 'name' ||
+          sort === 'reservations' ||
+          sort === 'spent'
+            ? sort
+            : undefined,
+        type:
+          type === 'all' || type === 'individual' || type === 'business'
+            ? type
+            : undefined,
+      },
+    }),
+    placeholderData: (previousData) => previousData,
+  })
+
+  const customers = customersQuery.data?.customers ?? []
+  const totalCount = customersQuery.data?.totalCount ?? initialTotalCount
 
   // Determine which customers to show vs blur
   const displayLimit = limits.limit

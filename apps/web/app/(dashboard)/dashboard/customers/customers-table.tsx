@@ -6,6 +6,7 @@ import { fr } from 'date-fns/locale'
 import { useTranslations } from 'next-intl'
 import { MoreHorizontal, Mail, Phone, MapPin, Eye, Pencil, Trash2, Users, Building2 } from 'lucide-react'
 import { useState, useTransition } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@louez/ui'
 import {
@@ -34,6 +35,7 @@ import {
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
+import { orpc } from '@/lib/orpc/react'
 import { deleteCustomer } from './actions'
 
 interface Customer {
@@ -45,10 +47,10 @@ interface Customer {
   companyName: string | null
   phone: string | null
   city: string | null
-  createdAt: Date
+  createdAt: Date | string
   reservationCount: number
   totalSpent: string
-  lastReservation: Date | null
+  lastReservation: Date | string | null
 }
 
 interface CustomersTableProps {
@@ -58,6 +60,7 @@ interface CustomersTableProps {
 export function CustomersTable({ customers }: CustomersTableProps) {
   const t = useTranslations('dashboard.customers')
   const tCommon = useTranslations('common')
+  const queryClient = useQueryClient()
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -68,6 +71,10 @@ export function CustomersTable({ customers }: CustomersTableProps) {
       const result = await deleteCustomer(deleteId)
       if (result.error) {
         alert(result.error)
+      } else {
+        await queryClient.invalidateQueries({
+          queryKey: orpc.dashboard.customers.list.key(),
+        })
       }
       setDeleteId(null)
     })
@@ -165,7 +172,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                 <TableCell>
                   {customer.lastReservation ? (
                     <span className="text-sm text-muted-foreground">
-                      {format(customer.lastReservation, 'dd MMM yyyy', { locale: fr })}
+                      {format(new Date(customer.lastReservation), 'dd MMM yyyy', { locale: fr })}
                     </span>
                   ) : (
                     <span className="text-sm text-muted-foreground">-</span>
