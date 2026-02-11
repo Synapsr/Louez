@@ -11,7 +11,8 @@ import { Button } from '@louez/ui'
 import { Calendar } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -213,12 +214,13 @@ export function DatePickerModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogPopup className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('modifyDates')}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 pt-4">
+        <DialogPanel>
+          <div className="space-y-6">
           {/* Start Date/Time */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-muted-foreground">
@@ -336,8 +338,9 @@ export function DatePickerModal({
             {t('applyDates')}
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        </div>
-      </DialogContent>
+          </div>
+        </DialogPanel>
+      </DialogPopup>
     </Dialog>
   )
 }

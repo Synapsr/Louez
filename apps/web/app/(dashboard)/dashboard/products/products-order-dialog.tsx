@@ -10,13 +10,13 @@ import { toastManager } from '@louez/ui'
 import { Button } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
-import { ScrollArea } from '@louez/ui'
 
 import { updateProductsOrder } from './actions'
 
@@ -117,13 +117,13 @@ export function ProductsOrderDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogPopup className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('orderDialog.title')}</DialogTitle>
           <DialogDescription>{t('orderDialog.description')}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <DialogPanel>
           <Reorder.Group
             axis="y"
             values={products}
@@ -134,7 +134,7 @@ export function ProductsOrderDialog({
               <DraggableProduct key={product.id} product={product} />
             ))}
           </Reorder.Group>
-        </ScrollArea>
+        </DialogPanel>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
@@ -149,7 +149,7 @@ export function ProductsOrderDialog({
             {tCommon('save')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

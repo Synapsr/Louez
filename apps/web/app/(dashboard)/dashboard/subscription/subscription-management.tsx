@@ -41,10 +41,11 @@ import { Label } from '@louez/ui'
 import { Separator } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPanel,
+  DialogPopup,
   DialogTitle,
 } from '@louez/ui'
 import { cn } from '@louez/utils'
@@ -775,7 +776,7 @@ export function SubscriptionManagement({
 
       {/* Cancel Subscription Modal */}
       <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
-        <DialogContent className="sm:max-w-md">
+        <DialogPopup className="sm:max-w-md">
           <DialogHeader className="space-y-4">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertTriangle className="h-6 w-6 text-destructive" />
@@ -786,30 +787,32 @@ export function SubscriptionManagement({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3 py-4">
-            <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-              <Package className="h-5 w-5 text-destructive/70" />
-              <span className="text-sm">{t('cancelModal.limit1')}</span>
+          <DialogPanel>
+            <div className="space-y-3 py-4">
+              <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                <Package className="h-5 w-5 text-destructive/70" />
+                <span className="text-sm">{t('cancelModal.limit1')}</span>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                <CalendarDays className="h-5 w-5 text-destructive/70" />
+                <span className="text-sm">{t('cancelModal.limit2')}</span>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                <Users className="h-5 w-5 text-destructive/70" />
+                <span className="text-sm">{t('cancelModal.limit3')}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-              <CalendarDays className="h-5 w-5 text-destructive/70" />
-              <span className="text-sm">{t('cancelModal.limit2')}</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-              <Users className="h-5 w-5 text-destructive/70" />
-              <span className="text-sm">{t('cancelModal.limit3')}</span>
-            </div>
-          </div>
 
-          {subscription?.currentPeriodEnd && (
-            <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground">
-              {t('cancelModal.keepAccess', {
-                date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
-                  locale: fr,
-                }),
-              })}
-            </div>
-          )}
+            {subscription?.currentPeriodEnd && (
+              <div className="rounded-lg bg-muted p-3 text-center text-sm text-muted-foreground">
+                {t('cancelModal.keepAccess', {
+                  date: format(subscription.currentPeriodEnd, 'dd MMMM yyyy', {
+                    locale: fr,
+                  }),
+                })}
+              </div>
+            )}
+          </DialogPanel>
 
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
@@ -829,7 +832,7 @@ export function SubscriptionManagement({
               {t('cancelModal.cancel')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </div>
   )

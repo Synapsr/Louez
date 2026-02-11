@@ -29,7 +29,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -497,7 +498,7 @@ export function DepositSection({
 
       {/* Capture Modal */}
       <Dialog open={captureModalOpen} onOpenChange={setCaptureModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -508,6 +509,7 @@ export function DepositSection({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             {/* Maximum amount info */}
             <div className="p-3 rounded-lg bg-muted text-sm">
@@ -556,6 +558,7 @@ export function DepositSection({
               </p>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button
@@ -574,7 +577,7 @@ export function DepositSection({
               {t('confirmCapture')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Release Confirmation Dialog */}

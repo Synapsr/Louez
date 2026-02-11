@@ -9,7 +9,7 @@ import { Button } from '@louez/ui';
 import { Input } from '@louez/ui';
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -178,7 +178,7 @@ export function AccessoriesSelector({
           <Plus className="mr-2 h-4 w-4" />
           {t('addAccessory')}
         </DialogTrigger>
-        <DialogContent className="flex max-h-[80vh] max-w-md flex-col">
+        <DialogPopup className="flex max-h-[80vh] max-w-md flex-col">
           <DialogHeader className="flex-shrink-0">
             <DialogTitle>{t('selectAccessories')}</DialogTitle>
             <DialogDescription>
@@ -260,7 +260,7 @@ export function AccessoriesSelector({
               {tCommon('close')}
             </Button>
           </div>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Helper text */}

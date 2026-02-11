@@ -25,7 +25,7 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -316,7 +316,7 @@ export function InspectionView({
 
       {/* Photo Preview Dialog */}
       <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogContent className="max-w-2xl p-0">
+        <DialogPopup className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
           </DialogHeader>
@@ -344,7 +344,7 @@ export function InspectionView({
               </button>
             </div>
           )}
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </div>
   )

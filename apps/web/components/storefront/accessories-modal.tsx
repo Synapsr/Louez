@@ -7,7 +7,7 @@ import { toastManager } from '@louez/ui'
 
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -135,7 +135,7 @@ export function AccessoriesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
+      <DialogPopup className="sm:max-w-2xl max-h-[85vh] flex flex-col p-0">
         {/* Header - fixed */}
         <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -277,7 +277,7 @@ export function AccessoriesModal({
             {t('addToCart', { count: selectedCount })}
           </Button>
         </div>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

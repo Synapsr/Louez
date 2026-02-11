@@ -20,7 +20,8 @@ import { useTranslations } from 'next-intl'
 import { Button } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -204,7 +205,7 @@ export function RequestPaymentModal({
   if (paymentUrl) {
     return (
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Check className="h-5 w-5 text-green-600" />
@@ -217,6 +218,7 @@ export function RequestPaymentModal({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-muted/50 text-sm">
               <Label className="text-xs text-muted-foreground mb-2 block">
@@ -240,20 +242,21 @@ export function RequestPaymentModal({
               </div>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button onClick={() => handleOpenChange(false)}>
               {tCommon('close')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     )
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogPopup className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
@@ -264,6 +267,7 @@ export function RequestPaymentModal({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogPanel>
         {!stripeConfigured ? (
           <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
             <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
@@ -449,6 +453,7 @@ export function RequestPaymentModal({
             )}
           </div>
         )}
+        </DialogPanel>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
@@ -470,7 +475,7 @@ export function RequestPaymentModal({
             {t('send')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

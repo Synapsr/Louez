@@ -5,10 +5,11 @@ import { useTranslations } from 'next-intl'
 import { Mail, Smartphone, RotateCcw } from 'lucide-react'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogPanel,
 } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
@@ -270,12 +271,12 @@ export function CustomerTemplateModal({
   return (
     <TooltipProvider>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg">
+        <DialogPopup className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-base">{t('title')}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
+          <DialogPanel>
             {/* Email Section */}
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm font-medium">
@@ -413,7 +414,7 @@ export function CustomerTemplateModal({
                 </div>
               </div>
             </div>
-          </div>
+          </DialogPanel>
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={handleResetAll}>
@@ -427,7 +428,7 @@ export function CustomerTemplateModal({
               {tc('save')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </TooltipProvider>
   )

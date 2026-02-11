@@ -39,9 +39,10 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
+  DialogPanel,
+  DialogPopup,
   DialogTitle,
 } from '@louez/ui'
 import {
@@ -473,7 +474,7 @@ export function SmsContent({
 
       {/* SMS Detail Modal */}
       <Dialog open={!!selectedSms} onOpenChange={() => setSelectedSms(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogPopup className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
@@ -484,63 +485,65 @@ export function SmsContent({
                 formatStoreDate(new Date(selectedSms.sentAt), timezone, 'FULL_DATETIME')}
             </DialogDescription>
           </DialogHeader>
-          {selectedSms && (
-            <div className="space-y-4">
-              {/* Recipient info */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">{t('detail.recipient')}</p>
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
-                  {selectedSms.customerName && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{selectedSms.customerName}</span>
+          <DialogPanel>
+            {selectedSms && (
+              <div className="space-y-4">
+                {/* Recipient info */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">{t('detail.recipient')}</p>
+                  <div className="rounded-lg border bg-muted/30 p-3 space-y-1">
+                    {selectedSms.customerName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{selectedSms.customerName}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-4 w-4" />
+                      <span className="font-mono">{selectedSms.to}</span>
                     </div>
-                  )}
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span className="font-mono">{selectedSms.to}</span>
                   </div>
                 </div>
-              </div>
 
-              {/* Status and Type */}
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary">
-                  {t(`types.${TEMPLATE_TYPE_LABELS[selectedSms.templateType] || 'custom'}`)}
-                </Badge>
-                {selectedSms.status === 'sent' ? (
-                  <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                    {t('status.sent')}
+                {/* Status and Type */}
+                <div className="flex items-center gap-3">
+                  <Badge variant="secondary">
+                    {t(`types.${TEMPLATE_TYPE_LABELS[selectedSms.templateType] || 'custom'}`)}
                   </Badge>
-                ) : (
-                  <Badge variant="error">
-                    <XCircle className="mr-1 h-3 w-3" />
-                    {t('status.failed')}
-                  </Badge>
+                  {selectedSms.status === 'sent' ? (
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                      <CheckCircle2 className="mr-1 h-3 w-3" />
+                      {t('status.sent')}
+                    </Badge>
+                  ) : (
+                    <Badge variant="error">
+                      <XCircle className="mr-1 h-3 w-3" />
+                      {t('status.failed')}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Message content */}
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">{t('detail.message')}</p>
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <p className="text-sm whitespace-pre-wrap">{selectedSms.message}</p>
+                  </div>
+                </div>
+
+                {/* Error message if failed */}
+                {selectedSms.status === 'failed' && selectedSms.error && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-destructive">{t('detail.error')}</p>
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                      <p className="text-sm text-destructive">{selectedSms.error}</p>
+                    </div>
+                  </div>
                 )}
               </div>
-
-              {/* Message content */}
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-muted-foreground">{t('detail.message')}</p>
-                <div className="rounded-lg border bg-muted/30 p-4">
-                  <p className="text-sm whitespace-pre-wrap">{selectedSms.message}</p>
-                </div>
-              </div>
-
-              {/* Error message if failed */}
-              {selectedSms.status === 'failed' && selectedSms.error && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-destructive">{t('detail.error')}</p>
-                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
-                    <p className="text-sm text-destructive">{selectedSms.error}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </DialogContent>
+            )}
+          </DialogPanel>
+        </DialogPopup>
       </Dialog>
 
       {/* Top-up Modal */}

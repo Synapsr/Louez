@@ -9,7 +9,7 @@ import { toastManager } from '@louez/ui'
 import { Button } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -275,7 +275,7 @@ export function ProductModal({
   return (
   <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
+      <DialogPopup className="max-w-2xl w-[95vw] max-h-[90vh] p-0 gap-0 overflow-hidden flex flex-col">
         <DialogHeader className="sr-only">
           <DialogTitle>{product.name}</DialogTitle>
         </DialogHeader>
@@ -575,7 +575,7 @@ export function ProductModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
 
     {/* Accessories Modal */}

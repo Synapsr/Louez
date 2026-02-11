@@ -21,7 +21,7 @@ import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -321,7 +321,7 @@ export function ComparisonView({
 
       {/* Photo Preview Dialog */}
       <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogContent className="max-w-2xl p-0">
+        <DialogPopup className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
           </DialogHeader>
@@ -349,7 +349,7 @@ export function ComparisonView({
               </button>
             </div>
           )}
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </div>
   )

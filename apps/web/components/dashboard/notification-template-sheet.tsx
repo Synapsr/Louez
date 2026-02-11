@@ -8,7 +8,7 @@ import { Mail, Smartphone } from 'lucide-react'
 
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -431,7 +431,7 @@ export function NotificationTemplateSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl p-0 gap-0 max-h-[90vh] overflow-hidden">
+      <DialogPopup className="sm:max-w-4xl p-0 gap-0 max-h-[90vh] overflow-hidden">
         <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle className="text-base">{eventLabel}</DialogTitle>
         </DialogHeader>
@@ -691,7 +691,7 @@ export function NotificationTemplateSheet({
             {tc('save')}
           </Button>
         </div>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

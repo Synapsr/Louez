@@ -24,7 +24,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -232,14 +233,14 @@ export function CategoriesList({ categories }: CategoriesListProps) {
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogPopup>
           <DialogHeader>
             <DialogTitle>{t('newCategory')}</DialogTitle>
             <DialogDescription>
               {t('newCategoryDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <DialogPanel>
             <Input
               placeholder={t('namePlaceholder')}
               value={newCategoryName}
@@ -250,7 +251,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
                 }
               }}
             />
-          </div>
+          </DialogPanel>
           <DialogFooter>
             <Button
               variant="outline"
@@ -263,19 +264,19 @@ export function CategoriesList({ categories }: CategoriesListProps) {
               {tCommon('create')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogPopup>
           <DialogHeader>
             <DialogTitle>{t('editCategory')}</DialogTitle>
             <DialogDescription>
               {t('editCategoryDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <DialogPanel>
             <Input
               placeholder={t('namePlaceholder')}
               value={editCategoryName}
@@ -286,7 +287,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
                 }
               }}
             />
-          </div>
+          </DialogPanel>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               {tCommon('cancel')}
@@ -296,7 +297,7 @@ export function CategoriesList({ categories }: CategoriesListProps) {
               {tCommon('save')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Delete Dialog */}
