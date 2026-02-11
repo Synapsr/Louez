@@ -35,7 +35,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -995,7 +996,7 @@ export function EditReservationForm({
 
       {/* Custom Item Dialog */}
       <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogPopup className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
@@ -1006,6 +1007,7 @@ export function EditReservationForm({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="custom-name">{tForm('customItem.name')} *</Label>
@@ -1148,6 +1150,7 @@ export function EditReservationForm({
               </Alert>
             )}
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button
@@ -1169,11 +1172,11 @@ export function EditReservationForm({
               {tForm('customItem.addButton')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       <Dialog open={showValidationConfirmDialog} onOpenChange={setShowValidationConfirmDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogPopup className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600" />
@@ -1184,6 +1187,7 @@ export function EditReservationForm({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-2">
             {validationWarningsToConfirm.map((warning, index) => (
               <div
@@ -1195,6 +1199,7 @@ export function EditReservationForm({
             ))}
             <p className="text-sm text-muted-foreground">{tForm('warnings.canContinue')}</p>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button
@@ -1213,7 +1218,7 @@ export function EditReservationForm({
               {t('edit.confirmWithWarnings')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </TooltipProvider>
   )

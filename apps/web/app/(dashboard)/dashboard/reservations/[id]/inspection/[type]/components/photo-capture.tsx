@@ -8,7 +8,7 @@ import { cn } from '@louez/utils'
 import { Button } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
 } from '@louez/ui'
@@ -250,7 +250,7 @@ export function PhotoCapture({
 
       {/* Photo preview dialog */}
       <Dialog open={!!previewPhoto} onOpenChange={() => setPreviewPhoto(null)}>
-        <DialogContent className="max-w-2xl p-0">
+        <DialogPopup className="max-w-2xl p-0">
           <DialogHeader className="sr-only">
             <DialogTitle>{t('wizard.photoPreview')}</DialogTitle>
           </DialogHeader>
@@ -290,7 +290,7 @@ export function PhotoCapture({
               </button>
             </div>
           )}
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </div>
   )

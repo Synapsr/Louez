@@ -10,7 +10,7 @@ import { useDebouncedCallback } from 'use-debounce';
 import type { AddressSuggestion } from '@louez/types';
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -385,7 +385,7 @@ export function AddressMapModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[700px]">
+      <DialogPopup className="flex max-h-[90vh] flex-col overflow-hidden sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapPin className="h-5 w-5" />
@@ -507,7 +507,7 @@ export function AddressMapModal({
             {tCommon('save')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   );
 }

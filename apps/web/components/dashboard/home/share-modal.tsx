@@ -18,7 +18,8 @@ import {
 import { cn } from '@louez/utils'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -153,12 +154,13 @@ export function ShareModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogPopup className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>
         </DialogHeader>
 
+        <DialogPanel>
         {/* URL Preview */}
         <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -250,7 +252,8 @@ export function ShareModal({
             </div>
           </div>
         )}
-      </DialogContent>
+        </DialogPanel>
+      </DialogPopup>
     </Dialog>
   )
 }

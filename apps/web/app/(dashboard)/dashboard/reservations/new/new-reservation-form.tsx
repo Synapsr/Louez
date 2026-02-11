@@ -55,7 +55,8 @@ import { Stepper, StepContent, StepActions } from '@louez/ui'
 import { CustomerCombobox } from '@/components/dashboard/customer-combobox'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -1858,7 +1859,7 @@ export function NewReservationForm({
 
       {/* Custom Item Dialog */}
       <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogPopup className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
@@ -1868,7 +1869,8 @@ export function NewReservationForm({
               {t('customItem.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <DialogPanel>
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="custom-name">{t('customItem.name')} *</Label>
               <Input
@@ -2007,6 +2009,7 @@ export function NewReservationForm({
               </p>
             )}
           </div>
+          </DialogPanel>
           <DialogFooter>
             <Button
               type="button"
@@ -2023,12 +2026,12 @@ export function NewReservationForm({
               {t('customItem.addButton')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Price Override Dialog */}
       <Dialog open={priceOverrideDialog.isOpen} onOpenChange={(open) => !open && closePriceOverrideDialog()}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogPopup className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <PenLine className="h-5 w-5" />
@@ -2038,7 +2041,8 @@ export function NewReservationForm({
               {t('priceOverride.dialogDescription')}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <DialogPanel>
+          <div className="space-y-4">
             {/* Display calculated price for reference */}
             <div className="rounded-lg bg-muted/50 p-3">
               <div className="flex justify-between items-center text-sm">
@@ -2105,6 +2109,7 @@ export function NewReservationForm({
               </div>
             )}
           </div>
+          </DialogPanel>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               type="button"
@@ -2130,7 +2135,7 @@ export function NewReservationForm({
               {t('priceOverride.apply')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </>
   )

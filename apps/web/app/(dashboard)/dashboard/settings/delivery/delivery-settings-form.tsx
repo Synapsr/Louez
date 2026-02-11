@@ -18,11 +18,12 @@ import { Label } from '@louez/ui'
 import { Slider } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogPanel,
 } from '@louez/ui'
 import { AddressInput } from '@/components/ui/address-input'
 import { calculateHaversineDistance } from '@/lib/utils/geo'
@@ -590,21 +591,21 @@ export function DeliverySettingsForm({
                       <Search className="h-4 w-4 mr-2" />
                       {t('simulator.testAddress')}
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogPopup className="sm:max-w-md">
                     <DialogHeader>
                       <DialogTitle>{t('simulator.testAddressTitle')}</DialogTitle>
                       <DialogDescription>
                         {t('simulator.testAddressDescription')}
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="py-4">
+                    <DialogPanel>
                       <AddressInput
                         value={testAddress}
                         onChange={handleTestAddressChange}
                         placeholder={t('simulator.testAddressPlaceholder')}
                       />
-                    </div>
-                  </DialogContent>
+                    </DialogPanel>
+                  </DialogPopup>
                 </Dialog>
               )}
             </div>

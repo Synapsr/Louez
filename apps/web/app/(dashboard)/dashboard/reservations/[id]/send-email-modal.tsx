@@ -21,7 +21,8 @@ import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -165,7 +166,7 @@ export function SendEmailModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogPopup className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
@@ -176,6 +177,7 @@ export function SendEmailModal({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogPanel>
         <div className="space-y-4">
           {/* Email templates selection */}
           <div className="space-y-2">
@@ -299,6 +301,7 @@ export function SendEmailModal({
             </p>
           </div>
         </div>
+        </DialogPanel>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
@@ -320,7 +323,7 @@ export function SendEmailModal({
             {t('send')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

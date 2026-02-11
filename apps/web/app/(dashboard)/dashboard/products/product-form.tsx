@@ -47,7 +47,6 @@ import {
 import { RadioGroup, RadioGroupItem } from '@louez/ui';
 import {
   Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -814,7 +813,7 @@ export function ProductForm({
                           </DialogTrigger>
                         </div>
                       )}
-                      <DialogContent>
+                      <DialogPopup>
                         <DialogHeader>
                           <DialogTitle>{t('newCategory')}</DialogTitle>
                           <DialogDescription>
@@ -851,7 +850,7 @@ export function ProductForm({
                             {tCommon('create')}
                           </Button>
                         </DialogFooter>
-                      </DialogContent>
+                      </DialogPopup>
                     </Dialog>
                     <p className="text-muted-foreground text-sm">
                       {t('categoryOptional')}

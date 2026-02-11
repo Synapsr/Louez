@@ -33,7 +33,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -469,11 +470,12 @@ export function SmartReservationActions({
 
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
+        <DialogPopup>
           <DialogHeader>
             <DialogTitle>{t('rejectDialog.title')}</DialogTitle>
             <DialogDescription>{t('rejectDialog.description')}</DialogDescription>
           </DialogHeader>
+          <DialogPanel>
           <div className="space-y-2">
             <Label htmlFor="rejection-reason">{t('rejectDialog.reasonLabel')}</Label>
             <Textarea
@@ -485,6 +487,7 @@ export function SmartReservationActions({
             />
             <p className="text-xs text-muted-foreground">{t('rejectDialog.reasonHint')}</p>
           </div>
+          </DialogPanel>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
               {tCommon('cancel')}
@@ -494,7 +497,7 @@ export function SmartReservationActions({
               {t('rejectRequest')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Cancel Dialog */}
@@ -519,7 +522,7 @@ export function SmartReservationActions({
 
       {/* Pickup Confirmation with Warnings */}
       <Dialog open={pickupConfirmOpen} onOpenChange={setPickupConfirmOpen}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -528,6 +531,7 @@ export function SmartReservationActions({
             <DialogDescription>{t('smartActions.pickupConfirmDescription')}</DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             {/* Warnings Box */}
             <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 space-y-3">
@@ -585,6 +589,7 @@ export function SmartReservationActions({
               </label>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setPickupConfirmOpen(false)} className="sm:flex-1">
@@ -605,12 +610,12 @@ export function SmartReservationActions({
               {t('smartActions.confirmPickup')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Return Confirmation */}
       <Dialog open={returnConfirmOpen} onOpenChange={setReturnConfirmOpen}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ArrowDownRight className="h-5 w-5 text-blue-500" />
@@ -619,6 +624,7 @@ export function SmartReservationActions({
             <DialogDescription>{t('smartActions.returnConfirmDescription')}</DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             {/* Status summary */}
             <div className="p-4 rounded-lg bg-muted/50 space-y-2">
@@ -658,6 +664,7 @@ export function SmartReservationActions({
 
             <p className="text-sm text-muted-foreground">{t('smartActions.returnQuestion')}</p>
           </div>
+          </DialogPanel>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setReturnConfirmOpen(false)} className="sm:flex-1">
@@ -669,12 +676,12 @@ export function SmartReservationActions({
               {t('smartActions.confirmReturn')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Inspection Prompt Dialog */}
       <Dialog open={!!inspectionPromptOpen} onOpenChange={() => setInspectionPromptOpen(null)}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardCheck className="h-5 w-5 text-primary" />
@@ -689,6 +696,7 @@ export function SmartReservationActions({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
             <div className="flex items-start gap-3">
               <div className="p-1.5 rounded-full bg-primary/10 shrink-0">
@@ -706,6 +714,7 @@ export function SmartReservationActions({
               </div>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
             {!inspectionRequired && (
@@ -737,7 +746,7 @@ export function SmartReservationActions({
               {tInspection('smartActions.startInspection')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </>
   )

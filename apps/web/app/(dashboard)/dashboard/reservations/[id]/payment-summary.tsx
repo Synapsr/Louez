@@ -30,7 +30,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -640,7 +641,7 @@ export function PaymentSummary({
 
       {/* Record Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.recordPayment')}</DialogTitle>
             <DialogDescription>
@@ -652,6 +653,7 @@ export function PaymentSummary({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
@@ -728,6 +730,7 @@ export function PaymentSummary({
               />
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
@@ -738,12 +741,12 @@ export function PaymentSummary({
               {t('payment.record')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Return Deposit Modal */}
       <Dialog open={depositReturnModalOpen} onOpenChange={setDepositReturnModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.returnDeposit')}</DialogTitle>
             <DialogDescription>
@@ -751,6 +754,7 @@ export function PaymentSummary({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             {/* Deposit breakdown */}
             <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
@@ -827,6 +831,7 @@ export function PaymentSummary({
               />
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDepositReturnModalOpen(false)}>
@@ -837,12 +842,12 @@ export function PaymentSummary({
               {t('payment.return')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Record Damage Modal */}
       <Dialog open={damageModalOpen} onOpenChange={setDamageModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.recordDamage')}</DialogTitle>
             <DialogDescription>
@@ -850,6 +855,7 @@ export function PaymentSummary({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.damageAmount')}</Label>
@@ -901,6 +907,7 @@ export function PaymentSummary({
               </p>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDamageModalOpen(false)}>
@@ -915,7 +922,7 @@ export function PaymentSummary({
               {t('payment.recordDamage')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Delete Payment Confirmation */}

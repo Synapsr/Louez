@@ -32,7 +32,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -387,13 +388,14 @@ export function ReservationActions({
 
       {/* Reject Dialog */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
+        <DialogPopup>
           <DialogHeader>
             <DialogTitle>{t('rejectDialog.title')}</DialogTitle>
             <DialogDescription>
               {t('rejectDialog.description')}
             </DialogDescription>
           </DialogHeader>
+          <DialogPanel>
           <div className="space-y-2">
             <Label htmlFor="rejection-reason">
               {t('rejectDialog.reasonLabel')}
@@ -409,6 +411,7 @@ export function ReservationActions({
               {t('rejectDialog.reasonHint')}
             </p>
           </div>
+          </DialogPanel>
           <DialogFooter>
             <Button
               variant="outline"
@@ -425,7 +428,7 @@ export function ReservationActions({
               {t('rejectRequest')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Cancel Dialog */}

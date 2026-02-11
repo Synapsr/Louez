@@ -38,7 +38,8 @@ import {
 } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
+  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -1017,7 +1018,7 @@ export function UnifiedPaymentSection({
 
       {/* Record Payment Modal */}
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.recordPayment')}</DialogTitle>
             <DialogDescription>
@@ -1029,6 +1030,7 @@ export function UnifiedPaymentSection({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.type')}</Label>
@@ -1105,6 +1107,7 @@ export function UnifiedPaymentSection({
               />
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentModalOpen(false)}>
@@ -1115,12 +1118,12 @@ export function UnifiedPaymentSection({
               {t('payment.record')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Return Deposit Modal */}
       <Dialog open={depositReturnModalOpen} onOpenChange={setDepositReturnModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.returnDeposit')}</DialogTitle>
             <DialogDescription>
@@ -1128,6 +1131,7 @@ export function UnifiedPaymentSection({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-muted space-y-2 text-sm">
               <div className="flex justify-between">
@@ -1203,6 +1207,7 @@ export function UnifiedPaymentSection({
               />
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDepositReturnModalOpen(false)}>
@@ -1213,12 +1218,12 @@ export function UnifiedPaymentSection({
               {t('payment.return')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Record Damage Modal */}
       <Dialog open={damageModalOpen} onOpenChange={setDamageModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogPopup className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('payment.recordDamage')}</DialogTitle>
             <DialogDescription>
@@ -1226,6 +1231,7 @@ export function UnifiedPaymentSection({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t('payment.damageAmount')}</Label>
@@ -1277,6 +1283,7 @@ export function UnifiedPaymentSection({
               </p>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setDamageModalOpen(false)}>
@@ -1291,7 +1298,7 @@ export function UnifiedPaymentSection({
               {t('payment.recordDamage')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Delete Payment Confirmation */}
@@ -1318,7 +1325,7 @@ export function UnifiedPaymentSection({
 
       {/* Capture Deposit Modal */}
       <Dialog open={captureModalOpen} onOpenChange={setCaptureModalOpen}>
-        <DialogContent className="max-w-md">
+        <DialogPopup className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-500" />
@@ -1329,6 +1336,7 @@ export function UnifiedPaymentSection({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogPanel>
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-muted text-sm">
               <div className="flex justify-between">
@@ -1374,6 +1382,7 @@ export function UnifiedPaymentSection({
               </p>
             </div>
           </div>
+          </DialogPanel>
 
           <DialogFooter>
             <Button
@@ -1392,7 +1401,7 @@ export function UnifiedPaymentSection({
               {t('deposit.confirmCapture')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
 
       {/* Release Deposit Confirmation */}

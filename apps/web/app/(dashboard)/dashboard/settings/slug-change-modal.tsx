@@ -8,11 +8,12 @@ import { useDebounce } from '@/hooks/use-debounce'
 
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogPanel,
 } from '@louez/ui'
 import {
   Alert,
@@ -166,7 +167,7 @@ export function SlugChangeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogPopup className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
@@ -177,83 +178,85 @@ export function SlugChangeModal({
           </DialogDescription>
         </DialogHeader>
 
-        {!showConfirmation ? (
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="slug">{t('label')}</Label>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    id="slug"
-                    value={slug}
-                    onChange={(e) => handleSlugChange(e.target.value)}
-                    placeholder={t('placeholder')}
-                    className="pr-10"
-                    autoComplete="off"
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {getStatusIcon()}
+        <DialogPanel>
+          {!showConfirmation ? (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="slug">{t('label')}</Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="slug"
+                      value={slug}
+                      onChange={(e) => handleSlugChange(e.target.value)}
+                      placeholder={t('placeholder')}
+                      className="pr-10"
+                      autoComplete="off"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {getStatusIcon()}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                {slug ? `${slug}.${domain}` : `votre-boutique.${domain}`}
-              </p>
-              {status !== 'idle' && status !== 'checking' && (
-                <p className={`text-sm ${
-                  status === 'available'
-                    ? 'text-green-600'
-                    : status === 'same'
-                    ? 'text-muted-foreground'
-                    : 'text-destructive'
-                }`}>
-                  {getStatusMessage()}
+                <p className="text-sm text-muted-foreground">
+                  {slug ? `${slug}.${domain}` : `votre-boutique.${domain}`}
                 </p>
+                {status !== 'idle' && status !== 'checking' && (
+                  <p className={`text-sm ${
+                    status === 'available'
+                      ? 'text-green-600'
+                      : status === 'same'
+                      ? 'text-muted-foreground'
+                      : 'text-destructive'
+                  }`}>
+                    {getStatusMessage()}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border border-muted bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground">
+                  {t('formatHelp')}
+                </p>
+              </div>
+
+              {error && (
+                <Alert variant="error">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </div>
-
-            <div className="rounded-lg border border-muted bg-muted/30 p-3">
-              <p className="text-sm text-muted-foreground">
-                {t('formatHelp')}
-              </p>
-            </div>
-
-            {error && (
-              <Alert variant="error">
-                <AlertDescription>{error}</AlertDescription>
+            </>
+          ) : (
+            <>
+              <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="ml-2">
+                  <p className="font-medium">{t('warning.title')}</p>
+                  <ul className="mt-2 list-disc pl-4 space-y-1 text-sm">
+                    <li>{t('warning.point1')}</li>
+                    <li>{t('warning.point2')}</li>
+                    <li>{t('warning.point3')}</li>
+                  </ul>
+                </AlertDescription>
               </Alert>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4 py-4">
-            <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription className="ml-2">
-                <p className="font-medium">{t('warning.title')}</p>
-                <ul className="mt-2 list-disc pl-4 space-y-1 text-sm">
-                  <li>{t('warning.point1')}</li>
-                  <li>{t('warning.point2')}</li>
-                  <li>{t('warning.point3')}</li>
-                </ul>
-              </AlertDescription>
-            </Alert>
 
-            <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t('currentUrl')}</span>
-                <span className="font-mono line-through text-muted-foreground">
-                  {currentSlug}.{domain}
-                </span>
+              <div className="rounded-lg border bg-muted/50 p-4 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{t('currentUrl')}</span>
+                  <span className="font-mono line-through text-muted-foreground">
+                    {currentSlug}.{domain}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{t('newUrl')}</span>
+                  <span className="font-mono font-medium text-foreground">
+                    {slug}.{domain}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t('newUrl')}</span>
-                <span className="font-mono font-medium text-foreground">
-                  {slug}.{domain}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </DialogPanel>
 
         <DialogFooter>
           {!showConfirmation ? (
@@ -295,7 +298,7 @@ export function SlugChangeModal({
             </>
           )}
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

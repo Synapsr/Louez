@@ -6,7 +6,7 @@ import { Copy, Check, RefreshCw, ExternalLink } from 'lucide-react'
 import { Button } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogHeader,
   DialogTitle,
@@ -82,7 +82,7 @@ export function CalendarExportModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogPopup className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('title')}</DialogTitle>
           <DialogDescription>{t('description')}</DialogDescription>
@@ -188,7 +188,7 @@ export function CalendarExportModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

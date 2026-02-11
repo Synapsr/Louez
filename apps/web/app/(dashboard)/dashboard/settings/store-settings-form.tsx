@@ -41,11 +41,12 @@ import {
 } from '@louez/ui';
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogPanel,
 } from '@louez/ui';
 import {
   Tooltip,
@@ -914,7 +915,7 @@ export function StoreSettingsForm({
         open={isStripeRequiredDialogOpen}
         onOpenChange={setIsStripeRequiredDialogOpen}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogPopup className="sm:max-w-md">
           <DialogHeader className="space-y-4">
             <div className="bg-primary/10 mx-auto flex h-14 w-14 items-center justify-center rounded-full">
               <CreditCard className="text-primary h-7 w-7" />
@@ -928,11 +929,13 @@ export function StoreSettingsForm({
               </DialogDescription>
             </div>
           </DialogHeader>
-          <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
-            <p className="text-muted-foreground text-sm">
-              {t('reservationSettings.stripeRequired.benefits')}
-            </p>
-          </div>
+          <DialogPanel>
+            <div className="border-primary/20 bg-primary/5 rounded-lg border p-4">
+              <p className="text-muted-foreground text-sm">
+                {t('reservationSettings.stripeRequired.benefits')}
+              </p>
+            </div>
+          </DialogPanel>
           <DialogFooter className="flex-col gap-2 sm:flex-col">
             <Button
               render={<Link href="/dashboard/settings/payments" />}
@@ -949,7 +952,7 @@ export function StoreSettingsForm({
               {t('reservationSettings.stripeRequired.keepRequest')}
             </Button>
           </DialogFooter>
-        </DialogContent>
+        </DialogPopup>
       </Dialog>
     </div>
   );

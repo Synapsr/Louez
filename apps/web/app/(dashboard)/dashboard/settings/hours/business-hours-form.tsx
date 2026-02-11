@@ -28,12 +28,13 @@ import {
 import { Switch } from '@louez/ui'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogPanel,
 } from '@louez/ui'
 import {
   Alert,
@@ -391,13 +392,13 @@ function ClosurePeriodDialog({
         <Plus className="mr-2 h-4 w-4" />
         {t('addClosure')}
       </DialogTrigger>
-      <DialogContent>
+      <DialogPopup>
         <DialogHeader>
           <DialogTitle>{t('closureForm.title')}</DialogTitle>
           <DialogDescription>{t('closurePeriodsDescription')}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <DialogPanel>
           {error && (
             <Alert variant="error">
               <AlertCircle className="h-4 w-4" />
@@ -442,7 +443,7 @@ function ClosurePeriodDialog({
               rows={2}
             />
           </div>
-        </div>
+        </DialogPanel>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
@@ -452,7 +453,7 @@ function ClosurePeriodDialog({
             {t('closureForm.add')}
           </Button>
         </DialogFooter>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }

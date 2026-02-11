@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import {
   Dialog,
-  DialogContent,
+  DialogPopup,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -73,7 +73,7 @@ export function UpgradeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md overflow-hidden p-0">
+      <DialogPopup className="sm:max-w-md overflow-hidden p-0">
         {/* Gradient header */}
         <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-6 pt-8 pb-6">
           {/* Decorative elements */}
@@ -191,7 +191,7 @@ export function UpgradeModal({
             </Button>
           </div>
         </div>
-      </DialogContent>
+      </DialogPopup>
     </Dialog>
   )
 }
