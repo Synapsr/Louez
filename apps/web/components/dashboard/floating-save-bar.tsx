@@ -1,23 +1,24 @@
-'use client'
+'use client';
 
-import { useTranslations } from 'next-intl'
-import { Loader2 } from 'lucide-react'
-import { Button } from '@louez/ui'
-import { cn } from '@louez/utils'
+import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
+import { cn } from '@louez/utils';
 
 interface FloatingSaveBarProps {
   /** Whether the form has unsaved changes */
-  isDirty: boolean
+  isDirty: boolean;
   /** Whether the form is currently submitting */
-  isLoading: boolean
+  isLoading: boolean;
   /** Callback to reset the form to its initial state */
-  onReset: () => void
+  onReset: () => void;
   /** Optional callback for forms without a wrapping <form> element */
-  onSubmit?: () => void
+  onSubmit?: () => void;
   /** Optional form ID for external submit button */
-  formId?: string
+  formId?: string;
   /** Optional additional className */
-  className?: string
+  className?: string;
 }
 
 /**
@@ -51,7 +52,7 @@ export function FloatingSaveBar({
   formId,
   className,
 }: FloatingSaveBarProps) {
-  const t = useTranslations('common')
+  const t = useTranslations('common');
 
   return (
     <>
@@ -60,12 +61,12 @@ export function FloatingSaveBar({
         aria-live="polite"
         aria-atomic="true"
         className={cn(
-          'fixed inset-x-0 bottom-0 z-40 flex justify-center pb-6 px-4 pointer-events-none transition-all duration-300 ease-out',
+          'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-6 transition-all duration-300 ease-out',
           isDirty ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
-          className
+          className,
         )}
       >
-        <div className="pointer-events-auto relative flex items-center gap-4 rounded-full bg-zinc-900/90 dark:bg-zinc-800/90 px-5 py-2.5 shadow-lg shadow-black/20 ring-1 ring-white/10 backdrop-blur-xl">
+        <div className="pointer-events-auto relative flex items-center gap-4 rounded-full bg-zinc-900/90 px-5 py-2.5 shadow-lg ring-1 shadow-black/20 ring-white/10 backdrop-blur-xl dark:bg-zinc-800/90">
           {/* Status indicator with pulsing animation (respects reduced motion) */}
           <div className="flex items-center gap-2 text-sm text-zinc-200">
             <span className="relative flex h-1.5 w-1.5">
@@ -82,10 +83,10 @@ export function FloatingSaveBar({
           <div className="flex items-center gap-2">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               onClick={onReset}
               disabled={isLoading}
-              className="text-zinc-300 hover:text-white hover:bg-zinc-800"
+              className="border-zinc-600 bg-transparent text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white"
             >
               {t('cancel')}
             </Button>
@@ -105,5 +106,5 @@ export function FloatingSaveBar({
       {/* Spacer to prevent content from being hidden behind the bar */}
       {isDirty && <div className="h-20" />}
     </>
-  )
+  );
 }
