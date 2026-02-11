@@ -158,11 +158,13 @@ export function DateTimePicker({
                 disabled={!date}
               >
                 <SelectTrigger className="w-24">
-                  <SelectValue placeholder="--:--" />
+                  <SelectValue placeholder="--:--">
+                    {currentTime}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {timeOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
+                    <SelectItem key={option.value} value={option.value} label={option.label}>
                       {option.label}
                     </SelectItem>
                   ))}

@@ -647,13 +647,17 @@ export function StoreSettingsForm({
                         value={field.state.value}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue>
+                            {field.state.value === 'payment'
+                              ? t('reservationSettings.modePayment')
+                              : t('reservationSettings.modeRequest')}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="payment">
+                          <SelectItem value="payment" label={t('reservationSettings.modePayment')}>
                             {t('reservationSettings.modePayment')}
                           </SelectItem>
-                          <SelectItem value="request">
+                          <SelectItem value="request" label={t('reservationSettings.modeRequest')}>
                             {t('reservationSettings.modeRequest')}
                           </SelectItem>
                         </SelectContent>

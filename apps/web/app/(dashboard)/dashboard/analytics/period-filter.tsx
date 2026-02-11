@@ -61,11 +61,11 @@ export function PeriodFilter({ className }: PeriodFilterProps) {
       <div className="sm:hidden">
         <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[120px]">
-            <SelectValue />
+            <SelectValue>{periods.find((p) => p.value === currentPeriod)?.label}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {periods.map((period) => (
-              <SelectItem key={period.value} value={period.value}>
+              <SelectItem key={period.value} value={period.value} label={period.label}>
                 {period.label}
               </SelectItem>
             ))}

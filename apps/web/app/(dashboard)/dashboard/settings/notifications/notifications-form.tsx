@@ -640,17 +640,19 @@ export function NotificationsForm({
                     disabled={savingReminderSettings}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {t('reminderTiming.hours', { count: pickupReminderHours })}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">{t('reminderTiming.hours', { count: 1 })}</SelectItem>
-                      <SelectItem value="2">{t('reminderTiming.hours', { count: 2 })}</SelectItem>
-                      <SelectItem value="4">{t('reminderTiming.hours', { count: 4 })}</SelectItem>
-                      <SelectItem value="6">{t('reminderTiming.hours', { count: 6 })}</SelectItem>
-                      <SelectItem value="12">{t('reminderTiming.hours', { count: 12 })}</SelectItem>
-                      <SelectItem value="24">{t('reminderTiming.hours', { count: 24 })}</SelectItem>
-                      <SelectItem value="48">{t('reminderTiming.hours', { count: 48 })}</SelectItem>
-                      <SelectItem value="72">{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                      <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6" label={t('reminderTiming.hours', { count: 6 })}>{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12" label={t('reminderTiming.hours', { count: 12 })}>{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24" label={t('reminderTiming.hours', { count: 24 })}>{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48" label={t('reminderTiming.hours', { count: 48 })}>{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72" label={t('reminderTiming.hours', { count: 72 })}>{t('reminderTiming.hours', { count: 72 })}</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
@@ -669,17 +671,19 @@ export function NotificationsForm({
                     disabled={savingReminderSettings}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {t('reminderTiming.hours', { count: returnReminderHours })}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">{t('reminderTiming.hours', { count: 1 })}</SelectItem>
-                      <SelectItem value="2">{t('reminderTiming.hours', { count: 2 })}</SelectItem>
-                      <SelectItem value="4">{t('reminderTiming.hours', { count: 4 })}</SelectItem>
-                      <SelectItem value="6">{t('reminderTiming.hours', { count: 6 })}</SelectItem>
-                      <SelectItem value="12">{t('reminderTiming.hours', { count: 12 })}</SelectItem>
-                      <SelectItem value="24">{t('reminderTiming.hours', { count: 24 })}</SelectItem>
-                      <SelectItem value="48">{t('reminderTiming.hours', { count: 48 })}</SelectItem>
-                      <SelectItem value="72">{t('reminderTiming.hours', { count: 72 })}</SelectItem>
+                      <SelectItem value="1" label={t('reminderTiming.hours', { count: 1 })}>{t('reminderTiming.hours', { count: 1 })}</SelectItem>
+                      <SelectItem value="2" label={t('reminderTiming.hours', { count: 2 })}>{t('reminderTiming.hours', { count: 2 })}</SelectItem>
+                      <SelectItem value="4" label={t('reminderTiming.hours', { count: 4 })}>{t('reminderTiming.hours', { count: 4 })}</SelectItem>
+                      <SelectItem value="6" label={t('reminderTiming.hours', { count: 6 })}>{t('reminderTiming.hours', { count: 6 })}</SelectItem>
+                      <SelectItem value="12" label={t('reminderTiming.hours', { count: 12 })}>{t('reminderTiming.hours', { count: 12 })}</SelectItem>
+                      <SelectItem value="24" label={t('reminderTiming.hours', { count: 24 })}>{t('reminderTiming.hours', { count: 24 })}</SelectItem>
+                      <SelectItem value="48" label={t('reminderTiming.hours', { count: 48 })}>{t('reminderTiming.hours', { count: 48 })}</SelectItem>
+                      <SelectItem value="72" label={t('reminderTiming.hours', { count: 72 })}>{t('reminderTiming.hours', { count: 72 })}</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">

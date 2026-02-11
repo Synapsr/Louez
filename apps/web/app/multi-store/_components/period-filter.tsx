@@ -63,11 +63,11 @@ export function MultiStorePeriodFilter({ className }: MultiStorePeriodFilterProp
       <div className="md:hidden">
         <Select value={currentPeriod} onValueChange={(v) => { if (v !== null) handlePeriodChange(v as Period) }}>
           <SelectTrigger className="w-[140px]">
-            <SelectValue />
+            <SelectValue>{periods.find((p) => p.value === currentPeriod)?.label}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {periods.map((period) => (
-              <SelectItem key={period.value} value={period.value}>
+              <SelectItem key={period.value} value={period.value} label={period.label}>
                 {period.label}
               </SelectItem>
             ))}

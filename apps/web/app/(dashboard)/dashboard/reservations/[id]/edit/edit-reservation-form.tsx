@@ -749,7 +749,7 @@ export function EditReservationForm({
                           </SelectTrigger>
                           <SelectContent>
                             {availableToAdd.map((product) => (
-                              <SelectItem key={product.id} value={product.id}>
+                              <SelectItem key={product.id} value={product.id} label={product.name}>
                                 <span className="flex items-center gap-2">
                                   <Package className="h-3 w-3" />
                                   {product.name}
@@ -1090,12 +1090,14 @@ export function EditReservationForm({
                     }}
                   >
                     <SelectTrigger id="custom-pricing-mode" className="h-9">
-                      <SelectValue />
+                      <SelectValue>
+                        {customItemForm.pricingMode === 'hour' ? tForm('perHour') : customItemForm.pricingMode === 'day' ? tForm('perDay') : tForm('perWeek')}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="hour">{tForm('perHour')}</SelectItem>
-                      <SelectItem value="day">{tForm('perDay')}</SelectItem>
-                      <SelectItem value="week">{tForm('perWeek')}</SelectItem>
+                      <SelectItem value="hour" label={tForm('perHour')}>{tForm('perHour')}</SelectItem>
+                      <SelectItem value="day" label={tForm('perDay')}>{tForm('perDay')}</SelectItem>
+                      <SelectItem value="week" label={tForm('perWeek')}>{tForm('perWeek')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

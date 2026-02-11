@@ -234,11 +234,13 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                     onValueChange={(value) => { if (value !== null) field.handleChange(value || undefined) }}
                   >
                     <SelectTrigger id={field.name}>
-                      <SelectValue placeholder={t('selectCountry')} />
+                      <SelectValue placeholder={t('selectCountry')}>
+                        {field.state.value ? tCountries(field.state.value) : undefined}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {COUNTRY_CODES.map((code) => (
-                        <SelectItem key={code} value={code}>
+                        <SelectItem key={code} value={code} label={tCountries(code)}>
                           {tCountries(code)}
                         </SelectItem>
                       ))}

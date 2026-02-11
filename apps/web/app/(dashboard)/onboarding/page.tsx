@@ -280,7 +280,18 @@ export default function OnboardingStorePage() {
                         }}
                       >
                         <SelectTrigger id="country">
-                          <SelectValue placeholder={t('countryPlaceholder')} />
+                          <SelectValue placeholder={t('countryPlaceholder')}>
+                            {field.state.value && (() => {
+                              const selectedCountry = sortedCountries.find(c => c.code === field.state.value);
+                              const countryName = getCountryName(field.state.value, locale);
+                              return selectedCountry ? (
+                                <span className="inline-flex items-center gap-2">
+                                  <span>{selectedCountry.flag}</span>
+                                  <span>{countryName}</span>
+                                </span>
+                              ) : null;
+                            })()}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {sortedCountries.map((country) => {
@@ -293,6 +304,7 @@ export default function OnboardingStorePage() {
                               <SelectItem
                                 key={country.code}
                                 value={country.code}
+                                label={countryName}
                               >
                                 <span className="sr-only">
                                   {countryName}
