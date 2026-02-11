@@ -134,11 +134,13 @@ export function ReservationsFilters({
       {/* Period Filter */}
       <Select value={currentPeriod} onValueChange={handlePeriodChange}>
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder={t('period')} />
+          <SelectValue placeholder={t('period')}>
+            {getPeriodLabel(urlToPeriodMap[currentPeriod] || 'all')}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {PERIOD_KEYS.map((key) => (
-            <SelectItem key={key} value={periodUrlMap[key]}>
+            <SelectItem key={key} value={periodUrlMap[key]} label={getPeriodLabel(key)}>
               {getPeriodLabel(key)}
             </SelectItem>
           ))}

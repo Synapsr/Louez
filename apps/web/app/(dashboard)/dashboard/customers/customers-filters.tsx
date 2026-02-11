@@ -27,6 +27,22 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
   const t = useTranslations('dashboard.customers');
   const tCommon = useTranslations('common');
 
+  const currentType = searchParams.get('type') || 'all';
+  const currentSort = searchParams.get('sort') || 'recent';
+
+  const typeOptions = [
+    { value: 'all', label: t('filter.all') },
+    { value: 'individual', label: t('customerType.individual') },
+    { value: 'business', label: t('customerType.business') },
+  ];
+
+  const sortOptions = [
+    { value: 'recent', label: t('sort.recent') },
+    { value: 'name', label: t('sort.name') },
+    { value: 'reservations', label: t('sort.reservations') },
+    { value: 'spent', label: t('sort.spent') },
+  ];
+
   const handleSearch = useDebouncedCallback((term: string) => {
     const params = new URLSearchParams(searchParams);
     if (term) {
@@ -80,37 +96,38 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
         </div>
 
         <Select
-          defaultValue={searchParams.get('type') || 'all'}
+          value={currentType}
           onValueChange={handleTypeChange}
         >
           <SelectTrigger className="w-full sm:w-[150px]">
-            <SelectValue placeholder={t('filter.type')} />
+            <SelectValue placeholder={t('filter.type')}>
+              {typeOptions.find((o) => o.value === currentType)?.label}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{t('filter.all')}</SelectItem>
-            <SelectItem value="individual">
-              {t('customerType.individual')}
-            </SelectItem>
-            <SelectItem value="business">
-              {t('customerType.business')}
-            </SelectItem>
+            {typeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value} label={option.label}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
         <Select
-          defaultValue={searchParams.get('sort') || 'recent'}
+          value={currentSort}
           onValueChange={handleSortChange}
         >
           <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder={t('sort.sortBy')} />
+            <SelectValue placeholder={t('sort.sortBy')}>
+              {sortOptions.find((o) => o.value === currentSort)?.label}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recent">{t('sort.recent')}</SelectItem>
-            <SelectItem value="name">{t('sort.name')}</SelectItem>
-            <SelectItem value="reservations">
-              {t('sort.reservations')}
-            </SelectItem>
-            <SelectItem value="spent">{t('sort.spent')}</SelectItem>
+            {sortOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value} label={option.label}>
+                {option.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 

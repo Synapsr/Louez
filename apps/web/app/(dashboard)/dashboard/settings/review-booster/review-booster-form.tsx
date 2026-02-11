@@ -410,11 +410,13 @@ export function ReviewBoosterForm({
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">
-                          <SelectValue />
+                          <SelectValue>
+                            {DELAY_OPTIONS.find(opt => opt.value === settings.emailDelayHours)?.label}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {DELAY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value.toString()}>
+                            <SelectItem key={option.value} value={option.value.toString()} label={option.label}>
                               {option.label}
                             </SelectItem>
                           ))}
@@ -479,11 +481,13 @@ export function ReviewBoosterForm({
                         disabled={isPending}
                       >
                         <SelectTrigger className="w-24">
-                          <SelectValue />
+                          <SelectValue>
+                            {DELAY_OPTIONS.find(opt => opt.value === settings.smsDelayHours)?.label}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {DELAY_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value.toString()}>
+                            <SelectItem key={option.value} value={option.value.toString()} label={option.label}>
                               {option.label}
                             </SelectItem>
                           ))}

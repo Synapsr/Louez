@@ -2052,12 +2052,16 @@ export function NewReservationForm({
                 }
               >
                 <SelectTrigger id="custom-pricing-mode">
-                  <SelectValue />
+                  <SelectValue>
+                    {customItemForm.pricingMode === 'hour' && t('perHour')}
+                    {customItemForm.pricingMode === 'day' && t('perDay')}
+                    {customItemForm.pricingMode === 'week' && 'week'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hour">{t('perHour')}</SelectItem>
-                  <SelectItem value="day">{t('perDay')}</SelectItem>
-                  <SelectItem value="week">week</SelectItem>
+                  <SelectItem value="hour" label={t('perHour')}>{t('perHour')}</SelectItem>
+                  <SelectItem value="day" label={t('perDay')}>{t('perDay')}</SelectItem>
+                  <SelectItem value="week" label="week">week</SelectItem>
                 </SelectContent>
               </Select>
             </div>

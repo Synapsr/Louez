@@ -313,19 +313,19 @@ export function UnitTrackingEditor({
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="available">
+                              <SelectItem value="available" label={t('statusAvailable')}>
                                 <span className="flex items-center gap-2">
                                   <span className="h-2 w-2 rounded-full bg-green-500" />
                                   {t('statusAvailable')}
                                 </span>
                               </SelectItem>
-                              <SelectItem value="maintenance">
+                              <SelectItem value="maintenance" label={t('statusMaintenance')}>
                                 <span className="flex items-center gap-2">
                                   <span className="h-2 w-2 rounded-full bg-amber-500" />
                                   {t('statusMaintenance')}
                                 </span>
                               </SelectItem>
-                              <SelectItem value="retired">
+                              <SelectItem value="retired" label={t('statusRetired')}>
                                 <span className="flex items-center gap-2">
                                   <span className="h-2 w-2 rounded-full bg-gray-400" />
                                   {t('statusRetired')}

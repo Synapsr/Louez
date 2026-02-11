@@ -253,22 +253,24 @@ export function CalendarView({
               <Select value={currentPeriod} onValueChange={handlePeriodChange}>
                 <SelectTrigger className="w-[160px]">
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  <SelectValue />
+                  <SelectValue>
+                    {currentPeriod === 'week' ? t('periods.week') : currentPeriod === 'twoWeeks' ? t('periods.twoWeeks') : t('periods.month')}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="week">
+                  <SelectItem value="week" label={t('periods.week')}>
                     <div className="flex items-center gap-2">
                       {t('periods.week')}
                     </div>
                   </SelectItem>
                   {viewMode === 'products' && (
-                    <SelectItem value="twoWeeks">
+                    <SelectItem value="twoWeeks" label={t('periods.twoWeeks')}>
                       <div className="flex items-center gap-2">
                         {t('periods.twoWeeks')}
                       </div>
                     </SelectItem>
                   )}
-                  <SelectItem value="month">
+                  <SelectItem value="month" label={t('periods.month')}>
                     <div className="flex items-center gap-2">
                       {t('periods.month')}
                     </div>
@@ -285,12 +287,14 @@ export function CalendarView({
                 onValueChange={(value) => { if (value !== null) setSelectedProductId(value) }}
               >
                 <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder={t('filterByProduct')} />
+                  <SelectValue placeholder={t('filterByProduct')}>
+                    {selectedProductId === 'all' ? t('allProducts') : products.find((p) => p.id === selectedProductId)?.name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('allProducts')}</SelectItem>
+                  <SelectItem value="all" label={t('allProducts')}>{t('allProducts')}</SelectItem>
                   {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
+                    <SelectItem key={product.id} value={product.id} label={product.name}>
                       {product.name}
                     </SelectItem>
                   ))}

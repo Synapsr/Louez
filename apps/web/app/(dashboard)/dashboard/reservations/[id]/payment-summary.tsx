@@ -139,6 +139,21 @@ export function PaymentSummary({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paymentNotes, setPaymentNotes] = useState('')
 
+  // Select options
+  const paymentTypeOptions = [
+    { value: 'rental' as const, label: t('payment.types.rental') },
+    { value: 'deposit' as const, label: t('payment.types.deposit') },
+    { value: 'adjustment' as const, label: t('payment.types.adjustment') },
+  ]
+
+  const paymentMethodOptions = [
+    { value: 'cash' as const, label: t('payment.methods.cash') },
+    { value: 'card' as const, label: t('payment.methods.card') },
+    { value: 'transfer' as const, label: t('payment.methods.transfer') },
+    { value: 'check' as const, label: t('payment.methods.check') },
+    { value: 'other' as const, label: t('payment.methods.other') },
+  ]
+
   // Calculate totals
   const rental = parseFloat(subtotalAmount)
   const deposit = parseFloat(depositAmount)
@@ -659,12 +674,14 @@ export function PaymentSummary({
               <Label>{t('payment.type')}</Label>
               <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {paymentTypeOptions.find((o) => o.value === paymentType)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rental">{t('payment.types.rental')}</SelectItem>
-                  <SelectItem value="deposit">{t('payment.types.deposit')}</SelectItem>
-                  <SelectItem value="adjustment">{t('payment.types.adjustment')}</SelectItem>
+                  <SelectItem value="rental" label={t('payment.types.rental')}>{t('payment.types.rental')}</SelectItem>
+                  <SelectItem value="deposit" label={t('payment.types.deposit')}>{t('payment.types.deposit')}</SelectItem>
+                  <SelectItem value="adjustment" label={t('payment.types.adjustment')}>{t('payment.types.adjustment')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -702,14 +719,16 @@ export function PaymentSummary({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {paymentMethodOptions.find((o) => o.value === paymentMethod)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  <SelectItem value="cash" label={t('payment.methods.cash')}>{t('payment.methods.cash')}</SelectItem>
+                  <SelectItem value="card" label={t('payment.methods.card')}>{t('payment.methods.card')}</SelectItem>
+                  <SelectItem value="transfer" label={t('payment.methods.transfer')}>{t('payment.methods.transfer')}</SelectItem>
+                  <SelectItem value="check" label={t('payment.methods.check')}>{t('payment.methods.check')}</SelectItem>
+                  <SelectItem value="other" label={t('payment.methods.other')}>{t('payment.methods.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -803,14 +822,16 @@ export function PaymentSummary({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {paymentMethodOptions.find((o) => o.value === paymentMethod)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  <SelectItem value="cash" label={t('payment.methods.cash')}>{t('payment.methods.cash')}</SelectItem>
+                  <SelectItem value="card" label={t('payment.methods.card')}>{t('payment.methods.card')}</SelectItem>
+                  <SelectItem value="transfer" label={t('payment.methods.transfer')}>{t('payment.methods.transfer')}</SelectItem>
+                  <SelectItem value="check" label={t('payment.methods.check')}>{t('payment.methods.check')}</SelectItem>
+                  <SelectItem value="other" label={t('payment.methods.other')}>{t('payment.methods.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -879,14 +900,16 @@ export function PaymentSummary({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethod} onValueChange={(v) => { if (v !== null) setPaymentMethod(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>
+                    {paymentMethodOptions.find((o) => o.value === paymentMethod)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  <SelectItem value="cash" label={t('payment.methods.cash')}>{t('payment.methods.cash')}</SelectItem>
+                  <SelectItem value="card" label={t('payment.methods.card')}>{t('payment.methods.card')}</SelectItem>
+                  <SelectItem value="transfer" label={t('payment.methods.transfer')}>{t('payment.methods.transfer')}</SelectItem>
+                  <SelectItem value="check" label={t('payment.methods.check')}>{t('payment.methods.check')}</SelectItem>
+                  <SelectItem value="other" label={t('payment.methods.other')}>{t('payment.methods.other')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

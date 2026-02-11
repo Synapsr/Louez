@@ -443,14 +443,18 @@ export function RentalContent({
                     onValueChange={handleCategoryChange}
                   >
                     <SelectTrigger className="h-9 w-40">
-                      <SelectValue placeholder={tFilters('categories')} />
+                      <SelectValue placeholder={tFilters('categories')}>
+                        {selectedCategory === 'all'
+                          ? tFilters('allCategories')
+                          : categories.find(cat => cat.id === selectedCategory)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">
+                      <SelectItem value="all" label={tFilters('allCategories')}>
                         {tFilters('allCategories')}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
+                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
                           {cat.name}
                         </SelectItem>
                       ))}
@@ -499,14 +503,18 @@ export function RentalContent({
                     onValueChange={handleCategoryChange}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={tFilters('categories')} />
+                      <SelectValue placeholder={tFilters('categories')}>
+                        {selectedCategory === 'all'
+                          ? tFilters('allCategories')
+                          : categories.find(cat => cat.id === selectedCategory)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">
+                      <SelectItem value="all" label={tFilters('allCategories')}>
                         {tFilters('allCategories')}
                       </SelectItem>
                       {categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
+                        <SelectItem key={cat.id} value={cat.id} label={cat.name}>
                           {cat.name}
                         </SelectItem>
                       ))}

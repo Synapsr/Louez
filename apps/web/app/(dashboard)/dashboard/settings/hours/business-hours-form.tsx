@@ -283,11 +283,11 @@ function DayScheduleRow({
                 }}
               >
                 <SelectTrigger className="flex-1">
-                  <SelectValue />
+                  <SelectValue>{field.state.value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
+                    <SelectItem key={time} value={time} label={time}>
                       {time}
                     </SelectItem>
                   ))}
@@ -305,11 +305,11 @@ function DayScheduleRow({
                 }}
               >
                 <SelectTrigger className="flex-1">
-                  <SelectValue />
+                  <SelectValue>{field.state.value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
+                    <SelectItem key={time} value={time} label={time}>
                       {time}
                     </SelectItem>
                   ))}

@@ -197,6 +197,21 @@ export function UnifiedPaymentSection({
   const [captureAmount, setCaptureAmount] = useState('')
   const [captureReason, setCaptureReason] = useState('')
 
+  // Option arrays for selects
+  const paymentTypeOptions = [
+    { value: 'rental', label: t('payment.types.rental') },
+    { value: 'deposit', label: t('payment.types.deposit') },
+    { value: 'adjustment', label: t('payment.types.adjustment') },
+  ]
+
+  const paymentMethodOptions = [
+    { value: 'cash', label: t('payment.methods.cash') },
+    { value: 'card', label: t('payment.methods.card') },
+    { value: 'transfer', label: t('payment.methods.transfer') },
+    { value: 'check', label: t('payment.methods.check') },
+    { value: 'other', label: t('payment.methods.other') },
+  ]
+
   // Calculate totals
   const rental = parseFloat(subtotalAmount)
   const deposit = parseFloat(depositAmount)
@@ -1036,12 +1051,14 @@ export function UnifiedPaymentSection({
               <Label>{t('payment.type')}</Label>
               <Select value={paymentType} onValueChange={(v) => { if (v !== null) setPaymentType(v as PaymentType) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{paymentTypeOptions.find((o) => o.value === paymentType)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rental">{t('payment.types.rental')}</SelectItem>
-                  <SelectItem value="deposit">{t('payment.types.deposit')}</SelectItem>
-                  <SelectItem value="adjustment">{t('payment.types.adjustment')}</SelectItem>
+                  {paymentTypeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} label={option.label}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1079,14 +1096,14 @@ export function UnifiedPaymentSection({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  {paymentMethodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} label={option.label}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1179,14 +1196,14 @@ export function UnifiedPaymentSection({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  {paymentMethodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} label={option.label}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1255,14 +1272,14 @@ export function UnifiedPaymentSection({
               <Label>{t('payment.method')}</Label>
               <Select value={paymentMethodType} onValueChange={(v) => { if (v !== null) setPaymentMethodType(v as PaymentMethod) }}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue>{paymentMethodOptions.find((o) => o.value === paymentMethodType)?.label}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">{t('payment.methods.cash')}</SelectItem>
-                  <SelectItem value="card">{t('payment.methods.card')}</SelectItem>
-                  <SelectItem value="transfer">{t('payment.methods.transfer')}</SelectItem>
-                  <SelectItem value="check">{t('payment.methods.check')}</SelectItem>
-                  <SelectItem value="other">{t('payment.methods.other')}</SelectItem>
+                  {paymentMethodOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value} label={option.label}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

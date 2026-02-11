@@ -165,7 +165,7 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
           </SelectTrigger>
           <SelectContent>
             {countries.map((country) => (
-              <SelectItem key={country.iso} value={country.iso}>
+              <SelectItem key={country.iso} value={country.iso} label={`${country.flag} ${country.name} +${country.code}`}>
                 <span className="flex items-center gap-2">
                   <span className="text-base leading-none">{country.flag}</span>
                   <span>{country.name}</span>

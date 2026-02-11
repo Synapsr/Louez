@@ -893,13 +893,13 @@ export function ProductForm({
                           </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="hour">
+                          <SelectItem value="hour" label={t('pricingModes.hour')}>
                             {t('pricingModes.hour')}
                           </SelectItem>
-                          <SelectItem value="day">
+                          <SelectItem value="day" label={t('pricingModes.day')}>
                             {t('pricingModes.day')}
                           </SelectItem>
-                          <SelectItem value="week">
+                          <SelectItem value="week" label={t('pricingModes.week')}>
                             {t('pricingModes.week')}
                           </SelectItem>
                         </SelectContent>
@@ -1443,13 +1443,13 @@ export function ProductForm({
                               </SelectValue>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="hour">
+                              <SelectItem value="hour" label={t('pricingModes.hour')}>
                                 {t('pricingModes.hour')}
                               </SelectItem>
-                              <SelectItem value="day">
+                              <SelectItem value="day" label={t('pricingModes.day')}>
                                 {t('pricingModes.day')}
                               </SelectItem>
-                              <SelectItem value="week">
+                              <SelectItem value="week" label={t('pricingModes.week')}>
                                 {t('pricingModes.week')}
                               </SelectItem>
                             </SelectContent>
