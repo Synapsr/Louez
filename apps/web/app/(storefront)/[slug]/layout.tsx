@@ -5,7 +5,6 @@ import { getMessages } from 'next-intl/server'
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
 import { eq } from 'drizzle-orm'
-import { ToastProvider } from '@louez/ui'
 import { StoreHeaderWrapper } from '@/components/storefront/store-header-wrapper'
 import { StoreFooter } from '@/components/storefront/store-footer'
 import { ThemeWrapper } from '@/components/storefront/theme-wrapper'
@@ -104,7 +103,6 @@ export default async function StorefrontLayout({
           <CartProvider>
             <AnalyticsProvider storeSlug={store.slug}>
               <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-                <ToastProvider>
                   <div className="flex min-h-screen flex-col bg-background">
                     <StoreHeaderWrapper
                       storeName={store.name}
@@ -120,7 +118,6 @@ export default async function StorefrontLayout({
                       address={store.address}
                     />
                   </div>
-                </ToastProvider>
               </ThemeWrapper>
             </AnalyticsProvider>
           </CartProvider>

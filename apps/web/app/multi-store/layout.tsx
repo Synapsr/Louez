@@ -1,31 +1,34 @@
-import { redirect } from 'next/navigation'
-import { NextIntlClientProvider } from 'next-intl'
-import { getMessages } from 'next-intl/server'
-import { auth } from '@/lib/auth'
-import { getUserStores } from '@/lib/store-context'
-import { ToastProvider } from '@louez/ui'
-import { ThemeProvider } from '@/components/theme-provider'
-import { PostHogProvider } from '@/components/posthog-provider'
-import { MultiStoreHeader } from './_components/header'
+import { redirect } from 'next/navigation';
+
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+
+import { PostHogProvider } from '@/components/posthog-provider';
+import { ThemeProvider } from '@/components/theme-provider';
+
+import { auth } from '@/lib/auth';
+import { getUserStores } from '@/lib/store-context';
+
+import { MultiStoreHeader } from './_components/header';
 
 export default async function MultiStoreLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/login')
+    redirect('/login');
   }
 
-  const stores = await getUserStores()
+  const stores = await getUserStores();
 
   if (stores.length < 2) {
-    redirect('/dashboard')
+    redirect('/dashboard');
   }
 
-  const messages = await getMessages()
+  const messages = await getMessages();
 
   return (
     <NextIntlClientProvider messages={messages}>
@@ -42,20 +45,18 @@ export default async function MultiStoreLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ToastProvider>
-            <div className="min-h-screen bg-muted/30">
-              <MultiStoreHeader
-                stores={stores}
-                userEmail={session.user.email || ''}
-                userImage={session.user.image}
-              />
-              <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                {children}
-              </main>
-            </div>
-          </ToastProvider>
+          <div className="bg-muted/30 min-h-screen">
+            <MultiStoreHeader
+              stores={stores}
+              userEmail={session.user.email || ''}
+              userImage={session.user.image}
+            />
+            <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+              {children}
+            </main>
+          </div>
         </ThemeProvider>
       </PostHogProvider>
     </NextIntlClientProvider>
-  )
+  );
 }

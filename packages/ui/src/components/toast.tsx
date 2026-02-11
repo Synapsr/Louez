@@ -48,6 +48,18 @@ function ToastProvider({
   );
 }
 
+const VIEWPORT_POSITION_CLASSES: Record<ToastPosition, string> = {
+  "top-left": "top-4 sm:top-8 left-4 sm:left-8 bottom-auto right-auto",
+  "top-center":
+    "top-4 sm:top-8 left-1/2 -translate-x-1/2 bottom-auto right-auto",
+  "top-right": "top-4 sm:top-8 right-4 sm:right-8 bottom-auto left-auto",
+  "bottom-left": "bottom-4 sm:bottom-8 left-4 sm:left-8 top-auto right-auto",
+  "bottom-center":
+    "bottom-4 sm:bottom-8 left-1/2 -translate-x-1/2 top-auto right-auto",
+  "bottom-right":
+    "bottom-4 sm:bottom-8 right-4 sm:right-8 top-auto left-auto",
+};
+
 function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
   const { toasts } = Toast.useToastManager();
   const isTop = position.startsWith("top");
@@ -56,14 +68,8 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
     <Toast.Portal data-slot="toast-portal">
       <Toast.Viewport
         className={cn(
-          "fixed z-50 mx-auto flex w-[calc(100%-var(--toast-inset)*2)] max-w-90 [--toast-inset:var(--spacing)*4] sm:[--toast-inset:var(--spacing)*8]",
-          // Vertical positioning
-          "data-[position*=top]:top-(--toast-inset)",
-          "data-[position*=bottom]:bottom-(--toast-inset)",
-          // Horizontal positioning
-          "data-[position*=left]:left-(--toast-inset)",
-          "data-[position*=right]:right-(--toast-inset)",
-          "data-[position*=center]:-translate-x-1/2 data-[position*=center]:left-1/2",
+          "fixed z-50 flex w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] max-w-90 [--toast-inset:1rem] sm:[--toast-inset:2rem]",
+          VIEWPORT_POSITION_CLASSES[position],
         )}
         data-position={position}
         data-slot="toast-viewport"

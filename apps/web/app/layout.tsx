@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 
 import { Agentation } from 'agentation';
 
+import { AnchoredToastProvider, ToastProvider } from '@louez/ui';
+
 import { UmamiAnalytics } from '@/components/umami-analytics';
 
 import { ORPCProvider } from '@/lib/orpc/provider';
@@ -53,7 +55,11 @@ export default function RootLayout({
           />
         </head>
         <body className={`${inter.variable} font-sans antialiased`}>
-          <ORPCProvider>{children}</ORPCProvider>
+          <ORPCProvider>
+            <ToastProvider position="bottom-right">
+              <AnchoredToastProvider>{children}</AnchoredToastProvider>
+            </ToastProvider>
+          </ORPCProvider>
         </body>
       </html>
     </>
