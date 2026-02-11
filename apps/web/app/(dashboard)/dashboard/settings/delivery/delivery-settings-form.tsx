@@ -40,6 +40,7 @@ import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, DeliverySettings, DeliveryMode } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
+import { getFieldError } from '@/hooks/form/form-context'
 import { RootError } from '@/components/form/root-error'
 
 const DELIVERY_MODES = ['optional', 'required', 'included'] as const
@@ -319,7 +320,7 @@ export function DeliverySettingsForm({
                       </p>
                     </label>
                   </RadioGroup>
-                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                 </div>
               )}
             </form.Field>
@@ -370,7 +371,7 @@ export function DeliverySettingsForm({
                         <p className="text-muted-foreground text-sm">
                           {t('pricePerKmDescription')}
                         </p>
-                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                       </div>
                     )}
                   </form.Field>
@@ -401,7 +402,7 @@ export function DeliverySettingsForm({
                         <p className="text-muted-foreground text-sm">
                           {t('minimumFeeDescription')}
                         </p>
-                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                       </div>
                     )}
                   </form.Field>
@@ -457,7 +458,7 @@ export function DeliverySettingsForm({
                         </div>
                       </label>
                     </RadioGroup>
-                    {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                    {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                   </div>
                 )}
               </form.Field>
@@ -523,7 +524,7 @@ export function DeliverySettingsForm({
                         <p className="text-muted-foreground text-sm">
                           {t('maximumDistanceDescription')}
                         </p>
-                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                       </div>
                     )}
                   </form.Field>
@@ -562,7 +563,7 @@ export function DeliverySettingsForm({
                         <p className="text-muted-foreground text-sm">
                           {t('freeDeliveryThresholdDescription')}
                         </p>
-                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                       </div>
                     )}
                   </form.Field>

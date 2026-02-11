@@ -72,6 +72,7 @@ import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 import { useAppForm } from '@/hooks/form/form';
+import { getFieldError } from '@/hooks/form/form-context';
 
 import { createCategory, createProduct, updateProduct } from './actions';
 
@@ -668,7 +669,7 @@ export function ProductForm({
           </div>
           {field.state.meta.errors.length > 0 && (
             <p className="text-destructive text-sm font-medium">
-              {String(field.state.meta.errors[0])}
+              {getFieldError(field.state.meta.errors[0])}
             </p>
           )}
         </div>
@@ -743,7 +744,7 @@ export function ProductForm({
                     </p>
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-destructive text-sm font-medium">
-                        {String(field.state.meta.errors[0])}
+                        {getFieldError(field.state.meta.errors[0])}
                       </p>
                     )}
                   </div>
@@ -857,7 +858,7 @@ export function ProductForm({
                     </p>
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-destructive text-sm font-medium">
-                        {String(field.state.meta.errors[0])}
+                        {getFieldError(field.state.meta.errors[0])}
                       </p>
                     )}
                   </div>
@@ -909,7 +910,7 @@ export function ProductForm({
                       </p>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm font-medium">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -997,7 +998,7 @@ export function ProductForm({
                               </p>
                               {field.state.meta.errors.length > 0 && (
                                 <p className="text-destructive text-sm font-medium">
-                                  {String(field.state.meta.errors[0])}
+                                  {getFieldError(field.state.meta.errors[0])}
                                 </p>
                               )}
                             </div>
@@ -1061,7 +1062,7 @@ export function ProductForm({
                       />
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm font-medium">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -1171,7 +1172,7 @@ export function ProductForm({
                     </RadioGroup>
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-destructive text-sm font-medium">
-                        {String(field.state.meta.errors[0])}
+                        {getFieldError(field.state.meta.errors[0])}
                       </p>
                     )}
                   </div>
@@ -1284,7 +1285,7 @@ export function ProductForm({
                       </p>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm font-medium">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -1400,7 +1401,7 @@ export function ProductForm({
                       </p>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm font-medium">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>

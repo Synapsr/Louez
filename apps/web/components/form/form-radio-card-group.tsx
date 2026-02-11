@@ -1,5 +1,6 @@
 'use client'
 
+import { getFieldError } from '@/hooks/form/form-context'
 import { Label, Radio, RadioGroup } from '@louez/ui'
 import { cn } from '@louez/utils'
 
@@ -60,7 +61,7 @@ export function FormRadioCardGroup<TValue extends string>({
       )}
       {errors.length > 0 && (
         <p className="text-destructive text-sm">
-          {String(errors[0])}
+          {getFieldError(errors[0])}
         </p>
       )}
     </div>

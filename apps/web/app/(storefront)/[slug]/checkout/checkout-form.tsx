@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAppForm } from '@/hooks/form/form'
+import { getFieldError } from '@/hooks/form/form-context'
 import { useStore } from '@tanstack/react-form'
 import { z } from 'zod'
 import { format } from 'date-fns'
@@ -520,7 +521,7 @@ export function CheckoutForm({
                             placeholder={t('phonePlaceholder')}
                           />
                           {field.state.meta.errors.length > 0 && (
-                            <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                            <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                           )}
                         </div>
                       )}
@@ -531,6 +532,7 @@ export function CheckoutForm({
                       {(field) => (
                         <div className="flex flex-row items-center space-x-2 space-y-0">
                           <Checkbox
+                            id={field.name}
                             checked={field.state.value}
                             onCheckedChange={(checked) => {
                               field.handleChange(checked as boolean)
@@ -539,7 +541,7 @@ export function CheckoutForm({
                               }
                             }}
                           />
-                          <Label className="text-sm font-normal cursor-pointer">
+                          <Label htmlFor={field.name} className="text-sm font-normal cursor-pointer">
                             {t('isBusinessCustomer')}
                           </Label>
                         </div>
@@ -873,13 +875,14 @@ export function CheckoutForm({
                         {(field) => (
                           <div className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
                             <Checkbox
+                              id={field.name}
                               checked={field.state.value}
                               onCheckedChange={(checked) => field.handleChange(checked as boolean)}
                             />
                             <div className="space-y-1 leading-none">
-                              <Label className="cursor-pointer">{t('acceptCgv')}</Label>
+                              <Label htmlFor={field.name} className="cursor-pointer">{t('acceptCgv')}</Label>
                               {field.state.meta.errors.length > 0 && (
-                                <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                                <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                               )}
                             </div>
                           </div>

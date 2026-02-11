@@ -31,6 +31,7 @@ import { updateInspectionSettings } from './actions'
 import type { StoreSettings, InspectionSettings } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { RootError } from '@/components/form/root-error'
+import { getFieldError } from '@/hooks/form/form-context'
 
 const INSPECTION_MODES = ['optional', 'recommended', 'required'] as const
 
@@ -206,7 +207,7 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
                       </div>
                     </label>
                   </RadioGroup>
-                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                 </div>
               )}
             </form.Field>
@@ -300,7 +301,7 @@ export function InspectionSettingsForm({ store }: InspectionSettingsFormProps) {
                       field.handleChange(parseInt(e.target.value, 10) || 1)
                     }
                   />
-                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>}
+                  {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
                 </div>
               )}
             </form.Field>

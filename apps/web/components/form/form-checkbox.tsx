@@ -1,19 +1,21 @@
-'use client'
+'use client';
 
-import { useFieldContext } from '@/hooks/form/form-context'
-import { Checkbox, Label } from '@louez/ui'
+import { Checkbox, Label } from '@louez/ui';
+
+import { useFieldContext, getFieldError } from '@/hooks/form/form-context';
 
 export function FormCheckbox({
   label,
   description,
   className,
 }: {
-  label?: string
-  description?: string
-  className?: string
+  label?: string;
+  description?: string;
+  className?: string;
 }) {
-  const field = useFieldContext<boolean>()
-  const errors = field.state.meta.errors
+  const field = useFieldContext<boolean>();
+  const errors = field.state.meta.errors;
+  const error = errors[0];
 
   return (
     <div className={className ?? 'flex flex-row items-center space-x-2'}>
@@ -24,7 +26,10 @@ export function FormCheckbox({
       />
       <div className="space-y-1 leading-none">
         {label && (
-          <Label htmlFor={field.name} className="text-sm font-normal cursor-pointer">
+          <Label
+            htmlFor={field.name}
+            className="cursor-pointer text-sm font-normal"
+          >
             {label}
           </Label>
         )}
@@ -33,10 +38,10 @@ export function FormCheckbox({
         )}
         {errors.length > 0 && (
           <p className="text-destructive text-sm">
-            {typeof errors[0] === 'string' ? errors[0] : String(errors[0])}
+            {getFieldError(error)}
           </p>
         )}
       </div>
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useFieldContext } from '@/hooks/form/form-context'
+import { useFieldContext, getFieldError } from '@/hooks/form/form-context'
 import {
   Label,
   Select,
@@ -48,7 +48,7 @@ export function FormSelect({
       )}
       {errors.length > 0 && (
         <p className="text-destructive text-sm">
-          {typeof errors[0] === 'string' ? errors[0] : String(errors[0])}
+          {getFieldError(errors[0])}
         </p>
       )}
     </div>

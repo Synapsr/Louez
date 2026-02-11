@@ -20,6 +20,7 @@ import { updateAdminSettings } from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { useAppForm } from '@/hooks/form/form'
 import { RootError } from '@/components/form/root-error'
+import { getFieldError } from '@/hooks/form/form-context'
 
 const adminSettingsSchema = z.object({
   trialDays: z.number().int().min(0).max(365),
@@ -102,7 +103,7 @@ export function AdminSettingsForm({
                 </div>
                 <p className="text-muted-foreground text-sm">{t('trialDaysDescription')}</p>
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                  <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                 )}
               </div>
             )}
@@ -138,7 +139,7 @@ export function AdminSettingsForm({
                 </div>
                 <p className="text-muted-foreground text-sm">{t('discountPercentDescription')}</p>
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                  <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                 )}
               </div>
             )}
@@ -163,7 +164,7 @@ export function AdminSettingsForm({
                 </div>
                 <p className="text-muted-foreground text-sm">{t('discountDurationDescription')}</p>
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                  <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                 )}
               </div>
             )}

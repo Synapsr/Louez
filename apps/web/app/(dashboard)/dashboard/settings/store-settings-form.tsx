@@ -78,6 +78,7 @@ import {
 } from '@/lib/utils/rental-duration';
 
 import { useAppForm } from '@/hooks/form/form';
+import { getFieldError } from '@/hooks/form/form-context';
 
 import { env } from '@/env';
 
@@ -301,7 +302,7 @@ export function StoreSettingsForm({
                     />
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
+                        {getFieldError(field.state.meta.errors[0])}
                       </p>
                     )}
                   </div>
@@ -349,7 +350,7 @@ export function StoreSettingsForm({
                     />
                     {field.state.meta.errors.length > 0 && (
                       <p className="text-destructive text-sm">
-                        {String(field.state.meta.errors[0])}
+                        {getFieldError(field.state.meta.errors[0])}
                       </p>
                     )}
                   </div>
@@ -393,7 +394,7 @@ export function StoreSettingsForm({
                       </Select>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -450,7 +451,7 @@ export function StoreSettingsForm({
                       </Select>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -581,7 +582,7 @@ export function StoreSettingsForm({
                         </Select>
                         {field.state.meta.errors.length > 0 && (
                           <p className="text-destructive text-sm">
-                            {String(field.state.meta.errors[0])}
+                            {getFieldError(field.state.meta.errors[0])}
                           </p>
                         )}
                       </div>
@@ -669,7 +670,7 @@ export function StoreSettingsForm({
                       </p>
                       {field.state.meta.errors.length > 0 && (
                         <p className="text-destructive text-sm">
-                          {String(field.state.meta.errors[0])}
+                          {getFieldError(field.state.meta.errors[0])}
                         </p>
                       )}
                     </div>
@@ -802,7 +803,7 @@ export function StoreSettingsForm({
                         </div>
                         {field.state.meta.errors.length > 0 && (
                           <p className="text-destructive text-sm">
-                            {String(field.state.meta.errors[0])}
+                            {getFieldError(field.state.meta.errors[0])}
                           </p>
                         )}
                       </div>
@@ -877,7 +878,7 @@ export function StoreSettingsForm({
                         </div>
                         {field.state.meta.errors.length > 0 && (
                           <p className="text-destructive text-sm">
-                            {String(field.state.meta.errors[0])}
+                            {getFieldError(field.state.meta.errors[0])}
                           </p>
                         )}
                       </div>
