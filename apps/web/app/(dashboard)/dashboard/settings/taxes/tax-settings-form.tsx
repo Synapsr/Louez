@@ -28,6 +28,7 @@ import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import type { StoreSettings, TaxSettings } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { RootError } from '@/components/form/root-error'
+import { getFieldError } from '@/hooks/form/form-context'
 
 const createTaxSettingsSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) => z.object({
   enabled: z.boolean(),
@@ -162,7 +163,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
                         {t('defaultRateDescription')}
                       </p>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                        <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                       )}
                     </div>
                   )}
@@ -216,7 +217,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
                         </label>
                       </RadioGroup>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                        <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                       )}
                     </div>
                   )}
@@ -274,7 +275,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
                           {t('taxLabelDescription')}
                         </p>
                         {field.state.meta.errors.length > 0 && (
-                          <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                         )}
                       </div>
                     )}
@@ -300,7 +301,7 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
                           {t('taxNumberDescription')}
                         </p>
                         {field.state.meta.errors.length > 0 && (
-                          <p className="text-destructive text-sm">{String(field.state.meta.errors[0])}</p>
+                          <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>
                         )}
                       </div>
                     )}

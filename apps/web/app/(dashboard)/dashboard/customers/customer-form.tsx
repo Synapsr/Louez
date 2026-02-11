@@ -28,6 +28,7 @@ import {
 import { customerSchema, type CustomerInput } from '@louez/validations'
 import { createCustomer, updateCustomer } from './actions'
 import { useAppForm } from '@/hooks/form/form'
+import { getFieldError } from '@/hooks/form/form-context'
 import { RootError } from '@/components/form/root-error'
 
 interface Customer {
@@ -160,7 +161,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   />
                   {field.state.meta.errors.length > 0 && (
                     <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
+                      {getFieldError(field.state.meta.errors[0])}
                     </p>
                   )}
                 </div>
@@ -194,7 +195,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   />
                   {field.state.meta.errors.length > 0 && (
                     <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
+                      {getFieldError(field.state.meta.errors[0])}
                     </p>
                   )}
                 </div>
@@ -248,7 +249,7 @@ export function CustomerForm({ customer }: CustomerFormProps) {
                   </Select>
                   {field.state.meta.errors.length > 0 && (
                     <p className="text-sm font-medium text-destructive">
-                      {field.state.meta.errors[0]}
+                      {getFieldError(field.state.meta.errors[0])}
                     </p>
                   )}
                 </div>

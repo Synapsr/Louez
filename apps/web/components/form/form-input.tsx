@@ -2,7 +2,7 @@
 
 import { Input, type InputProps, Label } from '@louez/ui';
 
-import { useFieldContext } from '@/hooks/form/form-context';
+import { useFieldContext, getFieldError } from '@/hooks/form/form-context';
 
 export function FormInput({
   label,
@@ -18,8 +18,6 @@ export function FormInput({
   const field = useFieldContext<string>();
   const errors = field.state.meta.errors;
   const error = errors[0];
-
-  console.log({ error, errors });
 
   const inputElement = (
     <Input
@@ -56,7 +54,7 @@ export function FormInput({
       )}
       {error && (
         <p className="text-destructive text-sm">
-          {typeof error === 'string' ? error : String(error.message)}
+          {getFieldError(error)}
         </p>
       )}
     </div>
