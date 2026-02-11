@@ -39,6 +39,7 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { useAppForm } from '@/hooks/form/form';
 import { getFieldError } from '@/hooks/form/form-context';
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+import { orpcClient } from '@/lib/orpc/react';
 
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
@@ -143,6 +144,15 @@ export function CheckoutForm({
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   );
+  const [resolvedCombinations, setResolvedCombinations] = useState<
+    Record<
+      string,
+      {
+        combinationKey: string;
+        selectedAttributes: Record<string, string>;
+      }
+    >
+  >({});
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
@@ -187,6 +197,70 @@ export function CheckoutForm({
   const totalWithDelivery =
     total + (deliveryOption === 'delivery' ? deliveryFee : 0);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function resolveCombinations() {
+      if (items.length === 0) {
+        setResolvedCombinations({});
+        return;
+      }
+
+      const nextResolved: Record<
+        string,
+        { combinationKey: string; selectedAttributes: Record<string, string> }
+      > = {};
+
+      await Promise.all(
+        items.map(async (item) => {
+          try {
+            const result =
+              await orpcClient.storefront.availability.resolveCombination({
+                productId: item.productId,
+                quantity: item.quantity,
+                startDate: item.startDate,
+                endDate: item.endDate,
+                selectedAttributes: item.selectedAttributes,
+              });
+            nextResolved[item.productId] = {
+              combinationKey: result.combinationKey,
+              selectedAttributes: result.selectedAttributes,
+            };
+          } catch {
+            // Resolution can fail while user is editing dates/quantities.
+          }
+        }),
+      );
+
+      if (!cancelled) {
+        setResolvedCombinations(nextResolved);
+      }
+    }
+
+    resolveCombinations();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [items]);
+
+  const itemsWithResolved = useMemo(
+    () =>
+      items.map((item) => {
+        const resolved = resolvedCombinations[item.productId];
+        if (!resolved) {
+          return item;
+        }
+
+        return {
+          ...item,
+          resolvedCombinationKey: resolved.combinationKey,
+          resolvedAttributes: resolved.selectedAttributes,
+        };
+      }),
+    [items, resolvedCombinations],
+  );
+
   const createReservationMutation = useMutation({
     mutationFn: async (value: CheckoutFormValues) => {
       if (items.length === 0) {
@@ -198,7 +272,7 @@ export function CheckoutForm({
         pricingMode,
         locale,
         values: value,
-        items,
+        items: itemsWithResolved,
         subtotalAmount: subtotal,
         depositAmount: totalDeposit,
         totalAmount: totalWithDelivery,
@@ -792,8 +866,8 @@ export function CheckoutForm({
           </form.AppForm>
         </div>
 
-        <CheckoutOrderSummary
-          items={items}
+          <CheckoutOrderSummary
+            items={itemsWithResolved}
           pricingMode={pricingMode}
           reservationMode={reservationMode}
           depositPercentage={depositPercentage}

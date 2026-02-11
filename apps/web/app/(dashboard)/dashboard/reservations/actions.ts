@@ -38,7 +38,7 @@ import type { NotificationEventType } from '@louez/types'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { getCurrencySymbol } from '@louez/utils'
+import { DEFAULT_COMBINATION_KEY, getCurrencySymbol } from '@louez/utils'
 import {
   calculateRentalPrice,
   calculateDuration,
@@ -2566,6 +2566,7 @@ export async function assignUnitsToReservationItem(
       .select({
         id: reservationItems.id,
         productId: reservationItems.productId,
+        combinationKey: reservationItems.combinationKey,
         quantity: reservationItems.quantity,
         reservationId: reservationItems.reservationId,
       })
@@ -2593,6 +2594,7 @@ export async function assignUnitsToReservationItem(
         .select({
           id: productUnits.id,
           productId: productUnits.productId,
+          combinationKey: productUnits.combinationKey,
           identifier: productUnits.identifier,
         })
         .from(productUnits)
@@ -2606,6 +2608,12 @@ export async function assignUnitsToReservationItem(
       for (const unit of units) {
         if (unit.productId !== item.productId) {
           return { error: 'errors.unitProductMismatch' }
+        }
+        if (
+          item.combinationKey &&
+          (unit.combinationKey || DEFAULT_COMBINATION_KEY) !== item.combinationKey
+        ) {
+          return { error: 'errors.unitCombinationMismatch' }
         }
       }
 
@@ -2687,6 +2695,7 @@ export async function getAvailableUnitsForReservationItem(
       .select({
         id: reservationItems.id,
         productId: reservationItems.productId,
+        combinationKey: reservationItems.combinationKey,
         reservationId: reservationItems.reservationId,
         startDate: reservations.startDate,
         endDate: reservations.endDate,
@@ -2715,7 +2724,8 @@ export async function getAvailableUnitsForReservationItem(
       item.productId,
       item.startDate,
       item.endDate,
-      item.reservationId // Exclude current reservation to allow re-assignment
+      item.reservationId, // Exclude current reservation to allow re-assignment
+      item.combinationKey || undefined,
     )
 
     // 3. Get currently assigned units for this item

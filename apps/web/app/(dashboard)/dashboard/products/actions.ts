@@ -8,8 +8,10 @@ import {
   productPricingTiers,
   productAccessories,
   productUnits,
+  reservations,
+  reservationItems,
 } from '@louez/db'
-import { eq, and, ne, inArray, or } from 'drizzle-orm'
+import { eq, and, ne, inArray, or, gte, not } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import {
   productSchema,
@@ -19,11 +21,39 @@ import {
   type ProductUnitInput,
 } from '@louez/validations'
 import { nanoid } from 'nanoid'
-import { validatePricingTiers } from '@louez/utils'
+import {
+  buildCombinationKey,
+  canonicalizeAttributes,
+  DEFAULT_COMBINATION_KEY,
+  normalizeAxisKey,
+  validatePricingTiers,
+} from '@louez/utils'
+import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
 import { notifyProductCreated, notifyProductUpdated } from '@/lib/discord/platform-notifications'
 
 async function getStoreForUser() {
   return getCurrentStore()
+}
+
+function normalizeBookingAttributeAxes(axes: ProductInput['bookingAttributeAxes']): BookingAttributeAxis[] {
+  if (!axes || axes.length === 0) {
+    return []
+  }
+
+  return axes
+    .map((axis, index) => ({
+      key: normalizeAxisKey(axis.key),
+      label: axis.label.trim(),
+      position: index,
+    }))
+    .filter((axis) => axis.key.length > 0 && axis.label.length > 0)
+}
+
+function resolveUnitAttributes(
+  axes: BookingAttributeAxis[],
+  unit: ProductUnitInput,
+): UnitAttributes {
+  return canonicalizeAttributes(axes, unit.attributes as UnitAttributes | undefined)
 }
 
 export async function createProduct(data: ProductInput) {
@@ -54,6 +84,9 @@ export async function createProduct(data: ProductInput) {
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
   const units = validated.data.units || []
+  const bookingAttributeAxes = trackUnits
+    ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
+    : []
 
   // If tracking units, quantity is derived from the count of available units
   // Otherwise, use the manually entered quantity
@@ -79,6 +112,9 @@ export async function createProduct(data: ProductInput) {
     taxSettings: validated.data.taxSettings || null,
     enforceStrictTiers: validated.data.enforceStrictTiers || false,
     trackUnits: trackUnits,
+    bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
+      ? bookingAttributeAxes
+      : null,
   })
 
   // Create pricing tiers if provided
@@ -98,6 +134,11 @@ export async function createProduct(data: ProductInput) {
   if (trackUnits && units.length > 0) {
     await db.insert(productUnits).values(
       units.map((unit) => ({
+        attributes: resolveUnitAttributes(bookingAttributeAxes, unit),
+        combinationKey: buildCombinationKey(
+          bookingAttributeAxes,
+          resolveUnitAttributes(bookingAttributeAxes, unit),
+        ),
         id: nanoid(),
         productId: productId,
         identifier: unit.identifier.trim(),
@@ -153,6 +194,91 @@ export async function updateProduct(productId: string, data: ProductInput) {
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
   const units = validated.data.units || []
+  const bookingAttributeAxes = trackUnits
+    ? normalizeBookingAttributeAxes(validated.data.bookingAttributeAxes)
+    : []
+
+  // Prevent disabling unit tracking when future/active reservations use non-default combinations.
+  if (!trackUnits && product.trackUnits) {
+    const conflictingVariantReservations = await db
+      .select({ id: reservationItems.id })
+      .from(reservationItems)
+      .innerJoin(
+        reservations,
+        eq(reservationItems.reservationId, reservations.id),
+      )
+      .where(
+        and(
+          eq(reservationItems.productId, productId),
+          not(eq(reservationItems.combinationKey, DEFAULT_COMBINATION_KEY)),
+          inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+          gte(reservations.endDate, new Date()),
+        ),
+      )
+      .limit(1)
+
+    if (conflictingVariantReservations.length > 0) {
+      return { error: 'errors.cannotDisableUnitTrackingWithCombinations' }
+    }
+  }
+
+  // Prevent edits that would make available unit capacity lower than
+  // active/future reserved quantities for any combination.
+  if (trackUnits) {
+    const proposedAvailableByCombination = new Map<string, number>()
+
+    for (const unit of units) {
+      const status = unit.status || 'available'
+      if (status !== 'available') {
+        continue
+      }
+
+      const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, attributes)
+      proposedAvailableByCombination.set(
+        combinationKey,
+        (proposedAvailableByCombination.get(combinationKey) || 0) + 1,
+      )
+    }
+
+    const reservedRows = await db
+      .select({
+        combinationKey: reservationItems.combinationKey,
+        quantity: reservationItems.quantity,
+      })
+      .from(reservationItems)
+      .innerJoin(
+        reservations,
+        eq(reservationItems.reservationId, reservations.id),
+      )
+      .where(
+        and(
+          eq(reservationItems.productId, productId),
+          inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
+          gte(reservations.endDate, new Date()),
+        ),
+      )
+
+    const reservedByCombination = new Map<string, number>()
+    for (const row of reservedRows) {
+      const combinationKey = row.combinationKey || DEFAULT_COMBINATION_KEY
+      reservedByCombination.set(
+        combinationKey,
+        (reservedByCombination.get(combinationKey) || 0) + row.quantity,
+      )
+    }
+
+    const hasCapacityConflict = [...reservedByCombination.entries()].some(
+      ([combinationKey, reservedQty]) => {
+        const availableQty = proposedAvailableByCombination.get(combinationKey) || 0
+        return reservedQty > availableQty
+      },
+    )
+
+    if (hasCapacityConflict) {
+      return { error: 'errors.unitStatusConflictsWithReservations' }
+    }
+  }
 
   // If tracking units, quantity is derived from the count of available units
   // Otherwise, use the manually entered quantity
@@ -176,6 +302,9 @@ export async function updateProduct(productId: string, data: ProductInput) {
       taxSettings: validated.data.taxSettings || null,
       enforceStrictTiers: validated.data.enforceStrictTiers || false,
       trackUnits: trackUnits,
+      bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
+        ? bookingAttributeAxes
+        : null,
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId))
@@ -222,12 +351,15 @@ export async function updateProduct(productId: string, data: ProductInput) {
     // Update existing units
     for (const unit of unitsToUpdate) {
       if (unit.id) {
+        const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
         await db
           .update(productUnits)
           .set({
             identifier: unit.identifier.trim(),
             notes: unit.notes?.trim() || null,
             status: unit.status || 'available',
+            attributes,
+            combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
             updatedAt: new Date(),
           })
           .where(eq(productUnits.id, unit.id))
@@ -237,13 +369,18 @@ export async function updateProduct(productId: string, data: ProductInput) {
     // Insert new units
     if (unitsToInsert.length > 0) {
       await db.insert(productUnits).values(
-        unitsToInsert.map((unit) => ({
-          id: nanoid(),
-          productId: productId,
-          identifier: unit.identifier.trim(),
-          notes: unit.notes?.trim() || null,
-          status: unit.status || 'available',
-        }))
+        unitsToInsert.map((unit) => {
+          const attributes = resolveUnitAttributes(bookingAttributeAxes, unit)
+          return {
+            id: nanoid(),
+            productId: productId,
+            identifier: unit.identifier.trim(),
+            notes: unit.notes?.trim() || null,
+            status: unit.status || 'available',
+            attributes,
+            combinationKey: buildCombinationKey(bookingAttributeAxes, attributes),
+          }
+        })
       )
     }
   }
@@ -385,6 +522,7 @@ export async function duplicateProduct(productId: string) {
     taxSettings: product.taxSettings,
     enforceStrictTiers: product.enforceStrictTiers,
     trackUnits: false, // Units cannot be duplicated - they have unique identifiers
+    bookingAttributeAxes: null,
   })
 
   // Duplicate pricing tiers if any

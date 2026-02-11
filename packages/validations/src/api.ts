@@ -12,6 +12,14 @@ export const storefrontAvailabilityInputSchema = z.object({
   productIds: z.array(z.string().length(21)).optional(),
 })
 
+export const storefrontResolveCombinationInputSchema = z.object({
+  productId: z.string().length(21),
+  quantity: z.number().int().min(1),
+  startDate: dateTimeOrDateSchema,
+  endDate: dateTimeOrDateSchema,
+  selectedAttributes: z.record(z.string(), z.string()).optional(),
+})
+
 export const storefrontAvailabilityRouteQuerySchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
@@ -62,6 +70,9 @@ export const reservationSignInputSchema = z.object({
 
 export type StorefrontAvailabilityInput = z.infer<
   typeof storefrontAvailabilityInputSchema
+>
+export type StorefrontResolveCombinationInput = z.infer<
+  typeof storefrontResolveCombinationInputSchema
 >
 export type DashboardReservationPollInput = z.infer<
   typeof dashboardReservationPollInputSchema

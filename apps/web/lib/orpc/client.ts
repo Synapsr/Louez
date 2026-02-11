@@ -5,31 +5,66 @@ import type { RouterClient } from '@orpc/server'
 import { env } from '@/env'
 
 /**
- * Extract store slug from the current URL path (for storefront routes)
- * Returns null if not in a storefront context
+ * Extract store slug from subdomain (preferred for production and local subdomain dev)
+ */
+function getStoreSlugFromHost(): string | null {
+  if (typeof window === 'undefined') return null
+
+  const hostname = window.location.hostname
+  const hostParts = hostname.split('.')
+  const appDomain = env.NEXT_PUBLIC_APP_DOMAIN.split(':')[0]
+  const domainParts = appDomain.split('.')
+
+  // If hostname has more parts than base domain, extract subdomain.
+  // Example: teo-org-2.localhost vs localhost -> teo-org-2
+  if (hostParts.length > domainParts.length) {
+    const candidate = hostParts.slice(0, hostParts.length - domainParts.length).join('.')
+    const excludedSubdomains = ['www', env.NEXT_PUBLIC_DASHBOARD_SUBDOMAIN]
+    if (candidate && !excludedSubdomains.includes(candidate)) {
+      return candidate
+    }
+  }
+
+  return null
+}
+
+/**
+ * Extract store slug from pathname fallback (used for localhost path-based routing)
  */
 function getStoreSlugFromPath(): string | null {
   if (typeof window === 'undefined') return null
 
   const pathname = window.location.pathname
-  // Match /{slug}/... pattern (storefront routes)
-  // Exclude known app routes like /dashboard, /login, /api, etc.
   const match = pathname.match(/^\/([a-zA-Z0-9-]+)/)
-  if (match) {
-    const potentialSlug = match[1]
-    // Exclude known non-store paths
-    const excludedPaths = [
-      'dashboard',
-      'login',
-      'api',
-      'verify-request',
-      'onboarding',
-      '_next',
-    ]
-    if (!excludedPaths.includes(potentialSlug)) {
-      return potentialSlug
-    }
+  if (!match) return null
+
+  const potentialSlug = match[1]
+  const excludedPaths = [
+    'dashboard',
+    'login',
+    'api',
+    'verify-request',
+    'onboarding',
+    'invitation',
+    'multi-store',
+    '_next',
+    'rental',
+    'catalog',
+    'checkout',
+    'legal',
+    'product',
+    'terms',
+    'account',
+    'confirmation',
+    'authorize-deposit',
+    'review',
+    'r',
+  ]
+
+  if (!excludedPaths.includes(potentialSlug)) {
+    return potentialSlug
   }
+
   return null
 }
 
@@ -47,8 +82,9 @@ function getRpcUrl(): string {
 const link = new RPCLink({
   url: getRpcUrl(),
   headers: () => {
-    // Include store slug header for storefront routes
-    const storeSlug = getStoreSlugFromPath()
+    // Include store slug header for storefront routes.
+    // Prefer subdomain resolution to avoid mis-detecting routes like /rental as slug.
+    const storeSlug = getStoreSlugFromHost() || getStoreSlugFromPath()
     return storeSlug ? { 'x-store-slug': storeSlug } : {}
   },
   fetch: (input, init) => {

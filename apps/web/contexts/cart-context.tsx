@@ -6,14 +6,11 @@ import {
   useState,
   useCallback,
   useEffect,
-  useMemo,
   type ReactNode,
 } from 'react'
 import { calculateDuration, type PricingMode } from '@/lib/utils/duration'
 import {
   calculateRentalPrice,
-  findApplicableTier,
-  type PricingTier,
   type ProductPricing,
 } from '@louez/utils'
 
@@ -35,6 +32,10 @@ export interface CartItem {
   pricingTiers?: CartItemPricingTier[]
   // Product-specific pricing mode
   productPricingMode?: PricingMode | null
+  // Booking attributes (tracked-unit advanced mode)
+  selectedAttributes?: Record<string, string>
+  resolvedCombinationKey?: string
+  resolvedAttributes?: Record<string, string>
   // Legacy fields for backwards compatibility
   startDate: string
   endDate: string
@@ -193,13 +194,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
           )
 
           if (existingIndex >= 0) {
-            // Product already exists: REPLACE quantity (not add)
-            // Use updateItemQuantity if you want to increment
+            // Product already exists: replace line metadata (including selected attributes)
+            // and keep quantity bounded by current max quantity.
             const updated = [...currentItems]
-            const existing = updated[existingIndex]
             updated[existingIndex] = {
-              ...existing,
-              quantity: Math.min(item.quantity, existing.maxQuantity),
+              ...fullItem,
+              quantity: Math.min(item.quantity, fullItem.maxQuantity),
             }
             return updated
           }

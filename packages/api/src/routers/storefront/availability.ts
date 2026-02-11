@@ -1,6 +1,9 @@
-import { storefrontAvailabilityInputSchema } from '@louez/validations'
+import {
+  storefrontAvailabilityInputSchema,
+  storefrontResolveCombinationInputSchema,
+} from '@louez/validations'
 import { storefrontProcedure } from '../../procedures'
-import { getStorefrontAvailability } from '../../services'
+import { getStorefrontAvailability, resolveStorefrontCombination } from '../../services'
 import { toORPCError } from '../../utils/orpc-error'
 
 const get = storefrontProcedure
@@ -18,6 +21,24 @@ const get = storefrontProcedure
     }
   })
 
+const resolveCombination = storefrontProcedure
+  .input(storefrontResolveCombinationInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      return await resolveStorefrontCombination({
+        storeSlug: context.storeSlug,
+        productId: input.productId,
+        quantity: input.quantity,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        selectedAttributes: input.selectedAttributes,
+      })
+    } catch (error) {
+      throw toORPCError(error)
+    }
+  })
+
 export const storefrontAvailabilityRouter = {
   get,
+  resolveCombination,
 }

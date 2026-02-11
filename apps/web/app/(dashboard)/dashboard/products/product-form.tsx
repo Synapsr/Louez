@@ -93,6 +93,13 @@ interface ProductUnitData {
   identifier: string;
   notes: string | null;
   status: 'available' | 'maintenance' | 'retired';
+  attributes?: Record<string, string> | null;
+}
+
+interface BookingAttributeAxisData {
+  key: string;
+  label: string;
+  position: number;
 }
 
 interface Product {
@@ -113,6 +120,7 @@ interface Product {
   accessoryIds?: string[];
   trackUnits?: boolean;
   units?: ProductUnitData[];
+  bookingAttributeAxes?: BookingAttributeAxisData[] | null;
 }
 
 interface AvailableAccessory {
@@ -233,6 +241,14 @@ export function ProductForm({
       identifier: unit.identifier,
       notes: unit.notes || '',
       status: unit.status,
+      attributes: unit.attributes || {},
+    })) ?? [];
+
+  const initialBookingAttributeAxes: BookingAttributeAxisData[] =
+    product?.bookingAttributeAxes?.map((axis, index) => ({
+      key: axis.key,
+      label: axis.label,
+      position: axis.position ?? index,
     })) ?? [];
 
   const productFormSchema = useMemo(
@@ -258,6 +274,7 @@ export function ProductForm({
       accessoryIds: product?.accessoryIds ?? [],
       trackUnits: product?.trackUnits || false,
       units: initialUnits,
+      bookingAttributeAxes: initialBookingAttributeAxes,
     },
     validationLogic: revalidateLogic({
       mode: 'submit',
@@ -1023,6 +1040,10 @@ export function ProductForm({
                   onTrackUnitsChange={(value) =>
                     form.setFieldValue('trackUnits', value)
                   }
+                  bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
+                  onBookingAttributeAxesChange={(axes) =>
+                    form.setFieldValue('bookingAttributeAxes', axes)
+                  }
                   units={watchedValues.units || []}
                   onChange={(units) => form.setFieldValue('units', units)}
                   quantity={watchedValues.quantity || '1'}
@@ -1566,6 +1587,10 @@ export function ProductForm({
                       trackUnits={watchedValues.trackUnits || false}
                       onTrackUnitsChange={(value) =>
                         form.setFieldValue('trackUnits', value)
+                      }
+                      bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
+                      onBookingAttributeAxesChange={(axes) =>
+                        form.setFieldValue('bookingAttributeAxes', axes)
                       }
                       units={watchedValues.units || []}
                       onChange={(units) => form.setFieldValue('units', units)}

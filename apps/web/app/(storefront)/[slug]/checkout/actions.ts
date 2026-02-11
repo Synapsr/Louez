@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@louez/db'
-import { customers, reservations, reservationItems, products, stores, storeMembers, users, payments, reservationActivity } from '@louez/db'
-import { eq, and, inArray, lt, gt } from 'drizzle-orm'
+import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity } from '@louez/db'
+import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import type { ProductSnapshot } from '@louez/types'
+import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes } from '@louez/types'
 import type { TaxSettings, ProductTaxSettings, StoreSettings } from '@louez/types'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
@@ -25,6 +25,9 @@ import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExc
 import {
   calculateRentalPrice,
   calculateDuration as calcDuration,
+  getDeterministicCombinationSortValue,
+  matchesSelectedAttributes,
+  DEFAULT_COMBINATION_KEY,
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
@@ -32,6 +35,9 @@ import { env } from '@/env'
 
 interface ReservationItem {
   productId: string
+  selectedAttributes?: UnitAttributes
+  resolvedCombinationKey?: string
+  resolvedAttributes?: UnitAttributes
   quantity: number
   startDate: string
   endDate: string
@@ -101,6 +107,20 @@ async function generateUniqueReservationNumber(storeId: string, maxRetries = 5):
   // If all retries failed, use timestamp + nanoid for guaranteed uniqueness
   const fallbackRandom = nanoid(6).toUpperCase()
   return `${prefix}${fallbackRandom}`
+}
+
+function getCombinationMapKey(productId: string, combinationKey: string): string {
+  return `${productId}:${combinationKey}`
+}
+
+function toResolvedAttributes(
+  selected: UnitAttributes | undefined,
+  resolved: UnitAttributes,
+): UnitAttributes {
+  return {
+    ...(selected || {}),
+    ...resolved,
+  }
 }
 
 export async function createReservation(input: CreateReservationInput) {
@@ -198,6 +218,17 @@ export async function createReservation(input: CreateReservationInput) {
       totalDeposit: number // Server-calculated total deposit
     }
     const serverCalculatedItems: ServerCalculatedItem[] = []
+    const productsForReservation = new Map<
+      string,
+      {
+        id: string
+        name: string
+        quantity: number
+        trackUnits: boolean
+        bookingAttributeAxes: BookingAttributeAxis[] | null
+        taxSettings: unknown
+      }
+    >()
     let serverSubtotal = 0
     let serverTotalDeposit = 0
 
@@ -218,12 +249,38 @@ export async function createReservation(input: CreateReservationInput) {
         return { error: 'errors.productUnavailable', errorParams: { name: item.productSnapshot.name } }
       }
 
-      if (product.quantity < item.quantity) {
+      if (product.trackUnits) {
+        const availableUnits = await db
+          .select({ id: productUnits.id })
+          .from(productUnits)
+          .where(
+            and(
+              eq(productUnits.productId, product.id),
+              eq(productUnits.status, 'available'),
+            ),
+          )
+
+        if (availableUnits.length < item.quantity) {
+          return {
+            error: 'errors.insufficientStock',
+            errorParams: { name: item.productSnapshot.name, count: availableUnits.length },
+          }
+        }
+      } else if (product.quantity < item.quantity) {
         return {
           error: 'errors.insufficientStock',
           errorParams: { name: item.productSnapshot.name, count: product.quantity },
         }
       }
+
+      productsForReservation.set(product.id, {
+        id: product.id,
+        name: product.name,
+        quantity: product.quantity,
+        trackUnits: product.trackUnits,
+        bookingAttributeAxes: (product.bookingAttributeAxes as BookingAttributeAxis[] | null) || null,
+        taxSettings: product.taxSettings,
+      })
 
       // Calculate price from database values (NOT from client input)
       const productPricingMode = product.pricingMode as PricingMode
@@ -374,108 +431,6 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDeliveryFee = deliveryFee
     const finalTotal = serverTotalWithDelivery
 
-    // Check for date conflicts with existing reservations
-    // This prevents race conditions where availability was checked earlier but changed since
-    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
-    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
-      pendingBlocksAvailability
-        ? ['pending', 'confirmed', 'ongoing']
-        : ['confirmed', 'ongoing']
-
-    const overlappingReservations = await db.query.reservations.findMany({
-      where: and(
-        eq(reservations.storeId, input.storeId),
-        inArray(reservations.status, blockingStatuses),
-        lt(reservations.startDate, rentalEndDate),
-        gt(reservations.endDate, rentalStartDate)
-      ),
-      with: {
-        items: true,
-      },
-    })
-
-    // Calculate reserved quantity per product for the requested period
-    const reservedByProduct = new Map<string, number>()
-    for (const reservation of overlappingReservations) {
-      if (dateRangesOverlap(reservation.startDate, reservation.endDate, rentalStartDate, rentalEndDate)) {
-        for (const resItem of reservation.items) {
-          if (!resItem.productId) continue
-          const current = reservedByProduct.get(resItem.productId) || 0
-          reservedByProduct.set(resItem.productId, current + resItem.quantity)
-        }
-      }
-    }
-
-    // Check if requested quantities are still available
-    for (const item of input.items) {
-      const product = await db.query.products.findFirst({
-        where: eq(products.id, item.productId),
-      })
-      if (!product) continue
-
-      const reserved = reservedByProduct.get(item.productId) || 0
-      const available = Math.max(0, product.quantity - reserved)
-
-      if (item.quantity > available) {
-        return {
-          error: 'errors.productNoLongerAvailable',
-          errorParams: { name: item.productSnapshot.name },
-        }
-      }
-    }
-
-    // Find or create customer
-    let customer = await db.query.customers.findFirst({
-      where: and(
-        eq(customers.storeId, input.storeId),
-        eq(customers.email, input.customer.email)
-      ),
-    })
-
-    if (!customer) {
-      const [newCustomer] = await db
-        .insert(customers)
-        .values({
-          storeId: input.storeId,
-          email: input.customer.email,
-          firstName: input.customer.firstName,
-          lastName: input.customer.lastName,
-          customerType: input.customer.customerType || 'individual',
-          companyName: input.customer.companyName || null,
-          phone: input.customer.phone || null,
-          address: input.customer.address || null,
-          city: input.customer.city || null,
-          postalCode: input.customer.postalCode || null,
-          country: store.settings?.country || 'FR',
-        })
-        .$returningId()
-
-      customer = await db.query.customers.findFirst({
-        where: eq(customers.id, newCustomer.id),
-      })
-    } else {
-      // Update customer info
-      await db
-        .update(customers)
-        .set({
-          firstName: input.customer.firstName,
-          lastName: input.customer.lastName,
-          customerType: input.customer.customerType || customer.customerType,
-          companyName: input.customer.companyName ?? customer.companyName,
-          phone: input.customer.phone || customer.phone,
-          address: input.customer.address || customer.address,
-          city: input.customer.city || customer.city,
-          postalCode: input.customer.postalCode || customer.postalCode,
-          updatedAt: new Date(),
-        })
-        .where(eq(customers.id, customer.id))
-    }
-
-    if (!customer) {
-      return { error: 'errors.createCustomerError' }
-    }
-
-    // Find the earliest start date and latest end date from items
     const startDates = input.items.map((item) => new Date(item.startDate))
     const endDates = input.items.map((item) => new Date(item.endDate))
     const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())))
@@ -487,128 +442,379 @@ export async function createReservation(input: CreateReservationInput) {
     const storeTaxRate = storeTaxSettings?.defaultRate ?? 0
     const displayMode = storeTaxSettings?.displayMode ?? 'inclusive'
 
-    // Calculate tax amounts for the reservation (using SERVER-CALCULATED values)
-    let subtotalExclTax: number | null = null
-    let taxAmount: number | null = null
-    let taxRate: number | null = null
+    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+      pendingBlocksAvailability
+        ? ['pending', 'confirmed', 'ongoing']
+        : ['confirmed', 'ongoing']
 
-    if (taxEnabled && storeTaxRate > 0) {
-      taxRate = storeTaxRate
-      if (displayMode === 'inclusive') {
-        // Prices are TTC, extract HT
-        subtotalExclTax = extractExclusiveFromInclusive(finalSubtotal, storeTaxRate)
-        taxAmount = finalSubtotal - subtotalExclTax
-      } else {
-        // Prices are HT, calculate TVA
-        subtotalExclTax = finalSubtotal
-        taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate)
-      }
-    }
+    const reservationWriteResult = await db.transaction(async (tx) => {
+      const requestedProductIds = [...new Set(input.items.map((item) => item.productId))]
 
-    // Create reservation with SERVER-CALCULATED amounts (never trust client)
-    const reservationId = nanoid()
-    const reservationNumber = await generateUniqueReservationNumber(input.storeId)
-
-    await db.insert(reservations).values({
-      id: reservationId,
-      storeId: input.storeId,
-      customerId: customer.id,
-      number: reservationNumber,
-      status: 'pending',
-      startDate,
-      endDate,
-      subtotalAmount: finalSubtotal.toFixed(2),
-      depositAmount: finalDeposit.toFixed(2),
-      totalAmount: finalTotal.toFixed(2),
-      subtotalExclTax: subtotalExclTax?.toFixed(2) ?? null,
-      taxAmount: taxAmount?.toFixed(2) ?? null,
-      taxRate: taxRate?.toFixed(2) ?? null,
-      customerNotes: input.customerNotes || null,
-      source: 'online',
-      // Delivery fields
-      deliveryOption: input.delivery?.option || 'pickup',
-      deliveryAddress: input.delivery?.option === 'delivery' ? input.delivery.address : null,
-      deliveryCity: input.delivery?.option === 'delivery' ? input.delivery.city : null,
-      deliveryPostalCode: input.delivery?.option === 'delivery' ? input.delivery.postalCode : null,
-      deliveryCountry: input.delivery?.option === 'delivery' ? input.delivery.country : null,
-      deliveryLatitude: input.delivery?.option === 'delivery' ? input.delivery.latitude?.toString() : null,
-      deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
-      deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
-      deliveryFee: finalDeliveryFee.toFixed(2),
-    })
-
-    // Create reservation items with tax calculations (using SERVER-CALCULATED prices)
-    for (let i = 0; i < input.items.length; i++) {
-      const item = input.items[i]
-      const serverItem = serverCalculatedItems[i]
-      // Use server-calculated subtotal, not client-provided
-      const totalPrice = serverItem.subtotal
-
-      // Get product tax settings
-      const product = await db.query.products.findFirst({
-        where: eq(products.id, item.productId),
-      })
-      const productTaxSettings = product?.taxSettings as ProductTaxSettings | undefined
-
-      // Calculate item-level tax (using server-calculated prices)
-      let itemTaxRate: number | null = null
-      let itemTaxAmount: number | null = null
-      let itemPriceExclTax: number | null = null
-      let itemTotalExclTax: number | null = null
-
-      if (taxEnabled) {
-        // Get effective tax rate for this product
-        const effectiveRate = getEffectiveTaxRate(
-          { enabled: true, rate: storeTaxRate, displayMode },
-          productTaxSettings
+      // Serialize competing checkout writes for the same products.
+      if (requestedProductIds.length > 0) {
+        const requestedProductIdSql = sql.join(
+          requestedProductIds.map((productId) => sql`${productId}`),
+          sql`, `,
         )
+        await tx.execute(
+          sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
+        )
+      }
 
-        if (effectiveRate !== null && effectiveRate > 0) {
-          itemTaxRate = effectiveRate
-          if (displayMode === 'inclusive') {
-            // Prices are TTC, extract HT (using server-calculated prices)
-            itemPriceExclTax = extractExclusiveFromInclusive(serverItem.unitPrice, effectiveRate)
-            itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate)
-            itemTaxAmount = totalPrice - itemTotalExclTax
-          } else {
-            // Prices are HT, calculate TVA (using server-calculated prices)
-            itemPriceExclTax = serverItem.unitPrice
-            itemTotalExclTax = totalPrice
-            itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate)
+      // Recompute overlap and availability inside the transaction after row locks are acquired.
+      const overlappingReservations = await tx.query.reservations.findMany({
+        where: and(
+          eq(reservations.storeId, input.storeId),
+          inArray(reservations.status, blockingStatuses),
+          lt(reservations.startDate, rentalEndDate),
+          gt(reservations.endDate, rentalStartDate),
+        ),
+        with: {
+          items: true,
+        },
+      })
+
+      const reservedByProduct = new Map<string, number>()
+      const reservedByProductCombination = new Map<string, number>()
+      for (const reservation of overlappingReservations) {
+        if (dateRangesOverlap(reservation.startDate, reservation.endDate, rentalStartDate, rentalEndDate)) {
+          for (const resItem of reservation.items) {
+            if (!resItem.productId) continue
+            const current = reservedByProduct.get(resItem.productId) || 0
+            reservedByProduct.set(resItem.productId, current + resItem.quantity)
+
+            const combinationKey = resItem.combinationKey || DEFAULT_COMBINATION_KEY
+            const key = getCombinationMapKey(resItem.productId, combinationKey)
+            const currentCombination = reservedByProductCombination.get(key) || 0
+            reservedByProductCombination.set(key, currentCombination + resItem.quantity)
           }
         }
       }
 
-      // Use SERVER-CALCULATED prices, not client-provided
-      await db.insert(reservationItems).values({
-        reservationId,
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: serverItem.unitPrice.toFixed(2),
-        depositPerUnit: serverItem.depositPerUnit.toFixed(2),
-        totalPrice: totalPrice.toFixed(2),
-        productSnapshot: item.productSnapshot,
-        taxRate: itemTaxRate?.toFixed(2) ?? null,
-        taxAmount: itemTaxAmount?.toFixed(2) ?? null,
-        priceExclTax: itemPriceExclTax?.toFixed(2) ?? null,
-        totalExclTax: itemTotalExclTax?.toFixed(2) ?? null,
+      const trackedProductIds = [...productsForReservation.values()]
+        .filter((product) => product.trackUnits)
+        .map((product) => product.id)
+
+      const availableUnits = trackedProductIds.length > 0
+        ? await tx
+            .select({
+              productId: productUnits.productId,
+              combinationKey: productUnits.combinationKey,
+              attributes: productUnits.attributes,
+            })
+            .from(productUnits)
+            .where(
+              and(
+                inArray(productUnits.productId, trackedProductIds),
+                eq(productUnits.status, 'available'),
+              ),
+            )
+        : []
+
+      const combinationsByProduct = new Map<
+        string,
+        Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
+      >()
+
+      for (const unit of availableUnits) {
+        const productCombinations = combinationsByProduct.get(unit.productId) || new Map()
+        const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY
+        const current = productCombinations.get(combinationKey)
+
+        if (!current) {
+          productCombinations.set(combinationKey, {
+            totalQuantity: 1,
+            selectedAttributes: (unit.attributes as UnitAttributes | null) || {},
+          })
+        } else {
+          current.totalQuantity += 1
+          if (
+            Object.keys(current.selectedAttributes).length === 0 &&
+            unit.attributes
+          ) {
+            current.selectedAttributes = unit.attributes as UnitAttributes
+          }
+          productCombinations.set(combinationKey, current)
+        }
+
+        combinationsByProduct.set(unit.productId, productCombinations)
+      }
+
+      const resolvedCombinationByItemIndex = new Map<
+        number,
+        { combinationKey: string; selectedAttributes: UnitAttributes }
+      >()
+
+      for (let i = 0; i < input.items.length; i++) {
+        const item = input.items[i]
+        const product = productsForReservation.get(item.productId)
+        if (!product) continue
+
+        if (!product.trackUnits) {
+          const reserved = reservedByProduct.get(item.productId) || 0
+          const available = Math.max(0, product.quantity - reserved)
+
+          if (item.quantity > available) {
+            return {
+              ok: false as const,
+              error: 'errors.productNoLongerAvailable' as const,
+              productName: item.productSnapshot.name,
+            }
+          }
+
+          reservedByProduct.set(item.productId, reserved + item.quantity)
+          continue
+        }
+
+        const axes = product.bookingAttributeAxes || []
+        const productCombinations = combinationsByProduct.get(product.id) || new Map()
+        const selectedAttributes = item.selectedAttributes || {}
+
+        const candidates = [...productCombinations.entries()]
+          .map(([combinationKey, combinationData]) => ({
+            combinationKey,
+            ...combinationData,
+          }))
+          .filter((combination) =>
+            matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+          )
+          .sort((a, b) => {
+            const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
+            const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
+            return sortA.localeCompare(sortB, 'en')
+          })
+
+        const resolvedCombination = candidates.find((candidate) => {
+          const key = getCombinationMapKey(product.id, candidate.combinationKey)
+          const reserved = reservedByProductCombination.get(key) || 0
+          const available = Math.max(0, candidate.totalQuantity - reserved)
+          return available >= item.quantity
+        })
+
+        if (!resolvedCombination) {
+          return {
+            ok: false as const,
+            error: 'errors.productNoLongerAvailable' as const,
+            productName: item.productSnapshot.name,
+          }
+        }
+
+        const key = getCombinationMapKey(product.id, resolvedCombination.combinationKey)
+        const reserved = reservedByProductCombination.get(key) || 0
+        reservedByProductCombination.set(key, reserved + item.quantity)
+        reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) || 0) + item.quantity)
+
+        resolvedCombinationByItemIndex.set(i, {
+          combinationKey: resolvedCombination.combinationKey,
+          selectedAttributes: toResolvedAttributes(
+            selectedAttributes,
+            resolvedCombination.selectedAttributes,
+          ),
+        })
+      }
+
+      let customer = await tx.query.customers.findFirst({
+        where: and(
+          eq(customers.storeId, input.storeId),
+          eq(customers.email, input.customer.email),
+        ),
       })
+
+      if (!customer) {
+        const [newCustomer] = await tx
+          .insert(customers)
+          .values({
+            storeId: input.storeId,
+            email: input.customer.email,
+            firstName: input.customer.firstName,
+            lastName: input.customer.lastName,
+            customerType: input.customer.customerType || 'individual',
+            companyName: input.customer.companyName || null,
+            phone: input.customer.phone || null,
+            address: input.customer.address || null,
+            city: input.customer.city || null,
+            postalCode: input.customer.postalCode || null,
+            country: store.settings?.country || 'FR',
+          })
+          .$returningId()
+
+        customer = await tx.query.customers.findFirst({
+          where: eq(customers.id, newCustomer.id),
+        })
+      } else {
+        await tx
+          .update(customers)
+          .set({
+            firstName: input.customer.firstName,
+            lastName: input.customer.lastName,
+            customerType: input.customer.customerType || customer.customerType,
+            companyName: input.customer.companyName ?? customer.companyName,
+            phone: input.customer.phone || customer.phone,
+            address: input.customer.address || customer.address,
+            city: input.customer.city || customer.city,
+            postalCode: input.customer.postalCode || customer.postalCode,
+            updatedAt: new Date(),
+          })
+          .where(eq(customers.id, customer.id))
+      }
+
+      if (!customer) {
+        return {
+          ok: false as const,
+          error: 'errors.createCustomerError' as const,
+        }
+      }
+
+      let subtotalExclTax: number | null = null
+      let taxAmount: number | null = null
+      let taxRate: number | null = null
+
+      if (taxEnabled && storeTaxRate > 0) {
+        taxRate = storeTaxRate
+        if (displayMode === 'inclusive') {
+          subtotalExclTax = extractExclusiveFromInclusive(finalSubtotal, storeTaxRate)
+          taxAmount = finalSubtotal - subtotalExclTax
+        } else {
+          subtotalExclTax = finalSubtotal
+          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate)
+        }
+      }
+
+      const reservationId = nanoid()
+      const reservationNumber = await generateUniqueReservationNumber(input.storeId)
+
+      await tx.insert(reservations).values({
+        id: reservationId,
+        storeId: input.storeId,
+        customerId: customer.id,
+        number: reservationNumber,
+        status: 'pending',
+        startDate,
+        endDate,
+        subtotalAmount: finalSubtotal.toFixed(2),
+        depositAmount: finalDeposit.toFixed(2),
+        totalAmount: finalTotal.toFixed(2),
+        subtotalExclTax: subtotalExclTax?.toFixed(2) ?? null,
+        taxAmount: taxAmount?.toFixed(2) ?? null,
+        taxRate: taxRate?.toFixed(2) ?? null,
+        customerNotes: input.customerNotes || null,
+        source: 'online',
+        deliveryOption: input.delivery?.option || 'pickup',
+        deliveryAddress: input.delivery?.option === 'delivery' ? input.delivery.address : null,
+        deliveryCity: input.delivery?.option === 'delivery' ? input.delivery.city : null,
+        deliveryPostalCode: input.delivery?.option === 'delivery' ? input.delivery.postalCode : null,
+        deliveryCountry: input.delivery?.option === 'delivery' ? input.delivery.country : null,
+        deliveryLatitude: input.delivery?.option === 'delivery' ? input.delivery.latitude?.toString() : null,
+        deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
+        deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+        deliveryFee: finalDeliveryFee.toFixed(2),
+      })
+
+      for (let i = 0; i < input.items.length; i++) {
+        const item = input.items[i]
+        const serverItem = serverCalculatedItems[i]
+        const totalPrice = serverItem.subtotal
+
+        const productInfo = productsForReservation.get(item.productId)
+        const productTaxSettings = productInfo?.taxSettings as ProductTaxSettings | undefined
+        const resolvedCombination = resolvedCombinationByItemIndex.get(i)
+        const combinationKey = resolvedCombination?.combinationKey || item.resolvedCombinationKey || null
+        const selectedAttributes = resolvedCombination?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null
+        const snapshot: ProductSnapshot = {
+          ...item.productSnapshot,
+          combinationKey: combinationKey || item.productSnapshot.combinationKey || null,
+          selectedAttributes: selectedAttributes || item.productSnapshot.selectedAttributes || null,
+        }
+
+        let itemTaxRate: number | null = null
+        let itemTaxAmount: number | null = null
+        let itemPriceExclTax: number | null = null
+        let itemTotalExclTax: number | null = null
+
+        if (taxEnabled) {
+          const effectiveRate = getEffectiveTaxRate(
+            { enabled: true, rate: storeTaxRate, displayMode },
+            productTaxSettings,
+          )
+
+          if (effectiveRate !== null && effectiveRate > 0) {
+            itemTaxRate = effectiveRate
+            if (displayMode === 'inclusive') {
+              itemPriceExclTax = extractExclusiveFromInclusive(serverItem.unitPrice, effectiveRate)
+              itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate)
+              itemTaxAmount = totalPrice - itemTotalExclTax
+            } else {
+              itemPriceExclTax = serverItem.unitPrice
+              itemTotalExclTax = totalPrice
+              itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate)
+            }
+          }
+        }
+
+        await tx.insert(reservationItems).values({
+          reservationId,
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: serverItem.unitPrice.toFixed(2),
+          depositPerUnit: serverItem.depositPerUnit.toFixed(2),
+          totalPrice: totalPrice.toFixed(2),
+          productSnapshot: snapshot,
+          combinationKey,
+          selectedAttributes,
+          taxRate: itemTaxRate?.toFixed(2) ?? null,
+          taxAmount: itemTaxAmount?.toFixed(2) ?? null,
+          priceExclTax: itemPriceExclTax?.toFixed(2) ?? null,
+          totalExclTax: itemTotalExclTax?.toFixed(2) ?? null,
+        })
+      }
+
+      await tx.insert(reservationActivity).values({
+        id: nanoid(),
+        reservationId,
+        activityType: 'created',
+        description: `${input.customer.firstName} ${input.customer.lastName}`,
+        metadata: {
+          source: 'online',
+          status: 'pending',
+          customerEmail: input.customer.email,
+          customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+        },
+        createdAt: new Date(),
+      })
+
+      return {
+        ok: true as const,
+        reservationId,
+        reservationNumber,
+        customerId: customer.id,
+        customerEmail: customer.email,
+        taxRate,
+        subtotalExclTax,
+        taxAmount,
+      }
+    })
+
+    if (!reservationWriteResult.ok) {
+      if (reservationWriteResult.error === 'errors.productNoLongerAvailable') {
+        return {
+          error: reservationWriteResult.error,
+          errorParams: { name: reservationWriteResult.productName || '' },
+        }
+      }
+
+      return { error: reservationWriteResult.error }
     }
 
-    // Log activity for online reservation creation (by customer)
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
+    const {
       reservationId,
-      activityType: 'created',
-      description: `${input.customer.firstName} ${input.customer.lastName}`,
-      metadata: {
-        source: 'online',
-        status: 'pending',
-        customerEmail: input.customer.email,
-        customerName: `${input.customer.firstName} ${input.customer.lastName}`,
-      },
-      createdAt: new Date(),
-    })
+      reservationNumber,
+      customerId,
+      customerEmail,
+      taxRate,
+      subtotalExclTax,
+      taxAmount,
+    } = reservationWriteResult
 
     // Get store owner for fallback email
     const ownerMember = await db
@@ -673,7 +879,7 @@ export async function createReservation(input: CreateReservationInput) {
           customerNotificationSettings: store.customerNotificationSettings,
         },
         customer: {
-          id: customer.id,
+          id: customerId,
           firstName: input.customer.firstName,
           lastName: input.customer.lastName,
           email: input.customer.email,
@@ -808,7 +1014,7 @@ export async function createReservation(input: CreateReservationInput) {
           stripeAccountId: store.stripeAccountId!,
           reservationId,
           reservationNumber,
-          customerEmail: customer.email,
+          customerEmail,
           lineItems,
           depositAmount: toStripeCents(finalDeposit, currency),
           currency,

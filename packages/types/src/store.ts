@@ -44,6 +44,29 @@ export interface ProductTaxSettings {
 }
 
 // ============================================================================
+// Product Booking Attributes (SKU tracking advanced mode)
+// ============================================================================
+
+export interface BookingAttributeAxis {
+  /**
+   * Stable key used for persistence and matching.
+   * This key should be immutable once created.
+   */
+  key: string
+  /** Human-readable label shown in UI */
+  label: string
+  /** Display and canonical ordering */
+  position: number
+}
+
+export type UnitAttributes = Record<string, string>
+
+export interface ResolvedCombination {
+  combinationKey: string
+  selectedAttributes: UnitAttributes
+}
+
+// ============================================================================
 // Billing Address
 // ============================================================================
 
@@ -230,6 +253,8 @@ export interface ProductSnapshot {
   name: string
   description: string | null
   images: string[]
+  combinationKey?: string | null
+  selectedAttributes?: UnitAttributes | null
 }
 
 // ============================================================================

@@ -17,6 +17,7 @@ import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
 import { calculateRentalPrice, type ProductPricing } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
+import type { CombinationAvailability } from '@louez/types'
 
 interface PricingTier {
   id: string
@@ -49,6 +50,12 @@ interface ProductCardAvailableProps {
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
     accessories?: Accessory[]
+    trackUnits?: boolean | null
+    bookingAttributeAxes?: Array<{ key: string; label: string; position: number }> | null
+    units?: Array<{
+      status: 'available' | 'maintenance' | 'retired' | null
+      attributes: Record<string, string> | null
+    }>
   }
   storeSlug: string
   pricingMode: PricingMode
@@ -56,6 +63,7 @@ interface ProductCardAvailableProps {
   startDate: string
   endDate: string
   duration: number
+  availableCombinations?: CombinationAvailability[]
 }
 
 // Helper to convert tier discountPercent to number
@@ -77,6 +85,7 @@ export function ProductCardAvailable({
   startDate,
   endDate,
   duration,
+  availableCombinations = [],
 }: ProductCardAvailableProps) {
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
@@ -118,6 +127,7 @@ export function ProductCardAvailable({
 
   const maxQuantity = Math.min(availableQuantity, product.quantity)
   const canAddMore = cartQuantity < maxQuantity
+  const hasBookingAttributes = (product.bookingAttributeAxes?.length || 0) > 0
 
   // Filter available accessories (active with stock)
   const availableAccessories = (product.accessories || []).filter((acc) => acc.quantity > 0)
@@ -125,6 +135,10 @@ export function ProductCardAvailable({
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (status === 'unavailable') return
+    if (hasBookingAttributes) {
+      setIsModalOpen(true)
+      return
+    }
 
     if (inCart) {
       if (canAddMore) {
@@ -352,6 +366,7 @@ export function ProductCardAvailable({
         availableQuantity={availableQuantity}
         startDate={startDate}
         endDate={endDate}
+        availableCombinations={availableCombinations}
       />
 
       {/* Accessories Modal */}

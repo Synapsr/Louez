@@ -96,7 +96,7 @@ export function CheckoutOrderSummary({
           )}
 
           <div className="space-y-3">
-            {items.map((item) => {
+            {items.map((item, index) => {
               const duration = calculateDuration(
                 item.startDate,
                 item.endDate,
@@ -125,8 +125,10 @@ export function CheckoutOrderSummary({
                 discountPercent = result.discountPercent;
               }
 
+              const attributesToDisplay = item.resolvedAttributes || item.selectedAttributes
+
               return (
-                <div key={item.productId} className="flex gap-3">
+                <div key={`${item.productId}-${item.resolvedCombinationKey || index}`} className="flex gap-3">
                   <div className="bg-muted relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
                     {item.productImage ? (
                       <Image
@@ -143,6 +145,13 @@ export function CheckoutOrderSummary({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.productName}</p>
+                    {attributesToDisplay && Object.keys(attributesToDisplay).length > 0 && (
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {Object.entries(attributesToDisplay)
+                          .map(([key, value]) => `${key}: ${value}`)
+                          .join(' • ')}
+                      </p>
+                    )}
                     <p className="text-muted-foreground text-xs">
                       {item.quantity} {'\u00d7'} {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
                       {duration}
@@ -276,4 +285,3 @@ export function CheckoutOrderSummary({
     </div>
   );
 }
-

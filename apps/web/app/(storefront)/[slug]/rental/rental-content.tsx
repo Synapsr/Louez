@@ -51,6 +51,7 @@ import { useCart } from '@/contexts/cart-context';
 import type {
   BusinessHours,
   BusinessHoursValidation,
+  CombinationAvailability,
   ProductAvailability,
 } from '@louez/types';
 import { orpc } from '@/lib/orpc/react';
@@ -86,6 +87,12 @@ interface Product {
   pricingTiers?: PricingTier[];
   videoUrl?: string | null;
   accessories?: Accessory[];
+  trackUnits?: boolean | null;
+  bookingAttributeAxes?: Array<{ key: string; label: string; position: number }> | null;
+  units?: Array<{
+    status: 'available' | 'maintenance' | 'retired' | null;
+    attributes: Record<string, string> | null;
+  }>;
 }
 
 interface Category {
@@ -576,6 +583,7 @@ export function RentalContent({
                     startDate={startDate}
                     endDate={endDate}
                     duration={duration}
+                    availableCombinations={(avail?.combinations || []) as CombinationAvailability[]}
                   />
                 );
               })}
