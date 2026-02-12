@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,6 +38,7 @@ import {
 import { PhotoCapture, type CapturedPhoto } from './photo-capture'
 import { SignaturePad } from './signature-pad'
 import type { ConditionRating, InspectionType } from '@louez/types'
+import { invalidateReservationDetail } from '@/lib/orpc/invalidation'
 
 // ============================================================================
 // Types
@@ -491,6 +493,7 @@ export function InspectionWizard({
   onComplete,
 }: InspectionWizardProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const t = useTranslations('dashboard.settings.inspection')
 
   // Wizard state
@@ -670,8 +673,8 @@ export function InspectionWizard({
 
       toastManager.add({ title: t('wizard.inspectionComplete'), type: 'success' })
       onComplete?.()
+      await invalidateReservationDetail(queryClient, reservationId)
       router.push(`/dashboard/reservations/${reservationId}`)
-      router.refresh()
     } catch (error) {
       console.error('Inspection error:', error)
       toastManager.add({ title: t('wizard.inspectionError'), type: 'error' })

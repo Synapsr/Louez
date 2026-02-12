@@ -1142,6 +1142,9 @@
       },
       "unitAssignment": {
         "title": "Assignation des unités",
+        "optionsLabel": "Options",
+        "clearSelection": "Effacer la sélection",
+        "autofillHint": "Unités pré-sélectionnées. Cliquez sur Enregistrer pour confirmer.",
         "assignUnits": "Assigner les unités",
         "assignedCount": "{assigned} sur {total} assignées",
         "allAssigned": "Toutes les unités assignées",

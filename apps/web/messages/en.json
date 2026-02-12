@@ -1133,6 +1133,9 @@
       },
       "unitAssignment": {
         "title": "Unit assignment",
+        "optionsLabel": "Options",
+        "clearSelection": "Clear selection",
+        "autofillHint": "Suggested units selected. Click Save to confirm.",
         "assignUnits": "Assign units",
         "assignedCount": "{assigned} of {total} assigned",
         "allAssigned": "All units assigned",

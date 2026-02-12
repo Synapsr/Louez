@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle,
   XCircle,
@@ -48,7 +48,8 @@ import { cn, getCurrencySymbol } from '@louez/utils'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
 
-import { updateReservationStatus, cancelReservation } from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 type InspectionMode = 'optional' | 'recommended' | 'required'
@@ -93,13 +94,13 @@ export function SmartReservationActions({
   hasDepartureInspection = false,
   hasReturnInspection = false,
 }: SmartReservationActionsProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations')
   const tInspection = useTranslations('dashboard.settings.inspection')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
+  const queryClient = useQueryClient()
 
   const [isLoading, setIsLoading] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
@@ -127,28 +128,102 @@ export function SmartReservationActions({
   const hasDepositWarning = depositAmount > 0 && !isDepositFullyCollected && status === 'confirmed'
   const hasWarnings = hasPaymentWarning || hasDepositWarning
 
+  const updateStatusMutation = useMutation(
+    orpc.dashboard.reservations.updateStatus.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        })
+
+        const previous = queryClient.getQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        )
+
+        queryClient.setQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+          (current: any) => (current ? { ...current, status: input.status } : current),
+        )
+
+        return { previous }
+      },
+      onError: (_error, input, ctx) => {
+        if (ctx?.previous) {
+          queryClient.setQueryData(
+            orpc.dashboard.reservations.getById.key({
+              input: { reservationId: input.reservationId },
+            }),
+            ctx.previous,
+          )
+        }
+      },
+    }),
+  )
+
+  const cancelMutation = useMutation(
+    orpc.dashboard.reservations.cancel.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        })
+
+        const previous = queryClient.getQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        )
+
+        queryClient.setQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+          (current: any) => (current ? { ...current, status: 'cancelled' } : current),
+        )
+
+        return { previous }
+      },
+      onError: (_error, input, ctx) => {
+        if (ctx?.previous) {
+          queryClient.setQueryData(
+            orpc.dashboard.reservations.getById.key({
+              input: { reservationId: input.reservationId },
+            }),
+            ctx.previous,
+          )
+        }
+      },
+    }),
+  )
+
   const handleStatusChange = async (newStatus: ReservationStatus, reason?: string) => {
     setIsLoading(true)
     try {
-      const result = await updateReservationStatus(reservationId, newStatus, reason)
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        const warnings = 'warnings' in result ? result.warnings : undefined
-        if (warnings && warnings.length > 0) {
-          const warningMessage = warnings
-            .map((warning: { key: string; params?: Record<string, string | number> }) => {
-              const key = warning.key.replace('errors.', '')
-              return tErrors(key, warning.params || {})
-            })
-            .join(' • ')
+      const result = await updateStatusMutation.mutateAsync({
+        reservationId,
+        status: newStatus,
+        rejectionReason: reason,
+      })
 
-          toastManager.add({ title: warningMessage, type: 'warning' })
-        }
-
-        toastManager.add({ title: t('statusUpdated'), type: 'success' })
-        router.refresh()
+      const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
+      if (warnings && warnings.length > 0) {
+        const warningMessage = warnings
+          .map((warning: { key: string; params?: Record<string, string | number> }) => {
+            const key = warning.key.replace('errors.', '')
+            return tErrors(key, warning.params || {})
+          })
+          .join(' • ')
+        toastManager.add({ title: warningMessage, type: 'warning' })
       }
+
+      toastManager.add({ title: t('statusUpdated'), type: 'success' })
+      await invalidateReservationAll(queryClient, reservationId)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -166,13 +241,9 @@ export function SmartReservationActions({
   const handleCancel = async () => {
     setIsLoading(true)
     try {
-      const result = await cancelReservation(reservationId)
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('reservationCancelled'), type: 'success' })
-        router.refresh()
-      }
+      await cancelMutation.mutateAsync({ reservationId })
+      toastManager.add({ title: t('reservationCancelled'), type: 'success' })
+      await invalidateReservationAll(queryClient, reservationId)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {

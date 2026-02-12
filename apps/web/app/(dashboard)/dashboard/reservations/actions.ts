@@ -196,23 +196,6 @@ export async function updateReservationStatus(
   }
 
   // Send emails based on status change
-  const storeData = {
-    id: store.id,
-    name: store.name,
-    logoUrl: store.logoUrl,
-    darkLogoUrl: store.darkLogoUrl,
-    email: store.email,
-    phone: store.phone,
-    address: store.address,
-    theme: store.theme,
-  }
-
-  const customerData = {
-    firstName: reservation.customer.firstName,
-    lastName: reservation.customer.lastName,
-    email: reservation.customer.email,
-  }
-
   const domain = env.NEXT_PUBLIC_APP_DOMAIN
   const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
 
@@ -1864,7 +1847,6 @@ export async function processStripeRefund(
     })
 
     // Log activity
-    const currencySymbol = getCurrencySymbol(currency)
     await logReservationActivity(
       reservationId,
       'payment_updated',
@@ -2794,7 +2776,7 @@ export async function getAvailableUnitsForReservationItem(
     const allUnits = [
       ...availableUnits,
       ...currentlyAssignedUnits.filter((u) => !availableUnitIds.has(u.id)),
-    ]
+    ].sort((a, b) => a.identifier.localeCompare(b.identifier, 'en'))
 
     return {
       units: allUnits.map((u) => ({

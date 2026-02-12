@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { useRouter } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -39,7 +40,8 @@ import { cn, getCurrencySymbol } from '@louez/utils'
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
 import { UpgradeModal } from '@/components/dashboard/upgrade-modal'
-import { sendAccessLink, sendAccessLinkBySms } from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationDetail } from '@/lib/orpc/invalidation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -110,6 +112,7 @@ export function ReservationHeader({
   const tCommon = useTranslations('common')
   const currencySymbol = getCurrencySymbol(currency)
   const router = useRouter()
+  const queryClient = useQueryClient()
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
@@ -124,6 +127,22 @@ export function ReservationHeader({
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
   const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
+
+  const sendAccessLinkMutation = useMutation(
+    orpc.dashboard.reservations.sendAccessLink.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationDetail(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const sendAccessLinkSmsMutation = useMutation(
+    orpc.dashboard.reservations.sendAccessLinkBySms.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationDetail(queryClient, reservationId)
+      },
+    }),
+  )
 
   // Format date range
   const formatDateRange = () => {
@@ -145,12 +164,8 @@ export function ReservationHeader({
   const handleSendAccessLink = async () => {
     setIsSendingAccessLink(true)
     try {
-      const result = await sendAccessLink(reservationId)
-      if (result.error) {
-        toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
-      } else {
-        toastManager.add({ title: t('accessLink.sendSuccess'), type: 'success' })
-      }
+      await sendAccessLinkMutation.mutateAsync({ reservationId })
+      toastManager.add({ title: t('accessLink.sendSuccess'), type: 'success' })
     } catch {
       toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
     } finally {
@@ -165,7 +180,7 @@ export function ReservationHeader({
     }
     setIsSendingAccessLinkSms(true)
     try {
-      const result = await sendAccessLinkBySms(reservationId) as {
+      const result = await sendAccessLinkSmsMutation.mutateAsync({ reservationId }) as {
         error?: string
         limitReached?: boolean
         limitInfo?: { current: number; limit: number; planSlug: string }

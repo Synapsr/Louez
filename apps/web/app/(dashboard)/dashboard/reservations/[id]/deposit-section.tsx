@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   CreditCard,
   Shield,
@@ -51,12 +51,8 @@ import { Textarea } from '@louez/ui'
 import { Progress } from '@louez/ui'
 import { cn, getCurrencySymbol } from '@louez/utils'
 
-import {
-  createDepositHold,
-  captureDepositHold,
-  releaseDepositHold,
-  getReservationPaymentMethod,
-} from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 type DepositStatus = 'none' | 'pending' | 'card_saved' | 'authorized' | 'captured' | 'released' | 'failed'
 
@@ -95,11 +91,11 @@ export function DepositSection({
   stripePaymentMethodId,
   currency = 'EUR',
 }: DepositSectionProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations.deposit')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const currencySymbol = getCurrencySymbol(currency)
+  const queryClient = useQueryClient()
 
   const [isLoading, setIsLoading] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodInfo | null>(null)
@@ -137,23 +133,46 @@ export function DepositSection({
     return 100 - progress // Reverse for "time remaining"
   }
 
-  // Fetch payment method details
+  const paymentMethodQuery = useQuery({
+    ...orpc.dashboard.reservations.getPaymentMethod.queryOptions({
+      input: { reservationId },
+    }),
+    enabled: Boolean(stripePaymentMethodId && status !== 'none'),
+  })
+
   useEffect(() => {
-    if (stripePaymentMethodId && status !== 'none') {
-      getReservationPaymentMethod(reservationId).then(setPaymentMethod)
-    }
-  }, [reservationId, stripePaymentMethodId, status])
+    setPaymentMethod((paymentMethodQuery.data as PaymentMethodInfo | null) || null)
+  }, [paymentMethodQuery.data])
+
+  const createHoldMutation = useMutation(
+    orpc.dashboard.reservations.createDepositHold.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const captureHoldMutation = useMutation(
+    orpc.dashboard.reservations.captureDepositHold.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const releaseHoldMutation = useMutation(
+    orpc.dashboard.reservations.releaseDepositHold.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
 
   const handleCreateHold = async () => {
     setIsLoading(true)
     try {
-      const result = await createDepositHold(reservationId)
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
-      } else {
-        toastManager.add({ title: t('holdCreated'), type: 'success' })
-        router.refresh()
-      }
+      await createHoldMutation.mutateAsync({ reservationId })
+      toastManager.add({ title: t('holdCreated'), type: 'success' })
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -180,19 +199,14 @@ export function DepositSection({
 
     setIsLoading(true)
     try {
-      const result = await captureDepositHold(reservationId, {
-        amount: captureAmountNum,
-        reason: captureReason,
+      await captureHoldMutation.mutateAsync({
+        reservationId,
+        payload: { amount: captureAmountNum, reason: captureReason },
       })
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
-      } else {
-        toastManager.add({ title: t('captured'), type: 'success' })
-        setCaptureModalOpen(false)
-        setCaptureAmount('')
-        setCaptureReason('')
-        router.refresh()
-      }
+      toastManager.add({ title: t('captured'), type: 'success' })
+      setCaptureModalOpen(false)
+      setCaptureAmount('')
+      setCaptureReason('')
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -203,14 +217,9 @@ export function DepositSection({
   const handleRelease = async () => {
     setIsLoading(true)
     try {
-      const result = await releaseDepositHold(reservationId)
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error.replace('errors.', '')), type: 'error' })
-      } else {
-        toastManager.add({ title: t('released'), type: 'success' })
-        setReleaseDialogOpen(false)
-        router.refresh()
-      }
+      await releaseHoldMutation.mutateAsync({ reservationId })
+      toastManager.add({ title: t('released'), type: 'success' })
+      setReleaseDialogOpen(false)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {

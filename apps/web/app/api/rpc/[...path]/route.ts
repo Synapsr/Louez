@@ -9,6 +9,26 @@ import { getStorageKey, uploadFile } from '@/lib/storage/client';
 import { getCurrentStore } from '@/lib/store-context';
 
 import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions';
+import {
+  assignUnitsToReservationItem,
+  cancelReservation,
+  captureDepositHold,
+  createDepositHold,
+  createManualReservation,
+  deletePayment,
+  getAvailableUnitsForReservationItem,
+  getReservationPaymentMethod,
+  recordDamage,
+  recordPayment,
+  releaseDepositHold,
+  requestPayment,
+  returnDeposit,
+  sendAccessLink,
+  sendAccessLinkBySms,
+  sendReservationEmail,
+  updateReservation,
+  updateReservationStatus,
+} from '@/app/(dashboard)/dashboard/reservations/actions';
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -25,6 +45,26 @@ async function handleRequest(request: Request) {
       headers: request.headers,
       getCurrentStore,
       getCustomerSession,
+      dashboardReservationActions: {
+        cancelReservation,
+        updateReservationStatus,
+        updateReservation,
+        createManualReservation,
+        getAvailableUnitsForReservationItem,
+        assignUnitsToReservationItem,
+        requestPayment,
+        recordPayment,
+        deletePayment,
+        returnDeposit,
+        recordDamage,
+        createDepositHold,
+        captureDepositHold,
+        releaseDepositHold,
+        getReservationPaymentMethod,
+        sendReservationEmail,
+        sendAccessLink,
+        sendAccessLinkBySms,
+      },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });
       },

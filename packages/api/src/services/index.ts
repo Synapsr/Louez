@@ -5,4 +5,5 @@ export * from './errors';
 export * from './onboarding';
 export * from './reservation-poll';
 export * from './reservation-sign';
+export * from './reservations-dashboard';
 export * from './store-settings';
