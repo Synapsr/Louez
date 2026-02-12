@@ -35,6 +35,16 @@ interface CheckoutOrderSummaryProps {
   deliveryOption: DeliveryOption;
   deliveryDistance: number | null;
   deliveryFee: number;
+  lineResolutions?: Record<
+    string,
+    | { status: 'loading' }
+    | {
+        status: 'resolved';
+        combinationKey: string;
+        selectedAttributes: Record<string, string>;
+      }
+    | { status: 'invalid' }
+  >;
 }
 
 export function CheckoutOrderSummary({
@@ -55,6 +65,7 @@ export function CheckoutOrderSummary({
   deliveryOption,
   deliveryDistance,
   deliveryFee,
+  lineResolutions = {},
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
@@ -125,10 +136,15 @@ export function CheckoutOrderSummary({
                 discountPercent = result.discountPercent;
               }
 
-              const attributesToDisplay = item.resolvedAttributes || item.selectedAttributes
+              const resolutionState = lineResolutions[item.lineId]
+              const requestedAttributes = item.selectedAttributes
+              const resolvedAttributes = item.resolvedAttributes
+                || (resolutionState?.status === 'resolved'
+                  ? resolutionState.selectedAttributes
+                  : undefined)
 
               return (
-                <div key={`${item.productId}-${item.resolvedCombinationKey || index}`} className="flex gap-3">
+                <div key={item.lineId || `${item.productId}-${index}`} className="flex gap-3">
                   <div className="bg-muted relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
                     {item.productImage ? (
                       <Image
@@ -145,11 +161,28 @@ export function CheckoutOrderSummary({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.productName}</p>
-                    {attributesToDisplay && Object.keys(attributesToDisplay).length > 0 && (
+                    {requestedAttributes && Object.keys(requestedAttributes).length > 0 && (
                       <p className="text-muted-foreground truncate text-[11px]">
-                        {Object.entries(attributesToDisplay)
+                        {t('requestedAttributesLabel')}: {Object.entries(requestedAttributes)
                           .map(([key, value]) => `${key}: ${value}`)
                           .join(' • ')}
+                      </p>
+                    )}
+                    {resolvedAttributes && Object.keys(resolvedAttributes).length > 0 && (
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {t('resolvedAttributesLabel')}: {Object.entries(resolvedAttributes)
+                          .map(([key, value]) => `${key}: ${value}`)
+                          .join(' • ')}
+                      </p>
+                    )}
+                    {resolutionState?.status === 'loading' && (
+                      <p className="text-muted-foreground truncate text-[11px]">
+                        {t('lineCheckingAvailability')}
+                      </p>
+                    )}
+                    {resolutionState?.status === 'invalid' && (
+                      <p className="truncate text-[11px] text-destructive">
+                        {t('lineNeedsUpdateInline')}
                       </p>
                     )}
                     <p className="text-muted-foreground text-xs">

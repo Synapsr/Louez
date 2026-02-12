@@ -79,6 +79,7 @@ export function buildReservationPayload({
       }
 
       return {
+        lineId: item.lineId,
         productId: item.productId,
         selectedAttributes: item.selectedAttributes,
         resolvedCombinationKey: item.resolvedCombinationKey,

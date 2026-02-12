@@ -1,4 +1,8 @@
-import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
+import type {
+  BookingAttributeAxis,
+  CombinationAvailability,
+  UnitAttributes,
+} from '@louez/types'
 
 export const DEFAULT_COMBINATION_KEY = '__default'
 export const MAX_BOOKING_ATTRIBUTE_AXES = 3
@@ -145,3 +149,99 @@ export function getDeterministicCombinationSortValue(
     .join('|')
 }
 
+type CombinationLike = Pick<
+  CombinationAvailability,
+  'combinationKey' | 'selectedAttributes' | 'availableQuantity'
+>
+
+export function getMatchingCombinations<T extends CombinationLike>(
+  combinations: T[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+): T[] {
+  return (combinations || []).filter((combination) =>
+    matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+  )
+}
+
+export function getMaxAvailableForSelection(
+  combinations: CombinationLike[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+): number {
+  const matching = getMatchingCombinations(combinations, selectedAttributes)
+  if (matching.length === 0) {
+    return 0
+  }
+
+  return matching.reduce((max, combination) => {
+    return Math.max(max, combination.availableQuantity || 0)
+  }, 0)
+}
+
+export function getTotalAvailableForSelection(
+  combinations: CombinationLike[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+): number {
+  const matching = getMatchingCombinations(combinations, selectedAttributes)
+  if (matching.length === 0) {
+    return 0
+  }
+
+  return matching.reduce((sum, combination) => {
+    return sum + Math.max(0, combination.availableQuantity || 0)
+  }, 0)
+}
+
+export function resolveBestCombination<T extends CombinationLike>(
+  axes: BookingAttributeAxis[] | null | undefined,
+  combinations: T[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+  quantity: number,
+): T | null {
+  const matching = getMatchingCombinations(combinations, selectedAttributes).sort(
+    (a, b) => {
+      const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
+      const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
+      return sortA.localeCompare(sortB, 'en')
+    },
+  )
+
+  return matching.find((combination) => combination.availableQuantity >= quantity) || null
+}
+
+export function allocateAcrossCombinations<T extends CombinationLike>(
+  axes: BookingAttributeAxis[] | null | undefined,
+  combinations: T[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+  quantity: number,
+): Array<{ combination: T; quantity: number }> | null {
+  if (quantity < 1) {
+    return []
+  }
+
+  const matching = getMatchingCombinations(combinations, selectedAttributes).sort(
+    (a, b) => {
+      const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
+      const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
+      return sortA.localeCompare(sortB, 'en')
+    },
+  )
+
+  let remaining = quantity
+  const allocations: Array<{ combination: T; quantity: number }> = []
+
+  for (const combination of matching) {
+    if (remaining <= 0) break
+    const available = Math.max(0, combination.availableQuantity || 0)
+    if (available === 0) continue
+
+    const take = Math.min(available, remaining)
+    allocations.push({ combination, quantity: take })
+    remaining -= take
+  }
+
+  if (remaining > 0) {
+    return null
+  }
+
+  return allocations
+}

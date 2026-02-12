@@ -34,6 +34,7 @@ import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } fr
 import { env } from '@/env'
 
 interface ReservationItem {
+  lineId?: string
   productId: string
   selectedAttributes?: UnitAttributes
   resolvedCombinationKey?: string
@@ -111,6 +112,10 @@ async function generateUniqueReservationNumber(storeId: string, maxRetries = 5):
 
 function getCombinationMapKey(productId: string, combinationKey: string): string {
   return `${productId}:${combinationKey}`
+}
+
+function getReservationItemResolutionKey(item: ReservationItem, index: number): string {
+  return item.lineId || `${item.productId}:${index}`
 }
 
 function toResolvedAttributes(
@@ -541,8 +546,8 @@ export async function createReservation(input: CreateReservationInput) {
         combinationsByProduct.set(unit.productId, productCombinations)
       }
 
-      const resolvedCombinationByItemIndex = new Map<
-        number,
+      const resolvedCombinationByItemKey = new Map<
+        string,
         { combinationKey: string; selectedAttributes: UnitAttributes }
       >()
 
@@ -605,7 +610,7 @@ export async function createReservation(input: CreateReservationInput) {
         reservedByProductCombination.set(key, reserved + item.quantity)
         reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) || 0) + item.quantity)
 
-        resolvedCombinationByItemIndex.set(i, {
+        resolvedCombinationByItemKey.set(getReservationItemResolutionKey(item, i), {
           combinationKey: resolvedCombination.combinationKey,
           selectedAttributes: toResolvedAttributes(
             selectedAttributes,
@@ -718,7 +723,9 @@ export async function createReservation(input: CreateReservationInput) {
 
         const productInfo = productsForReservation.get(item.productId)
         const productTaxSettings = productInfo?.taxSettings as ProductTaxSettings | undefined
-        const resolvedCombination = resolvedCombinationByItemIndex.get(i)
+        const resolvedCombination = resolvedCombinationByItemKey.get(
+          getReservationItemResolutionKey(item, i),
+        )
         const combinationKey = resolvedCombination?.combinationKey || item.resolvedCombinationKey || null
         const selectedAttributes = resolvedCombination?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null
         const snapshot: ProductSnapshot = {

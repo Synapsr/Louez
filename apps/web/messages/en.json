@@ -472,7 +472,6 @@
     "home": {
       "viewAll": "View all",
       "products": "Products",
-
       "header": {
         "greeting": {
           "morning": "Good morning, {name}",
@@ -495,14 +494,12 @@
           "addReservation": "New reservation"
         }
       },
-
       "alert": {
         "singlePending": "1 pending request",
         "multiplePending": "{count} pending requests",
         "description": "Your customers are waiting for your response",
         "action": "Handle"
       },
-
       "setup": {
         "title": "Getting started",
         "description": "A few steps to get started",
@@ -522,7 +519,6 @@
         "viewStore": "View my store",
         "createReservation": "Create a reservation"
       },
-
       "stats": {
         "products": "Products",
         "customers": "Customers",
@@ -538,7 +534,6 @@
         "vsLastMonth": "vs last month",
         "completed": "{count, plural, one {# completed} other {# completed}}"
       },
-
       "activity": {
         "departures": "Today's departures",
         "departuresDescription": "Reservations to hand over today",
@@ -549,13 +544,11 @@
         "noActivityTitle": "Quiet day",
         "noActivityDescription": "No operations scheduled today"
       },
-
       "pending": {
         "title": "Pending requests",
         "description": "Reservations requiring your approval",
         "empty": "No pending requests"
       },
-
       "quickActions": {
         "title": "Quick actions",
         "description": "Manage your store efficiently",
@@ -568,7 +561,6 @@
           "description": "Manually add a reservation"
         }
       },
-
       "storefront": {
         "title": "Your store",
         "description": "Share your link with your customers",
@@ -580,7 +572,6 @@
         "share": "Share",
         "shareTitle": "My rental store"
       },
-
       "share": {
         "title": "Share your store",
         "description": "Send your store link to your customers",
@@ -2945,7 +2936,7 @@
       "simpleReservationDesc": "Book in a few clicks",
       "securePaymentDesc": "100% secure transactions",
       "localPickupDesc": "Easily pick up your equipment",
-        "reviewsBadge": "reviews"
+      "reviewsBadge": "reviews"
     },
     "home": {
       "ourCategories": "Our categories",
@@ -3065,7 +3056,11 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalog"
-      }
+      },
+      "availableForSelection": "Available for this selection: {count}",
+      "quantityPerCombinationHint": "Quantity applies to one combination. Add another combination as a separate line.",
+      "inCartCount": "Already in cart: {count}",
+      "selectionUnavailable": "No combination is available for this selection."
     },
     "accessories": {
       "productAdded": "Added to cart",
@@ -3224,7 +3219,8 @@
         "description": "All items will be removed from your cart.",
         "cancel": "Cancel",
         "confirm": "Clear"
-      }
+      },
+      "lineMaxReached": "Maximum reached for this combination"
     },
     "checkout": {
       "title": "Complete my reservation",
@@ -3335,7 +3331,12 @@
         "items": "Reserved Items",
         "emailSent": "A confirmation email has been sent to {email}",
         "backToStore": "Back to Store"
-      }
+      },
+      "requestedAttributesLabel": "Requested",
+      "resolvedAttributesLabel": "Final",
+      "lineCheckingAvailability": "Checking availability...",
+      "lineNeedsUpdateInline": "This line is no longer available. Update quantity or attributes.",
+      "lineNeedsUpdate": "Some lines are no longer available. Update your cart before submitting."
     },
     "confirmation": {
       "title": "Reservation confirmed!",
