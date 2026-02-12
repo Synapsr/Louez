@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { Button } from '@louez/ui'
 import { Textarea } from '@louez/ui'
@@ -15,7 +16,8 @@ import {
   CardTitle,
 } from '@louez/ui'
 
-import { updateReservationNotes } from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 interface ReservationNotesProps {
   reservationId: string
@@ -31,6 +33,56 @@ export function ReservationNotes({
   const [notes, setNotes] = useState(initialNotes)
   const [isLoading, setIsLoading] = useState(false)
   const [hasChanges, setHasChanges] = useState(false)
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    // Keep in sync with server updates unless the user has unsaved edits.
+    if (!hasChanges) {
+      setNotes(initialNotes)
+    }
+  }, [initialNotes, hasChanges])
+
+  const updateNotesMutation = useMutation(
+    orpc.dashboard.reservations.updateNotes.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        })
+
+        const previous = queryClient.getQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+        )
+
+        queryClient.setQueryData(
+          orpc.dashboard.reservations.getById.key({
+            input: { reservationId: input.reservationId },
+          }),
+          (current: any) =>
+            current ? { ...current, internalNotes: input.notes } : current,
+        )
+
+        return { previous }
+      },
+      onError: (_error, input, ctx) => {
+        if (ctx?.previous) {
+          queryClient.setQueryData(
+            orpc.dashboard.reservations.getById.key({
+              input: { reservationId: input.reservationId },
+            }),
+            ctx.previous,
+          )
+        }
+      },
+      onSuccess: async (_result, input) => {
+        setHasChanges(false)
+        await invalidateReservationAll(queryClient, input.reservationId)
+      },
+    }),
+  )
 
   const handleChange = (value: string) => {
     setNotes(value)
@@ -40,13 +92,8 @@ export function ReservationNotes({
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      const result = await updateReservationNotes(reservationId, notes)
-      if (result.error) {
-        toastManager.add({ title: t(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('notes.saved'), type: 'success' })
-        setHasChanges(false)
-      }
+      await updateNotesMutation.mutateAsync({ reservationId, notes })
+      toastManager.add({ title: t('notes.saved'), type: 'success' })
     } catch {
       toastManager.add({ title: t('notes.error'), type: 'error' })
     } finally {

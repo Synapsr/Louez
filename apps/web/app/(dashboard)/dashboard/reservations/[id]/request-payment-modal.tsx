@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CreditCard,
   Shield,
@@ -33,7 +33,8 @@ import { Input } from '@louez/ui'
 import { Checkbox } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 
-import { requestPayment, type RequestPaymentInput } from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 interface RequestPaymentModalProps {
   open: boolean
@@ -68,9 +69,9 @@ export function RequestPaymentModal({
   currency,
   stripeConfigured,
 }: RequestPaymentModalProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations.requestPaymentModal')
   const tCommon = useTranslations('common')
+  const queryClient = useQueryClient()
 
   const [selectedType, setSelectedType] = useState<PaymentType | null>(null)
   const [customAmount, setCustomAmount] = useState('')
@@ -139,31 +140,32 @@ export function RequestPaymentModal({
   const hasChannel = sendEmail || sendSms
   const canSubmit = selectedType && isValidAmount && hasChannel && stripeConfigured
 
+  const requestPaymentMutation = useMutation(
+    orpc.dashboard.reservations.requestPayment.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
   const handleSubmit = async () => {
     if (!canSubmit) return
 
     setIsLoading(true)
     try {
-      const data: RequestPaymentInput = {
-        type: selectedType,
-        channels: { email: sendEmail, sms: sendSms },
-        customMessage: customMessage || undefined,
-      }
+      const result = await requestPaymentMutation.mutateAsync({
+        reservationId,
+        payload: {
+          type: selectedType,
+          amount: selectedType === 'custom' ? selectedAmount : undefined,
+          channels: { email: sendEmail, sms: sendSms },
+          customMessage: customMessage || undefined,
+        },
+      })
 
-      if (selectedType === 'custom') {
-        data.amount = selectedAmount
-      }
-
-      const result = await requestPayment(reservationId, data)
-
-      if (result.error) {
-        toastManager.add({ title: t('error'), type: 'error' })
-      } else {
-        toastManager.add({ title: t('success'), type: 'success' })
-        if (result.paymentUrl) {
-          setPaymentUrl(result.paymentUrl)
-        }
-        router.refresh()
+      toastManager.add({ title: t('success'), type: 'success' })
+      if (result.paymentUrl) {
+        setPaymentUrl(result.paymentUrl)
       }
     } catch {
       toastManager.add({ title: t('error'), type: 'error' })

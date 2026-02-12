@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { fr, enUS } from 'date-fns/locale'
 import { useLocale, useTranslations } from 'next-intl'
 import { formatStoreDate } from '@/lib/utils/store-date'
@@ -54,9 +54,10 @@ import { Checkbox } from '@louez/ui'
 
 import { cn, formatCurrency } from '@louez/utils'
 import { Alert, AlertDescription } from '@louez/ui'
-import { createManualReservation } from '../actions'
 import type { PricingMode, UnitAttributes } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationList } from '@/lib/orpc/invalidation'
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer'
 import { NewReservationStepProducts } from './components/new-reservation-step-products'
 import { NewReservationStepReview } from './components/new-reservation-step-review'
@@ -89,6 +90,7 @@ export function NewReservationForm({
   existingReservations = [],
 }: NewReservationFormProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const locale = useLocale()
   const timezone = useStoreTimezone()
   const t = useTranslations('dashboard.reservations.manualForm')
@@ -135,17 +137,11 @@ export function NewReservationForm({
   })
 
   const createReservationMutation = useMutation({
-    mutationFn: async (
-      value: Parameters<typeof createManualReservation>[0]
-    ) => {
-      const result = await createManualReservation(value)
-
-      if (result.error) {
-        throw new Error(result.error)
-      }
-
-      return result
-    },
+    ...orpc.dashboard.reservations.createManualReservation.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationList(queryClient)
+      },
+    }),
   })
 
   const getActionErrorMessage = (error: unknown) => {
@@ -295,29 +291,31 @@ export function NewReservationForm({
 
       try {
         const result = await createReservationMutation.mutateAsync({
-          customerId: value.customerType === 'existing' ? value.customerId : undefined,
-          newCustomer:
-            value.customerType === 'new'
-              ? {
-                  email: value.email,
-                  firstName: value.firstName,
-                  lastName: value.lastName,
-                  phone: value.phone || undefined,
-                }
-              : undefined,
-          startDate: value.startDate!,
-          endDate: value.endDate!,
-          items: selectedProducts,
-          customItems: customItems.map((item) => ({
-            name: item.name,
-            description: item.description,
-            unitPrice: item.unitPrice,
-            deposit: item.deposit,
-            quantity: item.quantity,
-            pricingMode: item.pricingMode,
-          })),
-          internalNotes: value.internalNotes || undefined,
-          sendConfirmationEmail,
+          payload: {
+            customerId: value.customerType === 'existing' ? value.customerId : undefined,
+            newCustomer:
+              value.customerType === 'new'
+                ? {
+                    email: value.email,
+                    firstName: value.firstName,
+                    lastName: value.lastName,
+                    phone: value.phone || undefined,
+                  }
+                : undefined,
+            startDate: value.startDate!,
+            endDate: value.endDate!,
+            items: selectedProducts,
+            customItems: customItems.map((item) => ({
+              name: item.name,
+              description: item.description,
+              unitPrice: item.unitPrice,
+              deposit: item.deposit,
+              quantity: item.quantity,
+              pricingMode: item.pricingMode,
+            })),
+            internalNotes: value.internalNotes || undefined,
+            sendConfirmationEmail,
+          },
         })
 
         toastManager.add({ title: t('reservationCreated'), type: 'success' })

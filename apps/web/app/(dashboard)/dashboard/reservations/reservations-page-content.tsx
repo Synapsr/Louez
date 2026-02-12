@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 import { Plus, Lock } from 'lucide-react'
 
@@ -14,6 +16,7 @@ import {
   BlurOverlay,
 } from '@/components/dashboard/upgrade-modal'
 import type { LimitStatus } from '@/lib/plan-limits'
+import { orpc } from '@/lib/orpc/react'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -66,10 +69,9 @@ interface ReservationCounts {
 }
 
 interface ReservationsPageContentProps {
-  reservations: Reservation[]
-  counts: ReservationCounts
   currentStatus?: string
   currentPeriod?: string
+  initialData?: { reservations: Reservation[]; counts: ReservationCounts }
   limits: LimitStatus
   planSlug: string
   currency?: string
@@ -77,10 +79,9 @@ interface ReservationsPageContentProps {
 }
 
 export function ReservationsPageContent({
-  reservations,
-  counts,
   currentStatus,
   currentPeriod,
+  initialData,
   limits,
   planSlug,
   currency,
@@ -88,6 +89,40 @@ export function ReservationsPageContent({
 }: ReservationsPageContentProps) {
   const t = useTranslations('dashboard.reservations')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const searchParams = useSearchParams()
+
+  const status = searchParams.get('status') || currentStatus || undefined
+  const period = searchParams.get('period') || currentPeriod || undefined
+
+  const reservationsQuery = useQuery({
+    ...orpc.dashboard.reservations.list.queryOptions({
+      input: {
+        status:
+          status === 'all' ||
+          status === 'pending' ||
+          status === 'confirmed' ||
+          status === 'ongoing' ||
+          status === 'completed' ||
+          status === 'cancelled' ||
+          status === 'rejected'
+            ? status
+            : undefined,
+        period: period === 'today' || period === 'week' || period === 'month' ? period : undefined,
+        limit: 100,
+      },
+    }),
+    initialData,
+    placeholderData: (previousData) => previousData,
+  })
+
+  const reservations = reservationsQuery.data?.reservations ?? []
+  const counts: ReservationCounts = reservationsQuery.data?.counts ?? {
+    all: 0,
+    pending: 0,
+    confirmed: 0,
+    ongoing: 0,
+    completed: 0,
+  }
 
   // Determine which reservations to show vs blur
   const displayLimit = limits.limit
@@ -145,8 +180,8 @@ export function ReservationsPageContent({
       {/* Filters */}
       <ReservationsFilters
         counts={counts}
-        currentStatus={currentStatus}
-        currentPeriod={currentPeriod}
+        currentStatus={status}
+        currentPeriod={period}
       />
 
       {/* Reservations Table - Visible */}

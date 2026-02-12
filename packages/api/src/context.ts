@@ -72,6 +72,119 @@ export interface BaseContext {
     storeSlug: string,
   ) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
+  dashboardReservationActions?: {
+    cancelReservation?: (reservationId: string) => Promise<{ success?: boolean; error?: string }>
+    updateReservationStatus?: (
+      reservationId: string,
+      status:
+        | 'pending'
+        | 'confirmed'
+        | 'ongoing'
+        | 'completed'
+        | 'cancelled'
+        | 'rejected',
+      rejectionReason?: string,
+    ) => Promise<
+      | { success?: boolean; error?: string }
+      | { success?: boolean; warnings?: Array<{ key: string; params?: Record<string, string | number> }> }
+    >
+    updateReservation?: (
+      reservationId: string,
+      data: {
+        startDate?: Date
+        endDate?: Date
+        items?: Array<{
+          id?: string
+          productId?: string | null
+          quantity: number
+          unitPrice: number
+          depositPerUnit: number
+          isManualPrice?: boolean
+          pricingMode?: 'hour' | 'day' | 'week'
+          productSnapshot: {
+            name: string
+            description?: string | null
+            images?: string[]
+          }
+        }>
+      },
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    createManualReservation?: (data: {
+      customerId?: string
+      newCustomer?: {
+        email: string
+        firstName: string
+        lastName: string
+        phone?: string
+      }
+      startDate: Date
+      endDate: Date
+      items: Array<{
+        productId: string
+        quantity: number
+        selectedAttributes?: Record<string, string>
+        priceOverride?: { unitPrice: number }
+      }>
+      customItems?: Array<{
+        name: string
+        description: string
+        unitPrice: number
+        deposit: number
+        quantity: number
+        pricingMode: 'hour' | 'day' | 'week'
+      }>
+      internalNotes?: string
+      sendConfirmationEmail?: boolean
+    }) => Promise<{ success?: boolean; reservationId?: string; error?: string }>
+    getAvailableUnitsForReservationItem?: (
+      reservationItemId: string,
+    ) => Promise<{ units?: Array<{ id: string; identifier: string; notes: string | null }>; assigned?: string[]; error?: string }>
+    assignUnitsToReservationItem?: (
+      reservationItemId: string,
+      unitIds: string[],
+    ) => Promise<{ success?: boolean; error?: string }>
+    requestPayment?: (
+      reservationId: string,
+      data: {
+        type: 'rental' | 'deposit' | 'custom'
+        amount?: number
+        channels: { email: boolean; sms: boolean }
+        customMessage?: string
+      },
+    ) => Promise<{ success?: boolean; error?: string; paymentUrl?: string }>
+    recordPayment?: (
+      reservationId: string,
+      data: {
+        type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
+        amount: number
+        method: 'cash' | 'card' | 'transfer' | 'check' | 'other'
+        paidAt?: Date
+        notes?: string
+      },
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
+    deletePayment?: (paymentId: string) => Promise<{ success?: boolean; error?: string }>
+    returnDeposit?: (
+      reservationId: string,
+      data: { amount: number; method: 'cash' | 'card' | 'transfer' | 'check' | 'other'; notes?: string },
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
+    recordDamage?: (
+      reservationId: string,
+      data: { amount: number; method: 'cash' | 'card' | 'transfer' | 'check' | 'other'; notes: string },
+    ) => Promise<{ success?: boolean; paymentId?: string; error?: string }>
+    createDepositHold?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    captureDepositHold?: (
+      reservationId: string,
+      data: { amount: number; reason: string },
+    ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    releaseDepositHold?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    getReservationPaymentMethod?: (reservationId: string) => Promise<unknown | null>
+    sendReservationEmail?: (
+      reservationId: string,
+      data: { templateId: string; customSubject?: string; customMessage?: string },
+    ) => Promise<{ success?: boolean; error?: string }>
+    sendAccessLink?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+    sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+  };
   notifyStoreCreated?: (store: {
     id: string;
     name: string;

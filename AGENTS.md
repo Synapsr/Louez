@@ -208,6 +208,17 @@ For new API calls, use oRPC instead of REST for end-to-end type safety.
 When touching existing app-owned REST endpoints or page-local API logic, prefer migrating that logic into `@louez/api` procedures/services and consume it via `orpc.*` from the web app.
 Keep route handlers for integration-style endpoints where oRPC is not a fit (for example webhooks, third-party callbacks, or transport-specific streaming handlers).
 
+**Dashboard standard (preferred)**
+
+- Pages should be a **server shell** (auth/store context + optional SSR initial data) with a **client renderer** that owns reads/writes via TanStack Query + oRPC.
+- Client components should **not** import dashboard `actions.ts` for CRUD flows. Use `orpc.dashboard.*` queries/mutations instead.
+- Mutations should use **optimistic update + targeted invalidation** (avoid `router.refresh()` / global refetch).
+- Centralize invalidations where possible (example: `apps/web/lib/orpc/invalidation.ts`).
+
+**Migration shim note**
+
+Some dashboard procedures can call existing app server actions through the oRPC context injection in `apps/web/app/api/rpc/[...path]/route.ts` while logic is being extracted into `packages/api/src/services/*`.
+
 **Defining procedures** (`packages/api/src/routers/`):
 
 ```typescript

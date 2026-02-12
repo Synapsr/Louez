@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CreditCard,
   Plus,
@@ -71,14 +71,8 @@ import { cn, getCurrencySymbol } from '@louez/utils'
 
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
-import {
-  recordPayment,
-  deletePayment,
-  returnDeposit,
-  recordDamage,
-  type PaymentType,
-  type PaymentMethod,
-} from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 interface Payment {
   id: string
@@ -89,6 +83,9 @@ interface Payment {
   paidAt: Date | null
   notes: string | null
 }
+
+type PaymentType = 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
+type PaymentMethod = 'cash' | 'card' | 'transfer' | 'check' | 'other'
 
 interface PaymentSummaryProps {
   reservationId: string
@@ -118,12 +115,12 @@ export function PaymentSummary({
   status,
   currency = 'EUR',
 }: PaymentSummaryProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
+  const queryClient = useQueryClient()
 
   const [isLoading, setIsLoading] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
@@ -190,6 +187,38 @@ export function PaymentSummary({
     setPaymentNotes('')
   }
 
+  const recordPaymentMutation = useMutation(
+    orpc.dashboard.reservations.recordPayment.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const deletePaymentMutation = useMutation(
+    orpc.dashboard.reservations.deletePayment.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const returnDepositMutation = useMutation(
+    orpc.dashboard.reservations.returnDeposit.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
+  const recordDamageMutation = useMutation(
+    orpc.dashboard.reservations.recordDamage.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
+
   const handleRecordPayment = async () => {
     const amount = parseFloat(paymentAmount)
     if (isNaN(amount) || amount === 0) {
@@ -204,21 +233,19 @@ export function PaymentSummary({
 
     setIsLoading(true)
     try {
-      const result = await recordPayment(reservationId, {
-        type: paymentType,
-        amount,
-        method: paymentMethod,
-        notes: paymentNotes || undefined,
+      await recordPaymentMutation.mutateAsync({
+        reservationId,
+        payload: {
+          type: paymentType,
+          amount,
+          method: paymentMethod,
+          notes: paymentNotes || undefined,
+        },
       })
 
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('payment.recorded'), type: 'success' })
-        setPaymentModalOpen(false)
-        resetForm()
-        router.refresh()
-      }
+      toastManager.add({ title: t('payment.recorded'), type: 'success' })
+      setPaymentModalOpen(false)
+      resetForm()
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -240,20 +267,18 @@ export function PaymentSummary({
 
     setIsLoading(true)
     try {
-      const result = await returnDeposit(reservationId, {
-        amount,
-        method: paymentMethod,
-        notes: paymentNotes || undefined,
+      await returnDepositMutation.mutateAsync({
+        reservationId,
+        payload: {
+          amount,
+          method: paymentMethod,
+          notes: paymentNotes || undefined,
+        },
       })
 
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
-        setDepositReturnModalOpen(false)
-        resetForm()
-        router.refresh()
-      }
+      toastManager.add({ title: t('payment.depositReturned'), type: 'success' })
+      setDepositReturnModalOpen(false)
+      resetForm()
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -275,20 +300,18 @@ export function PaymentSummary({
 
     setIsLoading(true)
     try {
-      const result = await recordDamage(reservationId, {
-        amount,
-        method: paymentMethod,
-        notes: paymentNotes,
+      await recordDamageMutation.mutateAsync({
+        reservationId,
+        payload: {
+          amount,
+          method: paymentMethod,
+          notes: paymentNotes,
+        },
       })
 
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
-        setDamageModalOpen(false)
-        resetForm()
-        router.refresh()
-      }
+      toastManager.add({ title: t('payment.damageRecorded'), type: 'success' })
+      setDamageModalOpen(false)
+      resetForm()
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -301,16 +324,10 @@ export function PaymentSummary({
 
     setIsLoading(true)
     try {
-      const result = await deletePayment(paymentToDelete.id)
-
-      if (result.error) {
-        toastManager.add({ title: tErrors(result.error), type: 'error' })
-      } else {
-        toastManager.add({ title: t('payment.deleted'), type: 'success' })
-        setDeleteDialogOpen(false)
-        setPaymentToDelete(null)
-        router.refresh()
-      }
+      await deletePaymentMutation.mutateAsync({ paymentId: paymentToDelete.id })
+      toastManager.add({ title: t('payment.deleted'), type: 'success' })
+      setDeleteDialogOpen(false)
+      setPaymentToDelete(null)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {

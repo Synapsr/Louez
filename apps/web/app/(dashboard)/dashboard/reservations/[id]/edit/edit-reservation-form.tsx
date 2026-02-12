@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Loader2,
@@ -45,7 +46,8 @@ import {
   evaluateReservationRules,
   type ReservationValidationWarning,
 } from '@/lib/utils/reservation-rules'
-import { updateReservation } from '../../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import type { PricingMode } from '@louez/types'
 import { EditReservationItemsSection } from './components/edit-reservation-items-section'
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
@@ -61,12 +63,21 @@ export function EditReservationForm({
   storeSettings,
 }: EditReservationFormProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   // Use separate translators for different namespaces
   const t = useTranslations('dashboard.reservations')
   const tForm = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const currencySymbol = getCurrencySymbol(currency)
+
+  const updateReservationMutation = useMutation(
+    orpc.dashboard.reservations.updateReservation.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservation.id)
+      },
+    }),
+  )
 
   // State
   const [isLoading, setIsLoading] = useState(false)
@@ -318,26 +329,29 @@ export function EditReservationForm({
     }
     setIsLoading(true)
     try {
-      const result = await updateReservation(reservation.id, {
-        startDate,
-        endDate,
-        items: items.map((item) => ({
-          id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          depositPerUnit: item.depositPerUnit,
-          isManualPrice: item.isManualPrice,
-          pricingMode: item.pricingMode,
-          productSnapshot: item.productSnapshot,
-        })),
+      const result = await updateReservationMutation.mutateAsync({
+        reservationId: reservation.id,
+        payload: {
+          startDate,
+          endDate,
+          items: items.map((item) => ({
+            id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            depositPerUnit: item.depositPerUnit,
+            isManualPrice: item.isManualPrice,
+            pricingMode: item.pricingMode,
+            productSnapshot: item.productSnapshot,
+          })),
+        },
       })
 
       if (result.error) {
         toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        const warnings = 'warnings' in result ? result.warnings : undefined
-        if (warnings && warnings.length > 0) {
+        const warnings = (result as any)?.warnings
+        if (Array.isArray(warnings) && warnings.length > 0) {
           const toastableWarnings = warnings.filter(
             (warning: ReservationValidationWarning) =>
               warning.code !== 'min_duration' &&
@@ -355,7 +369,6 @@ export function EditReservationForm({
 
         toastManager.add({ title: t('edit.saved'), type: 'success' })
         router.push(`/dashboard/reservations/${reservation.id}`)
-        router.refresh()
       }
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })

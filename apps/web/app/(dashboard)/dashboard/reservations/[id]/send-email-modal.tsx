@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Mail,
   FileText,
@@ -32,7 +32,8 @@ import { Label } from '@louez/ui'
 import { Textarea } from '@louez/ui'
 import { cn } from '@louez/utils'
 
-import { sendReservationEmail } from '../actions'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -104,14 +105,22 @@ export function SendEmailModal({
   isFullyPaid,
   sentEmails = [],
 }: SendEmailModalProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations.emailModal')
   const tCommon = useTranslations('common')
+  const queryClient = useQueryClient()
 
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
   const [customSubject, setCustomSubject] = useState('')
   const [customMessage, setCustomMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  const sendEmailMutation = useMutation(
+    orpc.dashboard.reservations.sendReservationEmail.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservationId)
+      },
+    }),
+  )
 
   const availableTemplates = EMAIL_TEMPLATES.filter((template) =>
     template.available(status, isFullyPaid)
@@ -130,20 +139,18 @@ export function SendEmailModal({
 
     setIsLoading(true)
     try {
-      const result = await sendReservationEmail(reservationId, {
-        templateId: selectedTemplate,
-        customSubject: customSubject || undefined,
-        customMessage: customMessage || undefined,
+      await sendEmailMutation.mutateAsync({
+        reservationId,
+        payload: {
+          templateId: selectedTemplate,
+          customSubject: customSubject || undefined,
+          customMessage: customMessage || undefined,
+        },
       })
 
-      if (result.error) {
-        toastManager.add({ title: t('sendError'), type: 'error' })
-      } else {
-        toastManager.add({ title: t('sendSuccess'), type: 'success' })
-        onOpenChange(false)
-        resetForm()
-        router.refresh()
-      }
+      toastManager.add({ title: t('sendSuccess'), type: 'success' })
+      onOpenChange(false)
+      resetForm()
     } catch {
       toastManager.add({ title: t('sendError'), type: 'error' })
     } finally {

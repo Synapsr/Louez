@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useTranslations } from 'next-intl'
+import { useQuery } from '@tanstack/react-query'
 import {
   CheckCircle,
   Clock,
@@ -21,7 +22,7 @@ import { getCurrencySymbol } from '@louez/utils'
 
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
-import { getReservationPaymentMethod } from '../actions'
+import { orpc } from '@/lib/orpc/react'
 
 interface Payment {
   id: string
@@ -85,12 +86,16 @@ export function OnlinePaymentStatus({
   // Determine if we should show anything
   const hasStripePayment = stripeRentalPayment || stripePendingPayment
 
-  // Fetch payment method details (must be called before any conditional returns)
+  const paymentMethodQuery = useQuery({
+    ...orpc.dashboard.reservations.getPaymentMethod.queryOptions({
+      input: { reservationId },
+    }),
+    enabled: Boolean(stripePaymentMethodId && hasStripePayment),
+  })
+
   useEffect(() => {
-    if (stripePaymentMethodId && hasStripePayment) {
-      getReservationPaymentMethod(reservationId).then(setPaymentMethod)
-    }
-  }, [reservationId, stripePaymentMethodId, hasStripePayment])
+    setPaymentMethod((paymentMethodQuery.data as PaymentMethodInfo | null) || null)
+  }, [paymentMethodQuery.data])
 
   // If no Stripe payment at all, don't render
   if (!hasStripePayment) {

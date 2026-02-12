@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { formatStoreDateRange } from '@/lib/utils/store-date'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   CheckCircle,
   XCircle,
@@ -41,11 +41,9 @@ import {
   TooltipTrigger,
 } from '@louez/ui'
 
-import {
-  updateReservationStatus,
-  cancelReservation,
-} from './actions'
 import { getCurrencySymbol } from '@louez/utils'
+import { orpc } from '@/lib/orpc/react'
+import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -173,16 +171,88 @@ function getPaymentStatus(reservation: Reservation): {
 }
 
 export function ReservationsTable({ reservations, currency = 'EUR', timezone }: ReservationsTableProps) {
-  const router = useRouter()
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
   const currencySymbol = getCurrencySymbol(currency)
+  const queryClient = useQueryClient()
 
   const [loadingAction, setLoadingAction] = useState<string | null>(null)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+
+  const updateStatusMutation = useMutation(
+    orpc.dashboard.reservations.updateStatus.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.dashboard.reservations.list.key(),
+        })
+
+        const previous = queryClient.getQueriesData({
+          queryKey: orpc.dashboard.reservations.list.key(),
+        })
+
+        queryClient.setQueriesData(
+          { queryKey: orpc.dashboard.reservations.list.key() },
+          (current: any) => {
+            if (!current?.reservations) return current
+            return {
+              ...current,
+              reservations: current.reservations.map((r: Reservation) =>
+                r.id === input.reservationId ? { ...r, status: input.status } : r,
+              ),
+            }
+          },
+        )
+
+        return { previous }
+      },
+      onError: (_error, _input, ctx) => {
+        if (ctx?.previous) {
+          for (const [key, data] of ctx.previous) {
+            queryClient.setQueryData(key, data)
+          }
+        }
+      },
+    }),
+  )
+
+  const cancelMutation = useMutation(
+    orpc.dashboard.reservations.cancel.mutationOptions({
+      onMutate: async (input) => {
+        await queryClient.cancelQueries({
+          queryKey: orpc.dashboard.reservations.list.key(),
+        })
+
+        const previous = queryClient.getQueriesData({
+          queryKey: orpc.dashboard.reservations.list.key(),
+        })
+
+        queryClient.setQueriesData(
+          { queryKey: orpc.dashboard.reservations.list.key() },
+          (current: any) => {
+            if (!current?.reservations) return current
+            return {
+              ...current,
+              reservations: current.reservations.map((r: Reservation) =>
+                r.id === input.reservationId ? { ...r, status: 'cancelled' } : r,
+              ),
+            }
+          },
+        )
+
+        return { previous }
+      },
+      onError: (_error, _input, ctx) => {
+        if (ctx?.previous) {
+          for (const [key, data] of ctx.previous) {
+            queryClient.setQueryData(key, data)
+          }
+        }
+      },
+    }),
+  )
 
   const handleStatusChange = async (
     e: React.MouseEvent,
@@ -194,25 +264,24 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
 
     setLoadingAction(`${reservation.id}-${newStatus}`)
     try {
-      const result = await updateReservationStatus(reservation.id, newStatus)
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-      } else {
-        const warnings = 'warnings' in result ? result.warnings : undefined
-        if (warnings && warnings.length > 0) {
-          const warningMessage = warnings
-            .map((warning: { key: string; params?: Record<string, string | number> }) => {
-              const key = warning.key.replace('errors.', '')
-              return tErrors(key, warning.params || {})
-            })
-            .join(' • ')
+      const result = await updateStatusMutation.mutateAsync({
+        reservationId: reservation.id,
+        status: newStatus,
+      })
 
-          toastManager.add({ title: warningMessage, type: 'warning' })
-        }
-
-        toastManager.add({ title: t('statusUpdated'), type: 'success' })
-        router.refresh()
+      const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
+      if (warnings && warnings.length > 0) {
+        const warningMessage = warnings
+          .map((warning: { key: string; params?: Record<string, string | number> }) => {
+            const key = warning.key.replace('errors.', '')
+            return tErrors(key, warning.params || {})
+          })
+          .join(' • ')
+        toastManager.add({ title: warningMessage, type: 'warning' })
       }
+
+      toastManager.add({ title: t('statusUpdated'), type: 'success' })
+      await invalidateReservationAll(queryClient, reservation.id)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -225,25 +294,24 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
 
     setLoadingAction(`${selectedReservation.id}-reject`)
     try {
-      const result = await updateReservationStatus(selectedReservation.id, 'rejected')
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-      } else {
-        const warnings = 'warnings' in result ? result.warnings : undefined
-        if (warnings && warnings.length > 0) {
-          const warningMessage = warnings
-            .map((warning: { key: string; params?: Record<string, string | number> }) => {
-              const key = warning.key.replace('errors.', '')
-              return tErrors(key, warning.params || {})
-            })
-            .join(' • ')
+      const result = await updateStatusMutation.mutateAsync({
+        reservationId: selectedReservation.id,
+        status: 'rejected',
+      })
 
-          toastManager.add({ title: warningMessage, type: 'warning' })
-        }
-
-        toastManager.add({ title: t('reservationRejected'), type: 'success' })
-        router.refresh()
+      const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
+      if (warnings && warnings.length > 0) {
+        const warningMessage = warnings
+          .map((warning: { key: string; params?: Record<string, string | number> }) => {
+            const key = warning.key.replace('errors.', '')
+            return tErrors(key, warning.params || {})
+          })
+          .join(' • ')
+        toastManager.add({ title: warningMessage, type: 'warning' })
       }
+
+      toastManager.add({ title: t('reservationRejected'), type: 'success' })
+      await invalidateReservationAll(queryClient, selectedReservation.id)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
@@ -258,13 +326,9 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
 
     setLoadingAction(`${selectedReservation.id}-cancel`)
     try {
-      const result = await cancelReservation(selectedReservation.id)
-      if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
-      } else {
-        toastManager.add({ title: t('reservationCancelled'), type: 'success' })
-        router.refresh()
-      }
+      await cancelMutation.mutateAsync({ reservationId: selectedReservation.id })
+      toastManager.add({ title: t('reservationCancelled'), type: 'success' })
+      await invalidateReservationAll(queryClient, selectedReservation.id)
     } catch {
       toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {

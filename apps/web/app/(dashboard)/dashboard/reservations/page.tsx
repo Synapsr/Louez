@@ -1,95 +1,10 @@
 import { Suspense } from 'react'
-import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations } from '@louez/db'
-import { eq, desc, and, count, gte, lte } from 'drizzle-orm'
 
 import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
+import { getDashboardReservationsList } from '@louez/api/services'
 import { Skeleton } from '@louez/ui'
 import { ReservationsPageContent } from './reservations-page-content'
-
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
-
-async function getReservations(
-  storeId: string,
-  searchParams: { status?: string; period?: string }
-) {
-  const conditions = [eq(reservations.storeId, storeId)]
-
-  if (searchParams.status && searchParams.status !== 'all') {
-    conditions.push(
-      eq(reservations.status, searchParams.status as ReservationStatus)
-    )
-  }
-
-  // Period filter
-  const now = new Date()
-  if (searchParams.period === 'today') {
-    const startOfDay = new Date(now.setHours(0, 0, 0, 0))
-    const endOfDay = new Date(now.setHours(23, 59, 59, 999))
-    conditions.push(gte(reservations.startDate, startOfDay))
-    conditions.push(lte(reservations.startDate, endOfDay))
-  } else if (searchParams.period === 'week') {
-    const startOfWeek = new Date(now)
-    startOfWeek.setDate(now.getDate() - now.getDay())
-    startOfWeek.setHours(0, 0, 0, 0)
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    endOfWeek.setHours(23, 59, 59, 999)
-    conditions.push(gte(reservations.startDate, startOfWeek))
-    conditions.push(lte(reservations.startDate, endOfWeek))
-  } else if (searchParams.period === 'month') {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    endOfMonth.setHours(23, 59, 59, 999)
-    conditions.push(gte(reservations.startDate, startOfMonth))
-    conditions.push(lte(reservations.startDate, endOfMonth))
-  }
-
-  const reservationsList = await db.query.reservations.findMany({
-    where: and(...conditions),
-    with: {
-      customer: true,
-      items: {
-        with: {
-          product: true,
-        },
-      },
-      payments: true,
-    },
-    orderBy: [desc(reservations.createdAt)],
-    limit: 100, // Increased to show more for blurring
-  })
-
-  return reservationsList
-}
-
-async function getReservationCounts(storeId: string) {
-  // Single optimized query with GROUP BY instead of 5 separate queries
-  const countsByStatus = await db
-    .select({
-      status: reservations.status,
-      count: count(),
-    })
-    .from(reservations)
-    .where(eq(reservations.storeId, storeId))
-    .groupBy(reservations.status)
-
-  const counts: Record<string, number> = {}
-  let total = 0
-  for (const row of countsByStatus) {
-    counts[row.status] = row.count
-    total += row.count
-  }
-
-  return {
-    all: total,
-    pending: counts['pending'] || 0,
-    confirmed: counts['confirmed'] || 0,
-    ongoing: counts['ongoing'] || 0,
-    completed: counts['completed'] || 0,
-  }
-}
 
 function ReservationsTableSkeleton() {
   return (
@@ -119,27 +34,53 @@ interface ReservationsPageProps {
   searchParams: Promise<{ status?: string; period?: string }>
 }
 
+function normalizeStatus(value: string | undefined) {
+  if (
+    value === 'all' ||
+    value === 'pending' ||
+    value === 'confirmed' ||
+    value === 'ongoing' ||
+    value === 'completed' ||
+    value === 'cancelled' ||
+    value === 'rejected'
+  ) {
+    return value
+  }
+  return undefined
+}
+
+function normalizePeriod(value: string | undefined) {
+  if (value === 'today' || value === 'week' || value === 'month') return value
+  return undefined
+}
+
 export default async function ReservationsPage({ searchParams }: ReservationsPageProps) {
   const store = await getCurrentStore()
   if (!store) return null
 
   const params = await searchParams
+  const status = normalizeStatus(params.status)
+  const period = normalizePeriod(params.period)
   const currency = store.settings?.currency || 'EUR'
   const timezone = store.settings?.timezone
-  const [reservationsList, reservationCounts, limits, plan] = await Promise.all([
-    getReservations(store.id, params),
-    getReservationCounts(store.id),
+  const [limits, plan] = await Promise.all([
     getStoreLimits(store.id),
     getStorePlan(store.id),
   ])
 
+  const initialData = await getDashboardReservationsList({
+    storeId: store.id,
+    status,
+    period,
+    limit: 100,
+  })
+
   return (
     <Suspense fallback={<ReservationsTableSkeleton />}>
       <ReservationsPageContent
-        reservations={reservationsList}
-        counts={reservationCounts}
-        currentStatus={params.status}
-        currentPeriod={params.period}
+        currentStatus={status}
+        currentPeriod={period}
+        initialData={initialData}
         limits={limits.reservationsThisMonth}
         planSlug={plan.slug}
         currency={currency}
