@@ -3005,6 +3005,7 @@
       "bookingAttributes": "Configuration",
       "bookingAttributesHelp": "Optionnel : choisissez des attributs précis. Si la sélection reste partielle, le système choisira automatiquement une combinaison disponible.",
       "bookingAttributesNoOptions": "Aucune option disponible pour {attribute} aux dates sélectionnées.",
+      "bookingAttributeNone": "Aucun",
       "availableCount": "{count, plural, one {# disponible} other {# disponibles}}",
       "available": "Disponible",
       "unavailable": "Indisponible",

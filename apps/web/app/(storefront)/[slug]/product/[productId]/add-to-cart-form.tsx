@@ -316,10 +316,10 @@ export function AddToCartForm({
             {bookingAttributeAxes.map((axis) => (
               <Select
                 key={axis.key}
-                value={selectedAttributes[axis.key] || ''}
+                value={selectedAttributes[axis.key] || '__none__'}
                 onValueChange={(value) => {
                   setSelectedAttributes((prev) => {
-                    if (!value) {
+                    if (!value || value === '__none__') {
                       const next = { ...prev }
                       delete next[axis.key]
                       return next
@@ -335,6 +335,9 @@ export function AddToCartForm({
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__" label={t('bookingAttributeNone')}>
+                    {t('bookingAttributeNone')}
+                  </SelectItem>
                   {(bookingAttributeValues[axis.key] || []).length > 0 ? (
                     (bookingAttributeValues[axis.key] || []).map((value) => (
                       <SelectItem key={value} value={value} label={value}>
