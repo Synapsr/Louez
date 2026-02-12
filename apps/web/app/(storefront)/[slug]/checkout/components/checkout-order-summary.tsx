@@ -14,7 +14,7 @@ import type { TaxSettings } from '@louez/types';
 import { Badge, Card, CardContent, Separator } from '@louez/ui';
 import { type ProductPricing, calculateRentalPrice, formatCurrency } from '@louez/utils';
 
-import type { DeliveryOption } from '../types';
+import type { DeliveryOption, LineResolutionState } from '../types';
 import { calculateDuration } from '../utils';
 
 interface CheckoutOrderSummaryProps {
@@ -37,13 +37,7 @@ interface CheckoutOrderSummaryProps {
   deliveryFee: number;
   lineResolutions?: Record<
     string,
-    | { status: 'loading' }
-    | {
-        status: 'resolved';
-        combinationKey: string;
-        selectedAttributes: Record<string, string>;
-      }
-    | { status: 'invalid' }
+    LineResolutionState
   >;
 }
 

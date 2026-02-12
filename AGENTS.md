@@ -297,6 +297,7 @@ function MyComponent() {
 - Prefer one `useTranslations()` call per file/component and reuse that single translator across the file
 - Allow exceptions only when Next.js boundaries require it (for example separate server/client translation APIs)
 - Prefer calling `useTranslations()` inside each component file instead of passing translator functions through props, to preserve i18n Ally key inference and local type safety
+- For feature-local client hooks that own UI copy, call `useTranslations()` inside the hook instead of passing a translator callback from parents
 - Keep related keys grouped in the same message namespace so i18n Ally can detect and manage them consistently
 - Reuse existing translation keys before creating new ones
 - Error keys follow pattern: `errors.{errorType}`

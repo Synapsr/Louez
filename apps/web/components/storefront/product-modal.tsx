@@ -699,10 +699,10 @@ export function ProductModal({
                   {bookingAttributeAxes.map((axis) => (
                     <Select
                       key={axis.key}
-                      value={selectedAttributes[axis.key] || ''}
+                      value={selectedAttributes[axis.key] || '__none__'}
                       onValueChange={(value) => {
                         setSelectedAttributes((prev) => {
-                          if (!value) {
+                          if (!value || value === '__none__') {
                             const next = { ...prev }
                             delete next[axis.key]
                             return next
@@ -718,6 +718,9 @@ export function ProductModal({
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="__none__" label={tProduct('bookingAttributeNone')}>
+                          {tProduct('bookingAttributeNone')}
+                        </SelectItem>
                         {(bookingAttributeValues[axis.key] || []).length > 0 ? (
                           (bookingAttributeValues[axis.key] || []).map((value) => (
                             <SelectItem key={value} value={value} label={value}>

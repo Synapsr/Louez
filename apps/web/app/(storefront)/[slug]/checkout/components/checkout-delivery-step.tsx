@@ -273,7 +273,9 @@ export function CheckoutDeliveryStep({
             className="flex-1"
             disabled={
               deliveryOption === 'delivery' &&
-              (!deliveryAddress.latitude || Boolean(deliveryError))
+              (deliveryAddress.latitude === null ||
+                deliveryAddress.longitude === null ||
+                Boolean(deliveryError))
             }
           >
             {t('continue')}
@@ -284,4 +286,3 @@ export function CheckoutDeliveryStep({
     </Card>
   );
 }
-

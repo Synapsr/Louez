@@ -3005,6 +3005,7 @@
       "bookingAttributes": "Configuration",
       "bookingAttributesHelp": "Optional: select specific attributes. If left partial, the system will auto-pick a matching available combination.",
       "bookingAttributesNoOptions": "No options available for {attribute} on selected dates.",
+      "bookingAttributeNone": "None",
       "availableCount": "{count, plural, one {# available} other {# available}}",
       "available": "Available",
       "unavailable": "Unavailable",

@@ -1,4 +1,4 @@
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 
 import type { DeliverySettings, TaxSettings } from '@louez/types';
 
@@ -47,4 +47,31 @@ export interface DeliveryAddress {
   country: string;
   latitude: number | null;
   longitude: number | null;
+}
+
+export type LineResolutionState =
+  | { status: 'loading' }
+  | {
+      status: 'resolved';
+      combinationKey: string;
+      selectedAttributes: Record<string, string>;
+    }
+  | { status: 'invalid' };
+
+export interface CheckoutFormComponentApi {
+  AppField: ComponentType<{
+    name: keyof CheckoutFormValues;
+    children: (field: any) => ReactNode;
+  }>;
+  Field: ComponentType<{
+    name: keyof CheckoutFormValues;
+    children: (field: any) => ReactNode;
+  }>;
+  Subscribe: ComponentType<{
+    selector: (state: any) => unknown;
+    children: (value: any) => ReactNode;
+  }>;
+  getFieldValue: <K extends keyof CheckoutFormValues>(
+    field: K,
+  ) => CheckoutFormValues[K];
 }
