@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { differenceInDays, differenceInHours, differenceInWeeks } from 'date-fns'
 import { Plus, Minus, ShoppingCart } from 'lucide-react'
@@ -19,14 +19,17 @@ import {
   SelectValue,
 } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { useCart, type CartItem } from '@/contexts/cart-context'
+import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
 import { AccessoriesModal } from '@/components/storefront/accessories-modal'
 import {
+  allocateAcrossCombinations,
   calculateRentalPrice,
   getAvailableDurations,
+  getMaxAvailableForSelection,
+  getTotalAvailableForSelection,
   snapToNearestTier,
   type ProductPricing,
   type PricingTier,
@@ -70,6 +73,11 @@ interface AddToCartFormProps {
   trackUnits?: boolean
   bookingAttributeAxes?: Array<{ key: string; label: string; position: number }>
   bookingAttributeValues?: Record<string, string[]>
+  bookingCombinations?: Array<{
+    combinationKey: string
+    selectedAttributes: Record<string, string>
+    availableQuantity: number
+  }>
 }
 
 export function AddToCartForm({
@@ -89,6 +97,7 @@ export function AddToCartForm({
   trackUnits = false,
   bookingAttributeAxes = [],
   bookingAttributeValues = {},
+  bookingCombinations = [],
 }: AddToCartFormProps) {
   const router = useRouter()
   const t = useTranslations('storefront.product')
@@ -100,6 +109,21 @@ export function AddToCartForm({
   const [quantity, setQuantity] = useState(1)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
+  const hasBookingAttributes = bookingAttributeAxes.length > 0
+  const hasExplicitSelection = Object.keys(selectedAttributes).length > 0
+  const selectionMaxQuantity = hasBookingAttributes
+    ? (
+        bookingCombinations.length > 0
+          ? (
+              hasExplicitSelection
+                ? getMaxAvailableForSelection(bookingCombinations, selectedAttributes)
+                : getTotalAvailableForSelection(bookingCombinations, selectedAttributes)
+            )
+          : maxQuantity
+      )
+    : maxQuantity
+  const effectiveMaxQuantity = Math.min(maxQuantity, selectionMaxQuantity)
+  const isSelectionUnavailable = hasBookingAttributes && effectiveMaxQuantity === 0
 
   const calculateDuration = () => {
     if (!startDate || !endDate) return 0
@@ -154,6 +178,11 @@ export function AddToCartForm({
       return
     }
 
+    if (isSelectionUnavailable) {
+      toastManager.add({ title: t('selectionUnavailable'), type: 'error' })
+      return
+    }
+
     // Validate minimum rental duration
     if (minRentalMinutes > 0) {
       const check = validateMinRentalDurationMinutes(startDate, endDate, minRentalMinutes)
@@ -166,26 +195,62 @@ export function AddToCartForm({
       }
     }
 
-    addItem(
-      {
-        productId,
-        productName,
-        productImage,
-        price,
-        deposit,
-        quantity,
-        maxQuantity,
-        pricingMode,
-        pricingTiers: pricingTiers?.map((tier) => ({
-          id: tier.id,
-          minDuration: tier.minDuration,
-          discountPercent: tier.discountPercent,
-        })),
-        productPricingMode: pricingMode,
+    if (hasBookingAttributes && !hasExplicitSelection && bookingCombinations.length > 0) {
+      const allocations = allocateAcrossCombinations(
+        bookingAttributeAxes,
+        bookingCombinations,
         selectedAttributes,
-      },
-      storeSlug
-    )
+        quantity,
+      )
+      if (!allocations || allocations.length === 0) {
+        toastManager.add({ title: t('selectionUnavailable'), type: 'error' })
+        return
+      }
+
+      for (const allocation of allocations) {
+        addItem(
+          {
+            productId,
+            productName,
+            productImage,
+            price,
+            deposit,
+            quantity: allocation.quantity,
+            maxQuantity: Math.max(1, allocation.combination.availableQuantity),
+            pricingMode,
+            pricingTiers: pricingTiers?.map((tier) => ({
+              id: tier.id,
+              minDuration: tier.minDuration,
+              discountPercent: tier.discountPercent,
+            })),
+            productPricingMode: pricingMode,
+            selectedAttributes: allocation.combination.selectedAttributes,
+          },
+          storeSlug,
+        )
+      }
+    } else {
+      addItem(
+        {
+          productId,
+          productName,
+          productImage,
+          price,
+          deposit,
+          quantity,
+          maxQuantity: Math.max(1, effectiveMaxQuantity),
+          pricingMode,
+          pricingTiers: pricingTiers?.map((tier) => ({
+            id: tier.id,
+            minDuration: tier.minDuration,
+            discountPercent: tier.discountPercent,
+          })),
+          productPricingMode: pricingMode,
+          selectedAttributes,
+        },
+        storeSlug
+      )
+    }
 
     // If there are available accessories, show the modal
     if (availableAccessories.length > 0) {
@@ -203,6 +268,12 @@ export function AddToCartForm({
     setStartDate(start)
     setEndDate(end)
   }
+
+  useEffect(() => {
+    if (effectiveMaxQuantity > 0 && quantity > effectiveMaxQuantity) {
+      setQuantity(effectiveMaxQuantity)
+    }
+  }, [effectiveMaxQuantity, quantity])
 
   return (
     <div className="space-y-5">
@@ -280,6 +351,14 @@ export function AddToCartForm({
             ))}
           </div>
           <p className="text-xs text-muted-foreground">{t('bookingAttributesHelp')}</p>
+          <div className="space-y-1">
+            <p className="text-xs font-medium">
+              {t('availableForSelection', { count: effectiveMaxQuantity })}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t('quantityPerCombinationHint')}
+            </p>
+          </div>
         </div>
       )}
 
@@ -296,19 +375,19 @@ export function AddToCartForm({
             <Minus className="h-4 w-4" />
           </Button>
           <span className="text-lg font-medium w-12 text-center">{quantity}</span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-            disabled={quantity >= maxQuantity}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            ({t('availableCount', { count: maxQuantity })})
-          </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setQuantity(Math.min(Math.max(1, effectiveMaxQuantity), quantity + 1))}
+              disabled={quantity >= effectiveMaxQuantity || isSelectionUnavailable}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              ({t('availableCount', { count: hasBookingAttributes ? effectiveMaxQuantity : maxQuantity })})
+            </span>
+          </div>
         </div>
-      </div>
 
       {/* Price Summary */}
       {startDate && endDate && duration > 0 && (
@@ -361,7 +440,7 @@ export function AddToCartForm({
         size="lg"
         className="w-full"
         onClick={handleAddToCart}
-        disabled={!startDate || !endDate}
+        disabled={!startDate || !endDate || isSelectionUnavailable}
       >
         <ShoppingCart className="mr-2 h-5 w-5" />
         {t('addToCart')}

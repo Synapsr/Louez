@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -57,8 +56,8 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
     items,
     globalStartDate,
     globalEndDate,
-    removeItem,
-    updateItemQuantity,
+    removeItemByLineId,
+    updateItemQuantityByLineId,
     clearCart,
     getItemCount,
     getSubtotal,
@@ -128,7 +127,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
             <div className="space-y-3">
               {items.map((item) => (
                 <div
-                  key={item.productId}
+                  key={item.lineId}
                   className="flex gap-3 p-3 rounded-lg bg-muted/30"
                 >
                   {/* Image */}
@@ -150,6 +149,13 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{item.productName}</p>
+                    {item.selectedAttributes && Object.keys(item.selectedAttributes).length > 0 && (
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {Object.entries(item.selectedAttributes)
+                          .map(([key, value]) => `${key}: ${value}`)
+                          .join(' • ')}
+                      </p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {formatCurrency(item.price * getItemDuration(item), currency)} × {item.quantity}
                     </p>
@@ -161,7 +167,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                           variant="outline"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => updateItemQuantity(item.productId, item.quantity - 1)}
+                          onClick={() => updateItemQuantityByLineId(item.lineId, item.quantity - 1)}
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
@@ -170,7 +176,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                           variant="outline"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => updateItemQuantity(item.productId, item.quantity + 1)}
+                          onClick={() => updateItemQuantityByLineId(item.lineId, item.quantity + 1)}
                           disabled={item.quantity >= item.maxQuantity}
                         >
                           <Plus className="h-3 w-3" />
@@ -180,11 +186,16 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-destructive hover:text-destructive"
-                        onClick={() => removeItem(item.productId)}
+                        onClick={() => removeItemByLineId(item.lineId)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
+                    {item.quantity >= item.maxQuantity && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {t('lineMaxReached')}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

@@ -21,6 +21,8 @@ interface CartItemPricingTier {
 }
 
 export interface CartItem {
+  lineId: string
+  selectionSignature: string
   productId: string
   productName: string
   productImage: string | null
@@ -57,7 +59,12 @@ interface CartContextValue {
   globalStartDate: string | null
   globalEndDate: string | null
   pricingMode: PricingMode
-  addItem: (item: Omit<CartItem, 'startDate' | 'endDate'>, storeSlug: string) => void
+  addItem: (item: Omit<CartItem, 'lineId' | 'selectionSignature' | 'startDate' | 'endDate'>, storeSlug: string) => void
+  removeItemByLineId: (lineId: string) => void
+  updateItemQuantityByLineId: (lineId: string, quantity: number) => void
+  getCartLinesByProductId: (productId: string) => CartItem[]
+  getProductQuantityInCart: (productId: string) => number
+  // Legacy product-level helpers (temporary compatibility)
   removeItem: (productId: string) => void
   updateItemQuantity: (productId: string, quantity: number) => void
   updateItemDates: (productId: string, startDate: string, endDate: string) => void
@@ -89,6 +96,46 @@ interface StoredCart {
   pricingMode: PricingMode
 }
 
+function normalizeSignatureValue(value: string): string {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
+function buildSelectionSignature(
+  selectedAttributes: Record<string, string> | undefined,
+): string {
+  const entries = Object.entries(selectedAttributes || {})
+    .map(([key, value]) => [key.trim().toLowerCase(), normalizeSignatureValue(value)] as const)
+    .filter(([key, value]) => Boolean(key) && Boolean(value))
+    .sort((a, b) => a[0].localeCompare(b[0], 'en'))
+
+  if (entries.length === 0) {
+    return '__default'
+  }
+
+  return entries.map(([key, value]) => `${key}:${value}`).join('|')
+}
+
+function createCartLineId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function normalizeStoredItem(item: CartItem, fallbackPricingMode: PricingMode): CartItem {
+  const selectedAttributes = item.selectedAttributes || undefined
+  const selectionSignature = item.selectionSignature || buildSelectionSignature(selectedAttributes)
+  const lineId = item.lineId || createCartLineId()
+
+  return {
+    ...item,
+    lineId,
+    selectionSignature,
+    pricingMode: item.pricingMode || fallbackPricingMode,
+  }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [storeSlug, setStoreSlug] = useState<string | null>(null)
@@ -103,11 +150,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const stored = localStorage.getItem(CART_STORAGE_KEY)
         if (stored) {
           const parsed: StoredCart = JSON.parse(stored)
-          setItems(parsed.items || [])
+          const parsedPricingMode = parsed.pricingMode || 'day'
+          const normalizedItems = (parsed.items || []).map((item) =>
+            normalizeStoredItem(item, parsedPricingMode),
+          )
+          setItems(normalizedItems)
           setStoreSlug(parsed.storeSlug || null)
           setGlobalStartDate(parsed.globalStartDate || null)
           setGlobalEndDate(parsed.globalEndDate || null)
-          setPricingModeState(parsed.pricingMode || 'day')
+          setPricingModeState(parsedPricingMode)
         }
       } catch {
         // Invalid data, start fresh
@@ -154,7 +205,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addItem = useCallback(
-    (item: Omit<CartItem, 'startDate' | 'endDate'>, newStoreSlug: string) => {
+    (
+      item: Omit<CartItem, 'lineId' | 'selectionSignature' | 'startDate' | 'endDate'>,
+      newStoreSlug: string,
+    ) => {
       // If no global dates set, use default dates (tomorrow to day after)
       const startDate =
         globalStartDate ||
@@ -173,16 +227,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
           return d.toISOString()
         })()
 
-      const fullItem: CartItem = {
-        ...item,
-        startDate,
-        endDate,
-      }
+      const selectionSignature = buildSelectionSignature(item.selectedAttributes)
 
       setStoreSlug((currentSlug) => {
+        const buildFullItem = (): CartItem => ({
+          ...item,
+          lineId: createCartLineId(),
+          selectionSignature,
+          startDate,
+          endDate,
+        })
+
         if (currentSlug && currentSlug !== newStoreSlug) {
           // Different store, clear cart and add new item
-          setItems([fullItem])
+          setItems([buildFullItem()])
           setGlobalStartDate(startDate)
           setGlobalEndDate(endDate)
           return newStoreSlug
@@ -190,21 +248,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
         setItems((currentItems) => {
           const existingIndex = currentItems.findIndex(
-            (i) => i.productId === item.productId
+            (i) => i.productId === item.productId && i.selectionSignature === selectionSignature,
           )
 
           if (existingIndex >= 0) {
-            // Product already exists: replace line metadata (including selected attributes)
-            // and keep quantity bounded by current max quantity.
+            // Same product + same selection: merge quantities.
             const updated = [...currentItems]
+            const existing = updated[existingIndex]
             updated[existingIndex] = {
-              ...fullItem,
-              quantity: Math.min(item.quantity, fullItem.maxQuantity),
+              ...existing,
+              ...item,
+              selectionSignature,
+              quantity: Math.min(existing.quantity + item.quantity, item.maxQuantity),
+              maxQuantity: item.maxQuantity,
+              startDate,
+              endDate,
             }
             return updated
           }
 
-          return [...currentItems, fullItem]
+          return [...currentItems, buildFullItem()]
         })
 
         // Set global dates if not set
@@ -217,25 +280,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
     [globalStartDate, globalEndDate]
   )
 
+  const removeItemByLineId = useCallback((lineId: string) => {
+    setItems((currentItems) =>
+      currentItems.filter((item) => item.lineId !== lineId),
+    )
+  }, [])
+
+  const updateItemQuantityByLineId = useCallback((lineId: string, quantity: number) => {
+    if (quantity <= 0) {
+      removeItemByLineId(lineId)
+      return
+    }
+
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.lineId === lineId
+          ? { ...item, quantity: Math.min(Math.max(1, quantity), item.maxQuantity) }
+          : item,
+      ),
+    )
+  }, [removeItemByLineId])
+
+  const getCartLinesByProductId = useCallback(
+    (productId: string) => {
+      return items.filter((item) => item.productId === productId)
+    },
+    [items],
+  )
+
+  const getProductQuantityInCart = useCallback(
+    (productId: string) => {
+      return items
+        .filter((item) => item.productId === productId)
+        .reduce((sum, item) => sum + item.quantity, 0)
+    },
+    [items],
+  )
+
   const removeItem = useCallback((productId: string) => {
     setItems((currentItems) =>
-      currentItems.filter((item) => item.productId !== productId)
+      currentItems.filter((item) => item.productId !== productId),
     )
   }, [])
 
   const updateItemQuantity = useCallback((productId: string, quantity: number) => {
-    if (quantity <= 0) {
-      removeItem(productId)
-      return
-    }
-    setItems((currentItems) =>
-      currentItems.map((item) =>
-        item.productId === productId
-          ? { ...item, quantity: Math.min(Math.max(1, quantity), item.maxQuantity) }
-          : item
-      )
-    )
-  }, [removeItem])
+    const firstLine = items.find((item) => item.productId === productId)
+    if (!firstLine) return
+    updateItemQuantityByLineId(firstLine.lineId, quantity)
+  }, [items, updateItemQuantityByLineId])
 
   const updateItemDates = useCallback(
     (productId: string, startDate: string, endDate: string) => {
@@ -353,6 +445,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
         globalEndDate,
         pricingMode,
         addItem,
+        removeItemByLineId,
+        updateItemQuantityByLineId,
+        getCartLinesByProductId,
+        getProductQuantityInCart,
         removeItem,
         updateItemQuantity,
         updateItemDates,

@@ -472,7 +472,6 @@
     "home": {
       "viewAll": "Voir tout",
       "products": "Produits",
-
       "header": {
         "greeting": {
           "morning": "Bonne matinée, {name}",
@@ -495,14 +494,12 @@
           "addReservation": "Nouvelle réservation"
         }
       },
-
       "alert": {
         "singlePending": "1 demande en attente",
         "multiplePending": "{count} demandes en attente",
         "description": "Vos clients attendent votre réponse",
         "action": "Traiter"
       },
-
       "setup": {
         "title": "Mise en route",
         "description": "Quelques étapes pour bien démarrer",
@@ -522,7 +519,6 @@
         "viewStore": "Voir ma boutique",
         "createReservation": "Créer une réservation"
       },
-
       "stats": {
         "products": "Produits",
         "customers": "Clients",
@@ -538,7 +534,6 @@
         "vsLastMonth": "vs mois dernier",
         "completed": "{count, plural, one {# terminée} other {# terminées}}"
       },
-
       "activity": {
         "departures": "Départs du jour",
         "departuresDescription": "Réservations à remettre aujourd'hui",
@@ -549,13 +544,11 @@
         "noActivityTitle": "Journée tranquille",
         "noActivityDescription": "Aucune opération prévue aujourd'hui"
       },
-
       "pending": {
         "title": "Demandes en attente",
         "description": "Réservations nécessitant votre validation",
         "empty": "Aucune demande en attente"
       },
-
       "quickActions": {
         "title": "Actions rapides",
         "description": "Gérez votre boutique efficacement",
@@ -568,7 +561,6 @@
           "description": "Ajouter manuellement une réservation"
         }
       },
-
       "storefront": {
         "title": "Votre boutique",
         "description": "Partagez votre lien avec vos clients",
@@ -580,7 +572,6 @@
         "share": "Partager",
         "shareTitle": "Ma boutique de location"
       },
-
       "share": {
         "title": "Partager votre boutique",
         "description": "Envoyez le lien de votre boutique à vos clients",
@@ -2945,7 +2936,7 @@
       "simpleReservationDesc": "Réservez en quelques clics",
       "securePaymentDesc": "Transactions 100% sécurisées",
       "localPickupDesc": "Récupérez votre matériel facilement",
-        "reviewsBadge": "avis"
+      "reviewsBadge": "avis"
     },
     "home": {
       "ourCategories": "Nos catégories",
@@ -3065,7 +3056,11 @@
       "breadcrumb": {
         "home": "Accueil",
         "catalog": "Catalogue"
-      }
+      },
+      "availableForSelection": "Disponibles pour cette sélection : {count}",
+      "quantityPerCombinationHint": "La quantité s'applique à une seule combinaison. Ajoutez une autre combinaison comme ligne séparée.",
+      "inCartCount": "Déjà dans le panier : {count}",
+      "selectionUnavailable": "Aucune combinaison disponible pour cette sélection."
     },
     "accessories": {
       "productAdded": "Ajouté au panier",
@@ -3224,7 +3219,8 @@
         "description": "Tous les articles seront retirés de votre panier.",
         "cancel": "Annuler",
         "confirm": "Vider"
-      }
+      },
+      "lineMaxReached": "Limite atteinte pour cette combinaison"
     },
     "checkout": {
       "title": "Finaliser ma réservation",
@@ -3335,7 +3331,12 @@
         "items": "Produits réservés",
         "emailSent": "Un email de confirmation a été envoyé à {email}",
         "backToStore": "Retour à la boutique"
-      }
+      },
+      "requestedAttributesLabel": "Demandé",
+      "resolvedAttributesLabel": "Final",
+      "lineCheckingAvailability": "Vérification de la disponibilité...",
+      "lineNeedsUpdateInline": "Cette ligne n'est plus disponible. Modifiez la quantité ou les attributs.",
+      "lineNeedsUpdate": "Certaines lignes ne sont plus disponibles. Mettez à jour votre panier avant de valider."
     },
     "confirmation": {
       "title": "Réservation confirmée !",

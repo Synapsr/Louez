@@ -2,7 +2,7 @@
 
 import { Input, type InputProps, Label } from '@louez/ui';
 
-import { useFieldContext, getFieldError } from '@/hooks/form/form-context';
+import { getFieldError, useFieldContext } from '@/hooks/form/form-context';
 
 export function FormInput({
   label,
@@ -33,7 +33,7 @@ export function FormInput({
   );
 
   return (
-    <div className="grid gap-2">
+    <div className="space-y-2">
       {label && (
         <Label htmlFor={field.name} data-error={errors.length > 0}>
           {label}
@@ -53,9 +53,7 @@ export function FormInput({
         <p className="text-muted-foreground text-sm">{description}</p>
       )}
       {error && (
-        <p className="text-destructive text-sm">
-          {getFieldError(error)}
-        </p>
+        <p className="text-destructive text-sm">{getFieldError(error)}</p>
       )}
     </div>
   );

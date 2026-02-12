@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Minus, Plus, ShoppingCart, ImageIcon, ChevronLeft, ChevronRight, TrendingDown, Play } from 'lucide-react'
@@ -21,7 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
+import {
+  allocateAcrossCombinations,
+  cn,
+  formatCurrency,
+  getMaxAvailableForSelection,
+  getTotalAvailableForSelection,
+} from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { useAnalytics } from '@/contexts/analytics-context'
@@ -34,6 +40,23 @@ import {
 } from '@louez/utils'
 import { AccessoriesModal } from './accessories-modal'
 import type { CombinationAvailability } from '@louez/types'
+
+function normalizeSelectionValue(value: string): string {
+  return value.trim().replace(/\s+/g, ' ')
+}
+
+function buildSelectionSignature(attributes: Record<string, string>): string {
+  const entries = Object.entries(attributes)
+    .map(([key, value]) => [key.trim().toLowerCase(), normalizeSelectionValue(value)] as const)
+    .filter(([key, value]) => Boolean(key) && Boolean(value))
+    .sort((a, b) => a[0].localeCompare(b[0], 'en'))
+
+  if (entries.length === 0) {
+    return '__default'
+  }
+
+  return entries.map(([key, value]) => `${key}:${value}`).join('|')
+}
 
 interface PricingTier {
   id: string
@@ -109,11 +132,20 @@ export function ProductModal({
   const t = useTranslations('storefront.productModal')
   const tProduct = useTranslations('storefront.product')
   const currency = useStoreCurrency()
-  const { addItem, getCartItemByProductId, updateItemQuantity, items: cartItems } = useCart()
+  const {
+    addItem,
+    updateItemQuantityByLineId,
+    getProductQuantityInCart,
+    items: cartItems,
+  } = useCart()
   const { trackEvent } = useAnalytics()
 
-  const cartItem = getCartItemByProductId(product.id)
-  const [quantity, setQuantity] = useState(cartItem?.quantity || 1)
+  const cartLines = useMemo(
+    () => cartItems.filter((item) => item.productId === product.id),
+    [cartItems, product.id],
+  )
+  const wasOpenRef = useRef(false)
+  const [quantity, setQuantity] = useState(1)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
@@ -125,22 +157,29 @@ export function ProductModal({
   )
 
   useEffect(() => {
-    if (isOpen) {
-      setQuantity(cartItem?.quantity || 1)
-      setSelectedImageIndex(0)
-      setSelectedAttributes(cartItem?.selectedAttributes || {})
-      // Track product view when modal opens
-      trackEvent({
-        eventType: 'product_view',
-        metadata: {
-          productId: product.id,
-          productName: product.name,
-          price: product.price,
-          categoryName: product.category?.name,
-        },
-      })
+    const isOpening = isOpen && !wasOpenRef.current
+    wasOpenRef.current = isOpen
+
+    if (!isOpening) return
+
+    setSelectedImageIndex(0)
+    if (cartLines.length === 1) {
+      setSelectedAttributes(cartLines[0].selectedAttributes || {})
+    } else {
+      setSelectedAttributes({})
     }
-  }, [isOpen, cartItem?.quantity, trackEvent, product.id, product.name, product.price, product.category?.name])
+    setQuantity(1)
+    // Track product view when modal opens
+    trackEvent({
+      eventType: 'product_view',
+      metadata: {
+        productId: product.id,
+        productName: product.name,
+        price: product.price,
+        categoryName: product.category?.name,
+      },
+    })
+  }, [isOpen, cartLines, trackEvent, product.id, product.name, product.price, product.category?.name])
 
   const price = parseFloat(product.price)
   const deposit = product.deposit ? parseFloat(product.deposit) : 0
@@ -171,7 +210,6 @@ export function ProductModal({
   const discountPercent = priceResult.discountPercent
 
   const maxQuantity = Math.min(availableQuantity, product.quantity)
-  const isInCart = !!cartItem
   const isUnavailable = availableQuantity === 0
   const bookingAttributeAxes = (product.bookingAttributeAxes || [])
     .slice()
@@ -203,6 +241,28 @@ export function ProductModal({
     acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
     return acc
   }, {})
+  const hasBookingAttributes = bookingAttributeAxes.length > 0
+  const selectionSignature = useMemo(
+    () => buildSelectionSignature(selectedAttributes),
+    [selectedAttributes],
+  )
+  const hasExplicitSelection = Object.keys(selectedAttributes).length > 0
+  const matchingCartLine = cartLines.find((line) => line.selectionSignature === selectionSignature)
+  const isInCart = Boolean(matchingCartLine)
+  const productCartQuantity = getProductQuantityInCart(product.id)
+  const selectionMaxQuantity = hasBookingAttributes
+    ? (
+        (availableCombinations.length > 0
+          ? (
+              hasExplicitSelection
+                ? getMaxAvailableForSelection(availableCombinations, selectedAttributes)
+                : getTotalAvailableForSelection(availableCombinations, selectedAttributes)
+            )
+          : maxQuantity)
+      )
+    : maxQuantity
+  const effectiveMaxQuantity = Math.min(maxQuantity, selectionMaxQuantity)
+  const isSelectionUnavailable = hasBookingAttributes && effectiveMaxQuantity === 0
 
   const images = product.images && product.images.length > 0 ? product.images : []
 
@@ -215,16 +275,90 @@ export function ProductModal({
   const isVideoSelected = hasVideo && selectedImageIndex === images.length
 
   const handleQuantityChange = (delta: number) => {
-    const newQty = Math.max(1, Math.min(quantity + delta, maxQuantity))
+    const cap = Math.max(1, effectiveMaxQuantity)
+    const newQty = Math.max(1, Math.min(quantity + delta, cap))
     setQuantity(newQty)
   }
 
-  const handleAddToCart = () => {
-    // Re-check cart state to avoid race conditions
-    const currentCartItem = getCartItemByProductId(product.id)
+  useEffect(() => {
+    if (!isOpen) return
 
-    if (currentCartItem) {
-      updateItemQuantity(product.id, quantity)
+    if (matchingCartLine) {
+      setQuantity(Math.min(matchingCartLine.quantity, Math.max(1, effectiveMaxQuantity)))
+      return
+    }
+
+    if (effectiveMaxQuantity > 0 && quantity > effectiveMaxQuantity) {
+      setQuantity(effectiveMaxQuantity)
+    }
+  }, [isOpen, matchingCartLine, effectiveMaxQuantity, quantity])
+
+  const handleAddToCart = () => {
+    if (hasBookingAttributes && effectiveMaxQuantity <= 0) {
+      return
+    }
+
+    if (hasBookingAttributes && !hasExplicitSelection && availableCombinations.length > 0) {
+      const allocations = allocateAcrossCombinations(
+        bookingAttributeAxes,
+        availableCombinations,
+        selectedAttributes,
+        quantity,
+      )
+
+      if (!allocations || allocations.length === 0) {
+        return
+      }
+
+      for (const allocation of allocations) {
+        addItem(
+          {
+            productId: product.id,
+            productName: product.name,
+            productImage: images[0] || null,
+            price,
+            deposit,
+            quantity: allocation.quantity,
+            maxQuantity: Math.max(1, allocation.combination.availableQuantity),
+            pricingMode: effectivePricingMode,
+            pricingTiers: product.pricingTiers?.map((tier) => ({
+              id: tier.id,
+              minDuration: tier.minDuration,
+              discountPercent: typeof tier.discountPercent === 'string'
+                ? parseFloat(tier.discountPercent)
+                : tier.discountPercent,
+            })),
+            productPricingMode: product.pricingMode,
+            selectedAttributes: allocation.combination.selectedAttributes,
+          },
+          storeSlug,
+        )
+      }
+
+      trackEvent({
+        eventType: 'add_to_cart',
+        metadata: {
+          productId: product.id,
+          productName: product.name,
+          quantity,
+          price: product.price,
+          totalPrice,
+          categoryName: product.category?.name,
+        },
+      })
+
+      if (availableAccessories.length > 0) {
+        onClose()
+        setAccessoriesModalOpen(true)
+      } else {
+        toastManager.add({ title: tProduct('addedToCart', { name: product.name }), type: 'success' })
+        onClose()
+      }
+      return
+    }
+
+    if (matchingCartLine) {
+      updateItemQuantityByLineId(matchingCartLine.lineId, quantity)
       // Track update quantity event
       trackEvent({
         eventType: 'update_quantity',
@@ -246,7 +380,7 @@ export function ProductModal({
           price,
           deposit,
           quantity,
-          maxQuantity,
+          maxQuantity: Math.max(1, effectiveMaxQuantity),
           pricingMode: effectivePricingMode,
           pricingTiers: product.pricingTiers?.map((tier) => ({
             id: tier.id,
@@ -600,6 +734,14 @@ export function ProductModal({
                   ))}
                 </div>
                 <p className="text-muted-foreground mt-2 text-xs">{tProduct('bookingAttributesHelp')}</p>
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium">
+                    {tProduct('availableForSelection', { count: effectiveMaxQuantity })}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {tProduct('quantityPerCombinationHint')}
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -652,7 +794,7 @@ export function ProductModal({
                 size="icon"
                 className="h-10 w-10 rounded-lg hover:bg-background"
                 onClick={() => handleQuantityChange(1)}
-                disabled={quantity >= maxQuantity || isUnavailable}
+                disabled={quantity >= effectiveMaxQuantity || isUnavailable || isSelectionUnavailable}
               >
                 <Plus className="h-4 w-4" />
               </Button>
@@ -661,7 +803,7 @@ export function ProductModal({
             {/* Add to cart button */}
             <Button
               onClick={handleAddToCart}
-              disabled={isUnavailable}
+              disabled={isUnavailable || isSelectionUnavailable}
               size="lg"
               className="flex-1 h-12 text-base font-semibold rounded-xl"
             >
@@ -669,6 +811,11 @@ export function ProductModal({
               {isInCart ? t('updateCart') : t('addToCart')}
             </Button>
           </div>
+          {productCartQuantity > 0 && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              {tProduct('inCartCount', { count: productCartQuantity })}
+            </p>
+          )}
         </div>
       </DialogPopup>
     </Dialog>

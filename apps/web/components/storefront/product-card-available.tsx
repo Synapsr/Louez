@@ -89,13 +89,19 @@ export function ProductCardAvailable({
 }: ProductCardAvailableProps) {
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
-  const { addItem, getCartItemByProductId, updateItemQuantity, isProductInCart } = useCart()
+  const {
+    addItem,
+    getCartLinesByProductId,
+    getProductQuantityInCart,
+    updateItemQuantityByLineId,
+  } = useCart()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
 
-  const cartItem = getCartItemByProductId(product.id)
-  const inCart = isProductInCart(product.id)
-  const cartQuantity = cartItem?.quantity || 0
+  const cartLines = getCartLinesByProductId(product.id)
+  const firstLine = cartLines[0]
+  const cartQuantity = getProductQuantityInCart(product.id)
+  const inCart = cartQuantity > 0
 
   const price = parseFloat(product.price)
   const deposit = product.deposit ? parseFloat(product.deposit) : 0
@@ -126,7 +132,9 @@ export function ProductCardAvailable({
         : 'available'
 
   const maxQuantity = Math.min(availableQuantity, product.quantity)
-  const canAddMore = cartQuantity < maxQuantity
+  const firstLineQuantity = firstLine?.quantity || 0
+  const firstLineMaxQuantity = firstLine?.maxQuantity || maxQuantity
+  const canAddMore = firstLineQuantity < firstLineMaxQuantity
   const hasBookingAttributes = (product.bookingAttributeAxes?.length || 0) > 0
 
   // Filter available accessories (active with stock)
@@ -141,8 +149,8 @@ export function ProductCardAvailable({
     }
 
     if (inCart) {
-      if (canAddMore) {
-        updateItemQuantity(product.id, cartQuantity + 1)
+      if (firstLine && canAddMore) {
+        updateItemQuantityByLineId(firstLine.lineId, firstLine.quantity + 1)
         toastManager.add({ title: t('addedToCart', { name: product.name }), type: 'success' })
       }
     } else {
@@ -179,8 +187,8 @@ export function ProductCardAvailable({
 
   const handleDecrement = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (cartQuantity > 0) {
-      updateItemQuantity(product.id, cartQuantity - 1)
+    if (firstLine && firstLine.quantity > 0) {
+      updateItemQuantityByLineId(firstLine.lineId, firstLine.quantity - 1)
     }
   }
 
@@ -235,7 +243,7 @@ export function ProductCardAvailable({
             <>
               {/* Mobile: always visible floating button */}
               <div className="absolute bottom-1.5 right-1.5 md:hidden">
-                {inCart ? (
+                {inCart && !hasBookingAttributes ? (
                   <div className="flex items-center gap-1 bg-background/95 backdrop-blur rounded-full shadow-lg border p-0.5">
                     <Button
                       variant="ghost"
@@ -260,16 +268,20 @@ export function ProductCardAvailable({
                   <Button
                     size="icon"
                     className="h-9 w-9 rounded-full shadow-lg"
-                    onClick={handleQuickAdd}
+                    onClick={hasBookingAttributes ? handleOpenModal : handleQuickAdd}
                   >
-                    <Plus className="h-4 w-4" />
+                    {hasBookingAttributes && inCart ? (
+                      <span className="text-xs font-semibold">{cartQuantity}</span>
+                    ) : (
+                      <Plus className="h-4 w-4" />
+                    )}
                   </Button>
                 )}
               </div>
 
               {/* Desktop: hover overlay */}
               <div className="hidden md:block absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                {inCart ? (
+                {inCart && !hasBookingAttributes ? (
                   <div className="flex items-center justify-center gap-2">
                     <Button
                       variant="secondary"
@@ -293,10 +305,19 @@ export function ProductCardAvailable({
                 ) : (
                   <Button
                     className="w-full h-9"
-                    onClick={handleQuickAdd}
+                    onClick={hasBookingAttributes ? handleOpenModal : handleQuickAdd}
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {t('addToCart')}
+                    {hasBookingAttributes && inCart ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        {cartQuantity}
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-1" />
+                        {t('addToCart')}
+                      </>
+                    )}
                   </Button>
                 )}
               </div>

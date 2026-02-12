@@ -10,7 +10,11 @@ import { ArrowLeft, Check, ImageIcon } from 'lucide-react'
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Separator } from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
+import {
+  buildCombinationKey,
+  formatCurrency,
+  getDeterministicCombinationSortValue,
+} from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { ProductCard } from '@/components/storefront/product-card'
@@ -212,6 +216,38 @@ export default async function ProductPage({ params }: ProductPageProps) {
     acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
     return acc
   }, {})
+  const bookingCombinations = (() => {
+    const byCombination = new Map<string, { selectedAttributes: Record<string, string>; availableQuantity: number }>()
+
+    for (const unit of product.units || []) {
+      if (unit.status !== 'available') continue
+
+      const selectedAttributes = (unit.attributes as Record<string, string> | null | undefined) || {}
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, selectedAttributes)
+      const current = byCombination.get(combinationKey)
+      if (!current) {
+        byCombination.set(combinationKey, {
+          selectedAttributes,
+          availableQuantity: 1,
+        })
+      } else {
+        current.availableQuantity += 1
+        byCombination.set(combinationKey, current)
+      }
+    }
+
+    return [...byCombination.entries()]
+      .map(([combinationKey, value]) => ({
+        combinationKey,
+        selectedAttributes: value.selectedAttributes,
+        availableQuantity: value.availableQuantity,
+      }))
+      .sort((a, b) => {
+        const sortA = getDeterministicCombinationSortValue(bookingAttributeAxes, a.selectedAttributes)
+        const sortB = getDeterministicCombinationSortValue(bookingAttributeAxes, b.selectedAttributes)
+        return sortA.localeCompare(sortB, 'en')
+      })
+  })()
 
   // Prepare data for JSON-LD schemas
   const storeForSchema = {
@@ -366,6 +402,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
               bookingAttributeAxes={bookingAttributeAxes}
               bookingAttributeValues={bookingAttributeValues}
+              bookingCombinations={bookingCombinations}
             />
           )}
 

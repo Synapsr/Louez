@@ -80,6 +80,15 @@ const DEFAULT_DELIVERY_ADDRESS: DeliveryAddress = {
   longitude: null,
 };
 
+type LineResolutionState =
+  | { status: 'loading' }
+  | {
+      status: 'resolved';
+      combinationKey: string;
+      selectedAttributes: Record<string, string>;
+    }
+  | { status: 'invalid' };
+
 class CheckoutSubmitError extends Error {
   readonly params?: Record<string, string | number>;
 
@@ -144,15 +153,7 @@ export function CheckoutForm({
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   );
-  const [resolvedCombinations, setResolvedCombinations] = useState<
-    Record<
-      string,
-      {
-        combinationKey: string;
-        selectedAttributes: Record<string, string>;
-      }
-    >
-  >({});
+  const [lineResolutions, setLineResolutions] = useState<Record<string, LineResolutionState>>({});
   const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
@@ -202,14 +203,16 @@ export function CheckoutForm({
 
     async function resolveCombinations() {
       if (items.length === 0) {
-        setResolvedCombinations({});
+        setLineResolutions({});
         return;
       }
 
-      const nextResolved: Record<
-        string,
-        { combinationKey: string; selectedAttributes: Record<string, string> }
-      > = {};
+      const loadingState = Object.fromEntries(
+        items.map((item) => [item.lineId, { status: 'loading' as const }]),
+      );
+      setLineResolutions(loadingState);
+
+      const nextResolved: Record<string, LineResolutionState> = {};
 
       await Promise.all(
         items.map(async (item) => {
@@ -222,18 +225,19 @@ export function CheckoutForm({
                 endDate: item.endDate,
                 selectedAttributes: item.selectedAttributes,
               });
-            nextResolved[item.productId] = {
+            nextResolved[item.lineId] = {
+              status: 'resolved',
               combinationKey: result.combinationKey,
               selectedAttributes: result.selectedAttributes,
             };
           } catch {
-            // Resolution can fail while user is editing dates/quantities.
+            nextResolved[item.lineId] = { status: 'invalid' };
           }
         }),
       );
 
       if (!cancelled) {
-        setResolvedCombinations(nextResolved);
+        setLineResolutions(nextResolved);
       }
     }
 
@@ -247,8 +251,8 @@ export function CheckoutForm({
   const itemsWithResolved = useMemo(
     () =>
       items.map((item) => {
-        const resolved = resolvedCombinations[item.productId];
-        if (!resolved) {
+        const resolved = lineResolutions[item.lineId];
+        if (!resolved || resolved.status !== 'resolved') {
           return item;
         }
 
@@ -258,13 +262,29 @@ export function CheckoutForm({
           resolvedAttributes: resolved.selectedAttributes,
         };
       }),
-    [items, resolvedCombinations],
+    [items, lineResolutions],
   );
+  const hasInvalidLines = useMemo(
+    () => items.some((item) => lineResolutions[item.lineId]?.status === 'invalid'),
+    [items, lineResolutions],
+  );
+  const hasUnresolvedLines = useMemo(
+    () =>
+      items.some((item) => {
+        const state = lineResolutions[item.lineId];
+        return !state || state.status === 'loading';
+      }),
+    [items, lineResolutions],
+  );
+  const canSubmitCheckout = !hasInvalidLines && !hasUnresolvedLines;
 
   const createReservationMutation = useMutation({
     mutationFn: async (value: CheckoutFormValues) => {
       if (items.length === 0) {
         throw new CheckoutSubmitError('emptyCart');
+      }
+      if (!canSubmitCheckout) {
+        throw new CheckoutSubmitError('lineNeedsUpdate');
       }
 
       const payload = buildReservationPayload({
@@ -306,6 +326,10 @@ export function CheckoutForm({
       if (error instanceof CheckoutSubmitError) {
         if (error.message === 'emptyCart') {
           toastManager.add({ title: t('emptyCart'), type: 'error' });
+          return;
+        }
+        if (error.message === 'lineNeedsUpdate') {
+          toastManager.add({ title: t('lineNeedsUpdate'), type: 'error' });
           return;
         }
 
@@ -441,18 +465,21 @@ export function CheckoutForm({
         fieldsToValidate.push('companyName');
       }
 
-      const results = await Promise.all(
+      await Promise.all(
         fieldsToValidate.map((fieldName) =>
           form.validateField(fieldName, 'submit'),
         ),
       );
 
-      return results.every((result) => result.length === 0);
+      return fieldsToValidate.every(
+        (fieldName) =>
+          (form.getFieldMeta(fieldName)?.errors?.length ?? 0) === 0,
+      );
     }
 
     if (currentStep === 'confirm') {
-      const result = await form.validateField('acceptCgv', 'submit');
-      return result.length === 0;
+      await form.validateField('acceptCgv', 'submit');
+      return (form.getFieldMeta('acceptCgv')?.errors?.length ?? 0) === 0;
     }
 
     return true;
@@ -827,7 +854,7 @@ export function CheckoutForm({
                               type="submit"
                               size="lg"
                               className="flex-1"
-                              disabled={isSubmitting}
+                              disabled={isSubmitting || !canSubmitCheckout}
                             >
                               {isSubmitting ? (
                                 <>
@@ -884,6 +911,7 @@ export function CheckoutForm({
           deliveryOption={deliveryOption}
           deliveryDistance={deliveryDistance}
           deliveryFee={deliveryFee}
+          lineResolutions={lineResolutions}
         />
       </div>
     </div>
