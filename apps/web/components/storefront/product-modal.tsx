@@ -23,10 +23,11 @@ import {
 } from '@louez/ui'
 import {
   allocateAcrossCombinations,
+  buildCombinationKey,
   cn,
   formatCurrency,
-  getMaxAvailableForSelection,
-  getTotalAvailableForSelection,
+  getDeterministicCombinationSortValue,
+  getSelectionCapacity,
 } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
@@ -111,7 +112,6 @@ interface ProductModalProps {
   isOpen: boolean
   onClose: () => void
   storeSlug: string
-  pricingMode: PricingMode
   availableQuantity: number
   startDate: string
   endDate: string
@@ -123,7 +123,6 @@ export function ProductModal({
   isOpen,
   onClose,
   storeSlug,
-  pricingMode,
   availableQuantity,
   startDate,
   endDate,
@@ -242,26 +241,66 @@ export function ProductModal({
     return acc
   }, {})
   const hasBookingAttributes = bookingAttributeAxes.length > 0
+  const fallbackCombinations: CombinationAvailability[] = (() => {
+    if (!hasBookingAttributes) {
+      return []
+    }
+
+    const byCombination = new Map<
+      string,
+      { selectedAttributes: Record<string, string>; availableQuantity: number }
+    >()
+
+    for (const unit of product.units || []) {
+      if ((unit.status || 'available') !== 'available') continue
+
+      const selectedAttributes = (unit.attributes || {}) as Record<string, string>
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, selectedAttributes)
+      const current = byCombination.get(combinationKey)
+      if (!current) {
+        byCombination.set(combinationKey, {
+          selectedAttributes,
+          availableQuantity: 1,
+        })
+      } else {
+        current.availableQuantity += 1
+        byCombination.set(combinationKey, current)
+      }
+    }
+
+    return [...byCombination.entries()]
+      .map(([combinationKey, value]) => ({
+        combinationKey,
+        selectedAttributes: value.selectedAttributes,
+        availableQuantity: value.availableQuantity,
+        totalQuantity: value.availableQuantity,
+        reservedQuantity: 0,
+        status: 'available' as const,
+      }))
+      .sort((a, b) => {
+        const sortA = getDeterministicCombinationSortValue(bookingAttributeAxes, a.selectedAttributes)
+        const sortB = getDeterministicCombinationSortValue(bookingAttributeAxes, b.selectedAttributes)
+        return sortA.localeCompare(sortB, 'en')
+      })
+  })()
+  const effectiveCombinations =
+    availableCombinations.length > 0 ? availableCombinations : fallbackCombinations
   const selectionSignature = useMemo(
     () => buildSelectionSignature(selectedAttributes),
     [selectedAttributes],
   )
-  const hasExplicitSelection = Object.keys(selectedAttributes).length > 0
   const matchingCartLine = cartLines.find((line) => line.selectionSignature === selectionSignature)
   const isInCart = Boolean(matchingCartLine)
   const productCartQuantity = getProductQuantityInCart(product.id)
-  const selectionMaxQuantity = hasBookingAttributes
-    ? (
-        (availableCombinations.length > 0
-          ? (
-              hasExplicitSelection
-                ? getMaxAvailableForSelection(availableCombinations, selectedAttributes)
-                : getTotalAvailableForSelection(availableCombinations, selectedAttributes)
-            )
-          : maxQuantity)
-      )
+  const selectionCapacity = getSelectionCapacity(
+    bookingAttributeAxes,
+    effectiveCombinations,
+    selectedAttributes,
+  )
+  const shouldSplitAcrossCombinations = hasBookingAttributes && selectionCapacity.allocationMode === 'split'
+  const effectiveMaxQuantity = hasBookingAttributes
+    ? Math.min(maxQuantity, selectionCapacity.capacity)
     : maxQuantity
-  const effectiveMaxQuantity = Math.min(maxQuantity, selectionMaxQuantity)
   const isSelectionUnavailable = hasBookingAttributes && effectiveMaxQuantity === 0
 
   const images = product.images && product.images.length > 0 ? product.images : []
@@ -298,10 +337,10 @@ export function ProductModal({
       return
     }
 
-    if (hasBookingAttributes && !hasExplicitSelection && availableCombinations.length > 0) {
+    if (shouldSplitAcrossCombinations) {
       const allocations = allocateAcrossCombinations(
         bookingAttributeAxes,
-        availableCombinations,
+        effectiveCombinations,
         selectedAttributes,
         quantity,
       )
@@ -319,7 +358,7 @@ export function ProductModal({
             price,
             deposit,
             quantity: allocation.quantity,
-            maxQuantity: Math.max(1, allocation.combination.availableQuantity),
+            maxQuantity: Math.max(1, allocation.combination.availableQuantity || 0),
             pricingMode: effectivePricingMode,
             pricingTiers: product.pricingTiers?.map((tier) => ({
               id: tier.id,
@@ -742,7 +781,9 @@ export function ProductModal({
                     {tProduct('availableForSelection', { count: effectiveMaxQuantity })}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {tProduct('quantityPerCombinationHint')}
+                    {selectionCapacity.allocationMode === 'single'
+                      ? tProduct('quantityPerCombinationHint')
+                      : tProduct('quantityCanSplitHint')}
                   </p>
                 </div>
               </div>

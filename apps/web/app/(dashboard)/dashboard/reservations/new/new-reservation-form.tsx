@@ -55,7 +55,7 @@ import { Checkbox } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 import { Alert, AlertDescription } from '@louez/ui'
 import { createManualReservation } from '../actions'
-import type { PricingMode } from '@louez/types'
+import type { PricingMode, UnitAttributes } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer'
 import { NewReservationStepProducts } from './components/new-reservation-step-products'
@@ -63,6 +63,7 @@ import { NewReservationStepReview } from './components/new-reservation-step-revi
 import { useNewReservationPricing } from './hooks/use-new-reservation-pricing'
 import { useNewReservationStepFlow } from './hooks/use-new-reservation-step-flow'
 import { useNewReservationWarnings } from './hooks/use-new-reservation-warnings'
+import { getLineQuantityConstraints } from './utils/variant-lines'
 import type {
   CustomItem,
   NewReservationFormComponentApi,
@@ -71,6 +72,14 @@ import type {
   SelectedProduct,
   StepFieldName,
 } from './types'
+
+function createLineId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+}
 
 export function NewReservationForm({
   customers,
@@ -111,14 +120,14 @@ export function NewReservationForm({
   // Price override dialog state
   const [priceOverrideDialog, setPriceOverrideDialog] = useState<{
     isOpen: boolean
-    productId: string | null
+    lineId: string | null
     currentPrice: number
     newPrice: string
     pricingMode: PricingMode
     duration: number
   }>({
     isOpen: false,
-    productId: null,
+    lineId: null,
     currentPrice: 0,
     newPrice: '',
     pricingMode: 'day',
@@ -358,30 +367,167 @@ export function NewReservationForm({
   })
 
   const addProduct = (productId: string) => {
-    const existing = selectedProducts.find((p) => p.productId === productId)
-    if (existing) {
-      setSelectedProducts(
-        selectedProducts.map((p) =>
-          p.productId === productId ? { ...p, quantity: p.quantity + 1 } : p
-        )
-      )
-    } else {
-      setSelectedProducts([...selectedProducts, { productId, quantity: 1 }])
+    const product = products.find((item) => item.id === productId)
+    if (!product) {
+      return
     }
+
+    const bookingAttributeAxes = product.bookingAttributeAxes || []
+    const supportsOptionLines = product.trackUnits && bookingAttributeAxes.length > 0
+
+    setSelectedProducts((prev) => {
+      if (supportsOptionLines) {
+        const nextLine: SelectedProduct = {
+          lineId: createLineId(),
+          productId,
+          quantity: 1,
+        }
+        const productLines = [...prev.filter((line) => line.productId === productId), nextLine]
+        const constraints = getLineQuantityConstraints(product, nextLine, productLines)
+        if (constraints.lineMaxQuantity <= 0) {
+          return prev
+        }
+
+        return [
+          ...prev,
+          nextLine,
+        ]
+      }
+
+      const existingLine = prev.find((line) => line.productId === productId)
+      if (!existingLine) {
+        const nextLine: SelectedProduct = {
+          lineId: createLineId(),
+          productId,
+          quantity: 1,
+        }
+        const constraints = getLineQuantityConstraints(product, nextLine, [nextLine])
+        if (constraints.lineMaxQuantity <= 0) {
+          return prev
+        }
+
+        return [
+          ...prev,
+          nextLine,
+        ]
+      }
+
+      const productLines = prev.filter((line) => line.productId === productId)
+      const constraints = getLineQuantityConstraints(product, existingLine, productLines)
+      const nextQuantity = Math.min(
+        existingLine.quantity + 1,
+        Math.max(existingLine.quantity, constraints.lineMaxQuantity),
+      )
+
+      return prev.map((line) => {
+        if (line.lineId !== existingLine.lineId) {
+          return line
+        }
+
+        return {
+          ...line,
+          quantity: nextQuantity,
+        }
+      })
+    })
   }
 
-  const updateQuantity = (productId: string, delta: number) => {
-    setSelectedProducts(
-      selectedProducts
-        .map((p) => {
-          if (p.productId === productId) {
-            const newQuantity = p.quantity + delta
-            return newQuantity > 0 ? { ...p, quantity: newQuantity } : null
-          }
-          return p
-        })
-        .filter(Boolean) as SelectedProduct[]
-    )
+  const updateQuantity = (lineId: string, delta: number) => {
+    setSelectedProducts((prev) => {
+      const currentLine = prev.find((line) => line.lineId === lineId)
+      if (!currentLine) {
+        return prev
+      }
+
+      if (delta < 0 && currentLine.quantity + delta <= 0) {
+        return prev.filter((line) => line.lineId !== lineId)
+      }
+
+      const product = products.find((item) => item.id === currentLine.productId)
+      if (!product) {
+        return prev
+      }
+
+      const productLines = prev.filter((line) => line.productId === currentLine.productId)
+      const constraints = getLineQuantityConstraints(product, currentLine, productLines)
+      const nextQuantity = Math.max(
+        1,
+        Math.min(currentLine.quantity + delta, Math.max(1, constraints.lineMaxQuantity)),
+      )
+
+      if (nextQuantity === currentLine.quantity) {
+        return prev
+      }
+
+      return prev.map((line) => {
+        if (line.lineId !== lineId) {
+          return line
+        }
+
+        return {
+          ...line,
+          quantity: nextQuantity,
+        }
+      })
+    })
+  }
+
+  const updateSelectedAttributes = (
+    lineId: string,
+    axisKey: string,
+    value: string | undefined
+  ) => {
+    setSelectedProducts((prev) => {
+      const currentLine = prev.find((line) => line.lineId === lineId)
+      if (!currentLine) {
+        return prev
+      }
+
+      const product = products.find((item) => item.id === currentLine.productId)
+      if (!product) {
+        return prev
+      }
+
+      const nextAttributes: UnitAttributes = {
+        ...(currentLine.selectedAttributes || {}),
+      }
+
+      if (!value || value === '__none__') {
+        delete nextAttributes[axisKey]
+      } else {
+        nextAttributes[axisKey] = value
+      }
+
+      const nextLine: SelectedProduct = {
+        ...currentLine,
+        selectedAttributes: Object.keys(nextAttributes).length > 0 ? nextAttributes : undefined,
+      }
+
+      const productLines = prev
+        .filter((line) => line.productId === currentLine.productId)
+        .map((line) => (line.lineId === lineId ? nextLine : line))
+      const constraints = getLineQuantityConstraints(product, nextLine, productLines)
+      const nextQuantity = Math.min(nextLine.quantity, constraints.lineMaxQuantity)
+
+      const normalizedLine: SelectedProduct =
+        nextQuantity > 0
+          ? {
+              ...nextLine,
+              quantity: Math.max(1, nextQuantity),
+            }
+          : {
+              ...nextLine,
+              quantity: 0,
+            }
+
+      return prev
+        .map((line) => (line.lineId === lineId ? normalizedLine : line))
+        .filter((line) => line.quantity > 0)
+    })
+  }
+
+  const removeSelectedProductLine = (lineId: string) => {
+    setSelectedProducts((prev) => prev.filter((line) => line.lineId !== lineId))
   }
 
   // Custom item management
@@ -525,15 +671,15 @@ export function NewReservationForm({
 
   // Price override functions
   const openPriceOverrideDialog = (
-    productId: string,
+    lineId: string,
     calculatedPrice: number,
     pricingMode: PricingMode,
     duration: number
   ) => {
-    const existingOverride = selectedProducts.find((p) => p.productId === productId)?.priceOverride
+    const existingOverride = selectedProducts.find((line) => line.lineId === lineId)?.priceOverride
     setPriceOverrideDialog({
       isOpen: true,
-      productId,
+      lineId,
       currentPrice: calculatedPrice,
       newPrice: existingOverride ? existingOverride.unitPrice.toString() : calculatedPrice.toString(),
       pricingMode,
@@ -544,7 +690,7 @@ export function NewReservationForm({
   const closePriceOverrideDialog = () => {
     setPriceOverrideDialog({
       isOpen: false,
-      productId: null,
+      lineId: null,
       currentPrice: 0,
       newPrice: '',
       pricingMode: 'day',
@@ -553,7 +699,7 @@ export function NewReservationForm({
   }
 
   const applyPriceOverride = () => {
-    if (!priceOverrideDialog.productId) return
+    if (!priceOverrideDialog.lineId) return
 
     const newPrice = parseFloat(priceOverrideDialog.newPrice)
     if (isNaN(newPrice)) {
@@ -561,18 +707,18 @@ export function NewReservationForm({
       return
     }
 
-    setSelectedProducts(
-      selectedProducts.map((p) => {
-        if (p.productId === priceOverrideDialog.productId) {
+    setSelectedProducts((prev) =>
+      prev.map((line) => {
+        if (line.lineId === priceOverrideDialog.lineId) {
           // Si le nouveau prix est égal au prix calculé, on supprime l'override
           if (Math.abs(newPrice - priceOverrideDialog.currentPrice) < 0.01) {
-            const nextProduct = { ...p }
-            delete nextProduct.priceOverride
-            return nextProduct
+            const nextLine = { ...line }
+            delete nextLine.priceOverride
+            return nextLine
           }
-          return { ...p, priceOverride: { unitPrice: newPrice } }
+          return { ...line, priceOverride: { unitPrice: newPrice } }
         }
-        return p
+        return line
       })
     )
 
@@ -803,6 +949,8 @@ export function NewReservationForm({
               deposit={deposit}
               addProduct={addProduct}
               updateQuantity={updateQuantity}
+              updateSelectedAttributes={updateSelectedAttributes}
+              removeSelectedProductLine={removeSelectedProductLine}
               onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
               updateCustomItemQuantity={updateCustomItemQuantity}
               removeCustomItem={removeCustomItem}

@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
 
-import type { BusinessHours, PricingMode } from '@louez/types'
+import type { BookingAttributeAxis, BusinessHours, PricingMode, UnitAttributes } from '@louez/types'
 
 export interface Customer {
   id: string
@@ -25,12 +25,20 @@ export interface Product {
   quantity: number
   pricingMode: PricingMode | null
   images: string[] | null
+  trackUnits: boolean
+  bookingAttributeAxes: BookingAttributeAxis[] | null
+  units: Array<{
+    status: 'available' | 'maintenance' | 'retired'
+    attributes: UnitAttributes | null
+  }>
   pricingTiers: ProductPricingTier[]
 }
 
 export interface SelectedProduct {
+  lineId: string
   productId: string
   quantity: number
+  selectedAttributes?: UnitAttributes
   priceOverride?: {
     unitPrice: number
   }

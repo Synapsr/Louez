@@ -993,9 +993,20 @@
         "noProductsHint": "Use the menu above to add products",
         "perHour": "h",
         "perDay": "d",
+        "perWeek": "week",
         "available": "available",
         "outOfStock": "Out of stock",
         "add": "Add",
+        "bookingAttributes": "Options",
+        "bookingAttributeNone": "Any",
+        "bookingAttributesNoOptions": "No available values for {attribute}",
+        "bookingAttributesHelp": "Select options (size, color, etc.) to target a specific combination.",
+        "addOptionLine": "Add option line",
+        "lineLabel": "Line {index}",
+        "availableForSelection": "Available for this option: {count}",
+        "lineMaxReached": "Max reached for this option. Add another option line.",
+        "quantityPerCombinationHint": "Quantity applies to the selected option only. Add another option as a separate line.",
+        "quantityCanSplitHint": "Without full option selection, quantity can be allocated across matching options.",
         "internalNotes": "Internal notes",
         "notesPlaceholder": "Notes about this reservation (not visible to customer)",
         "notesHint": "These notes will not be visible to the customer",
@@ -3059,7 +3070,8 @@
         "catalog": "Catalog"
       },
       "availableForSelection": "Available for this selection: {count}",
-      "quantityPerCombinationHint": "Quantity applies to one combination. Add another combination as a separate line.",
+      "quantityPerCombinationHint": "Quantity applies to the selected option only. Add another option as a separate line.",
+      "quantityCanSplitHint": "Quantity can be split across matching options and added as separate lines.",
       "inCartCount": "Already in cart: {count}",
       "selectionUnavailable": "No combination is available for this selection."
     },
@@ -3221,7 +3233,7 @@
         "cancel": "Cancel",
         "confirm": "Clear"
       },
-      "lineMaxReached": "Maximum reached for this combination"
+      "lineMaxReached": "Maximum reached for this option. Add another option as a separate line."
     },
     "checkout": {
       "title": "Complete my reservation",

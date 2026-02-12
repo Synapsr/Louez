@@ -58,7 +58,6 @@ interface ProductCardAvailableProps {
     }>
   }
   storeSlug: string
-  pricingMode: PricingMode
   availableQuantity: number
   startDate: string
   endDate: string
@@ -80,7 +79,6 @@ function normalizeTiers(tiers?: PricingTier[]): { id: string; minDuration: numbe
 export function ProductCardAvailable({
   product,
   storeSlug,
-  pricingMode,
   availableQuantity,
   startDate,
   endDate,
@@ -383,7 +381,6 @@ export function ProductCardAvailable({
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         storeSlug={storeSlug}
-        pricingMode={effectivePricingMode}
         availableQuantity={availableQuantity}
         startDate={startDate}
         endDate={endDate}

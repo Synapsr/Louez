@@ -154,6 +154,15 @@ type CombinationLike = Pick<
   'combinationKey' | 'selectedAttributes' | 'availableQuantity'
 >
 
+export type SelectionMode = 'none' | 'partial' | 'full'
+export type SelectionAllocationMode = 'single' | 'split'
+
+export interface SelectionCapacity {
+  mode: SelectionMode
+  allocationMode: SelectionAllocationMode
+  capacity: number
+}
+
 export function getMatchingCombinations<T extends CombinationLike>(
   combinations: T[] | null | undefined,
   selectedAttributes: UnitAttributes | null | undefined,
@@ -189,6 +198,51 @@ export function getTotalAvailableForSelection(
   return matching.reduce((sum, combination) => {
     return sum + Math.max(0, combination.availableQuantity || 0)
   }, 0)
+}
+
+export function getSelectionMode(
+  axes: BookingAttributeAxis[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+): SelectionMode {
+  const sortedAxes = getSortedAxes(axes)
+  if (sortedAxes.length === 0) {
+    return 'none'
+  }
+
+  const normalizedSelectedAttributes = canonicalizeAttributes(axes, selectedAttributes)
+  const selectedCount = Object.keys(normalizedSelectedAttributes).length
+
+  if (selectedCount === 0) {
+    return 'none'
+  }
+
+  if (selectedCount >= sortedAxes.length) {
+    return 'full'
+  }
+
+  return 'partial'
+}
+
+export function getSelectionCapacity(
+  axes: BookingAttributeAxis[] | null | undefined,
+  combinations: CombinationLike[] | null | undefined,
+  selectedAttributes: UnitAttributes | null | undefined,
+): SelectionCapacity {
+  const mode = getSelectionMode(axes, selectedAttributes)
+
+  if (mode === 'full') {
+    return {
+      mode,
+      allocationMode: 'single',
+      capacity: getMaxAvailableForSelection(combinations, selectedAttributes),
+    }
+  }
+
+  return {
+    mode,
+    allocationMode: 'split',
+    capacity: getTotalAvailableForSelection(combinations, selectedAttributes),
+  }
 }
 
 export function resolveBestCombination<T extends CombinationLike>(

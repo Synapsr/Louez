@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useMemo, useState } from 'react'
 import { differenceInDays, differenceInHours, differenceInWeeks } from 'date-fns'
 import { Plus, Minus, ShoppingCart } from 'lucide-react'
 import { toastManager } from '@louez/ui'
@@ -21,18 +20,17 @@ import {
 import { formatCurrency } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStoreCurrency } from '@/contexts/store-context'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { RentalDatePicker, QuickDateButtons } from '@/components/storefront/rental-date-picker'
 import { AccessoriesModal } from '@/components/storefront/accessories-modal'
 import {
   allocateAcrossCombinations,
+  buildCombinationKey,
   calculateRentalPrice,
+  getDeterministicCombinationSortValue,
   getAvailableDurations,
-  getMaxAvailableForSelection,
-  getTotalAvailableForSelection,
+  getSelectionCapacity,
   snapToNearestTier,
   type ProductPricing,
-  type PricingTier,
 } from '@louez/utils'
 import { getMinStartDate } from '@/lib/utils/duration'
 import {
@@ -73,6 +71,10 @@ interface AddToCartFormProps {
   trackUnits?: boolean
   bookingAttributeAxes?: Array<{ key: string; label: string; position: number }>
   bookingAttributeValues?: Record<string, string[]>
+  productUnits?: Array<{
+    status: 'available' | 'maintenance' | 'retired' | null
+    attributes: Record<string, string> | null
+  }>
   bookingCombinations?: Array<{
     combinationKey: string
     selectedAttributes: Record<string, string>
@@ -97,32 +99,70 @@ export function AddToCartForm({
   trackUnits = false,
   bookingAttributeAxes = [],
   bookingAttributeValues = {},
+  productUnits = [],
   bookingCombinations = [],
 }: AddToCartFormProps) {
-  const router = useRouter()
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
   const { addItem, items: cartItems } = useCart()
-  const { getUrl } = useStorefrontUrl(storeSlug)
   const [startDate, setStartDate] = useState<Date | undefined>()
   const [endDate, setEndDate] = useState<Date | undefined>()
   const [quantity, setQuantity] = useState(1)
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({})
   const [accessoriesModalOpen, setAccessoriesModalOpen] = useState(false)
-  const hasBookingAttributes = bookingAttributeAxes.length > 0
-  const hasExplicitSelection = Object.keys(selectedAttributes).length > 0
-  const selectionMaxQuantity = hasBookingAttributes
-    ? (
-        bookingCombinations.length > 0
-          ? (
-              hasExplicitSelection
-                ? getMaxAvailableForSelection(bookingCombinations, selectedAttributes)
-                : getTotalAvailableForSelection(bookingCombinations, selectedAttributes)
-            )
-          : maxQuantity
-      )
+  const hasBookingAttributes = trackUnits && bookingAttributeAxes.length > 0
+  const fallbackCombinations = useMemo(() => {
+    if (!hasBookingAttributes) {
+      return []
+    }
+
+    const byCombination = new Map<
+      string,
+      { selectedAttributes: Record<string, string>; availableQuantity: number }
+    >()
+
+    for (const unit of productUnits) {
+      if ((unit.status || 'available') !== 'available') continue
+
+      const selected = unit.attributes || {}
+      const combinationKey = buildCombinationKey(bookingAttributeAxes, selected)
+      const current = byCombination.get(combinationKey)
+
+      if (!current) {
+        byCombination.set(combinationKey, {
+          selectedAttributes: selected,
+          availableQuantity: 1,
+        })
+      } else {
+        current.availableQuantity += 1
+        byCombination.set(combinationKey, current)
+      }
+    }
+
+    return [...byCombination.entries()]
+      .map(([combinationKey, value]) => ({
+        combinationKey,
+        selectedAttributes: value.selectedAttributes,
+        availableQuantity: value.availableQuantity,
+      }))
+      .sort((a, b) => {
+        const sortA = getDeterministicCombinationSortValue(bookingAttributeAxes, a.selectedAttributes)
+        const sortB = getDeterministicCombinationSortValue(bookingAttributeAxes, b.selectedAttributes)
+        return sortA.localeCompare(sortB, 'en')
+      })
+  }, [bookingAttributeAxes, hasBookingAttributes, productUnits])
+  const effectiveCombinations = useMemo(
+    () => (bookingCombinations.length > 0 ? bookingCombinations : fallbackCombinations),
+    [bookingCombinations, fallbackCombinations],
+  )
+  const selectionCapacity = useMemo(
+    () => getSelectionCapacity(bookingAttributeAxes, effectiveCombinations, selectedAttributes),
+    [bookingAttributeAxes, effectiveCombinations, selectedAttributes],
+  )
+  const shouldSplitAcrossCombinations = hasBookingAttributes && selectionCapacity.allocationMode === 'split'
+  const effectiveMaxQuantity = hasBookingAttributes
+    ? Math.min(maxQuantity, selectionCapacity.capacity)
     : maxQuantity
-  const effectiveMaxQuantity = Math.min(maxQuantity, selectionMaxQuantity)
   const isSelectionUnavailable = hasBookingAttributes && effectiveMaxQuantity === 0
 
   const calculateDuration = () => {
@@ -195,10 +235,10 @@ export function AddToCartForm({
       }
     }
 
-    if (hasBookingAttributes && !hasExplicitSelection && bookingCombinations.length > 0) {
+    if (shouldSplitAcrossCombinations) {
       const allocations = allocateAcrossCombinations(
         bookingAttributeAxes,
-        bookingCombinations,
+        effectiveCombinations,
         selectedAttributes,
         quantity,
       )
@@ -216,7 +256,7 @@ export function AddToCartForm({
             price,
             deposit,
             quantity: allocation.quantity,
-            maxQuantity: Math.max(1, allocation.combination.availableQuantity),
+            maxQuantity: Math.max(1, allocation.combination.availableQuantity || 0),
             pricingMode,
             pricingTiers: pricingTiers?.map((tier) => ({
               id: tier.id,
@@ -359,7 +399,9 @@ export function AddToCartForm({
               {t('availableForSelection', { count: effectiveMaxQuantity })}
             </p>
             <p className="text-xs text-muted-foreground">
-              {t('quantityPerCombinationHint')}
+              {selectionCapacity.allocationMode === 'single'
+                ? t('quantityPerCombinationHint')
+                : t('quantityCanSplitHint')}
             </p>
           </div>
         </div>
