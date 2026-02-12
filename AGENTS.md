@@ -289,6 +289,7 @@ function MyComponent() {
 - For client-side async submissions (auth flows, save actions, etc.), prefer `useMutation` from TanStack Query over manual loading/error `useState`
 - If `mutateAsync` is called from `onSubmit`, handle expected failures explicitly (`try/catch` or use `mutate` + `onError`) to avoid rejected submit promises leaking to logs
 - Keep field values in `useAppForm` when practical; reserve `useState` for flow state (for example, step toggles)
+- When extracting large TanStack form sections into child components, keep `useStore` selectors in the parent coordinator and pass derived primitive values to children unless the child has a concretely typed form API
 - See details at `docs/FORM_HANDLING.md`
 
 ### Internationalization
@@ -306,6 +307,7 @@ function MyComponent() {
 
 - Reuse existing helpers, UI primitives, and domain logic before introducing new abstractions
 - Prefer extending current patterns over creating parallel implementations for similar behavior
+- Prefer smaller coordinator files: when a page/form grows large, extract local hooks and section/step components early to keep the main file orchestration-focused
 - Extract helper functions when they are pure, non-UI, and add visual noise in page/component files
 - Keep logic inline when it is tiny and only meaningful next to a single JSX interaction
 - Prefer colocated utils first for feature-specific helpers
