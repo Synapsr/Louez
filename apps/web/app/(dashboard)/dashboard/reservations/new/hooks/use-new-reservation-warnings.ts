@@ -144,18 +144,24 @@ export function useNewReservationWarnings({
       }
     }
 
+    const requestedByProduct = new Map<string, number>()
     for (const selectedItem of selectedProducts) {
-      const product = products.find((p) => p.id === selectedItem.productId)
+      const current = requestedByProduct.get(selectedItem.productId) || 0
+      requestedByProduct.set(selectedItem.productId, current + selectedItem.quantity)
+    }
+
+    for (const [productId, requestedQuantity] of requestedByProduct.entries()) {
+      const product = products.find((p) => p.id === productId)
       if (!product) continue
 
-      const reserved = reservedByProduct.get(selectedItem.productId) || 0
+      const reserved = reservedByProduct.get(productId) || 0
       const available = Math.max(0, product.quantity - reserved)
 
-      if (selectedItem.quantity > available) {
+      if (requestedQuantity > available) {
         warnings.push({
-          productId: selectedItem.productId,
+          productId,
           productName: product.name,
-          requestedQuantity: selectedItem.quantity,
+          requestedQuantity,
           availableQuantity: available,
           conflictingReservations: reserved,
         })

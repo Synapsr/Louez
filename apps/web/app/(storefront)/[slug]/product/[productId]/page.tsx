@@ -402,6 +402,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
               trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
               bookingAttributeAxes={bookingAttributeAxes}
               bookingAttributeValues={bookingAttributeValues}
+              productUnits={(product.units || []).map((unit) => ({
+                status: unit.status || 'available',
+                attributes: (unit.attributes as Record<string, string> | null) || null,
+              }))}
               bookingCombinations={bookingCombinations}
             />
           )}

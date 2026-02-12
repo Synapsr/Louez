@@ -148,23 +148,36 @@ export function NewReservationStepReview({
                 const pricing = getProductPricingDetails(product, item)
 
                 return (
-                  <div key={item.productId} className="flex justify-between p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{product.name}</span>
-                      {pricing.hasPriceOverride && (
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            'text-xs',
-                            pricing.effectivePrice < pricing.calculatedPrice
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-orange-100 text-orange-700'
-                          )}
-                        >
-                          {t('priceOverride.modified')}
-                        </Badge>
+                  <div key={item.lineId} className="flex justify-between p-3 text-sm">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{product.name}</span>
+                        {pricing.hasPriceOverride && (
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              'text-xs',
+                              pricing.effectivePrice < pricing.calculatedPrice
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-orange-100 text-orange-700'
+                            )}
+                          >
+                            {t('priceOverride.modified')}
+                          </Badge>
+                        )}
+                        <span className="text-muted-foreground">× {item.quantity}</span>
+                      </div>
+                      {item.selectedAttributes && Object.keys(item.selectedAttributes).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(item.selectedAttributes)
+                            .sort(([a], [b]) => a.localeCompare(b, 'en'))
+                            .map(([key, value]) => (
+                              <Badge key={`${item.lineId}-${key}`} variant="outline" className="text-xs">
+                                {key}: {value}
+                              </Badge>
+                            ))}
+                        </div>
                       )}
-                      <span className="text-muted-foreground">× {item.quantity}</span>
                     </div>
                     <span
                       className={

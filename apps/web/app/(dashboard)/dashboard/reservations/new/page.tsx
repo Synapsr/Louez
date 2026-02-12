@@ -21,6 +21,12 @@ async function getProductsWithTiers(storeId: string) {
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
     with: {
       pricingTiers: true,
+      units: {
+        columns: {
+          status: true,
+          attributes: true,
+        },
+      },
     },
     limit: 500,
   })

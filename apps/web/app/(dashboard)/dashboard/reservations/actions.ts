@@ -38,14 +38,25 @@ import type { NotificationEventType } from '@louez/types'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
-import { DEFAULT_COMBINATION_KEY, getCurrencySymbol } from '@louez/utils'
+import {
+  buildCombinationKey,
+  canonicalizeAttributes,
+  DEFAULT_COMBINATION_KEY,
+  getCurrencySymbol,
+  hasCompleteAttributes,
+} from '@louez/utils'
 import {
   calculateRentalPrice,
   calculateDuration,
   generatePricingBreakdown,
   type PricingTier,
 } from '@louez/utils'
-import type { PricingBreakdown, PricingMode } from '@louez/types'
+import type {
+  BookingAttributeAxis,
+  PricingBreakdown,
+  PricingMode,
+  UnitAttributes,
+} from '@louez/types'
 import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
@@ -453,6 +464,7 @@ interface CreateReservationData {
   items: Array<{
     productId: string
     quantity: number
+    selectedAttributes?: UnitAttributes
     priceOverride?: {
       unitPrice: number
     }
@@ -528,6 +540,25 @@ export async function createManualReservation(data: CreateReservationData) {
         throw new Error(`errors.productNotFound`)
       }
 
+      const bookingAttributeAxes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[]
+      const normalizedSelectedAttributes = canonicalizeAttributes(
+        bookingAttributeAxes,
+        item.selectedAttributes
+      )
+      const hasSelectedAttributes = Object.keys(normalizedSelectedAttributes).length > 0
+      const hasCompleteSelection = hasCompleteAttributes(
+        bookingAttributeAxes,
+        normalizedSelectedAttributes
+      )
+      const combinationKey =
+        bookingAttributeAxes.length > 0
+          ? hasCompleteSelection
+            ? buildCombinationKey(bookingAttributeAxes, normalizedSelectedAttributes)
+            : null
+          : product.trackUnits
+            ? DEFAULT_COMBINATION_KEY
+            : null
+
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode)
       const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode)
@@ -579,6 +610,8 @@ export async function createManualReservation(data: CreateReservationData) {
         depositPerUnit: product.deposit || '0',
         totalPrice: effectiveSubtotal.toFixed(2),
         pricingBreakdown,
+        combinationKey,
+        selectedAttributes: hasSelectedAttributes ? normalizedSelectedAttributes : null,
         isCustomItem: false,
       }
     })
@@ -649,10 +682,14 @@ export async function createManualReservation(data: CreateReservationData) {
       depositPerUnit: detail.depositPerUnit,
       totalPrice: detail.totalPrice,
       pricingBreakdown: detail.pricingBreakdown,
+      combinationKey: detail.combinationKey,
+      selectedAttributes: detail.selectedAttributes,
       productSnapshot: {
         name: detail.product.name,
         description: detail.product.description,
         images: detail.product.images || [],
+        combinationKey: detail.combinationKey,
+        selectedAttributes: detail.selectedAttributes,
       },
     })
   }

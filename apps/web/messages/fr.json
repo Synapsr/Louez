@@ -1002,9 +1002,20 @@
         "noProductsHint": "Utilisez le menu ci-dessus pour ajouter des produits",
         "perHour": "h",
         "perDay": "j",
+        "perWeek": "sem",
         "available": "dispo",
         "outOfStock": "Rupture de stock",
         "add": "Ajouter",
+        "bookingAttributes": "Options",
+        "bookingAttributeNone": "Toutes",
+        "bookingAttributesNoOptions": "Aucune valeur disponible pour {attribute}",
+        "bookingAttributesHelp": "Sélectionnez des options (taille, couleur, etc.) pour cibler une combinaison précise.",
+        "addOptionLine": "Ajouter une ligne d'option",
+        "lineLabel": "Ligne {index}",
+        "availableForSelection": "Disponible pour cette option : {count}",
+        "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre ligne d'option.",
+        "quantityPerCombinationHint": "La quantité s'applique uniquement à l'option sélectionnée. Ajoutez une autre option comme ligne séparée.",
+        "quantityCanSplitHint": "Sans sélection complète des options, la quantité peut être répartie sur les options correspondantes.",
         "internalNotes": "Notes internes",
         "notesPlaceholder": "Notes sur cette réservation (non visible par le client)",
         "notesHint": "Ces notes ne seront pas visibles par le client",
@@ -3059,7 +3070,8 @@
         "catalog": "Catalogue"
       },
       "availableForSelection": "Disponibles pour cette sélection : {count}",
-      "quantityPerCombinationHint": "La quantité s'applique à une seule combinaison. Ajoutez une autre combinaison comme ligne séparée.",
+      "quantityPerCombinationHint": "La quantité s'applique uniquement à l'option sélectionnée. Ajoutez une autre option comme ligne séparée.",
+      "quantityCanSplitHint": "La quantité peut être répartie sur les options correspondantes et ajoutée en lignes séparées.",
       "inCartCount": "Déjà dans le panier : {count}",
       "selectionUnavailable": "Aucune combinaison disponible pour cette sélection."
     },
@@ -3221,7 +3233,7 @@
         "cancel": "Annuler",
         "confirm": "Vider"
       },
-      "lineMaxReached": "Limite atteinte pour cette combinaison"
+      "lineMaxReached": "Limite atteinte pour cette option. Ajoutez une autre option comme ligne séparée."
     },
     "checkout": {
       "title": "Finaliser ma réservation",

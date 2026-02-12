@@ -23,11 +23,17 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
 } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 
 import type { PricingMode } from '@louez/types'
+import { getLineQuantityConstraints } from '../utils/variant-lines'
 
 import type {
   AvailabilityWarning,
@@ -50,12 +56,14 @@ interface NewReservationStepProductsProps {
   totalSavings: number
   deposit: number
   addProduct: (productId: string) => void
-  updateQuantity: (productId: string, delta: number) => void
+  updateQuantity: (lineId: string, delta: number) => void
+  updateSelectedAttributes: (lineId: string, axisKey: string, value: string | undefined) => void
+  removeSelectedProductLine: (lineId: string) => void
   onOpenCustomItemDialog: () => void
   updateCustomItemQuantity: (id: string, delta: number) => void
   removeCustomItem: (id: string) => void
   openPriceOverrideDialog: (
-    productId: string,
+    lineId: string,
     calculatedPrice: number,
     pricingMode: PricingMode,
     duration: number
@@ -82,6 +90,8 @@ export function NewReservationStepProducts({
   deposit,
   addProduct,
   updateQuantity,
+  updateSelectedAttributes,
+  removeSelectedProductLine,
   onOpenCustomItemDialog,
   updateCustomItemQuantity,
   removeCustomItem,
@@ -117,24 +127,61 @@ export function NewReservationStepProducts({
       <CardContent className="space-y-6">
         <div className="grid gap-3 sm:grid-cols-2">
           {products.map((product) => {
-            const selectedItem = selectedProducts.find((sp) => sp.productId === product.id)
-            const selectedQuantity = selectedItem?.quantity || 0
+            const productLines = selectedProducts.filter((line) => line.productId === product.id)
+            const selectedQuantity = productLines.reduce((sum, line) => sum + line.quantity, 0)
             const isOutOfStock = product.quantity === 0
-            const remainingStock = product.quantity - selectedQuantity
-            const canAddMore = remainingStock > 0
+            const remainingStock = Math.max(0, product.quantity - selectedQuantity)
+            const bookingAttributeAxes = (product.bookingAttributeAxes || [])
+              .slice()
+              .sort((a, b) => a.position - b.position)
+            const hasBookingAttributes = product.trackUnits && bookingAttributeAxes.length > 0
+            const bookingAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>(
+              (acc, axis) => {
+                const values = new Set<string>()
+                for (const unit of product.units || []) {
+                  if ((unit.status || 'available') !== 'available') {
+                    continue
+                  }
+                  const rawValue = unit.attributes?.[axis.key]
+                  if (rawValue && rawValue.trim()) {
+                    values.add(rawValue.trim())
+                  }
+                }
+                for (const line of productLines) {
+                  const selectedValue = line.selectedAttributes?.[axis.key]
+                  if (selectedValue && selectedValue.trim()) {
+                    values.add(selectedValue.trim())
+                  }
+                }
+                acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
+                return acc
+              },
+              {}
+            )
 
-            const pricingDetails = getProductPricingDetails(product, selectedItem)
+            const summaryPricing = getProductPricingDetails(product, productLines[0])
             const {
               productPricingMode,
-              productDuration,
               basePrice,
-              calculatedPrice,
               effectivePrice,
-              hasPriceOverride,
               hasDiscount,
               applicableTierDiscountPercent,
               hasTieredPricing,
-            } = pricingDetails
+            } = summaryPricing
+
+            const lineStates = productLines.map((line) => {
+              const pricing = getProductPricingDetails(product, line)
+              const constraints = getLineQuantityConstraints(product, line, productLines)
+
+              return {
+                line,
+                pricing,
+                constraints,
+              }
+            })
+            const hasFullSelectionLine = lineStates.some(
+              (lineState) => lineState.constraints.selectionMode === 'full'
+            )
 
             return (
               <div
@@ -165,34 +212,7 @@ export function NewReservationStepProducts({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{product.name}</p>
                       <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        {hasPriceOverride ? (
-                          <>
-                            <span className="text-sm text-muted-foreground line-through">
-                              {formatCurrency(calculatedPrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <span
-                              className={cn(
-                                'text-sm font-medium',
-                                effectivePrice < calculatedPrice
-                                  ? 'text-green-600'
-                                  : 'text-orange-600'
-                              )}
-                            >
-                              {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className={cn(
-                                'text-xs',
-                                effectivePrice < calculatedPrice
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-orange-100 text-orange-700'
-                              )}
-                            >
-                              {t('priceOverride.modified')}
-                            </Badge>
-                          </>
-                        ) : hasDiscount ? (
+                        {hasDiscount ? (
                           <>
                             <span className="text-sm text-muted-foreground line-through">
                               {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
@@ -231,31 +251,8 @@ export function NewReservationStepProducts({
                       </div>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {selectedQuantity > 0 ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateQuantity(product.id, -1)}
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-8 text-center font-medium">{selectedQuantity}</span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => updateQuantity(product.id, 1)}
-                          disabled={!canAddMore}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </>
-                    ) : (
+                  <div className="flex shrink-0 items-center gap-2">
+                    {productLines.length === 0 ? (
                       <Button
                         type="button"
                         variant={isOutOfStock ? 'ghost' : 'outline'}
@@ -265,81 +262,192 @@ export function NewReservationStepProducts({
                         <Plus className="mr-1 h-4 w-4" />
                         {t('add')}
                       </Button>
-                    )}
+                    ) : hasBookingAttributes ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => addProduct(product.id)}
+                        disabled={remainingStock <= 0}
+                      >
+                        <Plus className="mr-1 h-4 w-4" />
+                        {t('addOptionLine')}
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
-                {selectedQuantity > 0 && productDuration > 0 && (
-                  <div className="mt-3 border-t pt-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">
-                          {selectedQuantity} × {productDuration}{' '}
-                          {getDurationLabel(productPricingMode, productDuration)}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                          onClick={() =>
-                            openPriceOverrideDialog(
-                              product.id,
-                              calculatedPrice,
-                              productPricingMode,
-                              productDuration
-                            )
-                          }
-                        >
-                          <PenLine className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="text-right">
-                        {hasPriceOverride ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground line-through">
-                              {formatCurrency(calculatedPrice * selectedQuantity * productDuration)}
-                            </span>
-                            <span
-                              className={cn(
-                                'font-medium',
-                                effectivePrice < calculatedPrice
-                                  ? 'text-green-600'
-                                  : 'text-orange-600'
-                              )}
-                            >
-                              {formatCurrency(effectivePrice * selectedQuantity * productDuration)}
-                            </span>
+
+                {productLines.length > 0 && summaryPricing.productDuration > 0 && (
+                  <div className="mt-3 space-y-3 border-t pt-3">
+                    {lineStates.map(({ line, pricing, constraints }, index) => {
+                      const lineMaxQuantity = constraints.lineMaxQuantity
+                      const canIncreaseLine = line.quantity < lineMaxQuantity
+                      const lineReachedMax = lineMaxQuantity > 0 && line.quantity >= lineMaxQuantity
+
+                      return (
+                        <div key={line.lineId} className="space-y-3 rounded-md border bg-background/70 p-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                {t('lineLabel', { index: index + 1 })}
+                              </span>
+                              {line.selectedAttributes &&
+                                Object.entries(line.selectedAttributes)
+                                  .sort(([a], [b]) => a.localeCompare(b, 'en'))
+                                  .map(([key, value]) => (
+                                    <Badge key={`${line.lineId}-${key}`} variant="outline" className="text-xs">
+                                      {key}: {value}
+                                    </Badge>
+                                  ))}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(line.lineId, -1)}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-8 text-center font-medium">{line.quantity}</span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(line.lineId, 1)}
+                                disabled={!canIncreaseLine}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => removeSelectedProductLine(line.lineId)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </div>
-                        ) : hasDiscount ? (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground line-through">
-                              {formatCurrency(basePrice * selectedQuantity * productDuration)}
-                            </span>
-                            <span className="font-medium text-green-600">
-                              {formatCurrency(effectivePrice * selectedQuantity * productDuration)}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="font-medium">
-                            {formatCurrency(basePrice * selectedQuantity * productDuration)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {(hasDiscount || hasPriceOverride) && (
-                      <div className="mt-1 flex justify-end">
-                        <span
-                          className={cn(
-                            'text-xs',
-                            effectivePrice < calculatedPrice || effectivePrice < basePrice
-                              ? 'text-green-600'
-                              : 'text-orange-600'
+
+                          {hasBookingAttributes && (
+                            <div className="space-y-2">
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {bookingAttributeAxes.map((axis) => (
+                                  <Select
+                                    key={`${line.lineId}-${axis.key}`}
+                                    value={line.selectedAttributes?.[axis.key] || '__none__'}
+                                    onValueChange={(value) =>
+                                      updateSelectedAttributes(
+                                        line.lineId,
+                                        axis.key,
+                                        value && value !== '__none__' ? value : undefined
+                                      )
+                                    }
+                                  >
+                                    <SelectTrigger className="h-8">
+                                      <SelectValue placeholder={axis.label}>
+                                        {line.selectedAttributes?.[axis.key] || axis.label}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="__none__" label={t('bookingAttributeNone')}>
+                                        {t('bookingAttributeNone')}
+                                      </SelectItem>
+                                      {(bookingAttributeValues[axis.key] || []).length > 0 ? (
+                                        (bookingAttributeValues[axis.key] || []).map((value) => (
+                                          <SelectItem key={value} value={value} label={value}>
+                                            {value}
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem
+                                          value={`__empty_${axis.key}`}
+                                          label={axis.label}
+                                          disabled
+                                        >
+                                          {t('bookingAttributesNoOptions', { attribute: axis.label })}
+                                        </SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {t('availableForSelection', { count: lineMaxQuantity })}
+                              </p>
+                            </div>
                           )}
-                        >
-                          {effectivePrice < (hasPriceOverride ? calculatedPrice : basePrice)
-                            ? `${t('savings')}: ${formatCurrency(((hasPriceOverride ? calculatedPrice : basePrice) - effectivePrice) * selectedQuantity * productDuration)}`
-                            : `+${formatCurrency((effectivePrice - calculatedPrice) * selectedQuantity * productDuration)}`}
-                        </span>
-                      </div>
+
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className="text-muted-foreground">
+                                {line.quantity} × {pricing.productDuration}{' '}
+                                {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                                onClick={() =>
+                                  openPriceOverrideDialog(
+                                    line.lineId,
+                                    pricing.calculatedPrice,
+                                    pricing.productPricingMode,
+                                    pricing.productDuration
+                                  )
+                                }
+                              >
+                                <PenLine className="h-3 w-3" />
+                              </Button>
+                            </div>
+                            <div className="text-right">
+                              {pricing.hasPriceOverride ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    {formatCurrency(pricing.calculatedPrice * line.quantity * pricing.productDuration)}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'font-medium',
+                                      pricing.effectivePrice < pricing.calculatedPrice
+                                        ? 'text-green-600'
+                                        : 'text-orange-600'
+                                    )}
+                                  >
+                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                  </span>
+                                </div>
+                              ) : pricing.hasDiscount ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                  </span>
+                                  <span className="font-medium text-green-600">
+                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="font-medium">
+                                  {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {lineReachedMax && (
+                            <p className="text-xs text-amber-600">{t('lineMaxReached')}</p>
+                          )}
+                        </div>
+                      )
+                    })}
+
+                    {hasBookingAttributes && (
+                      <p className="text-xs text-muted-foreground">
+                        {hasFullSelectionLine ? t('quantityPerCombinationHint') : t('quantityCanSplitHint')}
+                      </p>
                     )}
                   </div>
                 )}

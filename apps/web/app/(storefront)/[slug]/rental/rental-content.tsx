@@ -576,7 +576,6 @@ export function RentalContent({
                     key={product.id}
                     product={product}
                     storeSlug={store.slug}
-                    pricingMode={pricingMode}
                     availableQuantity={
                       avail?.availableQuantity ?? product.quantity
                     }
