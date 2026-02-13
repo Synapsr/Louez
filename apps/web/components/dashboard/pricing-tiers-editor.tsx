@@ -548,8 +548,8 @@ export function PricingTiersEditor({
                           {preview.label}
                           {preview.discountPercent && (
                             <Badge
-                              variant="secondary"
-                              className="ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                              variant="success"
+                              className="ml-2"
                             >
                               -{parseFloat(preview.discountPercent.toFixed(2))}%
                             </Badge>

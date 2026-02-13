@@ -75,7 +75,7 @@ export default async function AccountSettingsPage() {
               </div>
               <p className="font-medium">{user.email}</p>
               {user.emailVerified && (
-                <Badge variant="secondary" className="text-green-600">
+                <Badge variant="success">
                   {t('accountSettings.emailVerified')}
                 </Badge>
               )}

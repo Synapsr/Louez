@@ -486,7 +486,7 @@ export function ProductPreviewModal({
                   / {pricingUnitLabel}
                 </span>
                 {maxDiscount > 0 && (
-                  <Badge className="ml-2 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                  <Badge variant="success" className="ml-2">
                     <TrendingDown className="h-3 w-3 mr-1" />
                     jusqu&apos;à -{maxDiscount}%
                   </Badge>
@@ -537,7 +537,7 @@ export function ProductPreviewModal({
                           <span className="font-medium">
                             {tier.minDuration}+ {pricingUnitLabelPlural}
                           </span>
-                          <Badge className="text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                          <Badge variant="success" className="text-xs font-semibold">
                             -{tier.discountPercent}%
                           </Badge>
                         </div>

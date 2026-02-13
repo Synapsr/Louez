@@ -399,15 +399,12 @@ export function RentalContent({
 
           {/* Business Hours Warning */}
           {businessHoursValidation && !businessHoursValidation.valid && (
-            <Alert
-              variant="error"
-              className="border-orange-200 bg-orange-50 text-orange-900 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-100"
-            >
-              <AlertTriangle className="h-4 w-4 !text-orange-600 dark:!text-orange-400" />
-              <AlertTitle className="text-orange-900 dark:text-orange-100">
+            <Alert variant="warning">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>
                 {t('businessHoursWarning.title')}
               </AlertTitle>
-              <AlertDescription className="text-orange-800 dark:text-orange-200">
+              <AlertDescription>
                 {businessHoursValidation.errors.map((error) => {
                   // Parse error like "pickup_outside_hours" or "return_day_closed"
                   const [action, ...reasonParts] = error.split('_');

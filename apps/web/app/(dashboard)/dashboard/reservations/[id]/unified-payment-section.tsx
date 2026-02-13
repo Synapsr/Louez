@@ -898,8 +898,8 @@ export function UnifiedPaymentSection({
                 </span>
               </div>
               <Badge
-                variant="secondary"
-                className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 font-mono"
+                variant="error"
+                className="font-mono"
               >
                 +{damagesPaid.toFixed(2)}{currencySymbol}
               </Badge>
