@@ -1,30 +1,27 @@
 'use client'
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
 import { formatStoreDateRange } from '@/lib/utils/store-date'
+import { toastManager } from '@louez/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  CheckCircle,
-  XCircle,
-  Package,
-  ArrowUpRight,
-  ArrowDownRight,
-  Calendar,
-  Clock,
-  User,
-  ChevronRight,
-  Loader2,
-  Ban,
   AlertCircle,
+  ArrowDownRight,
+  ArrowUpRight,
+  Ban,
+  Calendar,
+  CheckCircle,
+  ChevronRight,
+  Clock,
   CreditCard,
+  Loader2,
+  Package,
+  User,
+  XCircle,
 } from 'lucide-react'
-import { toastManager } from '@louez/ui'
+import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useState } from 'react'
 
-import { Button } from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { Card, CardContent } from '@louez/ui'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -32,18 +29,15 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from '@louez/ui'
-import {
-  Tooltip,
+  AlertDialogTitle, Badge, Button, Card, CardContent, Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
+  TooltipTrigger
 } from '@louez/ui'
 
-import { getCurrencySymbol } from '@louez/utils'
-import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { orpc } from '@/lib/orpc/react'
+import { getCurrencySymbol } from '@louez/utils'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -493,7 +487,7 @@ export function ReservationsTable({ reservations, currency = 'EUR', timezone }: 
                           <Tooltip>
                             <TooltipTrigger render={<Button
                                 variant="default"
-                                className="h-8 gap-1.5 bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+                                className="h-8 gap-1.5 border-green-600 bg-green-600 hover:bg-green-700! dark:border-green-600 dark:bg-green-600 dark:hover:bg-green-700"
                                 onClick={(e) => handleStatusChange(e, reservation, 'confirmed')}
                                 disabled={isLoading}
                               />}>

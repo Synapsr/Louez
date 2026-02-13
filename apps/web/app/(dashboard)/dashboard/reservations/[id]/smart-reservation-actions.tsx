@@ -1,27 +1,25 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { toastManager } from '@louez/ui'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  CheckCircle,
-  XCircle,
-  ArrowUpRight,
-  ArrowDownRight,
-  Loader2,
-  Clock,
-  Package,
-  Ban,
   AlertTriangle,
-  CreditCard,
-  Shield,
+  ArrowDownRight,
+  ArrowUpRight,
+  Ban,
+  CheckCircle,
   ClipboardCheck,
+  Clock,
+  CreditCard,
+  Loader2,
+  Package,
+  Shield,
+  XCircle,
 } from 'lucide-react'
-import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
+import { useState } from 'react'
 
-import { Button } from '@louez/ui'
-import { Card, CardContent } from '@louez/ui'
 import {
   AlertDialog,
   AlertDialogClose,
@@ -29,27 +27,17 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle,
-} from '@louez/ui'
-import {
-  Dialog,
-  DialogPopup,
-  DialogPanel,
-  DialogDescription,
+  AlertDialogTitle, Button, Card, CardContent, Checkbox, Dialog, DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  DialogHeader, DialogPanel, DialogPopup, DialogTitle, Label, Textarea
 } from '@louez/ui'
-import { Textarea } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Checkbox } from '@louez/ui'
 import { cn, getCurrencySymbol } from '@louez/utils'
 
-import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
-import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { orpc } from '@/lib/orpc/react'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 type InspectionMode = 'optional' | 'recommended' | 'required'
@@ -311,7 +299,7 @@ export function SmartReservationActions({
               <p className="text-xs text-muted-foreground">{t('pendingCard.description')}</p>
               <div className="space-y-2">
                 <Button
-                  className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 text-white"
+                  className="w-full border-green-600 bg-green-600 hover:bg-green-700! dark:border-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white"
                   onClick={() => handleStatusChange('confirmed')}
                   disabled={isLoading}
                 >
