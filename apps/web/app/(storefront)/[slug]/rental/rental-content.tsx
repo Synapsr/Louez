@@ -547,7 +547,7 @@ export function RentalContent({
             <div className="grid grid-cols-2 gap-3 md:gap-4 xl:grid-cols-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-square rounded-lg" />
+                  <Skeleton className="aspect-[4/3] rounded-lg" />
                   <Skeleton className="h-4 w-2/3" />
                   <Skeleton className="h-4 w-1/3" />
                 </div>

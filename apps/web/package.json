@@ -63,6 +63,7 @@
     "react-day-picker": "^9.13.0",
     "react-dom": "19.2.3",
     "react-email": "^5.1.1",
+    "react-image-crop": "^11.0.10",
     "recharts": "^3.6.0",
     "sharp": "^0.34.5",
     "stripe": "^20.1.1",

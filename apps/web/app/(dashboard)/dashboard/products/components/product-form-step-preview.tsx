@@ -49,7 +49,7 @@ export function ProductFormStepPreview({
           <div className="space-y-4">
             <div className="overflow-hidden rounded-lg border">
               {imagesPreviews.length > 0 ? (
-                <div className="bg-muted relative aspect-video">
+                <div className="bg-muted relative aspect-[4/3]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={imagesPreviews[0]}
@@ -58,7 +58,7 @@ export function ProductFormStepPreview({
                   />
                 </div>
               ) : (
-                <div className="bg-muted flex aspect-video items-center justify-center">
+                <div className="bg-muted flex aspect-[4/3] items-center justify-center">
                   <Package className="text-muted-foreground h-12 w-12" />
                 </div>
               )}

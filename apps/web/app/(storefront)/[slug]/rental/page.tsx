@@ -390,7 +390,7 @@ export default async function RentalPage({
                 <Skeleton className="h-8 w-48" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className="aspect-square rounded-lg" />
+                    <Skeleton key={i} className="aspect-[4/3] rounded-lg" />
                   ))}
                 </div>
               </div>

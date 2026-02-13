@@ -50,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
     <Link href="/#date-picker" className="group block">
       <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-border/50 hover:border-primary/20 bg-card p-0 gap-0">
         {/* Image container - square aspect ratio */}
-        <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {mainImage ? (
             <Image
               src={mainImage}
