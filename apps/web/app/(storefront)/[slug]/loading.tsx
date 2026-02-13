@@ -83,7 +83,7 @@ export default function StoreLoading() {
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
               <Card key={i} className="overflow-hidden">
-                <Skeleton className="aspect-square w-full" />
+                <Skeleton className="aspect-[4/3] w-full" />
                 <CardContent className="p-4 space-y-3">
                   <Skeleton className="h-5 w-3/4" />
                   <div className="flex items-baseline gap-2">
