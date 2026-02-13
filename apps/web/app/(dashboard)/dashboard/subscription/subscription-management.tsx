@@ -215,7 +215,7 @@ export function SubscriptionManagement({
     switch (status) {
       case 'active':
         return (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+          <Badge variant="success">
             {t('status.active')}
           </Badge>
         )
@@ -328,9 +328,9 @@ export function SubscriptionManagement({
       )}
 
       {showSuccess && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle className="h-4 w-4 text-green-600" />
-          <AlertTitle className="text-green-600">{t('alerts.successTitle')}</AlertTitle>
+        <Alert variant="success">
+          <CheckCircle className="h-4 w-4" />
+          <AlertTitle>{t('alerts.successTitle')}</AlertTitle>
           <AlertDescription>{t('alerts.successDescription')}</AlertDescription>
         </Alert>
       )}
@@ -592,7 +592,7 @@ export function SubscriptionManagement({
                 )}
               >
                 {t('yearly')}
-                <Badge variant="secondary" className="text-xs bg-green-500/10 text-green-600 border-0">
+                <Badge variant="success" className="text-xs">
                   -17%
                 </Badge>
               </Label>
@@ -695,7 +695,7 @@ export function SubscriptionManagement({
                           <span className="text-lg text-muted-foreground line-through">
                             {formatPrice(originalPrice, currency)}
                           </span>
-                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
+                          <Badge variant="success" className="text-xs">
                             -{discountPercent}%
                           </Badge>
                         </div>

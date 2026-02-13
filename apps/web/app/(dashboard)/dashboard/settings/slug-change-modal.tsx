@@ -1,27 +1,25 @@
 'use client'
 
-import { useState, useEffect, useCallback, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
-import { Check, X, Loader2, AlertTriangle, Link2 } from 'lucide-react'
 import { useDebounce } from '@/hooks/use-debounce'
+import { AlertTriangle, Check, Link2, Loader2, X } from 'lucide-react'
+import { useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState, useTransition } from 'react'
 
-import {
-  Dialog,
-  DialogPopup,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogPanel,
-} from '@louez/ui'
 import {
   Alert,
   AlertDescription,
+  Button,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+  Input,
+  Label,
 } from '@louez/ui'
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Label } from '@louez/ui'
 import { checkSlugAvailability, updateStoreSlug } from './actions'
 
 interface SlugChangeModalProps {
@@ -227,8 +225,8 @@ export function SlugChangeModal({
               )}
             </>
           ) : (
-            <>
-              <Alert className="border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+            <div className="flex flex-col gap-2">
+              <Alert variant="warning">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription className="ml-2">
                   <p className="font-medium">{t('warning.title')}</p>
@@ -254,7 +252,7 @@ export function SlugChangeModal({
                   </span>
                 </div>
               </div>
-            </>
+            </div>
           )}
         </DialogPanel>
 

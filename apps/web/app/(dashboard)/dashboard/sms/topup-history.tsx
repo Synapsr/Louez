@@ -49,7 +49,7 @@ export function TopupHistory({ transactions }: TopupHistoryProps) {
     switch (status) {
       case 'completed':
         return (
-          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+          <Badge variant="success">
             <CheckCircle2 className="mr-1 h-3 w-3" />
             {t('status.completed')}
           </Badge>

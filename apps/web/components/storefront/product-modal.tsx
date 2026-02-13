@@ -813,7 +813,7 @@ export function ProductModal({
             </div>
 
             {savings > 0 && (
-              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-sm font-semibold px-3 py-1">
+              <Badge variant="success" className="text-sm font-semibold px-3 py-1">
                 -{discountPercent}%
               </Badge>
             )}

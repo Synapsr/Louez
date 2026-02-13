@@ -454,7 +454,7 @@ export function AddToCartForm({
             <div className="flex justify-between text-sm text-green-600">
               <span className="flex items-center gap-2">
                 {t('tieredPricing.discountApplied')}
-                <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                <Badge variant="success" className="text-xs">
                   -{discountPercent}%
                 </Badge>
               </span>

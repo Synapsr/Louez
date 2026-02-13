@@ -162,7 +162,7 @@ export function TeamContent({ members, invitations, canManageMembers, limits }: 
               </div>
               {/* Show usage badge only when there's a positive limit */}
               {limits && limits.limit !== null && limits.limit > 0 && (
-                <Badge variant={canAddMore ? 'secondary' : 'outline'} className={!canAddMore ? 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400' : ''}>
+                <Badge variant={canAddMore ? 'secondary' : 'warning'}>
                   {t('limitBadge', { current: limits.current, limit: limits.limit })}
                 </Badge>
               )}
