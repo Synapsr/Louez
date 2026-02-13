@@ -5,11 +5,31 @@
 # See README.md for detailed documentation
 
 services:
+  # Database migrations (run once at startup)
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+      args:
+        - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
+        - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        - NEXT_PUBLIC_APP_DOMAIN=${NEXT_PUBLIC_APP_DOMAIN:-localhost:3000}
+    environment:
+      - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - louez-network
+
   # Application
   louez:
     build:
       context: .
       dockerfile: Dockerfile
+      target: app
       args:
         - DATABASE_URL=mysql://louez:${DB_PASSWORD:-louez}@db:3306/louez
         - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
@@ -41,6 +61,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
     restart: unless-stopped
     networks:
       - louez-network

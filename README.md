@@ -26,7 +26,7 @@
 
 <div align="center">
 
-**📹 Video coming soon**
+<video src="demo.mp4" width="100%" autoplay loop muted playsinline></video>
 
 *See Louez in action — from setup to first booking*
 

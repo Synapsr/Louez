@@ -1,0 +1,20 @@
+{
+  "name": "@louez/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/nextjs": "./typescript/nextjs.json",
+    "./typescript/library": "./typescript/library.json",
+    "./eslint/base": "./eslint/base.js",
+    "./prettier": "./prettier/index.mjs"
+  },
+  "dependencies": {
+    "@trivago/prettier-plugin-sort-imports": "^6.0.2",
+    "@vercel/style-guide": "^6.0.0",
+    "prettier-plugin-tailwindcss": "^0.7.2"
+  },
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  }
+}

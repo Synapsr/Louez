@@ -1,0 +1,110 @@
+'use client';
+
+import { Loader2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
+import { cn } from '@louez/utils';
+
+interface FloatingSaveBarProps {
+  /** Whether the form has unsaved changes */
+  isDirty: boolean;
+  /** Whether the form is currently submitting */
+  isLoading: boolean;
+  /** Callback to reset the form to its initial state */
+  onReset: () => void;
+  /** Optional callback for forms without a wrapping <form> element */
+  onSubmit?: () => void;
+  /** Optional form ID for external submit button */
+  formId?: string;
+  /** Optional additional className */
+  className?: string;
+}
+
+/**
+ * A floating save bar that appears at the bottom of the screen when there are unsaved changes.
+ * Features a pulsing indicator, cancel and save buttons with smooth slide-up animation.
+ *
+ * Usage with React Hook Form (inside <Form>):
+ * ```tsx
+ * <FloatingSaveBar
+ *   isDirty={form.formState.isDirty}
+ *   isLoading={isPending}
+ *   onReset={() => form.reset()}
+ * />
+ * ```
+ *
+ * Usage with useState (outside form or with onSubmit):
+ * ```tsx
+ * <FloatingSaveBar
+ *   isDirty={isDirty}
+ *   isLoading={isLoading}
+ *   onReset={handleReset}
+ *   onSubmit={handleSubmit}
+ * />
+ * ```
+ */
+export function FloatingSaveBar({
+  isDirty,
+  isLoading,
+  onReset,
+  onSubmit,
+  formId,
+  className,
+}: FloatingSaveBarProps) {
+  const t = useTranslations('common');
+
+  return (
+    <>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className={cn(
+          'pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-6 transition-all duration-300 ease-out',
+          isDirty ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0',
+          className,
+        )}
+      >
+        <div className="pointer-events-auto relative flex items-center gap-4 rounded-full bg-zinc-900/90 px-5 py-2.5 shadow-lg ring-1 shadow-black/20 ring-white/10 backdrop-blur-xl dark:bg-zinc-800/90">
+          {/* Status indicator with pulsing animation (respects reduced motion) */}
+          <div className="flex items-center gap-2 text-sm text-zinc-200">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-500" />
+            </span>
+            <span>{t('unsavedChanges')}</span>
+          </div>
+
+          {/* Divider */}
+          <div className="h-4 w-px bg-zinc-700" />
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onReset}
+              disabled={isLoading}
+              className="border-zinc-600 bg-transparent text-zinc-300 hover:border-zinc-500 hover:bg-zinc-800 hover:text-white"
+            >
+              {t('cancel')}
+            </Button>
+            <Button
+              type={onSubmit || formId ? 'button' : 'submit'}
+              form={formId}
+              disabled={isLoading}
+              onClick={onSubmit}
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('save')}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Spacer to prevent content from being hidden behind the bar */}
+      {isDirty && <div className="h-20" />}
+    </>
+  );
+}
