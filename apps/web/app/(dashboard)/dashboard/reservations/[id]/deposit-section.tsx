@@ -479,22 +479,22 @@ export function DepositSection({
             {status === 'authorized' && !authorizationExpired && (
               <>
                 <Button
-                  variant="outline"
+                  variant="success-outline"
                   onClick={() => setReleaseDialogOpen(true)}
                   disabled={isLoading}
-                  className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                  className="flex-1"
                 >
                   <Check className="mr-2 h-4 w-4" />
                   {t('release')}
                 </Button>
                 <Button
-                  variant="outline"
+                  variant="destructive-outline"
                   onClick={() => {
                     setCaptureAmount(amount.toFixed(2))
                     setCaptureModalOpen(true)
                   }}
                   disabled={isLoading}
-                  className="flex-1 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                  className="flex-1"
                 >
                   <Banknote className="mr-2 h-4 w-4" />
                   {t('capture')}

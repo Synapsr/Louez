@@ -755,8 +755,8 @@ export function UnifiedPaymentSection({
                     <Tooltip>
                       <TooltipTrigger render={<Button
                           size="icon"
-                          variant="outline"
-                          className="h-7 w-7 border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950"
+                          variant="success-outline"
+                          className="h-7 w-7"
                           onClick={openDepositReturnModal}
                         />}>
                         <ArrowDownLeft className="h-3.5 w-3.5" />
@@ -841,22 +841,22 @@ export function UnifiedPaymentSection({
                     {depositStatusVal === 'authorized' && !authorizationExpired && (
                       <>
                         <Button
-                          variant="outline"
+                          variant="success-outline"
                           onClick={() => setReleaseDialogOpen(true)}
                           disabled={isLoading}
-                          className="flex-1 border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                          className="flex-1"
                         >
                           <Check className="mr-2 h-3.5 w-3.5" />
                           {t('deposit.release')}
                         </Button>
                         <Button
-                          variant="outline"
+                          variant="destructive-outline"
                           onClick={() => {
                             setCaptureAmount(deposit.toFixed(2))
                             setCaptureModalOpen(true)
                           }}
                           disabled={isLoading}
-                          className="flex-1 border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                          className="flex-1"
                         >
                           <Banknote className="mr-2 h-3.5 w-3.5" />
                           {t('deposit.capture')}
@@ -909,8 +909,8 @@ export function UnifiedPaymentSection({
           {/* Damage button for finished reservations */}
           {isReservationFinished && depositToReturn > 0 && (
             <Button
-              variant="outline"
-              className="w-full text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950"
+              variant="destructive-outline"
+              className="w-full text-xs"
               onClick={() => setDamageModalOpen(true)}
             >
               <AlertCircle className="h-3.5 w-3.5 mr-1.5" />

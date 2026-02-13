@@ -481,8 +481,8 @@ export function PaymentSummary({
                     <Tooltip>
                       <TooltipTrigger render={<Button
                           size="icon"
-                          variant="outline"
-                          className="h-7 w-7 border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950"
+                          variant="success-outline"
+                          className="h-7 w-7"
                           onClick={openDepositReturnModal}
                         />}>
                           <ArrowDownLeft className="h-3.5 w-3.5" />

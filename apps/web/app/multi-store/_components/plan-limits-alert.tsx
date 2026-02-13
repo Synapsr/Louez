@@ -144,9 +144,9 @@ export function PlanLimitsAlert({ limits, translations }: PlanLimitsAlertProps) 
                     </div>
                   </div>
                   <Button
-                    variant="outline"
+                    variant="warning-outline"
                     onClick={() => handleUpgradeClick(limit.storeId)}
-                    className="shrink-0 border-amber-300 bg-white text-amber-700 hover:bg-amber-50 hover:text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50"
+                    className="shrink-0"
                   >
                     {translations.upgrade}
                     <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
