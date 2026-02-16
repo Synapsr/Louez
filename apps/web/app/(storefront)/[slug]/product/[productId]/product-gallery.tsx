@@ -15,7 +15,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
 
   if (images.length === 0) {
     return (
-      <div className="aspect-square rounded-lg bg-muted flex items-center justify-center">
+      <div className="aspect-[4/3] rounded-lg bg-muted flex items-center justify-center">
         <ImageIcon className="h-24 w-24 text-muted-foreground/30" />
       </div>
     )
@@ -32,7 +32,7 @@ export function ProductGallery({ images, productName }: ProductGalleryProps) {
   return (
     <div className="space-y-4">
       {/* Main Image */}
-      <div className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+      <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-muted">
         <img
           src={images[selectedIndex]}
           alt={`${productName} - Image ${selectedIndex + 1}`}

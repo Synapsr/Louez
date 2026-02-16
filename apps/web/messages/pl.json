@@ -640,6 +640,25 @@
         "imageSizeError": "Zdjęcie nie może przekraczać 5 MB",
         "uploading": "Przesyłanie...",
         "imageUploadError": "Błąd przesyłania",
+        "recropImage": "Przytnij ponownie",
+        "cropUnsupportedFormat": "Tego formatu obrazu nie można ponownie przyciąć",
+        "cropDialogTitle": "Dostosuj zdjęcia",
+        "cropDialogDescription": "Użyj kadru 4:3, aby zachować spójny wygląd w witrynie",
+        "cropCounter": "Zdjęcie {current} z {total}",
+        "cropStatusCropped": "Przycięte",
+        "cropStatusOriginal": "Oryginał",
+        "cropPrevious": "Poprzednie zdjęcie",
+        "cropNext": "Następne zdjęcie",
+        "cropZoom": "Powiększenie",
+        "cropSize": "Rozmiar kadru",
+        "cropApply": "Zastosuj przycięcie",
+        "cropSkip": "Zachowaj oryginał",
+        "cropThumbnailAlt": "Zdjęcie {index}",
+        "cropNoImage": "Nie wybrano zdjęcia",
+        "cropCancel": "Anuluj",
+        "cropPreviewTitle": "Podgląd",
+        "cropPreviewDescription": "Tak będzie wyglądać Twoje zdjęcie w sklepie",
+        "cropUploadSelected": "Prześlij wybrane",
         "information": "Informacje",
         "name": "Nazwa produktu",
         "namePlaceholder": "Np. Rower górski XC 500",
@@ -2933,7 +2952,7 @@
       "simpleReservationDesc": "Zarezerwuj w kilka kliknięć",
       "securePaymentDesc": "100% bezpieczne transakcje",
       "localPickupDesc": "Łatwy odbiór sprzętu",
-        "reviewsBadge": "opinie"
+      "reviewsBadge": "opinie"
     },
     "home": {
       "ourCategories": "Nasze kategorie",
@@ -3006,6 +3025,7 @@
       "perDay": "dzień",
       "perHour": "godzina",
       "perWeek": "tydzień",
+      "startingFrom": "Od",
       "pricingUnit": {
         "day": {
           "singular": "dzień",
@@ -3212,7 +3232,7 @@
     },
     "checkout": {
       "title": "Dokończ rezerwację",
-            "paymentMode": "Uzupełnij dane, aby przejść do płatności",
+      "paymentMode": "Uzupełnij dane, aby przejść do płatności",
       "requestMode": "Uzupełnij dane, aby wysłać żądanie rezerwacji",
       "customerInfo": "Twoje dane",
       "summary": "Twoje zamówienie",

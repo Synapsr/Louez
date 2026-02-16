@@ -23,10 +23,12 @@ import {
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar';
 
 import { useAppForm } from '@/hooks/form/form';
+
 import { ProductFormStepInfo } from './components/product-form-step-info';
 import { ProductFormStepPhotos } from './components/product-form-step-photos';
 import { ProductFormStepPreview } from './components/product-form-step-preview';
 import { ProductFormStepPricing } from './components/product-form-step-pricing';
+import { ProductImageCropDialog } from './components/product-image-crop-dialog';
 import { useProductFormMedia } from './hooks/use-product-form-media';
 import { useProductFormMutations } from './hooks/use-product-form-mutations';
 import { useProductFormStepFlow } from './hooks/use-product-form-step-flow';
@@ -173,7 +175,7 @@ export function ProductForm({
         },
       }));
     },
-    [form]
+    [form],
   );
 
   const clearSubmitError = useCallback(
@@ -186,7 +188,7 @@ export function ProductForm({
         },
       }));
     },
-    [form]
+    [form],
   );
 
   const validateCurrentStep = useCallback(
@@ -234,7 +236,7 @@ export function ProductForm({
 
       return isValid;
     },
-    [clearSubmitError, setSubmitError, tValidation, watchedValues]
+    [clearSubmitError, setSubmitError, tValidation, watchedValues],
   );
 
   const {
@@ -260,6 +262,11 @@ export function ProductForm({
       : effectivePricingMode === 'hour'
         ? t('pricePerHour')
         : t('pricePerWeek');
+  const cropPreviewProductName =
+    watchedValues.name.trim() || t('namePlaceholder');
+  const cropPreviewPrice = watchedValues.price.trim()
+    ? `${currencySymbol}${watchedValues.price.trim().replace(',', '.')}`
+    : `${currencySymbol}0.00`;
 
   // Parse base price for the pricing tiers editor
   const basePrice =
@@ -268,82 +275,9 @@ export function ProductForm({
   // Edit mode: simple form without stepper
   if (isEditMode) {
     return (
-      <form.AppForm>
-        <form.Form className="space-y-6">
-          <ProductFormStepPhotos
-            form={form as unknown as ProductFormComponentApi}
-            imagesPreviews={imagesPreviews}
-            isDragging={media.isDragging}
-            isUploadingImages={media.isUploadingImages}
-            handleImageUpload={media.handleImageUpload}
-            handleDragOver={media.handleDragOver}
-            handleDragEnter={media.handleDragEnter}
-            handleDragLeave={media.handleDragLeave}
-            handleDrop={media.handleDrop}
-            removeImage={media.removeImage}
-            setMainImage={media.setMainImage}
-          />
-
-          <ProductFormStepInfo
-            form={form as unknown as ProductFormComponentApi}
-            categories={categories}
-            categoryDialogOpen={categoryDialogOpen}
-            newCategoryName={newCategoryName}
-            setNewCategoryName={setNewCategoryName}
-            onCategoryDialogOpenChange={setCategoryDialogOpen}
-            onCreateCategory={handleCreateCategory}
-            isCreatingCategory={isCreatingCategory}
-            onNameInputChange={(event, handleChange) => {
-              form.setFieldMeta('name', (prev) => ({
-                ...prev,
-                errorMap: { ...prev?.errorMap, onSubmit: undefined },
-              }));
-              handleChange(event.target.value);
-            }}
-          />
-
-          <ProductFormStepPricing
-            form={form as unknown as ProductFormComponentApi}
-            watchedValues={watchedValues}
-            priceLabel={priceLabel}
-            currency={currency}
-            currencySymbol={currencySymbol}
-            isSaving={isSaving}
-            storeTaxSettings={storeTaxSettings}
-            availableAccessories={availableAccessories}
-            basePrice={basePrice}
-            effectivePricingMode={effectivePricingMode}
-            showAccessories={true}
-          />
-
-          <FloatingSaveBar
-            isDirty={isDirty}
-            isLoading={isSaving}
-            onReset={handleReset}
-          />
-        </form.Form>
-      </form.AppForm>
-    );
-  }
-
-  // Create mode: stepper flow
-  return (
-    <form.AppForm>
-      <form.Form className="space-y-6">
-        {/* Stepper */}
-        <Card>
-          <CardContent className="pt-6">
-            <Stepper
-              steps={steps}
-              currentStep={currentStep}
-              onStepClick={goToStep}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Step Content */}
-        {currentStep === 0 && (
-          <StepContent direction={stepDirection}>
+      <>
+        <form.AppForm>
+          <form.Form className="space-y-6">
             <ProductFormStepPhotos
               form={form as unknown as ProductFormComponentApi}
               imagesPreviews={imagesPreviews}
@@ -356,12 +290,10 @@ export function ProductForm({
               handleDrop={media.handleDrop}
               removeImage={media.removeImage}
               setMainImage={media.setMainImage}
+              recropImage={media.recropImage}
+              canRecrop={true}
             />
-          </StepContent>
-        )}
 
-        {currentStep === 1 && (
-          <StepContent direction={stepDirection}>
             <ProductFormStepInfo
               form={form as unknown as ProductFormComponentApi}
               categories={categories}
@@ -379,11 +311,7 @@ export function ProductForm({
                 handleChange(event.target.value);
               }}
             />
-          </StepContent>
-        )}
 
-        {currentStep === 2 && (
-          <StepContent direction={stepDirection}>
             <ProductFormStepPricing
               form={form as unknown as ProductFormComponentApi}
               watchedValues={watchedValues}
@@ -395,62 +323,195 @@ export function ProductForm({
               availableAccessories={availableAccessories}
               basePrice={basePrice}
               effectivePricingMode={effectivePricingMode}
-              showAccessories={false}
+              showAccessories={true}
             />
-          </StepContent>
-        )}
 
-        {currentStep === 3 && (
-          <StepContent direction={stepDirection}>
-            <ProductFormStepPreview
-              form={form as unknown as ProductFormComponentApi}
-              watchedValues={watchedValues}
-              imagesPreviews={imagesPreviews}
-              selectedCategory={selectedCategory}
-              priceLabel={priceLabel}
+            <FloatingSaveBar
+              isDirty={isDirty}
+              isLoading={isSaving}
+              onReset={handleReset}
             />
-          </StepContent>
-        )}
+          </form.Form>
+        </form.AppForm>
 
-        {/* Navigation */}
-        <StepActions>
-          <div>
-            {currentStep > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={goToPreviousStep}
-              >
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {t('previous')}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/dashboard/products')}
-              >
-                {tCommon('cancel')}
-              </Button>
-            )}
-          </div>
+        <ProductImageCropDialog
+          open={media.isCropDialogOpen}
+          items={media.cropQueueItems}
+          selectedIndex={media.selectedCropIndex}
+          previewProductName={cropPreviewProductName}
+          previewPrice={cropPreviewPrice}
+          previewPriceLabel={priceLabel}
+          canGoToPrevious={media.canGoToPreviousCropItem}
+          canGoToNext={media.canGoToNextCropItem}
+          isUploading={media.isUploadingImages}
+          onClose={media.closeCropDialog}
+          onSelectIndex={media.setSelectedCropIndex}
+          onPrevious={media.goToPreviousCropItem}
+          onNext={media.goToNextCropItem}
+          onCropChange={media.setCropRect}
+          onCropComplete={media.setCropAreaPixels}
+          onCropSizeChange={media.setCropSizePercent}
+          onApplyCrop={media.applyCurrentCropAndProceed}
+          onSkipCrop={media.keepCurrentCropOriginalAndProceed}
+          onReplaceCurrentImage={media.replaceCurrentCropImage}
+        />
+      </>
+    );
+  }
 
-          <div className="flex gap-3">
-            {currentStep < steps.length - 1 ? (
-              <Button key="next" type="button" onClick={goToNextStep}>
-                {t('next')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button key="submit" type="submit" disabled={isSaving}>
-                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Check className="mr-2 h-4 w-4" />
-                {product ? t('save') : t('createProduct')}
-              </Button>
-            )}
-          </div>
-        </StepActions>
-      </form.Form>
-    </form.AppForm>
+  // Create mode: stepper flow
+  return (
+    <>
+      <form.AppForm>
+        <form.Form className="space-y-6">
+          {/* Stepper */}
+          <Card>
+            <CardContent className="pt-6">
+              <Stepper
+                steps={steps}
+                currentStep={currentStep}
+                onStepClick={goToStep}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Step Content */}
+          {currentStep === 0 && (
+            <StepContent direction={stepDirection}>
+              <ProductFormStepPhotos
+                form={form as unknown as ProductFormComponentApi}
+                imagesPreviews={imagesPreviews}
+                isDragging={media.isDragging}
+                isUploadingImages={media.isUploadingImages}
+                handleImageUpload={media.handleImageUpload}
+                handleDragOver={media.handleDragOver}
+                handleDragEnter={media.handleDragEnter}
+                handleDragLeave={media.handleDragLeave}
+                handleDrop={media.handleDrop}
+                removeImage={media.removeImage}
+                setMainImage={media.setMainImage}
+                recropImage={media.recropImage}
+                canRecrop={false}
+              />
+            </StepContent>
+          )}
+
+          {currentStep === 1 && (
+            <StepContent direction={stepDirection}>
+              <ProductFormStepInfo
+                form={form as unknown as ProductFormComponentApi}
+                categories={categories}
+                categoryDialogOpen={categoryDialogOpen}
+                newCategoryName={newCategoryName}
+                setNewCategoryName={setNewCategoryName}
+                onCategoryDialogOpenChange={setCategoryDialogOpen}
+                onCreateCategory={handleCreateCategory}
+                isCreatingCategory={isCreatingCategory}
+                onNameInputChange={(event, handleChange) => {
+                  form.setFieldMeta('name', (prev) => ({
+                    ...prev,
+                    errorMap: { ...prev?.errorMap, onSubmit: undefined },
+                  }));
+                  handleChange(event.target.value);
+                }}
+              />
+            </StepContent>
+          )}
+
+          {currentStep === 2 && (
+            <StepContent direction={stepDirection}>
+              <ProductFormStepPricing
+                form={form as unknown as ProductFormComponentApi}
+                watchedValues={watchedValues}
+                priceLabel={priceLabel}
+                currency={currency}
+                currencySymbol={currencySymbol}
+                isSaving={isSaving}
+                storeTaxSettings={storeTaxSettings}
+                availableAccessories={availableAccessories}
+                basePrice={basePrice}
+                effectivePricingMode={effectivePricingMode}
+                showAccessories={false}
+              />
+            </StepContent>
+          )}
+
+          {currentStep === 3 && (
+            <StepContent direction={stepDirection}>
+              <ProductFormStepPreview
+                form={form as unknown as ProductFormComponentApi}
+                watchedValues={watchedValues}
+                imagesPreviews={imagesPreviews}
+                selectedCategory={selectedCategory}
+                priceLabel={priceLabel}
+              />
+            </StepContent>
+          )}
+
+          {/* Navigation */}
+          <StepActions>
+            <div>
+              {currentStep > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {t('previous')}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/products')}
+                >
+                  {tCommon('cancel')}
+                </Button>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              {currentStep < steps.length - 1 ? (
+                <Button key="next" type="button" onClick={goToNextStep}>
+                  {t('next')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button key="submit" type="submit" disabled={isSaving}>
+                  {isSaving && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  <Check className="mr-2 h-4 w-4" />
+                  {product ? t('save') : t('createProduct')}
+                </Button>
+              )}
+            </div>
+          </StepActions>
+        </form.Form>
+      </form.AppForm>
+
+      <ProductImageCropDialog
+        open={media.isCropDialogOpen}
+        items={media.cropQueueItems}
+        selectedIndex={media.selectedCropIndex}
+        previewProductName={cropPreviewProductName}
+        previewPrice={cropPreviewPrice}
+        previewPriceLabel={priceLabel}
+        canGoToPrevious={media.canGoToPreviousCropItem}
+        canGoToNext={media.canGoToNextCropItem}
+        isUploading={media.isUploadingImages}
+        onClose={media.closeCropDialog}
+        onSelectIndex={media.setSelectedCropIndex}
+        onPrevious={media.goToPreviousCropItem}
+        onNext={media.goToNextCropItem}
+        onCropChange={media.setCropRect}
+        onCropComplete={media.setCropAreaPixels}
+        onCropSizeChange={media.setCropSizePercent}
+        onApplyCrop={media.applyCurrentCropAndProceed}
+        onSkipCrop={media.keepCurrentCropOriginalAndProceed}
+        onReplaceCurrentImage={media.replaceCurrentCropImage}
+      />
+    </>
   );
 }

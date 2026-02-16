@@ -23,6 +23,9 @@ export * from './components/checkbox'
 // Collapsible
 export * from './components/collapsible'
 
+// Combobox
+export * from './components/combobox'
+
 // Command
 export * from './components/command'
 

@@ -46,11 +46,17 @@ export function ProductCard({ product }: ProductCardProps) {
     ? Math.max(...product.pricingTiers.map((t) => parseFloat(t.discountPercent)))
     : 0
 
+  const basePrice = parseFloat(product.price)
+  const hasTiers = maxDiscount > 0
+  const cheapestPrice = hasTiers
+    ? basePrice * (1 - maxDiscount / 100)
+    : basePrice
+
   return (
     <Link href="/#date-picker" className="group block">
       <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border border-border/50 hover:border-primary/20 bg-card p-0 gap-0">
         {/* Image container - square aspect ratio */}
-        <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {mainImage ? (
             <Image
               src={mainImage}
@@ -84,7 +90,6 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           )}
 
-
           {/* Pricing tiers badge */}
           {isAvailable && maxDiscount > 0 && product.quantity > 2 && (
             <Badge
@@ -92,7 +97,7 @@ export function ProductCard({ product }: ProductCardProps) {
               className="absolute top-3 left-3 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/70 dark:text-green-300"
             >
               <TrendingDown className="h-3 w-3 mr-1" />
-              -{maxDiscount}%
+              -{Math.floor(maxDiscount)}%
             </Badge>
           )}
         </div>
@@ -103,20 +108,18 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.name}
           </h3>
 
-          <div className="mt-2 flex items-center gap-2">
-            <div className="flex items-baseline gap-1">
-              <span className="text-lg md:text-xl font-bold text-primary">
-                {formatCurrency(parseFloat(product.price), currency)}
-              </span>
+          <div className="mt-2 flex items-baseline gap-1">
+            {hasTiers && (
               <span className="text-xs md:text-sm text-muted-foreground">
-                / {t(`pricingUnit.${pricingMode}.singular`)}
-              </span>
-            </div>
-            {maxDiscount > 0 && (
-              <span className="text-xs text-green-600 dark:text-green-400 font-medium">
-                jusqu'à -{maxDiscount}%
+                {t('startingFrom')}
               </span>
             )}
+            <span className="text-lg md:text-xl font-bold text-primary">
+              {formatCurrency(cheapestPrice, currency)}
+            </span>
+            <span className="text-xs md:text-sm text-muted-foreground">
+              / {t(`pricingUnit.${pricingMode}.singular`)}
+            </span>
           </div>
         </CardContent>
       </Card>

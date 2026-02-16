@@ -188,7 +188,7 @@ export function CheckoutOrderSummary({
                         variant="secondary"
                         className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
                       >
-                        -{discountPercent}%
+                        -{Math.floor(discountPercent)}%
                       </Badge>
                     )}
                   </div>

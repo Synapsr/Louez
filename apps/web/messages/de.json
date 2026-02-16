@@ -679,6 +679,25 @@
         "imageSizeError": "Bild darf 5 MB nicht überschreiten",
         "uploading": "Hochladen...",
         "imageUploadError": "Upload fehlgeschlagen",
+        "recropImage": "Erneut zuschneiden",
+        "cropUnsupportedFormat": "Dieses Bildformat kann nicht erneut zugeschnitten werden",
+        "cropDialogTitle": "Fotos anpassen",
+        "cropDialogDescription": "Verwenden Sie ein 4:3-Zuschnitt für ein einheitliches Storefront-Ergebnis",
+        "cropCounter": "Foto {current} von {total}",
+        "cropStatusCropped": "Zugeschnitten",
+        "cropStatusOriginal": "Original",
+        "cropPrevious": "Vorheriges Foto",
+        "cropNext": "Nächstes Foto",
+        "cropZoom": "Zoom",
+        "cropSize": "Ausschnittgröße",
+        "cropApply": "Zuschnitt anwenden",
+        "cropSkip": "Original behalten",
+        "cropThumbnailAlt": "Foto {index}",
+        "cropNoImage": "Kein Foto ausgewählt",
+        "cropCancel": "Abbrechen",
+        "cropPreviewTitle": "Vorschau",
+        "cropPreviewDescription": "So wird Ihr Foto im Shop angezeigt",
+        "cropUploadSelected": "Auswahl hochladen",
         "information": "Informationen",
         "name": "Produktname",
         "namePlaceholder": "z.B. Mountainbike XC 500",
@@ -2934,7 +2953,7 @@
       "simpleReservationDesc": "In wenigen Klicks buchen",
       "securePaymentDesc": "100% sichere Transaktionen",
       "localPickupDesc": "Holen Sie Ihre Ausrüstung einfach ab",
-        "reviewsBadge": "Bewertungen"
+      "reviewsBadge": "Bewertungen"
     },
     "home": {
       "ourCategories": "Unsere Kategorien",
@@ -3007,6 +3026,7 @@
       "perDay": "Tag",
       "perHour": "Stunde",
       "perWeek": "Woche",
+      "startingFrom": "Ab",
       "pricingUnit": {
         "day": {
           "singular": "Tag",
