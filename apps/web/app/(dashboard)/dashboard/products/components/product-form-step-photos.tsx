@@ -1,9 +1,18 @@
-'use client'
+'use client';
 
-import type { ChangeEvent, DragEvent } from 'react'
+import type { ChangeEvent, DragEvent } from 'react';
 
-import { ImageIcon, Loader2, Plus, Star, Upload, Video, X } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import {
+  Crop,
+  ImageIcon,
+  Loader2,
+  Plus,
+  Star,
+  Upload,
+  Video,
+  X,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -14,24 +23,26 @@ import {
   CardHeader,
   CardTitle,
   Label,
-} from '@louez/ui'
+} from '@louez/ui';
 
-import { getFieldError } from '@/hooks/form/form-context'
+import { getFieldError } from '@/hooks/form/form-context';
 
-import type { ProductFormComponentApi } from '../types'
+import type { ProductFormComponentApi } from '../types';
 
 interface ProductFormStepPhotosProps {
-  form: ProductFormComponentApi
-  imagesPreviews: string[]
-  isDragging: boolean
-  isUploadingImages: boolean
-  handleImageUpload: (event: ChangeEvent<HTMLInputElement>) => void
-  handleDragOver: (event: DragEvent) => void
-  handleDragEnter: (event: DragEvent) => void
-  handleDragLeave: (event: DragEvent) => void
-  handleDrop: (event: DragEvent) => void
-  removeImage: (index: number) => void
-  setMainImage: (index: number) => void
+  form: ProductFormComponentApi;
+  imagesPreviews: string[];
+  isDragging: boolean;
+  isUploadingImages: boolean;
+  handleImageUpload: (event: ChangeEvent<HTMLInputElement>) => void;
+  handleDragOver: (event: DragEvent) => void;
+  handleDragEnter: (event: DragEvent) => void;
+  handleDragLeave: (event: DragEvent) => void;
+  handleDrop: (event: DragEvent) => void;
+  removeImage: (index: number) => void;
+  setMainImage: (index: number) => void;
+  recropImage: (index: number) => void;
+  canRecrop: boolean;
 }
 
 export function ProductFormStepPhotos({
@@ -46,8 +57,10 @@ export function ProductFormStepPhotos({
   handleDrop,
   removeImage,
   setMainImage,
+  recropImage,
+  canRecrop,
 }: ProductFormStepPhotosProps) {
-  const t = useTranslations('dashboard.products.form')
+  const t = useTranslations('dashboard.products.form');
 
   return (
     <Card>
@@ -80,14 +93,18 @@ export function ProductFormStepPhotos({
                     {isUploadingImages ? (
                       <>
                         <Loader2 className="text-primary mb-3 h-10 w-10 animate-spin" />
-                        <span className="text-sm font-medium">{t('uploading')}</span>
+                        <span className="text-sm font-medium">
+                          {t('uploading')}
+                        </span>
                       </>
                     ) : (
                       <>
                         <Upload
                           className={`mb-3 h-10 w-10 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`}
                         />
-                        <span className="text-sm font-medium">{t('addImage')}</span>
+                        <span className="text-sm font-medium">
+                          {t('addImage')}
+                        </span>
                         <span className="text-muted-foreground mt-1 text-xs">
                           {t('dragImages')}
                         </span>
@@ -107,7 +124,7 @@ export function ProductFormStepPhotos({
                 {imagesPreviews.length > 0 && (
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {imagesPreviews.map((preview, index) => (
-                      <div key={index} className="group relative aspect-square">
+                      <div key={index} className="group relative aspect-[4/3]">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={preview}
@@ -127,6 +144,18 @@ export function ProductFormStepPhotos({
                               <Star className="h-4 w-4" />
                             </Button>
                           )}
+                          {canRecrop && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => recropImage(index)}
+                              title={t('recropImage')}
+                            >
+                              <Crop className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             type="button"
                             variant="destructive"
@@ -138,7 +167,10 @@ export function ProductFormStepPhotos({
                           </Button>
                         </div>
                         {index === 0 && (
-                          <Badge className="absolute -top-2 -left-2" variant="default">
+                          <Badge
+                            className="absolute -top-2 -left-2"
+                            variant="default"
+                          >
                             {t('mainBadge')}
                           </Badge>
                         )}
@@ -147,7 +179,7 @@ export function ProductFormStepPhotos({
 
                     {imagesPreviews.length < 5 && (
                       <label
-                        className={`flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
+                        className={`flex aspect-[4/3] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
                           isUploadingImages
                             ? 'border-primary bg-primary/10 cursor-wait'
                             : isDragging
@@ -206,12 +238,14 @@ export function ProductFormStepPhotos({
                   {t('videoUrl')}
                 </Label>
                 <field.Input placeholder={t('videoUrlPlaceholder')} />
-                <p className="text-muted-foreground text-sm">{t('videoUrlHelp')}</p>
+                <p className="text-muted-foreground text-sm">
+                  {t('videoUrlHelp')}
+                </p>
               </div>
             )}
           </form.AppField>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

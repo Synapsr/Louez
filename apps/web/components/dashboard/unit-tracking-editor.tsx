@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Plus, Trash2, Package, ChevronDown, AlertCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -55,6 +55,95 @@ interface BookingAttributeAxisInput {
   position: number
 }
 
+function AttributeValueCombobox({
+  value,
+  onChange,
+  suggestions,
+  placeholder,
+  disabled,
+  hasError,
+  createHint,
+}: {
+  value: string
+  onChange: (value: string) => void
+  suggestions: string[]
+  placeholder: string
+  disabled: boolean
+  hasError: boolean
+  createHint: (value: string) => string
+}) {
+  const [localValue, setLocalValue] = useState(value)
+  const [open, setOpen] = useState(false)
+
+  // Sync from parent when value changes externally
+  useEffect(() => {
+    setLocalValue(value)
+  }, [value])
+
+  const filtered = useMemo(() => {
+    if (!localValue.trim()) return suggestions
+    const lower = localValue.toLowerCase()
+    return suggestions.filter((s) => s.toLowerCase().includes(lower))
+  }, [suggestions, localValue])
+
+  const trimmed = localValue.trim()
+  const isNewValue =
+    trimmed.length > 0 &&
+    !suggestions.some((s) => s.toLowerCase() === trimmed.toLowerCase())
+
+  return (
+    <div className="relative">
+      <Input
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => {
+          setTimeout(() => setOpen(false), 150)
+          if (localValue !== value) onChange(localValue)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            onChange(localValue)
+            setOpen(false)
+            ;(e.target as HTMLInputElement).blur()
+          }
+        }}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={cn(hasError && !localValue.trim() && 'border-destructive/60')}
+      />
+      {open && (filtered.length > 0 || isNewValue) && (
+        <div className="absolute z-50 mt-1 max-h-[200px] w-full overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg">
+          {filtered.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={cn(
+                'w-full cursor-default rounded-sm px-2 py-1.5 text-left text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                s === localValue && 'bg-accent/50 font-medium',
+              )}
+              onMouseDown={(e) => {
+                e.preventDefault()
+                setLocalValue(s)
+                onChange(s)
+                setOpen(false)
+              }}
+            >
+              {s}
+            </button>
+          ))}
+          {isNewValue && (
+            <p className="px-2 py-1.5 text-xs text-muted-foreground">
+              {createHint(trimmed)}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface UnitTrackingEditorProps {
   trackUnits: boolean
   onTrackUnitsChange: (value: boolean) => void
@@ -106,6 +195,20 @@ export function UnitTrackingEditor({
     }
     return duplicates
   }, [units])
+
+  // Collect unique existing values per attribute axis for combobox suggestions
+  const existingValuesByAxis = useMemo(() => {
+    const map: Record<string, string[]> = {}
+    for (const axis of bookingAttributeAxes) {
+      const uniqueValues = new Set<string>()
+      for (const unit of units) {
+        const val = unit.attributes?.[axis.key]?.trim()
+        if (val) uniqueValues.add(val)
+      }
+      map[axis.key] = Array.from(uniqueValues).sort()
+    }
+    return map
+  }, [bookingAttributeAxes, units])
 
   const missingAttributeCount = useMemo(() => {
     if (bookingAttributeAxes.length === 0) return 0
@@ -446,24 +549,37 @@ export function UnitTrackingEditor({
 
                         {bookingAttributeAxes.length > 0 && (
                           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                            {bookingAttributeAxes.map((axis) => (
-                              <div key={axis.key} className="space-y-1">
-                                <Label className="text-xs text-muted-foreground">{axis.label}</Label>
-                                <Input
-                                  value={unit.attributes?.[axis.key] || ''}
-                                  onChange={(e) =>
-                                    updateUnitAttribute(index, axis.key, e.target.value)
-                                  }
-                                  placeholder={t('bookingAttributeValuePlaceholder', { label: axis.label })}
-                                  disabled={disabled}
-                                  className={cn(
-                                    !unit.attributes?.[axis.key]?.trim() &&
-                                      (unit.status || 'available') === 'available' &&
-                                      'border-destructive/60',
-                                  )}
-                                />
-                              </div>
-                            ))}
+                            {bookingAttributeAxes.map((axis) => {
+                              const suggestions = existingValuesByAxis[axis.key] || []
+                              const currentValue = unit.attributes?.[axis.key] || ''
+                              const hasError =
+                                !currentValue.trim() &&
+                                (unit.status || 'available') === 'available'
+
+                              return (
+                                <div key={axis.key} className="space-y-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    {axis.label}
+                                  </Label>
+                                  <AttributeValueCombobox
+                                    value={currentValue}
+                                    onChange={(val) =>
+                                      updateUnitAttribute(index, axis.key, val)
+                                    }
+                                    suggestions={suggestions}
+                                    placeholder={t(
+                                      'bookingAttributeValuePlaceholder',
+                                      { label: axis.label },
+                                    )}
+                                    disabled={disabled}
+                                    hasError={hasError}
+                                    createHint={(v) =>
+                                      t('pressEnterToCreate', { value: v })
+                                    }
+                                  />
+                                </div>
+                              )
+                            })}
                           </div>
                         )}
 

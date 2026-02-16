@@ -640,6 +640,25 @@
         "imageSizeError": "L'immagine non deve superare 15 MB",
         "uploading": "Caricamento...",
         "imageUploadError": "Caricamento fallito",
+        "recropImage": "Ritaglia di nuovo",
+        "cropUnsupportedFormat": "Questo formato immagine non può essere ritagliato di nuovo",
+        "cropDialogTitle": "Regola le tue foto",
+        "cropDialogDescription": "Usa un ritaglio 4:3 per un risultato coerente nello storefront",
+        "cropCounter": "Foto {current} di {total}",
+        "cropStatusCropped": "Ritagliata",
+        "cropStatusOriginal": "Originale",
+        "cropPrevious": "Foto precedente",
+        "cropNext": "Foto successiva",
+        "cropZoom": "Zoom",
+        "cropSize": "Dimensione ritaglio",
+        "cropApply": "Applica ritaglio",
+        "cropSkip": "Mantieni originale",
+        "cropThumbnailAlt": "Foto {index}",
+        "cropNoImage": "Nessuna foto selezionata",
+        "cropCancel": "Annulla",
+        "cropPreviewTitle": "Anteprima",
+        "cropPreviewDescription": "Ecco come apparirà la tua foto nel negozio",
+        "cropUploadSelected": "Carica selezionate",
         "information": "Informazioni",
         "name": "Nome prodotto",
         "namePlaceholder": "Es: Mountain Bike XC 500",
@@ -2933,7 +2952,7 @@
       "simpleReservationDesc": "Prenota in pochi clic",
       "securePaymentDesc": "Transazioni 100% sicure",
       "localPickupDesc": "Ritira facilmente la tua attrezzatura",
-        "reviewsBadge": "recensioni"
+      "reviewsBadge": "recensioni"
     },
     "home": {
       "ourCategories": "Le nostre categorie",
@@ -3006,6 +3025,7 @@
       "perDay": "giorno",
       "perHour": "ora",
       "perWeek": "settimana",
+      "startingFrom": "A partire da",
       "pricingUnit": {
         "day": {
           "singular": "giorno",
@@ -3212,7 +3232,7 @@
     },
     "checkout": {
       "title": "Completa la mia prenotazione",
-            "paymentMode": "Completa le tue informazioni per procedere al pagamento",
+      "paymentMode": "Completa le tue informazioni per procedere al pagamento",
       "requestMode": "Completa le tue informazioni per inviare la tua richiesta di prenotazione",
       "customerInfo": "Le tue informazioni",
       "summary": "Il tuo ordine",

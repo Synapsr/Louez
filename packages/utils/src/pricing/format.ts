@@ -75,9 +75,10 @@ export function formatTierLabel(
 
 /**
  * Format discount percentage (e.g., "-20%")
+ * Rounds to nearest integer for clean display
  */
 export function formatDiscount(percent: number): string {
-  return `-${percent}%`
+  return `-${Math.floor(percent)}%`
 }
 
 /**

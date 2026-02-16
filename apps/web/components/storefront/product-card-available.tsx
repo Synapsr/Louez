@@ -208,7 +208,7 @@ export function ProductCardAvailable({
         onClick={handleOpenModal}
       >
         {/* Image */}
-        <div className="relative aspect-square overflow-hidden bg-muted">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
           {mainImage ? (
             <Image
               src={mainImage}
@@ -353,7 +353,7 @@ export function ProductCardAvailable({
             {hasDiscount && !inCart && (
               <Badge variant="success" className="text-xs shrink-0">
                 <TrendingDown className="h-3 w-3 mr-0.5" />
-                -{discountPercent}%
+                -{Math.floor(discountPercent!)}%
               </Badge>
             )}
             {inCart && (
