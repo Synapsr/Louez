@@ -7,6 +7,7 @@ import {
   Image as BaseImage,
 } from '@react-pdf/renderer'
 import { createContractStyles } from './styles'
+import { parseCgvHtml } from './cgv-parser'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { env } from '@/env'
 
@@ -30,6 +31,7 @@ export interface ContractTranslations {
     conditions: string
     signatures: string
     legalMentions: string
+    fullCgvAnnex: string
   }
   parties: {
     landlord: string
@@ -185,6 +187,7 @@ interface ContractDocumentProps {
   translations: ContractTranslations
   currency?: string
   timezone?: string
+  fullCgvHtml?: string | null
 }
 
 // Currency formatting based on locale and currency
@@ -228,9 +231,11 @@ export function ContractDocument({
   translations: t,
   currency = 'EUR',
   timezone,
+  fullCgvHtml,
 }: ContractDocumentProps) {
   const primaryColor = store.primaryColor || '#0066FF'
   const styles = createContractStyles(primaryColor)
+  const cgvBlocks = parseCgvHtml(fullCgvHtml)
 
   // Create a currency formatter for this document
   const formatCurrency = (amount: number | string) => formatCurrencyValue(amount, locale, currency)
@@ -583,6 +588,49 @@ export function ContractDocument({
             </Text>
           )}
         </View>
+
+        {cgvBlocks.length > 0 && (
+          <View break style={styles.cgvAnnexSection}>
+            <Text style={styles.cgvAnnexTitle}>{t.sections.fullCgvAnnex}</Text>
+            {cgvBlocks.map((block, index) => {
+              if (block.type === 'heading') {
+                const headingStyle =
+                  block.level === 1
+                    ? styles.cgvAnnexHeading1
+                    : block.level === 2
+                      ? styles.cgvAnnexHeading2
+                      : styles.cgvAnnexHeading3
+
+                return (
+                  <Text key={`heading-${index}`} style={headingStyle}>
+                    {block.text}
+                  </Text>
+                )
+              }
+
+              if (block.type === 'list') {
+                return (
+                  <View key={`list-${index}`} style={styles.cgvAnnexList}>
+                    {block.items.map((item, itemIndex) => (
+                      <View key={`list-item-${index}-${itemIndex}`} style={styles.cgvAnnexListItem}>
+                        <Text style={styles.cgvAnnexListMarker}>
+                          {block.ordered ? `${itemIndex + 1}.` : '•'}
+                        </Text>
+                        <Text style={styles.cgvAnnexListText}>{item}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )
+              }
+
+              return (
+                <Text key={`paragraph-${index}`} style={styles.cgvAnnexParagraph}>
+                  {block.text}
+                </Text>
+              )
+            })}
+          </View>
+        )}
 
         {/* Footer */}
         <View style={styles.footer} fixed>

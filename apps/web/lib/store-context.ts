@@ -36,6 +36,7 @@ export type StoreWithFullData = {
   theme: StoreTheme | null
   cgv: string | null
   legalNotice: string | null
+  includeCgvInContract: boolean
   stripeAccountId: string | null
   stripeOnboardingComplete: boolean | null
   stripeChargesEnabled: boolean | null

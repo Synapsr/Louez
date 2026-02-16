@@ -2412,6 +2412,10 @@
         "legalNoticeHelp": "Informations légales obligatoires sur votre entreprise",
         "legalNoticePlaceholder": "Rédigez vos mentions légales...",
         "legalNoticeTemplate": "Modèle Mentions légales",
+        "contractPdfSettingsTitle": "Contrat PDF",
+        "contractPdfSettingsDescription": "Choisissez comment les CGV apparaissent dans les contrats de location",
+        "includeFullCgvInContract": "Intégrer les CGV complètes dans le contrat PDF",
+        "includeFullCgvInContractHelp": "Ajoute une annexe avec le texte intégral des CGV. Une fois signé, ce texte reste figé sur le contrat.",
         "useTemplate": "Utiliser un modèle",
         "templates": "Modèles",
         "templatesDescription": "Utilisez nos modèles comme point de départ",
@@ -3944,7 +3948,8 @@
       "payments": "Paiements",
       "conditions": "Conditions de location",
       "signatures": "Acceptation et signatures",
-      "legalMentions": "Mentions légales"
+      "legalMentions": "Mentions légales",
+      "fullCgvAnnex": "Annexe - Conditions générales de location"
     },
     "parties": {
       "landlord": "Loueur",

@@ -233,6 +233,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
 export const updateStoreLegalInputSchema = z.object({
   cgv: z.string().max(100000, 'errors.invalidData').optional(),
   legalNotice: z.string().max(100000, 'errors.invalidData').optional(),
+  includeFullCgvInContract: z.boolean().optional(),
 })
 
 const s3UrlSchema = z

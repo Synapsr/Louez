@@ -2411,6 +2411,10 @@
         "legalNoticeHelp": "Required legal information about your business",
         "legalNoticePlaceholder": "Write your legal notice...",
         "legalNoticeTemplate": "Legal notice template",
+        "contractPdfSettingsTitle": "Contract PDF",
+        "contractPdfSettingsDescription": "Choose how terms appear in rental contracts",
+        "includeFullCgvInContract": "Include full terms in contract PDF",
+        "includeFullCgvInContractHelp": "Adds an annex with the full terms text. Once signed, this text stays fixed on the contract.",
         "useTemplate": "Use a template",
         "templates": "Templates",
         "templatesDescription": "Use our templates as a starting point",
@@ -3948,7 +3952,8 @@
       "payments": "Payments",
       "conditions": "Rental Conditions",
       "signatures": "Acceptance and Signatures",
-      "legalMentions": "Legal Notices"
+      "legalMentions": "Legal Notices",
+      "fullCgvAnnex": "Annex - Full Rental Terms and Conditions"
     },
     "parties": {
       "landlord": "Landlord",

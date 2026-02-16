@@ -17,7 +17,7 @@ interface UpdateStoreAppearanceParams {
 
 export async function updateStoreLegal(params: UpdateStoreLegalParams) {
   const { storeId, input } = params
-  const { cgv, legalNotice } = input
+  const { cgv, legalNotice, includeFullCgvInContract } = input
 
   const updateData: Record<string, unknown> = {
     updatedAt: new Date(),
@@ -29,6 +29,10 @@ export async function updateStoreLegal(params: UpdateStoreLegalParams) {
 
   if (legalNotice !== undefined) {
     updateData.legalNotice = legalNotice
+  }
+
+  if (includeFullCgvInContract !== undefined) {
+    updateData.includeCgvInContract = includeFullCgvInContract
   }
 
   await db.update(stores).set(updateData).where(eq(stores.id, storeId))
