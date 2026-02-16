@@ -65,6 +65,8 @@ export function PricingTiersEditor({
 }: PricingTiersEditorProps) {
   const t = useTranslations('dashboard.products.form.pricingTiers')
   const [isEnabled, setIsEnabled] = useState(tiers.length > 0)
+  const [editingDurations, setEditingDurations] = useState<Record<number, string>>({})
+  const [editingDiscounts, setEditingDiscounts] = useState<Record<number, string>>({})
   const [editingPrices, setEditingPrices] = useState<Record<number, string>>({})
   const [editingTotals, setEditingTotals] = useState<Record<number, string>>({})
 
@@ -255,14 +257,43 @@ export function PricingTiersEditor({
                               type="number"
                               min={1}
                               max={999}
-                              value={tier.minDuration}
-                              onChange={(e) =>
-                                updateTier(
-                                  originalIndex,
-                                  'minDuration',
-                                  Math.max(1, parseInt(e.target.value) || 1)
-                                )
+                              value={
+                                editingDurations[originalIndex] ??
+                                tier.minDuration
                               }
+                              onFocus={(e) =>
+                                setEditingDurations((prev) => ({
+                                  ...prev,
+                                  [originalIndex]: e.target.value,
+                                }))
+                              }
+                              onChange={(e) => {
+                                setEditingDurations((prev) => ({
+                                  ...prev,
+                                  [originalIndex]: e.target.value,
+                                }))
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              onBlur={() => {
+                                const raw = editingDurations[originalIndex]
+                                if (raw !== undefined) {
+                                  const parsed = parseInt(raw)
+                                  updateTier(
+                                    originalIndex,
+                                    'minDuration',
+                                    Math.min(999, Math.max(1, isNaN(parsed) ? 1 : parsed))
+                                  )
+                                }
+                                setEditingDurations((prev) => {
+                                  const next = { ...prev }
+                                  delete next[originalIndex]
+                                  return next
+                                })
+                              }}
                               className="w-20"
                               disabled={disabled}
                             />
@@ -283,14 +314,43 @@ export function PricingTiersEditor({
                               step="any"
                               min={1}
                               max={99}
-                              value={tier.discountPercent}
-                              onChange={(e) =>
-                                updateTier(
-                                  originalIndex,
-                                  'discountPercent',
-                                  Math.min(99, Math.max(1, parseFloat(e.target.value) || 1))
-                                )
+                              value={
+                                editingDiscounts[originalIndex] ??
+                                tier.discountPercent
                               }
+                              onFocus={(e) =>
+                                setEditingDiscounts((prev) => ({
+                                  ...prev,
+                                  [originalIndex]: e.target.value,
+                                }))
+                              }
+                              onChange={(e) => {
+                                setEditingDiscounts((prev) => ({
+                                  ...prev,
+                                  [originalIndex]: e.target.value,
+                                }))
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.currentTarget.blur()
+                                }
+                              }}
+                              onBlur={() => {
+                                const raw = editingDiscounts[originalIndex]
+                                if (raw !== undefined) {
+                                  const parsed = parseFloat(raw)
+                                  updateTier(
+                                    originalIndex,
+                                    'discountPercent',
+                                    Math.min(99, Math.max(1, isNaN(parsed) ? 1 : parsed))
+                                  )
+                                }
+                                setEditingDiscounts((prev) => {
+                                  const next = { ...prev }
+                                  delete next[originalIndex]
+                                  return next
+                                })
+                              }}
                               className="w-20"
                               disabled={disabled}
                             />
@@ -347,6 +407,11 @@ export function PricingTiersEditor({
                                       'discountPercent',
                                       Math.min(99, Math.max(1, discount))
                                     )
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur()
                                   }
                                 }}
                                 onBlur={() =>
@@ -422,6 +487,11 @@ export function PricingTiersEditor({
                                         Math.min(99, Math.max(1, discount))
                                       )
                                     }
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.currentTarget.blur()
                                   }
                                 }}
                                 onBlur={() =>

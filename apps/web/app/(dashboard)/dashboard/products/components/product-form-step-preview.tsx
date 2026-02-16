@@ -100,7 +100,12 @@ export function ProductFormStepPreview({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{t('quantity')}</span>
                 <span>
-                  {watchedValues.quantity} {t('units')}
+                  {watchedValues.trackUnits
+                    ? (watchedValues.units ?? []).filter(
+                        (u) => !u.status || u.status === 'available'
+                      ).length
+                    : watchedValues.quantity}{' '}
+                  {t('units')}
                 </span>
               </div>
               <div className="flex justify-between">
