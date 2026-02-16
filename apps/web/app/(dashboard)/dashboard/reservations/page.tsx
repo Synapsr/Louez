@@ -31,7 +31,16 @@ function ReservationsTableSkeleton() {
 }
 
 interface ReservationsPageProps {
-  searchParams: Promise<{ status?: string; period?: string }>
+  searchParams: Promise<{
+    status?: string
+    period?: string
+    search?: string
+    sort?: string
+    sortDirection?: string
+    page?: string
+    pageSize?: string
+    view?: string
+  }>
 }
 
 function normalizeStatus(value: string | undefined) {
@@ -54,6 +63,16 @@ function normalizePeriod(value: string | undefined) {
   return undefined
 }
 
+function normalizeSort(value: string | undefined) {
+  if (value === 'startDate' || value === 'amount' || value === 'status' || value === 'number') return value
+  return undefined
+}
+
+function normalizeSortDirection(value: string | undefined) {
+  if (value === 'asc' || value === 'desc') return value
+  return undefined
+}
+
 export default async function ReservationsPage({ searchParams }: ReservationsPageProps) {
   const store = await getCurrentStore()
   if (!store) return null
@@ -61,8 +80,14 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
   const params = await searchParams
   const status = normalizeStatus(params.status)
   const period = normalizePeriod(params.period)
+  const search = params.search?.trim() || undefined
+  const sort = normalizeSort(params.sort)
+  const sortDirection = normalizeSortDirection(params.sortDirection)
+  const page = params.page ? parseInt(params.page, 10) : 1
+  const pageSize = params.pageSize ? parseInt(params.pageSize, 10) : 25
   const currency = store.settings?.currency || 'EUR'
   const timezone = store.settings?.timezone
+
   const [limits, plan] = await Promise.all([
     getStoreLimits(store.id),
     getStorePlan(store.id),
@@ -73,6 +98,11 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
     status,
     period,
     limit: 100,
+    search,
+    sort,
+    sortDirection,
+    page,
+    pageSize,
   })
 
   return (

@@ -121,15 +121,25 @@ export function formatStoreDate(
  *
  * Same-day:  "5 janv. • 14:00 - 18:00"
  * Multi-day: "5 janv. 14:00 → 7 janv. 18:00"
+ *
+ * Compact mode (for table views):
+ * Same-day:  "5 janv."
+ * Multi-day: "5 janv. → 7 janv."
  */
 export function formatStoreDateRange(
   startDate: Date | string,
   endDate: Date | string,
   timezone: string | undefined | null,
-  locale: string = 'fr'
+  locale: string = 'fr',
+  options?: { compact?: boolean }
 ): string {
   const startShort = formatStoreDate(startDate, timezone, 'SHORTEST_DATE', locale)
   const endShort = formatStoreDate(endDate, timezone, 'SHORTEST_DATE', locale)
+
+  if (options?.compact) {
+    if (startShort === endShort) return startShort
+    return `${startShort} → ${endShort}`
+  }
 
   if (startShort === endShort) {
     const startTime = formatStoreDate(startDate, timezone, 'TIME_ONLY', locale)

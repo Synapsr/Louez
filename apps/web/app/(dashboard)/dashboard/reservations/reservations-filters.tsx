@@ -3,24 +3,23 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback } from 'react'
 import { useTranslations } from 'next-intl'
+import { useDebouncedCallback } from 'use-debounce'
+import { LayoutGrid, List, Search } from 'lucide-react'
 
-import { Button } from '@louez/ui'
 import {
+  Badge,
+  Button,
+  Input,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@louez/ui'
-import { Badge } from '@louez/ui'
 
-interface ReservationCounts {
-  all: number
-  pending: number
-  confirmed: number
-  ongoing: number
-  completed: number
-}
+import type { ReservationCounts } from './reservations-types'
 
 interface ReservationsFiltersProps {
   counts: ReservationCounts
@@ -40,13 +39,18 @@ export function ReservationsFilters({
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const currentView = searchParams.get('view') || 'table'
+  const currentSearch = searchParams.get('search') || ''
+
   const createQueryString = useCallback(
-    (name: string, value: string) => {
+    (updates: Record<string, string | null>) => {
       const params = new URLSearchParams(searchParams.toString())
-      if (value === 'all') {
-        params.delete(name)
-      } else {
-        params.set(name, value)
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === '') {
+          params.delete(key)
+        } else {
+          params.set(key, value)
+        }
       }
       return params.toString()
     },
@@ -54,12 +58,33 @@ export function ReservationsFilters({
   )
 
   const handleStatusChange = (value: string) => {
-    router.push(`/dashboard/reservations?${createQueryString('status', value)}`)
+    router.push(`/dashboard/reservations?${createQueryString({
+      status: value === 'all' ? null : value,
+      page: null, // reset page when changing filters
+    })}`)
   }
 
   const handlePeriodChange = (value: string | null) => {
     if (value === null) return
-    router.push(`/dashboard/reservations?${createQueryString('period', value)}`)
+    router.push(`/dashboard/reservations?${createQueryString({
+      period: value === 'all' ? null : value,
+      page: null,
+    })}`)
+  }
+
+  const handleSearch = useDebouncedCallback((term: string) => {
+    router.push(`/dashboard/reservations?${createQueryString({
+      search: term || null,
+      page: null,
+    })}`)
+  }, 300)
+
+  const handleViewChange = (value: any[]) => {
+    const selected = value[0] as string | undefined
+    if (!selected) return
+    router.push(`/dashboard/reservations?${createQueryString({
+      view: selected === 'table' ? null : selected,
+    })}`)
   }
 
   const getCount = (status: string): number => {
@@ -93,12 +118,10 @@ export function ReservationsFilters({
     month: 'thisMonth',
   }
 
-  const currentPeriodKey = urlToPeriodMap[currentPeriod] || 'all'
-
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      {/* Status Tabs */}
-      <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1">
+    <div className="space-y-4">
+      {/* Row 1: Status Tabs */}
+      <div className="flex items-center gap-1 rounded-lg border bg-muted/50 p-1 overflow-x-auto">
         {STATUS_KEYS.map((key) => {
           const count = getCount(key)
           const isActive = currentStatus === key
@@ -107,7 +130,7 @@ export function ReservationsFilters({
             <Button
               key={key}
               variant={isActive ? 'secondary' : 'ghost'}
-              className="gap-2"
+              className="gap-2 shrink-0"
               onClick={() => handleStatusChange(key)}
             >
               {getStatusLabel(key)}
@@ -131,21 +154,49 @@ export function ReservationsFilters({
         })}
       </div>
 
-      {/* Period Filter */}
-      <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-        <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder={t('period')}>
-            {getPeriodLabel(urlToPeriodMap[currentPeriod] || 'all')}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          {PERIOD_KEYS.map((key) => (
-            <SelectItem key={key} value={periodUrlMap[key]} label={getPeriodLabel(key)}>
-              {getPeriodLabel(key)}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      {/* Row 2: Search + Period + View Toggle */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        {/* Search */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Input
+            placeholder={t('searchReservations')}
+            className="pl-9"
+            defaultValue={currentSearch}
+            onChange={(e) => handleSearch(e.target.value)}
+          />
+        </div>
+
+        {/* Period Filter */}
+        <Select value={currentPeriod} onValueChange={handlePeriodChange}>
+          <SelectTrigger className="w-full sm:w-[180px]">
+            <SelectValue placeholder={t('period')}>
+              {getPeriodLabel(urlToPeriodMap[currentPeriod] || 'all')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {PERIOD_KEYS.map((key) => (
+              <SelectItem key={key} value={periodUrlMap[key]} label={getPeriodLabel(key)}>
+                {getPeriodLabel(key)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* View Toggle */}
+        <ToggleGroup
+          value={[currentView]}
+          onValueChange={handleViewChange}
+          className="hidden sm:flex"
+        >
+          <ToggleGroupItem value="table" aria-label={t('viewTable')}>
+            <List className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="cards" aria-label={t('viewCards')}>
+            <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+        </ToggleGroup>
+      </div>
     </div>
   )
 }

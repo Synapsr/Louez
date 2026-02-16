@@ -1073,6 +1073,13 @@
       },
       "awaitingResponse": "Aguardando resposta",
       "itemsCount": "{count, plural, one {# item} other {# itens}}",
+      "viewTable": "Vista tabela",
+      "viewCards": "Vista cartões",
+      "pagination": {
+        "showing": "Mostrando {start} a {end} de {total}",
+        "perPage": "Por página",
+        "page": "Página {current} de {total}"
+      },
       "rejectConfirmTitle": "Rejeitar solicitacao?",
       "rejectConfirmDescription": "Isso rejeitara a solicitacao de reserva. O cliente sera notificado por email.",
       "activity": {

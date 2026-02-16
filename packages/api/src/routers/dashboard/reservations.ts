@@ -61,6 +61,11 @@ const list = dashboardProcedure
         status: input.status,
         period: input.period,
         limit: input.limit ?? 100,
+        search: input.search,
+        sort: input.sort,
+        sortDirection: input.sortDirection,
+        page: input.page,
+        pageSize: input.pageSize,
       })
     } catch (error) {
       throw toORPCError(error)

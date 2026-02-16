@@ -1073,6 +1073,13 @@
       },
       "awaitingResponse": "Wacht op reactie",
       "itemsCount": "{count, plural, one {# artikel} other {# artikelen}}",
+      "viewTable": "Tabelweergave",
+      "viewCards": "Kaartweergave",
+      "pagination": {
+        "showing": "Toont {start} tot {end} van {total}",
+        "perPage": "Per pagina",
+        "page": "Pagina {current} van {total}"
+      },
       "rejectConfirmTitle": "Aanvraag afwijzen?",
       "rejectConfirmDescription": "Dit zal de reserveringsaanvraag afwijzen. De klant wordt per e-mail op de hoogte gesteld.",
       "activity": {

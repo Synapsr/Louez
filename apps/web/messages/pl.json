@@ -1073,6 +1073,13 @@
       },
       "awaitingResponse": "Oczekiwanie na odpowiedź",
       "itemsCount": "{count, plural, one {# przedmiot} few {# przedmioty} many {# przedmiotów} other {# przedmiotów}}",
+      "viewTable": "Widok tabeli",
+      "viewCards": "Widok kart",
+      "pagination": {
+        "showing": "Wyświetlanie {start} do {end} z {total}",
+        "perPage": "Na stronę",
+        "page": "Strona {current} z {total}"
+      },
       "rejectConfirmTitle": "Odrzucić żądanie?",
       "rejectConfirmDescription": "To odrzuci żądanie rezerwacji. Klient zostanie powiadomiony emailem.",
       "activity": {

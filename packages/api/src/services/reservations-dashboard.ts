@@ -1,5 +1,5 @@
-import { db, reservationActivity, reservations } from '@louez/db'
-import { and, count, desc, eq, gte, lte } from 'drizzle-orm'
+import { db, customers, reservationActivity, reservations } from '@louez/db'
+import { and, asc, count, desc, eq, gte, inArray, like, lte, or, sql } from 'drizzle-orm'
 import { ORPCError } from '@orpc/server'
 
 type ReservationStatus =
@@ -15,8 +15,13 @@ export async function getDashboardReservationsList(params: {
   status?: 'all' | ReservationStatus
   period?: 'today' | 'week' | 'month'
   limit: number
+  search?: string
+  sort?: 'startDate' | 'amount' | 'status' | 'number'
+  sortDirection?: 'asc' | 'desc'
+  page?: number
+  pageSize?: number
 }) {
-  const { storeId, status, period, limit } = params
+  const { storeId, status, period, limit, search, sort, sortDirection, page, pageSize } = params
   const conditions = [eq(reservations.storeId, storeId)]
 
   if (status && status !== 'all') {
@@ -48,21 +53,87 @@ export async function getDashboardReservationsList(params: {
     conditions.push(lte(reservations.startDate, endOfMonth))
   }
 
-  const [reservationsList, countsByStatus] = await Promise.all([
-    db.query.reservations.findMany({
+  // Determine sort order
+  const sortDir = sortDirection === 'asc' ? asc : desc
+  let orderByClause
+  switch (sort) {
+    case 'amount':
+      orderByClause = [sortDir(reservations.totalAmount)]
+      break
+    case 'status':
+      orderByClause = [sortDir(reservations.status)]
+      break
+    case 'number':
+      orderByClause = [sortDir(reservations.number)]
+      break
+    case 'startDate':
+      orderByClause = [sortDir(reservations.startDate)]
+      break
+    default:
+      orderByClause = [desc(reservations.startDate)]
+      break
+  }
+
+  // Pagination
+  const usePagination = page != null && pageSize != null
+  const effectiveLimit = usePagination ? pageSize : limit
+  const offset = usePagination ? (page - 1) * pageSize : 0
+
+  const needsSearch = search && search.trim()
+
+  // When searching, we need to join with customers table.
+  // Drizzle relational queries don't support cross-table WHERE, so we use a
+  // two-step approach: first find matching IDs via a join query, then load
+  // full relational data for those IDs.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let reservationsList: any[]
+  if (needsSearch) {
+    const term = `%${search.trim()}%`
+    const searchCondition = or(
+      like(reservations.number, term),
+      like(customers.firstName, term),
+      like(customers.lastName, term),
+      sql`CONCAT(${customers.firstName}, ' ', ${customers.lastName}) LIKE ${term}`,
+    )!
+
+    const matchingIds = await db
+      .select({ id: reservations.id })
+      .from(reservations)
+      .innerJoin(customers, eq(reservations.customerId, customers.id))
+      .where(and(...conditions, searchCondition))
+      .orderBy(...orderByClause)
+      .limit(effectiveLimit)
+      .offset(offset)
+
+    if (matchingIds.length === 0) {
+      reservationsList = []
+    } else {
+      reservationsList = await db.query.reservations.findMany({
+        where: inArray(reservations.id, matchingIds.map(r => r.id)),
+        with: {
+          customer: true,
+          items: { with: { product: true } },
+          payments: true,
+        },
+        orderBy: orderByClause,
+      })
+    }
+  } else {
+    reservationsList = await db.query.reservations.findMany({
       where: and(...conditions),
       with: {
         customer: true,
-        items: {
-          with: {
-            product: true,
-          },
-        },
+        items: { with: { product: true } },
         payments: true,
       },
-      orderBy: [desc(reservations.createdAt)],
-      limit,
-    }),
+      orderBy: orderByClause,
+      limit: effectiveLimit,
+      offset,
+    })
+  }
+
+  // Count queries (run in parallel)
+  const [countsByStatus, totalCountResult] = await Promise.all([
     db
       .select({
         status: reservations.status,
@@ -71,6 +142,24 @@ export async function getDashboardReservationsList(params: {
       .from(reservations)
       .where(eq(reservations.storeId, storeId))
       .groupBy(reservations.status),
+    usePagination
+      ? (needsSearch
+          ? db
+              .select({ count: count() })
+              .from(reservations)
+              .innerJoin(customers, eq(reservations.customerId, customers.id))
+              .where(and(...conditions, or(
+                like(reservations.number, `%${search!.trim()}%`),
+                like(customers.firstName, `%${search!.trim()}%`),
+                like(customers.lastName, `%${search!.trim()}%`),
+                sql`CONCAT(${customers.firstName}, ' ', ${customers.lastName}) LIKE ${`%${search!.trim()}%`}`,
+              )!))
+          : db
+              .select({ count: count() })
+              .from(reservations)
+              .where(and(...conditions))
+        ).then((r) => r[0]?.count ?? 0)
+      : Promise.resolve(null),
   ])
 
   const counts: Record<string, number> = {}
@@ -89,6 +178,7 @@ export async function getDashboardReservationsList(params: {
       ongoing: counts['ongoing'] || 0,
       completed: counts['completed'] || 0,
     },
+    totalCount: totalCountResult,
   }
 }
 
@@ -126,4 +216,3 @@ export async function getDashboardReservationById(params: {
 
   return reservation
 }
-
