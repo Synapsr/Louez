@@ -3028,6 +3028,7 @@
       "perDay": "dia",
       "perHour": "hora",
       "perWeek": "semana",
+      "startingFrom": "Desde",
       "pricingUnit": {
         "day": {
           "singular": "dia",

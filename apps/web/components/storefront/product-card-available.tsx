@@ -353,7 +353,7 @@ export function ProductCardAvailable({
             {hasDiscount && !inCart && (
               <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-xs shrink-0">
                 <TrendingDown className="h-3 w-3 mr-0.5" />
-                -{discountPercent}%
+                -{Math.floor(discountPercent!)}%
               </Badge>
             )}
             {inCart && (

@@ -3025,6 +3025,7 @@
       "perDay": "dzień",
       "perHour": "godzina",
       "perWeek": "tydzień",
+      "startingFrom": "Od",
       "pricingUnit": {
         "day": {
           "singular": "dzień",

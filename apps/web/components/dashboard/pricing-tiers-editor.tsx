@@ -621,7 +621,7 @@ export function PricingTiersEditor({
                               variant="secondary"
                               className="ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
                             >
-                              -{parseFloat(preview.discountPercent.toFixed(2))}%
+                              -{Math.floor(preview.discountPercent)}%
                             </Badge>
                           )}
                         </TableCell>

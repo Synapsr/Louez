@@ -696,7 +696,7 @@ export function SubscriptionManagement({
                             {formatPrice(originalPrice, currency)}
                           </span>
                           <Badge className="bg-green-500/10 text-green-600 border-green-500/20 text-xs">
-                            -{discountPercent}%
+                            -{Math.floor(discountPercent)}%
                           </Badge>
                         </div>
                         <div>
