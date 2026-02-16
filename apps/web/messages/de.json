@@ -3026,6 +3026,7 @@
       "perDay": "Tag",
       "perHour": "Stunde",
       "perWeek": "Woche",
+      "startingFrom": "Ab",
       "pricingUnit": {
         "day": {
           "singular": "Tag",

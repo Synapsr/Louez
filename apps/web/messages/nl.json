@@ -3025,6 +3025,7 @@
       "perDay": "dag",
       "perHour": "uur",
       "perWeek": "week",
+      "startingFrom": "Vanaf",
       "pricingUnit": {
         "day": {
           "singular": "dag",

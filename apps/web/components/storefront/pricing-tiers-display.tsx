@@ -115,7 +115,7 @@ export function PricingTiersDisplay({
                         : 'bg-muted'
                     }`}
                   >
-                    -{discountPercent}%
+                    -{Math.floor(discountPercent)}%
                   </Badge>
                 </div>
                 <span className={`font-medium ${isApplied ? 'text-green-700 dark:text-green-300' : ''}`}>

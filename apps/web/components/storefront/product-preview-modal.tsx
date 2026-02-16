@@ -538,7 +538,7 @@ export function ProductPreviewModal({
                             {tier.minDuration}+ {pricingUnitLabelPlural}
                           </span>
                           <Badge className="text-xs font-semibold bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300">
-                            -{tier.discountPercent}%
+                            -{Math.floor(tier.discountPercent)}%
                           </Badge>
                         </div>
                         <span className="font-semibold">

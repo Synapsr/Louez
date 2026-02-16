@@ -455,7 +455,7 @@ export function AddToCartForm({
               <span className="flex items-center gap-2">
                 {t('tieredPricing.discountApplied')}
                 <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                  -{discountPercent}%
+                  -{Math.floor(discountPercent!)}%
                 </Badge>
               </span>
               <span>{formatCurrency(subtotal, currency)}</span>

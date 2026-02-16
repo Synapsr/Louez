@@ -717,7 +717,7 @@ export function ProductModal({
                                 : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300'
                             )}
                           >
-                            -{tier.discountPercent}%
+                            -{Math.floor(tier.discountPercent)}%
                           </Badge>
                         </div>
                         <span className={cn('font-semibold', isCurrentTier && 'text-green-700 dark:text-green-300')}>
@@ -814,7 +814,7 @@ export function ProductModal({
 
             {savings > 0 && (
               <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-sm font-semibold px-3 py-1">
-                -{discountPercent}%
+                -{Math.floor(discountPercent!)}%
               </Badge>
             )}
           </div>
