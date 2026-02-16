@@ -778,6 +778,7 @@
           "bookingAttributeValuePlaceholder": "Valeur {label}",
           "combinationKey": "Combinaison",
           "missingAttributesWarning": "{count, plural, one {# unité active n'a pas toutes les valeurs d'attribut} other {# unités actives n'ont pas toutes les valeurs d'attribut}}",
+          "pressEnterToCreate": "Appuyez sur Entrée pour créer « {value} »",
           "addUnit": "Ajouter une unité",
           "addNotes": "Ajouter des notes",
           "identifier": "Identifiant",
