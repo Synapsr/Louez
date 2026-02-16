@@ -35,15 +35,15 @@ interface ProductsOrderDialogProps {
 function ProductImage({ src, alt }: { src?: string; alt: string }) {
   if (!src) {
     return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+      <div className="flex h-9 w-12 items-center justify-center rounded-md bg-muted">
         <Package className="h-4 w-4 text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="relative h-10 w-10 overflow-hidden rounded-md bg-muted">
-      <Image src={src} alt={alt} fill className="object-cover" sizes="40px" />
+    <div className="relative h-9 w-12 overflow-hidden rounded-md bg-muted">
+      <Image src={src} alt={alt} fill className="object-cover" sizes="48px" />
     </div>
   )
 }
