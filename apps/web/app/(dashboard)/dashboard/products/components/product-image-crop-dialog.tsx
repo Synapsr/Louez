@@ -19,6 +19,7 @@ import {
   Button,
   Dialog,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogPopup,
   DialogTitle,
@@ -136,9 +137,19 @@ export function ProductImageCropDialog({
     useState<ProductImagePixelCropRect | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const lastCommittedCropRef = useRef<ProductImagePixelCropRect | null>(null);
-  const previewCommitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+
+  // Local crop state for smooth dragging — avoids parent re-renders per frame.
+  // `null` means "use the parent's crop"; a value means "actively dragging".
+  const [localDragCrop, setLocalDragCrop] = useState<PercentCrop | null>(null);
+  const isDraggingRef = useRef(false);
+
+  // The crop ReactCrop sees: local during drag, parent otherwise
+  const displayCrop = localDragCrop ?? currentItem?.crop;
+
+  // Reset local drag state when the current item changes (image switch, zoom)
+  useEffect(() => {
+    if (!isDraggingRef.current) setLocalDragCrop(null);
+  }, [currentItem?.crop]);
 
   useEffect(() => {
     const node = previewFrameRef.current;
@@ -184,19 +195,6 @@ export function ProductImageCropDialog({
     };
   }, [committedPreviewCrop, currentItem]);
 
-  const clearPendingPreviewCommit = useCallback(() => {
-    if (previewCommitTimeoutRef.current) {
-      clearTimeout(previewCommitTimeoutRef.current);
-      previewCommitTimeoutRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => clearPendingPreviewCommit, [clearPendingPreviewCommit]);
-
-  useEffect(() => {
-    clearPendingPreviewCommit();
-  }, [clearPendingPreviewCommit, currentItem?.id]);
-
   const commitPreviewCrop = useCallback(
     (cropPixels: ProductImagePixelCropRect) => {
       if (!currentItem) return;
@@ -206,17 +204,6 @@ export function ProductImageCropDialog({
       onCropComplete(currentItem.id, cropPixels);
     },
     [currentItem, onCropComplete],
-  );
-
-  const schedulePreviewCommit = useCallback(
-    (cropPixels: ProductImagePixelCropRect) => {
-      clearPendingPreviewCommit();
-      previewCommitTimeoutRef.current = setTimeout(() => {
-        previewCommitTimeoutRef.current = null;
-        commitPreviewCrop(cropPixels);
-      }, 180);
-    },
-    [clearPendingPreviewCommit, commitPreviewCrop],
   );
 
   const getNaturalPixelCropFromRenderedCrop = useCallback(
@@ -294,44 +281,40 @@ export function ProductImageCropDialog({
     [onReplaceCurrentImage],
   );
 
+  // During drag: only update local state — no parent re-renders, no preview work
   const handleCropChange = useCallback(
+    (_renderedCrop: PixelCrop, percentCrop: PercentCrop) => {
+      isDraggingRef.current = true;
+      setLocalDragCrop(percentCrop);
+    },
+    [],
+  );
+
+  // On drag end: flush everything to parent + commit preview
+  const handleCropComplete = useCallback(
     (renderedCrop: PixelCrop, percentCrop: PercentCrop) => {
       if (!currentItem) return;
+      isDraggingRef.current = false;
+      setLocalDragCrop(null);
+
       const nextCrop = toPercentCropRect(percentCrop, currentItem.crop);
       const nextPixels =
         getNaturalPixelCropFromRenderedCrop(renderedCrop) ??
         getPixelCropFromPercentRect(nextCrop, currentItem.imageSize);
+
       onCropChange(currentItem.id, nextCrop);
       onCropSizeChange(
         currentItem.id,
         getCropSizePercentFromRect(nextCrop, currentItem.imageSize),
       );
-      schedulePreviewCommit(nextPixels);
+      commitPreviewCrop(nextPixels);
     },
     [
+      commitPreviewCrop,
       currentItem,
       getNaturalPixelCropFromRenderedCrop,
       onCropChange,
       onCropSizeChange,
-      schedulePreviewCommit,
-    ],
-  );
-
-  const handleCropComplete = useCallback(
-    (renderedCrop: PixelCrop, percentCrop: PercentCrop) => {
-      if (!currentItem) return;
-      const nextCrop = toPercentCropRect(percentCrop, currentItem.crop);
-      const nextPixels =
-        getNaturalPixelCropFromRenderedCrop(renderedCrop) ??
-        getPixelCropFromPercentRect(nextCrop, currentItem.imageSize);
-      clearPendingPreviewCommit();
-      commitPreviewCrop(nextPixels);
-    },
-    [
-      clearPendingPreviewCommit,
-      commitPreviewCrop,
-      currentItem,
-      getNaturalPixelCropFromRenderedCrop,
     ],
   );
 
@@ -359,198 +342,199 @@ export function ProductImageCropDialog({
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogPopup
-        className="flex max-h-[95vh] w-[96vw] max-w-7xl flex-col gap-0 overflow-hidden p-0"
+        className="flex max-h-[95dvh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden p-0"
         bottomStickOnMobile={false}
       >
-        <DialogHeader className="border-b px-6 pt-6 pb-4">
-          <DialogTitle>{t('cropDialogTitle')}</DialogTitle>
-          <DialogDescription>{t('cropDialogDescription')}</DialogDescription>
+        {/* Header with integrated navigation */}
+        <DialogHeader className="border-b px-5 pt-5 pb-3 sm:px-6 sm:pt-6 sm:pb-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <DialogTitle>{t('cropDialogTitle')}</DialogTitle>
+              <DialogDescription>
+                {t('cropDialogDescription')}
+              </DialogDescription>
+            </div>
+            {isMultiImageSession && (
+              <div className="flex shrink-0 items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onPrevious}
+                  disabled={!canGoToPrevious || isUploading}
+                  aria-label={t('cropPrevious')}
+                >
+                  <ChevronLeftIcon className="size-4" />
+                </Button>
+                <span className="text-muted-foreground whitespace-nowrap text-xs font-medium tabular-nums">
+                  {t('cropCounter', {
+                    current: selectedIndex + 1,
+                    total: items.length,
+                  })}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={onNext}
+                  disabled={!canGoToNext || isUploading}
+                  aria-label={t('cropNext')}
+                >
+                  <ChevronRightIcon className="size-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto p-5">
+        {/* Compact thumbnail strip */}
+        {isMultiImageSession && (
+          <div className="border-b bg-muted/40 px-5 py-2.5 sm:px-6">
+            <div className="flex gap-1.5 overflow-x-auto">
+              {items.map((item, index) => {
+                const isActive = index === selectedIndex;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => onSelectIndex(index)}
+                    className={`relative size-11 shrink-0 overflow-hidden rounded-lg border-2 transition-all sm:size-12 ${
+                      isActive
+                        ? 'border-primary ring-primary/20 scale-[1.04] ring-2'
+                        : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.originalDataUrl}
+                      alt={t('cropThumbnailAlt', { index: index + 1 })}
+                      className="size-full object-cover"
+                    />
+                    {item.resultMode === 'cropped' && (
+                      <div className="bg-primary absolute right-0.5 bottom-0.5 size-2 rounded-full shadow-sm" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Main content area */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {currentItem ? (
-            <>
-              {isMultiImageSession ? (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-muted-foreground text-sm font-medium">
-                      {t('cropCounter', {
-                        current: selectedIndex + 1,
-                        total: items.length,
+            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+              {/* Editor column */}
+              <div className="flex min-h-0 flex-1 flex-col">
+                {/* Crop area — full dark, overflow-hidden clips the 9999px box-shadow overlay */}
+                <div className="flex min-h-[40vh] flex-1 items-center justify-center overflow-hidden bg-zinc-950 p-3 sm:p-4 lg:min-h-0">
+                  <ReactCrop
+                    crop={displayCrop}
+                    keepSelection
+                    aspect={PRODUCT_IMAGE_ASPECT_RATIO}
+                    minWidth={48}
+                    minHeight={36}
+                    className="product-image-crop max-h-[55vh] max-w-full lg:max-h-[62vh]"
+                    onChange={handleCropChange}
+                    onComplete={handleCropComplete}
+                    ruleOfThirds
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      ref={editorImageRef}
+                      src={currentItem.originalDataUrl}
+                      alt={t('cropThumbnailAlt', {
+                        index: selectedIndex + 1,
                       })}
+                      className="max-h-[55vh] max-w-full select-none lg:max-h-[62vh]"
+                      draggable={false}
+                    />
+                  </ReactCrop>
+                </div>
+
+                {/* Compact toolbar */}
+                <div className="flex items-center gap-2 border-t px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5">
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleZoomOut}
+                    disabled={
+                      currentItem.cropSizePercent >= CROP_SIZE_MAX ||
+                      isUploading
+                    }
+                    aria-label={t('cropZoom')}
+                  >
+                    <ZoomOutIcon className="size-3.5" />
+                  </Button>
+
+                  <div className="flex-1">
+                    <Slider
+                      value={currentItem.cropSizePercent}
+                      min={CROP_SIZE_MIN}
+                      max={CROP_SIZE_MAX}
+                      step={1}
+                      onValueChange={(value) => {
+                        const next = Array.isArray(value) ? value[0] : value;
+                        if (typeof next === 'number') handleZoomChange(next);
+                      }}
+                    />
+                  </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={handleZoomIn}
+                    disabled={
+                      currentItem.cropSizePercent <= CROP_SIZE_MIN ||
+                      isUploading
+                    }
+                    aria-label={t('cropZoom')}
+                  >
+                    <ZoomInIcon className="size-3.5" />
+                  </Button>
+
+                  <span className="text-muted-foreground hidden text-xs font-medium tabular-nums sm:inline">
+                    {currentItem.cropSizePercent}%
+                  </span>
+
+                  <div className="bg-border mx-0.5 hidden h-5 w-px sm:block" />
+
+                  <input
+                    ref={replaceImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleReplaceImageChange}
+                    disabled={isUploading}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleReplaceImage}
+                    disabled={isUploading}
+                    className="text-muted-foreground hover:text-foreground gap-1.5"
+                  >
+                    <RefreshCcwIcon className="size-3.5" />
+                    <span className="hidden sm:inline">{tCommon('edit')}</span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Preview sidebar (desktop) / stacked section (mobile) */}
+              <div className="flex w-full shrink-0 flex-col border-t lg:w-72 lg:border-t-0 lg:border-l xl:w-80">
+                <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {t('cropPreviewTitle')}
                     </p>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onPrevious}
-                        disabled={!canGoToPrevious || isUploading}
-                      >
-                        <ChevronLeftIcon className="h-4 w-4" />
-                        {t('cropPrevious')}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={onNext}
-                        disabled={!canGoToNext || isUploading}
-                      >
-                        {t('cropNext')}
-                        <ChevronRightIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {items.map((item, index) => {
-                      const isActive = index === selectedIndex;
-                      const statusLabel =
-                        item.resultMode === 'cropped'
-                          ? t('cropStatusCropped')
-                          : t('cropStatusOriginal');
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => onSelectIndex(index)}
-                          className={`group bg-card relative w-28 shrink-0 overflow-hidden rounded-lg border text-left transition ${
-                            isActive
-                              ? 'border-primary ring-primary/20 ring-2'
-                              : 'border-border hover:border-primary/50'
-                          }`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={item.originalDataUrl}
-                            alt={t('cropThumbnailAlt', { index: index + 1 })}
-                            className="h-16 w-full object-cover"
-                          />
-                          <div className="space-y-1 p-2">
-                            <p className="text-xs font-medium">
-                              {t('cropThumbnailAlt', { index: index + 1 })}
-                            </p>
-                            <p className="text-muted-foreground text-[11px]">
-                              {statusLabel}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="grid min-h-0 grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-                <div className="space-y-4">
-                  <div className="bg-card overflow-hidden rounded-2xl border p-4 shadow-sm">
-                    <div className="flex min-h-[56vh] items-center justify-center overflow-hidden rounded-xl bg-zinc-950 p-2">
-                      <ReactCrop
-                        crop={currentItem.crop}
-                        keepSelection
-                        aspect={PRODUCT_IMAGE_ASPECT_RATIO}
-                        minWidth={48}
-                        minHeight={36}
-                        className="product-image-crop max-h-[72vh] max-w-full"
-                        onChange={handleCropChange}
-                        onComplete={handleCropComplete}
-                        ruleOfThirds
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          ref={editorImageRef}
-                          src={currentItem.originalDataUrl}
-                          alt={t('cropThumbnailAlt', { index: selectedIndex + 1 })}
-                          className="max-h-[72vh] max-w-full select-none"
-                          draggable={false}
-                        />
-                      </ReactCrop>
-                    </div>
-                  </div>
-
-                  <div className="bg-card flex flex-col gap-4 rounded-2xl border p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-4">
-                      <p className="text-sm font-medium">{t('cropSize')}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {currentItem.cropSizePercent}%
-                      </p>
-                    </div>
-
-                    <div className="flex justify-start">
-                      <input
-                        ref={replaceImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={handleReplaceImageChange}
-                        disabled={isUploading}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleReplaceImage}
-                        disabled={isUploading}
-                      >
-                        <RefreshCcwIcon className="h-4 w-4" />
-                        {tCommon('edit')}
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleZoomOut}
-                        disabled={
-                          currentItem.cropSizePercent >= CROP_SIZE_MAX ||
-                          isUploading
-                        }
-                        aria-label={t('cropZoom')}
-                      >
-                        <ZoomOutIcon className="h-4 w-4" />
-                      </Button>
-
-                      <Slider
-                        value={currentItem.cropSizePercent}
-                        min={CROP_SIZE_MIN}
-                        max={CROP_SIZE_MAX}
-                        step={1}
-                        onValueChange={(value) => {
-                          const next = Array.isArray(value) ? value[0] : value;
-                          if (typeof next === 'number') {
-                            handleZoomChange(next);
-                          }
-                        }}
-                      />
-
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={handleZoomIn}
-                        disabled={
-                          currentItem.cropSizePercent <= CROP_SIZE_MIN ||
-                          isUploading
-                        }
-                        aria-label={t('cropZoom')}
-                      >
-                        <ZoomInIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex min-h-0 flex-col gap-4">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">{t('cropPreviewTitle')}</p>
                     <p className="text-muted-foreground text-xs">
                       {t('cropPreviewDescription')}
                     </p>
                   </div>
 
-                  <div className="bg-card rounded-2xl border p-3 shadow-sm">
+                  {/* Storefront-style preview card */}
+                  <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
                     <div
                       ref={previewFrameRef}
-                      className="bg-muted relative aspect-[4/3] overflow-hidden rounded-xl"
+                      className="bg-muted relative aspect-[4/3] overflow-hidden"
                     >
                       {previewDataUrl ? (
                         <>
@@ -560,9 +544,9 @@ export function ProductImageCropDialog({
                             alt={t('cropThumbnailAlt', {
                               index: selectedIndex + 1,
                             })}
-                            className="h-full w-full object-cover"
+                            className="size-full object-cover"
                           />
-                          <div className="absolute inset-0 ring-1 ring-black/10" />
+                          <div className="absolute inset-0 ring-1 ring-black/5 ring-inset" />
                         </>
                       ) : previewImageStyle ? (
                         <>
@@ -575,7 +559,7 @@ export function ProductImageCropDialog({
                             className="absolute top-0 left-0 max-w-none select-none"
                             style={previewImageStyle}
                           />
-                          <div className="absolute inset-0 ring-1 ring-black/10" />
+                          <div className="absolute inset-0 ring-1 ring-black/5 ring-inset" />
                         </>
                       ) : (
                         <>
@@ -585,19 +569,19 @@ export function ProductImageCropDialog({
                             alt={t('cropThumbnailAlt', {
                               index: selectedIndex + 1,
                             })}
-                            className="h-full w-full object-cover"
+                            className="size-full object-cover"
                           />
-                          <div className="absolute inset-0 ring-1 ring-black/10" />
+                          <div className="absolute inset-0 ring-1 ring-black/5 ring-inset" />
                         </>
                       )}
                     </div>
 
-                    <div className="space-y-1 pt-3">
-                      <p className="line-clamp-2 text-sm font-semibold">
+                    <div className="space-y-1 p-3">
+                      <p className="line-clamp-1 text-sm font-semibold">
                         {previewProductName}
                       </p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-primary text-base font-bold">
+                        <span className="text-primary text-sm font-bold">
                           {previewPrice}
                         </span>
                         <span className="text-muted-foreground text-xs">
@@ -606,35 +590,30 @@ export function ProductImageCropDialog({
                       </div>
                     </div>
                   </div>
-
-                  <div className="mt-auto flex flex-col gap-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={onSkipCrop}
-                        disabled={isUploading}
-                      >
-                        {t('cropSkip')}
-                      </Button>
-                      <Button
-                        variant="default"
-                        onClick={onApplyCrop}
-                        disabled={isUploading}
-                      >
-                        {t('cropApply')}
-                      </Button>
-                    </div>
-                  </div>
                 </div>
               </div>
-            </>
+            </div>
           ) : (
-            <div className="text-muted-foreground flex min-h-40 items-center justify-center">
-              <ImageIcon className="mr-2 h-5 w-5" />
+            <div className="text-muted-foreground flex min-h-40 flex-1 items-center justify-center gap-2">
+              <ImageIcon className="size-5" />
               <span>{t('cropNoImage')}</span>
             </div>
           )}
         </div>
+
+        {/* Sticky footer — always visible */}
+        <DialogFooter>
+          <Button variant="outline" onClick={onSkipCrop} disabled={isUploading}>
+            {t('cropSkip')}
+          </Button>
+          <Button
+            variant="default"
+            onClick={onApplyCrop}
+            disabled={isUploading}
+          >
+            {t('cropApply')}
+          </Button>
+        </DialogFooter>
       </DialogPopup>
     </Dialog>
   );
