@@ -452,8 +452,8 @@ export function EditReservationForm({
         <div className="container max-w-5xl mx-auto px-4 py-6">
           {/* Warnings */}
           {availabilityWarnings.length > 0 && (
-            <Alert className="mb-6 border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
-              <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            <Alert variant="warning" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="ml-2">
                 <div className="flex flex-col gap-1">
                   {availabilityWarnings.map((warning) => (
