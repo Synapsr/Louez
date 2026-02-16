@@ -6,7 +6,7 @@ import { useTranslations, useLocale } from 'next-intl'
 import { useMutation } from '@tanstack/react-query'
 import { FileText, Sparkles, ExternalLink } from 'lucide-react'
 import { env } from '@/env'
-import { Button } from '@louez/ui'
+import { Button, Switch } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@louez/ui'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -21,6 +21,7 @@ interface Store {
   slug: string
   cgv: string | null
   legalNotice: string | null
+  includeCgvInContract: boolean
 }
 
 interface LegalPagesFormProps {
@@ -34,6 +35,9 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
   const tErrors = useTranslations('errors')
   const [cgv, setCgv] = useState(store.cgv || '')
   const [legalNotice, setLegalNotice] = useState(store.legalNotice || '')
+  const [includeFullCgvInContract, setIncludeFullCgvInContract] = useState(
+    store.includeCgvInContract ?? false,
+  )
   const [activeTab, setActiveTab] = useState('cgv')
 
   const updateLegalMutation = useMutation(
@@ -43,15 +47,31 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
   // Track initial values for dirty state detection
   const initialCgv = useMemo(() => store.cgv || '', [store.cgv])
   const initialLegalNotice = useMemo(() => store.legalNotice || '', [store.legalNotice])
+  const initialIncludeFullCgvInContract = useMemo(
+    () => store.includeCgvInContract ?? false,
+    [store.includeCgvInContract],
+  )
 
   const isDirty = useMemo(() => {
-    return cgv !== initialCgv || legalNotice !== initialLegalNotice
-  }, [cgv, legalNotice, initialCgv, initialLegalNotice])
+    return (
+      cgv !== initialCgv ||
+      legalNotice !== initialLegalNotice ||
+      includeFullCgvInContract !== initialIncludeFullCgvInContract
+    )
+  }, [
+    cgv,
+    legalNotice,
+    includeFullCgvInContract,
+    initialCgv,
+    initialLegalNotice,
+    initialIncludeFullCgvInContract,
+  ])
 
   const handleReset = useCallback(() => {
     setCgv(initialCgv)
     setLegalNotice(initialLegalNotice)
-  }, [initialCgv, initialLegalNotice])
+    setIncludeFullCgvInContract(initialIncludeFullCgvInContract)
+  }, [initialCgv, initialLegalNotice, initialIncludeFullCgvInContract])
 
   const handleUseTemplate = (type: 'cgv' | 'legal') => {
     if (type === 'cgv') {
@@ -71,6 +91,7 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
       await updateLegalMutation.mutateAsync({
         cgv,
         legalNotice,
+        includeFullCgvInContract,
       })
 
       toastManager.add({ title: t('updated'), type: 'success' })
@@ -171,6 +192,27 @@ export function LegalPagesForm({ store }: LegalPagesFormProps) {
               </div>
             </TabsContent>
           </Tabs>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('contractPdfSettingsTitle')}</CardTitle>
+          <CardDescription>{t('contractPdfSettingsDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">{t('includeFullCgvInContract')}</p>
+              <p className="text-sm text-muted-foreground">
+                {t('includeFullCgvInContractHelp')}
+              </p>
+            </div>
+            <Switch
+              checked={includeFullCgvInContract}
+              onCheckedChange={setIncludeFullCgvInContract}
+            />
+          </div>
         </CardContent>
       </Card>
 

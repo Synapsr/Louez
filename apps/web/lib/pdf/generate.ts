@@ -23,6 +23,14 @@ function getTranslations(locale: SupportedLocale): ContractTranslations {
   return messages.contract as ContractTranslations
 }
 
+function toNonEmptyString(value: string | null | undefined): string | null {
+  if (!value) {
+    return null
+  }
+
+  return value.trim().length > 0 ? value : null
+}
+
 export async function generateContract({
   reservationId,
   regenerate = false,
@@ -83,6 +91,30 @@ export async function generateContract({
   // Use dark logo for PDFs (light background) when store has dark theme
   const pdfLogoUrl = await convertImageForPdf(getLogoForLightBackground(store))
 
+  const shouldIncludeFullCgv = store.includeCgvInContract
+  const isSignedContract = Boolean(reservation.signedAt)
+  const storeCgvRaw = store.cgv ?? ''
+  const storeCgv = toNonEmptyString(storeCgvRaw)
+  const hasExistingCgvSnapshot =
+    existingContract?.cgvSnapshot !== null && existingContract?.cgvSnapshot !== undefined
+  const existingCgvSnapshotRaw = hasExistingCgvSnapshot ? (existingContract?.cgvSnapshot ?? '') : ''
+
+  let fullCgvHtml: string | null = null
+  let cgvSnapshotToPersist: string | undefined = undefined
+
+  // Signed contracts with existing snapshots must remain stable regardless of current store setting.
+  if (isSignedContract && (shouldIncludeFullCgv || hasExistingCgvSnapshot)) {
+    const resolvedSnapshotRaw = hasExistingCgvSnapshot ? existingCgvSnapshotRaw : storeCgvRaw
+    fullCgvHtml = toNonEmptyString(resolvedSnapshotRaw)
+
+    // Legacy signed contracts can be backfilled on first regeneration.
+    if (!hasExistingCgvSnapshot) {
+      cgvSnapshotToPersist = resolvedSnapshotRaw
+    }
+  } else if (shouldIncludeFullCgv) {
+    fullCgvHtml = storeCgv
+  }
+
   // Generate PDF buffer
   const pdfBuffer = await renderToBuffer(
     ContractDocument({
@@ -136,6 +168,7 @@ export async function generateContract({
       translations,
       currency: store.settings?.currency || 'EUR',
       timezone: store.settings?.timezone || undefined,
+      fullCgvHtml,
     })
   )
 
@@ -145,12 +178,22 @@ export async function generateContract({
 
   // If regenerating, update existing document
   if (existingContract && regenerate) {
+    const updateData: {
+      fileUrl: string
+      fileName: string
+      cgvSnapshot?: string | null
+    } = {
+      fileUrl: `data:application/pdf;base64,${base64Content}`,
+      fileName,
+    }
+
+    if (cgvSnapshotToPersist !== undefined) {
+      updateData.cgvSnapshot = cgvSnapshotToPersist
+    }
+
     await db
       .update(documents)
-      .set({
-        fileUrl: `data:application/pdf;base64,${base64Content}`,
-        fileName, // Update filename based on locale
-      })
+      .set(updateData)
       .where(eq(documents.id, existingContract.id))
 
     return await db.query.documents.findFirst({
@@ -167,6 +210,7 @@ export async function generateContract({
     number: documentNumber,
     fileName,
     fileUrl: `data:application/pdf;base64,${base64Content}`,
+    cgvSnapshot: isSignedContract && shouldIncludeFullCgv ? storeCgvRaw : null,
   })
 
   return await db.query.documents.findFirst({

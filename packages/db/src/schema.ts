@@ -235,6 +235,7 @@ export const stores = mysqlTable(
     // Legal
     cgv: text('cgv'),
     legalNotice: text('legal_notice'),
+    includeCgvInContract: boolean('include_cgv_in_contract').default(false).notNull(),
 
     // Stripe Connect
     stripeAccountId: varchar('stripe_account_id', { length: 255 }),
@@ -736,6 +737,7 @@ export const documents = mysqlTable('documents', {
   // File (longtext to support base64-encoded PDFs with embedded images)
   fileUrl: longtext('file_url').notNull(),
   fileName: varchar('file_name', { length: 255 }).notNull(),
+  cgvSnapshot: longtext('cgv_snapshot'),
 
   // Metadata
   generatedAt: timestamp('generated_at', { mode: 'date' }).defaultNow().notNull(),

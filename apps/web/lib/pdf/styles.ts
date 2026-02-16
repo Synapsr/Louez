@@ -549,6 +549,68 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       marginTop: 6,
     },
 
+    // Full CGV annex
+    cgvAnnexSection: {
+      marginTop: 8,
+      paddingTop: 6,
+      borderTopWidth: 1,
+      borderTopColor: '#eeeeee',
+    },
+    cgvAnnexTitle: {
+      fontSize: 10,
+      fontFamily: 'Helvetica-Bold',
+      color: '#1a1a1a',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+      marginBottom: 10,
+    },
+    cgvAnnexHeading1: {
+      fontSize: 9,
+      fontFamily: 'Helvetica-Bold',
+      color: '#222222',
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    cgvAnnexHeading2: {
+      fontSize: 8.5,
+      fontFamily: 'Helvetica-Bold',
+      color: '#333333',
+      marginTop: 7,
+      marginBottom: 3,
+    },
+    cgvAnnexHeading3: {
+      fontSize: 8,
+      fontFamily: 'Helvetica-Bold',
+      color: '#444444',
+      marginTop: 6,
+      marginBottom: 3,
+    },
+    cgvAnnexParagraph: {
+      fontSize: 8,
+      color: '#444444',
+      lineHeight: 1.5,
+      marginBottom: 4,
+    },
+    cgvAnnexList: {
+      marginBottom: 5,
+    },
+    cgvAnnexListItem: {
+      flexDirection: 'row',
+      marginBottom: 2,
+    },
+    cgvAnnexListMarker: {
+      width: 14,
+      fontSize: 8,
+      color: '#444444',
+      fontFamily: 'Helvetica-Bold',
+    },
+    cgvAnnexListText: {
+      flex: 1,
+      fontSize: 8,
+      color: '#444444',
+      lineHeight: 1.45,
+    },
+
     // Footer
     footer: {
       position: 'absolute',

@@ -190,6 +190,13 @@
       "when": 1770816000000,
       "tag": "0026_product_unit_combinations",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1771240623994,
+      "tag": "0027_married_vindicator",
+      "breakpoints": true
     }
   ]
 }
