@@ -27,7 +27,7 @@ interface ReservationsFiltersProps {
   currentPeriod?: string
 }
 
-const STATUS_KEYS = ['all', 'pending', 'confirmed', 'ongoing', 'completed'] as const
+const STATUS_KEYS = ['all', 'pending', 'confirmed', 'ongoing', 'completed', 'cancelled'] as const
 const PERIOD_KEYS = ['all', 'today', 'thisWeek', 'thisMonth'] as const
 
 export function ReservationsFilters({
