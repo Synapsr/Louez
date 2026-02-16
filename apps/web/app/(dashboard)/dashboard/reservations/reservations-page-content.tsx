@@ -1,15 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
-import { Plus, Lock } from 'lucide-react'
+import { Plus, Lock, Calendar } from 'lucide-react'
 
 import { Button } from '@louez/ui'
-import { ReservationsTable } from './reservations-table'
+import { ReservationsTableView } from './reservations-table-view'
+import { ReservationsCardView } from './reservations-card-view'
 import { ReservationsFilters } from './reservations-filters'
+import { ReservationsPagination } from './reservations-pagination'
+import { useReservationActions, ReservationConfirmDialogs } from './reservations-actions'
 import {
   UpgradeModal,
   LimitBanner,
@@ -17,61 +20,12 @@ import {
 } from '@/components/dashboard/upgrade-modal'
 import type { LimitStatus } from '@/lib/plan-limits'
 import { orpc } from '@/lib/orpc/react'
-
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
-
-interface ReservationItem {
-  id: string
-  quantity: number
-  isCustomItem: boolean
-  productSnapshot: {
-    name: string
-  }
-  product: {
-    id: string
-    name: string
-  } | null
-}
-
-interface Payment {
-  id: string
-  amount: string
-  type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
-  method: 'cash' | 'card' | 'transfer' | 'check' | 'other' | 'stripe'
-  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
-}
-
-interface Reservation {
-  id: string
-  number: string
-  status: ReservationStatus | null
-  startDate: Date
-  endDate: Date
-  subtotalAmount: string
-  depositAmount: string
-  totalAmount: string
-  customer: {
-    id: string
-    firstName: string
-    lastName: string
-    email: string
-  }
-  items: ReservationItem[]
-  payments: Payment[]
-}
-
-interface ReservationCounts {
-  all: number
-  pending: number
-  confirmed: number
-  ongoing: number
-  completed: number
-}
+import type { Reservation, ReservationCounts, SortField, SortDirection } from './reservations-types'
 
 interface ReservationsPageContentProps {
   currentStatus?: string
   currentPeriod?: string
-  initialData?: { reservations: Reservation[]; counts: ReservationCounts }
+  initialData?: { reservations: Reservation[]; counts: ReservationCounts; totalCount: number | null }
   limits: LimitStatus
   planSlug: string
   currency?: string
@@ -90,9 +44,49 @@ export function ReservationsPageContent({
   const t = useTranslations('dashboard.reservations')
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const searchParams = useSearchParams()
+  const router = useRouter()
 
+  // Read URL params
   const status = searchParams.get('status') || currentStatus || undefined
   const period = searchParams.get('period') || currentPeriod || undefined
+  const search = searchParams.get('search') || undefined
+  const view = searchParams.get('view') || 'table'
+  const sortParam = searchParams.get('sort') as SortField | null
+  const sortDirectionParam = searchParams.get('sortDirection') as SortDirection | null
+  const pageParam = searchParams.get('page')
+  const pageSizeParam = searchParams.get('pageSize')
+
+  const currentSort = sortParam || undefined
+  const currentSortDirection = sortDirectionParam || 'desc'
+  const currentPage = pageParam ? parseInt(pageParam, 10) : 1
+  const currentPageSize = pageSizeParam ? parseInt(pageSizeParam, 10) : 25
+
+  // Actions hook
+  const {
+    loadingAction,
+    handleStatusChange,
+    openRejectDialog,
+    confirmDialogsProps,
+  } = useReservationActions()
+
+  // Sort handler
+  const handleSortChange = useCallback(
+    (field: SortField) => {
+      const params = new URLSearchParams(searchParams.toString())
+      if (currentSort === field) {
+        // Toggle direction
+        const newDir = currentSortDirection === 'desc' ? 'asc' : 'desc'
+        params.set('sort', field)
+        params.set('sortDirection', newDir)
+      } else {
+        params.set('sort', field)
+        params.set('sortDirection', 'desc')
+      }
+      params.delete('page') // reset page on sort change
+      router.push(`/dashboard/reservations?${params.toString()}`)
+    },
+    [searchParams, currentSort, currentSortDirection, router]
+  )
 
   const reservationsQuery = useQuery({
     ...orpc.dashboard.reservations.list.queryOptions({
@@ -108,7 +102,11 @@ export function ReservationsPageContent({
             ? status
             : undefined,
         period: period === 'today' || period === 'week' || period === 'month' ? period : undefined,
-        limit: 100,
+        search: search || undefined,
+        sort: currentSort,
+        sortDirection: currentSortDirection as 'asc' | 'desc',
+        page: currentPage,
+        pageSize: currentPageSize,
       },
     }),
     initialData,
@@ -123,6 +121,7 @@ export function ReservationsPageContent({
     ongoing: 0,
     completed: 0,
   }
+  const totalCount = (reservationsQuery.data as any)?.totalCount ?? null
 
   // Determine which reservations to show vs blur
   const displayLimit = limits.limit
@@ -130,7 +129,6 @@ export function ReservationsPageContent({
   const isOverLimit = limits.isOverLimit
   const isAtLimit = limits.isAtLimit
 
-  // For reservations, we show the most recent ones and blur older ones
   const visibleReservations = hasLimit && isOverLimit
     ? reservations.slice(0, displayLimit)
     : reservations
@@ -143,6 +141,55 @@ export function ReservationsPageContent({
       e.preventDefault()
       setShowUpgradeModal(true)
     }
+  }
+
+  const isCardView = view === 'cards'
+
+  // Empty state
+  const isEmpty = reservations.length === 0 && !search
+
+  const renderEmptyState = () => (
+    <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed py-16">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
+        <Calendar className="h-8 w-8 text-muted-foreground" />
+      </div>
+      <h3 className="text-lg font-semibold">{t('noReservations')}</h3>
+      <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+        {t('noReservationsDescription')}
+      </p>
+      <Button render={<Link href="/dashboard/reservations/new" />} className="mt-6">
+        {t('createReservation')}
+      </Button>
+    </div>
+  )
+
+  const renderReservations = (items: Reservation[]) => {
+    if (isCardView) {
+      return (
+        <ReservationsCardView
+          reservations={items}
+          currency={currency}
+          timezone={timezone}
+          loadingAction={loadingAction}
+          handleStatusChange={handleStatusChange}
+          openRejectDialog={openRejectDialog}
+        />
+      )
+    }
+
+    return (
+      <ReservationsTableView
+        reservations={items}
+        currency={currency}
+        timezone={timezone}
+        currentSort={currentSort}
+        currentSortDirection={currentSortDirection}
+        onSortChange={handleSortChange}
+        loadingAction={loadingAction}
+        handleStatusChange={handleStatusChange}
+        openRejectDialog={openRejectDialog}
+      />
+    )
   }
 
   return (
@@ -184,25 +231,38 @@ export function ReservationsPageContent({
         currentPeriod={period}
       />
 
-      {/* Reservations Table - Visible */}
-      <ReservationsTable reservations={visibleReservations} currency={currency} timezone={timezone} />
+      {/* Reservations List */}
+      {isEmpty ? (
+        renderEmptyState()
+      ) : (
+        <>
+          {renderReservations(visibleReservations)}
 
-      {/* Blurred Reservations Section */}
-      {blurredReservations.length > 0 && (
-        <div className="relative">
-          {/* Blurred table */}
-          <div className="blur-sm pointer-events-none select-none opacity-60">
-            <ReservationsTable reservations={blurredReservations} currency={currency} timezone={timezone} />
-          </div>
+          {/* Blurred Reservations Section */}
+          {blurredReservations.length > 0 && (
+            <div className="relative">
+              <div className="blur-sm pointer-events-none select-none opacity-60">
+                {renderReservations(blurredReservations)}
+              </div>
+              <BlurOverlay
+                limitType="reservations"
+                currentPlan={planSlug}
+                onUpgradeClick={() => setShowUpgradeModal(true)}
+              />
+            </div>
+          )}
 
-          {/* Overlay */}
-          <BlurOverlay
-            limitType="reservations"
-            currentPlan={planSlug}
-            onUpgradeClick={() => setShowUpgradeModal(true)}
+          {/* Pagination */}
+          <ReservationsPagination
+            totalCount={totalCount}
+            currentPage={currentPage}
+            currentPageSize={currentPageSize}
           />
-        </div>
+        </>
       )}
+
+      {/* Confirm Dialogs */}
+      <ReservationConfirmDialogs {...confirmDialogsProps} />
 
       {/* Upgrade Modal */}
       <UpgradeModal

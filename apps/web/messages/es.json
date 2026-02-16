@@ -1112,6 +1112,13 @@
       },
       "awaitingResponse": "Esperando respuesta",
       "itemsCount": "{count, plural, one {# articulo} other {# articulos}}",
+      "viewTable": "Vista tabla",
+      "viewCards": "Vista tarjetas",
+      "pagination": {
+        "showing": "Mostrando {start} a {end} de {total}",
+        "perPage": "Por página",
+        "page": "Página {current} de {total}"
+      },
       "rejectConfirmTitle": "Rechazar solicitud?",
       "rejectConfirmDescription": "Esto rechazara la solicitud de reserva. El cliente sera notificado por correo.",
       "activity": {

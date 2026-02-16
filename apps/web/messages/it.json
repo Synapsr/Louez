@@ -1073,6 +1073,13 @@
       },
       "awaitingResponse": "In attesa di risposta",
       "itemsCount": "{count, plural, one {# articolo} other {# articoli}}",
+      "viewTable": "Vista tabella",
+      "viewCards": "Vista schede",
+      "pagination": {
+        "showing": "Visualizzazione da {start} a {end} di {total}",
+        "perPage": "Per pagina",
+        "page": "Pagina {current} di {total}"
+      },
       "rejectConfirmTitle": "Rifiutare richiesta?",
       "rejectConfirmDescription": "Questo rifiutera la richiesta di prenotazione. Il cliente sara notificato via email.",
       "activity": {

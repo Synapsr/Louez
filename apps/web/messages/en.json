@@ -1125,6 +1125,13 @@
       },
       "awaitingResponse": "Awaiting response",
       "itemsCount": "{count, plural, one {# item} other {# items}}",
+      "viewTable": "Table view",
+      "viewCards": "Card view",
+      "pagination": {
+        "showing": "Showing {start} to {end} of {total}",
+        "perPage": "Per page",
+        "page": "Page {current} of {total}"
+      },
       "rejectConfirmTitle": "Reject request?",
       "rejectConfirmDescription": "This will reject the reservation request. The customer will be notified by email.",
       "activity": {

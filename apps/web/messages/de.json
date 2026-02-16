@@ -1112,6 +1112,13 @@
       },
       "awaitingResponse": "Warten auf Antwort",
       "itemsCount": "{count, plural, one {# Artikel} other {# Artikel}}",
+      "viewTable": "Tabellenansicht",
+      "viewCards": "Kartenansicht",
+      "pagination": {
+        "showing": "Zeige {start} bis {end} von {total}",
+        "perPage": "Pro Seite",
+        "page": "Seite {current} von {total}"
+      },
       "rejectConfirmTitle": "Anfrage ablehnen?",
       "rejectConfirmDescription": "Diese Aktion lehnt die Reservierungsanfrage ab. Der Kunde wird per E-Mail benachrichtigt.",
       "activity": {
