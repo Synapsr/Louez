@@ -220,7 +220,7 @@ export function NewReservationStepProducts({
                             <span className="text-sm font-medium text-green-600">
                               {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
                             </span>
-                            <Badge variant="secondary" className="bg-green-100 text-xs text-green-700">
+                            <Badge variant="success" className="text-xs">
                               -{applicableTierDiscountPercent}%
                             </Badge>
                           </>

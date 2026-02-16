@@ -229,7 +229,7 @@ export default async function ReservationDetailPage({
                       {isConfirmedAndPaid ? t('status.allSet') : config.label}
                     </h3>
                     {showPaymentRequired && (
-                      <Badge variant="secondary" className="bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400 gap-1">
+                      <Badge variant="warning" className="gap-1">
                         <CreditCard className="h-3 w-3" />
                         {t('confirmedAwaitingPayment')}
                       </Badge>

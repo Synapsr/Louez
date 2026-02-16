@@ -185,9 +185,9 @@ export function SmsContent({
     <div className="space-y-6">
       {/* Success Alert */}
       {showSuccessAlert && (
-        <Alert className="border-green-500/50 bg-green-500/10">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-600">
+        <Alert variant="success">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>
             {t('topup.success')}
           </AlertDescription>
         </Alert>
@@ -511,7 +511,7 @@ export function SmsContent({
                     {t(`types.${TEMPLATE_TYPE_LABELS[selectedSms.templateType] || 'custom'}`)}
                   </Badge>
                   {selectedSms.status === 'sent' ? (
-                    <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                    <Badge variant="success">
                       <CheckCircle2 className="mr-1 h-3 w-3" />
                       {t('status.sent')}
                     </Badge>

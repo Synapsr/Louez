@@ -140,7 +140,7 @@ export function UpgradeModal({
                 <Crown className="h-3 w-3" />
                 {targetPlanName}
               </Badge>
-              <Badge variant="outline" className="bg-green-500/5 text-green-600 border-green-500/20">
+              <Badge variant="success">
                 {t('earlyBird')}
               </Badge>
             </div>
