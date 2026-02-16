@@ -47,6 +47,7 @@ export interface ReservationCounts {
   confirmed: number
   ongoing: number
   completed: number
+  cancelled: number
 }
 
 export type PaymentStatusType = 'paid' | 'partial' | 'unpaid'

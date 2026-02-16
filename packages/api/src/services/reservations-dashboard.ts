@@ -1,5 +1,5 @@
 import { db, customers, reservationActivity, reservations } from '@louez/db'
-import { and, asc, count, desc, eq, gte, inArray, like, lte, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, like, lte, not, or, sql } from 'drizzle-orm'
 import { ORPCError } from '@orpc/server'
 
 type ReservationStatus =
@@ -25,7 +25,23 @@ export async function getDashboardReservationsList(params: {
   const conditions = [eq(reservations.storeId, storeId)]
 
   if (status && status !== 'all') {
-    conditions.push(eq(reservations.status, status))
+    if (status === 'cancelled') {
+      // "Cancelled" tab groups both cancelled and rejected
+      conditions.push(
+        or(
+          eq(reservations.status, 'cancelled'),
+          eq(reservations.status, 'rejected'),
+        )!
+      )
+    } else {
+      conditions.push(eq(reservations.status, status))
+    }
+  } else {
+    // Default "all" view excludes cancelled and rejected
+    conditions.push(
+      not(eq(reservations.status, 'cancelled')),
+      not(eq(reservations.status, 'rejected')),
+    )
   }
 
   const now = new Date()
@@ -163,20 +179,26 @@ export async function getDashboardReservationsList(params: {
   ])
 
   const counts: Record<string, number> = {}
-  let total = 0
   for (const row of countsByStatus) {
     counts[row.status] = row.count
-    total += row.count
   }
+
+  const cancelledCount = (counts['cancelled'] || 0) + (counts['rejected'] || 0)
+  const activeTotal =
+    (counts['pending'] || 0) +
+    (counts['confirmed'] || 0) +
+    (counts['ongoing'] || 0) +
+    (counts['completed'] || 0)
 
   return {
     reservations: reservationsList,
     counts: {
-      all: total,
+      all: activeTotal,
       pending: counts['pending'] || 0,
       confirmed: counts['confirmed'] || 0,
       ongoing: counts['ongoing'] || 0,
       completed: counts['completed'] || 0,
+      cancelled: cancelledCount,
     },
     totalCount: totalCountResult,
   }

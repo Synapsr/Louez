@@ -120,6 +120,7 @@ export function ReservationsPageContent({
     confirmed: 0,
     ongoing: 0,
     completed: 0,
+    cancelled: 0,
   }
   const totalCount = (reservationsQuery.data as any)?.totalCount ?? null
 
