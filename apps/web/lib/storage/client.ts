@@ -1,11 +1,12 @@
 import {
-  S3Client,
-  PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-} from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
-import { env } from '@/env'
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
+import { env } from '@/env';
 
 export const s3Client = new S3Client({
   region: env.S3_REGION,
@@ -15,18 +16,20 @@ export const s3Client = new S3Client({
     secretAccessKey: env.S3_SECRET_ACCESS_KEY,
   },
   forcePathStyle: true,
-})
+});
 
-const BUCKET = env.S3_BUCKET
-const PUBLIC_URL = env.S3_PUBLIC_URL
+const BUCKET = env.S3_BUCKET;
+const PUBLIC_URL = env.S3_PUBLIC_URL;
 if (!PUBLIC_URL) {
-  console.error('[Storage] S3_PUBLIC_URL is undefined — image URLs will be broken')
+  console.error(
+    '[Storage] S3_PUBLIC_URL is undefined — image URLs will be broken',
+  );
 }
 
 interface UploadOptions {
-  key: string
-  body: Buffer | Uint8Array | Blob
-  contentType: string
+  key: string;
+  body: Buffer | Uint8Array | Blob;
+  contentType: string;
 }
 
 export async function uploadFile({ key, body, contentType }: UploadOptions) {
@@ -37,10 +40,10 @@ export async function uploadFile({ key, body, contentType }: UploadOptions) {
       Body: body,
       ContentType: contentType,
       ACL: 'public-read',
-    })
-  )
+    }),
+  );
 
-  return `${PUBLIC_URL}/${key}`
+  return `${PUBLIC_URL}/${key}`;
 }
 
 export async function deleteFile(key: string) {
@@ -48,35 +51,35 @@ export async function deleteFile(key: string) {
     new DeleteObjectCommand({
       Bucket: BUCKET,
       Key: key,
-    })
-  )
+    }),
+  );
 }
 
 export async function getPresignedUploadUrl(
   key: string,
   contentType: string,
-  expiresIn = 3600
+  expiresIn = 3600,
 ) {
   const command = new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
     ContentType: contentType,
-  })
+  });
 
-  return getSignedUrl(s3Client, command, { expiresIn })
+  return getSignedUrl(s3Client, command, { expiresIn });
 }
 
 export async function getPresignedDownloadUrl(key: string, expiresIn = 3600) {
   const command = new GetObjectCommand({
     Bucket: BUCKET,
     Key: key,
-  })
+  });
 
-  return getSignedUrl(s3Client, command, { expiresIn })
+  return getSignedUrl(s3Client, command, { expiresIn });
 }
 
 export function getPublicUrl(key: string) {
-  return `${PUBLIC_URL}/${key}`
+  return `${PUBLIC_URL}/${key}`;
 }
 
 export function getStorageKey(
@@ -84,7 +87,7 @@ export function getStorageKey(
   type: 'logo' | 'products' | 'documents' | 'inspections',
   ...parts: string[]
 ) {
-  const base = `${storeId}/${type}`
-  if (parts.length === 0) return base
-  return `${base}/${parts.join('/')}`
+  const base = `${storeId}/${type}`;
+  if (parts.length === 0) return base;
+  return `${base}/${parts.join('/')}`;
 }
