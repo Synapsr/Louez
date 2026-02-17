@@ -19,6 +19,9 @@ export const s3Client = new S3Client({
 
 const BUCKET = env.S3_BUCKET
 const PUBLIC_URL = env.S3_PUBLIC_URL
+if (!PUBLIC_URL) {
+  console.error('[Storage] S3_PUBLIC_URL is undefined — image URLs will be broken')
+}
 
 interface UploadOptions {
   key: string
