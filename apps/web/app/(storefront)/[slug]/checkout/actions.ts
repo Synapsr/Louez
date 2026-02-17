@@ -31,6 +31,7 @@ import {
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
+import { previewTulipQuoteForCheckout } from '@/lib/integrations/tulip/contracts'
 import { env } from '@/env'
 
 interface ReservationItem {
@@ -75,8 +76,17 @@ interface CreateReservationInput {
   subtotalAmount: number
   depositAmount: number
   totalAmount: number
+  tulipInsuranceOptIn?: boolean
   locale?: 'fr' | 'en'
   delivery?: DeliveryInput
+}
+
+function getErrorKey(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.startsWith('errors.')) {
+    return error.message
+  }
+
+  return fallback
 }
 
 async function generateUniqueReservationNumber(storeId: string, maxRetries = 5): Promise<string> {
@@ -430,11 +440,46 @@ export async function createReservation(input: CreateReservationInput) {
       })
     }
 
+    // ===== TULIP INSURANCE PREVIEW =====
+    let tulipInsuranceAmount = 0
+
+    try {
+      const preview = await previewTulipQuoteForCheckout({
+        storeId: store.id,
+        storeSettings: storeSettings as StoreSettings | null,
+        customer: {
+          customerType: input.customer.customerType || 'individual',
+          companyName: input.customer.companyName || null,
+          firstName: input.customer.firstName,
+          lastName: input.customer.lastName,
+          email: input.customer.email,
+          phone: input.customer.phone || '',
+          address: input.customer.address || '',
+          city: input.customer.city || '',
+          postalCode: input.customer.postalCode || '',
+          country: store.settings?.country || 'FR',
+        },
+        items: input.items.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+        startDate: rentalStartDate,
+        endDate: rentalEndDate,
+        optIn: input.tulipInsuranceOptIn,
+      })
+
+      if (preview.shouldApply && Number.isFinite(preview.amount) && preview.amount > 0) {
+        tulipInsuranceAmount = Math.round(preview.amount * 100) / 100
+      }
+    } catch (error) {
+      return { error: getErrorKey(error, 'errors.tulipQuoteFailed') }
+    }
+
     // Use server-calculated values for all monetary operations
-    const finalSubtotal = serverSubtotal
+    const finalSubtotal = serverSubtotal + tulipInsuranceAmount
     const finalDeposit = serverTotalDeposit
     const finalDeliveryFee = deliveryFee
-    const finalTotal = serverTotalWithDelivery
+    const finalTotal = serverTotalWithDelivery + tulipInsuranceAmount
 
     const startDates = input.items.map((item) => new Date(item.startDate))
     const endDates = input.items.map((item) => new Date(item.endDate))
@@ -776,6 +821,23 @@ export async function createReservation(input: CreateReservationInput) {
         })
       }
 
+      if (tulipInsuranceAmount > 0) {
+        await tx.insert(reservationItems).values({
+          reservationId,
+          productId: null,
+          isCustomItem: true,
+          quantity: 1,
+          unitPrice: tulipInsuranceAmount.toFixed(2),
+          depositPerUnit: '0.00',
+          totalPrice: tulipInsuranceAmount.toFixed(2),
+          productSnapshot: {
+            name: 'Garantie casse/vol',
+            description: 'Garantie casse/vol',
+            images: [],
+          },
+        })
+      }
+
       await tx.insert(reservationActivity).values({
         id: nanoid(),
         reservationId,
@@ -786,6 +848,9 @@ export async function createReservation(input: CreateReservationInput) {
           status: 'pending',
           customerEmail: input.customer.email,
           customerName: `${input.customer.firstName} ${input.customer.lastName}`,
+          ...(tulipInsuranceAmount > 0 && {
+            tulipInsuranceAmount,
+          }),
         },
         createdAt: new Date(),
       })
@@ -1006,15 +1071,25 @@ export async function createReservation(input: CreateReservationInput) {
               quantity: 1,
               unitAmount: toStripeCents(finalChargeAmount, currency),
             }]
-          : input.items.map((item, idx) => {
-              const serverItem = serverCalculatedItems[idx]
-              return {
-                name: item.productSnapshot.name,
-                description: item.productSnapshot.description || undefined,
-                quantity: item.quantity,
-                unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
-              }
-            })
+          : [
+              ...input.items.map((item, idx) => {
+                const serverItem = serverCalculatedItems[idx]
+                return {
+                  name: item.productSnapshot.name,
+                  description: item.productSnapshot.description || undefined,
+                  quantity: item.quantity,
+                  unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
+                }
+              }),
+              ...(tulipInsuranceAmount > 0
+                ? [{
+                    name: 'Garantie casse/vol',
+                    description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                    quantity: 1,
+                    unitAmount: toStripeCents(tulipInsuranceAmount, currency),
+                  }]
+                : []),
+            ]
 
         // Create checkout session
         const { url, sessionId } = await createCheckoutSession({

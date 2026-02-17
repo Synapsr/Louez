@@ -61,6 +61,7 @@ import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
 } from '@/lib/utils/reservation-rules'
+import { createTulipContractForReservation } from '@/lib/integrations/tulip/contracts'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -74,6 +75,14 @@ function toPricingMode(value: unknown): PricingMode {
 }
 
 type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
+
+function getErrorKey(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.startsWith('errors.')) {
+    return error.message
+  }
+
+  return fallback
+}
 
 async function logReservationActivity(
   reservationId: string,
@@ -193,6 +202,22 @@ export async function updateReservationStatus(
         }),
       }
     )
+  }
+
+  let tulipWarning: { key: string; params?: Record<string, string | number> } | null = null
+  if (status === 'confirmed') {
+    try {
+      await createTulipContractForReservation({ reservationId })
+    } catch (error) {
+      console.error('[tulip] Failed to create contract from dashboard confirmation:', {
+        reservationId,
+        error,
+      })
+
+      tulipWarning = {
+        key: getErrorKey(error, 'errors.tulipContractCreationFailed'),
+      }
+    }
   }
 
   // Send emails based on status change
@@ -317,9 +342,17 @@ export async function updateReservationStatus(
 
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
+  const responseWarnings = [
+    ...validationWarnings.map((warning) => ({
+      key: warning.key,
+      params: warning.params,
+    })),
+    ...(tulipWarning ? [tulipWarning] : []),
+  ]
+
   return {
     success: true,
-    ...(validationWarnings.length > 0 && { warnings: validationWarnings }),
+    ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
   }
 }
 
@@ -703,6 +736,15 @@ export async function createManualReservation(data: CreateReservationData) {
     'Manual reservation created',
     { source: 'manual', status: 'confirmed' }
   )
+
+  try {
+    await createTulipContractForReservation({ reservationId })
+  } catch (error) {
+    console.error('[tulip] Failed to create contract for manual reservation:', {
+      reservationId,
+      error,
+    })
+  }
 
   // Get customer info for email
   const customer = await db.query.customers.findFirst({

@@ -15,6 +15,11 @@ export interface CheckoutFormProps {
   storeAddress?: string | null;
   storeLatitude?: number | null;
   storeLongitude?: number | null;
+  tulipInsurance?: {
+    enabled: boolean;
+    mode: 'required' | 'optional' | 'no_public';
+    includeInFinalPrice: boolean;
+  };
 }
 
 export interface CheckoutFormValues {
@@ -28,6 +33,7 @@ export interface CheckoutFormValues {
   city: string;
   postalCode: string;
   notes: string;
+  tulipInsuranceOptIn: boolean;
   acceptCgv: boolean;
 }
 

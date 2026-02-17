@@ -17,6 +17,7 @@ import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
 } from '@/lib/utils/reservation-rules'
+import { createTulipContractForReservation } from '@/lib/integrations/tulip/contracts'
 
 interface SuccessPageProps {
   params: Promise<{ slug: string }>
@@ -201,6 +202,15 @@ async function verifyAndUpdatePayment(
       },
       createdAt: new Date(),
     })
+
+    try {
+      await createTulipContractForReservation({ reservationId })
+    } catch (error) {
+      console.error('[tulip] Failed to create contract from success page confirmation:', {
+        reservationId,
+        error,
+      })
+    }
 
     return { updated: true }
   } catch (error) {

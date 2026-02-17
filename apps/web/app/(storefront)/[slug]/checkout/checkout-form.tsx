@@ -56,6 +56,7 @@ const DEFAULT_VALUES: CheckoutFormValues = {
   city: '',
   postalCode: '',
   notes: '',
+  tulipInsuranceOptIn: true,
   acceptCgv: false,
 };
 
@@ -82,6 +83,7 @@ export function CheckoutForm({
   storeAddress,
   storeLatitude,
   storeLongitude,
+  tulipInsurance,
 }: CheckoutFormProps) {
   const router = useRouter();
   const locale = useLocale() as 'fr' | 'en';
@@ -127,6 +129,7 @@ export function CheckoutForm({
 
   const totalWithDelivery =
     total + (deliveryOption === 'delivery' ? deliveryFee : 0);
+  const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
 
   const {
     lineResolutions,
@@ -161,6 +164,7 @@ export function CheckoutForm({
         totalAmount: totalWithDelivery,
         deliveryOption,
         deliveryAddress,
+        tulipInsuranceMode,
       });
 
       const result = await createReservation(payload);
@@ -272,6 +276,11 @@ export function CheckoutForm({
     [form],
   );
 
+  const tulipInsuranceOptIn = useStore(
+    form.store,
+    (state) => state.values.tulipInsuranceOptIn,
+  );
+
   const {
     currentStep,
     stepDirection,
@@ -355,6 +364,7 @@ export function CheckoutForm({
                     subtotal={subtotal}
                     totalWithDelivery={totalWithDelivery}
                     currency={currency}
+                    tulipInsurance={tulipInsurance}
                     canSubmitCheckout={canSubmitCheckout}
                     onBack={goToPreviousStep}
                     onEditContact={() => goToStep('contact')}
@@ -379,13 +389,15 @@ export function CheckoutForm({
           originalSubtotal={originalSubtotal}
           totalSavings={totalSavings}
           totalDeposit={totalDeposit}
-          totalWithDelivery={totalWithDelivery}
-          deliveryOption={deliveryOption}
-          deliveryDistance={deliveryDistance}
-          deliveryFee={deliveryFee}
-          lineResolutions={lineResolutions}
-        />
-      </div>
+              totalWithDelivery={totalWithDelivery}
+              deliveryOption={deliveryOption}
+              deliveryDistance={deliveryDistance}
+              deliveryFee={deliveryFee}
+              tulipInsurance={tulipInsurance}
+              tulipInsuranceOptIn={tulipInsuranceOptIn}
+              lineResolutions={lineResolutions}
+            />
+          </div>
     </div>
   );
 }

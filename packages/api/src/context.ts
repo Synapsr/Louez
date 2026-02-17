@@ -185,6 +185,65 @@ export interface BaseContext {
     sendAccessLink?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
     sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
   };
+  dashboardIntegrationActions?: {
+    getTulipIntegrationState?: () => Promise<
+      | {
+          connected: boolean
+          apiKeyLast4: string | null
+          connectedAt: string | null
+          connectionIssue: string | null
+          calendlyUrl: string
+          settings: {
+            publicMode: 'required' | 'optional' | 'no_public'
+            includeInFinalPrice: boolean
+            renterUid: string | null
+            contractType: 'LCD' | 'LMD' | 'LLD'
+          }
+          renters: Array<{ uid: string; enabled: boolean }>
+          tulipProducts: Array<{
+            id: string
+            title: string
+            productType: string | null
+            valueExcl: number | null
+            brand: string | null
+            model: string | null
+          }>
+          products: Array<{
+            id: string
+            name: string
+            price: number
+            tulipProductId: string | null
+          }>
+        }
+      | { error: string }
+    >
+    connectTulipApiKey?: (input: { apiKey: string }) => Promise<{ success?: boolean; error?: string }>
+    updateTulipConfiguration?: (input: {
+      publicMode: 'required' | 'optional' | 'no_public'
+      includeInFinalPrice: boolean
+      renterUid: string | null
+      contractType: 'LCD' | 'LMD' | 'LLD'
+    }) => Promise<{ success?: boolean; error?: string }>
+    upsertTulipProductMapping?: (input: {
+      productId: string
+      tulipProductId: string | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    pushTulipProductUpdate?: (input: {
+      productId: string
+      productType?: string | null
+      brand?: string | null
+      model?: string | null
+      valueExcl?: number | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    createTulipProduct?: (input: {
+      productId: string
+      productType?: string | null
+      brand?: string | null
+      model?: string | null
+      valueExcl?: number | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>
+  };
   notifyStoreCreated?: (store: {
     id: string;
     name: string;

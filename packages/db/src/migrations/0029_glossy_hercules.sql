@@ -1,0 +1,1 @@
+ALTER TABLE `products_tulip` ADD CONSTRAINT `products_tulip_product_id_products_id_fk` FOREIGN KEY (`product_id`) REFERENCES `products`(`id`) ON DELETE cascade ON UPDATE no action;
