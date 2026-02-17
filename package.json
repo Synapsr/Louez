@@ -51,7 +51,9 @@
     "db:migrate:run": "turbo run db:migrate:run --filter=@louez/db",
     "db:push": "turbo run db:push --filter=@louez/db",
     "db:studio": "turbo run db:studio --filter=@louez/db",
-    "db:seed": "turbo run db:seed --filter=web"
+    "db:seed": "turbo run db:seed --filter=web",
+    "pricing:backfill": "turbo run pricing:backfill --filter=@louez/db",
+    "pricing:parity-report": "turbo run pricing:parity-report --filter=@louez/db"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",

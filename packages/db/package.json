@@ -15,7 +15,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:run": "tsx src/migrate.ts",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "pricing:backfill": "tsx src/scripts/pricing-backfill.ts",
+    "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts"
   },
   "dependencies": {
     "@louez/types": "workspace:*",

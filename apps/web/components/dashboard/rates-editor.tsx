@@ -392,24 +392,26 @@ export function RatesEditor({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {previewRows.map((row) => (
-                    <TableRow
-                      key={row.durationMinutes}
-                      className={row.savings > 0 ? 'bg-green-50/40' : undefined}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <span>{row.durationLabel}</span>
-                          {row.reductionPercent > 0 && (
-                            <Badge
-                              variant="outline"
-                              className="text-emerald-700"
-                            >
-                              -{Math.floor(row.reductionPercent)}%
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
+                  {previewRows.map((row) => {
+                    const reductionPercent = row.reductionPercent ?? 0;
+                    return (
+                      <TableRow
+                        key={row.durationMinutes}
+                        className={row.savings > 0 ? 'bg-green-50/40' : undefined}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{row.durationLabel}</span>
+                            {reductionPercent > 0 && (
+                              <Badge
+                                variant="outline"
+                                className="text-emerald-700"
+                              >
+                                -{Math.floor(reductionPercent)}%
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
                       <TableCell>
                         {formatCurrency(row.unitPrice, currency)}
                         {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
@@ -428,8 +430,9 @@ export function RatesEditor({
                           ? `-${formatCurrency(row.savings, currency)}`
                           : '-'}
                       </TableCell>
-                    </TableRow>
-                  ))}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
