@@ -221,6 +221,54 @@ function calculateV2Subtotal(
   return calculateBestRateCost(durationMinutes, rates)
 }
 
+function isLegacyEquivalentProduct(
+  basePrice: number,
+  modePeriodMinutes: number,
+  tiers: Array<{
+    minDuration: number | null
+    discountPercent: string | number | null
+    period: number | null
+    price: string | null
+  }>,
+): boolean {
+  for (const tier of tiers) {
+    const hasLegacy =
+      typeof tier.minDuration === 'number' &&
+      tier.minDuration > 0 &&
+      tier.discountPercent !== null &&
+      tier.discountPercent !== undefined
+    const hasRate =
+      typeof tier.period === 'number' &&
+      tier.period > 0 &&
+      tier.price !== null &&
+      tier.price !== undefined
+
+    if (!hasLegacy && hasRate) {
+      return false
+    }
+
+    if (!hasLegacy || !hasRate) {
+      continue
+    }
+
+    const minDuration = tier.minDuration as number
+    const discountPercent = toNumber(tier.discountPercent)
+    const expectedPeriod = minDuration * modePeriodMinutes
+    const expectedPrice = roundCurrency(
+      basePrice * (1 - discountPercent / 100) * minDuration,
+    )
+    const actualPrice = toNumber(tier.price)
+    if (tier.period !== expectedPeriod) {
+      return false
+    }
+    if (Math.abs(actualPrice - expectedPrice) > 0.01) {
+      return false
+    }
+  }
+
+  return true
+}
+
 function getParityCap(mode: PricingMode): number {
   if (mode === 'hour') return 24 * 30
   if (mode === 'week') return 52
@@ -252,7 +300,8 @@ async function main(): Promise<void> {
 
   const mismatches: ParityMismatch[] = []
   let productsChecked = 0
-  let productsSkipped = 0
+  let productsSkippedBasePeriod = 0
+  let productsSkippedNonLegacy = 0
   let maxDiff = 0
 
   console.log(
@@ -266,7 +315,7 @@ async function main(): Promise<void> {
 
     // Parity is only guaranteed for legacy-equivalent base period.
     if (basePeriodMinutes !== modePeriodMinutes) {
-      productsSkipped += 1
+      productsSkippedBasePeriod += 1
       continue
     }
 
@@ -296,6 +345,13 @@ async function main(): Promise<void> {
         period: tier.period,
         price: toNumber(tier.price),
       }))
+
+    if (
+      !isLegacyEquivalentProduct(basePrice, modePeriodMinutes, product.pricingTiers ?? [])
+    ) {
+      productsSkippedNonLegacy += 1
+      continue
+    }
 
     productsChecked += 1
     const cap = getParityCap(mode)
@@ -334,7 +390,8 @@ async function main(): Promise<void> {
   console.table({
     productsScanned: targetProducts.length,
     productsChecked,
-    productsSkipped,
+    productsSkippedBasePeriod,
+    productsSkippedNonLegacy,
     mismatchedProducts: mismatchedProducts.size,
     mismatchedPoints: mismatches.length,
     threshold: options.threshold,
