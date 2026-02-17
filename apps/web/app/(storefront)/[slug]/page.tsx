@@ -110,7 +110,14 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
 
   // Step 2: Fetch full product data with pricing tiers and category (no ORDER BY needed)
   let storeProducts: (typeof products.$inferSelect & {
-    pricingTiers?: { id: string; minDuration: number; discountPercent: string; displayOrder: number | null }[]
+    pricingTiers?: {
+      id: string
+      minDuration: number | null
+      discountPercent: string | null
+      period: number | null
+      price: string | null
+      displayOrder: number | null
+    }[]
     category?: { name: string } | null
   })[] = []
   if (productIds.length > 0) {

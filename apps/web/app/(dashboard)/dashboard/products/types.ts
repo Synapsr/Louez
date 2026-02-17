@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from 'react'
 
 import type { PricingMode, ProductTaxSettings, TaxSettings } from '@louez/types'
 import type { ProductInput } from '@louez/validations'
+import type { DurationUnit } from '@louez/utils'
 
 export interface Category {
   id: string
@@ -10,9 +11,26 @@ export interface Category {
 
 export interface PricingTierData {
   id: string
-  minDuration: number
-  discountPercent: string
+  minDuration?: number | null
+  discountPercent?: string | null
+  price?: string | null
+  period?: number | null
   displayOrder: number | null
+}
+
+export interface PriceDurationValue {
+  price: string
+  duration: number
+  unit: DurationUnit
+}
+
+export interface RateTierInput {
+  id?: string
+  price: string
+  duration: number
+  unit: DurationUnit
+  // UI-only derived value, not persisted in DB.
+  discountPercent?: number
 }
 
 export interface ProductUnitData {
@@ -36,7 +54,8 @@ export interface Product {
   categoryId: string | null
   price: string
   deposit: string | null
-  pricingMode: PricingMode
+  pricingMode?: PricingMode | null
+  basePeriodMinutes?: number | null
   pricingTiers?: PricingTierData[]
   quantity: number
   status: 'draft' | 'active' | 'archived' | null

@@ -154,6 +154,7 @@ interface UnitTrackingEditorProps {
   quantity: string
   onQuantityChange: (value: string) => void
   disabled?: boolean
+  showValidationErrors?: boolean
 }
 
 export function UnitTrackingEditor({
@@ -166,6 +167,7 @@ export function UnitTrackingEditor({
   quantity,
   onQuantityChange,
   disabled = false,
+  showValidationErrors = false,
 }: UnitTrackingEditorProps) {
   const t = useTranslations('dashboard.products.form.unitTracking')
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
@@ -483,7 +485,9 @@ export function UnitTrackingEditor({
                   const isDuplicate =
                     unit.identifier.trim() &&
                     duplicateIdentifiers.has(unit.identifier.trim().toLowerCase())
-                  const isEmpty = touchedUnits.has(index) && !unit.identifier.trim()
+                  const isEmpty =
+                    (touchedUnits.has(index) || showValidationErrors) &&
+                    !unit.identifier.trim()
                   const isEditingNotes = editingNotes[index]
                   const combinationLabel = buildPartialCombinationKey(
                     bookingAttributeAxes,

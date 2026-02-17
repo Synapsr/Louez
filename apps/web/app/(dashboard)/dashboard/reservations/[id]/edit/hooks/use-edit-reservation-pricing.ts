@@ -25,8 +25,15 @@ function calculateDuration(startDate: Date, endDate: Date, pricingMode: PricingM
 function findApplicableTier(tiers: PricingTier[], duration: number): PricingTier | null {
   if (!tiers.length) return null
 
-  const sorted = [...tiers].sort((a, b) => b.minDuration - a.minDuration)
-  return sorted.find((tier) => duration >= tier.minDuration) || null
+  const normalized = tiers
+    .map((tier) => ({
+      ...tier,
+      minDuration: tier.minDuration ?? 1,
+      discountPercent: tier.discountPercent ?? '0',
+    }))
+    .sort((a, b) => b.minDuration - a.minDuration)
+
+  return normalized.find((tier) => duration >= tier.minDuration) || null
 }
 
 function calculateItemPrice(item: EditableItem, duration: number) {
@@ -43,7 +50,7 @@ function calculateItemPrice(item: EditableItem, duration: number) {
   const tier = findApplicableTier(item.product.pricingTiers, duration)
 
   if (tier) {
-    const discount = parseFloat(tier.discountPercent)
+    const discount = parseFloat(tier.discountPercent ?? '0')
     const effectivePrice = basePrice * (1 - discount / 100)
     const unit = item.pricingMode === 'day' ? 'j' : item.pricingMode === 'hour' ? 'h' : 'sem'
 

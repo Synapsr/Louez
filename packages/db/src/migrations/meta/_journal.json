@@ -197,6 +197,13 @@
       "when": 1771240623994,
       "tag": "0027_married_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1771338757749,
+      "tag": "0028_overrated_the_initiative",
+      "breakpoints": true
     }
   ]
 }

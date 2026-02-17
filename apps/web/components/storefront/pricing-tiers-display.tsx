@@ -16,8 +16,10 @@ import {
 
 interface PricingTier {
   id: string
-  minDuration: number
-  discountPercent: string | number
+  minDuration: number | null
+  discountPercent: string | number | null
+  period?: number | null
+  price?: string | null
   displayOrder: number | null
 }
 
@@ -41,7 +43,16 @@ export function PricingTiersDisplay({
 
   if (!tiers.length) return null
 
-  const sortedTiers = sortTiersByDuration(tiers)
+  const sortedTiers = sortTiersByDuration(
+    tiers.map((tier) => ({
+      ...tier,
+      minDuration: tier.minDuration ?? 1,
+      discountPercent:
+        typeof tier.discountPercent === 'string'
+          ? parseFloat(tier.discountPercent ?? '0')
+          : (tier.discountPercent ?? 0),
+    })),
+  )
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelShort = getUnitLabel(pricingMode, 'short')
 
@@ -50,7 +61,7 @@ export function PricingTiersDisplay({
     ? sortedTiers.reduce((acc, tier, index) => {
         const tierDiscount =
           typeof tier.discountPercent === 'string'
-            ? parseFloat(tier.discountPercent)
+            ? parseFloat(tier.discountPercent ?? '0')
             : tier.discountPercent
         return currentDuration >= tier.minDuration ? index : acc
       }, -1)
@@ -80,11 +91,11 @@ export function PricingTiersDisplay({
           {sortedTiers.map((tier, index) => {
             const discountPercent =
               typeof tier.discountPercent === 'string'
-                ? parseFloat(tier.discountPercent)
-                : tier.discountPercent
+                ? parseFloat(tier.discountPercent ?? '0')
+                : (tier.discountPercent ?? 0)
             const effectivePrice = calculateEffectivePrice(basePrice, {
               id: tier.id,
-              minDuration: tier.minDuration,
+              minDuration: tier.minDuration ?? 1,
               discountPercent,
               displayOrder: tier.displayOrder ?? index,
             })
@@ -142,7 +153,16 @@ export function PricingTiersInline({
 
   if (!tiers.length) return null
 
-  const sortedTiers = sortTiersByDuration(tiers)
+  const sortedTiers = sortTiersByDuration(
+    tiers.map((tier) => ({
+      ...tier,
+      minDuration: tier.minDuration ?? 1,
+      discountPercent:
+        typeof tier.discountPercent === 'string'
+          ? parseFloat(tier.discountPercent ?? '0')
+          : (tier.discountPercent ?? 0),
+    })),
+  )
   const unitLabelShort = getUnitLabel(pricingMode, 'short')
 
   return (
@@ -150,11 +170,11 @@ export function PricingTiersInline({
       {sortedTiers.slice(0, 3).map((tier, index) => {
         const discountPercent =
           typeof tier.discountPercent === 'string'
-            ? parseFloat(tier.discountPercent)
-            : tier.discountPercent
+            ? parseFloat(tier.discountPercent ?? '0')
+            : (tier.discountPercent ?? 0)
         const effectivePrice = calculateEffectivePrice(basePrice, {
           id: tier.id,
-          minDuration: tier.minDuration,
+          minDuration: tier.minDuration ?? 1,
           discountPercent,
           displayOrder: tier.displayOrder ?? index,
         })
@@ -165,7 +185,7 @@ export function PricingTiersInline({
             variant="outline"
             className="text-xs font-normal"
           >
-            {tier.minDuration}+ → {formatCurrency(effectivePrice, currency)}/{unitLabelShort}
+            {(tier.minDuration ?? 1)}+ → {formatCurrency(effectivePrice, currency)}/{unitLabelShort}
           </Badge>
         )
       })}

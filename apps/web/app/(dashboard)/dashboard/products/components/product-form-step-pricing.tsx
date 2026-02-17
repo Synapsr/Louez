@@ -1,11 +1,9 @@
-'use client';
+'use client'
 
-import type { ChangeEvent } from 'react';
+import { Link2, Puzzle } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
-import { Link2, Puzzle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
-
-import type { PricingMode, TaxSettings } from '@louez/types';
+import type { PricingMode, TaxSettings } from '@louez/types'
 import {
   Card,
   CardContent,
@@ -14,55 +12,58 @@ import {
   CardTitle,
   Input,
   Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Separator,
-} from '@louez/ui';
+} from '@louez/ui'
 
-import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
-import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor';
-import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
-import { PriceDurationInput } from '@/components/ui/price-duration-input';
+import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
+import { RatesEditor } from '@/components/dashboard/rates-editor'
+import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
+import {
+  PriceDurationInput,
+  type PriceDurationValue,
+} from '@/components/ui/price-duration-input'
 
-import { getFieldError } from '@/hooks/form/form-context';
+import { getFieldError } from '@/hooks/form/form-context'
 
 import type {
   AvailableAccessory,
   ProductFormComponentApi,
   ProductFormValues,
-} from '../types';
+} from '../types'
 
 interface ProductFormStepPricingProps {
-  form: ProductFormComponentApi;
-  watchedValues: ProductFormValues;
-  priceLabel: string;
-  currency: string;
-  currencySymbol: string;
-  isSaving: boolean;
-  storeTaxSettings?: TaxSettings;
-  availableAccessories: AvailableAccessory[];
-  basePrice: number;
-  effectivePricingMode: PricingMode;
-  showAccessories: boolean;
+  form: ProductFormComponentApi
+  watchedValues: ProductFormValues
+  currency: string
+  currencySymbol: string
+  isSaving: boolean
+  storeTaxSettings?: TaxSettings
+  availableAccessories: AvailableAccessory[]
+  showAccessories: boolean
+  showUnitValidationErrors?: boolean
+  priceLabel?: string
+  basePrice?: number
+  effectivePricingMode?: PricingMode
+}
+
+function toLegacyPricingMode(unit: PriceDurationValue['unit']): PricingMode {
+  if (unit === 'week') return 'week'
+  if (unit === 'day') return 'day'
+  return 'hour'
 }
 
 export function ProductFormStepPricing({
   form,
   watchedValues,
-  priceLabel,
   currency,
   currencySymbol,
   isSaving,
   storeTaxSettings,
   availableAccessories,
-  basePrice,
-  effectivePricingMode,
   showAccessories,
+  showUnitValidationErrors = false,
 }: ProductFormStepPricingProps) {
-  const t = useTranslations('dashboard.products.form');
+  const t = useTranslations('dashboard.products.form')
 
   const pricingAndStock = (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -72,36 +73,33 @@ export function ProductFormStepPricing({
           <CardDescription>{t('pricingDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form.Field name="pricingMode">
+          <form.Field name="basePriceDuration">
             {(field) => (
               <div className="space-y-2">
-                <Label>{t('pricingModeLabel')}</Label>
-                <Select
-                  onValueChange={(value) => {
-                    if (value !== null)
-                      field.handleChange(value as PricingMode);
+                <Label>{t('baseRate')}</Label>
+                <PriceDurationInput
+                  value={
+                    field.state.value ?? {
+                      price: watchedValues.price || '',
+                      duration: 1,
+                      unit: watchedValues.pricingMode === 'week'
+                        ? 'week'
+                        : watchedValues.pricingMode === 'hour'
+                          ? 'hour'
+                          : 'day',
+                    }
+                  }
+                  onChange={(next) => {
+                    field.handleChange(next)
+                    // Temporary bridge while legacy fields are still present elsewhere.
+                    form.setFieldValue('price', next.price)
+                    form.setFieldValue('pricingMode', toLegacyPricingMode(next.unit))
                   }}
-                  value={field.state.value}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('pricingModeLabel')}>
-                      {t(`pricingModes.${field.state.value}`)}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hour" label={t('pricingModes.hour')}>
-                      {t('pricingModes.hour')}
-                    </SelectItem>
-                    <SelectItem value="day" label={t('pricingModes.day')}>
-                      {t('pricingModes.day')}
-                    </SelectItem>
-                    <SelectItem value="week" label={t('pricingModes.week')}>
-                      {t('pricingModes.week')}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  currency={currency}
+                  disabled={isSaving}
+                />
                 <p className="text-muted-foreground text-sm">
-                  {t('pricingModeHelp')}
+                  {t('baseRateDescription')}
                 </p>
                 {field.state.meta.errors.length > 0 && (
                   <p className="text-destructive text-sm font-medium">
@@ -112,29 +110,9 @@ export function ProductFormStepPricing({
             )}
           </form.Field>
 
-          <PriceDurationInput currency="EUR" />
-
           <Separator />
 
           <div className="grid items-start gap-4 sm:grid-cols-2">
-            <form.AppField name="price">
-              {(field) => (
-                <field.Input
-                  label={priceLabel}
-                  suffix={currencySymbol}
-                  placeholder={t('pricePlaceholder')}
-                  className="text-lg font-semibold"
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => {
-                    form.setFieldMeta('price', (prev: any) => ({
-                      ...prev,
-                      errorMap: { ...prev?.errorMap, onSubmit: undefined },
-                    }));
-                    field.handleChange(event.target.value);
-                  }}
-                />
-              )}
-            </form.AppField>
-
             <form.AppField name="deposit">
               {(field) => (
                 <field.Input
@@ -229,31 +207,32 @@ export function ProductFormStepPricing({
               form.setFieldMeta('quantity', (prev: any) => ({
                 ...prev,
                 errorMap: { ...prev?.errorMap, onSubmit: undefined },
-              }));
-              form.setFieldValue('quantity', value);
+              }))
+              form.setFieldValue('quantity', value)
             }}
             disabled={isSaving}
+            showValidationErrors={showUnitValidationErrors}
           />
         </CardContent>
       </Card>
     </div>
-  );
+  )
 
-  const pricingTiers = (
+  const rates = (
     <Card>
       <CardContent className="pt-6">
-        <form.Field name="pricingTiers">
+        <form.Field name="rateTiers">
           {(field) => (
             <div>
-              <PricingTiersEditor
-                basePrice={basePrice}
-                pricingMode={effectivePricingMode}
-                tiers={field.state.value || []}
+              <RatesEditor
+                basePriceDuration={watchedValues.basePriceDuration}
+                rates={field.state.value || []}
                 onChange={field.handleChange}
                 enforceStrictTiers={watchedValues.enforceStrictTiers || false}
                 onEnforceStrictTiersChange={(value) =>
                   form.setFieldValue('enforceStrictTiers', value)
                 }
+                currency={currency}
                 disabled={isSaving}
               />
               {field.state.meta.errors.length > 0 && (
@@ -266,14 +245,14 @@ export function ProductFormStepPricing({
         </form.Field>
       </CardContent>
     </Card>
-  );
+  )
 
   if (showAccessories) {
     return (
       <>
         {pricingAndStock}
         <div className="grid gap-6 xl:grid-cols-2">
-          {pricingTiers}
+          {rates}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -319,13 +298,13 @@ export function ProductFormStepPricing({
           </Card>
         </div>
       </>
-    );
+    )
   }
 
   return (
     <div className="space-y-6">
       {pricingAndStock}
-      {pricingTiers}
+      {rates}
     </div>
-  );
+  )
 }

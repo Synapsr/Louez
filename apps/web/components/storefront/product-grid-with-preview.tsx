@@ -8,16 +8,19 @@ import { ImageIcon, Calendar, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
-import { formatCurrency } from '@louez/utils'
+import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
 import { useStoreCurrency } from '@/contexts/store-context'
 import { ProductPreviewModal } from './product-preview-modal'
 import type { PricingMode } from '@louez/types'
 import type { BusinessHours } from '@louez/types'
+import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
 interface PricingTier {
   id: string
-  minDuration: number
-  discountPercent: string
+  minDuration: number | null
+  discountPercent: string | null
+  period?: number | null
+  price?: string | null
   displayOrder: number | null
 }
 
@@ -30,6 +33,7 @@ interface Product {
   quantity: number
   deposit: string | null
   pricingMode?: PricingMode | null
+  basePeriodMinutes?: number | null
   pricingTiers?: PricingTier[]
   videoUrl?: string | null
   category?: { name: string } | null
@@ -52,21 +56,21 @@ function ProductCardInteractive({
 }) {
   const t = useTranslations('storefront.product')
   const tCatalog = useTranslations('storefront.catalog')
+  const tCommon = useTranslations('common')
   const currency = useStoreCurrency()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
-  const pricingMode: PricingMode = product.pricingMode ?? 'day'
-
-  const maxDiscount = product.pricingTiers?.length
-    ? Math.max(...product.pricingTiers.map((t) => parseFloat(t.discountPercent)))
-    : 0
-
-  const basePrice = parseFloat(product.price)
-  const hasTiers = maxDiscount > 0
-  const cheapestPrice = hasTiers
-    ? basePrice * (1 - maxDiscount / 100)
-    : basePrice
+  const pricingSummary = getStorefrontPricingSummary(product)
+  const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
+  const periodLabel =
+    displayPeriod.unit === 'minute'
+      ? displayPeriod.duration === 1
+        ? tCommon('minuteUnit', { count: 1 })
+        : `${displayPeriod.duration} ${tCommon('minuteUnit', { count: displayPeriod.duration })}`
+      : displayPeriod.duration === 1
+        ? t(`pricingUnit.${displayPeriod.unit}.singular`)
+        : `${displayPeriod.duration} ${t(`pricingUnit.${displayPeriod.unit}.plural`)}`
 
   return (
     <button
@@ -111,13 +115,13 @@ function ProductCardInteractive({
           )}
 
           {/* Discount badge */}
-          {isAvailable && maxDiscount > 0 && product.quantity > 2 && (
+          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && (
             <Badge
               variant="secondary"
               className="absolute top-3 left-3 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/70 dark:text-green-300"
             >
               <TrendingDown className="h-3 w-3 mr-1" />
-              -{Math.floor(maxDiscount)}%
+              -{Math.floor(pricingSummary.maxReductionPercent)}%
             </Badge>
           )}
         </div>
@@ -129,16 +133,16 @@ function ProductCardInteractive({
           </h3>
 
           <div className="mt-2 flex items-baseline gap-1">
-            {hasTiers && (
+            {pricingSummary.showStartingFrom && (
               <span className="text-xs md:text-sm text-muted-foreground">
                 {t('startingFrom')}
               </span>
             )}
             <span className="text-lg md:text-xl font-bold text-primary">
-              {formatCurrency(cheapestPrice, currency)}
+              {formatCurrency(pricingSummary.displayPrice, currency)}
             </span>
             <span className="text-xs md:text-sm text-muted-foreground">
-              / {t(`pricingUnit.${pricingMode}.singular`)}
+              / {periodLabel}
             </span>
           </div>
         </CardContent>

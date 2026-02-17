@@ -13,9 +13,10 @@ import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
 import { StepActions, StepContent, Stepper } from '@louez/ui';
-import { getCurrencySymbol } from '@louez/utils';
+import { getCurrencySymbol, minutesToPriceDuration } from '@louez/utils';
 import {
-  type PricingTierInput,
+  type PricingTierInput as LegacyPricingTierInput,
+  type RateTierInput,
   type ProductUnitInput,
   createProductSchema,
 } from '@louez/validations';
@@ -37,6 +38,18 @@ import type {
   ProductFormComponentApi,
   ProductFormProps,
 } from './types';
+
+function pricingModeToUnit(mode: PricingMode): 'hour' | 'day' | 'week' {
+  if (mode === 'hour') return 'hour';
+  if (mode === 'week') return 'week';
+  return 'day';
+}
+
+function pricingModeToMinutes(mode: PricingMode): number {
+  if (mode === 'hour') return 60;
+  if (mode === 'week') return 10080;
+  return 1440;
+}
 
 export function ProductForm({
   product,
@@ -65,12 +78,49 @@ export function ProductForm({
   });
 
   // Convert product pricing tiers to input format
-  const initialPricingTiers: PricingTierInput[] =
+  const initialPricingTiers: LegacyPricingTierInput[] =
     product?.pricingTiers?.map((tier) => ({
       id: tier.id,
-      minDuration: tier.minDuration,
-      discountPercent: parseFloat(tier.discountPercent),
+      minDuration: tier.minDuration ?? 1,
+      discountPercent: parseFloat(tier.discountPercent || '0'),
     })) ?? [];
+
+  const initialRateTiers: RateTierInput[] = (() => {
+    if (!product?.pricingTiers?.length) return [];
+    const basePrice = parseFloat(product.price || '0') || 0;
+    const fallbackMode = (product.pricingMode ?? 'day') as PricingMode;
+
+    return product.pricingTiers
+      .map((tier) => {
+        if (tier.price && tier.period) {
+          const durationInfo = minutesToPriceDuration(tier.period);
+          return {
+            id: tier.id,
+            price: tier.price,
+            duration: durationInfo.duration,
+            unit: durationInfo.unit,
+            // UI-only: always derive from price/period vs base, never trust persisted legacy value.
+            discountPercent: undefined,
+          };
+        }
+
+        const minDuration = tier.minDuration ?? 1;
+        const discount = parseFloat(tier.discountPercent || '0');
+        const minutes = minDuration * pricingModeToMinutes(fallbackMode);
+        const durationInfo = minutesToPriceDuration(minutes);
+        const effectivePerLegacyUnit = basePrice * (1 - discount / 100);
+        const totalPrice = effectivePerLegacyUnit * minDuration;
+
+        return {
+          id: tier.id,
+          price: totalPrice.toFixed(2),
+          duration: durationInfo.duration,
+          unit: durationInfo.unit,
+          discountPercent: discount,
+        };
+      })
+      .sort((a, b) => a.duration - b.duration);
+  })();
 
   // Convert product units to input format
   const initialUnits: ProductUnitInput[] =
@@ -94,18 +144,37 @@ export function ProductForm({
     [tValidation],
   );
 
+  const initialBasePriceDuration = (() => {
+    if (product?.basePeriodMinutes) {
+      const period = minutesToPriceDuration(product.basePeriodMinutes);
+      return {
+        price: product.price || '',
+        duration: period.duration,
+        unit: period.unit,
+      };
+    }
+
+    return {
+      price: product?.price || '',
+      duration: 1,
+      unit: pricingModeToUnit((product?.pricingMode ?? 'day') as PricingMode),
+    };
+  })();
+
   const form = useAppForm({
     defaultValues: {
       name: product?.name || '',
       description: product?.description || '',
       categoryId: product?.categoryId ?? null,
       price: product?.price || '',
+      basePriceDuration: initialBasePriceDuration,
       deposit: product?.deposit ?? '',
       quantity: product?.quantity != null ? product.quantity.toString() : '1',
       status: (product?.status ?? 'draft') as 'draft' | 'active' | 'archived',
       images: product?.images ?? [],
       pricingMode: (product?.pricingMode ?? 'day') as PricingMode,
       pricingTiers: initialPricingTiers,
+      rateTiers: initialRateTiers,
       enforceStrictTiers: product?.enforceStrictTiers || false,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
@@ -138,6 +207,11 @@ export function ProductForm({
   });
 
   const watchedValues = useStore(form.store, (s) => s.values);
+  const submissionAttempts = useStore(form.store, (s) => s.submissionAttempts);
+  const hasUnitsSubmitError = useStore(
+    form.store,
+    (s) => Boolean(s.fieldMeta.units?.errorMap?.onSubmit),
+  );
   const isDirty = useStore(form.store, (s) => s.isDirty);
   const imagesPreviews = useStore(form.store, (s) => s.values.images ?? []);
   const media = useProductFormMedia({
@@ -165,7 +239,7 @@ export function ProductForm({
   };
 
   const setSubmitError = useCallback(
-    (name: 'name' | 'price' | 'quantity', message: string) => {
+    (name: 'name' | 'price' | 'quantity' | 'units', message: string) => {
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         isTouched: true,
@@ -179,7 +253,7 @@ export function ProductForm({
   );
 
   const clearSubmitError = useCallback(
-    (name: 'name' | 'price' | 'quantity') => {
+    (name: 'name' | 'price' | 'quantity' | 'units') => {
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         errorMap: {
@@ -194,7 +268,6 @@ export function ProductForm({
   const validateCurrentStep = useCallback(
     (step: number) => {
       const nameValue = watchedValues.name ?? '';
-      const priceValue = watchedValues.price ?? '';
       const quantityValue = watchedValues.quantity ?? '';
 
       let isValid = true;
@@ -213,10 +286,12 @@ export function ProductForm({
       }
 
       if (step === 2) {
-        if (!priceValue.trim()) {
+        const ratePriceValue = watchedValues.basePriceDuration?.price ?? '';
+
+        if (!ratePriceValue.trim()) {
           setSubmitError('price', tValidation('required'));
           isValid = false;
-        } else if (!/^\d+([.,]\d{1,2})?$/.test(priceValue.trim())) {
+        } else if (!/^\d+([.,]\d{1,2})?$/.test(ratePriceValue.trim())) {
           setSubmitError('price', tValidation('positive'));
           isValid = false;
         } else {
@@ -231,6 +306,20 @@ export function ProductForm({
           isValid = false;
         } else {
           clearSubmitError('quantity');
+        }
+
+        if (watchedValues.trackUnits) {
+          const hasMissingUnitIdentifier = (watchedValues.units ?? []).some(
+            (unit) => !unit.identifier.trim(),
+          );
+          if (hasMissingUnitIdentifier) {
+            setSubmitError('units', tValidation('required'));
+            isValid = false;
+          } else {
+            clearSubmitError('units');
+          }
+        } else {
+          clearSubmitError('units');
         }
       }
 
@@ -254,7 +343,12 @@ export function ProductForm({
     (c) => c.id === watchedValues.categoryId,
   );
 
-  const effectivePricingMode: PricingMode = watchedValues.pricingMode;
+  const effectivePricingMode: PricingMode =
+    watchedValues.basePriceDuration?.unit === 'week'
+      ? 'week'
+      : watchedValues.basePriceDuration?.unit === 'day'
+        ? 'day'
+        : 'hour';
 
   const priceLabel =
     effectivePricingMode === 'day'
@@ -264,13 +358,14 @@ export function ProductForm({
         : t('pricePerWeek');
   const cropPreviewProductName =
     watchedValues.name.trim() || t('namePlaceholder');
-  const cropPreviewPrice = watchedValues.price.trim()
-    ? `${currencySymbol}${watchedValues.price.trim().replace(',', '.')}`
+  const cropPreviewPrice = watchedValues.basePriceDuration?.price?.trim()
+    ? `${currencySymbol}${watchedValues.basePriceDuration.price.trim().replace(',', '.')}`
     : `${currencySymbol}0.00`;
 
   // Parse base price for the pricing tiers editor
   const basePrice =
-    parseFloat(watchedValues.price?.replace(',', '.') || '0') || 0;
+    parseFloat(watchedValues.basePriceDuration?.price?.replace(',', '.') || '0') ||
+    0;
 
   // Edit mode: simple form without stepper
   if (isEditMode) {
@@ -324,6 +419,9 @@ export function ProductForm({
               basePrice={basePrice}
               effectivePricingMode={effectivePricingMode}
               showAccessories={true}
+              showUnitValidationErrors={
+                hasUnitsSubmitError || submissionAttempts > 0
+              }
             />
 
             <FloatingSaveBar
@@ -432,6 +530,9 @@ export function ProductForm({
                 basePrice={basePrice}
                 effectivePricingMode={effectivePricingMode}
                 showAccessories={false}
+                showUnitValidationErrors={
+                  hasUnitsSubmitError || submissionAttempts > 0
+                }
               />
             </StepContent>
           )}

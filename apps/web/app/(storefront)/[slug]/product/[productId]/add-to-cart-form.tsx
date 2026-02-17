@@ -11,6 +11,7 @@ import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { PricingMode } from '@louez/types';
+import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Label } from '@louez/ui';
@@ -28,10 +29,15 @@ import {
   type ProductPricing,
   allocateAcrossCombinations,
   buildCombinationKey,
+  calculateDurationMinutes,
   calculateRentalPrice,
+  calculateRentalPriceV2,
   getAvailableDurations,
+  getAvailableDurationMinutes,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
+  isRateBasedProduct,
+  snapToNearestRatePeriod,
   snapToNearestTier,
 } from '@louez/utils';
 
@@ -58,10 +64,13 @@ interface Accessory {
   images: string[] | null;
   quantity: number;
   pricingMode: PricingMode | null;
+  basePeriodMinutes?: number | null;
   pricingTiers?: {
     id: string;
-    minDuration: number;
-    discountPercent: string;
+    minDuration: number | null;
+    discountPercent: string | null;
+    period?: number | null;
+    price?: string | null;
   }[];
 }
 
@@ -73,8 +82,15 @@ interface AddToCartFormProps {
   deposit: number;
   maxQuantity: number;
   pricingMode: 'day' | 'hour' | 'week';
+  basePeriodMinutes?: number | null;
   storeSlug: string;
-  pricingTiers?: { id: string; minDuration: number; discountPercent: number }[];
+  pricingTiers?: {
+    id: string;
+    minDuration: number | null;
+    discountPercent: number | null;
+    period?: number | null;
+    price?: string | null;
+  }[];
   enforceStrictTiers?: boolean;
   advanceNotice?: number;
   minRentalMinutes?: number;
@@ -105,6 +121,7 @@ export function AddToCartForm({
   deposit,
   maxQuantity,
   pricingMode,
+  basePeriodMinutes,
   storeSlug,
   pricingTiers,
   enforceStrictTiers = false,
@@ -215,34 +232,105 @@ export function AddToCartForm({
   };
 
   const rawDuration = calculateDuration();
+  const rawDurationMinutes =
+    startDate && endDate ? calculateDurationMinutes(startDate, endDate) : 0;
+  const isRateBased = isRateBasedProduct({ basePeriodMinutes });
+  const normalizedCartTiers = useMemo(
+    () =>
+      (pricingTiers || []).map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: tier.discountPercent ?? 0,
+        period: tier.period ?? null,
+        price:
+          typeof tier.price === 'string'
+            ? parseFloat(tier.price)
+            : (tier.price ?? null),
+      })),
+    [pricingTiers],
+  );
+  const normalizedPricingTiers = useMemo(
+    () =>
+      normalizedCartTiers.map((tier, index) => ({
+        id: tier.id,
+        minDuration: tier.minDuration,
+        discountPercent: tier.discountPercent,
+        displayOrder: index,
+      })),
+    [normalizedCartTiers],
+  );
 
   // When strict tiers are enforced, snap to the nearest valid tier bracket.
   // Example: with tiers at [3, 7] days, selecting 5 days → customer pays for 7 days.
   const availableDurations =
-    enforceStrictTiers && pricingTiers?.length
-      ? getAvailableDurations(pricingTiers, true)
+    !isRateBased && enforceStrictTiers && normalizedPricingTiers.length
+      ? getAvailableDurations(normalizedPricingTiers, true)
       : null;
   const duration =
     availableDurations && rawDuration > 0
       ? snapToNearestTier(rawDuration, availableDurations)
       : rawDuration;
+  const availablePeriods =
+    isRateBased && enforceStrictTiers
+      ? getAvailableDurationMinutes(
+          [
+            { period: basePeriodMinutes ?? 0 },
+            ...normalizedCartTiers.map((tier) => ({
+              period: tier.period ?? 0,
+            })),
+          ],
+          true,
+        )
+      : null;
+  const durationMinutes =
+    availablePeriods && rawDurationMinutes > 0
+      ? snapToNearestRatePeriod(rawDurationMinutes, availablePeriods)
+      : rawDurationMinutes;
 
-  // Calculate pricing with tiers
-  const pricing: ProductPricing = {
-    basePrice: price,
-    deposit,
-    pricingMode,
-    tiers:
-      pricingTiers?.map((tier, index) => ({
-        ...tier,
-        displayOrder: index,
-      })) || [],
-  };
-  const priceResult = calculateRentalPrice(pricing, duration, quantity);
+  const rateTiers: Rate[] = normalizedCartTiers
+    .filter(
+      (tier): tier is typeof tier & { period: number; price: number } =>
+        typeof tier.period === 'number' &&
+        tier.period > 0 &&
+        typeof tier.price === 'number' &&
+        !Number.isNaN(tier.price),
+    )
+    .map((tier, index) => ({
+      id: tier.id,
+      period: tier.period,
+      price: tier.price,
+      displayOrder: index,
+    }));
+
+  const priceResult = isRateBased
+    ? calculateRentalPriceV2(
+        {
+          basePrice: price,
+          basePeriodMinutes: basePeriodMinutes ?? 1440,
+          deposit,
+          rates: rateTiers,
+          enforceStrictTiers,
+        },
+        Math.max(1, durationMinutes),
+        quantity,
+      )
+    : calculateRentalPrice(
+        {
+          basePrice: price,
+          deposit,
+          pricingMode,
+          tiers: normalizedPricingTiers,
+        } as ProductPricing,
+        duration,
+        quantity,
+      );
   const subtotal = priceResult.subtotal;
   const originalSubtotal = priceResult.originalSubtotal;
   const savings = priceResult.savings;
-  const discountPercent = priceResult.discountPercent;
+  const discountPercent =
+    'reductionPercent' in priceResult
+      ? priceResult.reductionPercent
+      : priceResult.discountPercent;
   const totalDeposit = deposit * quantity;
 
   // Filter accessories to only show available ones (in stock, active status is already filtered server-side, and not in cart)
@@ -306,10 +394,13 @@ export function AddToCartForm({
               allocation.combination.availableQuantity || 0,
             ),
             pricingMode,
-            pricingTiers: pricingTiers?.map((tier) => ({
+            basePeriodMinutes: basePeriodMinutes ?? null,
+            pricingTiers: normalizedCartTiers.map((tier) => ({
               id: tier.id,
               minDuration: tier.minDuration,
               discountPercent: tier.discountPercent,
+              period: tier.period,
+              price: tier.price,
             })),
             productPricingMode: pricingMode,
             selectedAttributes: allocation.combination.selectedAttributes,
@@ -328,10 +419,13 @@ export function AddToCartForm({
           quantity,
           maxQuantity: Math.max(1, effectiveMaxQuantity),
           pricingMode,
-          pricingTiers: pricingTiers?.map((tier) => ({
+          basePeriodMinutes: basePeriodMinutes ?? null,
+          pricingTiers: normalizedCartTiers.map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration,
             discountPercent: tier.discountPercent,
+            period: tier.period,
+            price: tier.price,
           })),
           productPricingMode: pricingMode,
           selectedAttributes,

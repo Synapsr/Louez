@@ -26,6 +26,8 @@ import {
   canonicalizeAttributes,
   DEFAULT_COMBINATION_KEY,
   normalizeAxisKey,
+  priceDurationToMinutes,
+  pricingModeToMinutes,
   validatePricingTiers,
 } from '@louez/utils'
 import type { BookingAttributeAxis, UnitAttributes } from '@louez/types'
@@ -56,6 +58,59 @@ function resolveUnitAttributes(
   return canonicalizeAttributes(axes, unit.attributes as UnitAttributes | undefined)
 }
 
+function normalizePriceInput(value: string | undefined): string {
+  return (value || '0').replace(',', '.')
+}
+
+function getLegacyPricingModeFromUnit(unit: 'minute' | 'hour' | 'day' | 'week'): 'hour' | 'day' | 'week' {
+  if (unit === 'week') return 'week'
+  if (unit === 'day') return 'day'
+  return 'hour'
+}
+
+function buildRateTierRows(
+  input: ProductInput,
+  basePrice: number,
+  basePeriodMinutes: number,
+): Array<{
+  id?: string
+  period: number
+  price: string
+  minDuration: number | null
+  discountPercent: string | null
+}> {
+  if (input.rateTiers && input.rateTiers.length > 0) {
+    return input.rateTiers.map((tier) => {
+      const period = priceDurationToMinutes(tier.duration, tier.unit)
+      const tierPrice = normalizePriceInput(tier.price)
+
+      return {
+        id: tier.id,
+        period,
+        price: tierPrice,
+        // Legacy compatibility columns are intentionally not persisted.
+        minDuration: null,
+        discountPercent: null,
+      }
+    })
+  }
+
+  // Backward fallback for legacy payloads.
+  const legacyTiers = input.pricingTiers || []
+  return legacyTiers.map((tier) => {
+    const period = tier.minDuration * basePeriodMinutes
+    const unitPrice = basePrice * (1 - tier.discountPercent / 100)
+    const totalPrice = unitPrice * tier.minDuration
+    return {
+      id: tier.id,
+      period,
+      price: totalPrice.toFixed(2),
+      minDuration: null,
+      discountPercent: null,
+    }
+  })
+}
+
 export async function createProduct(data: ProductInput) {
   const store = await getStoreForUser()
   if (!store) {
@@ -67,19 +122,31 @@ export async function createProduct(data: ProductInput) {
     return { error: 'errors.invalidData' }
   }
 
-  // Validate pricing tiers if provided
+  // Validate legacy pricing tiers if provided (fallback compatibility only)
   const pricingTiers = validated.data.pricingTiers || []
-  if (pricingTiers.length > 0) {
+  if (!validated.data.rateTiers?.length && pricingTiers.length > 0) {
     const tierValidation = validatePricingTiers(pricingTiers)
     if (!tierValidation.valid) {
       return { error: tierValidation.error }
     }
   }
 
-  const price = validated.data.price.replace(',', '.')
+  const basePriceDuration = validated.data.basePriceDuration
+  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price)
+  const basePeriodMinutes = basePriceDuration
+    ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
+    : pricingModeToMinutes((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week')
+  const legacyPricingMode = basePriceDuration
+    ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
+    : ((validated.data.pricingMode || 'day') as 'hour' | 'day' | 'week')
   const deposit = validated.data.deposit
-    ? validated.data.deposit.replace(',', '.')
+    ? normalizePriceInput(validated.data.deposit)
     : '0'
+  const rateTierRows = buildRateTierRows(
+    validated.data,
+    parseFloat(price) || 0,
+    basePeriodMinutes,
+  )
 
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
@@ -104,7 +171,8 @@ export async function createProduct(data: ProductInput) {
     categoryId: validated.data.categoryId || null,
     price: price,
     deposit: deposit,
-    pricingMode: validated.data.pricingMode,
+    pricingMode: legacyPricingMode,
+    basePeriodMinutes,
     quantity: quantity,
     status: validated.data.status,
     images: validated.data.images || [],
@@ -118,13 +186,15 @@ export async function createProduct(data: ProductInput) {
   })
 
   // Create pricing tiers if provided
-  if (pricingTiers.length > 0) {
+  if (rateTierRows.length > 0) {
     await db.insert(productPricingTiers).values(
-      pricingTiers.map((tier, index) => ({
+      rateTierRows.map((tier, index) => ({
         id: nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(6),
+        discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: index,
       }))
     )
@@ -168,9 +238,9 @@ export async function updateProduct(productId: string, data: ProductInput) {
     return { error: 'errors.invalidData' }
   }
 
-  // Validate pricing tiers if provided
+  // Validate legacy pricing tiers only when V2 rates are not provided.
   const pricingTiers = validated.data.pricingTiers || []
-  if (pricingTiers.length > 0) {
+  if (!validated.data.rateTiers?.length && pricingTiers.length > 0) {
     const tierValidation = validatePricingTiers(pricingTiers)
     if (!tierValidation.valid) {
       return { error: tierValidation.error }
@@ -186,10 +256,22 @@ export async function updateProduct(productId: string, data: ProductInput) {
     return { error: 'errors.productNotFound' }
   }
 
-  const price = validated.data.price.replace(',', '.')
+  const basePriceDuration = validated.data.basePriceDuration
+  const price = normalizePriceInput(basePriceDuration?.price || validated.data.price)
+  const basePeriodMinutes = basePriceDuration
+    ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
+    : pricingModeToMinutes((validated.data.pricingMode || product.pricingMode || 'day') as 'hour' | 'day' | 'week')
+  const legacyPricingMode = basePriceDuration
+    ? getLegacyPricingModeFromUnit(basePriceDuration.unit)
+    : ((validated.data.pricingMode || product.pricingMode || 'day') as 'hour' | 'day' | 'week')
   const deposit = validated.data.deposit
-    ? validated.data.deposit.replace(',', '.')
+    ? normalizePriceInput(validated.data.deposit)
     : '0'
+  const rateTierRows = buildRateTierRows(
+    validated.data,
+    parseFloat(price) || 0,
+    basePeriodMinutes,
+  )
 
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
@@ -294,7 +376,8 @@ export async function updateProduct(productId: string, data: ProductInput) {
       categoryId: validated.data.categoryId || null,
       price: price,
       deposit: deposit,
-      pricingMode: validated.data.pricingMode,
+      pricingMode: legacyPricingMode,
+      basePeriodMinutes,
       quantity: quantity,
       status: validated.data.status,
       images: validated.data.images || [],
@@ -312,13 +395,15 @@ export async function updateProduct(productId: string, data: ProductInput) {
   // Update pricing tiers: delete all existing and insert new ones
   await db.delete(productPricingTiers).where(eq(productPricingTiers.productId, productId))
 
-  if (pricingTiers.length > 0) {
+  if (rateTierRows.length > 0) {
     await db.insert(productPricingTiers).values(
-      pricingTiers.map((tier, index) => ({
+      rateTierRows.map((tier, index) => ({
         id: tier.id || nanoid(),
         productId: productId,
         minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent.toFixed(6),
+        discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: index,
       }))
     )
@@ -515,6 +600,7 @@ export async function duplicateProduct(productId: string) {
     price: product.price,
     deposit: product.deposit,
     pricingMode: product.pricingMode,
+    basePeriodMinutes: product.basePeriodMinutes,
     quantity: product.quantity,
     status: 'draft',
     images: product.images,
@@ -531,8 +617,10 @@ export async function duplicateProduct(productId: string) {
       product.pricingTiers.map((tier) => ({
         id: nanoid(),
         productId: newProductId,
-        minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent,
+        minDuration: tier.period && tier.price ? null : tier.minDuration,
+        discountPercent: tier.period && tier.price ? null : tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: tier.displayOrder,
       }))
     )
