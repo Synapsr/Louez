@@ -212,6 +212,7 @@ async function main(): Promise<void> {
 
   console.log('[pricing-backfill] done')
   console.table(report)
+  process.exit(0)
 }
 
 main().catch((error) => {

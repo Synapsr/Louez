@@ -351,6 +351,8 @@ async function main(): Promise<void> {
   if (options.failOnMismatch && mismatches.length > 0) {
     process.exit(1)
   }
+
+  process.exit(0)
 }
 
 main().catch((error) => {
