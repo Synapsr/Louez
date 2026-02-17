@@ -197,6 +197,20 @@
       "when": 1771240623994,
       "tag": "0027_married_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1771323838903,
+      "tag": "0028_swift_luminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1771323862949,
+      "tag": "0029_glossy_hercules",
+      "breakpoints": true
     }
   ]
 }

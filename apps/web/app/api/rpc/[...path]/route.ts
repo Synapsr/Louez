@@ -29,6 +29,14 @@ import {
   updateReservation,
   updateReservationStatus,
 } from '@/app/(dashboard)/dashboard/reservations/actions';
+import {
+  createTulipProductAction,
+  connectTulipApiKeyAction,
+  getTulipIntegrationStateAction,
+  pushTulipProductUpdateAction,
+  updateTulipConfigurationAction,
+  upsertTulipProductMappingAction,
+} from '@/app/(dashboard)/dashboard/settings/integrations/actions';
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -64,6 +72,14 @@ async function handleRequest(request: Request) {
         sendReservationEmail,
         sendAccessLink,
         sendAccessLinkBySms,
+      },
+      dashboardIntegrationActions: {
+        getTulipIntegrationState: getTulipIntegrationStateAction,
+        connectTulipApiKey: connectTulipApiKeyAction,
+        updateTulipConfiguration: updateTulipConfigurationAction,
+        upsertTulipProductMapping: upsertTulipProductMappingAction,
+        pushTulipProductUpdate: pushTulipProductUpdateAction,
+        createTulipProduct: createTulipProductAction,
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });

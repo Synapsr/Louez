@@ -9,6 +9,7 @@ import { CheckoutForm } from './checkout-form'
 import { BackButton } from './back-button'
 import { generateStoreMetadata } from '@/lib/seo'
 import { PageTracker } from '@/components/storefront/page-tracker'
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 
 interface CheckoutPageProps {
@@ -65,6 +66,11 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const storeAddress = store.address
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
   const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
+  const tulipSettings = getTulipSettings((store.settings as StoreSettings | null) || null)
+  const tulipConnected = Boolean(tulipSettings.apiKeyEncrypted && tulipSettings.renterUid)
+  const tulipMode = tulipConnected ? tulipSettings.publicMode : 'no_public'
+  const effectiveRequireCustomerAddress =
+    requireCustomerAddress || tulipMode === 'required'
 
   return (
     <>
@@ -86,7 +92,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeId={store.id}
           pricingMode={pricingMode}
           reservationMode={reservationMode}
-          requireCustomerAddress={requireCustomerAddress}
+          requireCustomerAddress={effectiveRequireCustomerAddress}
           cgv={store.cgv}
           taxSettings={taxSettings}
           depositPercentage={depositPercentage}
@@ -94,6 +100,11 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeAddress={storeAddress}
           storeLatitude={storeLatitude}
           storeLongitude={storeLongitude}
+          tulipInsurance={{
+            enabled: tulipConnected && tulipMode !== 'no_public',
+            mode: tulipMode,
+            includeInFinalPrice: tulipSettings.includeInFinalPrice,
+          }}
         />
       </div>
     </>

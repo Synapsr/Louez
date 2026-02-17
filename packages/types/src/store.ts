@@ -144,6 +144,27 @@ export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
 }
 
 // ============================================================================
+// Integrations Settings
+// ============================================================================
+
+export type TulipPublicMode = 'required' | 'optional' | 'no_public'
+export type TulipContractType = 'LCD' | 'LMD' | 'LLD'
+
+export interface TulipIntegrationSettings {
+  apiKeyEncrypted?: string
+  apiKeyLast4?: string
+  connectedAt?: string
+  publicMode?: TulipPublicMode
+  includeInFinalPrice?: boolean
+  renterUid?: string
+  contractType?: TulipContractType
+}
+
+export interface IntegrationData {
+  tulip?: TulipIntegrationSettings
+}
+
+// ============================================================================
 // Store Settings
 // ============================================================================
 
@@ -178,6 +199,7 @@ export interface StoreSettings {
   billingAddress?: BillingAddress  // Separate billing address for contracts
   delivery?: DeliverySettings  // Delivery configuration
   inspection?: InspectionSettings  // Inventory inspection (etat des lieux)
+  integrationData?: IntegrationData
 }
 
 export interface StoreTheme {

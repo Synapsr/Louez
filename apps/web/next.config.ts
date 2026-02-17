@@ -63,13 +63,11 @@ const cspDirectives = {
     'https://i.ytimg.com',
     // AWS S3
     'https://*.s3.amazonaws.com',
-    'https://*.s3.*.amazonaws.com',
-    'https://s3.*.amazonaws.com',
+    'https://*.amazonaws.com',
     // Scaleway
     'https://*.scw.cloud',
     // OVH
     'https://*.cloud.ovh.net',
-    'https://*.s3.*.cloud.ovh.net',
     // DigitalOcean
     'https://*.digitaloceanspaces.com',
     // Cloudflare R2
@@ -256,11 +254,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.s3.*.amazonaws.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 's3.*.amazonaws.com',
+        hostname: '**.amazonaws.com',
       },
       // Scaleway Object Storage
       {
@@ -274,7 +268,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: '*.s3.*.cloud.ovh.net',
+        hostname: '**.cloud.ovh.net',
       },
       // DigitalOcean Spaces
       {

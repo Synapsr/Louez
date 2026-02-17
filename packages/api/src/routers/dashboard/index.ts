@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { dashboardProcedure } from '../../procedures';
 import { dashboardCustomersRouter } from './customers';
+import { dashboardIntegrationsRouter } from './integrations';
 import { dashboardOnboardingRouter } from './onboarding';
 import { dashboardReservationsRouter } from './reservations';
 import { dashboardSettingsRouter } from './settings';
@@ -29,6 +30,7 @@ const ping = dashboardProcedure
 export const dashboardRouter = {
   ping,
   customers: dashboardCustomersRouter,
+  integrations: dashboardIntegrationsRouter,
   settings: dashboardSettingsRouter,
   reservations: dashboardReservationsRouter,
   onboarding: dashboardOnboardingRouter,

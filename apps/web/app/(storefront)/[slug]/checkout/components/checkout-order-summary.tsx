@@ -35,6 +35,12 @@ interface CheckoutOrderSummaryProps {
   deliveryOption: DeliveryOption;
   deliveryDistance: number | null;
   deliveryFee: number;
+  tulipInsurance?: {
+    enabled: boolean;
+    mode: 'required' | 'optional' | 'no_public';
+    includeInFinalPrice: boolean;
+  };
+  tulipInsuranceOptIn: boolean;
   lineResolutions?: Record<
     string,
     LineResolutionState
@@ -59,6 +65,8 @@ export function CheckoutOrderSummary({
   deliveryOption,
   deliveryDistance,
   deliveryFee,
+  tulipInsurance,
+  tulipInsuranceOptIn,
   lineResolutions = {},
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
@@ -233,6 +241,24 @@ export function CheckoutOrderSummary({
                 </span>
                 <span className={deliveryFee === 0 ? 'font-medium text-green-600' : ''}>
                   {deliveryFee === 0 ? t('free') : formatCurrency(deliveryFee, currency)}
+                </span>
+              </div>
+            )}
+
+            {tulipInsurance?.enabled && tulipInsurance.mode === 'required' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('insuranceLineLabel')}</span>
+                <span>{t('insuranceRequiredBadge')}</span>
+              </div>
+            )}
+
+            {tulipInsurance?.enabled && tulipInsurance.mode === 'optional' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('insuranceLineLabel')}</span>
+                <span>
+                  {tulipInsuranceOptIn
+                    ? t('insuranceOptionalEnabled')
+                    : t('insuranceOptionalDisabled')}
                 </span>
               </div>
             )}

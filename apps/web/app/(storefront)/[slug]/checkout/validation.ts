@@ -21,6 +21,7 @@ export function createCheckoutSchema(t: CheckoutTranslator) {
       city: z.string(),
       postalCode: z.string(),
       notes: z.string(),
+      tulipInsuranceOptIn: z.boolean(),
       acceptCgv: z.boolean(),
     })
     .superRefine((data, ctx) => {
@@ -41,4 +42,3 @@ export function createCheckoutSchema(t: CheckoutTranslator) {
       }
     });
 }
-
