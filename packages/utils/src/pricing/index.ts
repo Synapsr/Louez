@@ -4,9 +4,12 @@ export * from './types'
 // Calculation utilities
 export {
   calculateDuration,
+  calculateDurationMinutes,
   findApplicableTier,
   calculateEffectivePrice,
   calculateRentalPrice,
+  calculateRentalPriceV2,
+  calculateBestRate,
   calculateUnitPrice,
   generatePricingBreakdown,
   getPricingModeLabel,
@@ -14,7 +17,19 @@ export {
   sortTiersByDuration,
   getAvailableDurations,
   snapToNearestTier,
+  getAvailableDurationMinutes,
+  snapToNearestRatePeriod,
+  isRateBasedProduct,
 } from './calculate'
+
+export {
+  type DurationUnit,
+  priceDurationToMinutes,
+  minutesToPriceDuration,
+  pricingModeToMinutes,
+  perMinuteCost,
+  computeReductionPercent,
+} from './conversions'
 
 // Tax utilities
 export {

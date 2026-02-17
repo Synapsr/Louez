@@ -12,8 +12,10 @@ export interface Customer {
 
 export interface ProductPricingTier {
   id: string
-  minDuration: number
-  discountPercent: string
+  minDuration: number | null
+  discountPercent: string | null
+  period?: number | null
+  price?: string | null
   displayOrder: number | null
 }
 
@@ -24,6 +26,7 @@ export interface Product {
   deposit: string | null
   quantity: number
   pricingMode: PricingMode | null
+  basePeriodMinutes?: number | null
   images: string[] | null
   trackUnits: boolean
   bookingAttributeAxes: BookingAttributeAxis[] | null
@@ -52,6 +55,7 @@ export interface CustomItem {
   deposit: number
   quantity: number
   pricingMode: PricingMode
+  basePeriodMinutes: number
 }
 
 export interface PeriodWarning {

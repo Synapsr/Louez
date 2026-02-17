@@ -128,8 +128,10 @@ export default async function RentalPage({
   // Fetch full product data
   interface PricingTier {
     id: string
-    minDuration: number
-    discountPercent: string
+    minDuration: number | null
+    discountPercent: string | null
+    period: number | null
+    price: string | null
     displayOrder: number | null
   }
   interface Accessory {
@@ -169,6 +171,7 @@ export default async function RentalPage({
         images: products.images,
         price: products.price,
         deposit: products.deposit,
+        basePeriodMinutes: products.basePeriodMinutes,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
         quantity: products.quantity,
@@ -206,6 +209,8 @@ export default async function RentalPage({
         id: tier.id,
         minDuration: tier.minDuration,
         discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: tier.displayOrder,
       })
       pricingTiersByProductId.set(tier.productId, tiers)
@@ -288,6 +293,8 @@ export default async function RentalPage({
         id: tier.id,
         minDuration: tier.minDuration,
         discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: tier.displayOrder,
       })
       accessoryTiersByProductId.set(tier.productId, tiers)
@@ -340,6 +347,7 @@ export default async function RentalPage({
         images: row.images,
         price: row.price,
         deposit: row.deposit,
+        basePeriodMinutes: row.basePeriodMinutes,
         pricingMode: row.pricingMode,
         videoUrl: row.videoUrl,
         quantity: row.quantity,

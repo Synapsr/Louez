@@ -17,6 +17,7 @@ import {
 import { useTranslations } from 'next-intl';
 
 import type { CombinationAvailability } from '@louez/types';
+import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Dialog, DialogHeader, DialogPopup, DialogTitle } from '@louez/ui';
@@ -38,8 +39,11 @@ import {
 } from '@louez/utils';
 import {
   type ProductPricing,
+  calculateDurationMinutes,
   calculateEffectivePrice,
   calculateRentalPrice,
+  calculateRentalPriceV2,
+  isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
 
@@ -77,8 +81,10 @@ function buildSelectionSignature(attributes: Record<string, string>): string {
 
 interface PricingTier {
   id: string;
-  minDuration: number;
-  discountPercent: number | string;
+  minDuration: number | null;
+  discountPercent: number | string | null;
+  period?: number | null;
+  price?: string | null;
 }
 
 interface Accessory {
@@ -89,6 +95,7 @@ interface Accessory {
   images: string[] | null;
   quantity: number;
   pricingMode: PricingMode | null;
+  basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
 }
 
@@ -115,6 +122,7 @@ interface ProductModalProps {
     quantity: number;
     category?: { name: string } | null;
     pricingMode?: PricingMode | null;
+    basePeriodMinutes?: number | null;
     pricingTiers?: PricingTier[];
     videoUrl?: string | null;
     accessories?: Accessory[];
@@ -214,31 +222,66 @@ export function ProductModal({
   const deposit = product.deposit ? parseFloat(product.deposit) : 0;
   const effectivePricingMode = product.pricingMode ?? 'day';
   const duration = calculateDuration(startDate, endDate, effectivePricingMode);
+  const durationMinutes = calculateDurationMinutes(startDate, endDate);
   const { days, hours } = getDetailedDuration(startDate, endDate);
 
   // Calculate with tiered pricing - normalize discountPercent to number
   const tiers =
     product.pricingTiers?.map((tier, index) => ({
       id: tier.id,
-      minDuration: tier.minDuration,
+      minDuration: tier.minDuration ?? 1,
       discountPercent:
         typeof tier.discountPercent === 'string'
-          ? parseFloat(tier.discountPercent)
-          : tier.discountPercent,
+          ? parseFloat(tier.discountPercent ?? '0')
+          : (tier.discountPercent ?? 0),
       displayOrder: index,
     })) || [];
+  const rateTiers: Rate[] = (product.pricingTiers || [])
+    .filter(
+      (tier): tier is PricingTier & { period: number; price: string | number } =>
+        typeof tier.period === 'number' &&
+        tier.period > 0 &&
+        (typeof tier.price === 'string' || typeof tier.price === 'number'),
+    )
+    .map((tier, index) => ({
+      id: tier.id,
+      period: tier.period,
+      price: typeof tier.price === 'string' ? parseFloat(tier.price) : tier.price,
+      displayOrder: index,
+    }));
 
-  const pricing: ProductPricing = {
-    basePrice: price,
-    deposit,
-    pricingMode: effectivePricingMode,
-    tiers,
-  };
-  const priceResult = calculateRentalPrice(pricing, duration, quantity);
+  const isRateBased = isRateBasedProduct({
+    basePeriodMinutes: product.basePeriodMinutes,
+  });
+
+  const priceResult = isRateBased
+    ? calculateRentalPriceV2(
+        {
+          basePrice: price,
+          basePeriodMinutes: product.basePeriodMinutes!,
+          deposit,
+          rates: rateTiers,
+        },
+        durationMinutes,
+        quantity,
+      )
+    : calculateRentalPrice(
+        {
+          basePrice: price,
+          deposit,
+          pricingMode: effectivePricingMode,
+          tiers,
+        } as ProductPricing,
+        duration,
+        quantity,
+      );
   const totalPrice = priceResult.subtotal;
   const originalPrice = priceResult.originalSubtotal;
   const savings = priceResult.savings;
-  const discountPercent = priceResult.discountPercent;
+  const discountPercent =
+    'reductionPercent' in priceResult
+      ? priceResult.reductionPercent
+      : priceResult.discountPercent;
 
   const maxQuantity = Math.min(availableQuantity, product.quantity);
   const isUnavailable = availableQuantity === 0;
@@ -422,13 +465,19 @@ export function ProductModal({
               allocation.combination.availableQuantity || 0,
             ),
             pricingMode: effectivePricingMode,
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
             pricingTiers: product.pricingTiers?.map((tier) => ({
               id: tier.id,
-              minDuration: tier.minDuration,
+              minDuration: tier.minDuration ?? 1,
               discountPercent:
                 typeof tier.discountPercent === 'string'
-                  ? parseFloat(tier.discountPercent)
-                  : tier.discountPercent,
+                  ? parseFloat(tier.discountPercent ?? '0')
+                  : (tier.discountPercent ?? 0),
+              period: tier.period ?? null,
+              price:
+                typeof tier.price === 'string'
+                  ? parseFloat(tier.price)
+                  : (tier.price ?? null),
             })),
             productPricingMode: product.pricingMode,
             selectedAttributes: allocation.combination.selectedAttributes,
@@ -490,13 +539,19 @@ export function ProductModal({
           quantity,
           maxQuantity: Math.max(1, effectiveMaxQuantity),
           pricingMode: effectivePricingMode,
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
           pricingTiers: product.pricingTiers?.map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
+            minDuration: tier.minDuration ?? 1,
             discountPercent:
               typeof tier.discountPercent === 'string'
-                ? parseFloat(tier.discountPercent)
-                : tier.discountPercent,
+                ? parseFloat(tier.discountPercent ?? '0')
+                : (tier.discountPercent ?? 0),
+            period: tier.period ?? null,
+            price:
+              typeof tier.price === 'string'
+                ? parseFloat(tier.price)
+                : (tier.price ?? null),
           })),
           productPricingMode: product.pricingMode,
           selectedAttributes,
@@ -1013,11 +1068,13 @@ export function ProductModal({
           ...acc,
           pricingTiers: acc.pricingTiers?.map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
+            minDuration: tier.minDuration ?? 1,
             discountPercent:
               typeof tier.discountPercent === 'string'
-                ? tier.discountPercent
-                : tier.discountPercent.toString(),
+                ? (tier.discountPercent ?? '0')
+                : (tier.discountPercent ?? 0).toString(),
+            period: tier.period ?? null,
+            price: tier.price ?? null,
           })),
         }))}
         storeSlug={storeSlug}

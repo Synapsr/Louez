@@ -7,8 +7,10 @@ import type {
 
 export interface PricingTier {
   id: string
-  minDuration: number
-  discountPercent: string
+  minDuration: number | null
+  discountPercent: string | null
+  period?: number | null
+  price?: string | null
 }
 
 export interface Product {
@@ -18,6 +20,7 @@ export interface Product {
   deposit: string
   quantity: number
   pricingMode: string | null
+  basePeriodMinutes?: number | null
   pricingTiers: PricingTier[]
 }
 
@@ -65,6 +68,7 @@ export interface EditableItem {
   depositPerUnit: number
   isManualPrice: boolean
   pricingMode: PricingMode
+  basePeriodMinutes?: number
   productSnapshot: ProductSnapshot
   product: Product | null
 }

@@ -74,7 +74,7 @@ export function ProductFormStepPreview({
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold">
-                      {formatCurrency(parseFloat(watchedValues.price) || 0)}
+                      {formatCurrency(parseFloat(watchedValues.basePriceDuration?.price || watchedValues.price || '0') || 0)}
                     </p>
                     <p className="text-muted-foreground text-xs">{priceLabel}</p>
                   </div>

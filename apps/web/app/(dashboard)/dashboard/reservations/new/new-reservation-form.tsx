@@ -82,6 +82,12 @@ function createLineId() {
   return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
 }
 
+function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
+  if (mode === 'hour') return 60
+  if (mode === 'week') return 10080
+  return 1440
+}
+
 export function NewReservationForm({
   customers,
   products,
@@ -641,6 +647,7 @@ export function NewReservationForm({
       deposit,
       quantity,
       pricingMode: customItemForm.pricingMode,
+      basePeriodMinutes: pricingModeToBasePeriodMinutes(customItemForm.pricingMode),
     }
 
     setCustomItems([...customItems, newItem])

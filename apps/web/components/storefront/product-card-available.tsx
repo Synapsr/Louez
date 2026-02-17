@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { Plus, ImageIcon, Minus, Check, TrendingDown } from 'lucide-react'
 import { toastManager } from '@louez/ui'
+import type { Rate } from '@louez/types'
 
 import { Button } from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
@@ -15,14 +16,22 @@ import { useStoreCurrency } from '@/contexts/store-context'
 import { AvailabilityBadge, type AvailabilityStatus } from './availability-badge'
 import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
-import { calculateRentalPrice, type ProductPricing } from '@louez/utils'
+import {
+  calculateRentalPrice,
+  calculateRentalPriceV2,
+  calculateDurationMinutes,
+  isRateBasedProduct,
+  type ProductPricing,
+} from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import type { CombinationAvailability } from '@louez/types'
 
 interface PricingTier {
   id: string
-  minDuration: number
-  discountPercent: string | number
+  minDuration: number | null
+  discountPercent: string | number | null
+  period?: number | null
+  price?: string | null
 }
 
 interface Accessory {
@@ -33,6 +42,7 @@ interface Accessory {
   images: string[] | null
   quantity: number
   pricingMode: PricingMode | null
+  basePeriodMinutes?: number | null
   pricingTiers?: PricingTier[]
 }
 
@@ -47,6 +57,7 @@ interface ProductCardAvailableProps {
     quantity: number
     category?: { name: string } | null
     pricingMode?: PricingMode | null
+    basePeriodMinutes?: number | null
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
     accessories?: Accessory[]
@@ -70,8 +81,10 @@ function normalizeTiers(tiers?: PricingTier[]): { id: string; minDuration: numbe
   if (!tiers) return []
   return tiers.map((tier, index) => ({
     id: tier.id,
-    minDuration: tier.minDuration,
-    discountPercent: typeof tier.discountPercent === 'string' ? parseFloat(tier.discountPercent) : tier.discountPercent,
+    minDuration: tier.minDuration ?? 1,
+    discountPercent: typeof tier.discountPercent === 'string'
+      ? parseFloat(tier.discountPercent ?? '0')
+      : (tier.discountPercent ?? 0),
     displayOrder: index,
   }))
 }
@@ -106,20 +119,55 @@ export function ProductCardAvailable({
   const mainImage = product.images?.[0]
 
   const effectivePricingMode: PricingMode = product.pricingMode ?? 'day'
-
-  // Calculate price with tiered pricing
   const normalizedTiers = normalizeTiers(product.pricingTiers)
-  const pricing: ProductPricing = {
-    basePrice: price,
-    deposit,
-    pricingMode: effectivePricingMode,
-    tiers: normalizedTiers,
-  }
-  const priceResult = calculateRentalPrice(pricing, duration, 1)
+  const durationMinutes = calculateDurationMinutes(startDate, endDate)
+  const rateTiers: Rate[] = (product.pricingTiers || [])
+    .filter(
+      (tier): tier is PricingTier & { period: number; price: string | number } =>
+        typeof tier.period === 'number' &&
+        tier.period > 0 &&
+        (typeof tier.price === 'string' || typeof tier.price === 'number'),
+    )
+    .map((tier, index) => ({
+      id: tier.id,
+      period: tier.period,
+      price: typeof tier.price === 'string' ? parseFloat(tier.price) : tier.price,
+      displayOrder: index,
+    }))
+
+  const isRateBased = isRateBasedProduct({
+    basePeriodMinutes: product.basePeriodMinutes,
+  })
+
+  const priceResult = isRateBased
+    ? calculateRentalPriceV2(
+        {
+          basePrice: price,
+          basePeriodMinutes: product.basePeriodMinutes!,
+          deposit,
+          rates: rateTiers,
+        },
+        durationMinutes,
+        1,
+      )
+    : calculateRentalPrice(
+        {
+          basePrice: price,
+          deposit,
+          pricingMode: effectivePricingMode,
+          tiers: normalizedTiers,
+        } as ProductPricing,
+        duration,
+        1,
+      )
+
   const totalPrice = priceResult.subtotal
   const originalPrice = priceResult.originalSubtotal
   const hasDiscount = priceResult.savings > 0
-  const discountPercent = priceResult.discountPercent
+  const discountPercent =
+    'reductionPercent' in priceResult
+      ? priceResult.reductionPercent
+      : priceResult.discountPercent
 
   const status: AvailabilityStatus = inCart
     ? 'in_cart'
@@ -162,12 +210,18 @@ export function ProductCardAvailable({
           quantity: 1,
           maxQuantity,
           pricingMode: effectivePricingMode,
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
           pricingTiers: product.pricingTiers?.map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
+            minDuration: tier.minDuration ?? 1,
             discountPercent: typeof tier.discountPercent === 'string'
-              ? parseFloat(tier.discountPercent)
-              : tier.discountPercent,
+              ? parseFloat(tier.discountPercent ?? '0')
+              : (tier.discountPercent ?? 0),
+            period: tier.period ?? null,
+            price:
+              typeof tier.price === 'string'
+                ? parseFloat(tier.price)
+                : (tier.price ?? null),
           })),
           productPricingMode: product.pricingMode,
         },
@@ -396,10 +450,12 @@ export function ProductCardAvailable({
           ...acc,
           pricingTiers: acc.pricingTiers?.map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
+            minDuration: tier.minDuration ?? 1,
             discountPercent: typeof tier.discountPercent === 'string'
-              ? tier.discountPercent
-              : tier.discountPercent.toString(),
+              ? (tier.discountPercent ?? '0')
+              : (tier.discountPercent ?? 0).toString(),
+            period: tier.period ?? null,
+            price: tier.price ?? null,
           })),
         }))}
         storeSlug={storeSlug}

@@ -1,31 +1,38 @@
-'use client'
+'use client';
 
-import Image from 'next/image'
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import Image from 'next/image';
+import Link from 'next/link';
+
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import {
+  ArrowRight,
+  CalendarDays,
+  ImageIcon,
+  Minus,
+  Plus,
   ShoppingCart,
   Trash2,
-  Plus,
-  Minus,
-  ImageIcon,
-  CalendarDays,
   X,
-  ArrowRight,
-} from 'lucide-react'
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@louez/ui'
-import { Separator } from '@louez/ui'
+import { Button } from '@louez/ui';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@louez/ui';
+import { Separator } from '@louez/ui';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@louez/ui'
+} from '@louez/ui';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -35,23 +42,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@louez/ui'
-import { Badge } from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
-import { useCart } from '@/contexts/cart-context'
-import { useStoreCurrency } from '@/contexts/store-context'
-import { useStorefrontUrl } from '@/hooks/use-storefront-url'
+} from '@louez/ui';
+import { Badge } from '@louez/ui';
+import { cn, formatCurrency } from '@louez/utils';
+
+import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+
+import { useCart } from '@/contexts/cart-context';
+import { useStoreCurrency } from '@/contexts/store-context';
 
 interface CartSidebarProps {
-  storeSlug: string
-  className?: string
-  showDates?: boolean
+  storeSlug: string;
+  className?: string;
+  showDates?: boolean;
 }
 
-export function CartSidebar({ storeSlug, className, showDates = true }: CartSidebarProps) {
-  const t = useTranslations('storefront.cart')
-  const currency = useStoreCurrency()
-  const { getUrl } = useStorefrontUrl(storeSlug)
+export function CartSidebar({
+  storeSlug,
+  className,
+  showDates = true,
+}: CartSidebarProps) {
+  const t = useTranslations('storefront.cart');
+  const currency = useStoreCurrency();
+  const { getUrl } = useStorefrontUrl(storeSlug);
   const {
     items,
     globalStartDate,
@@ -64,46 +77,54 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
     getTotal,
     getTotalSavings,
     getOriginalSubtotal,
-  } = useCart()
+  } = useCart();
 
-  const itemCount = getItemCount()
-  const tProduct = useTranslations('storefront.product')
+  const itemCount = getItemCount();
+  const tProduct = useTranslations('storefront.product');
 
   const getItemDuration = (item: (typeof items)[number]) => {
-    const start = globalStartDate ? new Date(globalStartDate) : new Date(item.startDate)
-    const end = globalEndDate ? new Date(globalEndDate) : new Date(item.endDate)
-    const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
-    const diffMs = end.getTime() - start.getTime()
-    if (itemPricingMode === 'hour') return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
-    if (itemPricingMode === 'week') return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
-    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
-  }
+    const start = globalStartDate
+      ? new Date(globalStartDate)
+      : new Date(item.startDate);
+    const end = globalEndDate
+      ? new Date(globalEndDate)
+      : new Date(item.endDate);
+    const itemPricingMode =
+      item.productPricingMode || item.pricingMode || 'day';
+    const diffMs = end.getTime() - start.getTime();
+    if (itemPricingMode === 'hour')
+      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
+    if (itemPricingMode === 'week')
+      return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)));
+    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  };
 
   const getItemDurationLabel = (item: (typeof items)[number]) => {
-    const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
-    const duration = getItemDuration(item)
+    const itemPricingMode =
+      item.productPricingMode || item.pricingMode || 'day';
+    const duration = getItemDuration(item);
     if (itemPricingMode === 'hour') {
-      return `${duration} ${duration > 1 ? tProduct('pricingUnit.hour.plural') : tProduct('pricingUnit.hour.singular')}`
+      return `${duration} ${duration > 1 ? tProduct('pricingUnit.hour.plural') : tProduct('pricingUnit.hour.singular')}`;
     }
     if (itemPricingMode === 'week') {
-      return `${duration} ${duration > 1 ? tProduct('pricingUnit.week.plural') : tProduct('pricingUnit.week.singular')}`
+      return `${duration} ${duration > 1 ? tProduct('pricingUnit.week.plural') : tProduct('pricingUnit.week.singular')}`;
     }
-    return `${duration} ${duration > 1 ? tProduct('pricingUnit.day.plural') : tProduct('pricingUnit.day.singular')}`
-  }
+    return `${duration} ${duration > 1 ? tProduct('pricingUnit.day.plural') : tProduct('pricingUnit.day.singular')}`;
+  };
 
   // Format duration label
-  const durationLabel = items.length > 0 ? getItemDurationLabel(items[0]) : ''
+  const durationLabel = items.length > 0 ? getItemDurationLabel(items[0]) : '';
 
   const CartContent = () => (
     <>
       {/* Period Display - only shown when showDates is true */}
       {showDates && globalStartDate && globalEndDate && (
-        <div className="bg-muted/50 rounded-lg p-3 mb-4">
+        <div className="bg-muted/50 mb-4 rounded-lg p-3">
           <div className="flex items-center gap-2 text-sm">
-            <CalendarDays className="h-4 w-4 text-primary" />
+            <CalendarDays className="text-primary h-4 w-4" />
             <span className="font-medium">{t('period')}</span>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm">
             {format(new Date(globalStartDate), 'dd MMM yyyy', { locale: fr })}
             {' → '}
             {format(new Date(globalEndDate), 'dd MMM yyyy', { locale: fr })}
@@ -115,23 +136,25 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-8">
-          <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <div className="py-8 text-center">
+          <ShoppingCart className="text-muted-foreground mx-auto mb-3 h-12 w-12" />
           <p className="font-medium">{t('empty')}</p>
-          <p className="text-sm text-muted-foreground mt-1">{t('emptyDescription')}</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {t('emptyDescription')}
+          </p>
         </div>
       ) : (
         <>
           {/* Items List */}
-          <div className="flex-1 -mx-4 px-4 overflow-y-auto max-h-64">
+          <div className="-mx-4 max-h-64 flex-1 overflow-y-auto px-4">
             <div className="space-y-3">
               {items.map((item) => (
                 <div
                   key={item.lineId}
-                  className="flex gap-3 p-3 rounded-lg bg-muted/30"
+                  className="bg-muted/30 flex gap-3 rounded-lg p-3"
                 >
                   {/* Image */}
-                  <div className="relative h-16 w-16 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+                  <div className="bg-muted relative aspect-4/3 h-16 flex-shrink-0 overflow-hidden rounded-md">
                     {item.productImage ? (
                       <Image
                         src={item.productImage}
@@ -141,42 +164,61 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                        <ImageIcon className="text-muted-foreground h-6 w-6" />
                       </div>
                     )}
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{item.productName}</p>
-                    {item.selectedAttributes && Object.keys(item.selectedAttributes).length > 0 && (
-                      <p className="text-[11px] text-muted-foreground truncate">
-                        {Object.entries(item.selectedAttributes)
-                          .map(([key, value]) => `${key}: ${value}`)
-                          .join(' • ')}
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(item.price * getItemDuration(item), currency)} × {item.quantity}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {item.productName}
+                    </p>
+                    {item.selectedAttributes &&
+                      Object.keys(item.selectedAttributes).length > 0 && (
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {Object.entries(item.selectedAttributes)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(' • ')}
+                        </p>
+                      )}
+                    <p className="text-muted-foreground text-xs">
+                      {formatCurrency(
+                        item.price * getItemDuration(item),
+                        currency,
+                      )}{' '}
+                      × {item.quantity}
                     </p>
 
                     {/* Quantity Controls */}
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="mt-2 flex items-center justify-between">
                       <div className="flex items-center gap-1">
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => updateItemQuantityByLineId(item.lineId, item.quantity - 1)}
+                          onClick={() =>
+                            updateItemQuantityByLineId(
+                              item.lineId,
+                              item.quantity - 1,
+                            )
+                          }
                         >
                           <Minus className="h-3 w-3" />
                         </Button>
-                        <span className="w-6 text-center text-sm">{item.quantity}</span>
+                        <span className="w-6 text-center text-sm">
+                          {item.quantity}
+                        </span>
                         <Button
                           variant="outline"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => updateItemQuantityByLineId(item.lineId, item.quantity + 1)}
+                          onClick={() =>
+                            updateItemQuantityByLineId(
+                              item.lineId,
+                              item.quantity + 1,
+                            )
+                          }
                           disabled={item.quantity >= item.maxQuantity}
                         >
                           <Plus className="h-3 w-3" />
@@ -185,14 +227,14 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-6 w-6 text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-6 w-6"
                         onClick={() => removeItemByLineId(item.lineId)}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                     {item.quantity >= item.maxQuantity && (
-                      <p className="text-[11px] text-muted-foreground mt-1">
+                      <p className="text-muted-foreground mt-1 text-[11px]">
                         {t('lineMaxReached')}
                       </p>
                     )}
@@ -210,7 +252,9 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
               <>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{t('subtotal')}</span>
-                  <span className="line-through text-muted-foreground">{formatCurrency(getOriginalSubtotal(), currency)}</span>
+                  <span className="text-muted-foreground line-through">
+                    {formatCurrency(getOriginalSubtotal(), currency)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm text-green-600">
                   <span>{t('discount')}</span>
@@ -230,24 +274,41 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
             <Separator />
             <div className="flex justify-between font-semibold">
               <span>{t('total')}</span>
-              <span className="text-primary">{formatCurrency(getTotal(), currency)}</span>
+              <span className="text-primary">
+                {formatCurrency(getTotal(), currency)}
+              </span>
             </div>
             {getTotalSavings() > 0 && (
-              <p className="text-xs text-green-600 text-center">{t('youSave', { amount: formatCurrency(getTotalSavings(), currency) })}</p>
+              <p className="text-center text-xs text-green-600">
+                {t('youSave', {
+                  amount: formatCurrency(getTotalSavings(), currency),
+                })}
+              </p>
             )}
           </div>
 
           {/* Actions */}
           <div className="mt-4 space-y-2">
-            <Button render={<Link href={getUrl('/checkout')} />} className="w-full" size="lg">
-                {t('checkout')}
-                <ArrowRight className="ml-2 h-4 w-4" />
+            <Button
+              render={<Link href={getUrl('/checkout')} />}
+              className="w-full"
+              size="lg"
+            >
+              {t('checkout')}
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
             <AlertDialog>
-              <AlertDialogTrigger render={<Button variant="ghost" className="w-full text-destructive hover:text-destructive" />}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {t('clear')}
+              <AlertDialogTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive w-full"
+                  />
+                }
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {t('clear')}
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -257,8 +318,13 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogClose render={<Button variant="outline" />}>{t('clearConfirm.cancel')}</AlertDialogClose>
-                  <AlertDialogClose render={<Button variant="destructive" />} onClick={clearCart}>
+                  <AlertDialogClose render={<Button variant="outline" />}>
+                    {t('clearConfirm.cancel')}
+                  </AlertDialogClose>
+                  <AlertDialogClose
+                    render={<Button variant="destructive" />}
+                    onClick={clearCart}
+                  >
                     {t('clearConfirm.confirm')}
                   </AlertDialogClose>
                 </AlertDialogFooter>
@@ -268,7 +334,7 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
         </>
       )}
     </>
-  )
+  );
 
   // Desktop Sidebar
   return (
@@ -282,7 +348,9 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
               {t('title')}
             </span>
             {itemCount > 0 && (
-              <Badge variant="secondary">{t('itemsPlural', { count: itemCount })}</Badge>
+              <Badge variant="secondary">
+                {t('itemsPlural', { count: itemCount })}
+              </Badge>
             )}
           </CardTitle>
         </CardHeader>
@@ -292,16 +360,20 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
       </Card>
 
       {/* Mobile Floating Button + Sheet */}
-      <div className="fixed bottom-4 right-4 z-50 lg:hidden">
+      <div className="fixed right-4 bottom-4 z-50 lg:hidden">
         <Sheet>
-          <SheetTrigger render={<Button size="lg" className="h-14 px-6 shadow-lg rounded-full" />}>
-              <ShoppingCart className="h-5 w-5 mr-2" />
-              {t('title')}
-              {itemCount > 0 && (
-                <Badge variant="secondary" className="ml-2">
-                  {itemCount}
-                </Badge>
-              )}
+          <SheetTrigger
+            render={
+              <Button size="lg" className="h-14 rounded-full px-6 shadow-lg" />
+            }
+          >
+            <ShoppingCart className="mr-2 h-5 w-5" />
+            {t('title')}
+            {itemCount > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {itemCount}
+              </Badge>
+            )}
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
             <SheetHeader className="pb-4">
@@ -309,16 +381,18 @@ export function CartSidebar({ storeSlug, className, showDates = true }: CartSide
                 <ShoppingCart className="h-5 w-5" />
                 {t('title')}
                 {itemCount > 0 && (
-                  <Badge variant="secondary">{t('itemsPlural', { count: itemCount })}</Badge>
+                  <Badge variant="secondary">
+                    {t('itemsPlural', { count: itemCount })}
+                  </Badge>
                 )}
               </SheetTitle>
             </SheetHeader>
-            <div className="flex flex-col h-[calc(100%-60px)]">
+            <div className="flex h-[calc(100%-60px)] flex-col">
               <CartContent />
             </div>
           </SheetContent>
         </Sheet>
       </div>
     </>
-  )
+  );
 }

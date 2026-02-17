@@ -70,15 +70,16 @@ export function useNewReservationPricing({
       const basePrice = parseFloat(product.price)
       const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
         id: tier.id,
-        minDuration: tier.minDuration,
-        discountPercent: parseFloat(tier.discountPercent),
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: parseFloat(tier.discountPercent ?? '0'),
         displayOrder: tier.displayOrder || 0,
       }))
 
       const applicableTier =
         productDuration > 0 ? findApplicableTier(productTiers, productDuration) : null
+      const applicableTierDiscount = applicableTier?.discountPercent ?? 0
       const calculatedPrice = applicableTier
-        ? basePrice * (1 - applicableTier.discountPercent / 100)
+        ? basePrice * (1 - applicableTierDiscount / 100)
         : basePrice
 
       const hasPriceOverride = Boolean(selectedItem?.priceOverride)
@@ -93,7 +94,7 @@ export function useNewReservationPricing({
         calculatedPrice,
         effectivePrice,
         hasPriceOverride,
-        hasDiscount: Boolean(applicableTier && applicableTier.discountPercent > 0),
+        hasDiscount: Boolean(applicableTier && applicableTierDiscount > 0),
         applicableTierDiscountPercent: applicableTier?.discountPercent ?? null,
         hasTieredPricing: productTiers.length > 0,
       }

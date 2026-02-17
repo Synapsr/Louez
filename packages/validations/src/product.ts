@@ -20,6 +20,23 @@ export const pricingTierSchema = z.object({
     .max(99, 'La réduction ne peut pas dépasser 99%'),
 })
 
+export const durationUnitSchema = z.enum(['minute', 'hour', 'day', 'week'])
+
+export const priceDurationSchema = z.object({
+  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive'),
+  duration: z.number().int().min(1, 'validation.minValue'),
+  unit: durationUnitSchema,
+})
+
+export const rateTierSchema = z.object({
+  id: z.string().optional(),
+  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive'),
+  duration: z.number().int().min(1, 'validation.minValue'),
+  unit: durationUnitSchema,
+  // UI-only, derived value. Never persisted in DB.
+  discountPercent: z.number().min(0).max(99).optional(),
+})
+
 // Tax settings schema for product
 export const productTaxSettingsSchema = z.object({
   inheritFromStore: z.boolean(),
@@ -51,6 +68,8 @@ export const bookingAttributeAxisSchema = z.object({
 })
 
 export type PricingTierInput = z.infer<typeof pricingTierSchema>
+export type PriceDurationInput = z.infer<typeof priceDurationSchema>
+export type RateTierInput = z.infer<typeof rateTierSchema>
 export type ProductUnitInput = z.infer<typeof productUnitSchema>
 export type BookingAttributeAxisInput = z.infer<typeof bookingAttributeAxisSchema>
 
@@ -66,7 +85,7 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
       .max(255, t('maxLength', { max: 255 })),
     description: z.string(),
     categoryId: z.string().nullable(),
-    price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
+    price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')).or(z.literal('')),
     deposit: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')).or(z.literal('')),
     quantity: z.string().regex(/^\d+$/, t('integer')),
     status: z.enum(['draft', 'active', 'archived']),
@@ -82,6 +101,11 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
         ),
     ),
     pricingMode: z.enum(['hour', 'day', 'week']),
+    basePriceDuration: z.object({
+      price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
+      duration: z.number().int().min(1, t('minValue', { min: 1 })),
+      unit: z.enum(['minute', 'hour', 'day', 'week']),
+    }),
     pricingTiers: z.array(
       z.object({
         id: z.string().optional(),
@@ -90,6 +114,19 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
           .number()
           .min(0, t('minValue', { min: 0 }))
           .max(99, t('maxValue', { max: 99 })),
+      }),
+    ),
+    rateTiers: z.array(
+      z.object({
+        id: z.string().optional(),
+        price: z.string().regex(/^\d+([.,]\d{1,2})?$/, t('positive')),
+        duration: z.number().int().min(1, t('minValue', { min: 1 })),
+        unit: z.enum(['minute', 'hour', 'day', 'week']),
+        discountPercent: z
+          .number()
+          .min(0, t('minValue', { min: 0 }))
+          .max(99, t('maxValue', { max: 99 }))
+          .optional(),
       }),
     ),
     enforceStrictTiers: z.boolean(),
@@ -171,6 +208,7 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
         }
       }
     }
+
   })
 
 export const createCategorySchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -190,7 +228,7 @@ export const productSchema = z.object({
     .max(255, 'validation.maxLength'),
   description: z.string().optional(),
   categoryId: z.string().optional().nullable(),
-  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive'),
+  price: z.string().regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive').or(z.literal('')),
   deposit: z
     .string()
     .regex(/^\d+([.,]\d{1,2})?$/, 'validation.positive')
@@ -200,7 +238,9 @@ export const productSchema = z.object({
   status: z.enum(['draft', 'active', 'archived']),
   images: z.array(imageUrlSchema).optional(),
   pricingMode: z.enum(['hour', 'day', 'week']),
+  basePriceDuration: priceDurationSchema,
   pricingTiers: z.array(pricingTierSchema).optional(),
+  rateTiers: z.array(rateTierSchema).optional(),
   enforceStrictTiers: z.boolean().optional(),
   taxSettings: productTaxSettingsSchema.optional(),
   videoUrl: z
@@ -259,6 +299,7 @@ export const productSchema = z.object({
       }
     }
   }
+
 })
 
 export const categorySchema = z.object({
