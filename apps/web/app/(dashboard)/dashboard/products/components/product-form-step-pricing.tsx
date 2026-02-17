@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
-import type { ChangeEvent } from 'react'
+import type { ChangeEvent } from 'react';
 
-import { Link2, Puzzle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { Link2, Puzzle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import type { PricingMode, TaxSettings } from '@louez/types'
+import type { PricingMode, TaxSettings } from '@louez/types';
 import {
   Card,
   CardContent,
@@ -20,31 +20,33 @@ import {
   SelectTrigger,
   SelectValue,
   Separator,
-} from '@louez/ui'
+} from '@louez/ui';
 
-import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
-import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor'
-import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
-import { getFieldError } from '@/hooks/form/form-context'
+import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
+import { PricingTiersEditor } from '@/components/dashboard/pricing-tiers-editor';
+import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
+import { PriceDurationInput } from '@/components/ui/price-duration-input';
+
+import { getFieldError } from '@/hooks/form/form-context';
 
 import type {
   AvailableAccessory,
   ProductFormComponentApi,
   ProductFormValues,
-} from '../types'
+} from '../types';
 
 interface ProductFormStepPricingProps {
-  form: ProductFormComponentApi
-  watchedValues: ProductFormValues
-  priceLabel: string
-  currency: string
-  currencySymbol: string
-  isSaving: boolean
-  storeTaxSettings?: TaxSettings
-  availableAccessories: AvailableAccessory[]
-  basePrice: number
-  effectivePricingMode: PricingMode
-  showAccessories: boolean
+  form: ProductFormComponentApi;
+  watchedValues: ProductFormValues;
+  priceLabel: string;
+  currency: string;
+  currencySymbol: string;
+  isSaving: boolean;
+  storeTaxSettings?: TaxSettings;
+  availableAccessories: AvailableAccessory[];
+  basePrice: number;
+  effectivePricingMode: PricingMode;
+  showAccessories: boolean;
 }
 
 export function ProductFormStepPricing({
@@ -60,7 +62,7 @@ export function ProductFormStepPricing({
   effectivePricingMode,
   showAccessories,
 }: ProductFormStepPricingProps) {
-  const t = useTranslations('dashboard.products.form')
+  const t = useTranslations('dashboard.products.form');
 
   const pricingAndStock = (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -76,7 +78,8 @@ export function ProductFormStepPricing({
                 <Label>{t('pricingModeLabel')}</Label>
                 <Select
                   onValueChange={(value) => {
-                    if (value !== null) field.handleChange(value as PricingMode)
+                    if (value !== null)
+                      field.handleChange(value as PricingMode);
                   }}
                   value={field.state.value}
                 >
@@ -97,7 +100,9 @@ export function ProductFormStepPricing({
                     </SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-muted-foreground text-sm">{t('pricingModeHelp')}</p>
+                <p className="text-muted-foreground text-sm">
+                  {t('pricingModeHelp')}
+                </p>
                 {field.state.meta.errors.length > 0 && (
                   <p className="text-destructive text-sm font-medium">
                     {getFieldError(field.state.meta.errors[0])}
@@ -106,6 +111,8 @@ export function ProductFormStepPricing({
               </div>
             )}
           </form.Field>
+
+          <PriceDurationInput currency="EUR" />
 
           <Separator />
 
@@ -121,8 +128,8 @@ export function ProductFormStepPricing({
                     form.setFieldMeta('price', (prev: any) => ({
                       ...prev,
                       errorMap: { ...prev?.errorMap, onSubmit: undefined },
-                    }))
-                    field.handleChange(event.target.value)
+                    }));
+                    field.handleChange(event.target.value);
                   }}
                 />
               )}
@@ -173,7 +180,7 @@ export function ProductFormStepPricing({
                               field.handleChange(
                                 event.target.value
                                   ? parseFloat(event.target.value)
-                                  : undefined
+                                  : undefined,
                               )
                             }
                             onBlur={field.handleBlur}
@@ -208,7 +215,9 @@ export function ProductFormStepPricing({
         <CardContent>
           <UnitTrackingEditor
             trackUnits={watchedValues.trackUnits || false}
-            onTrackUnitsChange={(value) => form.setFieldValue('trackUnits', value)}
+            onTrackUnitsChange={(value) =>
+              form.setFieldValue('trackUnits', value)
+            }
             bookingAttributeAxes={watchedValues.bookingAttributeAxes || []}
             onBookingAttributeAxesChange={(axes) =>
               form.setFieldValue('bookingAttributeAxes', axes)
@@ -220,15 +229,15 @@ export function ProductFormStepPricing({
               form.setFieldMeta('quantity', (prev: any) => ({
                 ...prev,
                 errorMap: { ...prev?.errorMap, onSubmit: undefined },
-              }))
-              form.setFieldValue('quantity', value)
+              }));
+              form.setFieldValue('quantity', value);
             }}
             disabled={isSaving}
           />
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   const pricingTiers = (
     <Card>
@@ -257,7 +266,7 @@ export function ProductFormStepPricing({
         </form.Field>
       </CardContent>
     </Card>
-  )
+  );
 
   if (showAccessories) {
     return (
@@ -298,7 +307,9 @@ export function ProductFormStepPricing({
                   <div className="bg-muted mb-3 rounded-full p-3">
                     <Puzzle className="text-muted-foreground h-6 w-6" />
                   </div>
-                  <p className="text-sm font-medium">{t('noAccessoriesAvailable')}</p>
+                  <p className="text-sm font-medium">
+                    {t('noAccessoriesAvailable')}
+                  </p>
                   <p className="text-muted-foreground mt-1 max-w-[260px] text-sm">
                     {t('noAccessoriesHint')}
                   </p>
@@ -308,7 +319,7 @@ export function ProductFormStepPricing({
           </Card>
         </div>
       </>
-    )
+    );
   }
 
   return (
@@ -316,5 +327,5 @@ export function ProductFormStepPricing({
       {pricingAndStock}
       {pricingTiers}
     </div>
-  )
+  );
 }

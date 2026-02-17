@@ -60,6 +60,7 @@
     "dayUnit": "{count, plural, one {jour} other {jours}}",
     "hourUnit": "{count, plural, one {heure} other {heures}}",
     "weekUnit": "{count, plural, one {semaine} other {semaines}}",
+    "minuteUnit": "{count, plural, one {minute} other {minutes}}",
     "addressInput": {
       "placeholder": "Rechercher une adresse...",
       "coordinatesSaved": "Coordonnées enregistrées",
