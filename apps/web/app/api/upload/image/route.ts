@@ -211,6 +211,7 @@ export async function POST(request: NextRequest) {
     })
 
     // 9. Return success response
+    console.log('[Upload] Image uploaded:', { url, key, PUBLIC_URL: process.env.S3_PUBLIC_URL })
     return NextResponse.json({
       url,
       key,
