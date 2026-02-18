@@ -12,6 +12,7 @@ import type { CheckoutFormComponentApi } from '../types';
 
 interface CheckoutContactStepProps {
   form: CheckoutFormComponentApi;
+  showAddressFields: boolean;
   isBusinessCustomer: boolean;
   onBusinessCustomerUnchecked: () => void;
   onContinue: () => void;
@@ -19,6 +20,7 @@ interface CheckoutContactStepProps {
 
 export function CheckoutContactStep({
   form,
+  showAddressFields,
   isBusinessCustomer,
   onBusinessCustomerUnchecked,
   onContinue,
@@ -80,6 +82,38 @@ export function CheckoutContactStep({
           )}
         </form.Field>
 
+        {showAddressFields && (
+          <>
+            <form.AppField name="address">
+              {(field) => (
+                <field.Input
+                  label={t('address')}
+                  placeholder={t('addressPlaceholder')}
+                />
+              )}
+            </form.AppField>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <form.AppField name="postalCode">
+                {(field) => (
+                  <field.Input
+                    label={t('postalCode')}
+                    placeholder={t('postalCodePlaceholder')}
+                  />
+                )}
+              </form.AppField>
+              <form.AppField name="city">
+                {(field) => (
+                  <field.Input
+                    label={t('city')}
+                    placeholder={t('cityPlaceholder')}
+                  />
+                )}
+              </form.AppField>
+            </div>
+          </>
+        )}
+
         <form.Field name="isBusinessCustomer">
           {(field) => (
             <div className="flex flex-row items-center space-y-0 space-x-2">
@@ -115,6 +149,16 @@ export function CheckoutContactStep({
             )}
           </form.AppField>
         )}
+
+        <form.AppField name="notes">
+          {(field) => (
+            <field.Textarea
+              label={t('notes')}
+              placeholder={t('notesPlaceholder')}
+              rows={3}
+            />
+          )}
+        </form.AppField>
 
         <div className="pt-4">
           <Button type="button" onClick={onContinue} className="w-full" size="lg">

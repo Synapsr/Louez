@@ -1,22 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getCheckoutStepIds } from '../utils';
-import type { CheckoutStep, DeliveryOption, StepId } from '../types';
+import type { CheckoutStep, StepId } from '../types';
 
 type StepDirection = 'forward' | 'backward';
 
 interface UseCheckoutStepFlowParams {
   isDeliveryEnabled: boolean;
-  deliveryOption: DeliveryOption;
-  requireCustomerAddress: boolean;
   stepIcons: Record<StepId, CheckoutStep['icon']>;
   validateCurrentStep: (currentStep: StepId) => Promise<boolean>;
 }
 
 export function useCheckoutStepFlow({
   isDeliveryEnabled,
-  deliveryOption,
-  requireCustomerAddress,
   stepIcons,
   validateCurrentStep,
 }: UseCheckoutStepFlowParams) {
@@ -27,10 +23,8 @@ export function useCheckoutStepFlow({
     () =>
       getCheckoutStepIds({
         isDeliveryEnabled,
-        deliveryOption,
-        requireCustomerAddress,
       }),
-    [isDeliveryEnabled, deliveryOption, requireCustomerAddress],
+    [isDeliveryEnabled],
   );
 
   const steps = useMemo<CheckoutStep[]>(

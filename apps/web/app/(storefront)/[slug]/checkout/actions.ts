@@ -5,7 +5,12 @@ import { customers, reservations, reservationItems, products, productUnits, stor
 import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes } from '@louez/types'
-import type { TaxSettings, ProductTaxSettings, StoreSettings } from '@louez/types'
+import type {
+  ProductTaxSettings,
+  StoreSettings,
+  TaxSettings,
+  TulipPublicMode,
+} from '@louez/types'
 import type { Rate } from '@louez/types'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
@@ -35,7 +40,11 @@ import {
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
-import { previewTulipQuoteForCheckout } from '@/lib/integrations/tulip/contracts'
+import {
+  getTulipCoverageSummary,
+  previewTulipQuoteForCheckout,
+} from '@/lib/integrations/tulip/contracts'
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import { env } from '@/env'
 
 interface ReservationItem {
@@ -139,6 +148,255 @@ function toResolvedAttributes(
   return {
     ...(selected || {}),
     ...resolved,
+  }
+}
+
+type CheckoutTulipQuoteInput = {
+  storeId: string
+  storeSettings: StoreSettings | null
+  customer: {
+    customerType?: 'individual' | 'business'
+    companyName?: string
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
+  items: Array<{ productId: string; quantity: number }>
+  startDate: Date
+  endDate: Date
+  tulipInsuranceOptIn?: boolean
+  fallbackCountry: string
+}
+
+type CheckoutTulipQuoteResult = {
+  mode: TulipPublicMode
+  connected: boolean
+  quoteUnavailable: boolean
+  quoteError: string | null
+  requestedOptIn: boolean
+  appliedOptIn: boolean
+  amount: number
+  insuredProductCount: number
+  uninsuredProductCount: number
+  insuredProductIds: string[]
+}
+
+function getCheckoutTulipMode(storeSettings: StoreSettings | null): {
+  mode: TulipPublicMode
+  connected: boolean
+} {
+  const tulipSettings = getTulipSettings(storeSettings)
+  const connected = Boolean(
+    tulipSettings.enabled &&
+      tulipSettings.apiKeyEncrypted &&
+      tulipSettings.renterUid,
+  )
+  return {
+    mode: connected ? tulipSettings.publicMode : 'no_public',
+    connected,
+  }
+}
+
+async function resolveCheckoutTulipQuote(
+  input: CheckoutTulipQuoteInput,
+): Promise<CheckoutTulipQuoteResult> {
+  const modeInfo = getCheckoutTulipMode(input.storeSettings)
+  const requestedOptIn =
+    modeInfo.mode === 'required'
+      ? true
+      : modeInfo.mode === 'optional'
+        ? input.tulipInsuranceOptIn !== false
+        : false
+
+  if (modeInfo.mode === 'no_public') {
+    return {
+      mode: modeInfo.mode,
+      connected: modeInfo.connected,
+      quoteUnavailable: false,
+      quoteError: null,
+      requestedOptIn,
+      appliedOptIn: false,
+      amount: 0,
+      insuredProductCount: 0,
+      uninsuredProductCount: 0,
+      insuredProductIds: [],
+    }
+  }
+
+  try {
+    const preview = await previewTulipQuoteForCheckout({
+      storeId: input.storeId,
+      storeSettings: input.storeSettings,
+      customer: {
+        customerType: input.customer.customerType || 'individual',
+        companyName: input.customer.companyName || null,
+        firstName: input.customer.firstName,
+        lastName: input.customer.lastName,
+        email: input.customer.email,
+        phone: input.customer.phone || '',
+        address: input.customer.address || '',
+        city: input.customer.city || '',
+        postalCode: input.customer.postalCode || '',
+        country: input.fallbackCountry,
+      },
+      items: input.items,
+      startDate: input.startDate,
+      endDate: input.endDate,
+      optIn: requestedOptIn,
+    })
+
+    const amount =
+      preview.shouldApply && Number.isFinite(preview.amount) && preview.amount > 0
+        ? Math.round(preview.amount * 100) / 100
+        : 0
+    const appliedOptIn = requestedOptIn && amount > 0
+
+    console.info('[tulip][checkout-quote] resolved', {
+      storeId: input.storeId,
+      mode: modeInfo.mode,
+      requestedOptIn,
+      appliedOptIn,
+      amount,
+      insuredProductCount: preview.insuredProductCount,
+      uninsuredProductCount: preview.uninsuredProductCount,
+      insuredProductIds: preview.insuredProductIds,
+    })
+
+    return {
+      mode: modeInfo.mode,
+      connected: modeInfo.connected,
+      quoteUnavailable: false,
+      quoteError: null,
+      requestedOptIn,
+      appliedOptIn,
+      amount,
+      insuredProductCount: preview.insuredProductCount,
+      uninsuredProductCount: preview.uninsuredProductCount,
+      insuredProductIds: preview.insuredProductIds,
+    }
+  } catch (error) {
+    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed')
+    if (modeInfo.mode === 'optional') {
+      const coverageSummary = await getTulipCoverageSummary(input.items)
+      console.warn('[tulip][checkout-quote] optional fallback without insurance', {
+        storeId: input.storeId,
+        mode: modeInfo.mode,
+        requestedOptIn,
+        error: errorKey,
+        insuredProductCount: coverageSummary.insuredProductCount,
+        uninsuredProductCount: coverageSummary.uninsuredProductCount,
+      })
+
+      return {
+        mode: modeInfo.mode,
+        connected: modeInfo.connected,
+        quoteUnavailable: true,
+        quoteError: errorKey,
+        requestedOptIn,
+        appliedOptIn: false,
+        amount: 0,
+        insuredProductCount: coverageSummary.insuredProductCount,
+        uninsuredProductCount: coverageSummary.uninsuredProductCount,
+        insuredProductIds: coverageSummary.insuredProductIds,
+      }
+    }
+
+    console.error('[tulip][checkout-quote] required mode failed', {
+      storeId: input.storeId,
+      mode: modeInfo.mode,
+      error: errorKey,
+    })
+    throw new Error(errorKey)
+  }
+}
+
+export async function getTulipQuotePreview(input: {
+  storeId: string
+  customer: {
+    customerType?: 'individual' | 'business'
+    companyName?: string
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string
+    address?: string
+    city?: string
+    postalCode?: string
+  }
+  items: Array<{ productId: string; quantity: number }>
+  startDate: string
+  endDate: string
+  tulipInsuranceOptIn?: boolean
+}): Promise<CheckoutTulipQuoteResult & { error: string | null }> {
+  const store = await db.query.stores.findFirst({
+    where: eq(stores.id, input.storeId),
+    columns: {
+      id: true,
+      settings: true,
+    },
+  })
+
+  if (!store) {
+    return {
+      mode: 'no_public',
+      connected: false,
+      quoteUnavailable: true,
+      quoteError: 'errors.storeNotFound',
+      requestedOptIn: false,
+      appliedOptIn: false,
+      amount: 0,
+      insuredProductCount: 0,
+      uninsuredProductCount: 0,
+      insuredProductIds: [],
+      error: 'errors.storeNotFound',
+    }
+  }
+
+  const storeSettings = store.settings as StoreSettings | null
+
+  try {
+    const quote = await resolveCheckoutTulipQuote({
+      storeId: store.id,
+      storeSettings,
+      customer: input.customer,
+      items: input.items,
+      startDate: new Date(input.startDate),
+      endDate: new Date(input.endDate),
+      tulipInsuranceOptIn: input.tulipInsuranceOptIn,
+      fallbackCountry: store.settings?.country || 'FR',
+    })
+
+    return {
+      ...quote,
+      error: null,
+    }
+  } catch (error) {
+    const modeInfo = getCheckoutTulipMode(storeSettings)
+    const coverageSummary = await getTulipCoverageSummary(input.items)
+    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed')
+
+    return {
+      mode: modeInfo.mode,
+      connected: modeInfo.connected,
+      quoteUnavailable: true,
+      quoteError: errorKey,
+      requestedOptIn:
+        modeInfo.mode === 'required'
+          ? true
+          : modeInfo.mode === 'optional'
+            ? input.tulipInsuranceOptIn !== false
+            : false,
+      appliedOptIn: false,
+      amount: 0,
+      insuredProductCount: coverageSummary.insuredProductCount,
+      uninsuredProductCount: coverageSummary.uninsuredProductCount,
+      insuredProductIds: coverageSummary.insuredProductIds,
+      error: errorKey,
+    }
   }
 }
 
@@ -483,35 +741,31 @@ export async function createReservation(input: CreateReservationInput) {
 
     // ===== TULIP INSURANCE PREVIEW =====
     let tulipInsuranceAmount = 0
+    let tulipInsuranceOptIn = false
+    let tulipInsuredProductCount = 0
+    let tulipUninsuredProductCount = 0
+    let tulipQuoteFallbackError: string | null = null
 
     try {
-      const preview = await previewTulipQuoteForCheckout({
+      const quote = await resolveCheckoutTulipQuote({
         storeId: store.id,
         storeSettings: storeSettings as StoreSettings | null,
-        customer: {
-          customerType: input.customer.customerType || 'individual',
-          companyName: input.customer.companyName || null,
-          firstName: input.customer.firstName,
-          lastName: input.customer.lastName,
-          email: input.customer.email,
-          phone: input.customer.phone || '',
-          address: input.customer.address || '',
-          city: input.customer.city || '',
-          postalCode: input.customer.postalCode || '',
-          country: store.settings?.country || 'FR',
-        },
+        customer: input.customer,
         items: input.items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
         startDate: rentalStartDate,
         endDate: rentalEndDate,
-        optIn: input.tulipInsuranceOptIn,
+        tulipInsuranceOptIn: input.tulipInsuranceOptIn,
+        fallbackCountry: store.settings?.country || 'FR',
       })
 
-      if (preview.shouldApply && Number.isFinite(preview.amount) && preview.amount > 0) {
-        tulipInsuranceAmount = Math.round(preview.amount * 100) / 100
-      }
+      tulipInsuranceAmount = quote.amount
+      tulipInsuranceOptIn = quote.appliedOptIn
+      tulipInsuredProductCount = quote.insuredProductCount
+      tulipUninsuredProductCount = quote.uninsuredProductCount
+      tulipQuoteFallbackError = quote.quoteUnavailable ? quote.quoteError : null
     } catch (error) {
       return { error: getErrorKey(error, 'errors.tulipQuoteFailed') }
     }
@@ -800,6 +1054,9 @@ export async function createReservation(input: CreateReservationInput) {
         deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
         deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
         deliveryFee: finalDeliveryFee.toFixed(2),
+        tulipInsuranceOptIn,
+        tulipInsuranceAmount:
+          tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
       })
 
       for (let i = 0; i < input.items.length; i++) {
@@ -889,8 +1146,12 @@ export async function createReservation(input: CreateReservationInput) {
           status: 'pending',
           customerEmail: input.customer.email,
           customerName: `${input.customer.firstName} ${input.customer.lastName}`,
-          ...(tulipInsuranceAmount > 0 && {
-            tulipInsuranceAmount,
+          tulipInsuranceOptIn,
+          tulipInsuranceAmount,
+          tulipInsuredProductCount,
+          tulipUninsuredProductCount,
+          ...(tulipQuoteFallbackError && {
+            tulipQuoteFallbackError,
           }),
         },
         createdAt: new Date(),

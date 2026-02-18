@@ -43,9 +43,6 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
-type TulipProductType = (typeof TULIP_PRODUCT_TYPES)[number];
-type TulipProductSubtype = (typeof TULIP_PRODUCT_SUBTYPES)[number];
-
 type ProductActionInput = {
   productId: string;
   title: string | null;
@@ -65,54 +62,9 @@ const TULIP_PRODUCT_TYPES = [
   'high-tech',
   'small-tools',
 ] as const;
+type TulipProductType = (typeof TULIP_PRODUCT_TYPES)[number];
 
-const TULIP_PRODUCT_SUBTYPES = [
-  'standard',
-  'electric',
-  'cargo',
-  'remorque',
-  'furniture',
-  'tent',
-  'decorations',
-  'tableware',
-  'entertainment',
-  'action-cam',
-  'drone',
-  'camera',
-  'video-camera',
-  'stabilizer',
-  'phone',
-  'computer',
-  'tablet',
-  'small-appliance',
-  'large-appliance',
-  'construction-equipment',
-  'diy-tools',
-  'electric-diy-tools',
-  'gardening-tools',
-  'electric-gardening-tools',
-  'kitesurf',
-  'foil',
-  'windsurf',
-  'sailboat',
-  'kayak',
-  'canoe',
-  'water-ski',
-  'wakeboard',
-  'mono-ski',
-  'buoy',
-  'paddle',
-  'surf',
-  'pedalo',
-  'ski',
-  'snowboard',
-  'snowshoe',
-] as const;
-
-const TULIP_SUBTYPES_BY_TYPE: Record<
-  TulipProductType,
-  readonly TulipProductSubtype[]
-> = {
+const TULIP_SUBTYPES_BY_TYPE = {
   bike: ['standard', 'electric', 'cargo', 'remorque'],
   wintersports: ['ski', 'snowboard', 'snowshoe'],
   watersports: [
@@ -150,7 +102,10 @@ const TULIP_SUBTYPES_BY_TYPE: Record<
     'gardening-tools',
     'electric-gardening-tools',
   ],
-};
+} as const satisfies Record<TulipProductType, readonly string[]>;
+
+type TulipProductSubtype =
+  (typeof TULIP_SUBTYPES_BY_TYPE)[TulipProductType][number];
 
 function getSubtypeOptionsForType(
   productType: TulipProductType,
@@ -352,28 +307,28 @@ export function TulipProductMappingSection({
     ];
   }, [knownModelItems, modelInputValue]);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
-    if (statusFilter === 'mapped')
-      filtered = filtered.filter((p) => hasValidMapping(p.tulipProductId));
-    else if (statusFilter === 'unmapped')
-      filtered = filtered.filter((p) => !hasValidMapping(p.tulipProductId));
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter((p) => p.name.toLowerCase().includes(q));
-    }
-    return filtered;
-  }, [products, statusFilter, searchQuery, tulipProductById]);
+  let filteredProducts = products;
+  if (statusFilter === 'mapped') {
+    filteredProducts = filteredProducts.filter((p) =>
+      hasValidMapping(p.tulipProductId),
+    );
+  } else if (statusFilter === 'unmapped') {
+    filteredProducts = filteredProducts.filter(
+      (p) => !hasValidMapping(p.tulipProductId),
+    );
+  }
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase();
+    filteredProducts = filteredProducts.filter((p) =>
+      p.name.toLowerCase().includes(q),
+    );
+  }
 
-  const statusCounts = useMemo(
-    () => ({
-      all: products.length,
-      mapped: products.filter((p) => hasValidMapping(p.tulipProductId)).length,
-      unmapped: products.filter((p) => !hasValidMapping(p.tulipProductId))
-        .length,
-    }),
-    [products, tulipProductById],
-  );
+  const statusCounts = {
+    all: products.length,
+    mapped: products.filter((p) => hasValidMapping(p.tulipProductId)).length,
+    unmapped: products.filter((p) => !hasValidMapping(p.tulipProductId)).length,
+  };
 
   const editingProduct = editingProductId
     ? (products.find((p) => p.id === editingProductId) ?? null)
@@ -518,6 +473,25 @@ export function TulipProductMappingSection({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+          <p className="text-muted-foreground text-sm">
+            {t('coverageSummary', {
+              insured: statusCounts.mapped,
+              total: statusCounts.all,
+            })}
+          </p>
+          {statusCounts.unmapped > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setStatusFilter('unmapped')}
+            >
+              {t('viewUnmappedCta', { count: statusCounts.unmapped })}
+            </Button>
+          )}
         </div>
 
         {/* Product table */}

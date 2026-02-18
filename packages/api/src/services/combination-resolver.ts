@@ -79,16 +79,19 @@ export async function resolveStorefrontCombination(
   }
 
   const combinations = availableProduct.combinations || []
+  const bookingAxes = Array.isArray(product.bookingAttributeAxes)
+    ? (product.bookingAttributeAxes as BookingAttributeAxis[])
+    : []
 
   const candidateCombinations = combinations
     .filter((combination) => matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes))
     .sort((a, b) => {
       const sortA = getDeterministicCombinationSortValue(
-        (product.bookingAttributeAxes || []) as BookingAttributeAxis[],
+        bookingAxes,
         a.selectedAttributes,
       )
       const sortB = getDeterministicCombinationSortValue(
-        (product.bookingAttributeAxes || []) as BookingAttributeAxis[],
+        bookingAxes,
         b.selectedAttributes,
       )
       return sortA.localeCompare(sortB, 'en')

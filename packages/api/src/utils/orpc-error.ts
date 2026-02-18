@@ -13,6 +13,8 @@ export function toORPCError(error: unknown) {
     })
   }
 
+  console.error('[api][toORPCError] unexpected error', error)
+
   return new ORPCError('INTERNAL_SERVER_ERROR', {
     message: 'errors.internalServerError',
   })

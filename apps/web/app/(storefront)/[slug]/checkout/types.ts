@@ -1,6 +1,10 @@
 import type { ComponentType, ReactNode } from 'react';
 
-import type { DeliverySettings, TaxSettings } from '@louez/types';
+import type {
+  DeliverySettings,
+  TaxSettings,
+  TulipContractType,
+} from '@louez/types';
 
 export interface CheckoutFormProps {
   storeSlug: string;
@@ -19,6 +23,7 @@ export interface CheckoutFormProps {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
     includeInFinalPrice: boolean;
+    contractType: TulipContractType;
   };
 }
 
