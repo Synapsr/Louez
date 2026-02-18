@@ -32,10 +32,12 @@ import {
 import {
   allocateAcrossCombinations,
   buildCombinationKey,
+  computeReductionPercent,
   cn,
   formatCurrency,
   getDeterministicCombinationSortValue,
   getSelectionCapacity,
+  minutesToPriceDuration,
 } from '@louez/utils';
 import {
   type ProductPricing,
@@ -225,17 +227,38 @@ export function ProductModal({
   const durationMinutes = calculateDurationMinutes(startDate, endDate);
   const { days, hours } = getDetailedDuration(startDate, endDate);
 
-  // Calculate with tiered pricing - normalize discountPercent to number
-  const tiers =
+  // Legacy tiers only (true minDuration/discount rows).
+  const legacyTiers =
     product.pricingTiers?.map((tier, index) => ({
       id: tier.id,
-      minDuration: tier.minDuration ?? 1,
-      discountPercent:
-        typeof tier.discountPercent === 'string'
-          ? parseFloat(tier.discountPercent ?? '0')
-          : (tier.discountPercent ?? 0),
+      minDuration: tier.minDuration,
+      discountPercent: tier.discountPercent,
       displayOrder: index,
-    })) || [];
+    }))
+      .filter(
+        (
+          tier,
+        ): tier is {
+          id: string;
+          minDuration: number;
+          discountPercent: number | string;
+          displayOrder: number;
+        } =>
+          typeof tier.minDuration === 'number' &&
+          tier.minDuration > 0 &&
+          tier.discountPercent !== null &&
+          tier.discountPercent !== undefined,
+      )
+      .map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration,
+        discountPercent:
+          typeof tier.discountPercent === 'string'
+            ? parseFloat(tier.discountPercent ?? '0')
+            : tier.discountPercent,
+        displayOrder: tier.displayOrder,
+      })) || [];
+
   const rateTiers: Rate[] = (product.pricingTiers || [])
     .filter(
       (tier): tier is PricingTier & { period: number; price: string | number } =>
@@ -270,7 +293,7 @@ export function ProductModal({
           basePrice: price,
           deposit,
           pricingMode: effectivePricingMode,
-          tiers,
+          tiers: legacyTiers,
         } as ProductPricing,
         duration,
         quantity,
@@ -623,8 +646,105 @@ export function ProductModal({
     );
   };
 
-  // Sort tiers for display
-  const sortedTiers = tiers.length > 0 ? sortTiersByDuration(tiers) : [];
+  const sortedLegacyTiers =
+    legacyTiers.length > 0 ? sortTiersByDuration(legacyTiers) : [];
+
+  const rateRows = useMemo(() => {
+    if (!isRateBased || !product.basePeriodMinutes) return [];
+    const basePeriod = product.basePeriodMinutes;
+    const baseRow = {
+      id: '__base__',
+      periodMinutes: basePeriod,
+      price,
+      reductionPercent: 0,
+    };
+    const tierRows = rateTiers.map((rate) => ({
+      id: rate.id,
+      periodMinutes: rate.period,
+      price: rate.price,
+      reductionPercent: Math.max(
+        0,
+        computeReductionPercent(price, basePeriod, rate.price, rate.period),
+      ),
+    }));
+    return [baseRow, ...tierRows].sort((a, b) => {
+      if (a.periodMinutes !== b.periodMinutes) {
+        return a.periodMinutes - b.periodMinutes;
+      }
+      return a.price - b.price;
+    });
+  }, [isRateBased, price, product.basePeriodMinutes, rateTiers]);
+
+  const contextualPeriodMinutes = useMemo(() => {
+    if (!isRateBased || rateRows.length === 0) return null;
+    const periods = [...new Set(rateRows.map((row) => row.periodMinutes))]
+      .filter((period) => period > 0)
+      .sort((a, b) => a - b);
+    if (periods.length === 0) return null;
+    const periodWithinDuration = periods.filter(
+      (period) => period <= durationMinutes,
+    );
+    return periodWithinDuration.length > 0
+      ? periodWithinDuration[periodWithinDuration.length - 1]
+      : periods[0];
+  }, [durationMinutes, isRateBased, rateRows]);
+
+  const contextualDisplay = useMemo(() => {
+    if (!isRateBased || !contextualPeriodMinutes || rateRows.length === 0) {
+      return null;
+    }
+    const rowsForPeriod = rateRows
+      .filter((row) => row.periodMinutes === contextualPeriodMinutes)
+      .sort((a, b) => a.price - b.price);
+    if (rowsForPeriod.length > 0) {
+      const selected = rowsForPeriod[0];
+      return {
+        price: selected.price,
+        periodMinutes: contextualPeriodMinutes,
+        isFrom: selected.id !== '__base__',
+        selectedRateId: selected.id,
+      };
+    }
+
+    const cheapestPerMinute = [...rateRows].sort(
+      (a, b) => a.price / a.periodMinutes - b.price / b.periodMinutes,
+    )[0];
+
+    if (!cheapestPerMinute) {
+      return null;
+    }
+
+    return {
+      price:
+        (cheapestPerMinute.price / cheapestPerMinute.periodMinutes) *
+        contextualPeriodMinutes,
+      periodMinutes: contextualPeriodMinutes,
+      isFrom: cheapestPerMinute.id !== '__base__',
+      selectedRateId: cheapestPerMinute.id,
+    };
+  }, [contextualPeriodMinutes, isRateBased, rateRows]);
+
+  const formatPeriodLabel = (
+    periodMinutes: number,
+    options?: { alwaysShowCount?: boolean },
+  ) => {
+    const period = minutesToPriceDuration(periodMinutes);
+    const alwaysShowCount = options?.alwaysShowCount ?? false;
+
+    if (period.unit === 'minute') {
+      return period.duration === 1 && !alwaysShowCount
+        ? 'min'
+        : `${period.duration} min`;
+    }
+
+    const unitLabel = tProduct(
+      `pricingUnit.${period.unit}.${period.duration === 1 ? 'singular' : 'plural'}`,
+    );
+    if (period.duration === 1 && !alwaysShowCount) {
+      return unitLabel;
+    }
+    return `${period.duration} ${unitLabel}`;
+  };
 
   return (
     <>
@@ -790,11 +910,22 @@ export function ProductModal({
 
                 {/* Base price per unit - prominent display */}
                 <div className="mt-3 flex items-baseline gap-2">
+                  {contextualDisplay?.isFrom && (
+                    <span className="text-muted-foreground text-sm font-medium">
+                      {tProduct('startingFrom')}
+                    </span>
+                  )}
                   <span className="text-primary text-2xl font-bold md:text-3xl">
-                    {formatCurrency(price, currency)}
+                    {formatCurrency(
+                      contextualDisplay?.price ?? price,
+                      currency,
+                    )}
                   </span>
                   <span className="text-muted-foreground text-base">
-                    / {pricingUnitLabel}
+                    /{' '}
+                    {contextualDisplay
+                      ? formatPeriodLabel(contextualDisplay.periodMinutes)
+                      : pricingUnitLabel}
                   </span>
                 </div>
               </div>
@@ -814,7 +945,76 @@ export function ProductModal({
               )}
 
               {/* Pricing tiers section */}
-              {sortedTiers.length > 0 && (
+              {isRateBased ? (
+                rateRows.length > 1 && (
+                  <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
+                        <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      </div>
+                      <span className="text-sm font-semibold">
+                        {tProduct('tieredPricing.ratesTitle')}
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {rateRows.map((rate) => {
+                        const isCurrentRate =
+                          contextualDisplay?.selectedRateId === rate.id;
+
+                        return (
+                          <div
+                            key={rate.id}
+                            className={cn(
+                              'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
+                              isCurrentRate
+                                ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
+                                : 'bg-background/60',
+                            )}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={cn(
+                                  'font-medium',
+                                  isCurrentRate &&
+                                    'text-green-700 dark:text-green-300',
+                                )}
+                              >
+                                {formatPeriodLabel(rate.periodMinutes, {
+                                  alwaysShowCount: true,
+                                })}
+                              </span>
+                              {rate.reductionPercent > 0 && (
+                                <Badge
+                                  className={cn(
+                                    'text-xs font-semibold',
+                                    isCurrentRate
+                                      ? 'bg-green-600 text-white hover:bg-green-600'
+                                      : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                  )}
+                                >
+                                  -{Math.floor(rate.reductionPercent)}%
+                                </Badge>
+                              )}
+                            </div>
+                            <span
+                              className={cn(
+                                'font-semibold',
+                                isCurrentRate &&
+                                  'text-green-700 dark:text-green-300',
+                              )}
+                            >
+                              {formatCurrency(rate.price, currency)} /{' '}
+                              {formatPeriodLabel(rate.periodMinutes)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )
+              ) : (
+                sortedLegacyTiers.length > 0 && (
                 <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
                   <div className="mb-3 flex items-center gap-2">
                     <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
@@ -837,14 +1037,14 @@ export function ProductModal({
                     </div>
 
                     {/* Tier rows */}
-                    {sortedTiers.map((tier) => {
+                    {sortedLegacyTiers.map((tier) => {
                       const effectivePrice = calculateEffectivePrice(
                         price,
                         tier,
                       );
                       const isCurrentTier =
                         duration >= tier.minDuration &&
-                        !sortedTiers.some(
+                        !sortedLegacyTiers.some(
                           (t) =>
                             t.minDuration > tier.minDuration &&
                             duration >= t.minDuration,
@@ -896,6 +1096,7 @@ export function ProductModal({
                     })}
                   </div>
                 </div>
+                )
               )}
 
               {/* Booking attributes */}

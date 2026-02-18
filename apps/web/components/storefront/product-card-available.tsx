@@ -25,6 +25,7 @@ import {
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import type { CombinationAvailability } from '@louez/types'
+import { getDetailedDuration } from '@/lib/utils/duration'
 
 interface PricingTier {
   id: string
@@ -185,6 +186,34 @@ export function ProductCardAvailable({
 
   // Filter available accessories (active with stock)
   const availableAccessories = (product.accessories || []).filter((acc) => acc.quantity > 0)
+
+  const detailedDuration = getDetailedDuration(startDate, endDate)
+  const durationLabel = (() => {
+    const { days, hours, totalHours } = detailedDuration
+    if (days === 0) {
+      return `${totalHours} ${
+        totalHours === 1
+          ? t('pricingUnit.hour.singular')
+          : t('pricingUnit.hour.plural')
+      }`
+    }
+
+    if (hours === 0) {
+      return `${days} ${
+        days === 1
+          ? t('pricingUnit.day.singular')
+          : t('pricingUnit.day.plural')
+      }`
+    }
+
+    return `${days} ${
+      days === 1 ? t('pricingUnit.day.singular') : t('pricingUnit.day.plural')
+    } ${hours} ${
+      hours === 1
+        ? t('pricingUnit.hour.singular')
+        : t('pricingUnit.hour.plural')
+    }`
+  })()
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -420,11 +449,7 @@ export function ProductCardAvailable({
 
           {/* Duration info */}
           <p className="text-xs text-muted-foreground mt-1">
-            {duration} {effectivePricingMode === 'hour'
-              ? t('pricingUnit.hour.plural')
-              : effectivePricingMode === 'week'
-                ? t('pricingUnit.week.plural')
-                : t('pricingUnit.day.plural')}
+            {durationLabel}
           </p>
         </CardContent>
       </Card>
