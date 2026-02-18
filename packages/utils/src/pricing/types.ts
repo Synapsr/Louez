@@ -1,4 +1,9 @@
-import type { PricingMode, PricingTier, PricingBreakdown } from '@louez/types'
+import type {
+  PricingMode,
+  PricingTier,
+  PricingBreakdown,
+  Rate,
+} from '@louez/types'
 
 // Re-export core types for convenience
 export type { PricingMode, PricingTier, PricingBreakdown }
@@ -11,6 +16,27 @@ export interface ProductPricing {
   deposit: number
   pricingMode: PricingMode
   tiers: PricingTier[]
+}
+
+export interface RateBasedPricing {
+  basePrice: number
+  basePeriodMinutes: number
+  deposit: number
+  rates: Rate[]
+  enforceStrictTiers?: boolean
+}
+
+export interface RateCalculationResult {
+  subtotal: number
+  deposit: number
+  total: number
+  appliedRate: Rate | null
+  periodsUsed: number
+  savings: number
+  reductionPercent: number | null
+  durationMinutes: number
+  quantity: number
+  originalSubtotal: number
 }
 
 /**

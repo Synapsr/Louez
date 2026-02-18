@@ -24,6 +24,16 @@ const UNIT_LABELS: Record<
   week: { singular: 'semaine', plural: 'semaines', short: 'sem' },
 }
 
+function normalizeTier(
+  tier: PricingTier
+): PricingTier & { minDuration: number; discountPercent: number } {
+  return {
+    ...tier,
+    minDuration: tier.minDuration ?? 1,
+    discountPercent: tier.discountPercent ?? 0,
+  }
+}
+
 /**
  * Format a duration with its unit label
  */
@@ -86,16 +96,19 @@ export function formatDiscount(percent: number): string {
  */
 export function getPriceDisplayInfo(pricing: ProductPricing): PriceDisplayInfo {
   const { basePrice, pricingMode, tiers } = pricing
-  const hasTiers = tiers.length > 0
-  const sortedTiers = sortTiersByDuration(tiers)
+  const normalizedTiers = tiers.map(normalizeTier)
+  const hasTiers = normalizedTiers.length > 0
+  const sortedTiers = sortTiersByDuration(normalizedTiers)
 
   // Calculate max discount
   let maxDiscount: number | null = null
   let tierSummary: string | null = null
 
   if (hasTiers) {
-    maxDiscount = Math.max(...tiers.map((t) => t.discountPercent))
-    const maxTier = tiers.find((t) => t.discountPercent === maxDiscount)
+    maxDiscount = Math.max(...normalizedTiers.map((tier) => tier.discountPercent))
+    const maxTier = normalizedTiers.find(
+      (tier) => tier.discountPercent === maxDiscount
+    )
     if (maxTier) {
       tierSummary = `Jusqu'à -${maxDiscount}% dès ${formatTierLabel(maxTier.minDuration, pricingMode)}`
     }
@@ -139,7 +152,7 @@ export function generateDurationPreviews(
   const durationsToShow = durations ?? defaultDurations[pricingMode]
 
   // Collect tier thresholds to highlight
-  const tierThresholds = new Set(tiers.map((t) => t.minDuration))
+  const tierThresholds = new Set(tiers.map((tier) => tier.minDuration ?? 1))
 
   return durationsToShow
     .filter((d) => d > 0)
@@ -233,9 +246,12 @@ export function formatTierBadge(
 ): string | null {
   if (!tiers.length) return null
 
-  const maxDiscount = Math.max(...tiers.map((t) => t.discountPercent))
-  const minTier = tiers.reduce((min, t) =>
-    t.minDuration < min.minDuration ? t : min
+  const normalizedTiers = tiers.map(normalizeTier)
+  const maxDiscount = Math.max(
+    ...normalizedTiers.map((tier) => tier.discountPercent)
+  )
+  const minTier = normalizedTiers.reduce((min, tier) =>
+    tier.minDuration < min.minDuration ? tier : min
   )
 
   return `Jusqu'à -${maxDiscount}% dès ${minTier.minDuration}${UNIT_LABELS[mode].short}`

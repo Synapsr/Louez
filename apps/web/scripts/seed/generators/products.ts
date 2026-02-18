@@ -238,7 +238,7 @@ export function generateProducts(
         pricingTiers.push({
           id: generateId(),
           productId,
-          minDuration: tier.minDuration,
+          minDuration: tier.minDuration ?? 1,
           discountPercent: tier.discountPercent.toFixed(6),
           displayOrder: j,
           createdAt: now,

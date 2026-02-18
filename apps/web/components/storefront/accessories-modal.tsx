@@ -27,10 +27,13 @@ interface Accessory {
   images: string[] | null
   quantity: number
   pricingMode: PricingMode | null
+  basePeriodMinutes?: number | null
   pricingTiers?: {
     id: string
-    minDuration: number
-    discountPercent: string
+    minDuration: number | null
+    discountPercent: string | null
+    period?: number | null
+    price?: string | null
   }[]
 }
 
@@ -105,10 +108,16 @@ export function AccessoriesModal({
             quantity: 1,
             maxQuantity: accessory.quantity,
             pricingMode: effectivePricingMode,
+            basePeriodMinutes: accessory.basePeriodMinutes ?? null,
             pricingTiers: accessory.pricingTiers?.map((tier) => ({
               id: tier.id,
-              minDuration: tier.minDuration,
-              discountPercent: parseFloat(tier.discountPercent),
+              minDuration: tier.minDuration ?? 1,
+              discountPercent: parseFloat(tier.discountPercent ?? '0'),
+              period: tier.period ?? null,
+              price:
+                typeof tier.price === 'string'
+                  ? parseFloat(tier.price)
+                  : (tier.price ?? null),
             })),
             productPricingMode: accessory.pricingMode,
           },

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Trash2, Package, ChevronDown, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, Package, ChevronDown, AlertCircle, Settings2, StickyNote } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -10,6 +10,7 @@ import { Label } from '@louez/ui'
 import { Switch } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Textarea } from '@louez/ui'
+import { Separator } from '@louez/ui'
 import {
   Select,
   SelectContent,
@@ -30,6 +31,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+} from '@louez/ui'
+import {
+  Dialog,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+  DialogTrigger,
 } from '@louez/ui'
 import {
   Tooltip,
@@ -144,6 +156,317 @@ function AttributeValueCombobox({
   )
 }
 
+function BookingAttributesDialog({
+  axes,
+  onAddAxis,
+  onRemoveAxis,
+  disabled,
+}: {
+  axes: BookingAttributeAxisInput[]
+  onAddAxis: (label: string) => void
+  onRemoveAxis: (key: string) => void
+  disabled: boolean
+}) {
+  const t = useTranslations('dashboard.products.form.unitTracking')
+  const [newAxisLabel, setNewAxisLabel] = useState('')
+
+  const handleAdd = () => {
+    const label = newAxisLabel.trim()
+    if (!label) return
+    onAddAxis(label)
+    setNewAxisLabel('')
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger
+        render={
+          <Button type="button" variant="outline" size="sm" disabled={disabled} />
+        }
+      >
+        <Settings2 className="h-4 w-4" />
+        {t('manageAttributes')}
+        {axes.length > 0 && (
+          <Badge variant="secondary" className="ml-1">
+            {axes.length}/3
+          </Badge>
+        )}
+      </DialogTrigger>
+      <DialogPopup className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t('bookingAttributesTitle')}</DialogTitle>
+          <DialogDescription>{t('manageAttributesDescription')}</DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Input
+                value={newAxisLabel}
+                onChange={(e) => setNewAxisLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    handleAdd()
+                  }
+                }}
+                placeholder={t('bookingAttributePlaceholder')}
+                disabled={disabled || axes.length >= 3}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAdd}
+                disabled={disabled || !newAxisLabel.trim() || axes.length >= 3}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                {t('addAttribute')}
+              </Button>
+            </div>
+
+            {axes.length > 0 ? (
+              <div className="space-y-2">
+                {axes.map((axis) => (
+                  <div
+                    key={axis.key}
+                    className="flex items-center justify-between rounded-lg border px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-md bg-muted text-xs font-medium">
+                        {axis.position + 1}
+                      </span>
+                      <span className="text-sm font-medium">{axis.label}</span>
+                      <span className="font-mono text-xs text-muted-foreground">
+                        {axis.key}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => onRemoveAxis(axis.key)}
+                      disabled={disabled}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {t('bookingAttributesEmpty')}
+                </p>
+              </div>
+            )}
+          </div>
+        </DialogPanel>
+        <DialogFooter variant="bare">
+          <DialogClose render={<Button variant="outline" />}>
+            {t('confirm')}
+          </DialogClose>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  )
+}
+
+const STATUS_COLORS: Record<UnitStatus, string> = {
+  available: 'bg-green-500',
+  maintenance: 'bg-amber-500',
+  retired: 'bg-gray-400',
+}
+
+function UnitRow({
+  unit,
+  index,
+  bookingAttributeAxes,
+  existingValuesByAxis,
+  isDuplicate,
+  isEmpty,
+  disabled,
+  onUpdate,
+  onUpdateAttribute,
+  onRemove,
+  onTouch,
+}: {
+  unit: ProductUnitInput
+  index: number
+  bookingAttributeAxes: BookingAttributeAxisInput[]
+  existingValuesByAxis: Record<string, string[]>
+  isDuplicate: boolean
+  isEmpty: boolean
+  disabled: boolean
+  onUpdate: (index: number, patch: Partial<ProductUnitInput>) => void
+  onUpdateAttribute: (index: number, axisKey: string, value: string) => void
+  onRemove: (index: number) => void
+  onTouch: (index: number) => void
+}) {
+  const t = useTranslations('dashboard.products.form.unitTracking')
+  const [isEditingNotes, setIsEditingNotes] = useState(false)
+  const hasAxes = bookingAttributeAxes.length > 0
+  const status = unit.status || 'available'
+
+  const hasAnyAttributeValue = hasAxes && bookingAttributeAxes.some(
+    (axis) => !!unit.attributes?.[axis.key]?.trim(),
+  )
+  const combinationLabel = hasAnyAttributeValue
+    ? buildPartialCombinationKey(bookingAttributeAxes, unit.attributes)
+    : null
+
+  return (
+    <div
+      className={cn(
+        'rounded-lg border p-3 transition-colors',
+        isDuplicate && 'border-destructive bg-destructive/5',
+      )}
+    >
+      {/* Row 1: status dot + identifier + status select + delete */}
+      <div className="flex items-center gap-2">
+        <span
+          className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_COLORS[status])}
+        />
+        <Input
+          placeholder={t('identifierPlaceholder')}
+          value={unit.identifier}
+          onChange={(e) => onUpdate(index, { identifier: e.target.value })}
+          onBlur={() => onTouch(index)}
+          className={cn('flex-1', (isDuplicate || isEmpty) && 'border-destructive')}
+          disabled={disabled}
+        />
+        <Select
+          value={status}
+          onValueChange={(value) => {
+            if (value !== null) onUpdate(index, { status: value as UnitStatus })
+          }}
+          disabled={disabled}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue>
+              {
+                ({
+                  available: t('statusAvailable'),
+                  maintenance: t('statusMaintenance'),
+                  retired: t('statusRetired'),
+                } as const)[status]
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="available" label={t('statusAvailable')}>
+              <span className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-green-500" />
+                {t('statusAvailable')}
+              </span>
+            </SelectItem>
+            <SelectItem value="maintenance" label={t('statusMaintenance')}>
+              <span className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {t('statusMaintenance')}
+              </span>
+            </SelectItem>
+            <SelectItem value="retired" label={t('statusRetired')}>
+              <span className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-gray-400" />
+                {t('statusRetired')}
+              </span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onRemove(index)}
+                  disabled={disabled}
+                  className="shrink-0 text-muted-foreground hover:text-destructive"
+                />
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{t('deleteConfirm')}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+
+      {isEmpty && (
+        <p className="mt-1.5 text-xs text-destructive">{t('identifierRequired')}</p>
+      )}
+
+      {/* Row 2: attribute values (only when axes exist) */}
+      {hasAxes && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {bookingAttributeAxes.map((axis) => {
+            const suggestions = existingValuesByAxis[axis.key] || []
+            const currentValue = unit.attributes?.[axis.key] || ''
+            const hasError = !currentValue.trim() && status === 'available'
+
+            return (
+              <div key={axis.key} className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{axis.label}</Label>
+                <AttributeValueCombobox
+                  value={currentValue}
+                  onChange={(val) => onUpdateAttribute(index, axis.key, val)}
+                  suggestions={suggestions}
+                  placeholder={t('bookingAttributeValuePlaceholder', {
+                    label: axis.label,
+                  })}
+                  disabled={disabled}
+                  hasError={hasError}
+                  createHint={(v) => t('pressEnterToCreate', { value: v })}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Row 3: combination key (only when axes exist and has partial key) */}
+      {hasAxes && combinationLabel && (
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{t('combinationKey')}:</span>
+          <Badge variant="outline" className="font-mono text-[11px]">
+            {combinationLabel}
+          </Badge>
+        </div>
+      )}
+
+      {/* Row 4: notes */}
+      {isEditingNotes || unit.notes ? (
+        <Textarea
+          placeholder={t('notesPlaceholder')}
+          value={unit.notes || ''}
+          onChange={(e) => onUpdate(index, { notes: e.target.value })}
+          className="mt-2 min-h-[60px] text-sm"
+          disabled={disabled}
+          onBlur={() => {
+            if (!unit.notes?.trim()) setIsEditingNotes(false)
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="mt-2 flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          onClick={() => setIsEditingNotes(true)}
+          disabled={disabled}
+        >
+          <StickyNote className="h-3 w-3" />
+          {t('addNotes')}
+        </button>
+      )}
+    </div>
+  )
+}
+
 interface UnitTrackingEditorProps {
   trackUnits: boolean
   onTrackUnitsChange: (value: boolean) => void
@@ -154,6 +477,7 @@ interface UnitTrackingEditorProps {
   quantity: string
   onQuantityChange: (value: string) => void
   disabled?: boolean
+  showValidationErrors?: boolean
 }
 
 export function UnitTrackingEditor({
@@ -166,6 +490,7 @@ export function UnitTrackingEditor({
   quantity,
   onQuantityChange,
   disabled = false,
+  showValidationErrors = false,
 }: UnitTrackingEditorProps) {
   const t = useTranslations('dashboard.products.form.unitTracking')
   const [showDisableConfirm, setShowDisableConfirm] = useState(false)
@@ -173,16 +498,12 @@ export function UnitTrackingEditor({
   const [bulkPrefix, setBulkPrefix] = useState('')
   const [bulkFrom, setBulkFrom] = useState('1')
   const [bulkTo, setBulkTo] = useState('5')
-  const [newAxisLabel, setNewAxisLabel] = useState('')
-  const [editingNotes, setEditingNotes] = useState<Record<number, boolean>>({})
   const [touchedUnits, setTouchedUnits] = useState<Set<number>>(new Set())
 
-  // Calculate active units count (available status only)
   const activeUnitsCount = useMemo(() => {
     return units.filter((u) => !u.status || u.status === 'available').length
   }, [units])
 
-  // Check for duplicate identifiers
   const duplicateIdentifiers = useMemo(() => {
     const seen = new Set<string>()
     const duplicates = new Set<string>()
@@ -196,7 +517,6 @@ export function UnitTrackingEditor({
     return duplicates
   }, [units])
 
-  // Collect unique existing values per attribute axis for combobox suggestions
   const existingValuesByAxis = useMemo(() => {
     const map: Record<string, string[]> = {}
     for (const axis of bookingAttributeAxes) {
@@ -224,7 +544,6 @@ export function UnitTrackingEditor({
       setShowDisableConfirm(true)
     } else {
       onTrackUnitsChange(enabled)
-      // Pre-create empty slots based on current quantity when enabling
       if (enabled && units.length === 0) {
         const qty = parseInt(quantity, 10) || 0
         if (qty > 0) {
@@ -274,21 +593,18 @@ export function UnitTrackingEditor({
     onChange(newUnits)
   }
 
-  const addBookingAxis = () => {
-    const label = newAxisLabel.trim()
-    if (!label) return
-
-    const key = normalizeAxisKey(label)
+  const addBookingAxis = (label: string) => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    const key = normalizeAxisKey(trimmed)
     if (!key) return
     if (bookingAttributeAxes.some((axis) => axis.key === key)) return
     if (bookingAttributeAxes.length >= 3) return
 
-    const nextAxes = [
+    onBookingAttributeAxesChange([
       ...bookingAttributeAxes,
-      { key, label, position: bookingAttributeAxes.length },
-    ]
-    onBookingAttributeAxesChange(nextAxes)
-    setNewAxisLabel('')
+      { key, label: trimmed, position: bookingAttributeAxes.length },
+    ])
   }
 
   const removeBookingAxis = (key: string) => {
@@ -316,7 +632,6 @@ export function UnitTrackingEditor({
     for (let i = from; i <= to; i++) {
       const paddedNumber = String(i).padStart(String(to).length, '0')
       const identifier = `${bulkPrefix}${paddedNumber}`
-      // Skip if identifier already exists
       if (!units.some((u) => u.identifier.toLowerCase() === identifier.toLowerCase())) {
         newUnits.push({ identifier, notes: '', status: 'available', attributes: {} })
       }
@@ -326,7 +641,6 @@ export function UnitTrackingEditor({
       onChange([...units, ...newUnits])
     }
 
-    // Reset bulk form
     setBulkPrefix('')
     setBulkFrom('1')
     setBulkTo('5')
@@ -369,7 +683,7 @@ export function UnitTrackingEditor({
 
       {trackUnits && (
         <>
-          {/* Active units count (read-only quantity) */}
+          {/* Active units count */}
           <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
             <div className="flex items-center gap-2 text-sm">
               <Package className="h-4 w-4 text-muted-foreground" />
@@ -380,91 +694,61 @@ export function UnitTrackingEditor({
             </span>
           </div>
 
-          <div className="space-y-3 rounded-lg border p-3">
+          {/* Unit list section */}
+          <div className="space-y-3">
+            {/* Header: title + action buttons */}
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">{t('bookingAttributesTitle')}</p>
-                <p className="text-xs text-muted-foreground">{t('bookingAttributesDescription')}</p>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{t('title')}</span>
+                <Badge variant="outline">{units.length}</Badge>
               </div>
-              <Badge variant="outline">{bookingAttributeAxes.length}/3</Badge>
+              <div className="flex items-center gap-2">
+                <BookingAttributesDialog
+                  axes={bookingAttributeAxes}
+                  onAddAxis={addBookingAxis}
+                  onRemoveAxis={removeBookingAxis}
+                  disabled={disabled}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addUnit}
+                  disabled={disabled}
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('addUnit')}
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Input
-                value={newAxisLabel}
-                onChange={(e) => setNewAxisLabel(e.target.value)}
-                placeholder={t('bookingAttributePlaceholder')}
-                disabled={disabled || bookingAttributeAxes.length >= 3}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addBookingAxis}
-                disabled={disabled || !newAxisLabel.trim() || bookingAttributeAxes.length >= 3}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t('addAttribute')}
-              </Button>
-            </div>
-
-            {bookingAttributeAxes.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
+            {/* Attribute axes summary (read-only badges) */}
+            {bookingAttributeAxes.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">
+                  {t('bookingAttributesTitle')}:
+                </span>
                 {bookingAttributeAxes.map((axis) => (
-                  <Badge key={axis.key} variant="secondary" className="gap-1">
-                    <span>{axis.label}</span>
+                  <Badge key={axis.key} variant="secondary" className="gap-1 pr-1">
+                    {axis.label}
                     <button
                       type="button"
-                      className="rounded-sm hover:bg-black/10 dark:hover:bg-white/10 px-1"
+                      className="rounded-sm px-0.5 hover:bg-black/10 dark:hover:bg-white/10"
                       onClick={() => removeBookingAxis(axis.key)}
                       disabled={disabled}
                     >
-                      ×
+                      &times;
                     </button>
                   </Badge>
                 ))}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground">{t('bookingAttributesEmpty')}</p>
             )}
-          </div>
 
-          {/* Duplicate warning */}
-          {duplicateIdentifiers.size > 0 && (
-            <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{t('duplicateIdentifier')}</span>
-            </div>
-          )}
-
-          {missingAttributeCount > 0 && (
-            <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>{t('missingAttributesWarning', { count: missingAttributeCount })}</span>
-            </div>
-          )}
-
-          {/* Units list */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{t('title')}</span>
-                <span className="text-sm text-muted-foreground">({units.length})</span>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={addUnit}
-                disabled={disabled}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                {t('addUnit')}
-              </Button>
-            </div>
-
+            {/* Unit rows or empty state */}
             {units.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center">
-                <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                <p className="mt-2 text-sm font-medium">{t('noUnitsRegistered')}</p>
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <Package className="mx-auto h-10 w-10 text-muted-foreground/40" />
+                <p className="mt-3 text-sm font-medium">{t('noUnitsRegistered')}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{t('noUnitsHint')}</p>
                 <Button
                   type="button"
@@ -483,181 +767,69 @@ export function UnitTrackingEditor({
                   const isDuplicate =
                     unit.identifier.trim() &&
                     duplicateIdentifiers.has(unit.identifier.trim().toLowerCase())
-                  const isEmpty = touchedUnits.has(index) && !unit.identifier.trim()
-                  const isEditingNotes = editingNotes[index]
-                  const combinationLabel = buildPartialCombinationKey(
-                    bookingAttributeAxes,
-                    unit.attributes,
-                  )
+                  const isEmpty =
+                    (touchedUnits.has(index) || showValidationErrors) &&
+                    !unit.identifier.trim()
 
                   return (
-                    <div
+                    <UnitRow
                       key={unit.id || `new-${index}`}
-                      className={cn(
-                        'flex items-start gap-3 rounded-lg border p-3 transition-colors',
-                        isDuplicate && 'border-destructive bg-destructive/5'
-                      )}
-                    >
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Input
-                            placeholder={t('identifierPlaceholder')}
-                            value={unit.identifier}
-                            onChange={(e) => updateUnit(index, { identifier: e.target.value })}
-                            onBlur={() => setTouchedUnits(prev => new Set(prev).add(index))}
-                            className={cn('flex-1', (isDuplicate || isEmpty) && 'border-destructive')}
-                            disabled={disabled}
-                          />
-                          <Select
-                            value={unit.status || 'available'}
-                            onValueChange={(value) => {
-                              if (value !== null) updateUnit(index, { status: value as UnitStatus })
-                            }}
-                            disabled={disabled}
-                          >
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue>
-                                {({ available: t('statusAvailable'), maintenance: t('statusMaintenance'), retired: t('statusRetired') } as const)[unit.status || 'available']}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="available" label={t('statusAvailable')}>
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-green-500" />
-                                  {t('statusAvailable')}
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="maintenance" label={t('statusMaintenance')}>
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-amber-500" />
-                                  {t('statusMaintenance')}
-                                </span>
-                              </SelectItem>
-                              <SelectItem value="retired" label={t('statusRetired')}>
-                                <span className="flex items-center gap-2">
-                                  <span className="h-2 w-2 rounded-full bg-gray-400" />
-                                  {t('statusRetired')}
-                                </span>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {isEmpty && (
-                          <p className="text-xs text-destructive">{t('identifierRequired')}</p>
-                        )}
-
-                        {bookingAttributeAxes.length > 0 && (
-                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                            {bookingAttributeAxes.map((axis) => {
-                              const suggestions = existingValuesByAxis[axis.key] || []
-                              const currentValue = unit.attributes?.[axis.key] || ''
-                              const hasError =
-                                !currentValue.trim() &&
-                                (unit.status || 'available') === 'available'
-
-                              return (
-                                <div key={axis.key} className="space-y-1">
-                                  <Label className="text-xs text-muted-foreground">
-                                    {axis.label}
-                                  </Label>
-                                  <AttributeValueCombobox
-                                    value={currentValue}
-                                    onChange={(val) =>
-                                      updateUnitAttribute(index, axis.key, val)
-                                    }
-                                    suggestions={suggestions}
-                                    placeholder={t(
-                                      'bookingAttributeValuePlaceholder',
-                                      { label: axis.label },
-                                    )}
-                                    disabled={disabled}
-                                    hasError={hasError}
-                                    createHint={(v) =>
-                                      t('pressEnterToCreate', { value: v })
-                                    }
-                                  />
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{t('combinationKey')}:</span>
-                          <Badge variant="outline" className="font-mono text-[11px]">
-                            {combinationLabel}
-                          </Badge>
-                        </div>
-
-                        {/* Notes toggle/field */}
-                        {isEditingNotes || unit.notes ? (
-                          <Textarea
-                            placeholder={t('notesPlaceholder')}
-                            value={unit.notes || ''}
-                            onChange={(e) => updateUnit(index, { notes: e.target.value })}
-                            className="min-h-[60px] text-sm"
-                            disabled={disabled}
-                            onBlur={() => {
-                              if (!unit.notes?.trim()) {
-                                setEditingNotes((prev) => ({ ...prev, [index]: false }))
-                              }
-                            }}
-                          />
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="h-auto p-1 text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => setEditingNotes((prev) => ({ ...prev, [index]: true }))}
-                            disabled={disabled}
-                          >
-                            + {t('addNotes')}
-                          </Button>
-                        )}
-                      </div>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger render={<Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeUnit(index)}
-                              disabled={disabled}
-                              className="mt-1 shrink-0 text-muted-foreground hover:text-destructive"
-                            />}>
-                              <Trash2 className="h-4 w-4" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>{t('deleteConfirm')}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                      unit={unit}
+                      index={index}
+                      bookingAttributeAxes={bookingAttributeAxes}
+                      existingValuesByAxis={existingValuesByAxis}
+                      isDuplicate={!!isDuplicate}
+                      isEmpty={isEmpty}
+                      disabled={disabled}
+                      onUpdate={updateUnit}
+                      onUpdateAttribute={updateUnitAttribute}
+                      onRemove={removeUnit}
+                      onTouch={(i) => setTouchedUnits((prev) => new Set(prev).add(i))}
+                    />
                   )
                 })}
               </div>
             )}
 
+            {/* Warnings */}
+            {duplicateIdentifiers.size > 0 && (
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{t('duplicateIdentifier')}</span>
+              </div>
+            )}
+
+            {missingAttributeCount > 0 && (
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{t('missingAttributesWarning', { count: missingAttributeCount })}</span>
+              </div>
+            )}
+
+            <Separator />
+
             {/* Bulk add */}
             <Collapsible open={bulkOpen} onOpenChange={setBulkOpen}>
-              <CollapsibleTrigger render={<Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full justify-between"
-                  disabled={disabled}
-                />}>
-                  {t('bulkAdd')}
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 transition-transform',
-                      bulkOpen && 'rotate-180'
-                    )}
+              <CollapsibleTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-between"
+                    disabled={disabled}
                   />
+                }
+              >
+                {t('bulkAdd')}
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 transition-transform',
+                    bulkOpen && 'rotate-180',
+                  )}
+                />
               </CollapsibleTrigger>
               <CollapsibleContent className="pt-3">
-                <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="rounded-lg border bg-muted/40 p-4">
                   <div className="grid gap-4 sm:grid-cols-4">
                     <div className="space-y-2">
                       <Label className="text-xs">{t('bulkPrefix')}</Label>
@@ -705,7 +877,7 @@ export function UnitTrackingEditor({
                         {t('bulkPreview')}: {bulkPrefix}
                         {String(parseInt(bulkFrom, 10) || 1).padStart(
                           String(parseInt(bulkTo, 10) || 5).length,
-                          '0'
+                          '0',
                         )}{' '}
                         ... {bulkPrefix}
                         {bulkTo}
@@ -729,11 +901,10 @@ export function UnitTrackingEditor({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogClose render={<Button variant="outline" />}>{t('cancel')}</AlertDialogClose>
-            <AlertDialogClose
-              render={<Button />}
-              onClick={confirmDisable}
-            >
+            <AlertDialogClose render={<Button variant="outline" />}>
+              {t('cancel')}
+            </AlertDialogClose>
+            <AlertDialogClose render={<Button />} onClick={confirmDisable}>
               {t('confirm')}
             </AlertDialogClose>
           </AlertDialogFooter>
