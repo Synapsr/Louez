@@ -160,7 +160,14 @@ export interface TulipIntegrationSettings {
   contractType?: TulipContractType
 }
 
+export interface IntegrationStateSettings {
+  enabled?: boolean
+}
+
+export type IntegrationStates = Record<string, IntegrationStateSettings>
+
 export interface IntegrationData {
+  states?: IntegrationStates
   tulip?: TulipIntegrationSettings
 }
 

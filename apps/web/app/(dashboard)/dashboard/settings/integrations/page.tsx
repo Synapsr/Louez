@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 
 import { getCurrentStore } from '@/lib/store-context'
 
-import { IntegrationsTabs } from './components/integrations-tabs'
+import { IntegrationsCatalogView } from './components/integrations-catalog-view'
 
 export default async function IntegrationsPage() {
   const store = await getCurrentStore()
@@ -11,5 +11,5 @@ export default async function IntegrationsPage() {
     redirect('/onboarding')
   }
 
-  return <IntegrationsTabs />
+  return <IntegrationsCatalogView />
 }

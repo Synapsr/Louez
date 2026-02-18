@@ -26,12 +26,39 @@ import {
   getTulipSettings,
   mergeTulipSettings,
 } from '@/lib/integrations/tulip/settings';
+import {
+  getIntegration,
+  getIntegrationDetail,
+  listByCategory,
+  listCategories,
+  listIntegrations,
+} from '@/lib/integrations/registry';
+import type {
+  IntegrationCatalogItem,
+  IntegrationCategorySummary,
+  IntegrationDetail,
+} from '@/lib/integrations/registry/types';
 import { getCurrentStore } from '@/lib/store-context';
 import type { StoreWithFullData } from '@/lib/store-context';
 
 import { env } from '@/env';
 
 type ActionError = { error: string };
+
+export type IntegrationsCatalogState = {
+  categories: IntegrationCategorySummary[];
+  integrations: IntegrationCatalogItem[];
+};
+
+export type IntegrationsCategoryState = {
+  category: string;
+  categories: IntegrationCategorySummary[];
+  integrations: IntegrationCatalogItem[];
+};
+
+export type IntegrationDetailState = {
+  integration: IntegrationDetail;
+};
 
 const TULIP_PRODUCT_TYPES = [
   'bike',
@@ -160,6 +187,21 @@ const tulipPurchasedDateSchema = z.union([
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 ]);
 
+const listIntegrationsCatalogSchema = z.object({});
+
+const listIntegrationsCategorySchema = z.object({
+  category: z.string().trim().min(1).max(60),
+});
+
+const getIntegrationDetailSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+});
+
+const setIntegrationEnabledSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+  enabled: z.boolean(),
+});
+
 export type TulipIntegrationState = {
   connected: boolean;
   apiKeyLast4: string | null;
@@ -201,7 +243,6 @@ const connectTulipApiKeySchema = z.object({
 const updateTulipConfigurationSchema = z.object({
   publicMode: z.enum(['required', 'optional', 'no_public']),
   includeInFinalPrice: z.boolean(),
-  renterUid: z.string().trim().min(1).max(50).nullable(),
   contractType: z.enum(['LCD', 'LMD', 'LLD']),
 });
 
@@ -231,6 +272,8 @@ const createTulipProductSchema = z.object({
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
 });
+
+const disconnectTulipSchema = z.object({});
 
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -394,6 +437,122 @@ function normalizeTulipProducts(
       (product): product is NonNullable<typeof product> => product !== null,
     )
     .sort((a, b) => a.title.localeCompare(b.title, 'en'));
+}
+
+export async function listIntegrationsCatalogAction(
+  input: z.infer<typeof listIntegrationsCatalogSchema>,
+): Promise<IntegrationsCatalogState | ActionError> {
+  try {
+    listIntegrationsCatalogSchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+
+    return {
+      categories: listCategories(settings),
+      integrations: listIntegrations(settings),
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function listIntegrationsCategoryAction(
+  input: z.infer<typeof listIntegrationsCategorySchema>,
+): Promise<IntegrationsCategoryState | ActionError> {
+  try {
+    const validated = listIntegrationsCategorySchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+    const categories = listCategories(settings);
+    const integrations = listByCategory(settings, validated.category);
+
+    if (integrations.length === 0 && !categories.some((item) => item.id === validated.category)) {
+      return { error: 'errors.integrationCategoryNotFound' };
+    }
+
+    return {
+      category: validated.category,
+      categories,
+      integrations,
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function getIntegrationDetailAction(
+  input: z.infer<typeof getIntegrationDetailSchema>,
+): Promise<IntegrationDetailState | ActionError> {
+  try {
+    const validated = getIntegrationDetailSchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+    const integration = getIntegrationDetail(settings, validated.integrationId);
+
+    if (!integration) {
+      return { error: 'errors.integrationNotFound' };
+    }
+
+    return { integration };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function setIntegrationEnabledAction(
+  input: z.infer<typeof setIntegrationEnabledSchema>,
+): Promise<{ success: true } | ActionError> {
+  try {
+    const validated = setIntegrationEnabledSchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const { store } = storeResult;
+    const integration = getIntegration(validated.integrationId);
+    if (!integration) {
+      return { error: 'errors.integrationNotFound' };
+    }
+
+    const currentSettings = (store.settings as StoreSettings | null) || null;
+    const nextSettings = integration.adapter.setEnabled(
+      currentSettings,
+      validated.enabled,
+    );
+
+    await db
+      .update(stores)
+      .set({
+        settings: nextSettings,
+        updatedAt: new Date(),
+      })
+      .where(eq(stores.id, store.id));
+
+    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath('/dashboard/settings/integrations/categories/[category]', 'page');
+    revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
+
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
 }
 
 export async function getTulipIntegrationStateAction(): Promise<
@@ -581,7 +740,6 @@ export async function updateTulipConfigurationAction(
       {
         publicMode: validated.publicMode,
         includeInFinalPrice: validated.includeInFinalPrice,
-        renterUid: validated.renterUid ?? undefined,
         contractType: validated.contractType,
       },
     );
@@ -1113,6 +1271,64 @@ export async function createTulipProductAction(
         });
 
     revalidatePath('/dashboard/settings/integrations');
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function disconnectTulipAction(
+  input: z.infer<typeof disconnectTulipSchema>,
+): Promise<{ success: true } | ActionError> {
+  try {
+    disconnectTulipSchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const { store } = storeResult;
+    const currentSettings = (store.settings as StoreSettings | null) || null;
+    const nextSettings = mergeTulipSettings(currentSettings, {
+      apiKeyEncrypted: undefined,
+      apiKeyLast4: undefined,
+      connectedAt: undefined,
+      renterUid: undefined,
+    });
+
+    await db.transaction(async (tx) => {
+      await tx
+        .update(stores)
+        .set({
+          settings: nextSettings,
+          updatedAt: new Date(),
+        })
+        .where(eq(stores.id, store.id));
+
+      const storeProducts = await tx.query.products.findMany({
+        where: eq(products.storeId, store.id),
+        columns: {
+          id: true,
+        },
+      });
+
+      if (storeProducts.length > 0) {
+        await tx
+          .delete(productsTulip)
+          .where(
+            inArray(
+              productsTulip.productId,
+              storeProducts.map((item) => item.id),
+            ),
+          );
+      }
+    });
+
+    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath('/dashboard/settings/integrations/categories/[category]', 'page');
+    revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
+
     return { success: true };
   } catch (error) {
     return toActionError(error);

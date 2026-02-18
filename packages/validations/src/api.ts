@@ -266,6 +266,21 @@ export const updateStoreAppearanceInputSchema = z.object({
 
 export const dashboardIntegrationsGetTulipStateInputSchema = z.object({})
 
+export const dashboardIntegrationsListCatalogInputSchema = z.object({})
+
+export const dashboardIntegrationsListCategoryInputSchema = z.object({
+  category: z.string().trim().min(1).max(60),
+})
+
+export const dashboardIntegrationsGetDetailInputSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+})
+
+export const dashboardIntegrationsSetEnabledInputSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+  enabled: z.boolean(),
+})
+
 export const dashboardIntegrationsConnectTulipInputSchema = z.object({
   apiKey: z.string().trim().min(8).max(500),
 })
@@ -273,7 +288,6 @@ export const dashboardIntegrationsConnectTulipInputSchema = z.object({
 export const dashboardIntegrationsUpdateTulipConfigurationInputSchema = z.object({
   publicMode: z.enum(['required', 'optional', 'no_public']),
   includeInFinalPrice: z.boolean(),
-  renterUid: z.string().trim().min(1).max(50).nullable(),
   contractType: z.enum(['LCD', 'LMD', 'LLD']),
 })
 
@@ -454,6 +468,18 @@ export type UpdateStoreAppearanceInput = z.infer<
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema
 >
+export type DashboardIntegrationsListCatalogInput = z.infer<
+  typeof dashboardIntegrationsListCatalogInputSchema
+>
+export type DashboardIntegrationsListCategoryInput = z.infer<
+  typeof dashboardIntegrationsListCategoryInputSchema
+>
+export type DashboardIntegrationsGetDetailInput = z.infer<
+  typeof dashboardIntegrationsGetDetailInputSchema
+>
+export type DashboardIntegrationsSetEnabledInput = z.infer<
+  typeof dashboardIntegrationsSetEnabledInputSchema
+>
 export type DashboardIntegrationsConnectTulipInput = z.infer<
   typeof dashboardIntegrationsConnectTulipInputSchema
 >
@@ -465,6 +491,9 @@ export type DashboardIntegrationsUpsertTulipProductMappingInput = z.infer<
 >
 export type DashboardIntegrationsPushTulipProductUpdateInput = z.infer<
   typeof dashboardIntegrationsPushTulipProductUpdateInputSchema
+>
+export type DashboardIntegrationsCreateTulipProductInput = z.infer<
+  typeof dashboardIntegrationsCreateTulipProductInputSchema
 >
 export type DashboardIntegrationsDisconnectTulipInput = z.infer<
   typeof dashboardIntegrationsDisconnectTulipInputSchema

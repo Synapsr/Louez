@@ -233,6 +233,8 @@ Construit avec des technologies modernes et éprouvées :
 
 ## 📖 Documentation
 
+- [Guide pour ajouter une intégration](docs/integrations/adding-an-integration.md)
+
 <details>
 <summary><strong>📋 Variables d'environnement</strong></summary>
 
