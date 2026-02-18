@@ -29,6 +29,7 @@ import { ProductFormStepInfo } from './components/product-form-step-info';
 import { ProductFormStepPhotos } from './components/product-form-step-photos';
 import { ProductFormStepPreview } from './components/product-form-step-preview';
 import { ProductFormStepPricing } from './components/product-form-step-pricing';
+import { ProductAssuranceSection } from './components/product-assurance-section';
 import { ProductImageCropDialog } from './components/product-image-crop-dialog';
 import { useProductFormMedia } from './hooks/use-product-form-media';
 import { useProductFormMutations } from './hooks/use-product-form-mutations';
@@ -423,6 +424,10 @@ export function ProductForm({
                 hasUnitsSubmitError || submissionAttempts > 0
               }
             />
+
+            {product?.id ? (
+              <ProductAssuranceSection productId={product.id} />
+            ) : null}
 
             <FloatingSaveBar
               isDirty={isDirty}

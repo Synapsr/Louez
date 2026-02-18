@@ -294,6 +294,37 @@ export interface BaseContext {
         }
       | { error: string }
     >
+    getTulipProductState?: (input: { productId: string }) => Promise<
+      | {
+          connected: boolean
+          apiKeyLast4: string | null
+          connectedAt: string | null
+          connectionIssue: string | null
+          calendlyUrl: string
+          settings: {
+            publicMode: 'required' | 'optional' | 'no_public'
+            includeInFinalPrice: boolean
+            contractType: 'LCD' | 'LMD' | 'LLD'
+          }
+          tulipProducts: Array<{
+            id: string
+            title: string
+            productType: string | null
+            productSubtype: string | null
+            purchasedDate: string | null
+            valueExcl: number | null
+            brand: string | null
+            model: string | null
+          }>
+          product: {
+            id: string
+            name: string
+            price: number
+            tulipProductId: string | null
+          }
+        }
+      | { error: string }
+    >
     connectTulipApiKey?: (input: { apiKey: string }) => Promise<{ success?: boolean; error?: string }>
     updateTulipConfiguration?: (input: {
       publicMode: 'required' | 'optional' | 'no_public'
