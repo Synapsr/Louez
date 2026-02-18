@@ -362,11 +362,6 @@ export function ProductForm({
     ? `${currencySymbol}${watchedValues.basePriceDuration.price.trim().replace(',', '.')}`
     : `${currencySymbol}0.00`;
 
-  // Parse base price for the pricing tiers editor
-  const basePrice =
-    parseFloat(watchedValues.basePriceDuration?.price?.replace(',', '.') || '0') ||
-    0;
-
   // Edit mode: simple form without stepper
   if (isEditMode) {
     return (
@@ -410,14 +405,11 @@ export function ProductForm({
             <ProductFormStepPricing
               form={form as unknown as ProductFormComponentApi}
               watchedValues={watchedValues}
-              priceLabel={priceLabel}
               currency={currency}
               currencySymbol={currencySymbol}
               isSaving={isSaving}
               storeTaxSettings={storeTaxSettings}
               availableAccessories={availableAccessories}
-              basePrice={basePrice}
-              effectivePricingMode={effectivePricingMode}
               showAccessories={true}
               showUnitValidationErrors={
                 hasUnitsSubmitError || submissionAttempts > 0
@@ -521,14 +513,11 @@ export function ProductForm({
               <ProductFormStepPricing
                 form={form as unknown as ProductFormComponentApi}
                 watchedValues={watchedValues}
-                priceLabel={priceLabel}
                 currency={currency}
                 currencySymbol={currencySymbol}
                 isSaving={isSaving}
                 storeTaxSettings={storeTaxSettings}
                 availableAccessories={availableAccessories}
-                basePrice={basePrice}
-                effectivePricingMode={effectivePricingMode}
                 showAccessories={false}
                 showUnitValidationErrors={
                   hasUnitsSubmitError || submissionAttempts > 0
