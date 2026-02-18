@@ -1865,16 +1865,49 @@
             "noTulipProduct": "Select a Tulip product",
             "notMapped": "Not mapped",
             "categoryPlaceholder": "Select category",
+            "productSubtypePlaceholder": "Select product subtype",
+            "productTitlePlaceholder": "Leave empty to keep \"{defaultTitle}\"",
             "brandPlaceholder": "Brand",
             "modelPlaceholder": "Model",
+            "createOption": "Use \"{value}\"",
+            "noBrandResults": "No brand suggestions",
+            "noModelResults": "No model suggestions",
             "invalidPurchasePrice": "Enter a valid purchase price.",
+            "invalidPurchasedDate": "Select a valid purchase date.",
             "createButton": "Create in Tulip",
             "creatingButton": "Creating...",
             "updateButton": "Push update",
             "updatingButton": "Updating...",
             "savingMapping": "Saving...",
             "refreshButton": "Refresh Tulip products",
-            "refreshingButton": "Refreshing..."
+            "refreshingButton": "Refreshing...",
+            "filters": {
+              "all": "All",
+              "mapped": "Mapped",
+              "unmapped": "Not mapped"
+            },
+            "searchPlaceholder": "Search products...",
+            "statusBadge": {
+              "label": "Status",
+              "mapped": "Mapped",
+              "notMapped": "Not mapped"
+            },
+            "noResults": "No Tulip products found",
+            "noFilterResults": "No products match the current filters.",
+            "sheet": {
+              "description": "Configure Tulip product details and push updates.",
+              "cancel": "Cancel"
+            },
+            "fields": {
+              "tulipProduct": "Tulip product",
+              "category": "Category",
+              "productTitle": "Product name (optional)",
+              "productSubtype": "Product subtype",
+              "brand": "Brand",
+              "model": "Model",
+              "purchasedDate": "Purchase date",
+              "purchasePriceHt": "Purchase price (excl. tax)"
+            }
           }
         }
       },
@@ -4338,6 +4371,9 @@
     "tulipApiKeyInvalid": "The Tulip API key is invalid.",
     "tulipActionForbidden": "Tulip refused this action for the current account configuration.",
     "tulipApiUnavailable": "Tulip is currently unavailable. Please try again later.",
+    "tulipProductSubtypeInvalid": "This subtype is not valid for the selected Tulip category.",
+    "tulipProductPayloadInvalid": "Tulip rejected product data. Check category/subtype and required fields.",
+    "tulipProductNotFound": "Tulip product not found. Refresh Tulip products and remap this item.",
     "tulipNotConfigured": "Tulip is not configured yet.",
     "tulipProductNotMapped": "Some products are not mapped to Tulip products.",
     "tulipProductAlreadyMapped": "This product is already mapped to a Tulip product.",

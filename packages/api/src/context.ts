@@ -62,6 +62,56 @@ export type CustomerData = {
   phone: string | null;
 };
 
+type TulipProductType =
+  | 'bike'
+  | 'wintersports'
+  | 'watersports'
+  | 'event'
+  | 'high-tech'
+  | 'small-tools'
+
+type TulipProductSubtype =
+  | 'standard'
+  | 'electric'
+  | 'cargo'
+  | 'remorque'
+  | 'furniture'
+  | 'tent'
+  | 'decorations'
+  | 'tableware'
+  | 'entertainment'
+  | 'action-cam'
+  | 'drone'
+  | 'camera'
+  | 'video-camera'
+  | 'stabilizer'
+  | 'phone'
+  | 'computer'
+  | 'tablet'
+  | 'small-appliance'
+  | 'large-appliance'
+  | 'construction-equipment'
+  | 'diy-tools'
+  | 'electric-diy-tools'
+  | 'gardening-tools'
+  | 'electric-gardening-tools'
+  | 'kitesurf'
+  | 'foil'
+  | 'windsurf'
+  | 'sailboat'
+  | 'kayak'
+  | 'canoe'
+  | 'water-ski'
+  | 'wakeboard'
+  | 'mono-ski'
+  | 'buoy'
+  | 'paddle'
+  | 'surf'
+  | 'pedalo'
+  | 'ski'
+  | 'snowboard'
+  | 'snowshoe'
+
 /**
  * Base context provided to all procedures
  */
@@ -204,6 +254,8 @@ export interface BaseContext {
             id: string
             title: string
             productType: string | null
+            productSubtype: string | null
+            purchasedDate: string | null
             valueExcl: number | null
             brand: string | null
             model: string | null
@@ -230,14 +282,20 @@ export interface BaseContext {
     }) => Promise<{ success?: boolean; error?: string }>
     pushTulipProductUpdate?: (input: {
       productId: string
-      productType?: string | null
+      title?: string | null
+      productType?: TulipProductType | null
+      productSubtype?: TulipProductSubtype | null
+      purchasedDate?: string | null
       brand?: string | null
       model?: string | null
       valueExcl?: number | null
     }) => Promise<{ success?: boolean; error?: string }>
     createTulipProduct?: (input: {
       productId: string
-      productType?: string | null
+      title?: string | null
+      productType?: TulipProductType | null
+      productSubtype?: TulipProductSubtype | null
+      purchasedDate?: string | null
       brand?: string | null
       model?: string | null
       valueExcl?: number | null

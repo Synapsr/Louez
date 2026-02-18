@@ -1,5 +1,6 @@
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
+
 import { env as authEnv } from '@louez/auth/env';
 import { env as dbEnv } from '@louez/db/env';
 import { env as emailEnv } from '@louez/email/env';
@@ -92,7 +93,6 @@ export const env = createEnv({
 
     // ===== Tulip Integrations (Optional) =====
     TULIP_API_BASE_URL: z
-      .string()
       .url('TULIP_API_BASE_URL must be a valid URL')
       .default('https://api.mytulip.io/v2'),
     TULIP_ENCRYPTION_KEY: z.string().min(16).optional(),

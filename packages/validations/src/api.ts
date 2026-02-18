@@ -282,9 +282,69 @@ export const dashboardIntegrationsUpsertTulipProductMappingInputSchema = z.objec
   tulipProductId: z.string().trim().min(1).max(50).nullable(),
 })
 
+const tulipProductTypeSchema = z.enum([
+  'bike',
+  'wintersports',
+  'watersports',
+  'event',
+  'high-tech',
+  'small-tools',
+])
+
+const tulipProductSubtypeSchema = z.enum([
+  'standard',
+  'electric',
+  'cargo',
+  'remorque',
+  'furniture',
+  'tent',
+  'decorations',
+  'tableware',
+  'entertainment',
+  'action-cam',
+  'drone',
+  'camera',
+  'video-camera',
+  'stabilizer',
+  'phone',
+  'computer',
+  'tablet',
+  'small-appliance',
+  'large-appliance',
+  'construction-equipment',
+  'diy-tools',
+  'electric-diy-tools',
+  'gardening-tools',
+  'electric-gardening-tools',
+  'kitesurf',
+  'foil',
+  'windsurf',
+  'sailboat',
+  'kayak',
+  'canoe',
+  'water-ski',
+  'wakeboard',
+  'mono-ski',
+  'buoy',
+  'paddle',
+  'surf',
+  'pedalo',
+  'ski',
+  'snowboard',
+  'snowshoe',
+])
+
+const tulipPurchasedDateSchema = z.union([
+  z.string().datetime({ offset: true }),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+])
+
 export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
   productId: z.string().length(21),
-  productType: z.string().trim().max(80).nullable().optional(),
+  title: z.string().trim().max(255).nullable().optional(),
+  productType: tulipProductTypeSchema.nullable().optional(),
+  productSubtype: tulipProductSubtypeSchema.nullable().optional(),
+  purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
@@ -292,7 +352,10 @@ export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
 
 export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
   productId: z.string().length(21),
-  productType: z.string().trim().max(80).nullable().optional(),
+  title: z.string().trim().max(255).nullable().optional(),
+  productType: tulipProductTypeSchema.nullable().optional(),
+  productSubtype: tulipProductSubtypeSchema.nullable().optional(),
+  purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),

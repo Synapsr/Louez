@@ -1,50 +1,51 @@
-import { env } from '@/env'
+import { env } from '@/env';
 
-type TulipRecord = Record<string, unknown>
+type TulipRecord = Record<string, unknown>;
 
 export class TulipApiError extends Error {
-  status: number
-  payload: unknown
+  status: number;
+  payload: unknown;
 
   constructor(message: string, status: number, payload: unknown) {
-    super(message)
-    this.status = status
-    this.payload = payload
+    super(message);
+    this.status = status;
+    this.payload = payload;
   }
 }
 
 function unwrapEnvelope(payload: unknown): unknown {
   if (Array.isArray(payload)) {
-    return payload[0] ?? null
+    return payload[0] ?? null;
   }
-  return payload
+  return payload;
 }
 
 function extractMessage(payload: unknown): string {
   if (!payload || typeof payload !== 'object') {
-    return 'Unknown error'
+    return 'Unknown error';
   }
-  const obj = payload as TulipRecord
-  if (typeof obj.message === 'string') return obj.message
+  const obj = payload as TulipRecord;
+  if (typeof obj.message === 'string') return obj.message;
   if (obj.error && typeof obj.error === 'object') {
-    const errorObj = obj.error as TulipRecord
-    if (typeof errorObj.message === 'string') return errorObj.message
+    const errorObj = obj.error as TulipRecord;
+    if (typeof errorObj.message === 'string') return errorObj.message;
   }
-  return 'Unknown error'
+  return 'Unknown error';
 }
 
 async function request<T>(
   path: string,
   apiKey: string,
   options?: {
-    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
-    body?: unknown
+    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    body?: unknown;
   },
 ): Promise<T> {
-  const method = options?.method || 'GET'
-  const hasBody = options?.body !== undefined
+  const method = options?.method || 'GET';
+  const hasBody = options?.body !== undefined;
 
-  const response = await fetch(`${env.TULIP_API_BASE_URL}${path}`, {
+  const url = `${env.TULIP_API_BASE_URL}${path}`;
+  const response = await fetch(url, {
     method,
     headers: {
       key: apiKey,
@@ -52,13 +53,13 @@ async function request<T>(
     },
     body: hasBody ? JSON.stringify(options?.body) : undefined,
     cache: 'no-store',
-  })
+  });
 
-  let payload: unknown = null
+  let payload: unknown = null;
   try {
-    payload = await response.json()
+    payload = await response.json();
   } catch {
-    payload = null
+    payload = null;
   }
 
   if (!response.ok) {
@@ -66,88 +67,96 @@ async function request<T>(
       `Tulip API request failed (${response.status}): ${extractMessage(payload)}`,
       response.status,
       payload,
-    )
+    );
   }
 
-  return payload as T
+  return payload as T;
 }
 
 export type TulipProduct = {
-  uid?: string
-  product_id?: string
-  title?: string
-  product_type?: string
+  uid?: string;
+  product_id?: string;
+  title?: string;
+  product_type?: string;
+  purchased_date?: string;
   data?: {
-    product_subtype?: string
-    brand?: string
-    model?: string
-  }
-  value_excl?: number
-}
+    product_subtype?: string;
+    brand?: string;
+    model?: string;
+  };
+  value_excl?: number;
+};
 
 export type TulipRenter = {
-  uid: string
-  enabled: boolean
-}
+  uid: string;
+  enabled: boolean;
+};
 
 export type TulipRenterDetails = {
-  uid: string
+  uid: string;
   options?: {
-    option?: boolean
-    inclusion?: boolean
-    LCD?: boolean
-    LMD?: boolean
-    LLD?: boolean
-  }
-}
+    option?: boolean;
+    inclusion?: boolean;
+    LCD?: boolean;
+    LMD?: boolean;
+    LLD?: boolean;
+  };
+};
 
 export async function tulipListRenters(apiKey: string): Promise<TulipRenter[]> {
-  const payload = await request<unknown>('/renters', apiKey)
-  const envelope = unwrapEnvelope(payload) as TulipRecord | null
-  const renters = envelope?.renters
+  const payload = await request<unknown>('/renters', apiKey);
+  const envelope = unwrapEnvelope(payload) as TulipRecord | null;
+  const renters = envelope?.renters;
 
   if (!renters || typeof renters !== 'object') {
-    return []
+    return [];
   }
 
-  return Object.entries(renters as Record<string, unknown>).map(([uid, enabled]) => ({
-    uid,
-    enabled: Boolean(enabled),
-  }))
+  return Object.entries(renters as Record<string, unknown>).map(
+    ([uid, enabled]) => ({
+      uid,
+      enabled: Boolean(enabled),
+    }),
+  );
 }
 
-export async function tulipGetRenter(apiKey: string, renterUid: string): Promise<TulipRenterDetails | null> {
-  const payload = await request<unknown>(`/renters/${renterUid}`, apiKey)
-  const envelope = unwrapEnvelope(payload) as TulipRecord | null
-  const renter = envelope?.renter
+export async function tulipGetRenter(
+  apiKey: string,
+  renterUid: string,
+): Promise<TulipRenterDetails | null> {
+  const payload = await request<unknown>(`/renters/${renterUid}`, apiKey);
+  const envelope = unwrapEnvelope(payload) as TulipRecord | null;
+  const renter = envelope?.renter;
 
   if (!renter || typeof renter !== 'object') {
-    return null
+    return null;
   }
 
-  const renterObj = renter as TulipRecord
+  const renterObj = renter as TulipRecord;
   return {
     uid: String(renterObj.uid ?? renterUid),
     options: (renterObj.options as TulipRenterDetails['options']) ?? undefined,
-  }
+  };
 }
 
-export async function tulipListProducts(apiKey: string): Promise<TulipProduct[]> {
-  const payload = await request<unknown>('/products', apiKey)
-  const envelope = unwrapEnvelope(payload)
+export async function tulipListProducts(
+  apiKey: string,
+): Promise<TulipProduct[]> {
+  const payload = await request<unknown>('/products', apiKey);
+  const envelope = unwrapEnvelope(payload);
 
   if (Array.isArray(envelope)) {
-    return envelope as TulipProduct[]
+    return envelope as TulipProduct[];
   }
 
   if (envelope && typeof envelope === 'object') {
-    const obj = envelope as TulipRecord
+    const obj = envelope as TulipRecord;
     if (Array.isArray(obj.products)) {
-      return obj.products as TulipProduct[]
+      return obj.products as TulipProduct[];
     }
   }
 
-  return []
+  return [];
 }
 
 export async function tulipCreateProduct(
@@ -157,21 +166,21 @@ export async function tulipCreateProduct(
   const response = await request<unknown>('/products', apiKey, {
     method: 'POST',
     body: payload,
-  })
-  const envelope = unwrapEnvelope(response)
+  });
+  const envelope = unwrapEnvelope(response);
 
   if (envelope && typeof envelope === 'object') {
-    const obj = envelope as TulipRecord
+    const obj = envelope as TulipRecord;
     if (obj.product && typeof obj.product === 'object') {
-      return obj.product as TulipProduct
+      return obj.product as TulipProduct;
     }
 
     if (obj.uid || obj.product_id) {
-      return obj as TulipProduct
+      return obj as TulipProduct;
     }
   }
 
-  return null
+  return null;
 }
 
 export async function tulipUpdateProduct(
@@ -179,41 +188,45 @@ export async function tulipUpdateProduct(
   tulipProductId: string,
   payload: Record<string, unknown>,
 ): Promise<TulipProduct | null> {
-  const response = await request<unknown>(`/products/${tulipProductId}`, apiKey, {
-    method: 'PATCH',
-    body: payload,
-  })
-  const envelope = unwrapEnvelope(response)
+  const response = await request<unknown>(
+    `/products/${tulipProductId}`,
+    apiKey,
+    {
+      method: 'PATCH',
+      body: payload,
+    },
+  );
+  const envelope = unwrapEnvelope(response);
 
   if (envelope && typeof envelope === 'object') {
-    const obj = envelope as TulipRecord
+    const obj = envelope as TulipRecord;
     if (obj.product && typeof obj.product === 'object') {
-      return obj.product as TulipProduct
+      return obj.product as TulipProduct;
     }
   }
 
-  return null
+  return null;
 }
 
 type TulipContract = {
-  cid?: string
-  price?: number
-}
+  cid?: string;
+  price?: number;
+};
 
 export async function tulipCreateContract(
   apiKey: string,
   payload: Record<string, unknown>,
   preview: boolean,
 ): Promise<TulipContract> {
-  const query = preview ? '?preview=true' : ''
+  const query = preview ? '?preview=true' : '';
   const response = await request<unknown>(`/contracts${query}`, apiKey, {
     method: 'POST',
     body: payload,
-  })
-  const envelope = unwrapEnvelope(response) as TulipRecord | null
-  const contract = envelope?.contract
+  });
+  const envelope = unwrapEnvelope(response) as TulipRecord | null;
+  const contract = envelope?.contract;
   if (!contract || typeof contract !== 'object') {
-    throw new Error('errors.tulipInvalidContractResponse')
+    throw new Error('errors.tulipInvalidContractResponse');
   }
-  return contract as TulipContract
+  return contract as TulipContract;
 }
