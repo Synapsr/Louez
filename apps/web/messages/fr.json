@@ -787,6 +787,8 @@
           "bookingAttributeValuePlaceholder": "Valeur {label}",
           "combinationKey": "Combinaison",
           "missingAttributesWarning": "{count, plural, one {# unité active n'a pas toutes les valeurs d'attribut} other {# unités actives n'ont pas toutes les valeurs d'attribut}}",
+          "manageAttributes": "Gérer les attributs",
+          "manageAttributesDescription": "Définissez jusqu'à 3 axes d'attribut (ex : Taille, Couleur) pour les combinaisons suivies.",
           "pressEnterToCreate": "Appuyez sur Entrée pour créer « {value} »",
           "addUnit": "Ajouter une unité",
           "addNotes": "Ajouter des notes",
