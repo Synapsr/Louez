@@ -326,6 +326,7 @@ export const products = mysqlTable(
     // Pricing
     price: decimal('price', { precision: 10, scale: 2 }).notNull(),
     deposit: decimal('deposit', { precision: 10, scale: 2 }).default('0'),
+    basePeriodMinutes: int('base_period_minutes'),
 
     // Product pricing mode
     pricingMode: pricingModeEnum.notNull(),
@@ -381,10 +382,12 @@ export const productPricingTiers = mysqlTable(
     productId: varchar('product_id', { length: 21 }).notNull(),
 
     // Threshold
-    minDuration: int('min_duration').notNull(),
+    minDuration: int('min_duration'),
+    period: int('period'),
 
     // Discount
-    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }).notNull(),
+    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }),
+    price: decimal('price', { precision: 10, scale: 2 }),
 
     // Display order
     displayOrder: int('display_order').default(0),
@@ -398,6 +401,10 @@ export const productPricingTiers = mysqlTable(
     uniqueProductDuration: unique('product_pricing_tiers_unique').on(
       table.productId,
       table.minDuration
+    ),
+    uniqueProductPeriod: unique('product_pricing_tiers_unique_period').on(
+      table.productId,
+      table.period
     ),
   })
 )

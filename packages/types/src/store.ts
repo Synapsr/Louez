@@ -287,8 +287,15 @@ export type PricingMode = 'hour' | 'day' | 'week'
 
 export interface PricingTier {
   id: string
-  minDuration: number      // Minimum units to trigger this tier
-  discountPercent: number  // Discount percentage (0-99)
+  minDuration: number | null      // Minimum units to trigger this tier
+  discountPercent: number | null  // Discount percentage (0-99)
+  displayOrder: number
+}
+
+export interface Rate {
+  id: string
+  price: number
+  period: number // Period in minutes
   displayOrder: number
 }
 
@@ -300,6 +307,11 @@ export interface PricingBreakdown {
   discountPercent: number | null
   discountAmount: number
   tierApplied: string | null  // Human-readable tier label
+  // V2 rate-based pricing fields
+  durationMinutes?: number
+  appliedPeriods?: number
+  appliedRates?: Array<{ period: number; price: number; quantity: number }>
+  optimizerVersion?: string
   // Tax fields
   taxRate: number | null
   taxAmount: number | null

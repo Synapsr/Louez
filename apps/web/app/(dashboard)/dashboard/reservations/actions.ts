@@ -35,6 +35,7 @@ import {
   notifyPaymentReceived,
 } from '@/lib/discord/platform-notifications'
 import type { NotificationEventType } from '@louez/types'
+import type { Rate } from '@louez/types'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { sendEmail } from '@/lib/email/client'
 import { getContrastColorHex } from '@/lib/utils/colors'
@@ -47,8 +48,11 @@ import {
 } from '@louez/utils'
 import {
   calculateRentalPrice,
+  calculateRentalPriceV2,
   calculateDuration,
+  calculateDurationMinutes,
   generatePricingBreakdown,
+  isRateBasedProduct,
   type PricingTier,
 } from '@louez/utils'
 import type {
@@ -578,29 +582,81 @@ export async function createManualReservation(data: CreateReservationData) {
       // Get effective pricing mode for this product
       const effectivePricingMode = toPricingMode(product.pricingMode)
       const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode)
+      const durationMinutes = calculateDurationMinutes(data.startDate, data.endDate)
 
       // Convert pricing tiers to the expected format
       const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
         id: tier.id,
-        minDuration: tier.minDuration,
-        discountPercent: parseFloat(tier.discountPercent),
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: parseFloat(tier.discountPercent ?? '0'),
         displayOrder: tier.displayOrder || 0,
       }))
+      const rates: Rate[] = (product.pricingTiers || [])
+        .filter(
+          (tier): tier is typeof tier & { period: number; price: string } =>
+            typeof tier.period === 'number' &&
+            tier.period > 0 &&
+            typeof tier.price === 'string'
+        )
+        .map((tier, index) => ({
+          id: tier.id,
+          period: tier.period,
+          price: parseFloat(tier.price),
+          displayOrder: tier.displayOrder ?? index,
+        }))
 
-      // Calculate price with tiered pricing
-      const pricing = {
-        basePrice: parseFloat(product.price),
-        deposit: parseFloat(product.deposit || '0'),
-        pricingMode: effectivePricingMode,
-        tiers,
-      }
+      const priceResult = isRateBasedProduct({
+        basePeriodMinutes: product.basePeriodMinutes,
+      })
+        ? calculateRentalPriceV2(
+            {
+              basePrice: parseFloat(product.price),
+              basePeriodMinutes: product.basePeriodMinutes!,
+              deposit: parseFloat(product.deposit || '0'),
+              rates,
+            },
+            durationMinutes,
+            item.quantity,
+          )
+        : calculateRentalPrice(
+            {
+              basePrice: parseFloat(product.price),
+              deposit: parseFloat(product.deposit || '0'),
+              pricingMode: effectivePricingMode,
+              tiers,
+            },
+            duration,
+            item.quantity,
+          )
 
-      const priceResult = calculateRentalPrice(pricing, duration, item.quantity)
-      let pricingBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
+      let pricingBreakdown =
+        'effectivePricePerUnit' in priceResult
+          ? generatePricingBreakdown(priceResult, effectivePricingMode)
+          : {
+              basePrice: parseFloat(product.price),
+              effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
+              duration: durationMinutes,
+              pricingMode: effectivePricingMode,
+              discountPercent: priceResult.reductionPercent,
+              discountAmount: priceResult.savings,
+              tierApplied: priceResult.appliedRate
+                ? `${priceResult.appliedRate.period}m`
+                : null,
+              durationMinutes,
+              appliedPeriods: priceResult.periodsUsed,
+              optimizerVersion: 'v2',
+              taxRate: null,
+              taxAmount: null,
+              subtotalExclTax: null,
+              subtotalInclTax: null,
+            }
 
       // Check for price override
       const hasPriceOverride = !!item.priceOverride
-      let effectiveUnitPrice = priceResult.effectivePricePerUnit
+      let effectiveUnitPrice =
+        'effectivePricePerUnit' in priceResult
+          ? priceResult.effectivePricePerUnit
+          : priceResult.subtotal / Math.max(1, item.quantity)
       let effectiveSubtotal = priceResult.subtotal
 
       if (hasPriceOverride) {
@@ -612,7 +668,10 @@ export async function createManualReservation(data: CreateReservationData) {
           ...pricingBreakdown,
           effectivePrice: effectiveUnitPrice,
           isManualOverride: true,
-          originalPrice: priceResult.effectivePricePerUnit,
+          originalPrice:
+            'effectivePricePerUnit' in priceResult
+              ? priceResult.effectivePricePerUnit
+              : priceResult.subtotal / Math.max(1, item.quantity),
         }
       }
 
@@ -993,23 +1052,76 @@ export async function updateReservation(
           const effectivePricingMode = toPricingMode(product.pricingMode)
           itemPricingMode = effectivePricingMode
           duration = calculateDuration(newStartDate, newEndDate, itemPricingMode)
+          const durationMinutes = calculateDurationMinutes(newStartDate, newEndDate)
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
-            discountPercent: parseFloat(tier.discountPercent),
+            minDuration: tier.minDuration ?? 1,
+            discountPercent: parseFloat(tier.discountPercent ?? '0'),
             displayOrder: tier.displayOrder || 0,
           }))
+          const rates: Rate[] = (product.pricingTiers || [])
+            .filter(
+              (tier): tier is typeof tier & { period: number; price: string } =>
+                typeof tier.period === 'number' &&
+                tier.period > 0 &&
+                typeof tier.price === 'string'
+            )
+            .map((tier, index) => ({
+              id: tier.id,
+              period: tier.period,
+              price: parseFloat(tier.price),
+              displayOrder: tier.displayOrder ?? index,
+            }))
 
-          const pricing = {
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || '0'),
-            pricingMode: itemPricingMode,
-            tiers,
-          }
+          const priceResult = isRateBasedProduct({
+            basePeriodMinutes: product.basePeriodMinutes,
+          })
+            ? calculateRentalPriceV2(
+                {
+                  basePrice: parseFloat(product.price),
+                  basePeriodMinutes: product.basePeriodMinutes!,
+                  deposit: parseFloat(product.deposit || '0'),
+                  rates,
+                },
+                durationMinutes,
+                item.quantity,
+              )
+            : calculateRentalPrice(
+                {
+                  basePrice: parseFloat(product.price),
+                  deposit: parseFloat(product.deposit || '0'),
+                  pricingMode: itemPricingMode,
+                  tiers,
+                },
+                duration,
+                item.quantity,
+              )
 
-          const priceResult = calculateRentalPrice(pricing, duration, item.quantity)
-          pricingBreakdown = generatePricingBreakdown(priceResult, itemPricingMode)
-          finalUnitPrice = priceResult.effectivePricePerUnit
+          pricingBreakdown =
+            'effectivePricePerUnit' in priceResult
+              ? generatePricingBreakdown(priceResult, itemPricingMode)
+              : {
+                  basePrice: parseFloat(product.price),
+                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
+                  duration: durationMinutes,
+                  pricingMode: itemPricingMode,
+                  discountPercent: priceResult.reductionPercent,
+                  discountAmount: priceResult.savings,
+                  tierApplied: priceResult.appliedRate
+                    ? `${priceResult.appliedRate.period}m`
+                    : null,
+                  durationMinutes,
+                  appliedPeriods: priceResult.periodsUsed,
+                  optimizerVersion: 'v2',
+                  taxRate: null,
+                  taxAmount: null,
+                  subtotalExclTax: null,
+                  subtotalInclTax: null,
+                }
+          finalUnitPrice =
+            'effectivePricePerUnit' in priceResult
+              ? priceResult.effectivePricePerUnit
+              : priceResult.subtotal / Math.max(1, item.quantity)
           totalPrice = priceResult.subtotal
         }
       } else if (item.isManualPrice) {
@@ -1069,23 +1181,75 @@ export async function updateReservation(
         if (product) {
           const effectivePricingMode = toPricingMode(product.pricingMode)
           const itemDuration = calculateDuration(newStartDate, newEndDate, effectivePricingMode)
+          const itemDurationMinutes = calculateDurationMinutes(newStartDate, newEndDate)
           const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
             id: tier.id,
-            minDuration: tier.minDuration,
-            discountPercent: parseFloat(tier.discountPercent),
+            minDuration: tier.minDuration ?? 1,
+            discountPercent: parseFloat(tier.discountPercent ?? '0'),
             displayOrder: tier.displayOrder || 0,
           }))
+          const rates: Rate[] = (product.pricingTiers || [])
+            .filter(
+              (tier): tier is typeof tier & { period: number; price: string } =>
+                typeof tier.period === 'number' &&
+                tier.period > 0 &&
+                typeof tier.price === 'string'
+            )
+            .map((tier, index) => ({
+              id: tier.id,
+              period: tier.period,
+              price: parseFloat(tier.price),
+              displayOrder: tier.displayOrder ?? index,
+            }))
 
-          const pricing = {
-            basePrice: parseFloat(product.price),
-            deposit: parseFloat(product.deposit || '0'),
-            pricingMode: effectivePricingMode,
-            tiers,
-          }
-
-          const priceResult = calculateRentalPrice(pricing, itemDuration, item.quantity)
-          const newBreakdown = generatePricingBreakdown(priceResult, effectivePricingMode)
-          finalUnitPrice = priceResult.effectivePricePerUnit
+          const priceResult = isRateBasedProduct({
+            basePeriodMinutes: product.basePeriodMinutes,
+          })
+            ? calculateRentalPriceV2(
+                {
+                  basePrice: parseFloat(product.price),
+                  basePeriodMinutes: product.basePeriodMinutes!,
+                  deposit: parseFloat(product.deposit || '0'),
+                  rates,
+                },
+                itemDurationMinutes,
+                item.quantity,
+              )
+            : calculateRentalPrice(
+                {
+                  basePrice: parseFloat(product.price),
+                  deposit: parseFloat(product.deposit || '0'),
+                  pricingMode: effectivePricingMode,
+                  tiers,
+                },
+                itemDuration,
+                item.quantity,
+              )
+          const newBreakdown: PricingBreakdown =
+            'effectivePricePerUnit' in priceResult
+              ? generatePricingBreakdown(priceResult, effectivePricingMode)
+              : {
+                  basePrice: parseFloat(product.price),
+                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
+                  duration: itemDurationMinutes,
+                  pricingMode: effectivePricingMode,
+                  discountPercent: priceResult.reductionPercent,
+                  discountAmount: priceResult.savings,
+                  tierApplied: priceResult.appliedRate
+                    ? `${priceResult.appliedRate.period}m`
+                    : null,
+                  durationMinutes: itemDurationMinutes,
+                  appliedPeriods: priceResult.periodsUsed,
+                  optimizerVersion: 'v2',
+                  taxRate: null,
+                  taxAmount: null,
+                  subtotalExclTax: null,
+                  subtotalInclTax: null,
+                }
+          finalUnitPrice =
+            'effectivePricePerUnit' in priceResult
+              ? priceResult.effectivePricePerUnit
+              : priceResult.subtotal / Math.max(1, item.quantity)
           totalPrice = priceResult.subtotal
 
           await db

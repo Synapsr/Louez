@@ -147,7 +147,7 @@ export function CheckoutOrderSummary({
 
               return (
                 <div key={item.lineId || `${item.productId}-${index}`} className="flex gap-3">
-                  <div className="bg-muted relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
+                  <div className="bg-muted relative aspect-[4/3] w-16 flex-shrink-0 overflow-hidden rounded-lg">
                     {item.productImage ? (
                       <Image
                         src={item.productImage}

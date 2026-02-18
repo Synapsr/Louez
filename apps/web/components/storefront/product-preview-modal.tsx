@@ -28,8 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
 import { Calendar } from '@louez/ui';
 import { ScrollArea } from '@louez/ui';
 import { Badge } from '@louez/ui';
-import { cn, formatCurrency } from '@louez/utils';
-import { calculateEffectivePrice, sortTiersByDuration } from '@louez/utils';
+import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils';
 
 import {
   generateTimeSlots,
@@ -43,6 +42,10 @@ import {
 } from '@/lib/utils/duration';
 
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
+import {
+  getStorefrontPricingSummary,
+  getStorefrontRateRows,
+} from '@/lib/utils/storefront-pricing';
 
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
@@ -50,8 +53,10 @@ import { useStoreCurrency } from '@/contexts/store-context';
 
 interface PricingTier {
   id: string;
-  minDuration: number;
-  discountPercent: number | string;
+  minDuration: number | null;
+  discountPercent: number | string | null;
+  period?: number | null;
+  price?: string | null;
   displayOrder: number | null;
 }
 
@@ -77,6 +82,7 @@ interface ProductPreviewModalProps {
     quantity: number;
     category?: { name: string } | null;
     pricingMode?: PricingMode | null;
+    basePeriodMinutes?: number | null;
     pricingTiers?: PricingTier[];
     videoUrl?: string | null;
   };
@@ -101,6 +107,7 @@ export function ProductPreviewModal({
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations('storefront.product');
   const tDateSelection = useTranslations('storefront.dateSelection');
+  const tCommon = useTranslations('common');
   const currency = useStoreCurrency();
   const router = useRouter();
   const { setGlobalDates, setPricingMode } = useCart();
@@ -155,23 +162,27 @@ export function ProductPreviewModal({
     setPricingMode(effectivePricingMode);
   }, [effectivePricingMode, setPricingMode]);
 
-  // Normalize tiers
-  const tiers =
-    product.pricingTiers?.map((tier, index) => ({
-      id: tier.id,
-      minDuration: tier.minDuration,
-      discountPercent:
-        typeof tier.discountPercent === 'string'
-          ? parseFloat(tier.discountPercent)
-          : tier.discountPercent,
-      displayOrder: tier.displayOrder ?? index,
-    })) || [];
-
-  const sortedTiers = tiers.length > 0 ? sortTiersByDuration(tiers) : [];
-
-  // Calculate max discount
-  const maxDiscount =
-    tiers.length > 0 ? Math.max(...tiers.map((t) => t.discountPercent)) : 0;
+  const rateRows = useMemo(() => getStorefrontRateRows(product), [product]);
+  const pricingSummary = useMemo(
+    () => getStorefrontPricingSummary(product),
+    [product],
+  );
+  const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
+  const normalizedRateRows = useMemo(
+    () =>
+      rateRows.map((rate) => ({
+        ...rate,
+        displayUnitPrice:
+          (rate.price / Math.max(1, rate.periodMinutes)) * displayPeriodMinutes,
+      })),
+    [displayPeriodMinutes, rateRows],
+  );
+  const baseRate = rateRows.find((rate) => rate.id === '__base__') ?? {
+    id: '__base__',
+    periodMinutes: 1440,
+    price,
+    reductionPercent: 0,
+  };
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -182,20 +193,32 @@ export function ProductPreviewModal({
   const totalMediaItems = images.length + (hasVideo ? 1 : 0);
   const isVideoSelected = hasVideo && selectedImageIndex === images.length;
 
-  // Pricing unit labels
-  const pricingUnitLabel =
-    effectivePricingMode === 'hour'
-      ? tProduct('pricingUnit.hour.singular')
-      : effectivePricingMode === 'week'
-        ? tProduct('pricingUnit.week.singular')
-        : tProduct('pricingUnit.day.singular');
-
-  const pricingUnitLabelPlural =
-    effectivePricingMode === 'hour'
-      ? tProduct('pricingUnit.hour.plural')
-      : effectivePricingMode === 'week'
-        ? tProduct('pricingUnit.week.plural')
-        : tProduct('pricingUnit.day.plural');
+  const formatPeriodLabel = useCallback(
+    (
+      periodMinutes: number,
+      options?: {
+        alwaysShowCount?: boolean;
+      },
+    ) => {
+      const period = minutesToPriceDuration(periodMinutes);
+      const alwaysShowCount = options?.alwaysShowCount ?? false;
+      if (period.unit === 'minute') {
+        const minuteLabel = tCommon('minuteUnit', { count: period.duration });
+        if (period.duration === 1 && !alwaysShowCount) {
+          return minuteLabel;
+        }
+        return `${period.duration} ${minuteLabel}`;
+      }
+      const unitLabel = tProduct(
+        `pricingUnit.${period.unit}.${period.duration === 1 ? 'singular' : 'plural'}`,
+      );
+      if (period.duration === 1 && !alwaysShowCount) {
+        return unitLabel;
+      }
+      return `${period.duration} ${unitLabel}`;
+    },
+    [tCommon, tProduct],
+  );
 
   const handlePrevImage = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -507,16 +530,23 @@ export function ProductPreviewModal({
 
               {/* Base price */}
               <div className="mt-3 flex items-baseline gap-2">
+                {pricingSummary.showStartingFrom && (
+                  <span className="text-muted-foreground text-sm font-medium">
+                    {tProduct('startingFrom')}
+                  </span>
+                )}
                 <span className="text-primary text-2xl font-bold md:text-3xl">
-                  {formatCurrency(price, currency)}
+                  {formatCurrency(pricingSummary.displayPrice, currency)}
                 </span>
                 <span className="text-muted-foreground text-base">
-                  / {pricingUnitLabel}
+                  / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
-                {maxDiscount > 0 && (
+                {pricingSummary.maxReductionPercent > 0 && (
                   <Badge variant="success" className="ml-2">
                     <TrendingDown className="mr-1 h-3 w-3" />
-                    jusqu&apos;à -{maxDiscount}%
+                    {tProduct('tieredPricing.badge', {
+                      percent: Math.floor(pricingSummary.maxReductionPercent),
+                    })}
                   </Badge>
                 )}
               </div>
@@ -537,7 +567,7 @@ export function ProductPreviewModal({
             )}
 
             {/* Pricing tiers */}
-            {sortedTiers.length > 0 && (
+            {rateRows.length > 1 && (
               <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
@@ -551,32 +581,43 @@ export function ProductPreviewModal({
                 <div className="space-y-1.5">
                   <div className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
                     <span className="text-muted-foreground">
-                      1 {pricingUnitLabel}
+                      {formatPeriodLabel(baseRate.periodMinutes, {
+                        alwaysShowCount: true,
+                      })}
                     </span>
                     <span className="font-medium">
-                      {formatCurrency(price, currency)}
+                      {formatCurrency(
+                        (baseRate.price / Math.max(1, baseRate.periodMinutes)) *
+                          displayPeriodMinutes,
+                        currency,
+                      )}
+                      / {formatPeriodLabel(displayPeriodMinutes)}
                     </span>
                   </div>
 
-                  {sortedTiers.map((tier) => {
-                    const effectivePrice = calculateEffectivePrice(price, tier);
-
+                  {normalizedRateRows
+                    .filter((rate) => rate.id !== '__base__')
+                    .map((rate) => {
                     return (
                       <div
-                        key={tier.id}
+                        key={rate.id}
                         className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
-                            {tier.minDuration}+ {pricingUnitLabelPlural}
+                            {formatPeriodLabel(rate.periodMinutes, {
+                              alwaysShowCount: true,
+                            })}
                           </span>
-                          <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
-                            -{Math.floor(tier.discountPercent)}%
-                          </Badge>
+                          {rate.reductionPercent > 0 && (
+                            <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                              -{Math.floor(rate.reductionPercent)}%
+                            </Badge>
+                          )}
                         </div>
                         <span className="font-semibold">
-                          {formatCurrency(effectivePrice, currency)}/
-                          {pricingUnitLabel}
+                          {formatCurrency(rate.displayUnitPrice, currency)}/
+                          {formatPeriodLabel(displayPeriodMinutes)}
                         </span>
                       </div>
                     );

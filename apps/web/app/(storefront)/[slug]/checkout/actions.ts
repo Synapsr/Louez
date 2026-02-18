@@ -6,6 +6,7 @@ import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes } from '@louez/types'
 import type { TaxSettings, ProductTaxSettings, StoreSettings } from '@louez/types'
+import type { Rate } from '@louez/types'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
 import { dispatchNotification } from '@/lib/notifications/dispatcher'
@@ -24,7 +25,10 @@ import {
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
   calculateRentalPrice,
+  calculateRentalPriceV2,
+  calculateDurationMinutes as calcDurationMinutes,
   calculateDuration as calcDuration,
+  isRateBasedProduct,
   getDeterministicCombinationSortValue,
   matchesSelectedAttributes,
   DEFAULT_COMBINATION_KEY,
@@ -300,27 +304,60 @@ export async function createReservation(input: CreateReservationInput) {
       // Calculate price from database values (NOT from client input)
       const productPricingMode = product.pricingMode as PricingMode
       const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
+      const durationMinutes = calcDurationMinutes(item.startDate, item.endDate)
 
-      const pricingResult = calculateRentalPrice(
-        {
-          basePrice: Number(product.price),
-          deposit: Number(product.deposit || 0),
-          pricingMode: productPricingMode,
-          tiers: product.pricingTiers?.map((t) => ({
-            id: t.id,
-            minDuration: t.minDuration,
-            discountPercent: Number(t.discountPercent),
-            displayOrder: t.displayOrder || 0,
-          })) || [],
-        },
-        duration,
-        item.quantity
-      )
+      const pricingResult = isRateBasedProduct({
+        basePeriodMinutes: product.basePeriodMinutes,
+      })
+        ? calculateRentalPriceV2(
+            {
+              basePrice: Number(product.price),
+              basePeriodMinutes: product.basePeriodMinutes!,
+              deposit: Number(product.deposit || 0),
+              rates:
+                product.pricingTiers
+                  ?.filter(
+                    (tier): tier is typeof tier & { period: number; price: string } =>
+                      typeof tier.period === 'number' &&
+                      tier.period > 0 &&
+                      typeof tier.price === 'string',
+                  )
+                  .map(
+                    (tier, index): Rate => ({
+                      id: tier.id,
+                      period: tier.period,
+                      price: Number(tier.price),
+                      displayOrder: tier.displayOrder ?? index,
+                    }),
+                  ) || [],
+            },
+            durationMinutes,
+            item.quantity,
+          )
+        : calculateRentalPrice(
+            {
+              basePrice: Number(product.price),
+              deposit: Number(product.deposit || 0),
+              pricingMode: productPricingMode,
+              tiers:
+                product.pricingTiers?.map((tier) => ({
+                  id: tier.id,
+                  minDuration: tier.minDuration ?? 1,
+                  discountPercent: Number(tier.discountPercent ?? 0),
+                  displayOrder: tier.displayOrder || 0,
+                })) || [],
+            },
+            duration,
+            item.quantity,
+          )
 
       serverCalculatedItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice: pricingResult.effectivePricePerUnit,
+        unitPrice:
+          'effectivePricePerUnit' in pricingResult
+            ? pricingResult.effectivePricePerUnit
+            : pricingResult.subtotal / Math.max(1, item.quantity),
         depositPerUnit: Number(product.deposit || 0),
         subtotal: pricingResult.subtotal,
         totalDeposit: pricingResult.deposit,
@@ -330,7 +367,11 @@ export async function createReservation(input: CreateReservationInput) {
       serverTotalDeposit += pricingResult.deposit
 
       // Log price mismatch for monitoring (potential fraud attempt)
-      const clientItemSubtotal = item.unitPrice * item.quantity * calculateDuration(item.startDate, item.endDate)
+      const clientItemSubtotal = item.unitPrice * item.quantity * (
+        isRateBasedProduct({ basePeriodMinutes: product.basePeriodMinutes })
+          ? calcDurationMinutes(item.startDate, item.endDate)
+          : calculateDuration(item.startDate, item.endDate)
+      )
       if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
         console.warn('[SECURITY] Price mismatch detected', {
           productId: item.productId,

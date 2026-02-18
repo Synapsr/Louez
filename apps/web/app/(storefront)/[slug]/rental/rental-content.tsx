@@ -58,8 +58,10 @@ import { orpc } from '@/lib/orpc/react';
 
 interface PricingTier {
   id: string;
-  minDuration: number;
-  discountPercent: string | number;
+  minDuration: number | null;
+  discountPercent: string | number | null;
+  period?: number | null;
+  price?: string | null;
   displayOrder: number | null;
 }
 
@@ -71,6 +73,7 @@ interface Accessory {
   images: string[] | null;
   quantity: number;
   pricingMode: 'day' | 'hour' | 'week' | null;
+  basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
 }
 
@@ -84,6 +87,7 @@ interface Product {
   quantity: number;
   category: { id: string; name: string } | null;
   pricingMode?: PricingMode | null;
+  basePeriodMinutes?: number | null;
   pricingTiers?: PricingTier[];
   videoUrl?: string | null;
   accessories?: Accessory[];

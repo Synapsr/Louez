@@ -151,10 +151,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
       images: acc.accessory.images,
       quantity: acc.accessory.quantity,
       pricingMode: acc.accessory.pricingMode,
+      basePeriodMinutes: acc.accessory.basePeriodMinutes,
       pricingTiers: acc.accessory.pricingTiers?.map((tier) => ({
         id: tier.id,
         minDuration: tier.minDuration,
         discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
       })),
     }))
 
@@ -389,11 +392,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
               deposit={product.deposit ? parseFloat(product.deposit) : 0}
               maxQuantity={product.quantity}
               pricingMode={effectivePricingMode}
+              basePeriodMinutes={product.basePeriodMinutes}
               storeSlug={slug}
               pricingTiers={product.pricingTiers?.map((tier) => ({
                 id: tier.id,
                 minDuration: tier.minDuration,
-                discountPercent: parseFloat(tier.discountPercent),
+                discountPercent: parseFloat(tier.discountPercent ?? '0'),
+                period: tier.period,
+                price: tier.price,
               }))}
               enforceStrictTiers={product.enforceStrictTiers ?? false}
               advanceNotice={storeSettings.advanceNoticeMinutes || 0}

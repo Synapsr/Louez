@@ -126,8 +126,10 @@ export default async function CatalogPage({
   // Step 2: Fetch full product data (no ORDER BY needed)
   interface PricingTier {
     id: string
-    minDuration: number
-    discountPercent: string
+    minDuration: number | null
+    discountPercent: string | null
+    period: number | null
+    price: string | null
     displayOrder: number | null
   }
   let productsList: (typeof products.$inferSelect & { category: typeof categories.$inferSelect | null; pricingTiers?: PricingTier[] })[] = []
@@ -145,6 +147,7 @@ export default async function CatalogPage({
         images: products.images,
         price: products.price,
         deposit: products.deposit,
+        basePeriodMinutes: products.basePeriodMinutes,
         pricingMode: products.pricingMode,
         videoUrl: products.videoUrl,
         quantity: products.quantity,
@@ -182,6 +185,8 @@ export default async function CatalogPage({
         id: tier.id,
         minDuration: tier.minDuration,
         discountPercent: tier.discountPercent,
+        period: tier.period,
+        price: tier.price,
         displayOrder: tier.displayOrder,
       })
       pricingTiersByProductId.set(tier.productId, tiers)
@@ -202,6 +207,7 @@ export default async function CatalogPage({
         images: row.images,
         price: row.price,
         deposit: row.deposit,
+        basePeriodMinutes: row.basePeriodMinutes,
         pricingMode: row.pricingMode,
         videoUrl: row.videoUrl,
         quantity: row.quantity,

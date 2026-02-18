@@ -118,8 +118,8 @@ export default async function EditReservationPage({
                 pricingMode: item.product.pricingMode,
                 pricingTiers: item.product.pricingTiers.map((tier) => ({
                   id: tier.id,
-                  minDuration: tier.minDuration,
-                  discountPercent: tier.discountPercent,
+                  minDuration: tier.minDuration ?? 1,
+                  discountPercent: tier.discountPercent ?? '0',
                 })),
               }
             : null,
@@ -138,8 +138,8 @@ export default async function EditReservationPage({
         pricingMode: p.pricingMode,
         pricingTiers: p.pricingTiers.map((tier) => ({
           id: tier.id,
-          minDuration: tier.minDuration,
-          discountPercent: tier.discountPercent,
+          minDuration: tier.minDuration ?? 1,
+          discountPercent: tier.discountPercent ?? '0',
         })),
       }))}
       existingReservations={existingReservations}
