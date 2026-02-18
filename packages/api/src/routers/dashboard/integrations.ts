@@ -4,6 +4,7 @@ import {
   dashboardIntegrationsConnectTulipInputSchema,
   dashboardIntegrationsGetDetailInputSchema,
   dashboardIntegrationsDisconnectTulipInputSchema,
+  dashboardIntegrationsGetTulipProductStateInputSchema,
   dashboardIntegrationsGetTulipStateInputSchema,
   dashboardIntegrationsListCatalogInputSchema,
   dashboardIntegrationsListCategoryInputSchema,
@@ -121,6 +122,29 @@ const getTulipState = dashboardProcedure
       }
 
       const result = await fn()
+      if ('error' in result && result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error })
+      }
+
+      return result
+    } catch (error) {
+      throw toORPCError(error)
+    }
+  })
+
+const getTulipProductState = dashboardProcedure
+  .input(dashboardIntegrationsGetTulipProductStateInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardIntegrationActions?.getTulipProductState
+
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'dashboardIntegrationActions.getTulipProductState not provided',
+        })
+      }
+
+      const result = await fn(input)
       if ('error' in result && result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error })
       }
@@ -288,6 +312,7 @@ export const dashboardIntegrationsRouter = {
   getDetail,
   setEnabled,
   getTulipState,
+  getTulipProductState,
   connectTulip,
   disconnectTulip,
   updateTulipConfiguration,

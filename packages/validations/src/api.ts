@@ -266,6 +266,10 @@ export const updateStoreAppearanceInputSchema = z.object({
 
 export const dashboardIntegrationsGetTulipStateInputSchema = z.object({})
 
+export const dashboardIntegrationsGetTulipProductStateInputSchema = z.object({
+  productId: z.string().length(21),
+})
+
 export const dashboardIntegrationsListCatalogInputSchema = z.object({})
 
 export const dashboardIntegrationsListCategoryInputSchema = z.object({

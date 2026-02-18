@@ -236,6 +236,30 @@ export type TulipIntegrationState = {
   }>;
 };
 
+export type TulipProductState = {
+  connected: boolean;
+  apiKeyLast4: string | null;
+  connectedAt: string | null;
+  connectionIssue: string | null;
+  calendlyUrl: string;
+  settings: {
+    publicMode: TulipPublicMode;
+    includeInFinalPrice: boolean;
+    contractType: TulipContractType;
+  };
+  tulipProducts: TulipIntegrationState['tulipProducts'];
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    tulipProductId: string | null;
+  };
+};
+
+const getTulipProductStateSchema = z.object({
+  productId: z.string().length(21),
+});
+
 const connectTulipApiKeySchema = z.object({
   apiKey: z.string().trim().min(8).max(500),
 });
@@ -648,6 +672,106 @@ export async function getTulipIntegrationStateAction(): Promise<
       renters,
       tulipProducts,
       products,
+    };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function getTulipProductStateAction(
+  input: z.infer<typeof getTulipProductStateSchema>,
+): Promise<TulipProductState | ActionError> {
+  try {
+    const validated = getTulipProductStateSchema.parse(input);
+
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    const { store } = storeResult;
+    const storeSettings = (store.settings as StoreSettings | null) || null;
+    const settings = getTulipSettings(storeSettings);
+
+    const product = await db.query.products.findFirst({
+      where: and(
+        eq(products.id, validated.productId),
+        eq(products.storeId, store.id),
+      ),
+      columns: {
+        id: true,
+        name: true,
+        price: true,
+      },
+    });
+
+    if (!product) {
+      return { error: 'errors.productNotFound' };
+    }
+
+    const mapping = await db.query.productsTulip.findFirst({
+      where: eq(productsTulip.productId, product.id),
+      columns: {
+        tulipProductId: true,
+      },
+    });
+
+    let tulipProducts: TulipProductState['tulipProducts'] = [];
+    let connectionIssue: string | null = null;
+
+    const apiKey = getTulipApiKey(storeSettings);
+    if (apiKey) {
+      try {
+        const rawProducts = await tulipListProducts(apiKey);
+        tulipProducts = normalizeTulipProducts(rawProducts);
+      } catch (error) {
+        if (
+          error instanceof TulipApiError &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          connectionIssue = toActionError(error).error;
+        } else {
+          console.warn(
+            '[tulip] Unable to load Tulip products catalog for product assurance section',
+            {
+              storeId: store.id,
+              productId: product.id,
+              error,
+            },
+          );
+        }
+      }
+    }
+
+    const mappedTulipProductId = mapping?.tulipProductId ?? null;
+    const hasMappedTulipProduct = mappedTulipProductId
+      ? tulipProducts.some((item) => item.id === mappedTulipProductId)
+      : false;
+    const resolvedTulipProductId =
+      mappedTulipProductId && tulipProducts.length > 0
+        ? hasMappedTulipProduct
+          ? mappedTulipProductId
+          : null
+        : mappedTulipProductId;
+
+    return {
+      connected: !!settings.apiKeyEncrypted,
+      apiKeyLast4: settings.apiKeyLast4,
+      connectedAt: settings.connectedAt,
+      connectionIssue,
+      calendlyUrl: env.TULIP_CALENDLY_URL || 'https://calendly.com/',
+      settings: {
+        publicMode: settings.publicMode,
+        includeInFinalPrice: settings.includeInFinalPrice,
+        contractType: settings.contractType,
+      },
+      tulipProducts,
+      product: {
+        id: product.id,
+        name: product.name,
+        price: Number(product.price),
+        tulipProductId: resolvedTulipProductId,
+      },
     };
   } catch (error) {
     return toActionError(error);
