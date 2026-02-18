@@ -118,6 +118,14 @@ const pushTulipProductUpdate = requirePermission('write')
 
       const result = await fn(input)
       if (result.error) {
+        console.error(
+          '[orpc][dashboard.integrations.pushTulipProductUpdate] action failed',
+          {
+            storeId: context.store.id,
+            productId: input.productId,
+            error: result.error,
+          },
+        )
         throw new ORPCError('BAD_REQUEST', { message: result.error })
       }
 
@@ -141,6 +149,11 @@ const createTulipProduct = requirePermission('write')
 
       const result = await fn(input)
       if (result.error) {
+        console.error('[orpc][dashboard.integrations.createTulipProduct] action failed', {
+          storeId: context.store.id,
+          productId: input.productId,
+          error: result.error,
+        })
         throw new ORPCError('BAD_REQUEST', { message: result.error })
       }
 

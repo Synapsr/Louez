@@ -1865,16 +1865,49 @@
             "noTulipProduct": "Sélectionner un produit Tulip",
             "notMapped": "Non mappé",
             "categoryPlaceholder": "Sélectionner une catégorie",
+            "productSubtypePlaceholder": "Sélectionner un sous-type",
+            "productTitlePlaceholder": "Laisser vide pour garder \"{defaultTitle}\"",
             "brandPlaceholder": "Marque",
             "modelPlaceholder": "Modèle",
+            "createOption": "Utiliser \"{value}\"",
+            "noBrandResults": "Aucune suggestion de marque",
+            "noModelResults": "Aucune suggestion de modèle",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
+            "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "createButton": "Créer dans Tulip",
             "creatingButton": "Création...",
             "updateButton": "Pousser la mise à jour",
             "updatingButton": "Mise à jour...",
             "savingMapping": "Enregistrement...",
             "refreshButton": "Actualiser les produits Tulip",
-            "refreshingButton": "Actualisation..."
+            "refreshingButton": "Actualisation...",
+            "filters": {
+              "all": "Tous",
+              "mapped": "Mappés",
+              "unmapped": "Non mappés"
+            },
+            "searchPlaceholder": "Rechercher des produits...",
+            "statusBadge": {
+              "label": "Statut",
+              "mapped": "Mappé",
+              "notMapped": "Non mappé"
+            },
+            "noResults": "Aucun produit Tulip trouvé",
+            "noFilterResults": "Aucun produit ne correspond aux filtres.",
+            "sheet": {
+              "description": "Configurez les détails du produit Tulip et poussez les mises à jour.",
+              "cancel": "Annuler"
+            },
+            "fields": {
+              "tulipProduct": "Produit Tulip",
+              "category": "Catégorie",
+              "productTitle": "Nom du produit (optionnel)",
+              "productSubtype": "Sous-type",
+              "brand": "Marque",
+              "model": "Modèle",
+              "purchasedDate": "Date d'achat",
+              "purchasePriceHt": "Prix d'achat HT"
+            }
           }
         }
       },
@@ -4333,6 +4366,9 @@
     "tulipApiKeyInvalid": "La clé API Tulip est invalide.",
     "tulipActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
     "tulipApiUnavailable": "Tulip est indisponible pour le moment. Veuillez réessayer plus tard.",
+    "tulipProductSubtypeInvalid": "Ce sous-type n'est pas valide pour la catégorie Tulip sélectionnée.",
+    "tulipProductPayloadInvalid": "Tulip a refusé les données produit. Vérifiez la catégorie/sous-type et les champs requis.",
+    "tulipProductNotFound": "Produit Tulip introuvable. Actualisez les produits Tulip puis remappez cet élément.",
     "tulipNotConfigured": "Tulip n'est pas encore configuré.",
     "tulipProductNotMapped": "Certains produits ne sont pas mappés avec des produits Tulip.",
     "tulipProductAlreadyMapped": "Ce produit est déjà mappé à un produit Tulip.",
