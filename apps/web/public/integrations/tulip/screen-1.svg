@@ -1,0 +1,12 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#0F172A"/>
+  <rect x="56" y="64" width="1168" height="592" rx="20" fill="#111827" stroke="#1F2937"/>
+  <rect x="96" y="112" width="240" height="36" rx="10" fill="#0EA5E9"/>
+  <rect x="352" y="112" width="168" height="36" rx="10" fill="#334155"/>
+  <rect x="536" y="112" width="192" height="36" rx="10" fill="#334155"/>
+  <rect x="96" y="180" width="760" height="180" rx="16" fill="#1E293B"/>
+  <rect x="96" y="384" width="360" height="220" rx="16" fill="#1E293B"/>
+  <rect x="480" y="384" width="376" height="220" rx="16" fill="#1E293B"/>
+  <rect x="880" y="180" width="304" height="424" rx="16" fill="#111827" stroke="#334155"/>
+  <text x="118" y="134" fill="#FFFFFF" font-size="20" font-family="Arial, sans-serif">Tulip Integration Overview</text>
+</svg>

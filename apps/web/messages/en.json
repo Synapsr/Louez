@@ -1845,6 +1845,7 @@
             "renterNone": "No renter selected",
             "renterDisabled": "disabled",
             "contractTypeLabel": "Contract type",
+            "contractTypeHelp": "LCD = short term, LMD = medium term, LLD = long term.",
             "saveButton": "Save configuration",
             "savingButton": "Saving..."
           },
@@ -1886,6 +1887,8 @@
               "mapped": "Mapped",
               "unmapped": "Not mapped"
             },
+            "coverageSummary": "{insured}/{total} products are insurable with Tulip.",
+            "viewUnmappedCta": "View unmapped ({count})",
             "searchPlaceholder": "Search products...",
             "statusBadge": {
               "label": "Status",
@@ -1907,6 +1910,85 @@
               "model": "Model",
               "purchasedDate": "Purchase date",
               "purchasePriceHt": "Purchase price (excl. tax)"
+            }
+          }
+        }
+      },
+      "integrationsHub": {
+        "title": "Integrations",
+        "loading": "Loading integrations...",
+        "loadError": "Unable to load integrations.",
+        "catalogDescription": "Browse integrations by category, enable what you need, and configure each provider.",
+        "searchPlaceholder": "Search integrations",
+        "fallbackDescription": "Integration details are available on the detail page.",
+        "statusFilters": {
+          "all": "All",
+          "enabled": "Enabled",
+          "disabled": "Disabled"
+        },
+        "categoriesTitle": "Categories",
+        "categoryCount": "{count} integrations",
+        "backToCatalog": "Back to catalog",
+        "emptyCategory": "No integrations match your filters.",
+        "viewAll": "View all",
+        "statusLabels": {
+          "enabled": "Enabled",
+          "disabled": "Disabled",
+          "connected": "Connected",
+          "notConnected": "Not connected"
+        },
+        "lifecycle": {
+          "stable": "Stable",
+          "beta": "Beta",
+          "coming_soon": "Coming soon"
+        },
+        "toasts": {
+          "enabled": "Integration enabled.",
+          "disabled": "Integration disabled."
+        },
+        "detailNotFoundTitle": "Integration not found",
+        "detailNotFoundDescription": "This integration could not be loaded.",
+        "disableAction": "Disable integration",
+        "enableAction": "Enable integration",
+        "visitWebsite": "Visit website",
+        "tabs": {
+          "features": "Features",
+          "configuration": "Configuration",
+          "about": "About"
+        },
+        "featuresTitle": "What it does",
+        "galleryTitle": "Gallery",
+        "configurationLockedTitle": "Enable to configure",
+        "configurationLockedDescription": "Enable this integration first to access its configuration page.",
+        "configurationUnavailableTitle": "Configuration unavailable",
+        "configurationUnavailableDescription": "This integration does not expose a configuration panel yet.",
+        "aboutTitle": "About",
+        "metadataTitle": "Integration details",
+        "metadata": {
+          "provider": "Provider",
+          "pricing": "Pricing",
+          "category": "Category",
+          "resources": "Resources"
+        },
+        "categories": {
+          "insurance": {
+            "name": "Insurance",
+            "description": "Protect reservations and synchronize insurance contracts."
+          }
+        },
+        "providers": {
+          "tulip": {
+            "name": "Tulip Insurance",
+            "description": "Connect Tulip to quote and generate rental insurance contracts.",
+            "about": "Tulip centralizes renter insurance operations: quote preview during checkout, contract creation, and mapping between your catalog and insured products.",
+            "features": {
+              "sync": "Connect your Tulip account with API key validation.",
+              "checkout": "Apply insurance at checkout (required, optional, or hidden public mode).",
+              "mapping": "Map Louez products to Tulip products and push updates."
+            },
+            "resources": {
+              "website": "Website",
+              "support": "Support"
             }
           }
         }
@@ -3437,7 +3519,7 @@
       "deliveryTooFar": "Sorry, we don't deliver beyond {maxKm} km",
       "roundTripNote": "{distance} km x 2 = {total} km (round trip)",
       "contactDescription": "We need this information to contact you",
-      "addressDescription": "Optional - Enter your address if necessary",
+      "addressDescription": "Enter your address details to continue",
       "confirmDescription": "Review your information before confirming",
       "insuranceRequiredNotice": "Breakage/theft coverage is required for this reservation and will be applied automatically.",
       "insuranceOptionalLabel": "Add breakage/theft coverage",
@@ -3446,6 +3528,14 @@
       "insuranceRequiredBadge": "Required",
       "insuranceOptionalEnabled": "Selected",
       "insuranceOptionalDisabled": "Not selected",
+      "insuranceOptionalUnavailable": "Coverage is temporarily unavailable. Your reservation will be sent without coverage.",
+      "insuranceOptionalUnavailableShort": "Unavailable",
+      "insuranceNoInsurableProducts": "No insurable product in this cart.",
+      "insurancePartialCoverage": "{insured} covered product(s), {uninsured} not covered.",
+      "insuranceCoveredProductTooltip": "This product is covered by breakage/theft coverage.",
+      "insuranceEstimating": "Calculating estimated coverage...",
+      "insuranceEstimatedAmount": "Estimated coverage amount: {amount}",
+      "insuranceEstimatedDisclaimer": "Estimated amount, automatically recalculated on confirmation.",
       "continue": "Continue",
       "back": "Back",
       "modify": "Edit",
@@ -4281,6 +4371,8 @@
     "storeNotFound": "Store not found",
     "productNotFound": "Product not found",
     "categoryNotFound": "Category not found",
+    "integrationNotFound": "Integration not found",
+    "integrationCategoryNotFound": "Integration category not found",
     "customerNotFound": "Customer not found",
     "reservationNotFound": "Reservation not found",
     "emailAlreadyExists": "A customer with this email already exists",

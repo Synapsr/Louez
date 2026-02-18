@@ -1,0 +1,6 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="128" height="128" rx="24" fill="#0B1220"/>
+  <circle cx="64" cy="50" r="28" fill="#0EA5E9"/>
+  <path d="M50 49L62 61L82 41" stroke="white" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="64" y="98" text-anchor="middle" fill="#E2E8F0" font-size="18" font-family="Arial, sans-serif">Tulip</text>
+</svg>

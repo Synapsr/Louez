@@ -1845,6 +1845,7 @@
             "renterNone": "Aucun loueur sélectionné",
             "renterDisabled": "désactivé",
             "contractTypeLabel": "Type de contrat",
+            "contractTypeHelp": "LCD = courte durée, LMD = moyenne durée, LLD = longue durée.",
             "saveButton": "Enregistrer la configuration",
             "savingButton": "Enregistrement..."
           },
@@ -1886,6 +1887,8 @@
               "mapped": "Mappés",
               "unmapped": "Non mappés"
             },
+            "coverageSummary": "{insured}/{total} produits sont assurables via Tulip.",
+            "viewUnmappedCta": "Voir les non mappés ({count})",
             "searchPlaceholder": "Rechercher des produits...",
             "statusBadge": {
               "label": "Statut",
@@ -1907,6 +1910,85 @@
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
               "purchasePriceHt": "Prix d'achat HT"
+            }
+          }
+        }
+      },
+      "integrationsHub": {
+        "title": "Intégrations",
+        "loading": "Chargement des intégrations...",
+        "loadError": "Impossible de charger les intégrations.",
+        "catalogDescription": "Parcourez les intégrations par catégorie, activez celles dont vous avez besoin, puis configurez chaque fournisseur.",
+        "searchPlaceholder": "Rechercher une intégration",
+        "fallbackDescription": "Les détails de cette intégration sont disponibles sur sa page dédiée.",
+        "statusFilters": {
+          "all": "Toutes",
+          "enabled": "Activées",
+          "disabled": "Désactivées"
+        },
+        "categoriesTitle": "Catégories",
+        "categoryCount": "{count} intégrations",
+        "backToCatalog": "Retour au catalogue",
+        "emptyCategory": "Aucune intégration ne correspond aux filtres.",
+        "viewAll": "Afficher tout",
+        "statusLabels": {
+          "enabled": "Activée",
+          "disabled": "Désactivée",
+          "connected": "Connectée",
+          "notConnected": "Non connectée"
+        },
+        "lifecycle": {
+          "stable": "Stable",
+          "beta": "Bêta",
+          "coming_soon": "Bientôt disponible"
+        },
+        "toasts": {
+          "enabled": "Intégration activée.",
+          "disabled": "Intégration désactivée."
+        },
+        "detailNotFoundTitle": "Intégration introuvable",
+        "detailNotFoundDescription": "Cette intégration n'a pas pu être chargée.",
+        "disableAction": "Désactiver l'intégration",
+        "enableAction": "Activer l'intégration",
+        "visitWebsite": "Voir le site",
+        "tabs": {
+          "features": "Fonctionnalités",
+          "configuration": "Configuration",
+          "about": "À propos"
+        },
+        "featuresTitle": "Ce que ça fait",
+        "galleryTitle": "Galerie",
+        "configurationLockedTitle": "Activez pour configurer",
+        "configurationLockedDescription": "Activez d'abord cette intégration pour accéder à sa page de configuration.",
+        "configurationUnavailableTitle": "Configuration indisponible",
+        "configurationUnavailableDescription": "Cette intégration n'expose pas encore de panneau de configuration.",
+        "aboutTitle": "À propos",
+        "metadataTitle": "Détails de l'intégration",
+        "metadata": {
+          "provider": "Fournisseur",
+          "pricing": "Tarification",
+          "category": "Catégorie",
+          "resources": "Ressources"
+        },
+        "categories": {
+          "insurance": {
+            "name": "Assurance",
+            "description": "Protégez les réservations et synchronisez les contrats d'assurance."
+          }
+        },
+        "providers": {
+          "tulip": {
+            "name": "Assurance Tulip",
+            "description": "Connectez Tulip pour estimer et générer les contrats d'assurance location.",
+            "about": "Tulip centralise les opérations d'assurance du loueur : estimation lors du checkout, création de contrat et mapping entre votre catalogue et les produits assurables.",
+            "features": {
+              "sync": "Connectez votre compte Tulip avec validation de clé API.",
+              "checkout": "Appliquez l'assurance au checkout (mode obligatoire, optionnel ou masqué).",
+              "mapping": "Mappez les produits Louez avec les produits Tulip et poussez les mises à jour."
+            },
+            "resources": {
+              "website": "Site web",
+              "support": "Support"
             }
           }
         }
@@ -3437,7 +3519,7 @@
       "deliveryTooFar": "Désolé, nous ne livrons pas au-delà de {maxKm} km",
       "roundTripNote": "{distance} km x 2 = {total} km (aller-retour)",
       "contactDescription": "Nous avons besoin de ces informations pour vous contacter",
-      "addressDescription": "Optionnel - Renseignez votre adresse si nécessaire",
+      "addressDescription": "Renseignez votre adresse pour continuer",
       "confirmDescription": "Vérifiez vos informations avant de valider",
       "insuranceRequiredNotice": "La garantie casse/vol est obligatoire pour cette réservation et sera appliquée automatiquement.",
       "insuranceOptionalLabel": "Ajouter la garantie casse/vol",
@@ -3446,6 +3528,14 @@
       "insuranceRequiredBadge": "Obligatoire",
       "insuranceOptionalEnabled": "Sélectionnée",
       "insuranceOptionalDisabled": "Non sélectionnée",
+      "insuranceOptionalUnavailable": "La garantie est momentanément indisponible. Votre réservation sera envoyée sans garantie.",
+      "insuranceOptionalUnavailableShort": "Indisponible",
+      "insuranceNoInsurableProducts": "Aucun produit assurable dans ce panier.",
+      "insurancePartialCoverage": "{insured} produit(s) couvert(s), {uninsured} non couvert(s).",
+      "insuranceCoveredProductTooltip": "Ce produit est couvert par la garantie casse/vol.",
+      "insuranceEstimating": "Calcul de l'estimation de garantie en cours...",
+      "insuranceEstimatedAmount": "Montant estimé de la garantie: {amount}",
+      "insuranceEstimatedDisclaimer": "Montant estimatif, recalculé automatiquement à la validation.",
       "continue": "Continuer",
       "back": "Retour",
       "modify": "Modifier",
@@ -4276,6 +4366,8 @@
     "storeNotFound": "Boutique introuvable",
     "productNotFound": "Produit introuvable",
     "categoryNotFound": "Catégorie introuvable",
+    "integrationNotFound": "Intégration introuvable",
+    "integrationCategoryNotFound": "Catégorie d'intégration introuvable",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",
     "emailAlreadyExists": "Un client avec cet email existe déjà",

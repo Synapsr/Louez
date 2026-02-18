@@ -235,6 +235,8 @@ Built with modern, battle-tested technologies:
 
 ## 📖 Documentation
 
+- [Adding integrations guide](docs/integrations/adding-an-integration.md)
+
 <details>
 <summary><strong>📋 Environment Variables</strong></summary>
 

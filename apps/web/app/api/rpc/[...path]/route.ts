@@ -32,8 +32,13 @@ import {
 import {
   createTulipProductAction,
   connectTulipApiKeyAction,
+  disconnectTulipAction,
+  getIntegrationDetailAction,
+  listIntegrationsCatalogAction,
+  listIntegrationsCategoryAction,
   getTulipIntegrationStateAction,
   pushTulipProductUpdateAction,
+  setIntegrationEnabledAction,
   updateTulipConfigurationAction,
   upsertTulipProductMappingAction,
 } from '@/app/(dashboard)/dashboard/settings/integrations/actions';
@@ -74,12 +79,17 @@ async function handleRequest(request: Request) {
         sendAccessLinkBySms,
       },
       dashboardIntegrationActions: {
+        listIntegrationsCatalog: listIntegrationsCatalogAction,
+        listIntegrationsCategory: listIntegrationsCategoryAction,
+        getIntegrationDetail: getIntegrationDetailAction,
+        setIntegrationEnabled: setIntegrationEnabledAction,
         getTulipIntegrationState: getTulipIntegrationStateAction,
         connectTulipApiKey: connectTulipApiKeyAction,
         updateTulipConfiguration: updateTulipConfigurationAction,
         upsertTulipProductMapping: upsertTulipProductMappingAction,
         pushTulipProductUpdate: pushTulipProductUpdateAction,
         createTulipProduct: createTulipProductAction,
+        disconnectTulip: async () => disconnectTulipAction({}),
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });

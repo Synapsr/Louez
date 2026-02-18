@@ -236,6 +236,31 @@ export interface BaseContext {
     sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
   };
   dashboardIntegrationActions?: {
+    listIntegrationsCatalog?: (input: {}) => Promise<
+      | {
+          categories: unknown[]
+          integrations: unknown[]
+        }
+      | { error: string }
+    >
+    listIntegrationsCategory?: (input: { category: string }) => Promise<
+      | {
+          category: string
+          categories: unknown[]
+          integrations: unknown[]
+        }
+      | { error: string }
+    >
+    getIntegrationDetail?: (input: { integrationId: string }) => Promise<
+      | {
+          integration: unknown
+        }
+      | { error: string }
+    >
+    setIntegrationEnabled?: (input: {
+      integrationId: string
+      enabled: boolean
+    }) => Promise<{ success?: boolean; error?: string }>
     getTulipIntegrationState?: () => Promise<
       | {
           connected: boolean
@@ -273,7 +298,6 @@ export interface BaseContext {
     updateTulipConfiguration?: (input: {
       publicMode: 'required' | 'optional' | 'no_public'
       includeInFinalPrice: boolean
-      renterUid: string | null
       contractType: 'LCD' | 'LMD' | 'LLD'
     }) => Promise<{ success?: boolean; error?: string }>
     upsertTulipProductMapping?: (input: {
