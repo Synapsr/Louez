@@ -27,6 +27,17 @@ interface CheckoutConfirmStepProps {
     mode: 'required' | 'optional' | 'no_public';
     includeInFinalPrice: boolean;
   };
+  tulipQuotePreview?: {
+    mode: 'required' | 'optional' | 'no_public';
+    quoteUnavailable: boolean;
+    quoteError: string | null;
+    appliedOptIn: boolean;
+    amount: number;
+    insuredProductCount: number;
+    uninsuredProductCount: number;
+    error: string | null;
+  };
+  isTulipQuoteLoading: boolean;
   canSubmitCheckout: boolean;
   onBack: () => void;
   onEditContact: () => void;
@@ -42,11 +53,20 @@ export function CheckoutConfirmStep({
   totalWithDelivery,
   currency,
   tulipInsurance,
+  tulipQuotePreview,
+  isTulipQuoteLoading,
   canSubmitCheckout,
   onBack,
   onEditContact,
 }: CheckoutConfirmStepProps) {
   const t = useTranslations('storefront.checkout');
+  const tErrors = useTranslations('errors');
+  const showInsuranceUi =
+    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
+  const optionalQuoteErrorKey =
+    tulipQuotePreview?.quoteError?.startsWith('errors.')
+      ? tulipQuotePreview.quoteError.replace('errors.', '')
+      : null;
 
   return (
     <Card>
@@ -89,13 +109,13 @@ export function CheckoutConfirmStep({
         </div>
 
         <div className="space-y-3">
-          {tulipInsurance?.enabled && tulipInsurance.mode === 'required' && (
+          {showInsuranceUi && tulipInsurance.mode === 'required' && (
             <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
               {t('insuranceRequiredNotice')}
             </div>
           )}
 
-          {tulipInsurance?.enabled && tulipInsurance.mode === 'optional' && (
+          {showInsuranceUi && tulipInsurance.mode === 'optional' && (
             <form.Field name="tulipInsuranceOptIn">
               {(field) => (
                 <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
@@ -115,6 +135,65 @@ export function CheckoutConfirmStep({
                 </div>
               )}
             </form.Field>
+          )}
+
+          {showInsuranceUi && (
+            <div className="space-y-2">
+              {isTulipQuoteLoading && (
+                <p className="text-muted-foreground text-sm">
+                  {t('insuranceEstimating')}
+                </p>
+              )}
+
+              {!isTulipQuoteLoading &&
+                tulipQuotePreview?.mode === 'required' &&
+                tulipQuotePreview.error && (
+                  <p className="text-destructive text-sm">
+                    {tErrors(tulipQuotePreview.error.replace('errors.', ''))}
+                  </p>
+                )}
+
+              {!isTulipQuoteLoading &&
+                tulipQuotePreview?.mode === 'optional' &&
+                tulipQuotePreview.quoteUnavailable && (
+                  <p className="text-muted-foreground text-sm">
+                    {optionalQuoteErrorKey
+                      ? tErrors(optionalQuoteErrorKey)
+                      : t('insuranceOptionalUnavailable')}
+                  </p>
+                )}
+
+              {!isTulipQuoteLoading &&
+                (tulipQuotePreview?.insuredProductCount ?? 0) === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    {t('insuranceNoInsurableProducts')}
+                  </p>
+                )}
+
+              {!isTulipQuoteLoading &&
+                (tulipQuotePreview?.insuredProductCount ?? 0) > 0 &&
+                (tulipQuotePreview?.uninsuredProductCount ?? 0) > 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    {t('insurancePartialCoverage', {
+                      insured: tulipQuotePreview?.insuredProductCount ?? 0,
+                      uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
+                    })}
+                  </p>
+                )}
+
+              {!isTulipQuoteLoading &&
+                tulipQuotePreview?.appliedOptIn &&
+                tulipQuotePreview.amount > 0 && (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
+                    {t('insuranceEstimatedAmount', {
+                      amount: formatCurrency(tulipQuotePreview.amount, currency),
+                    })}
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {t('insuranceEstimatedDisclaimer')}
+                    </p>
+                  </div>
+                )}
+            </div>
           )}
 
           {cgv && (

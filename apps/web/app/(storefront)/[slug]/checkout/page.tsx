@@ -59,7 +59,6 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   const pricingMode = 'day' as const
   const reservationMode = store.settings?.reservationMode || 'payment'
-  const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
   const taxSettings = store.settings?.tax
   const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
   const deliverySettings = store.settings?.delivery
@@ -67,10 +66,17 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
   const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
   const tulipSettings = getTulipSettings((store.settings as StoreSettings | null) || null)
-  const tulipConnected = Boolean(tulipSettings.apiKeyEncrypted && tulipSettings.renterUid)
+  const tulipConnected = Boolean(
+    tulipSettings.enabled &&
+      tulipSettings.apiKeyEncrypted &&
+      tulipSettings.renterUid,
+  )
   const tulipMode = tulipConnected ? tulipSettings.publicMode : 'no_public'
-  const effectiveRequireCustomerAddress =
-    requireCustomerAddress || tulipMode === 'required'
+  const effectiveRequireCustomerAddress = !(
+    tulipConnected &&
+    tulipMode !== 'no_public' &&
+    tulipSettings.contractType === 'LCD'
+  )
 
   return (
     <>
@@ -104,6 +110,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
             enabled: tulipConnected && tulipMode !== 'no_public',
             mode: tulipMode,
             includeInFinalPrice: tulipSettings.includeInFinalPrice,
+            contractType: tulipSettings.contractType,
           }}
         />
       </div>

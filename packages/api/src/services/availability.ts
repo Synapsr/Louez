@@ -30,6 +30,24 @@ const WEEKDAY_INDEX: Record<string, 0 | 1 | 2 | 3 | 4 | 5 | 6> = {
   Sat: 6,
 }
 
+function normalizeTimezone(timezone: unknown): string | undefined {
+  if (typeof timezone !== 'string') {
+    return undefined
+  }
+
+  const normalizedTimezone = timezone.trim()
+  if (!normalizedTimezone) {
+    return undefined
+  }
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: normalizedTimezone }).format(new Date())
+    return normalizedTimezone
+  } catch {
+    return undefined
+  }
+}
+
 function getMinStartDateTime(advanceNoticeMinutes: number = 0): Date {
   return new Date(Date.now() + advanceNoticeMinutes * 60 * 1000)
 }
@@ -186,11 +204,13 @@ export async function getStorefrontAvailability(
     throw new ApiServiceError('NOT_FOUND', 'errors.storeNotFound')
   }
 
+  const timezone = normalizeTimezone(store.settings?.timezone)
+
   const businessHoursValidation = validateRentalPeriod(
     startDate,
     endDate,
     store.settings?.businessHours,
-    store.settings?.timezone,
+    timezone,
   )
 
   const advanceNoticeMinutes = store.settings?.advanceNoticeMinutes || 0
@@ -325,7 +345,9 @@ export async function getStorefrontAvailability(
     }
 
     const productCombinations = combinationsByProduct.get(product.id) || new Map()
-    const axes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[]
+    const axes = Array.isArray(product.bookingAttributeAxes)
+      ? (product.bookingAttributeAxes as BookingAttributeAxis[])
+      : []
     const combinations: CombinationAvailability[] = []
 
     let totalQuantity = 0

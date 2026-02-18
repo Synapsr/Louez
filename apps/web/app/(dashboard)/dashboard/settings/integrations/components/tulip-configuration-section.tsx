@@ -20,7 +20,6 @@ interface TulipConfigurationSectionProps {
   onSave: (input: {
     publicMode: 'required' | 'optional' | 'no_public'
     includeInFinalPrice: boolean
-    renterUid: string | null
     contractType: 'LCD' | 'LMD' | 'LLD'
   }) => Promise<void>
 }
@@ -49,7 +48,6 @@ export function TulipConfigurationSection({
     await onSave({
       publicMode,
       includeInFinalPrice,
-      renterUid: settings.renterUid,
       contractType,
     })
   }
@@ -122,6 +120,9 @@ export function TulipConfigurationSection({
                 <SelectItem value="LLD">LLD</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-sm text-muted-foreground">
+              {t('contractTypeHelp')}
+            </p>
           </div>
 
           <div className="flex justify-end">

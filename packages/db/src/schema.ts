@@ -553,6 +553,8 @@ export const reservations = mysqlTable(
     source: varchar('source', { length: 20 }).default('online'),
 
     // Tulip insurance contract
+    tulipInsuranceOptIn: boolean('tulip_insurance_opt_in'),
+    tulipInsuranceAmount: decimal('tulip_insurance_amount', { precision: 10, scale: 2 }),
     tulipContractId: varchar('tulip_contract_id', { length: 50 }),
     tulipContractStatus: varchar('tulip_contract_status', { length: 20 }),
 

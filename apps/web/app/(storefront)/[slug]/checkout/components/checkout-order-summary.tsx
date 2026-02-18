@@ -4,14 +4,23 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { ImageIcon, Truck } from 'lucide-react';
+import { ImageIcon, ShieldCheck, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { CartItem } from '@/contexts/cart-context';
 import { getDetailedDuration } from '@/lib/utils/duration';
 
 import type { TaxSettings } from '@louez/types';
-import { Badge, Card, CardContent, Separator } from '@louez/ui';
+import {
+  Badge,
+  Card,
+  CardContent,
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@louez/ui';
 import { type ProductPricing, calculateRentalPrice, formatCurrency } from '@louez/utils';
 
 import type { DeliveryOption, LineResolutionState } from '../types';
@@ -41,6 +50,18 @@ interface CheckoutOrderSummaryProps {
     includeInFinalPrice: boolean;
   };
   tulipInsuranceOptIn: boolean;
+  isTulipQuoteLoading: boolean;
+  tulipQuotePreview?: {
+    mode: 'required' | 'optional' | 'no_public';
+    quoteUnavailable: boolean;
+    quoteError: string | null;
+    appliedOptIn: boolean;
+    amount: number;
+    insuredProductCount: number;
+    uninsuredProductCount: number;
+    insuredProductIds: string[];
+    error: string | null;
+  };
   lineResolutions?: Record<
     string,
     LineResolutionState
@@ -67,11 +88,23 @@ export function CheckoutOrderSummary({
   deliveryFee,
   tulipInsurance,
   tulipInsuranceOptIn,
+  isTulipQuoteLoading,
+  tulipQuotePreview,
   lineResolutions = {},
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const showInsuranceUi =
+    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
+  const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading;
+  const insuredProductIdSet = new Set(tulipQuotePreview?.insuredProductIds ?? []);
   const dateLocale = locale === 'fr' ? fr : enUS;
+  const estimatedInsuranceAmount =
+    tulipQuotePreview?.appliedOptIn && tulipQuotePreview.amount > 0
+      ? tulipQuotePreview.amount
+      : 0;
+  const totalWithEstimatedInsurance = totalWithDelivery + estimatedInsuranceAmount;
+  const subtotalWithEstimatedInsurance = subtotal + estimatedInsuranceAmount;
 
   const durationLabel = (() => {
     if (!globalStartDate || !globalEndDate) return '';
@@ -89,8 +122,9 @@ export function CheckoutOrderSummary({
 
   return (
     <div className="lg:col-span-2">
-      <Card className="sticky top-4">
-        <CardContent className="space-y-4 pt-6">
+      <TooltipProvider>
+        <Card className="sticky top-4">
+          <CardContent className="space-y-4 pt-6">
           <h3 className="font-semibold">{t('summary')}</h3>
 
           {globalStartDate && globalEndDate && (
@@ -145,6 +179,9 @@ export function CheckoutOrderSummary({
                   ? resolutionState.selectedAttributes
                   : undefined)
 
+              const isInsuredProduct =
+                showInsuranceSummary && insuredProductIdSet.has(item.productId);
+
               return (
                 <div key={item.lineId || `${item.productId}-${index}`} className="flex gap-3">
                   <div className="bg-muted relative aspect-[4/3] w-16 flex-shrink-0 overflow-hidden rounded-lg">
@@ -162,7 +199,24 @@ export function CheckoutOrderSummary({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.productName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-sm font-medium">{item.productName}</p>
+                      {isInsuredProduct && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <ShieldCheck
+                                className="h-3.5 w-3.5 shrink-0 text-primary/80"
+                                aria-label={t('insuranceCoveredProductTooltip')}
+                              />
+                            }
+                          />
+                          <TooltipContent side="top">
+                            {t('insuranceCoveredProductTooltip')}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                     {requestedAttributes && Object.keys(requestedAttributes).length > 0 && (
                       <p className="text-muted-foreground truncate text-[11px]">
                         {t('requestedAttributesLabel')}: {Object.entries(requestedAttributes)
@@ -245,29 +299,65 @@ export function CheckoutOrderSummary({
               </div>
             )}
 
-            {tulipInsurance?.enabled && tulipInsurance.mode === 'required' && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('insuranceLineLabel')}</span>
-                <span>{t('insuranceRequiredBadge')}</span>
-              </div>
-            )}
-
-            {tulipInsurance?.enabled && tulipInsurance.mode === 'optional' && (
+            {showInsuranceSummary && tulipInsurance?.mode === 'required' && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('insuranceLineLabel')}</span>
                 <span>
-                  {tulipInsuranceOptIn
-                    ? t('insuranceOptionalEnabled')
-                    : t('insuranceOptionalDisabled')}
+                  {estimatedInsuranceAmount > 0 ? (
+                    formatCurrency(estimatedInsuranceAmount, currency)
+                  ) : (
+                    t('insuranceRequiredBadge')
+                  )}
                 </span>
               </div>
+            )}
+
+            {showInsuranceSummary && tulipInsurance?.mode === 'optional' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{t('insuranceLineLabel')}</span>
+                <span>
+                  {estimatedInsuranceAmount > 0 ? (
+                    formatCurrency(estimatedInsuranceAmount, currency)
+                  ) : tulipQuotePreview?.quoteUnavailable ? (
+                    t('insuranceOptionalUnavailableShort')
+                  ) : tulipInsuranceOptIn ? (
+                    t('insuranceOptionalEnabled')
+                  ) : (
+                    t('insuranceOptionalDisabled')
+                  )}
+                </span>
+              </div>
+            )}
+
+            {showInsuranceSummary &&
+              (tulipQuotePreview?.insuredProductCount ?? 0) === 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {t('insuranceNoInsurableProducts')}
+                </p>
+              )}
+
+            {showInsuranceSummary &&
+              (tulipQuotePreview?.insuredProductCount ?? 0) > 0 &&
+              (tulipQuotePreview?.uninsuredProductCount ?? 0) > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {t('insurancePartialCoverage', {
+                    insured: tulipQuotePreview?.insuredProductCount ?? 0,
+                    uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
+                  })}
+                </p>
+              )}
+
+            {showInsuranceSummary && estimatedInsuranceAmount > 0 && (
+              <p className="text-muted-foreground text-xs">
+                {t('insuranceEstimatedDisclaimer')}
+              </p>
             )}
 
             <Separator />
             <div className="flex justify-between text-lg font-semibold">
               <span>{tCart('total')}</span>
               <span className="text-primary">
-                {formatCurrency(totalWithDelivery, currency)}
+                {formatCurrency(totalWithEstimatedInsurance, currency)}
               </span>
             </div>
 
@@ -277,7 +367,8 @@ export function CheckoutOrderSummary({
                   <span>{t('toPayNow')}</span>
                   <span className="text-primary">
                     {formatCurrency(
-                      Math.round(subtotal * depositPercentage) / 100,
+                      Math.round(subtotalWithEstimatedInsurance * depositPercentage) /
+                        100,
                       currency,
                     )}
                   </span>
@@ -285,7 +376,9 @@ export function CheckoutOrderSummary({
                 <p className="text-muted-foreground text-xs">
                   {t('remainingAtPickup', {
                     amount: formatCurrency(
-                      Math.round(subtotal * (100 - depositPercentage)) / 100,
+                      Math.round(
+                        subtotalWithEstimatedInsurance * (100 - depositPercentage),
+                      ) / 100,
                       currency,
                     ),
                   })}
@@ -333,8 +426,9 @@ export function CheckoutOrderSummary({
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </TooltipProvider>
     </div>
   );
 }

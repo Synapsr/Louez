@@ -6,6 +6,17 @@ type CheckoutTranslator = (
 ) => string;
 
 export function createCheckoutSchema(t: CheckoutTranslator) {
+  return createCheckoutSchemaWithOptions(t, {
+    requireAddress: true,
+  });
+}
+
+export function createCheckoutSchemaWithOptions(
+  t: CheckoutTranslator,
+  options: {
+    requireAddress: boolean;
+  },
+) {
   return z
     .object({
       email: z.string().email(t('errors.invalidEmail')),
@@ -17,9 +28,9 @@ export function createCheckoutSchema(t: CheckoutTranslator) {
         .regex(/^\+[1-9]\d{6,14}$/, t('errors.invalidPhone')),
       isBusinessCustomer: z.boolean(),
       companyName: z.string(),
-      address: z.string(),
-      city: z.string(),
-      postalCode: z.string(),
+      address: z.string().trim(),
+      city: z.string().trim(),
+      postalCode: z.string().trim(),
       notes: z.string(),
       tulipInsuranceOptIn: z.boolean(),
       acceptCgv: z.boolean(),
@@ -39,6 +50,32 @@ export function createCheckoutSchema(t: CheckoutTranslator) {
           message: t('errors.acceptCgv'),
           path: ['acceptCgv'],
         });
+      }
+
+      if (options.requireAddress) {
+        if (data.address.trim().length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('errors.required'),
+            path: ['address'],
+          });
+        }
+
+        if (data.city.trim().length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('errors.required'),
+            path: ['city'],
+          });
+        }
+
+        if (data.postalCode.trim().length === 0) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: t('errors.required'),
+            path: ['postalCode'],
+          });
+        }
       }
     });
 }
