@@ -41,9 +41,6 @@ interface ProductFormStepPricingProps {
   availableAccessories: AvailableAccessory[]
   showAccessories: boolean
   showUnitValidationErrors?: boolean
-  priceLabel?: string
-  basePrice?: number
-  effectivePricingMode?: PricingMode
 }
 
 function toLegacyPricingMode(unit: PriceDurationValue['unit']): PricingMode {
@@ -110,21 +107,6 @@ export function ProductFormStepPricing({
             )}
           </form.Field>
 
-          <Separator />
-
-          <div className="grid items-start gap-4 sm:grid-cols-2">
-            <form.AppField name="deposit">
-              {(field) => (
-                <field.Input
-                  label={t('deposit')}
-                  suffix={currencySymbol}
-                  placeholder={t('depositPlaceholder')}
-                  description={t('depositHelp')}
-                />
-              )}
-            </form.AppField>
-          </div>
-
           {storeTaxSettings?.enabled && (
             <>
               <Separator />
@@ -182,6 +164,45 @@ export function ProductFormStepPricing({
               </div>
             </>
           )}
+          <Separator />
+
+          <form.Field name="rateTiers">
+            {(field) => (
+              <div>
+                <RatesEditor
+                  basePriceDuration={watchedValues.basePriceDuration}
+                  rates={field.state.value || []}
+                  onChange={field.handleChange}
+                  enforceStrictTiers={watchedValues.enforceStrictTiers || false}
+                  onEnforceStrictTiersChange={(value) =>
+                    form.setFieldValue('enforceStrictTiers', value)
+                  }
+                  currency={currency}
+                  disabled={isSaving}
+                />
+                {field.state.meta.errors.length > 0 && (
+                  <p className="text-destructive text-sm font-medium">
+                    {getFieldError(field.state.meta.errors[0])}
+                  </p>
+                )}
+              </div>
+            )}
+          </form.Field>
+
+          <Separator />
+
+          <div className="grid items-start gap-4 sm:grid-cols-2">
+            <form.AppField name="deposit">
+              {(field) => (
+                <field.Input
+                  label={t('deposit')}
+                  suffix={currencySymbol}
+                  placeholder={t('depositPlaceholder')}
+                  description={t('depositHelp')}
+                />
+              )}
+            </form.AppField>
+          </div>
         </CardContent>
       </Card>
 
@@ -218,93 +239,56 @@ export function ProductFormStepPricing({
     </div>
   )
 
-  const rates = (
-    <Card>
-      <CardContent className="pt-6">
-        <form.Field name="rateTiers">
-          {(field) => (
-            <div>
-              <RatesEditor
-                basePriceDuration={watchedValues.basePriceDuration}
-                rates={field.state.value || []}
-                onChange={field.handleChange}
-                enforceStrictTiers={watchedValues.enforceStrictTiers || false}
-                onEnforceStrictTiersChange={(value) =>
-                  form.setFieldValue('enforceStrictTiers', value)
-                }
-                currency={currency}
-                disabled={isSaving}
-              />
-              {field.state.meta.errors.length > 0 && (
-                <p className="text-destructive text-sm font-medium">
-                  {getFieldError(field.state.meta.errors[0])}
-                </p>
-              )}
-            </div>
-          )}
-        </form.Field>
-      </CardContent>
-    </Card>
-  )
-
   if (showAccessories) {
     return (
       <>
         {pricingAndStock}
-        <div className="grid gap-6 xl:grid-cols-2">
-          {rates}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Link2 className="h-5 w-5" />
-                {t('accessories')}
-              </CardTitle>
-              <CardDescription>{t('accessoriesDescription')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {availableAccessories.length > 0 ? (
-                <form.Field name="accessoryIds">
-                  {(field) => (
-                    <div>
-                      <AccessoriesSelector
-                        availableProducts={availableAccessories}
-                        selectedIds={field.state.value || []}
-                        onChange={field.handleChange}
-                        currency={currency}
-                        disabled={isSaving}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-destructive text-sm font-medium">
-                          {getFieldError(field.state.meta.errors[0])}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </form.Field>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="bg-muted mb-3 rounded-full p-3">
-                    <Puzzle className="text-muted-foreground h-6 w-6" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5" />
+              {t('accessories')}
+            </CardTitle>
+            <CardDescription>{t('accessoriesDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {availableAccessories.length > 0 ? (
+              <form.Field name="accessoryIds">
+                {(field) => (
+                  <div>
+                    <AccessoriesSelector
+                      availableProducts={availableAccessories}
+                      selectedIds={field.state.value || []}
+                      onChange={field.handleChange}
+                      currency={currency}
+                      disabled={isSaving}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-destructive text-sm font-medium">
+                        {getFieldError(field.state.meta.errors[0])}
+                      </p>
+                    )}
                   </div>
-                  <p className="text-sm font-medium">
-                    {t('noAccessoriesAvailable')}
-                  </p>
-                  <p className="text-muted-foreground mt-1 max-w-[260px] text-sm">
-                    {t('noAccessoriesHint')}
-                  </p>
+                )}
+              </form.Field>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <div className="bg-muted mb-3 rounded-full p-3">
+                  <Puzzle className="text-muted-foreground h-6 w-6" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <p className="text-sm font-medium">
+                  {t('noAccessoriesAvailable')}
+                </p>
+                <p className="text-muted-foreground mt-1 max-w-[260px] text-sm">
+                  {t('noAccessoriesHint')}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </>
     )
   }
 
-  return (
-    <div className="space-y-6">
-      {pricingAndStock}
-      {rates}
-    </div>
-  )
+  return pricingAndStock
 }

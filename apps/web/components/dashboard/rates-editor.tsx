@@ -216,17 +216,13 @@ export function RatesEditor({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <Label className="text-base font-medium">
-            {t('additionalRates')}
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            {t('additionalRatesDescription')}
-          </p>
-        </div>
+        <Label className="text-sm font-medium">
+          {t('additionalRates')}
+        </Label>
         <Button
           type="button"
           variant="outline"
+          size="sm"
           onClick={addRate}
           disabled={disabled}
         >
@@ -234,10 +230,6 @@ export function RatesEditor({
           {t('addRate')}
         </Button>
       </div>
-
-      {rates.length === 0 && (
-        <p className="text-muted-foreground text-sm">{t('noRatesYet')}</p>
-      )}
 
       {rates.map((rate, index) => {
         const tierPrice = toNumber(rate.price);
@@ -343,30 +335,34 @@ export function RatesEditor({
         );
       })}
 
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div className="space-y-0.5">
-          <Label className="text-sm font-medium">
-            {t('pricingTiers.enforceStrictTiers')}
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            {t('pricingTiers.enforceStrictTiersDescription')}
-          </p>
-        </div>
-        <Switch
-          checked={enforceStrictTiers}
-          onCheckedChange={(checked) =>
-            onEnforceStrictTiersChange(Boolean(checked))
-          }
-          disabled={disabled}
-        />
-      </div>
-      {enforceStrictTiers && (
-        <p className="text-muted-foreground bg-muted/20 rounded-md border border-dashed px-3 py-2 text-xs">
-          {t('pricingTiers.enforceStrictTiersTooltip')}
-        </p>
+      {rates.length >= 1 && (
+        <>
+          <div className="flex items-center justify-between rounded-lg border p-4">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">
+                {t('pricingTiers.enforceStrictTiers')}
+              </Label>
+              <p className="text-muted-foreground text-sm">
+                {t('pricingTiers.enforceStrictTiersDescription')}
+              </p>
+            </div>
+            <Switch
+              checked={enforceStrictTiers}
+              onCheckedChange={(checked) =>
+                onEnforceStrictTiersChange(Boolean(checked))
+              }
+              disabled={disabled}
+            />
+          </div>
+          {enforceStrictTiers && (
+            <p className="text-muted-foreground bg-muted/20 rounded-md border border-dashed px-3 py-2 text-xs">
+              {t('pricingTiers.enforceStrictTiersTooltip')}
+            </p>
+          )}
+        </>
       )}
 
-      {previewRows.length > 0 && (
+      {rates.length >= 1 && previewRows.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">
