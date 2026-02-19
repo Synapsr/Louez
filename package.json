@@ -55,7 +55,8 @@
     "pricing:fix-pricing-mode": "pnpm --filter=@louez/db run pricing:fix-pricing-mode",
     "pricing:preflight": "pnpm --filter=@louez/db run pricing:preflight",
     "pricing:backfill": "pnpm --filter=@louez/db run pricing:backfill",
-    "pricing:parity-report": "pnpm --filter=@louez/db run pricing:parity-report"
+    "pricing:parity-report": "pnpm --filter=@louez/db run pricing:parity-report",
+    "pricing:parity-top-products": "pnpm --filter=@louez/db run pricing:parity-top-products"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
