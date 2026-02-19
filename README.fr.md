@@ -26,9 +26,9 @@
 
 <div align="center">
 
-**📹 Vidéo bientôt disponible**
+<video src="demo-fr.mp4" width="100%" autoplay loop muted playsinline></video>
 
-*Découvrez Louez en action — de l'installation à la première réservation*
+_See Louez in action — from setup to first booking_
 
 </div>
 
@@ -38,12 +38,12 @@
 
 Que vous louiez des appareils photo, des outils, du matériel événementiel ou des véhicules — **Louez** vous offre tout ce dont vous avez besoin pour gérer votre activité de location de manière professionnelle.
 
-| 💸 **Aucun frais mensuel** | 🎨 **Belles vitrines** | 🔒 **Vos données vous appartiennent** |
-|:----------------------:|:---------------------------:|:--------------------:|
+|                            💸 **Aucun frais mensuel**                            |                           🎨 **Belles vitrines**                            |       🔒 **Vos données vous appartiennent**        |
+| :------------------------------------------------------------------------------: | :-------------------------------------------------------------------------: | :------------------------------------------------: |
 | Auto-hébergez gratuitement. Pas d'abonnement, pas de commission par réservation. | Chaque boutique dispose d'un catalogue en ligne personnalisable et élégant. | Votre serveur, votre base de données, vos clients. |
 
-| ⚡ **Déployez en minutes** | 🌍 **Multilingue** | 📱 **Mobile Ready** |
-|:-----------------------:|:---------------------:|:-------------------:|
+|       ⚡ **Déployez en minutes**       |                         🌍 **Multilingue**                         |            📱 **Mobile Ready**             |
+| :------------------------------------: | :----------------------------------------------------------------: | :----------------------------------------: |
 | Une commande Docker et c'est en ligne. | Français et anglais intégrés. Ajoutez d'autres langues facilement. | Design responsive pour tous les appareils. |
 
 ---
@@ -97,16 +97,16 @@ docker run -d -p 3000:3000 synapsr/louez
 
 Tout ce dont vous avez besoin pour gérer votre activité de location en un seul endroit.
 
-| | Fonctionnalité | Description |
-|:-:|---------|-------------|
-| 📦 | **Produits** | Gérez votre inventaire avec images, tarifs flexibles et suivi des stocks |
-| 📅 | **Réservations** | Gérez les demandes, suivez les statuts, organisez les retraits et retours |
-| 🗓️ | **Calendrier** | Vue semaine/mois de toutes vos réservations |
-| 👥 | **Clients** | Base de données clients complète avec historique |
-| 📈 | **Statistiques** | Graphiques de revenus, produits populaires, taux d'occupation |
-| 📄 | **Contrats** | Génération automatique de contrats PDF |
-| ✉️ | **Emails** | Confirmations, rappels et notifications automatiques |
-| 👨‍👩‍👧‍👦 | **Équipe** | Invitez vos collaborateurs avec des rôles et permissions |
+|     | Fonctionnalité   | Description                                                               |
+| :-: | ---------------- | ------------------------------------------------------------------------- |
+| 📦  | **Produits**     | Gérez votre inventaire avec images, tarifs flexibles et suivi des stocks  |
+| 📅  | **Réservations** | Gérez les demandes, suivez les statuts, organisez les retraits et retours |
+| 🗓️  | **Calendrier**   | Vue semaine/mois de toutes vos réservations                               |
+| 👥  | **Clients**      | Base de données clients complète avec historique                          |
+| 📈  | **Statistiques** | Graphiques de revenus, produits populaires, taux d'occupation             |
+| 📄  | **Contrats**     | Génération automatique de contrats PDF                                    |
+| ✉️  | **Emails**       | Confirmations, rappels et notifications automatiques                      |
+| 👨‍👩‍👧‍👦  | **Équipe**       | Invitez vos collaborateurs avec des rôles et permissions                  |
 
 ### 🛍️ Vitrines élégantes
 
@@ -132,7 +132,7 @@ services:
   louez:
     image: synapsr/louez:latest
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - DATABASE_URL=mysql://louez:password@db:3306/louez
       - AUTH_SECRET=changez-moi-avec-une-chaine-de-32-caracteres
@@ -157,7 +157,7 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -177,13 +177,13 @@ docker-compose up -d
 
 Fonctionne directement avec vos plateformes préférées :
 
-| Plateforme | Comment déployer |
-|----------|---------------|
+| Plateforme    | Comment déployer                         |
+| ------------- | ---------------------------------------- |
 | **EasyPanel** | Ajouter une app Docker → `Synapsr/Louez` |
-| **Dokploy** | Importer depuis Docker Hub |
-| **Coolify** | Un clic depuis l'image Docker |
-| **Portainer** | Créer un stack depuis compose |
-| **Railway** | Déployer depuis l'image Docker |
+| **Dokploy**   | Importer depuis Docker Hub               |
+| **Coolify**   | Un clic depuis l'image Docker            |
+| **Portainer** | Créer un stack depuis compose            |
+| **Railway**   | Déployer depuis l'image Docker           |
 
 ---
 
@@ -217,17 +217,17 @@ Ouvrez [http://localhost:3000](http://localhost:3000) 🎉
 
 Construit avec des technologies modernes et éprouvées :
 
-| | Technologie | Utilisation |
-|:-:|------------|---------|
-| ⚡ | **Next.js 16** | Framework React avec App Router |
-| 📘 | **TypeScript** | Développement type-safe |
-| 🎨 | **Tailwind CSS 4** | Styling utility-first |
-| 🧩 | **shadcn/ui** | Composants UI élégants |
-| 🗄️ | **Drizzle ORM** | Requêtes base de données type-safe |
-| 🔐 | **Auth.js** | Authentification (Google, Magic Link) |
-| ✉️ | **React Email** | Templates d'emails élégants |
-| 📄 | **React PDF** | Génération de contrats |
-| 🌍 | **next-intl** | Internationalisation |
+|     | Technologie        | Utilisation                           |
+| :-: | ------------------ | ------------------------------------- |
+| ⚡  | **Next.js 16**     | Framework React avec App Router       |
+| 📘  | **TypeScript**     | Développement type-safe               |
+| 🎨  | **Tailwind CSS 4** | Styling utility-first                 |
+| 🧩  | **shadcn/ui**      | Composants UI élégants                |
+| 🗄️  | **Drizzle ORM**    | Requêtes base de données type-safe    |
+| 🔐  | **Auth.js**        | Authentification (Google, Magic Link) |
+| ✉️  | **React Email**    | Templates d'emails élégants           |
+| 📄  | **React PDF**      | Génération de contrats                |
+| 🌍  | **next-intl**      | Internationalisation                  |
 
 ---
 
@@ -236,23 +236,23 @@ Construit avec des technologies modernes et éprouvées :
 <details>
 <summary><strong>📋 Variables d'environnement</strong></summary>
 
-| Variable | Requis | Description |
-|----------|:--------:|-------------|
-| `DATABASE_URL` | ✅ | Chaîne de connexion MySQL |
-| `AUTH_SECRET` | ✅ | Secret aléatoire (min 32 caractères) |
-| `SMTP_HOST` | ✅ | Nom d'hôte du serveur SMTP |
-| `SMTP_PORT` | ✅ | Port du serveur SMTP |
-| `SMTP_USER` | ✅ | Utilisateur SMTP |
-| `SMTP_PASSWORD` | ✅ | Mot de passe SMTP |
-| `EMAIL_FROM` | ✅ | Adresse email d'envoi |
-| `NEXT_PUBLIC_APP_URL` | ✅ | URL publique de votre app |
-| `AUTH_GOOGLE_ID` | | ID client Google OAuth |
-| `AUTH_GOOGLE_SECRET` | | Secret Google OAuth |
-| `S3_ENDPOINT` | | Endpoint S3-compatible |
-| `S3_REGION` | | Région S3 |
-| `S3_BUCKET` | | Nom du bucket S3 |
-| `S3_ACCESS_KEY` | | Clé d'accès S3 |
-| `S3_SECRET_KEY` | | Clé secrète S3 |
+| Variable              | Requis | Description                          |
+| --------------------- | :----: | ------------------------------------ |
+| `DATABASE_URL`        |   ✅   | Chaîne de connexion MySQL            |
+| `AUTH_SECRET`         |   ✅   | Secret aléatoire (min 32 caractères) |
+| `SMTP_HOST`           |   ✅   | Nom d'hôte du serveur SMTP           |
+| `SMTP_PORT`           |   ✅   | Port du serveur SMTP                 |
+| `SMTP_USER`           |   ✅   | Utilisateur SMTP                     |
+| `SMTP_PASSWORD`       |   ✅   | Mot de passe SMTP                    |
+| `EMAIL_FROM`          |   ✅   | Adresse email d'envoi                |
+| `NEXT_PUBLIC_APP_URL` |   ✅   | URL publique de votre app            |
+| `AUTH_GOOGLE_ID`      |        | ID client Google OAuth               |
+| `AUTH_GOOGLE_SECRET`  |        | Secret Google OAuth                  |
+| `S3_ENDPOINT`         |        | Endpoint S3-compatible               |
+| `S3_REGION`           |        | Région S3                            |
+| `S3_BUCKET`           |        | Nom du bucket S3                     |
+| `S3_ACCESS_KEY`       |        | Clé d'accès S3                       |
+| `S3_SECRET_KEY`       |        | Clé secrète S3                       |
 
 </details>
 

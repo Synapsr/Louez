@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "react-image-crop/dist/ReactCrop.css";
+@plugin "@tailwindcss/typography";
+
+@import "@louez/ui/styles";
+@import "./styles/dashboard-theme.css";
+
+.product-image-crop .ReactCrop__crop-selection {
+  border: 2px solid rgb(255 255 255 / 94%);
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgb(8 11 18 / 64%);
+}
+
+.product-image-crop .ReactCrop__drag-handle {
+  background: rgb(255 255 255 / 96%);
+  border: 2px solid rgb(12 16 24 / 22%);
+  border-radius: 999px;
+  box-shadow: 0 6px 12px rgb(0 0 0 / 22%);
+}

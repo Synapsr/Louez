@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1
+
+# =============================================================================
+# Louez Web Migrator - Production Dockerfile (Turborepo Monorepo)
+# =============================================================================
+# Use this file when your platform does not support Docker build targets.
+# It builds and runs only the migration job.
+# =============================================================================
+
+FROM node:20-alpine AS deps
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json .npmrc ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/auth/package.json ./packages/auth/
+COPY packages/config/package.json ./packages/config/
+COPY packages/types/package.json ./packages/types/
+COPY packages/utils/package.json ./packages/utils/
+COPY packages/validations/package.json ./packages/validations/
+COPY packages/db/package.json ./packages/db/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/email/package.json ./packages/email/
+COPY packages/pdf/package.json ./packages/pdf/
+COPY apps/web/package.json ./apps/web/
+
+RUN corepack enable pnpm && \
+    pnpm install --frozen-lockfile
+
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+ARG SKIP_ENV_VALIDATION=true
+ARG DATABASE_URL
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=deps /app/packages/auth/node_modules ./packages/auth/node_modules
+COPY --from=deps /app/packages/config/node_modules ./packages/config/node_modules
+COPY --from=deps /app/packages/types/node_modules ./packages/types/node_modules
+COPY --from=deps /app/packages/utils/node_modules ./packages/utils/node_modules
+COPY --from=deps /app/packages/validations/node_modules ./packages/validations/node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
+COPY --from=deps /app/packages/email/node_modules ./packages/email/node_modules
+COPY --from=deps /app/packages/pdf/node_modules ./packages/pdf/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+ENV SKIP_ENV_VALIDATION=${SKIP_ENV_VALIDATION}
+ENV DATABASE_URL=${DATABASE_URL}
+
+RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
+
+FROM node:20-alpine AS migrator
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Keep pnpm virtual store + workspace links so migrate.mjs can resolve mysql2 deps
+COPY --from=deps /app/node_modules/.pnpm ./node_modules/.pnpm
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+
+# Place migration script under apps/web so module resolution uses apps/web/node_modules
+COPY --from=builder /app/docker/migrate.mjs ./apps/web/docker/migrate.mjs
+COPY --from=builder /app/packages/db/src/migrations ./migrations
+
+CMD ["node", "apps/web/docker/migrate.mjs"]
