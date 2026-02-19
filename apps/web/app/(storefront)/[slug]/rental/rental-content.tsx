@@ -582,7 +582,6 @@ export function RentalContent({
                     }
                     startDate={startDate}
                     endDate={endDate}
-                    duration={duration}
                     availableCombinations={(avail?.combinations || []) as CombinationAvailability[]}
                   />
                 );
