@@ -1,9 +1,9 @@
-'use client'
+'use client';
 
-import { Link2, Puzzle } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { Link2, Puzzle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import type { PricingMode, TaxSettings } from '@louez/types'
+import type { PricingMode, TaxSettings } from '@louez/types';
 import {
   Card,
   CardContent,
@@ -13,40 +13,40 @@ import {
   Input,
   Label,
   Separator,
-} from '@louez/ui'
+} from '@louez/ui';
 
-import { AccessoriesSelector } from '@/components/dashboard/accessories-selector'
-import { RatesEditor } from '@/components/dashboard/rates-editor'
-import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor'
+import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
+import { RatesEditor } from '@/components/dashboard/rates-editor';
+import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
 import {
   PriceDurationInput,
   type PriceDurationValue,
-} from '@/components/ui/price-duration-input'
+} from '@/components/ui/price-duration-input';
 
-import { getFieldError } from '@/hooks/form/form-context'
+import { getFieldError } from '@/hooks/form/form-context';
 
 import type {
   AvailableAccessory,
   ProductFormComponentApi,
   ProductFormValues,
-} from '../types'
+} from '../types';
 
 interface ProductFormStepPricingProps {
-  form: ProductFormComponentApi
-  watchedValues: ProductFormValues
-  currency: string
-  currencySymbol: string
-  isSaving: boolean
-  storeTaxSettings?: TaxSettings
-  availableAccessories: AvailableAccessory[]
-  showAccessories: boolean
-  showUnitValidationErrors?: boolean
+  form: ProductFormComponentApi;
+  watchedValues: ProductFormValues;
+  currency: string;
+  currencySymbol: string;
+  isSaving: boolean;
+  storeTaxSettings?: TaxSettings;
+  availableAccessories: AvailableAccessory[];
+  showAccessories: boolean;
+  showUnitValidationErrors?: boolean;
 }
 
 function toLegacyPricingMode(unit: PriceDurationValue['unit']): PricingMode {
-  if (unit === 'week') return 'week'
-  if (unit === 'day') return 'day'
-  return 'hour'
+  if (unit === 'week') return 'week';
+  if (unit === 'day') return 'day';
+  return 'hour';
 }
 
 export function ProductFormStepPricing({
@@ -60,7 +60,7 @@ export function ProductFormStepPricing({
   showAccessories,
   showUnitValidationErrors = false,
 }: ProductFormStepPricingProps) {
-  const t = useTranslations('dashboard.products.form')
+  const t = useTranslations('dashboard.products.form');
 
   const pricingAndStock = (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -79,18 +79,22 @@ export function ProductFormStepPricing({
                     field.state.value ?? {
                       price: watchedValues.price || '',
                       duration: 1,
-                      unit: watchedValues.pricingMode === 'week'
-                        ? 'week'
-                        : watchedValues.pricingMode === 'hour'
-                          ? 'hour'
-                          : 'day',
+                      unit:
+                        watchedValues.pricingMode === 'week'
+                          ? 'week'
+                          : watchedValues.pricingMode === 'hour'
+                            ? 'hour'
+                            : 'day',
                     }
                   }
                   onChange={(next) => {
-                    field.handleChange(next)
+                    field.handleChange(next);
                     // Temporary bridge while legacy fields are still present elsewhere.
-                    form.setFieldValue('price', next.price)
-                    form.setFieldValue('pricingMode', toLegacyPricingMode(next.unit))
+                    form.setFieldValue('price', next.price);
+                    form.setFieldValue(
+                      'pricingMode',
+                      toLegacyPricingMode(next.unit),
+                    );
                   }}
                   currency={currency}
                   disabled={isSaving}
@@ -106,7 +110,6 @@ export function ProductFormStepPricing({
               </div>
             )}
           </form.Field>
-
           {storeTaxSettings?.enabled && (
             <>
               <Separator />
@@ -164,8 +167,6 @@ export function ProductFormStepPricing({
               </div>
             </>
           )}
-          <Separator />
-
           <form.Field name="rateTiers">
             {(field) => (
               <div>
@@ -188,9 +189,7 @@ export function ProductFormStepPricing({
               </div>
             )}
           </form.Field>
-
           <Separator />
-
           <div className="grid items-start gap-4 sm:grid-cols-2">
             <form.AppField name="deposit">
               {(field) => (
@@ -228,8 +227,8 @@ export function ProductFormStepPricing({
               form.setFieldMeta('quantity', (prev: any) => ({
                 ...prev,
                 errorMap: { ...prev?.errorMap, onSubmit: undefined },
-              }))
-              form.setFieldValue('quantity', value)
+              }));
+              form.setFieldValue('quantity', value);
             }}
             disabled={isSaving}
             showValidationErrors={showUnitValidationErrors}
@@ -237,7 +236,7 @@ export function ProductFormStepPricing({
         </CardContent>
       </Card>
     </div>
-  )
+  );
 
   if (showAccessories) {
     return (
@@ -287,8 +286,8 @@ export function ProductFormStepPricing({
           </CardContent>
         </Card>
       </>
-    )
+    );
   }
 
-  return pricingAndStock
+  return pricingAndStock;
 }
