@@ -1,0 +1,23 @@
+{
+  "name": "@louez/pdf",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@louez/types": "workspace:*",
+    "@louez/utils": "workspace:*",
+    "@react-pdf/renderer": "^4.3.2"
+  },
+  "devDependencies": {
+    "@louez/config": "workspace:*",
+    "@types/react": "^19",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "react": "^19"
+  }
+}

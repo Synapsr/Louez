@@ -1,0 +1,27 @@
+{
+  "name": "@louez/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./router": "./src/router.ts",
+    "./services": "./src/services/index.ts"
+  },
+  "dependencies": {
+    "@louez/auth": "workspace:*",
+    "@louez/db": "workspace:*",
+    "@louez/types": "workspace:*",
+    "@louez/utils": "workspace:*",
+    "@louez/validations": "workspace:*",
+    "@orpc/server": "^1.13.4",
+    "drizzle-orm": "^0.45.1",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@louez/config": "workspace:*",
+    "typescript": "^5"
+  }
+}
