@@ -627,7 +627,7 @@
           "info": "Informacoes",
           "infoDescription": "Nome e descricao",
           "pricing": "Precos",
-          "pricingDescription": "Preco e estoque",
+          "pricingDescription": "Preco e tarifas",
           "preview": "Publicar",
           "previewDescription": "Revisar e publicar"
         },
@@ -700,7 +700,7 @@
         "descriptionHint": "Descreva as caracteristicas, condicao e termos de uso",
         "categoryOptional": "Opcional - ajuda os clientes a encontrar seu produto",
         "noCategories": "Nenhuma categoria criada",
-        "pricingDescription": "Defina o preco de aluguel e o estoque disponivel",
+        "pricingDescription": "Defina o preco de aluguel e as tarifas",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -737,9 +737,9 @@
           "savings": "Economia",
           "targetPrice": "Preço alvo",
           "tierTotal": "Custo total",
-          "enforceStrictTiers": "Oferecer apenas estas durações",
-          "enforceStrictTiersDescription": "Os clientes só poderão reservar pelas durações exatas dos seus níveis. Durações intermediárias não estarão disponíveis.",
-          "enforceStrictTiersTooltip": "Se um cliente escolher uma duração intermediária, ela será automaticamente arredondada para o nível superior. Por exemplo, com níveis de 3 e 7 dias, um aluguel de 5 dias será cobrado pela tarifa de 7 dias."
+          "enforceStrictTiers": "Permitir desconto progressivo",
+          "enforceStrictTiersDescription": "Por padrão, apenas as durações exatas dos níveis são oferecidas. Ative esta opção para aplicar desconto progressivo em durações intermediárias.",
+          "enforceStrictTiersTooltip": "Quando ativado, durações intermediárias recebem um desconto interpolado entre níveis. Exemplo: entre 3 dias (-10%) e 7 dias (-20%), um aluguel de 5 dias aplica cerca de -15%."
         },
         "unitTracking": {
           "toggle": "Rastrear unidades individuais",

@@ -657,7 +657,7 @@
           "info": "Informations",
           "infoDescription": "Nom et description",
           "pricing": "Tarification",
-          "pricingDescription": "Prix et stock",
+          "pricingDescription": "Prix et tarifs",
           "preview": "Publication",
           "previewDescription": "Vérifier et publier"
         },
@@ -730,7 +730,7 @@
         "descriptionHint": "Décrivez les caractéristiques, l'état et les conditions d'utilisation",
         "categoryOptional": "Optionnel - aide les clients à trouver votre produit",
         "noCategories": "Aucune catégorie créée",
-        "pricingDescription": "Définissez le prix de location et le stock disponible",
+        "pricingDescription": "Définissez le prix de location et les tarifs",
         "baseRate": "Tarif de base",
         "baseRateDescription": "Tarif le plus cher à la minute, utilisé comme référence.",
         "additionalRates": "Tarifs additionnels",
@@ -767,9 +767,9 @@
           "savings": "Économie",
           "targetPrice": "Prix cible",
           "tierTotal": "Coût total",
-          "enforceStrictTiers": "Proposer uniquement ces durées",
-          "enforceStrictTiersDescription": "Les clients ne pourront réserver que pour les durées exactes de vos paliers. Les durées intermédiaires ne seront pas proposées.",
-          "enforceStrictTiersTooltip": "Si un client choisit une durée intermédiaire, elle sera automatiquement arrondie au palier supérieur. Par exemple, avec des paliers à 3 et 7 jours, une location de 5 jours sera facturée au tarif de 7 jours."
+          "enforceStrictTiers": "Autoriser une remise progressive",
+          "enforceStrictTiersDescription": "Par défaut, seules les durées exactes de vos paliers sont proposées. Activez cette option pour appliquer une remise progressive aux durées intermédiaires.",
+          "enforceStrictTiersTooltip": "Quand cette option est activée, les durées intermédiaires reçoivent une remise interpolée entre deux paliers. Exemple : entre 3 jours (-10 %) et 7 jours (-20 %), une location de 5 jours applique environ -15 %."
         },
         "unitTracking": {
           "toggle": "Suivre les unités individuellement",
@@ -788,7 +788,9 @@
           "combinationKey": "Combinaison",
           "missingAttributesWarning": "{count, plural, one {# unité active n'a pas toutes les valeurs d'attribut} other {# unités actives n'ont pas toutes les valeurs d'attribut}}",
           "manageAttributes": "Gérer les attributs",
-          "manageAttributesDescription": "Définissez jusqu'à 3 axes d'attribut (ex : Taille, Couleur) pour les combinaisons suivies.",
+          "manageAttributesDescription": "Les attributs permettent aux clients de choisir des caractéristiques précises lors de la réservation (ex : taille, couleur). Chaque unité est associée à ses valeurs d'attribut, et le système attribue automatiquement une unité correspondante au moment du paiement.",
+          "manageAttributesExample": "Exemple : pour une location de kayak, ajoutez « Taille » (S, M, L) et « Couleur » (Rouge, Bleu). Un client réservant un kayak Moyen Rouge se verra attribuer une unité disponible correspondante.",
+          "manageAttributesMax": "Jusqu'à 3 attributs autorisés.",
           "pressEnterToCreate": "Appuyez sur Entrée pour créer « {value} »",
           "addUnit": "Ajouter une unité",
           "addNotes": "Ajouter des notes",

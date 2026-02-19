@@ -25,6 +25,9 @@ import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar';
 
 import { useAppForm } from '@/hooks/form/form';
 
+import { ProductFormEditToc } from './components/product-form-edit-toc';
+import { ProductFormSectionAccessories } from './components/product-form-section-accessories';
+import { ProductFormSectionStock } from './components/product-form-section-stock';
 import { ProductFormStepInfo } from './components/product-form-step-info';
 import { ProductFormStepPhotos } from './components/product-form-step-photos';
 import { ProductFormStepPreview } from './components/product-form-step-preview';
@@ -175,7 +178,7 @@ export function ProductForm({
       pricingMode: (product?.pricingMode ?? 'day') as PricingMode,
       pricingTiers: initialPricingTiers,
       rateTiers: initialRateTiers,
-      enforceStrictTiers: product?.enforceStrictTiers || false,
+      enforceStrictTiers: product?.enforceStrictTiers ?? true,
       taxSettings: product?.taxSettings ?? { inheritFromStore: true },
       videoUrl: product?.videoUrl || '',
       accessoryIds: product?.accessoryIds ?? [],
@@ -362,59 +365,92 @@ export function ProductForm({
     ? `${currencySymbol}${watchedValues.basePriceDuration.price.trim().replace(',', '.')}`
     : `${currencySymbol}0.00`;
 
-  // Edit mode: simple form without stepper
+  // Edit mode: single column with sticky TOC on desktop
   if (isEditMode) {
     return (
       <>
         <form.AppForm>
-          <form.Form className="space-y-6">
-            <ProductFormStepPhotos
-              form={form as unknown as ProductFormComponentApi}
-              imagesPreviews={imagesPreviews}
-              isDragging={media.isDragging}
-              isUploadingImages={media.isUploadingImages}
-              handleImageUpload={media.handleImageUpload}
-              handleDragOver={media.handleDragOver}
-              handleDragEnter={media.handleDragEnter}
-              handleDragLeave={media.handleDragLeave}
-              handleDrop={media.handleDrop}
-              removeImage={media.removeImage}
-              setMainImage={media.setMainImage}
-              recropImage={media.recropImage}
-              canRecrop={true}
-            />
+          <form.Form>
+            <div className="relative flex gap-10">
+              <ProductFormEditToc />
 
-            <ProductFormStepInfo
-              form={form as unknown as ProductFormComponentApi}
-              categories={categories}
-              categoryDialogOpen={categoryDialogOpen}
-              newCategoryName={newCategoryName}
-              setNewCategoryName={setNewCategoryName}
-              onCategoryDialogOpenChange={setCategoryDialogOpen}
-              onCreateCategory={handleCreateCategory}
-              isCreatingCategory={isCreatingCategory}
-              onNameInputChange={(event, handleChange) => {
-                form.setFieldMeta('name', (prev) => ({
-                  ...prev,
-                  errorMap: { ...prev?.errorMap, onSubmit: undefined },
-                }));
-                handleChange(event.target.value);
-              }}
-            />
+              <div className="min-w-0 flex-1 space-y-6">
+                <div id="section-photos" className="scroll-mt-8">
+                  <ProductFormStepPhotos
+                    form={form as unknown as ProductFormComponentApi}
+                    imagesPreviews={imagesPreviews}
+                    isDragging={media.isDragging}
+                    isUploadingImages={media.isUploadingImages}
+                    handleImageUpload={media.handleImageUpload}
+                    handleDragOver={media.handleDragOver}
+                    handleDragEnter={media.handleDragEnter}
+                    handleDragLeave={media.handleDragLeave}
+                    handleDrop={media.handleDrop}
+                    removeImage={media.removeImage}
+                    setMainImage={media.setMainImage}
+                    recropImage={media.recropImage}
+                    canRecrop={true}
+                  />
+                </div>
 
-            <ProductFormStepPricing
-              form={form as unknown as ProductFormComponentApi}
-              watchedValues={watchedValues}
-              currency={currency}
-              currencySymbol={currencySymbol}
-              isSaving={isSaving}
-              storeTaxSettings={storeTaxSettings}
-              availableAccessories={availableAccessories}
-              showAccessories={true}
-              showUnitValidationErrors={
-                hasUnitsSubmitError || submissionAttempts > 0
-              }
-            />
+                <div id="section-information" className="scroll-mt-8">
+                  <ProductFormStepInfo
+                    form={form as unknown as ProductFormComponentApi}
+                    categories={categories}
+                    categoryDialogOpen={categoryDialogOpen}
+                    newCategoryName={newCategoryName}
+                    setNewCategoryName={setNewCategoryName}
+                    onCategoryDialogOpenChange={setCategoryDialogOpen}
+                    onCreateCategory={handleCreateCategory}
+                    isCreatingCategory={isCreatingCategory}
+                    onNameInputChange={(event, handleChange) => {
+                      form.setFieldMeta('name', (prev) => ({
+                        ...prev,
+                        errorMap: { ...prev?.errorMap, onSubmit: undefined },
+                      }));
+                      handleChange(event.target.value);
+                    }}
+                  />
+                </div>
+
+                <div id="section-pricing" className="scroll-mt-8">
+                  <ProductFormStepPricing
+                    form={form as unknown as ProductFormComponentApi}
+                    watchedValues={watchedValues}
+                    currency={currency}
+                    currencySymbol={currencySymbol}
+                    isSaving={isSaving}
+                    storeTaxSettings={storeTaxSettings}
+                    availableAccessories={availableAccessories}
+                    showAccessories={false}
+                    showStock={false}
+                    showUnitValidationErrors={
+                      hasUnitsSubmitError || submissionAttempts > 0
+                    }
+                  />
+                </div>
+
+                <div id="section-stock" className="scroll-mt-8">
+                  <ProductFormSectionStock
+                    form={form as unknown as ProductFormComponentApi}
+                    watchedValues={watchedValues}
+                    disabled={isSaving}
+                    showValidationErrors={
+                      hasUnitsSubmitError || submissionAttempts > 0
+                    }
+                  />
+                </div>
+
+                <div id="section-accessories" className="scroll-mt-8">
+                  <ProductFormSectionAccessories
+                    form={form as unknown as ProductFormComponentApi}
+                    availableAccessories={availableAccessories}
+                    currency={currency}
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+            </div>
 
             <FloatingSaveBar
               isDirty={isDirty}

@@ -627,7 +627,7 @@
           "info": "Informacje",
           "infoDescription": "Nazwa i opis",
           "pricing": "Cennik",
-          "pricingDescription": "Cena i stan magazynowy",
+          "pricingDescription": "Cena i stawki",
           "preview": "Publikacja",
           "previewDescription": "Sprawdź i opublikuj"
         },
@@ -700,7 +700,7 @@
         "descriptionHint": "Opisz cechy, stan i warunki użytkowania",
         "categoryOptional": "Opcjonalne - pomaga klientom znaleźć produkt",
         "noCategories": "Brak kategorii",
-        "pricingDescription": "Ustaw cenę wynajmu i dostępny stan magazynowy",
+        "pricingDescription": "Ustaw cenę wynajmu i stawki",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -737,9 +737,9 @@
           "savings": "Oszczędności",
           "targetPrice": "Cena docelowa",
           "tierTotal": "Koszt całkowity",
-          "enforceStrictTiers": "Oferuj tylko te okresy",
-          "enforceStrictTiersDescription": "Klienci będą mogli rezerwować tylko na dokładne okresy zdefiniowane w progach. Pośrednie okresy nie będą dostępne.",
-          "enforceStrictTiersTooltip": "Jeśli klient wybierze pośredni okres, zostanie on automatycznie zaokrąglony w górę do najbliższego progu. Na przykład, przy progach 3 i 7 dni, wynajem na 5 dni będzie rozliczony według stawki za 7 dni."
+          "enforceStrictTiers": "Włącz rabat progresywny",
+          "enforceStrictTiersDescription": "Domyślnie dostępne są tylko dokładne okresy z progów. Włącz tę opcję, aby stosować rabat progresywny dla okresów pośrednich.",
+          "enforceStrictTiersTooltip": "Po włączeniu okresy pośrednie otrzymują interpolowany rabat między progami. Przykład: między 3 dniami (-10%) a 7 dniami (-20%), wynajem na 5 dni otrzyma około -15%."
         },
         "unitTracking": {
           "toggle": "Śledź pojedyncze jednostki",
