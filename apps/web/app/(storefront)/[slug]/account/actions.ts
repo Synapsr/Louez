@@ -106,6 +106,19 @@ function generateCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error)
+}
+
+function maskEmail(email: string): string {
+  const [localPart, domainPart] = email.split('@')
+  if (!localPart || !domainPart) return '[invalid-email]'
+
+  const visibleLocal = localPart.slice(0, 2)
+  return `${visibleLocal}***@${domainPart}`
+}
+
 export async function sendVerificationCode(storeId: string, email: string, locale?: 'fr' | 'en') {
   try {
     // SECURITY: Validate storeId format (21-char nanoid)
@@ -148,7 +161,9 @@ export async function sendVerificationCode(storeId: string, email: string, local
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
     // Store the code
+    const verificationCodeId = nanoid()
     await db.insert(verificationCodes).values({
+      id: verificationCodeId,
       email,
       storeId,
       code,
@@ -171,11 +186,25 @@ export async function sendVerificationCode(storeId: string, email: string, local
         locale: locale || 'fr',
       })
     } catch (emailError) {
-      console.error('Failed to send verification email:', emailError)
-      // Still return success - code is stored and will be logged in dev
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[DEV] Verification code for ${email}: ${code}`)
+      console.error('Failed to send storefront verification email', {
+        storeId,
+        email: maskEmail(email),
+        reason: getErrorMessage(emailError),
+      })
+
+      try {
+        await db
+          .delete(verificationCodes)
+          .where(eq(verificationCodes.id, verificationCodeId))
+      } catch (cleanupError) {
+        console.error('Failed to cleanup verification code after email error', {
+          storeId,
+          email: maskEmail(email),
+          reason: getErrorMessage(cleanupError),
+        })
       }
+
+      return { error: 'errors.sendCodeError' }
     }
 
     return { success: true }
