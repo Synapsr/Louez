@@ -76,6 +76,18 @@ function toNumber(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function sortRatesByDuration(rates: RateEditorRow[]): RateEditorRow[] {
+  return [...rates].sort((a, b) => {
+    const durationDiff =
+      priceDurationToMinutes(a.duration, a.unit) -
+      priceDurationToMinutes(b.duration, b.unit);
+
+    if (durationDiff !== 0) return durationDiff;
+
+    return toNumber(a.price) - toNumber(b.price);
+  });
+}
+
 function nextTierDuration(params: {
   unit: DurationUnit;
   currentDuration: number;
@@ -216,6 +228,10 @@ export function RatesEditor({
     return false;
   }, [basePeriod, basePrice, hasBaseRate, validRates]);
 
+  const emitRatesChange = (nextRates: RateEditorRow[]) => {
+    onChange(sortRatesByDuration(nextRates));
+  };
+
   const addRate = () => {
     if (!hasBaseRate) {
       onRequireBaseRate?.();
@@ -267,7 +283,7 @@ export function RatesEditor({
       discountPercent = nextDiscount;
     }
 
-    onChange([
+    emitRatesChange([
       ...rates,
       {
         price,
@@ -280,13 +296,13 @@ export function RatesEditor({
 
   const removeRate = (index: number) => {
     const next = rates.filter((_, i) => i !== index);
-    onChange(next);
+    emitRatesChange(next);
   };
 
   const updateRate = (index: number, next: RateEditorRow) => {
     const updated = [...rates];
     updated[index] = next;
-    onChange(updated);
+    emitRatesChange(updated);
   };
 
   const updateReductionPercent = (index: number, reductionPercent: number) => {

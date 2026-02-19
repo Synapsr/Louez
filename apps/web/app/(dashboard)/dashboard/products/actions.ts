@@ -80,7 +80,7 @@ function buildRateTierRows(
   discountPercent: string | null
 }> {
   if (input.rateTiers && input.rateTiers.length > 0) {
-    return input.rateTiers.map((tier) => {
+    const rows = input.rateTiers.map((tier) => {
       const period = priceDurationToMinutes(tier.duration, tier.unit)
       const tierPrice = normalizePriceInput(tier.price)
 
@@ -93,11 +93,13 @@ function buildRateTierRows(
         discountPercent: null,
       }
     })
+
+    return rows.sort((a, b) => a.period - b.period)
   }
 
   // Backward fallback for legacy payloads.
   const legacyTiers = input.pricingTiers || []
-  return legacyTiers.map((tier) => {
+  const rows = legacyTiers.map((tier) => {
     const period = tier.minDuration * basePeriodMinutes
     const unitPrice = basePrice * (1 - tier.discountPercent / 100)
     const totalPrice = unitPrice * tier.minDuration
@@ -109,6 +111,8 @@ function buildRateTierRows(
       discountPercent: null,
     }
   })
+
+  return rows.sort((a, b) => a.period - b.period)
 }
 
 export async function createProduct(data: ProductInput) {
