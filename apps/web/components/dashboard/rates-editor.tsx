@@ -57,9 +57,32 @@ interface RatesEditorProps {
   disabled?: boolean;
 }
 
+const DURATION_MULTIPLIERS_BY_UNIT: Record<DurationUnit, number[]> = {
+  minute: [1, 2, 6, 12, 24],
+  hour: [1, 2, 4, 8, 24],
+  day: [1, 3, 7, 14, 30],
+  week: [1, 2, 4, 8, 12],
+};
+
 function toNumber(value: string): number {
   const parsed = Number.parseFloat(value.replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function nextTierDuration(params: {
+  unit: DurationUnit;
+  currentDuration: number;
+  baseDuration?: number;
+}): number {
+  const { unit, currentDuration, baseDuration } = params;
+  const safeCurrent = Math.max(1, Math.round(currentDuration || 1));
+  const safeBase = Math.max(1, Math.round(baseDuration || 1));
+  const candidateDurations = DURATION_MULTIPLIERS_BY_UNIT[unit].map(
+    (multiplier) => multiplier * safeBase,
+  );
+  const next = candidateDurations.find((duration) => duration > safeCurrent);
+  if (next) return next;
+  return Math.max(safeCurrent + 1, Math.ceil(safeCurrent * 1.5));
 }
 
 export function RatesEditor({
@@ -114,14 +137,7 @@ export function RatesEditor({
     }
 
     const multipliers =
-      basePriceDuration?.unit === 'minute'
-        ? [1, 2, 6, 12, 24]
-        : basePriceDuration?.unit === 'hour'
-          ? [1, 2, 4, 8, 24]
-          : basePriceDuration?.unit === 'week'
-            ? [1, 2, 4, 8, 12]
-            : [1, 3, 7, 14, 30];
-
+      DURATION_MULTIPLIERS_BY_UNIT[basePriceDuration?.unit ?? 'day'];
     const byBase = multipliers.map((multiplier) => basePeriod * multiplier);
     return [
       ...new Set([...byBase, ...validRates.map((rate) => rate.period)]),
@@ -179,12 +195,59 @@ export function RatesEditor({
   ]);
 
   const addRate = () => {
+    const lastRate = rates.at(-1);
+    const referenceUnit = lastRate?.unit ?? basePriceDuration?.unit ?? 'day';
+    const currentDuration =
+      lastRate?.duration ?? basePriceDuration?.duration ?? 1;
+    const baseDurationForUnit =
+      basePriceDuration?.unit === referenceUnit
+        ? basePriceDuration.duration
+        : undefined;
+    const duration = nextTierDuration({
+      unit: referenceUnit,
+      currentDuration,
+      baseDuration: baseDurationForUnit,
+    });
+    const period = priceDurationToMinutes(duration, referenceUnit);
+    const hasBaseRate = basePrice > 0 && basePeriod > 0;
+
+    let price = '';
+    let discountPercent: number | undefined = undefined;
+
+    if (hasBaseRate) {
+      const lastRateWithPrice = [...rates]
+        .reverse()
+        .find((rate) => toNumber(rate.price) > 0 && rate.duration > 0);
+      const previousDiscount = lastRateWithPrice
+        ? (lastRateWithPrice.discountPercent ??
+          computeReductionPercent(
+            basePrice,
+            basePeriod,
+            toNumber(lastRateWithPrice.price),
+            priceDurationToMinutes(
+              lastRateWithPrice.duration,
+              lastRateWithPrice.unit,
+            ),
+          ))
+        : 0;
+      const nextDiscount = Math.min(
+        99,
+        Math.max(10, Math.round((previousDiscount + 10) * 100) / 100),
+      );
+      const basePerMinute = basePrice / basePeriod;
+      const discountedPerMinute = basePerMinute * (1 - nextDiscount / 100);
+
+      price = Math.max(0, discountedPerMinute * period).toFixed(2);
+      discountPercent = nextDiscount;
+    }
+
     onChange([
       ...rates,
       {
-        price: '',
-        duration: 0,
-        unit: 'day',
+        price,
+        duration,
+        unit: referenceUnit,
+        discountPercent,
       },
     ]);
   };
@@ -215,7 +278,7 @@ export function RatesEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
         <Label className="text-sm font-medium">
           {t('additionalRates')}
         </Label>
@@ -229,7 +292,7 @@ export function RatesEditor({
           <Plus className="mr-2 h-4 w-4" />
           {t('addRate')}
         </Button>
-      </div>
+      </div> */}
 
       {rates.map((rate, index) => {
         const tierPrice = toNumber(rate.price);
@@ -335,6 +398,17 @@ export function RatesEditor({
         );
       })}
 
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={addRate}
+        disabled={disabled}
+      >
+        <Plus className="mr-2 h-4 w-4" />
+        {t('addRate')}
+      </Button>
+
       {rates.length >= 1 && (
         <>
           <div className="flex items-center justify-between rounded-lg border p-4">
@@ -393,7 +467,9 @@ export function RatesEditor({
                     return (
                       <TableRow
                         key={row.durationMinutes}
-                        className={row.savings > 0 ? 'bg-green-50/40' : undefined}
+                        className={
+                          row.savings > 0 ? 'bg-green-50/40' : undefined
+                        }
                       >
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
@@ -408,24 +484,24 @@ export function RatesEditor({
                             )}
                           </div>
                         </TableCell>
-                      <TableCell>
-                        {formatCurrency(row.unitPrice, currency)}
-                        {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(row.total, currency)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right ${
-                          row.savings > 0
-                            ? 'text-emerald-700'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        {row.savings > 0
-                          ? `-${formatCurrency(row.savings, currency)}`
-                          : '-'}
-                      </TableCell>
+                        <TableCell>
+                          {formatCurrency(row.unitPrice, currency)}
+                          {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(row.total, currency)}
+                        </TableCell>
+                        <TableCell
+                          className={`text-right ${
+                            row.savings > 0
+                              ? 'text-emerald-700'
+                              : 'text-muted-foreground'
+                          }`}
+                        >
+                          {row.savings > 0
+                            ? `-${formatCurrency(row.savings, currency)}`
+                            : '-'}
+                        </TableCell>
                       </TableRow>
                     );
                   })}
