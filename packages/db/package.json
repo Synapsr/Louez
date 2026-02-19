@@ -19,7 +19,8 @@
     "pricing:fix-pricing-mode": "tsx src/scripts/pricing-fix-pricing-mode.ts",
     "pricing:preflight": "tsx src/scripts/pricing-preflight.ts",
     "pricing:backfill": "tsx src/scripts/pricing-backfill.ts",
-    "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts"
+    "pricing:parity-report": "tsx src/scripts/pricing-parity-report.ts",
+    "pricing:parity-top-products": "tsx src/scripts/pricing-parity-top-products.ts"
   },
   "dependencies": {
     "@louez/types": "workspace:*",
