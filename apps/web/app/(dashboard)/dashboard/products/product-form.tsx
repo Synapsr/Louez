@@ -13,7 +13,11 @@ import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
 import { Card, CardContent } from '@louez/ui';
 import { StepActions, StepContent, Stepper } from '@louez/ui';
-import { getCurrencySymbol, minutesToPriceDuration } from '@louez/utils';
+import {
+  getCurrencySymbol,
+  minutesToPriceDuration,
+  priceDurationToMinutes,
+} from '@louez/utils';
 import {
   type PricingTierInput as LegacyPricingTierInput,
   type RateTierInput,
@@ -122,7 +126,11 @@ export function ProductForm({
           discountPercent: discount,
         };
       })
-      .sort((a, b) => a.duration - b.duration);
+      .sort(
+        (a, b) =>
+          priceDurationToMinutes(a.duration, a.unit) -
+          priceDurationToMinutes(b.duration, b.unit),
+      );
   })();
 
   // Convert product units to input format
