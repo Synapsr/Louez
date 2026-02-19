@@ -29,6 +29,7 @@ export interface PriceDurationInputProps {
   currency?: string;
   className?: string;
   disabled?: boolean;
+  invalid?: boolean;
 }
 
 export function PriceDurationInput({
@@ -38,6 +39,7 @@ export function PriceDurationInput({
   currency = 'EUR',
   className,
   disabled,
+  invalid = false,
 }: PriceDurationInputProps) {
   const t = useTranslations('common');
   const symbol = getCurrencySymbol(currency);
@@ -83,12 +85,18 @@ export function PriceDurationInput({
     return t(unitLabelKeys[unit], { count: value.duration });
   }
 
-  const inputClasses =
-    'border-input dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 flex h-9 rounded-md border bg-transparent shadow-xs has-[:focus]:ring-[3px]';
+  const inputClasses = cn(
+    'dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 flex h-9 rounded-md border bg-transparent shadow-xs has-[:focus]:ring-[3px]',
+    invalid
+      ? 'border-destructive has-[:focus]:border-destructive has-[:focus]:ring-destructive/20'
+      : 'border-input',
+  );
   const numberInputClasses =
     'min-w-0 flex-1 [appearance:textfield] bg-transparent px-3 text-base outline-none md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
-  const inlineSelectClasses =
-    'border-input bg-muted/50 text-muted-foreground h-full cursor-pointer border-l px-2.5 text-sm outline-none';
+  const inlineSelectClasses = cn(
+    'bg-muted/50 text-muted-foreground h-full cursor-pointer border-l px-2.5 text-sm outline-none',
+    invalid ? 'border-destructive' : 'border-input',
+  );
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -111,7 +119,12 @@ export function PriceDurationInput({
           placeholder="0.00"
           className={cn(numberInputClasses, 'rounded-l-md')}
         />
-        <span className="border-input bg-muted/50 text-muted-foreground flex items-center rounded-r-md border-l px-2.5 text-sm">
+        <span
+          className={cn(
+            'bg-muted/50 text-muted-foreground flex items-center rounded-r-md border-l px-2.5 text-sm',
+            invalid ? 'border-destructive' : 'border-input',
+          )}
+        >
           {symbol}
         </span>
       </div>

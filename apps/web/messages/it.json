@@ -627,7 +627,7 @@
           "info": "Informazioni",
           "infoDescription": "Nome e descrizione",
           "pricing": "Prezzi",
-          "pricingDescription": "Prezzo e stock",
+          "pricingDescription": "Prezzo e tariffe",
           "preview": "Pubblica",
           "previewDescription": "Rivedi e pubblica"
         },
@@ -700,7 +700,7 @@
         "descriptionHint": "Descrivi le caratteristiche, le condizioni e i termini d'uso",
         "categoryOptional": "Opzionale - aiuta i clienti a trovare il tuo prodotto",
         "noCategories": "Nessuna categoria creata",
-        "pricingDescription": "Imposta il prezzo di noleggio e lo stock disponibile",
+        "pricingDescription": "Imposta il prezzo di noleggio e le tariffe",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -737,9 +737,9 @@
           "savings": "Risparmio",
           "targetPrice": "Prezzo obiettivo",
           "tierTotal": "Costo totale",
-          "enforceStrictTiers": "Offrire solo queste durate",
-          "enforceStrictTiersDescription": "I clienti potranno prenotare solo per le durate esatte dei tuoi livelli. Le durate intermedie non saranno disponibili.",
-          "enforceStrictTiersTooltip": "Se un cliente sceglie una durata intermedia, verrà automaticamente arrotondata al livello superiore. Ad esempio, con livelli a 3 e 7 giorni, un noleggio di 5 giorni verrà fatturato alla tariffa di 7 giorni."
+          "enforceStrictTiers": "Consenti sconto progressivo",
+          "enforceStrictTiersDescription": "Per impostazione predefinita vengono offerte solo le durate esatte dei tuoi livelli. Attiva questa opzione per applicare uno sconto progressivo alle durate intermedie.",
+          "enforceStrictTiersTooltip": "Quando è attiva, le durate intermedie ricevono uno sconto interpolato tra i livelli. Esempio: tra 3 giorni (-10%) e 7 giorni (-20%), un noleggio di 5 giorni applica circa -15%."
         },
         "unitTracking": {
           "toggle": "Traccia unità individuali",
