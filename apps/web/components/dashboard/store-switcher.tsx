@@ -185,7 +185,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
         align="start"
         sideOffset={8}
       >
-        <Command open filter={null}>
+        <Command open filter={null} autoHighlight={false} keepHighlight={false}>
           {stores.length > 5 && (
             <div className="border-b py-1.5">
               <CommandInput
