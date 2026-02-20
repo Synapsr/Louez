@@ -413,7 +413,7 @@ export function EditReservationForm({
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-muted/30">
+      <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 min-h-screen bg-muted/30">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background border-b">
           <div className="container max-w-5xl mx-auto px-4 py-4">
