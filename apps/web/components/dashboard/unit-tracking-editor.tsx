@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Trash2, Package, ChevronDown, AlertCircle, Settings2, StickyNote } from 'lucide-react'
+import { Plus, Trash2, Package, ChevronDown, AlertCircle, Settings2, StickyNote, Lightbulb } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -199,6 +199,20 @@ function BookingAttributesDialog({
         </DialogHeader>
         <DialogPanel>
           <div className="space-y-4">
+            <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
+              <div className="flex gap-2">
+                <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                <div className="space-y-1">
+                  <p className="text-xs text-blue-800 dark:text-blue-300">
+                    {t('manageAttributesExample')}
+                  </p>
+                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                    {t('manageAttributesMax')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <Input
                 value={newAxisLabel}

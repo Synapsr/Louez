@@ -3,12 +3,12 @@
 import { useMemo, useState, useTransition } from 'react';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 import { Building2, Check, ChevronsUpDown, Plus, Shield } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Button, CommandEmpty, PopoverPopup } from '@louez/ui';
+import { Button, PopoverPopup } from '@louez/ui';
 import {
   Command,
   CommandGroup,
@@ -18,7 +18,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@louez/ui';
-import { Popover, PopoverContent, PopoverTrigger } from '@louez/ui';
+import { Popover, PopoverTrigger } from '@louez/ui';
 import { cn } from '@louez/utils';
 
 import { switchStore } from '@/app/(dashboard)/dashboard/actions';
@@ -80,6 +80,21 @@ interface StoreSwitcherProps {
   currentStoreId: string;
 }
 
+function getStoreSwitchDestination(pathname: string): string {
+  const pathSegments = pathname.split('/').filter(Boolean);
+
+  if (pathSegments[0] === 'onboarding') {
+    return '/onboarding';
+  }
+
+  if (pathSegments[0] !== 'dashboard') {
+    return '/dashboard';
+  }
+
+  const dashboardSection = pathSegments[1];
+  return dashboardSection ? `/dashboard/${dashboardSection}` : '/dashboard';
+}
+
 function RoleBadge({
   role,
   t,
@@ -106,6 +121,7 @@ function RoleBadge({
 export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
   const t = useTranslations('dashboard.storeSwitcher');
   const router = useRouter();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -127,8 +143,12 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
     startTransition(async () => {
       const result = await switchStore(storeId);
       if (result.success) {
+        const nextPath = getStoreSwitchDestination(pathname);
         setOpen(false);
-        router.refresh();
+
+        // Force a full navigation so TanStack Query cache from previous store
+        // does not leak into the next store context on same-route switches.
+        window.location.assign(nextPath);
       }
     });
   };
@@ -172,20 +192,20 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             size="md"
           />
           <div className="flex min-w-0 flex-col items-start">
-            <span className="truncate text-sm font-medium">
+            <span className="w-full truncate text-sm font-medium">
               {currentStore?.name || t('selectStore')}
             </span>
             {currentStore && <RoleBadge role={currentStore.role} t={t} />}
           </div>
         </div>
-        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
       </PopoverTrigger>
       <PopoverPopup
         className="w-[260px] p-0 *:pt-0 *:pb-1.5"
         align="start"
         sideOffset={8}
       >
-        <Command open filter={null}>
+        <Command open filter={null} autoHighlight={false} keepHighlight={false}>
           {stores.length > 5 && (
             <div className="border-b py-1.5">
               <CommandInput

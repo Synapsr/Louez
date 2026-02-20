@@ -25,7 +25,7 @@ import {
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import type { CombinationAvailability } from '@louez/types'
-import { getDetailedDuration } from '@/lib/utils/duration'
+import { calculateDuration, getDetailedDuration } from '@/lib/utils/duration'
 
 interface PricingTier {
   id: string
@@ -73,7 +73,6 @@ interface ProductCardAvailableProps {
   availableQuantity: number
   startDate: string
   endDate: string
-  duration: number
   availableCombinations?: CombinationAvailability[]
 }
 
@@ -96,7 +95,6 @@ export function ProductCardAvailable({
   availableQuantity,
   startDate,
   endDate,
-  duration,
   availableCombinations = [],
 }: ProductCardAvailableProps) {
   const t = useTranslations('storefront.product')
@@ -120,6 +118,11 @@ export function ProductCardAvailable({
   const mainImage = product.images?.[0]
 
   const effectivePricingMode: PricingMode = product.pricingMode ?? 'day'
+  const pricedDuration = calculateDuration(
+    startDate,
+    endDate,
+    effectivePricingMode,
+  )
   const normalizedTiers = normalizeTiers(product.pricingTiers)
   const durationMinutes = calculateDurationMinutes(startDate, endDate)
   const rateTiers: Rate[] = (product.pricingTiers || [])
@@ -158,7 +161,7 @@ export function ProductCardAvailable({
           pricingMode: effectivePricingMode,
           tiers: normalizedTiers,
         } as ProductPricing,
-        duration,
+        pricedDuration,
         1,
       )
 
@@ -216,7 +219,9 @@ export function ProductCardAvailable({
   })()
 
   const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+
     if (status === 'unavailable') return
     if (hasBookingAttributes) {
       setIsModalOpen(true)

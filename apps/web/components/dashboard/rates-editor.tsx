@@ -2,18 +2,20 @@
 
 import { useMemo, useRef, useState } from 'react';
 
-import { Plus, Trash2 } from 'lucide-react';
+import { Eye, Info, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { Rate } from '@louez/types';
 import {
   Badge,
   Button,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogPanel,
+  DialogTitle,
+  DialogTrigger,
   Input,
   Label,
   Switch,
@@ -23,6 +25,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
 } from '@louez/ui';
 import {
   type DurationUnit,
@@ -53,13 +59,49 @@ interface RatesEditorProps {
   onChange: (rates: RateEditorRow[]) => void;
   enforceStrictTiers: boolean;
   onEnforceStrictTiersChange: (value: boolean) => void;
+  onRequireBaseRate?: () => void;
   currency: string;
   disabled?: boolean;
 }
 
+const DURATION_MULTIPLIERS_BY_UNIT: Record<DurationUnit, number[]> = {
+  minute: [1, 2, 6, 12, 24],
+  hour: [1, 2, 4, 8, 24],
+  day: [1, 3, 7, 14, 30],
+  week: [1, 2, 4, 8, 12],
+};
+
 function toNumber(value: string): number {
   const parsed = Number.parseFloat(value.replace(',', '.'));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortRatesByDuration(rates: RateEditorRow[]): RateEditorRow[] {
+  return [...rates].sort((a, b) => {
+    const durationDiff =
+      priceDurationToMinutes(a.duration, a.unit) -
+      priceDurationToMinutes(b.duration, b.unit);
+
+    if (durationDiff !== 0) return durationDiff;
+
+    return toNumber(a.price) - toNumber(b.price);
+  });
+}
+
+function nextTierDuration(params: {
+  unit: DurationUnit;
+  currentDuration: number;
+  baseDuration?: number;
+}): number {
+  const { unit, currentDuration, baseDuration } = params;
+  const safeCurrent = Math.max(1, Math.round(currentDuration || 1));
+  const safeBase = Math.max(1, Math.round(baseDuration || 1));
+  const candidateDurations = DURATION_MULTIPLIERS_BY_UNIT[unit].map(
+    (multiplier) => multiplier * safeBase,
+  );
+  const next = candidateDurations.find((duration) => duration > safeCurrent);
+  if (next) return next;
+  return Math.max(safeCurrent + 1, Math.ceil(safeCurrent * 1.5));
 }
 
 export function RatesEditor({
@@ -68,6 +110,7 @@ export function RatesEditor({
   onChange,
   enforceStrictTiers,
   onEnforceStrictTiersChange,
+  onRequireBaseRate,
   currency,
   disabled = false,
 }: RatesEditorProps) {
@@ -107,21 +150,14 @@ export function RatesEditor({
 
   const previewDurations = useMemo(() => {
     if (!basePeriod) return [];
-    if (enforceStrictTiers && validRates.length > 0) {
+    if (enforceStrictTiers) {
       return [basePeriod, ...validRates.map((rate) => rate.period)].sort(
         (a, b) => a - b,
       );
     }
 
     const multipliers =
-      basePriceDuration?.unit === 'minute'
-        ? [1, 2, 6, 12, 24]
-        : basePriceDuration?.unit === 'hour'
-          ? [1, 2, 4, 8, 24]
-          : basePriceDuration?.unit === 'week'
-            ? [1, 2, 4, 8, 12]
-            : [1, 3, 7, 14, 30];
-
+      DURATION_MULTIPLIERS_BY_UNIT[basePriceDuration?.unit ?? 'day'];
     const byBase = multipliers.map((multiplier) => basePeriod * multiplier);
     return [
       ...new Set([...byBase, ...validRates.map((rate) => rate.period)]),
@@ -177,26 +213,96 @@ export function RatesEditor({
     tCommon,
     validRates,
   ]);
+  const hasBaseRate = basePrice > 0 && basePeriod > 0;
+  const hasMultipleDistinctPrices = useMemo(() => {
+    if (!hasBaseRate) return false;
+
+    const perMinuteKeys = new Set<string>();
+    perMinuteKeys.add((basePrice / basePeriod).toFixed(6));
+
+    for (const rate of validRates) {
+      perMinuteKeys.add((rate.price / rate.period).toFixed(6));
+      if (perMinuteKeys.size >= 2) return true;
+    }
+
+    return false;
+  }, [basePeriod, basePrice, hasBaseRate, validRates]);
+
+  const emitRatesChange = (nextRates: RateEditorRow[]) => {
+    onChange(sortRatesByDuration(nextRates));
+  };
 
   const addRate = () => {
-    onChange([
+    if (!hasBaseRate) {
+      onRequireBaseRate?.();
+      return;
+    }
+
+    const lastRate = rates.at(-1);
+    const referenceUnit = lastRate?.unit ?? basePriceDuration?.unit ?? 'day';
+    const currentDuration =
+      lastRate?.duration ?? basePriceDuration?.duration ?? 1;
+    const baseDurationForUnit =
+      basePriceDuration?.unit === referenceUnit
+        ? basePriceDuration.duration
+        : undefined;
+    const duration = nextTierDuration({
+      unit: referenceUnit,
+      currentDuration,
+      baseDuration: baseDurationForUnit,
+    });
+    const period = priceDurationToMinutes(duration, referenceUnit);
+
+    let price = '';
+    let discountPercent: number | undefined = undefined;
+
+    if (hasBaseRate) {
+      const lastRateWithPrice = [...rates]
+        .reverse()
+        .find((rate) => toNumber(rate.price) > 0 && rate.duration > 0);
+      const previousDiscount = lastRateWithPrice
+        ? (lastRateWithPrice.discountPercent ??
+          computeReductionPercent(
+            basePrice,
+            basePeriod,
+            toNumber(lastRateWithPrice.price),
+            priceDurationToMinutes(
+              lastRateWithPrice.duration,
+              lastRateWithPrice.unit,
+            ),
+          ))
+        : 0;
+      const nextDiscount = Math.min(
+        99,
+        Math.max(10, Math.round((previousDiscount + 10) * 100) / 100),
+      );
+      const basePerMinute = basePrice / basePeriod;
+      const discountedPerMinute = basePerMinute * (1 - nextDiscount / 100);
+
+      price = Math.max(0, discountedPerMinute * period).toFixed(2);
+      discountPercent = nextDiscount;
+    }
+
+    emitRatesChange([
       ...rates,
       {
-        price: '',
-        duration: 0,
-        unit: 'day',
+        price,
+        duration,
+        unit: referenceUnit,
+        discountPercent,
       },
     ]);
   };
 
   const removeRate = (index: number) => {
-    onChange(rates.filter((_, i) => i !== index));
+    const next = rates.filter((_, i) => i !== index);
+    emitRatesChange(next);
   };
 
   const updateRate = (index: number, next: RateEditorRow) => {
     const updated = [...rates];
     updated[index] = next;
-    onChange(updated);
+    emitRatesChange(updated);
   };
 
   const updateReductionPercent = (index: number, reductionPercent: number) => {
@@ -212,33 +318,10 @@ export function RatesEditor({
       discountPercent: reductionPercent,
     });
   };
+  const progressiveDiscountEnabled = !enforceStrictTiers;
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div>
-          <Label className="text-base font-medium">
-            {t('additionalRates')}
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            {t('additionalRatesDescription')}
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={addRate}
-          disabled={disabled}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t('addRate')}
-        </Button>
-      </div>
-
-      {rates.length === 0 && (
-        <p className="text-muted-foreground text-sm">{t('noRatesYet')}</p>
-      )}
-
       {rates.map((rate, index) => {
         const tierPrice = toNumber(rate.price);
         const tierPeriod = priceDurationToMinutes(rate.duration, rate.unit);
@@ -267,7 +350,6 @@ export function RatesEditor({
             className="group bg-card relative overflow-hidden rounded-lg border"
           >
             <div className="flex flex-wrap items-center gap-3 p-2.5 sm:flex-nowrap">
-              {/* Price + duration input */}
               <div className="flex min-w-0 flex-col gap-1">
                 <PriceDurationInput
                   value={{
@@ -306,15 +388,15 @@ export function RatesEditor({
                 )}
               </div>
 
-              {/* Discount visualization + input + delete */}
               <div className="ml-auto flex items-center gap-2.5">
-                {/* Mini progress bar (md+ only) */}
                 {discountPct > 0 && (
                   <div className="hidden items-center gap-2 md:flex">
                     <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
                       <div
                         className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                        style={{ width: `${Math.min(100, discountPct)}%` }}
+                        style={{
+                          width: `${Math.min(100, discountPct)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -343,101 +425,136 @@ export function RatesEditor({
         );
       })}
 
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div className="space-y-0.5">
-          <Label className="text-sm font-medium">
-            {t('pricingTiers.enforceStrictTiers')}
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            {t('pricingTiers.enforceStrictTiersDescription')}
-          </p>
-        </div>
-        <Switch
-          checked={enforceStrictTiers}
-          onCheckedChange={(checked) =>
-            onEnforceStrictTiersChange(Boolean(checked))
-          }
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={addRate}
           disabled={disabled}
-        />
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          {t('addRate')}
+        </Button>
       </div>
-      {enforceStrictTiers && (
-        <p className="text-muted-foreground bg-muted/20 rounded-md border border-dashed px-3 py-2 text-xs">
-          {t('pricingTiers.enforceStrictTiersTooltip')}
-        </p>
-      )}
 
-      {previewRows.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">
-              {t('pricingTiers.preview')}
-            </CardTitle>
-            <CardDescription>
-              {t('pricingTiers.previewDescription')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t('pricingTiers.duration')}</TableHead>
-                    <TableHead>{t('pricingTiers.pricePerUnit')}</TableHead>
-                    <TableHead className="text-right">
-                      {t('pricingTiers.total')}
-                    </TableHead>
-                    <TableHead className="text-right">
-                      {t('pricingTiers.savings')}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewRows.map((row) => {
-                    const reductionPercent = row.reductionPercent ?? 0;
-                    return (
-                      <TableRow
-                        key={row.durationMinutes}
-                        className={row.savings > 0 ? 'bg-green-50/40' : undefined}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <span>{row.durationLabel}</span>
-                            {reductionPercent > 0 && (
-                              <Badge
-                                variant="outline"
-                                className="text-emerald-700"
-                              >
-                                -{Math.floor(reductionPercent)}%
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                      <TableCell>
-                        {formatCurrency(row.unitPrice, currency)}
-                        {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(row.total, currency)}
-                      </TableCell>
-                      <TableCell
-                        className={`text-right ${
-                          row.savings > 0
-                            ? 'text-emerald-700'
-                            : 'text-muted-foreground'
-                        }`}
-                      >
-                        {row.savings > 0
-                          ? `-${formatCurrency(row.savings, currency)}`
-                          : '-'}
-                      </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+      {hasMultipleDistinctPrices && (
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <div className="space-y-2">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <Label className="text-sm font-medium">
+                  {t('pricingTiers.enforceStrictTiers')}
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Info className="text-muted-foreground h-4 w-4 cursor-help" />
+                      }
+                    />
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p>{t('pricingTiers.enforceStrictTiersTooltip')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {t('pricingTiers.enforceStrictTiersDescription')}
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            {previewRows.length > 0 && (
+              <Dialog>
+                <DialogTrigger
+                  render={<Button type="button" variant="outline" size="sm" />}
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  {t('pricingTiers.preview')}
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>{t('pricingTiers.preview')}</DialogTitle>
+                    <DialogDescription>
+                      {t('pricingTiers.previewDescription')}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogPanel>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>{t('pricingTiers.duration')}</TableHead>
+                            <TableHead>
+                              {t('pricingTiers.pricePerUnit')}
+                            </TableHead>
+                            <TableHead className="text-right">
+                              {t('pricingTiers.total')}
+                            </TableHead>
+                            <TableHead className="text-right">
+                              {t('pricingTiers.savings')}
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {previewRows.map((row) => {
+                            const reductionPercent = row.reductionPercent ?? 0;
+                            return (
+                              <TableRow
+                                key={row.durationMinutes}
+                                className={
+                                  row.savings > 0 ? 'bg-emerald-500/5' : undefined
+                                }
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    <span>{row.durationLabel}</span>
+                                    {reductionPercent > 0 && (
+                                      <Badge
+                                        variant="outline"
+                                        className="text-emerald-600 dark:text-emerald-400"
+                                      >
+                                        -{Math.floor(reductionPercent)}%
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  {formatCurrency(row.unitPrice, currency)}
+                                  {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
+                                </TableCell>
+                                <TableCell className="text-right font-medium">
+                                  {formatCurrency(row.total, currency)}
+                                </TableCell>
+                                <TableCell
+                                  className={`text-right ${
+                                    row.savings > 0
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                >
+                                  {row.savings > 0
+                                    ? `-${formatCurrency(row.savings, currency)}`
+                                    : '-'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </DialogPanel>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+          <Switch
+            checked={progressiveDiscountEnabled}
+            onCheckedChange={(checked) =>
+              onEnforceStrictTiersChange(!Boolean(checked))
+            }
+            disabled={disabled}
+          />
+        </div>
       )}
     </div>
   );

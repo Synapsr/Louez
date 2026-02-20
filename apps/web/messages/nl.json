@@ -627,7 +627,7 @@
           "info": "Informatie",
           "infoDescription": "Naam en beschrijving",
           "pricing": "Prijzen",
-          "pricingDescription": "Prijs en voorraad",
+          "pricingDescription": "Prijs en tarieven",
           "preview": "Publiceren",
           "previewDescription": "Controleren en publiceren"
         },
@@ -700,7 +700,7 @@
         "descriptionHint": "Beschrijf de kenmerken, staat en gebruiksvoorwaarden",
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
-        "pricingDescription": "Stel de huurprijs en beschikbare voorraad in",
+        "pricingDescription": "Stel de huurprijs en tarieven in",
         "baseRate": "Base rate",
         "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
         "additionalRates": "Additional rates",
@@ -737,9 +737,9 @@
           "savings": "Besparing",
           "targetPrice": "Doelprijs",
           "tierTotal": "Totale kosten",
-          "enforceStrictTiers": "Alleen deze duur aanbieden",
-          "enforceStrictTiersDescription": "Klanten kunnen alleen boeken voor de exacte duur van uw niveaus. Tussenliggende duur wordt niet aangeboden.",
-          "enforceStrictTiersTooltip": "Als een klant een tussenliggende duur kiest, wordt deze automatisch afgerond naar het volgende niveau. Bijvoorbeeld: met niveaus van 3 en 7 dagen wordt een huur van 5 dagen gefactureerd tegen het tarief van 7 dagen."
+          "enforceStrictTiers": "Progressieve korting toestaan",
+          "enforceStrictTiersDescription": "Standaard worden alleen de exacte duurwaarden van je niveaus aangeboden. Schakel deze optie in om een progressieve korting toe te passen op tussenliggende duurwaarden.",
+          "enforceStrictTiersTooltip": "Wanneer ingeschakeld krijgen tussenliggende duurwaarden een geïnterpoleerde korting tussen niveaus. Voorbeeld: tussen 3 dagen (-10%) en 7 dagen (-20%) krijgt een huur van 5 dagen ongeveer -15%."
         },
         "unitTracking": {
           "toggle": "Individuele eenheden volgen",
@@ -1112,7 +1112,30 @@
         "access_link_sent": "Toegangslink verzonden",
         "modified": "Reservering gewijzigd",
         "showAll": "Alles tonen ({count} gebeurtenissen)",
-        "showLess": "Minder tonen"
+        "showLess": "Minder tonen",
+        "paymentFailure": {
+          "technicalDetail": "Technical detail: {message}",
+          "payment_failed": {
+            "authenticationRequired": "Payment authentication was not completed. Ask the customer to retry and validate their bank verification (3D Secure).",
+            "cardDeclined": "The card was declined by the bank. Ask the customer to retry or use another card.",
+            "insufficientFunds": "Payment failed due to insufficient funds on the card.",
+            "expiredCard": "The card has expired. Ask the customer to use a valid card.",
+            "incorrectCvc": "The card security code (CVC) is invalid.",
+            "processingError": "The payment failed due to a temporary processing issue. Retry in a few minutes.",
+            "doNotHonor": "The bank refused this payment without details. Ask the customer to contact their bank or use another card.",
+            "generic": "Online payment failed. Ask the customer to retry or use another card."
+          },
+          "deposit_failed": {
+            "authenticationRequired": "The deposit authorization failed because bank authentication was not completed. Ask the customer to retry and validate 3D Secure.",
+            "cardDeclined": "The deposit authorization was declined by the bank. Ask the customer to use another card.",
+            "insufficientFunds": "The card does not have enough available funds for this deposit authorization.",
+            "expiredCard": "The card used for the deposit authorization has expired.",
+            "incorrectCvc": "The card security code (CVC) is invalid for this deposit authorization.",
+            "processingError": "The deposit authorization failed due to a temporary processing issue. Retry in a few minutes.",
+            "doNotHonor": "The bank refused the deposit authorization without details. Ask the customer to contact their bank or use another card.",
+            "generic": "Deposit authorization failed. Ask the customer to retry or use another card."
+          }
+        }
       },
       "unitAssignment": {
         "title": "Eenheid toewijzing",

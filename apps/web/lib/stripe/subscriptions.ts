@@ -102,6 +102,7 @@ export async function createSubscriptionCheckoutSession({
 
   // Get or create Stripe customer (persisted to DB to avoid duplicates on abandoned checkouts)
   const stripeCustomerId = await getOrCreateStripeCustomer(storeId)
+  const hasTrial = Boolean(trialDays && trialDays > 0)
 
   // Create the checkout session
   const session = await stripe.checkout.sessions.create({
@@ -126,6 +127,8 @@ export async function createSubscriptionCheckoutSession({
       storeId,
       planSlug: plan.slug,
     },
+    // Do not force card collection when trial starts with no immediate amount due.
+    payment_method_collection: hasTrial ? 'if_required' : 'always',
     // Allow updating existing customer's info during checkout
     // Required for tax_id_collection when customer already exists
     customer_update: {

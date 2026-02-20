@@ -1,8 +1,20 @@
-'use client'
+'use client';
 
-import { AlertTriangle, Lock, Minus, Package, PenLine, Plus, Trash2, Unlock } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useEffect, useRef, useState } from 'react';
 
+import {
+  AlertTriangle,
+  Lock,
+  Minus,
+  Package,
+  PenLine,
+  Plus,
+  Trash2,
+  Unlock,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import type { PricingMode } from '@louez/types';
 import {
   Badge,
   Button,
@@ -17,30 +29,91 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@louez/ui'
-import { cn } from '@louez/utils'
-
-import type { PricingMode } from '@louez/types'
+} from '@louez/ui';
+import { cn } from '@louez/utils';
 
 import type {
   AvailabilityWarning,
   Product,
   ReservationCalculations,
-} from '../types'
+} from '../types';
 
 interface EditReservationItemsSectionProps {
-  calculations: ReservationCalculations
-  availabilityWarnings: AvailabilityWarning[]
-  availableToAdd: Product[]
-  itemsCount: number
-  currencySymbol: string
-  getDurationUnit: (mode: PricingMode) => string
-  onOpenCustomItemDialog: () => void
-  onAddProduct: (productId: string) => void
-  onQuantityChange: (itemId: string, quantity: number) => void
-  onPriceChange: (itemId: string, price: number) => void
-  onToggleManualPrice: (itemId: string) => void
-  onRemoveItem: (itemId: string) => void
+  calculations: ReservationCalculations;
+  availabilityWarnings: AvailabilityWarning[];
+  availableToAdd: Product[];
+  itemsCount: number;
+  currencySymbol: string;
+  getDurationUnit: (mode: PricingMode) => string;
+  onOpenCustomItemDialog: () => void;
+  onAddProduct: (productId: string) => void;
+  onQuantityChange: (itemId: string, quantity: number) => void;
+  onPriceChange: (itemId: string, price: number) => void;
+  onToggleManualPrice: (itemId: string) => void;
+  onRemoveItem: (itemId: string) => void;
+}
+
+function PriceInput({
+  value,
+  onChange,
+  disabled,
+  isManual,
+  suffix,
+  ariaLabel,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+  isManual?: boolean;
+  suffix: string;
+  ariaLabel: string;
+}) {
+  const [localValue, setLocalValue] = useState(value.toFixed(2));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocalValue(value.toFixed(2));
+    }
+  }, [value]);
+
+  return (
+    <div className="relative">
+      <Input
+        ref={inputRef}
+        inputMode="decimal"
+        value={localValue}
+        onChange={(event) => {
+          const raw = event.target.value;
+          if (raw === '' || /^\d*[.,]?\d{0,2}$/.test(raw)) {
+            setLocalValue(raw);
+            const parsed = parseFloat(raw.replace(',', '.'));
+            if (!Number.isNaN(parsed)) {
+              onChange(parsed);
+            }
+          }
+        }}
+        onBlur={() => {
+          const parsed = parseFloat(localValue.replace(',', '.'));
+          const final = Number.isNaN(parsed) ? 0 : parsed;
+          setLocalValue(final.toFixed(2));
+          onChange(final);
+        }}
+        disabled={disabled}
+        aria-label={ariaLabel}
+        className={cn(
+          'h-8 w-28 [appearance:textfield] pr-8 text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
+          isManual && 'border-amber-300 bg-amber-50 dark:bg-amber-950/20',
+        )}
+      />
+      <span
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs select-none"
+        aria-hidden="true"
+      >
+        {suffix}
+      </span>
+    </div>
+  );
 }
 
 export function EditReservationItemsSection({
@@ -57,15 +130,17 @@ export function EditReservationItemsSection({
   onToggleManualPrice,
   onRemoveItem,
 }: EditReservationItemsSectionProps) {
-  const t = useTranslations('dashboard.reservations')
-  const tForm = useTranslations('dashboard.reservations.manualForm')
-  const tCommon = useTranslations('common')
+  const t = useTranslations('dashboard.reservations');
+  const tForm = useTranslations('dashboard.reservations.manualForm');
+  const tCommon = useTranslations('common');
 
   return (
     <Card>
       <CardContent className="p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">{t('edit.items')}</h2>
+          <h2 className="text-muted-foreground text-sm font-medium">
+            {t('edit.items')}
+          </h2>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onOpenCustomItemDialog}>
               <PenLine className="mr-2 h-4 w-4" />
@@ -74,7 +149,7 @@ export function EditReservationItemsSection({
             {availableToAdd.length > 0 && (
               <Select
                 onValueChange={(value) => {
-                  if (value !== null) onAddProduct(value as string)
+                  if (value !== null) onAddProduct(value as string);
                 }}
               >
                 <SelectTrigger className="h-9 w-[160px]">
@@ -83,7 +158,11 @@ export function EditReservationItemsSection({
                 </SelectTrigger>
                 <SelectContent>
                   {availableToAdd.map((product) => (
-                    <SelectItem key={product.id} value={product.id} label={product.name}>
+                    <SelectItem
+                      key={product.id}
+                      value={product.id}
+                      label={product.name}
+                    >
                       <span className="flex items-center gap-2">
                         <Package className="h-3 w-3" />
                         {product.name}
@@ -99,24 +178,29 @@ export function EditReservationItemsSection({
         <div className="space-y-3">
           {calculations.items.map((item) => {
             const hasWarning = availabilityWarnings.some(
-              (warning) => warning.productId === item.productId
-            )
+              (warning) => warning.productId === item.productId,
+            );
 
             return (
               <div
                 key={item.id}
                 className={cn(
-                  'rounded-lg border bg-background p-4 transition-colors',
+                  'bg-background rounded-lg border p-4 transition-colors',
                   hasWarning &&
-                    'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20'
+                    'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20',
                 )}
               >
                 <div className="flex items-start gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="truncate font-medium">{item.productSnapshot.name}</p>
+                      <p className="truncate font-medium">
+                        {item.productSnapshot.name}
+                      </p>
                       {!item.product && (
-                        <Badge variant="outline" className="shrink-0 text-[10px]">
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 text-[10px]"
+                        >
                           {tForm('customItem.badge')}
                         </Badge>
                       )}
@@ -130,7 +214,9 @@ export function EditReservationItemsSection({
                       )}
                     </div>
                     {item.tierLabel && !item.isManualPrice && (
-                      <p className="mt-0.5 text-xs text-emerald-600">{item.tierLabel}</p>
+                      <p className="mt-0.5 text-xs text-emerald-600">
+                        {item.tierLabel}
+                      </p>
                     )}
                     {hasWarning && (
                       <p className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
@@ -140,13 +226,20 @@ export function EditReservationItemsSection({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  <div
+                    className="flex items-center gap-1"
+                    role="group"
+                    aria-label={`${t('edit.qty')}, ${item.productSnapshot.name}`}
+                  >
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => onQuantityChange(item.id, item.quantity - 1)}
+                      onClick={() =>
+                        onQuantityChange(item.id, item.quantity - 1)
+                      }
                       disabled={item.quantity <= 1}
+                      aria-label={`${t('edit.qty')} −1`}
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
@@ -155,40 +248,35 @@ export function EditReservationItemsSection({
                       min="1"
                       value={item.quantity}
                       onChange={(event) =>
-                        onQuantityChange(item.id, parseInt(event.target.value) || 1)
+                        onQuantityChange(
+                          item.id,
+                          parseInt(event.target.value) || 1,
+                        )
                       }
-                      className="h-8 w-14 text-center"
+                      aria-label={t('edit.qty')}
+                      className="h-8 w-14 [appearance:textfield] text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     />
                     <Button
                       variant="outline"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+                      onClick={() =>
+                        onQuantityChange(item.id, item.quantity + 1)
+                      }
+                      aria-label={`${t('edit.qty')} +1`}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>
                   </div>
 
                   <div className="flex items-center gap-1">
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={item.unitPrice.toFixed(2)}
-                        onChange={(event) =>
-                          onPriceChange(item.id, parseFloat(event.target.value) || 0)
-                        }
-                        className={cn(
-                          'h-8 w-24 pr-10 text-right',
-                          item.isManualPrice &&
-                            'border-amber-300 bg-amber-50 dark:bg-amber-950/20'
-                        )}
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                        {currencySymbol}/{getDurationUnit(item.pricingMode)}
-                      </span>
-                    </div>
+                    <PriceInput
+                      value={item.unitPrice}
+                      onChange={(price) => onPriceChange(item.id, price)}
+                      isManual={item.isManualPrice}
+                      suffix={`${currencySymbol}/${getDurationUnit(item.pricingMode)}`}
+                      ariaLabel={`${t('edit.unitPrice')}, ${item.productSnapshot.name}`}
+                    />
                     {item.product && (
                       <Tooltip>
                         <TooltipTrigger
@@ -204,11 +292,13 @@ export function EditReservationItemsSection({
                           {item.isManualPrice ? (
                             <Lock className="h-3.5 w-3.5 text-amber-600" />
                           ) : (
-                            <Unlock className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Unlock className="text-muted-foreground h-3.5 w-3.5" />
                           )}
                         </TooltipTrigger>
                         <TooltipContent>
-                          {item.isManualPrice ? t('edit.unlockPrice') : t('edit.lockPrice')}
+                          {item.isManualPrice
+                            ? t('edit.unlockPrice')
+                            : t('edit.lockPrice')}
                         </TooltipContent>
                       </Tooltip>
                     )}
@@ -227,7 +317,7 @@ export function EditReservationItemsSection({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive h-8 w-8"
                           onClick={() => onRemoveItem(item.id)}
                           disabled={itemsCount <= 1}
                         />
@@ -239,10 +329,10 @@ export function EditReservationItemsSection({
                   </Tooltip>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
