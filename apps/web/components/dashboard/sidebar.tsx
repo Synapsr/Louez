@@ -370,7 +370,7 @@ export function Sidebar({
     <aside className="hidden overscroll-y-none lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
       <div className="bg-card/50 flex grow flex-col overflow-y-auto overscroll-y-none border-r backdrop-blur-sm">
         {/* Store Header */}
-        <div className="bg-card/80 sticky top-0 z-10 border-b px-1 py-3 backdrop-blur-sm">
+        <div className="bg-card sticky top-0 z-10 border-b px-1 py-3">
           <StoreHeader
             stores={stores}
             currentStoreId={currentStoreId}
@@ -383,7 +383,7 @@ export function Sidebar({
         <NavLinks pathname={pathname} />
 
         {/* Bottom Section */}
-        <div className="bg-card sticky bottom-0 border-t backdrop-blur-sm">
+        <div className="bg-card sticky bottom-0 border-t">
           {/* Pending Reservations Alert + New Reservation Button */}
           <div className="space-y-2 p-3">
             <PendingReservationsAlert />

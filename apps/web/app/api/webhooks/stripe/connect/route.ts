@@ -854,6 +854,8 @@ async function handleDepositFailed(
   const currency = paymentIntent.currency.toUpperCase()
   const amount = fromStripeCents(paymentIntent.amount, currency)
   const errorMessage = paymentIntent.last_payment_error?.message || 'Unknown error'
+  const errorCode = paymentIntent.last_payment_error?.code || null
+  const declineCode = paymentIntent.last_payment_error?.decline_code || null
   const isDepositHold = paymentIntent.metadata?.type === 'deposit_hold'
 
   if (isDepositHold) {
@@ -876,6 +878,8 @@ async function handleDepositFailed(
         paymentIntentId: paymentIntent.id,
         amount,
         error: errorMessage,
+        errorCode,
+        declineCode,
       },
       createdAt: new Date(),
     })
@@ -910,6 +914,8 @@ async function handleDepositFailed(
         currency,
         method: 'stripe',
         error: errorMessage,
+        errorCode,
+        declineCode,
       },
       createdAt: new Date(),
     })
