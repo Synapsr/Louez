@@ -305,9 +305,10 @@ async function handleCheckoutCompleted(
     newDepositStatus = stripeCustomerId && stripePaymentMethodId ? 'card_saved' : 'pending'
   }
 
-  // Update existing pending payment or create new one
-  if (existingPayment && existingPayment.status === 'pending') {
-    // Update the pending payment created during checkout
+  const paidAt = new Date()
+
+  // Update existing payment record (pending/failed/cancelled) or create a completed one.
+  if (existingPayment) {
     await db
       .update(payments)
       .set({
@@ -315,11 +316,11 @@ async function handleCheckoutCompleted(
         stripePaymentIntentId: paymentIntentId,
         stripeChargeId: chargeId,
         stripePaymentMethodId,
-        paidAt: new Date(),
+        paidAt,
         updatedAt: new Date(),
       })
       .where(eq(payments.id, existingPayment.id))
-  } else if (!existingPayment) {
+  } else {
     // Create payment record (fallback if pending payment wasn't created)
     await db.insert(payments).values({
       id: nanoid(),
@@ -333,11 +334,69 @@ async function handleCheckoutCompleted(
       stripeCheckoutSessionId: session.id,
       stripePaymentMethodId,
       currency,
-      paidAt: new Date(),
+      paidAt,
       createdAt: new Date(),
       updatedAt: new Date(),
     })
   }
+
+  // Always log payment received when this session is first processed as completed.
+  await db.insert(reservationActivity).values({
+    id: nanoid(),
+    reservationId,
+    activityType: 'payment_received',
+    description: null,
+    metadata: {
+      paymentIntentId,
+      chargeId,
+      checkoutSessionId: session.id,
+      amount: totalAmount,
+      currency,
+      method: 'stripe',
+      type: 'rental',
+    },
+    createdAt: paidAt,
+  })
+
+  // Dispatch admin notifications (SMS, Discord) for payment received.
+  dispatchNotification('payment_received', {
+    store: {
+      id: reservation.store.id,
+      name: reservation.store.name,
+      email: reservation.store.email,
+      discordWebhookUrl: reservation.store.discordWebhookUrl,
+      ownerPhone: reservation.store.ownerPhone,
+      notificationSettings: reservation.store.notificationSettings,
+      settings: reservation.store.settings,
+    },
+    reservation: {
+      id: reservationId,
+      number: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      totalAmount: Number(reservation.totalAmount),
+    },
+    customer: reservation.customer
+      ? {
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+        }
+      : undefined,
+    payment: {
+      amount: totalAmount,
+    },
+  }).catch((error) => {
+    console.error('Failed to dispatch payment received notification:', error)
+  })
+
+  notifyPaymentReceived(
+    { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug },
+    reservation.number,
+    totalAmount,
+    currency
+  ).catch(() => {})
 
   // Update reservation only if still pending
   if (reservation.status === 'pending') {
@@ -366,24 +425,6 @@ async function handleCheckoutCompleted(
       })
       .where(eq(reservations.id, reservationId))
 
-    // Log payment received activity
-    await db.insert(reservationActivity).values({
-      id: nanoid(),
-      reservationId,
-      activityType: 'payment_received',
-      description: null,
-      metadata: {
-        paymentIntentId,
-        chargeId,
-        checkoutSessionId: session.id,
-        amount: totalAmount,
-        currency,
-        method: 'stripe',
-        type: 'rental',
-      },
-      createdAt: new Date(),
-    })
-
     // Log confirmation activity
     await db.insert(reservationActivity).values({
       id: nanoid(),
@@ -404,39 +445,6 @@ async function handleCheckoutCompleted(
         }),
       },
       createdAt: new Date(),
-    })
-
-    // Dispatch admin notifications (SMS, Discord) for payment received
-    dispatchNotification('payment_received', {
-      store: {
-        id: reservation.store.id,
-        name: reservation.store.name,
-        email: reservation.store.email,
-        discordWebhookUrl: reservation.store.discordWebhookUrl,
-        ownerPhone: reservation.store.ownerPhone,
-        notificationSettings: reservation.store.notificationSettings,
-        settings: reservation.store.settings,
-      },
-      reservation: {
-        id: reservationId,
-        number: reservation.number,
-        startDate: reservation.startDate,
-        endDate: reservation.endDate,
-        totalAmount: Number(reservation.totalAmount),
-      },
-      customer: reservation.customer
-        ? {
-            firstName: reservation.customer.firstName,
-            lastName: reservation.customer.lastName,
-            email: reservation.customer.email,
-            phone: reservation.customer.phone,
-          }
-        : undefined,
-      payment: {
-        amount: totalAmount,
-      },
-    }).catch((error) => {
-      console.error('Failed to dispatch payment received notification:', error)
     })
 
     // Also dispatch confirmation notification
@@ -523,12 +531,11 @@ async function handleCheckoutCompleted(
 
     // Platform admin notifications
     const storeInfo = { id: reservation.store.id, name: reservation.store.name, slug: reservation.store.slug }
-    notifyPaymentReceived(storeInfo, reservation.number, totalAmount, currency).catch(() => {})
     notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {})
 
     console.log(`Reservation ${reservationId} confirmed via webhook. Deposit status: ${newDepositStatus}`)
   } else {
-    console.log(`Reservation ${reservationId} already processed, payment record updated`)
+    console.log(`Reservation ${reservationId} already ${reservation.status}, payment recorded`)
   }
 }
 
@@ -887,12 +894,18 @@ async function handleDepositFailed(
     console.log(`Deposit authorization failed for reservation ${reservationId}`)
   } else {
     // Handle rental payment failure
-    // Update pending payment to failed
+    // If this payment was already completed, ignore stale failed events
+    // (e.g. first attempt failed but customer retried successfully).
     const existingPayment = await db.query.payments.findFirst({
       where: eq(payments.stripePaymentIntentId, paymentIntent.id),
     })
 
-    if (existingPayment && existingPayment.status === 'pending') {
+    if (existingPayment?.status === 'completed') {
+      console.log(`Ignoring stale payment_failed for completed PI ${paymentIntent.id}`)
+      return
+    }
+
+    if (existingPayment && existingPayment.status !== 'failed') {
       await db
         .update(payments)
         .set({

@@ -1189,7 +1189,8 @@
             "incorrectCvc": "Le code de sécurité (CVC) de la carte est invalide.",
             "processingError": "Le paiement a échoué à cause d'un problème de traitement temporaire. Réessayez dans quelques minutes.",
             "doNotHonor": "La banque a refusé le paiement sans précision. Demandez au client de contacter sa banque ou d'utiliser une autre carte.",
-            "generic": "Le paiement en ligne a échoué. Demandez au client de réessayer ou d'utiliser une autre carte."
+            "generic": "Le paiement en ligne a échoué. Demandez au client de réessayer ou d'utiliser une autre carte.",
+            "recovered": "Une tentative a échoué, mais le paiement a été finalisé avec succès à {date}."
           },
           "deposit_failed": {
             "authenticationRequired": "L'empreinte de caution a échoué car l'authentification bancaire n'a pas été validée. Demandez au client de réessayer et de confirmer le 3D Secure.",
