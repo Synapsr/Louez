@@ -2,6 +2,7 @@
 
 import { db } from '@louez/db'
 import { stores } from '@louez/db'
+import { users } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -40,8 +41,18 @@ export async function startStripeOnboarding(): Promise<{
     // Create new account if needed
     if (!accountId) {
       const storeCountry = store.settings?.country || 'FR'
+      const owner = await db.query.users.findFirst({
+        where: eq(users.id, store.userId),
+        columns: { email: true },
+      })
+      const accountEmail = (store.email || owner?.email || '').trim()
+
+      if (!accountEmail) {
+        return { error: 'errors.email' }
+      }
+
       const account = await createConnectAccount({
-        email: store.email || '',
+        email: accountEmail,
         country: storeCountry,
         metadata: {
           storeId: store.id,

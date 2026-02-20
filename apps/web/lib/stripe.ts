@@ -254,6 +254,13 @@ export async function createPaymentRequestSession({
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
     expires_at: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+    // Stripe Checkout sessions are limited to 24h max; enable recovery so an expired
+    // link can be reopened as a fresh session without asking the merchant to resend.
+    after_expiration: {
+      recovery: {
+        enabled: true,
+      },
+    },
     metadata: {
       reservationId,
       reservationNumber,
