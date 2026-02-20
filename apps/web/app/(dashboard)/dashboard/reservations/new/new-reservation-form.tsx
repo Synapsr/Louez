@@ -818,6 +818,7 @@ export function NewReservationForm({
                             showTime={true}
                             minTime={timeSlots.minTime}
                             maxTime={timeSlots.maxTime}
+                            timezone={timezone}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
@@ -853,6 +854,7 @@ export function NewReservationForm({
                             showTime={true}
                             minTime={timeSlots.minTime}
                             maxTime={timeSlots.maxTime}
+                            timezone={timezone}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">

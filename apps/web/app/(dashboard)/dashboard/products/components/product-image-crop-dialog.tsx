@@ -28,14 +28,14 @@ import {
 
 import type { ProductImageCropQueueItem } from '../hooks/use-product-form-media';
 import {
+  PRODUCT_IMAGE_ASPECT_RATIO,
+  type ProductImagePercentCropRect,
+  type ProductImagePixelCropRect,
   createCroppedDataUrl,
   getCropSizePercentFromRect,
   getPixelCropFromPercentRect,
   normalizePercentCropRect,
-  PRODUCT_IMAGE_ASPECT_RATIO,
   scaleCropRectToPercent,
-  type ProductImagePercentCropRect,
-  type ProductImagePixelCropRect,
 } from '../utils/product-image-crop';
 
 const CROP_SIZE_STEP = 10;
@@ -89,10 +89,7 @@ function isSamePixelCrop(
 ): boolean {
   if (!a || !b) return a === b;
   return (
-    a.x === b.x &&
-    a.y === b.y &&
-    a.width === b.width &&
-    a.height === b.height
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
   );
 }
 
@@ -321,7 +318,8 @@ export function ProductImageCropDialog({
   const previewImageStyle = useMemo(() => {
     if (!currentItem) return null;
     if (!committedPreviewCrop) return null;
-    if (previewFrameSize.width <= 0 || previewFrameSize.height <= 0) return null;
+    if (previewFrameSize.width <= 0 || previewFrameSize.height <= 0)
+      return null;
 
     const area = committedPreviewCrop;
     if (area.width <= 0 || area.height <= 0) return null;
@@ -365,7 +363,7 @@ export function ProductImageCropDialog({
                 >
                   <ChevronLeftIcon className="size-4" />
                 </Button>
-                <span className="text-muted-foreground whitespace-nowrap text-xs font-medium tabular-nums">
+                <span className="text-muted-foreground text-xs font-medium whitespace-nowrap tabular-nums">
                   {t('cropCounter', {
                     current: selectedIndex + 1,
                     total: items.length,
@@ -387,7 +385,7 @@ export function ProductImageCropDialog({
 
         {/* Compact thumbnail strip */}
         {isMultiImageSession && (
-          <div className="border-b bg-muted/40 px-5 py-2.5 sm:px-6">
+          <div className="bg-muted/40 border-b px-5 py-2.5 sm:px-6">
             <div className="flex gap-1.5 overflow-x-auto">
               {items.map((item, index) => {
                 const isActive = index === selectedIndex;
@@ -421,9 +419,9 @@ export function ProductImageCropDialog({
         {/* Main content area */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {currentItem ? (
-            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div className="flex min-h-0 flex-1 shrink-0 flex-col lg:flex-row">
               {/* Editor column */}
-              <div className="flex min-h-0 flex-1 flex-col">
+              <div className="h-fit shrink-0 flex-col md:flex-1">
                 {/* Crop area — full dark, overflow-hidden clips the 9999px box-shadow overlay */}
                 <div className="flex min-h-[40vh] flex-1 items-center justify-center overflow-hidden bg-zinc-950 p-3 sm:p-4 lg:min-h-0">
                   <ReactCrop
@@ -519,7 +517,7 @@ export function ProductImageCropDialog({
               </div>
 
               {/* Preview sidebar (desktop) / stacked section (mobile) */}
-              <div className="flex w-full shrink-0 flex-col border-t lg:w-72 lg:border-t-0 lg:border-l xl:w-80">
+              <div className="flex w-fit flex-col border-t md:flex-[.65] lg:w-72 lg:border-t-0 lg:border-l xl:w-80">
                 <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
                   <div>
                     <p className="text-sm font-semibold">
@@ -531,7 +529,7 @@ export function ProductImageCropDialog({
                   </div>
 
                   {/* Storefront-style preview card */}
-                  <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
+                  <div className="bg-card max-w-[33%] min-w-2xs overflow-hidden rounded-xl border shadow-sm">
                     <div
                       ref={previewFrameRef}
                       className="bg-muted relative aspect-[4/3] overflow-hidden"
