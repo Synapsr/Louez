@@ -1,44 +1,49 @@
-import { redirect } from 'next/navigation'
-import { Suspense } from 'react'
-import { auth } from '@/lib/auth'
-import { getCurrentStore, getUserStores } from '@/lib/store-context'
-import { Sidebar, MobileHeader } from '@/components/dashboard/sidebar'
-import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider'
-import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay'
-import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions'
-import { StoreProvider } from '@/contexts/store-context'
-import type { StoreSettings } from '@louez/types'
+import { Suspense } from 'react';
+
+import { redirect } from 'next/navigation';
+
+import type { StoreSettings } from '@louez/types';
+
+import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider';
+import { MobileHeader, Sidebar } from '@/components/dashboard/sidebar';
+import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
+
+import { auth } from '@/lib/auth';
+import { getCurrentStore, getUserStores } from '@/lib/store-context';
+import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
+
+import { StoreProvider } from '@/contexts/store-context';
 
 export default async function DashboardMainLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const session = await auth()
+  const session = await auth();
 
   if (!session?.user?.id) {
-    redirect('/login')
+    redirect('/login');
   }
 
   // Get all user's stores
-  const userStores = await getUserStores()
+  const userStores = await getUserStores();
 
   // If no stores, redirect to onboarding
   if (userStores.length === 0) {
-    redirect('/onboarding')
+    redirect('/onboarding');
   }
 
   // Get current active store
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
 
   // If no store or onboarding not completed, redirect to onboarding
   if (!store || !store.onboardingCompleted) {
-    redirect('/onboarding')
+    redirect('/onboarding');
   }
 
   // Get current plan for the store
-  const planSlug = await getCurrentPlanSlug(store.id)
-  const settings = (store.settings as StoreSettings) || {}
+  const planSlug = await getCurrentPlanSlug(store.id);
+  const settings = (store.settings as StoreSettings) || {};
 
   return (
     <StoreProvider
@@ -48,7 +53,7 @@ export default async function DashboardMainLayout({
       timezone={settings.timezone}
     >
       <ReservationPollingProvider interval={30000}>
-        <div className="dashboard min-h-screen bg-muted/30">
+        <div className="dashboard bg-muted/30 min-h-screen">
           <Sidebar
             stores={userStores}
             currentStoreId={store.id}
@@ -74,5 +79,5 @@ export default async function DashboardMainLayout({
         </div>
       </ReservationPollingProvider>
     </StoreProvider>
-  )
+  );
 }

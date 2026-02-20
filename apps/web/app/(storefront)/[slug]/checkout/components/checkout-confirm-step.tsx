@@ -205,27 +205,31 @@ export function CheckoutConfirmStep({
             </div>
           )}
 
-          <form.Field name="acceptCgv">
-            {(field) => (
-              <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
-                <Checkbox
-                  id={field.name}
-                  checked={field.state.value}
-                  onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
-                />
-                <div className="space-y-1 leading-none">
-                  <Label htmlFor={field.name} className="cursor-pointer">
-                    {t('acceptCgv')}
-                  </Label>
-                  {field.state.meta.errors.length > 0 && (
-                    <p className="text-destructive text-sm">
-                      {getFieldError(field.state.meta.errors[0])}
-                    </p>
-                  )}
-                </div>
-              </div>
+          <form.Subscribe selector={(state) => state.submissionAttempts}>
+            {(submissionAttempts) => (
+              <form.Field name="acceptCgv">
+                {(field) => (
+                  <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
+                    <Checkbox
+                      id={field.name}
+                      checked={field.state.value}
+                      onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
+                    />
+                    <div className="space-y-1 leading-none">
+                      <Label htmlFor={field.name} className="cursor-pointer">
+                        {t('acceptCgv')}
+                      </Label>
+                      {submissionAttempts > 0 && field.state.meta.errors.length > 0 && (
+                        <p className="text-destructive text-sm">
+                          {getFieldError(field.state.meta.errors[0])}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </form.Field>
             )}
-          </form.Field>
+          </form.Subscribe>
         </div>
 
         <div className="flex gap-3 pt-2">

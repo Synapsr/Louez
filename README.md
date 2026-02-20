@@ -142,7 +142,7 @@ services:
       - SMTP_PORT=587
       - SMTP_USER=your@email.com
       - SMTP_PASSWORD=your-password
-      - EMAIL_FROM=noreply@yourdomain.com
+      - SMTP_FROM=noreply@yourdomain.com
       - NEXT_PUBLIC_APP_URL=https://yourdomain.com
     depends_on:
       db:
@@ -248,7 +248,7 @@ Built with modern, battle-tested technologies:
 | `SMTP_PORT` | ✅ | SMTP server port |
 | `SMTP_USER` | ✅ | SMTP username |
 | `SMTP_PASSWORD` | ✅ | SMTP password |
-| `EMAIL_FROM` | ✅ | Sender email address |
+| `SMTP_FROM` | ✅ | Sender email address |
 | `NEXT_PUBLIC_APP_URL` | ✅ | Public URL of your app |
 | `AUTH_GOOGLE_ID` | | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | | Google OAuth secret |

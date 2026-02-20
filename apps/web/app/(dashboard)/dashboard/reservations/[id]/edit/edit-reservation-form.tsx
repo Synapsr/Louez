@@ -42,6 +42,7 @@ import { Alert, AlertDescription } from '@louez/ui'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { getCurrencySymbol } from '@louez/utils'
 import { calculateDuration } from '@/lib/utils/duration'
+import { useStoreTimezone } from '@/contexts/store-context'
 import {
   evaluateReservationRules,
   type ReservationValidationWarning,
@@ -69,6 +70,7 @@ export function EditReservationForm({
   const tForm = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
   const updateReservationMutation = useMutation(
@@ -411,7 +413,7 @@ export function EditReservationForm({
 
   return (
     <TooltipProvider>
-      <div className="min-h-screen bg-muted/30">
+      <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 min-h-screen bg-muted/30">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background border-b">
           <div className="container max-w-5xl mx-auto px-4 py-4">
@@ -491,6 +493,7 @@ export function EditReservationForm({
                         minTime="00:00"
                         maxTime="23:59"
                         timeStep={30}
+                        timezone={timezone}
                       />
                     </div>
                     <div className="space-y-2">
@@ -503,6 +506,7 @@ export function EditReservationForm({
                         maxTime="23:59"
                         timeStep={30}
                         disabledDates={(date) => (startDate ? date < startDate : false)}
+                        timezone={timezone}
                       />
                     </div>
                   </div>

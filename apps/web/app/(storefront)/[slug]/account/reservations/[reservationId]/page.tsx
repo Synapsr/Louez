@@ -365,7 +365,7 @@ export default async function ReservationDetailPage({
             <div className="space-y-4">
               {reservation.items.map((item) => (
                 <div key={item.id} className="flex gap-4 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="relative h-20 w-20 flex-shrink-0 rounded-lg overflow-hidden bg-background border">
+                  <div className="relative w-24 aspect-[4/3] flex-shrink-0 rounded-lg overflow-hidden bg-background border">
                     {item.productSnapshot.images?.[0] ? (
                       <Image
                         src={item.productSnapshot.images[0]}

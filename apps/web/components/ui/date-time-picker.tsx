@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { format } from 'date-fns'
+import { toZonedTime } from 'date-fns-tz'
 import { fr, enUS } from 'date-fns/locale'
 import { CalendarIcon, Clock } from 'lucide-react'
 import { useTranslations, useLocale } from 'next-intl'
@@ -22,6 +22,8 @@ import {
   SelectValue,
 } from '@louez/ui'
 import { Label } from '@louez/ui'
+import { buildStoreDate } from '@/lib/utils/business-hours'
+import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface DateTimePickerProps {
   date: Date | undefined
@@ -34,6 +36,7 @@ interface DateTimePickerProps {
   maxTime?: string // "HH:mm" format
   timeStep?: number // minutes
   className?: string
+  timezone?: string
 }
 
 // Generate time options
@@ -73,10 +76,12 @@ export function DateTimePicker({
   maxTime = '20:00',
   timeStep = 30,
   className,
+  timezone,
 }: DateTimePickerProps) {
   const t = useTranslations('common.dateTimePicker')
   const locale = useLocale()
   const dateLocale = locale === 'fr' ? fr : enUS
+  const resolvedTimezone = timezone?.trim() || undefined
 
   const [isOpen, setIsOpen] = React.useState(false)
   const timeOptions = React.useMemo(
@@ -86,8 +91,32 @@ export function DateTimePicker({
 
   const actualPlaceholder = placeholder || t('select')
 
+  const getDateInPickerTimezone = React.useCallback(
+    (value: Date) => {
+      if (!resolvedTimezone) return value
+      try {
+        return toZonedTime(value, resolvedTimezone)
+      } catch {
+        return value
+      }
+    },
+    [resolvedTimezone]
+  )
+
+  const getTimeFromDate = React.useCallback(
+    (value: Date) => {
+      return formatStoreDate(value, resolvedTimezone, 'TIME_ONLY', locale)
+    },
+    [locale, resolvedTimezone]
+  )
+
+  const pickerDate = React.useMemo(
+    () => (date ? getDateInPickerTimezone(date) : undefined),
+    [date, getDateInPickerTimezone]
+  )
+
   const currentTime = date
-    ? `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+    ? getTimeFromDate(date)
     : timeOptions[0]?.value || '08:00'
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
@@ -96,32 +125,25 @@ export function DateTimePicker({
       return
     }
 
-    // Preserve time from current date or use default
-    if (date) {
-      selectedDate.setHours(date.getHours(), date.getMinutes())
-    } else {
-      const [h, m] = (timeOptions[0]?.value || '08:00').split(':').map(Number)
-      selectedDate.setHours(h, m)
-    }
-
-    setDate(selectedDate)
+    const time = date ? getTimeFromDate(date) : timeOptions[0]?.value || '08:00'
+    setDate(buildStoreDate(selectedDate, time, resolvedTimezone))
   }
 
   const handleTimeChange = (time: string | null) => {
     if (!date || time === null) return
 
     const [hours, minutes] = time.split(':').map(Number)
-    const newDate = new Date(date)
-    newDate.setHours(hours, minutes)
-    setDate(newDate)
+    const pickerDateForTime = getDateInPickerTimezone(date)
+    const normalizedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    setDate(buildStoreDate(pickerDateForTime, normalizedTime, resolvedTimezone))
   }
 
   const formatDateTime = (d: Date) => {
     if (showTime) {
       const timeFormat = locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm"
-      return format(d, timeFormat, { locale: dateLocale })
+      return formatStoreDate(d, resolvedTimezone, timeFormat, locale)
     }
-    return format(d, 'PPP', { locale: dateLocale })
+    return formatStoreDate(d, resolvedTimezone, 'PPP', locale)
   }
 
   return (
@@ -141,7 +163,7 @@ export function DateTimePicker({
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={date}
+          selected={pickerDate}
           onSelect={handleDateSelect}
           disabled={disabledDates}
           initialFocus
@@ -194,6 +216,7 @@ export function DatePicker({
   disabled = false,
   disabledDates,
   className,
+  timezone,
 }: Omit<DateTimePickerProps, 'showTime' | 'minTime' | 'maxTime' | 'timeStep'>) {
   return (
     <DateTimePicker
@@ -204,6 +227,7 @@ export function DatePicker({
       disabledDates={disabledDates}
       showTime={false}
       className={className}
+      timezone={timezone}
     />
   )
 }

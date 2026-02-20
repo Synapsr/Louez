@@ -123,17 +123,17 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
           <RootError error={rootError} />
 
         {/* Two-column layout on desktop */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-6 lg:grid-cols-[1fr,minmax(300px,400px)] lg:items-start">
           {/* Weekly Schedule - Left column */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
                   <CardTitle>{t('weeklySchedule')}</CardTitle>
                   <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm text-muted-foreground hidden sm:inline">
                     {isEnabled ? t('enabled') : t('disabled')}
                   </span>
                   <form.Field name="enabled">
@@ -147,62 +147,66 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className={`space-y-3 ${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              {DAY_KEYS.map((dayKey) => (
-                <DayScheduleRow
-                  key={dayKey}
-                  dayKey={dayKey}
-                  form={form}
-                  t={t}
-                  timeSlots={timeSlots}
-                />
-              ))}
+            <CardContent className={`${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="divide-y">
+                {DAY_KEYS.map((dayKey) => (
+                  <DayScheduleRow
+                    key={dayKey}
+                    dayKey={dayKey}
+                    form={form}
+                    t={t}
+                    timeSlots={timeSlots}
+                  />
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           {/* Closure Periods - Right column */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-1">
                   <CardTitle>{t('closurePeriods')}</CardTitle>
                   <CardDescription>{t('closurePeriodsDescription')}</CardDescription>
                 </div>
-                <ClosurePeriodDialog
-                  open={closureDialogOpen}
-                  onOpenChange={setClosureDialogOpen}
-                  onAdd={addClosurePeriod}
-                  t={t}
-                  tCommon={tCommon}
-                />
+                <div className="shrink-0">
+                  <ClosurePeriodDialog
+                    open={closureDialogOpen}
+                    onOpenChange={setClosureDialogOpen}
+                    onAdd={addClosurePeriod}
+                    t={t}
+                    tCommon={tCommon}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
               {closurePeriods.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="rounded-full bg-muted p-3 mb-4">
-                    <CalendarX2 className="h-6 w-6 text-muted-foreground" />
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="rounded-full bg-muted p-3 mb-3">
+                    <CalendarX2 className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <p className="text-sm font-medium text-muted-foreground">
                     {t('noClosure')}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
                     {t('noClosureDescription')}
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {closurePeriods.map((field, index) => (
                     <div
                       key={field.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                      className="flex items-center justify-between rounded-lg border p-3 gap-2"
                     >
                       <div className="space-y-1 min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="font-medium truncate">{field.name}</span>
+                          <span className="text-sm font-medium truncate">{field.name}</span>
                         </div>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {format(new Date(field.startDate), 'dd MMM yyyy', { locale: fr })}
                           {' - '}
                           {format(new Date(field.endDate), 'dd MMM yyyy', { locale: fr })}
@@ -215,7 +219,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="shrink-0"
+                        className="shrink-0 h-8 w-8"
                         onClick={() => removeClosurePeriod(index)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -257,23 +261,21 @@ function DayScheduleRow({
   const isOpen = schedule[dayKey]?.isOpen ?? false
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-4">
-      <div className="flex items-center gap-3 min-w-[140px]">
-        <form.Field name={`schedule.${dayKey}.isOpen` as any}>
-          {(field: any) => (
-            <Switch
-              checked={field.state.value}
-              onCheckedChange={(checked) => field.handleChange(checked)}
-            />
-          )}
-        </form.Field>
-        <span className={`font-medium ${!isOpen ? 'text-muted-foreground' : ''}`}>
-          {t(`days.${dayKey}`)}
-        </span>
-      </div>
+    <div className="flex items-center gap-3 py-3 px-1">
+      <form.Field name={`schedule.${dayKey}.isOpen` as any}>
+        {(field: any) => (
+          <Switch
+            checked={field.state.value}
+            onCheckedChange={(checked) => field.handleChange(checked)}
+          />
+        )}
+      </form.Field>
+      <span className={`font-medium text-sm w-24 shrink-0 ${!isOpen ? 'text-muted-foreground' : ''}`}>
+        {t(`days.${dayKey}`)}
+      </span>
 
       {isOpen ? (
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <form.Field name={`schedule.${dayKey}.openTime` as any}>
             {(field: any) => (
               <Select
@@ -282,7 +284,7 @@ function DayScheduleRow({
                   if (value !== null) field.handleChange(value)
                 }}
               >
-                <SelectTrigger className="flex-1">
+                <SelectTrigger className="w-[100px]">
                   <SelectValue>{field.state.value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -295,7 +297,7 @@ function DayScheduleRow({
               </Select>
             )}
           </form.Field>
-          <span className="text-muted-foreground">-</span>
+          <span className="text-muted-foreground text-sm">-</span>
           <form.Field name={`schedule.${dayKey}.closeTime` as any}>
             {(field: any) => (
               <Select
@@ -304,7 +306,7 @@ function DayScheduleRow({
                   if (value !== null) field.handleChange(value)
                 }}
               >
-                <SelectTrigger className="flex-1">
+                <SelectTrigger className="w-[100px]">
                   <SelectValue>{field.state.value}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>

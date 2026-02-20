@@ -237,55 +237,54 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       const selectionSignature = buildSelectionSignature(item.selectedAttributes)
 
-      setStoreSlug((currentSlug) => {
-        const buildFullItem = (): CartItem => ({
-          ...item,
-          lineId: createCartLineId(),
-          selectionSignature,
-          startDate,
-          endDate,
-        })
+      const buildFullItem = (): CartItem => ({
+        ...item,
+        lineId: createCartLineId(),
+        selectionSignature,
+        startDate,
+        endDate,
+      })
 
-        if (currentSlug && currentSlug !== newStoreSlug) {
-          // Different store, clear cart and add new item
-          setItems([buildFullItem()])
-          setGlobalStartDate(startDate)
-          setGlobalEndDate(endDate)
-          return newStoreSlug
+      if (storeSlug && storeSlug !== newStoreSlug) {
+        // Different store, clear cart and add new item
+        setItems([buildFullItem()])
+        setStoreSlug(newStoreSlug)
+        setGlobalStartDate(startDate)
+        setGlobalEndDate(endDate)
+        return
+      }
+
+      setItems((currentItems) => {
+        const existingIndex = currentItems.findIndex(
+          (i) => i.productId === item.productId && i.selectionSignature === selectionSignature,
+        )
+
+        if (existingIndex >= 0) {
+          // Same product + same selection: merge quantities.
+          const updated = [...currentItems]
+          const existing = updated[existingIndex]
+          updated[existingIndex] = {
+            ...existing,
+            ...item,
+            selectionSignature,
+            quantity: Math.min(existing.quantity + item.quantity, item.maxQuantity),
+            maxQuantity: item.maxQuantity,
+            startDate,
+            endDate,
+          }
+          return updated
         }
 
-        setItems((currentItems) => {
-          const existingIndex = currentItems.findIndex(
-            (i) => i.productId === item.productId && i.selectionSignature === selectionSignature,
-          )
-
-          if (existingIndex >= 0) {
-            // Same product + same selection: merge quantities.
-            const updated = [...currentItems]
-            const existing = updated[existingIndex]
-            updated[existingIndex] = {
-              ...existing,
-              ...item,
-              selectionSignature,
-              quantity: Math.min(existing.quantity + item.quantity, item.maxQuantity),
-              maxQuantity: item.maxQuantity,
-              startDate,
-              endDate,
-            }
-            return updated
-          }
-
-          return [...currentItems, buildFullItem()]
-        })
-
-        // Set global dates if not set
-        if (!globalStartDate) setGlobalStartDate(startDate)
-        if (!globalEndDate) setGlobalEndDate(endDate)
-
-        return currentSlug || newStoreSlug
+        return [...currentItems, buildFullItem()]
       })
+
+      if (storeSlug !== newStoreSlug) {
+        setStoreSlug(newStoreSlug)
+      }
+      if (!globalStartDate) setGlobalStartDate(startDate)
+      if (!globalEndDate) setGlobalEndDate(endDate)
     },
-    [globalStartDate, globalEndDate]
+    [globalStartDate, globalEndDate, storeSlug]
   )
 
   const removeItemByLineId = useCallback((lineId: string) => {

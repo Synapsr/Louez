@@ -14,7 +14,7 @@ export default async function HoursPage() {
   const t = await getTranslations('dashboard.settings')
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <p className="text-muted-foreground">
         {t('businessHours.description')}
       </p>

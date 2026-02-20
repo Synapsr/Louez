@@ -24,7 +24,7 @@ import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { getCustomerSession } from './actions'
 import { generateStoreMetadata } from '@/lib/seo'
-import { storefrontRedirect } from '@/lib/storefront-url'
+import { getStorefrontUrl, storefrontRedirect } from '@/lib/storefront-url'
 import { LogoutButton } from '@/components/storefront/logout-button'
 import { PageTracker } from '@/components/storefront/page-tracker'
 import { SuccessToast } from './success-toast'
@@ -234,7 +234,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/${slug}/account/reservations/${reservation.id}`}
+                    href={getStorefrontUrl(slug, `/account/reservations/${reservation.id}`)}
                     className="block"
                   >
                     <Card className={`group hover:shadow-md transition-all duration-200 border-l-4 ${isPending ? 'border-l-amber-400 dark:border-l-amber-600' : 'border-l-primary'}`}>
@@ -319,7 +319,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 return (
                   <Link
                     key={reservation.id}
-                    href={`/${slug}/account/reservations/${reservation.id}`}
+                    href={getStorefrontUrl(slug, `/account/reservations/${reservation.id}`)}
                     className="block"
                   >
                     <Card className="group hover:shadow-sm transition-all duration-200">

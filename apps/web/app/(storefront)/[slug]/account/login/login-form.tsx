@@ -36,6 +36,11 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const getErrorMessage = (errorKey: string) =>
+    errorKey.startsWith('errors.')
+      ? tErrors(errorKey.replace('errors.', ''))
+      : errorKey;
+
   const emailSchema = z.object({
     email: z.string().email(t('codeError')),
   });
@@ -51,7 +56,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
         const result = await sendVerificationCode(storeId, value.email);
 
         if (result.error) {
-          toastManager.add({ title: result.error, type: 'error' });
+          toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
           return;
         }
 
@@ -75,7 +80,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
         const result = await verifyCode(storeId, email, codeValue);
 
         if (result.error) {
-          toastManager.add({ title: result.error, type: 'error' });
+          toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
           return;
         }
 
@@ -108,7 +113,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       const result = await sendVerificationCode(storeId, email);
 
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' });
+        toastManager.add({ title: getErrorMessage(result.error), type: 'error' });
         return;
       }
 

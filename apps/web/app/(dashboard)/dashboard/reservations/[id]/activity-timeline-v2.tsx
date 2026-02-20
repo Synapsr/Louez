@@ -38,6 +38,7 @@ import { cn } from '@louez/utils'
 
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { useStoreTimezone } from '@/contexts/store-context'
+import { formatPaymentFailureDescription } from './utils/payment-failure-description'
 
 type ActivityType =
   | 'created'
@@ -243,8 +244,10 @@ export function ActivityTimelineV2({
   initialVisibleCount = 3,
 }: ActivityTimelineV2Props) {
   const t = useTranslations('dashboard.reservations')
+  const tCommon = useTranslations('common')
   const timezone = useStoreTimezone()
   const [isExpanded, setIsExpanded] = useState(false)
+  const [expandedTechnicalDetails, setExpandedTechnicalDetails] = useState<Record<string, boolean>>({})
 
   // Sort activities by date (most recent first)
   const sortedActivities = [...activities].sort(
@@ -260,6 +263,13 @@ export function ActivityTimelineV2({
     ? sortedActivities
     : sortedActivities.slice(0, initialVisibleCount)
   const hasMoreActivities = sortedActivities.length > initialVisibleCount
+
+  const toggleTechnicalDetail = (activityId: string) => {
+    setExpandedTechnicalDetails((prev) => ({
+      ...prev,
+      [activityId]: !prev[activityId],
+    }))
+  }
 
   const renderActivityItem = (activity: Activity, index: number) => {
     const config = ACTIVITY_CONFIG[activity.activityType]
@@ -280,6 +290,13 @@ export function ActivityTimelineV2({
 
     const isLastVisibleBeforeFade =
       !isExpanded && index === initialVisibleCount - 1 && hasMoreActivities
+    const isTechnicalDetailExpanded = Boolean(expandedTechnicalDetails[activity.id])
+    const formattedDescription = formatPaymentFailureDescription({
+      activityType: activity.activityType,
+      description: activity.description,
+      metadata: activity.metadata,
+      t: (key, values) => t(key, values),
+    })
 
     return (
       <div
@@ -441,10 +458,34 @@ export function ActivityTimelineV2({
             )}
 
           {/* Description/Reason */}
-          {activity.description && (
-            <p className="mt-1.5 text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1 inline-block">
-              {activity.description}
-            </p>
+          {formattedDescription && (
+            <div className="mt-1.5 inline-block rounded bg-muted/50 px-2 py-1">
+              <p className="text-xs text-muted-foreground">{formattedDescription.message}</p>
+              {formattedDescription.technicalMessage && (
+                <div className="mt-1">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80 hover:text-foreground transition-colors"
+                    onClick={() => toggleTechnicalDetail(activity.id)}
+                  >
+                    <ChevronDown
+                      className={cn(
+                        'h-3 w-3 transition-transform',
+                        isTechnicalDetailExpanded && 'rotate-180'
+                      )}
+                    />
+                    {tCommon('details')}
+                  </button>
+                  {isTechnicalDetailExpanded && (
+                    <p className="mt-1 text-[11px] text-muted-foreground/80">
+                      {t('activity.paymentFailure.technicalDetail', {
+                        message: formattedDescription.technicalMessage,
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

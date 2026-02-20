@@ -625,11 +625,7 @@ export async function createReservation(input: CreateReservationInput) {
       serverTotalDeposit += pricingResult.deposit
 
       // Log price mismatch for monitoring (potential fraud attempt)
-      const clientItemSubtotal = item.unitPrice * item.quantity * (
-        isRateBasedProduct({ basePeriodMinutes: product.basePeriodMinutes })
-          ? calcDurationMinutes(item.startDate, item.endDate)
-          : calculateDuration(item.startDate, item.endDate)
-      )
+      const clientItemSubtotal = item.unitPrice * item.quantity * duration
       if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
         console.warn('[SECURITY] Price mismatch detected', {
           productId: item.productId,
@@ -723,14 +719,31 @@ export async function createReservation(input: CreateReservationInput) {
         : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal)
     }
 
-    // Add delivery fee to total
+    // Client `totalAmount` excludes deposit and includes delivery fee.
+    const serverClientComparableTotal = serverSubtotal + deliveryFee
     const serverTotalWithDelivery = serverTotalAmount + deliveryFee
 
-    // Log total mismatch for monitoring (include delivery fee in comparison)
-    if (Math.abs(input.totalAmount - serverTotalWithDelivery) > 0.01) {
+    if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
+      console.warn('[SECURITY] Subtotal mismatch detected', {
+        clientSubtotal: input.subtotalAmount,
+        serverSubtotal,
+        difference: input.subtotalAmount - serverSubtotal,
+      })
+    }
+
+    if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
+      console.warn('[SECURITY] Deposit mismatch detected', {
+        clientDeposit: input.depositAmount,
+        serverDeposit: serverTotalDeposit,
+        difference: input.depositAmount - serverTotalDeposit,
+      })
+    }
+
+    // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
+    if (Math.abs(input.totalAmount - serverClientComparableTotal) > 0.01) {
       console.warn('[SECURITY] Total amount mismatch detected', {
         clientTotal: input.totalAmount,
-        serverTotal: serverTotalWithDelivery,
+        serverTotal: serverClientComparableTotal,
         clientSubtotal: input.subtotalAmount,
         serverSubtotal,
         clientDeposit: input.depositAmount,
@@ -1457,12 +1470,4 @@ export async function createReservation(input: CreateReservationInput) {
     console.error('Error creating reservation:', error)
     return { error: 'errors.createReservationError' }
   }
-}
-
-// Duration calculation - uses Math.ceil (round up): any partial day = full day billed
-function calculateDuration(startDate: string, endDate: string): number {
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  const diffMs = end.getTime() - start.getTime()
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
