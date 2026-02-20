@@ -1180,7 +1180,8 @@
             "incorrectCvc": "The card security code (CVC) is invalid.",
             "processingError": "The payment failed due to a temporary processing issue. Retry in a few minutes.",
             "doNotHonor": "The bank refused this payment without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Online payment failed. Ask the customer to retry or use another card."
+            "generic": "Online payment failed. Ask the customer to retry or use another card.",
+            "recovered": "An earlier attempt failed, but the payment was completed successfully at {date}."
           },
           "deposit_failed": {
             "authenticationRequired": "The deposit authorization failed because bank authentication was not completed. Ask the customer to retry and validate 3D Secure.",

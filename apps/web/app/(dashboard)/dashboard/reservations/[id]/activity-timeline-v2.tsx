@@ -82,8 +82,20 @@ interface Activity {
   } | null
 }
 
+interface ActivityTimelinePayment {
+  type: string
+  method: string
+  status: string
+  paidAt: Date | string | null
+  amount?: string | number | null
+  currency?: string | null
+  stripePaymentIntentId?: string | null
+  stripeCheckoutSessionId?: string | null
+}
+
 interface ActivityTimelineV2Props {
   activities: Activity[]
+  payments?: ActivityTimelinePayment[]
   reservationCreatedAt: Date
   reservationSource: string | null
   initialVisibleCount?: number
@@ -239,6 +251,7 @@ function getUserInitials(name: string | null, email: string): string {
 
 export function ActivityTimelineV2({
   activities,
+  payments = [],
   reservationCreatedAt,
   reservationSource,
   initialVisibleCount = 3,
@@ -254,15 +267,90 @@ export function ActivityTimelineV2({
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   )
 
+  // Build synthetic "payment_received" events from completed Stripe payments when
+  // historical activity is missing (legacy data or webhook race edge-cases).
+  const existingStripeSuccessByIntent = new Set<string>()
+  const existingStripeSuccessBySession = new Set<string>()
+
+  for (const activity of activities) {
+    if (activity.activityType !== 'payment_received') continue
+    if (activity.metadata?.method !== 'stripe') continue
+
+    const paymentIntentId =
+      typeof activity.metadata?.paymentIntentId === 'string'
+        ? activity.metadata.paymentIntentId
+        : undefined
+    const checkoutSessionId =
+      typeof activity.metadata?.checkoutSessionId === 'string'
+        ? activity.metadata.checkoutSessionId
+        : undefined
+
+    if (paymentIntentId) existingStripeSuccessByIntent.add(paymentIntentId)
+    if (checkoutSessionId) existingStripeSuccessBySession.add(checkoutSessionId)
+  }
+
+  const syntheticPaymentReceivedActivities: Activity[] = []
+
+  for (const [index, payment] of payments.entries()) {
+    if (payment.method !== 'stripe' || payment.status !== 'completed') continue
+    if (payment.type !== 'rental' || !payment.paidAt) continue
+
+    const paymentIntentId = payment.stripePaymentIntentId || undefined
+    const checkoutSessionId = payment.stripeCheckoutSessionId || undefined
+
+    // We only synthesize when we can correlate to Stripe IDs.
+    if (!paymentIntentId && !checkoutSessionId) continue
+
+    const alreadyLogged =
+      (paymentIntentId && existingStripeSuccessByIntent.has(paymentIntentId)) ||
+      (checkoutSessionId && existingStripeSuccessBySession.has(checkoutSessionId))
+
+    if (alreadyLogged) continue
+
+    const paidAt = new Date(payment.paidAt)
+    if (Number.isNaN(paidAt.getTime())) continue
+
+    const amount =
+      typeof payment.amount === 'number'
+        ? payment.amount
+        : typeof payment.amount === 'string'
+          ? parseFloat(payment.amount)
+          : NaN
+
+    syntheticPaymentReceivedActivities.push({
+      id: `synthetic_payment_received_${paymentIntentId || checkoutSessionId || index}_${paidAt.getTime()}`,
+      activityType: 'payment_received',
+      description: null,
+      metadata: {
+        paymentIntentId: paymentIntentId ?? null,
+        checkoutSessionId: checkoutSessionId ?? null,
+        amount: Number.isFinite(amount) ? amount : null,
+        currency: payment.currency || 'EUR',
+        method: 'stripe',
+        type: 'rental',
+        source: 'synthetic_from_payments',
+      },
+      createdAt: paidAt,
+      user: null,
+    })
+
+    if (paymentIntentId) existingStripeSuccessByIntent.add(paymentIntentId)
+    if (checkoutSessionId) existingStripeSuccessBySession.add(checkoutSessionId)
+  }
+
+  const timelineActivities = [...sortedActivities, ...syntheticPaymentReceivedActivities].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  )
+
   // Find the creation activity to get source info
   const createdActivity = activities.find((a) => a.activityType === 'created')
   const isManualCreation =
     reservationSource === 'manual' || createdActivity?.metadata?.source === 'manual'
 
   const visibleActivities = isExpanded
-    ? sortedActivities
-    : sortedActivities.slice(0, initialVisibleCount)
-  const hasMoreActivities = sortedActivities.length > initialVisibleCount
+    ? timelineActivities
+    : timelineActivities.slice(0, initialVisibleCount)
+  const hasMoreActivities = timelineActivities.length > initialVisibleCount
 
   const toggleTechnicalDetail = (activityId: string) => {
     setExpandedTechnicalDetails((prev) => ({
@@ -506,7 +594,7 @@ export function ActivityTimelineV2({
           <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
 
           <div className="space-y-4">
-            {sortedActivities.length === 0 ? (
+            {timelineActivities.length === 0 ? (
               // Fallback: show creation event if no activities
               <div className="relative flex gap-3 pl-1">
                 <div
@@ -574,7 +662,7 @@ export function ActivityTimelineV2({
             ) : (
               <>
                 <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                {t('activity.showAll', { count: sortedActivities.length })}
+                {t('activity.showAll', { count: timelineActivities.length })}
               </>
             )}
           </Button>
