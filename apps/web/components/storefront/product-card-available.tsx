@@ -219,7 +219,9 @@ export function ProductCardAvailable({
   })()
 
   const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault()
     e.stopPropagation()
+
     if (status === 'unavailable') return
     if (hasBookingAttributes) {
       setIsModalOpen(true)

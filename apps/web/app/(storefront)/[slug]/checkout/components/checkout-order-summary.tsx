@@ -7,12 +7,17 @@ import { enUS, fr } from 'date-fns/locale';
 import { ImageIcon, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import type { CartItem } from '@/contexts/cart-context';
-import { getDetailedDuration } from '@/lib/utils/duration';
-
 import type { TaxSettings } from '@louez/types';
 import { Badge, Card, CardContent, Separator } from '@louez/ui';
-import { type ProductPricing, calculateRentalPrice, formatCurrency } from '@louez/utils';
+import {
+  type ProductPricing,
+  calculateRentalPrice,
+  formatCurrency,
+} from '@louez/utils';
+
+import { getDetailedDuration } from '@/lib/utils/duration';
+
+import type { CartItem } from '@/contexts/cart-context';
 
 import type { DeliveryOption, LineResolutionState } from '../types';
 import { calculateDuration } from '../utils';
@@ -35,10 +40,7 @@ interface CheckoutOrderSummaryProps {
   deliveryOption: DeliveryOption;
   deliveryDistance: number | null;
   deliveryFee: number;
-  lineResolutions?: Record<
-    string,
-    LineResolutionState
-  >;
+  lineResolutions?: Record<string, LineResolutionState>;
 }
 
 export function CheckoutOrderSummary({
@@ -124,28 +126,36 @@ export function CheckoutOrderSummary({
                   })),
                 };
 
-                const result = calculateRentalPrice(pricing, duration, item.quantity);
+                const result = calculateRentalPrice(
+                  pricing,
+                  duration,
+                  item.quantity,
+                );
                 itemTotal = result.subtotal;
                 itemSavings = result.savings;
                 discountPercent = result.discountPercent;
               }
 
-              const resolutionState = lineResolutions[item.lineId]
-              const requestedAttributes = item.selectedAttributes
-              const resolvedAttributes = item.resolvedAttributes
-                || (resolutionState?.status === 'resolved'
+              const resolutionState = lineResolutions[item.lineId];
+              const requestedAttributes = item.selectedAttributes;
+              const resolvedAttributes =
+                item.resolvedAttributes ||
+                (resolutionState?.status === 'resolved'
                   ? resolutionState.selectedAttributes
-                  : undefined)
+                  : undefined);
 
               return (
-                <div key={item.lineId || `${item.productId}-${index}`} className="flex gap-3">
-                  <div className="bg-muted relative aspect-[4/3] w-16 flex-shrink-0 overflow-hidden rounded-lg">
+                <div
+                  key={item.lineId || `${item.productId}-${index}`}
+                  className="flex gap-3"
+                >
+                  <div className="bg-muted relative aspect-4/3 h-14 w-auto shrink-0 overflow-hidden rounded-lg">
                     {item.productImage ? (
                       <Image
                         src={item.productImage}
                         alt={item.productName}
                         fill
-                        className="object-cover"
+                        className="max-h-full max-w-full object-cover"
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center">
@@ -154,36 +164,43 @@ export function CheckoutOrderSummary({
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.productName}</p>
-                    {requestedAttributes && Object.keys(requestedAttributes).length > 0 && (
-                      <p className="text-muted-foreground truncate text-[11px]">
-                        {t('requestedAttributesLabel')}: {Object.entries(requestedAttributes)
-                          .map(([key, value]) => `${key}: ${value}`)
-                          .join(' • ')}
-                      </p>
-                    )}
-                    {resolvedAttributes && Object.keys(resolvedAttributes).length > 0 && (
-                      <p className="text-muted-foreground truncate text-[11px]">
-                        {t('resolvedAttributesLabel')}: {Object.entries(resolvedAttributes)
-                          .map(([key, value]) => `${key}: ${value}`)
-                          .join(' • ')}
-                      </p>
-                    )}
+                    <p className="truncate text-sm font-medium">
+                      {item.productName}
+                    </p>
+                    {requestedAttributes &&
+                      Object.keys(requestedAttributes).length > 0 && (
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {t('requestedAttributesLabel')}:{' '}
+                          {Object.entries(requestedAttributes)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(' • ')}
+                        </p>
+                      )}
+                    {resolvedAttributes &&
+                      Object.keys(resolvedAttributes).length > 0 && (
+                        <p className="text-muted-foreground truncate text-[11px]">
+                          {t('resolvedAttributesLabel')}:{' '}
+                          {Object.entries(resolvedAttributes)
+                            .map(([key, value]) => `${key}: ${value}`)
+                            .join(' • ')}
+                        </p>
+                      )}
                     {resolutionState?.status === 'loading' && (
                       <p className="text-muted-foreground truncate text-[11px]">
                         {t('lineCheckingAvailability')}
                       </p>
                     )}
                     {resolutionState?.status === 'invalid' && (
-                      <p className="truncate text-[11px] text-destructive">
+                      <p className="text-destructive truncate text-[11px]">
                         {t('lineNeedsUpdateInline')}
                       </p>
                     )}
                     <p className="text-muted-foreground text-xs">
-                      {item.quantity} {'\u00d7'} {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
+                      {item.quantity} {'\u00d7'}{' '}
+                      {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
                       {duration}
                     </p>
-                    {discountPercent && (
+                    {discountPercent != null && discountPercent > 0 && (
                       <Badge
                         variant="secondary"
                         className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
@@ -213,7 +230,9 @@ export function CheckoutOrderSummary({
             {totalSavings > 0 && (
               <>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{tCart('subtotal')}</span>
+                  <span className="text-muted-foreground">
+                    {tCart('subtotal')}
+                  </span>
                   <span className="text-muted-foreground line-through">
                     {formatCurrency(originalSubtotal, currency)}
                   </span>
@@ -231,8 +250,14 @@ export function CheckoutOrderSummary({
                   <Truck className="h-3.5 w-3.5" />
                   {t('deliveryFee')}
                 </span>
-                <span className={deliveryFee === 0 ? 'font-medium text-green-600' : ''}>
-                  {deliveryFee === 0 ? t('free') : formatCurrency(deliveryFee, currency)}
+                <span
+                  className={
+                    deliveryFee === 0 ? 'font-medium text-green-600' : ''
+                  }
+                >
+                  {deliveryFee === 0
+                    ? t('free')
+                    : formatCurrency(deliveryFee, currency)}
                 </span>
               </div>
             )}
@@ -287,7 +312,9 @@ export function CheckoutOrderSummary({
           {totalDeposit > 0 && reservationMode === 'payment' && (
             <div className="mt-2 space-y-2 border-t pt-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t('depositLabel')}</span>
+                <span className="text-muted-foreground">
+                  {t('depositLabel')}
+                </span>
                 <span className="font-medium">
                   {formatCurrency(totalDeposit, currency)}
                 </span>
