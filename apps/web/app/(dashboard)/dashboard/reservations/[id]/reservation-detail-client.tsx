@@ -482,6 +482,7 @@ export function ReservationDetailClient({
 
           <ActivityTimelineV2
             activities={reservation.activity}
+            payments={reservation.payments}
             reservationCreatedAt={reservation.createdAt}
             reservationSource={reservation.source}
             initialVisibleCount={3}
@@ -546,4 +547,3 @@ export function ReservationDetailClient({
     </div>
   )
 }
-
