@@ -148,7 +148,11 @@ export function ProductAssuranceSection({
     const sanitized = apiKey.trim();
     if (!sanitized) return;
 
-    await connectMutation.mutateAsync({ apiKey: sanitized });
+    try {
+      await connectMutation.mutateAsync({ apiKey: sanitized });
+    } catch {
+      // Error handling is centralized in the mutation onError callback.
+    }
   };
 
   if (productStateQuery.isLoading) {
@@ -224,15 +228,18 @@ export function ProductAssuranceSection({
     ? (tulipItems.find((item) => item.value === state.product.tulipProductId) ??
       null)
     : null;
+  const isMappingBusy =
+    mappingMutation.isPending || productStateQuery.isRefetching;
+  const isDialogBusy =
+    isMappingBusy ||
+    pushProductMutation.isPending ||
+    createProductMutation.isPending;
 
   return (
     <>
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div className="space-y-1.5">
-            <CardTitle>{t('title')}</CardTitle>
-            {/* <CardDescription>{t('description')}</CardDescription> */}
-          </div>
+          <CardTitle>{t('title')}</CardTitle>
           <Badge variant={state.connected ? 'success' : 'secondary'}>
             {state.connected ? t('statusConnected') : t('statusNotConnected')}
           </Badge>
@@ -287,93 +294,71 @@ export function ProductAssuranceSection({
               </div>
             </form>
           ) : (
-            <div className="space-y-4">
-              {/*  <div className="flex items-center gap-2">
-                <Badge
-                  variant={hasValidMapping ? 'success' : 'secondary'}
-                  size="sm"
-                >
-                  {hasValidMapping ? t('statusMapped') : t('statusNotMapped')}
-                </Badge>
-                {hasValidMapping && selectedTulipItem && (
-                  <span className="text-muted-foreground text-sm">
-                    {t('mappedTo', { title: selectedTulipItem.label })}
-                  </span>
-                )}
-              </div> */}
+            <div className="space-y-3">
+              <p className="text-muted-foreground text-sm">
+                {t('linkOrCreateHelper')}
+              </p>
 
-              <div className="space-y-3">
-                <p className="text-muted-foreground text-sm">
-                  {t('linkOrCreateHelper')}
-                </p>
-
-                <div className="flex flex-col gap-3 md:flex-row md:items-end">
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="flex items-center gap-2">
                     <Label htmlFor={`product-tulip-mapping-${productId}`}>
-                      {t('mappingLabel')}{' '}
-                      <Badge
-                        variant={hasValidMapping ? 'success' : 'secondary'}
-                        size="sm"
-                      >
-                        {hasValidMapping
-                          ? t('statusMapped')
-                          : t('statusNotMapped')}
-                      </Badge>
+                      {t('mappingLabel')}
                     </Label>
-                    <Combobox
-                      items={tulipItems}
-                      value={selectedTulipItem}
-                      onValueChange={(item) => {
-                        void mappingMutation.mutateAsync({
-                          productId: state.product.id,
-                          tulipProductId: item?.value ?? null,
-                        });
-                      }}
+                    <Badge
+                      variant={hasValidMapping ? 'success' : 'secondary'}
+                      size="sm"
                     >
-                      <ComboboxInput
-                        id={`product-tulip-mapping-${productId}`}
-                        showTrigger
-                        showClear={!!state.product.tulipProductId}
-                        placeholder={t('mappingPlaceholder')}
-                        disabled={
-                          mappingMutation.isPending ||
-                          productStateQuery.isRefetching
-                        }
-                      />
-                      <ComboboxPopup>
-                        <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item.value} value={item}>
-                              {item.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxPopup>
-                    </Combobox>
+                      {hasValidMapping
+                        ? t('statusMapped')
+                        : t('statusNotMapped')}
+                    </Badge>
                   </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setDialogOpen(true)}
-                    disabled={
-                      mappingMutation.isPending ||
-                      productStateQuery.isRefetching ||
-                      pushProductMutation.isPending ||
-                      createProductMutation.isPending
-                    }
+                  <Combobox
+                    items={tulipItems}
+                    value={selectedTulipItem}
+                    onValueChange={(item) => {
+                      mappingMutation.mutate({
+                        productId: state.product.id,
+                        tulipProductId: item?.value ?? null,
+                      });
+                    }}
                   >
-                    {t('addNewProductButton')}
-                  </Button>
+                    <ComboboxInput
+                      id={`product-tulip-mapping-${productId}`}
+                      showTrigger
+                      showClear={!!state.product.tulipProductId}
+                      placeholder={t('mappingPlaceholder')}
+                      disabled={isMappingBusy}
+                    />
+                    <ComboboxPopup>
+                      <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
+                      <ComboboxList>
+                        {(item) => (
+                          <ComboboxItem key={item.value} value={item}>
+                            {item.label}
+                          </ComboboxItem>
+                        )}
+                      </ComboboxList>
+                    </ComboboxPopup>
+                  </Combobox>
                 </div>
 
-                {mappingMutation.isPending && (
-                  <p className="text-muted-foreground text-xs">
-                    {t('mappingSaving')}
-                  </p>
-                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setDialogOpen(true)}
+                  disabled={isDialogBusy}
+                >
+                  {t('addNewProductButton')}
+                </Button>
               </div>
+
+              {mappingMutation.isPending && (
+                <p className="text-muted-foreground text-xs">
+                  {t('mappingSaving')}
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -383,21 +368,24 @@ export function ProductAssuranceSection({
         <ProductAssuranceDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          disabled={
-            productStateQuery.isRefetching ||
-            mappingMutation.isPending ||
-            pushProductMutation.isPending ||
-            createProductMutation.isPending
-          }
+          disabled={isDialogBusy}
           product={state.product}
           tulipProducts={state.tulipProducts}
           isCreatePending={createProductMutation.isPending}
           isPushPending={pushProductMutation.isPending}
           onPushProduct={async (input: ProductAssuranceActionInput) => {
-            await pushProductMutation.mutateAsync(input);
+            try {
+              await pushProductMutation.mutateAsync(input);
+            } catch {
+              // Error handling is centralized in the mutation onError callback.
+            }
           }}
           onCreateProduct={async (input: ProductAssuranceActionInput) => {
-            await createProductMutation.mutateAsync(input);
+            try {
+              await createProductMutation.mutateAsync(input);
+            } catch {
+              // Error handling is centralized in the mutation onError callback.
+            }
           }}
         />
       )}
