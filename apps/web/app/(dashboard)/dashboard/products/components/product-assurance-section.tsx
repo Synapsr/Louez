@@ -217,41 +217,19 @@ export function ProductAssuranceSection({ productId }: ProductAssuranceSectionPr
     ? (tulipItems.find((item) => item.value === state.product.tulipProductId) ?? null)
     : null
 
-  const connectedDateLabel = (() => {
-    if (!state.connectedAt) return null
-
-    const parsed = new Date(state.connectedAt)
-    if (Number.isNaN(parsed.getTime())) return null
-
-    return parsed.toLocaleString()
-  })()
-
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('title')}</CardTitle>
-          <CardDescription>{t('description')}</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div className="space-y-1.5">
+            <CardTitle>{t('title')}</CardTitle>
+            <CardDescription>{t('description')}</CardDescription>
+          </div>
+          <Badge variant={state.connected ? 'success' : 'secondary'}>
+            {state.connected ? t('statusConnected') : t('statusNotConnected')}
+          </Badge>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={state.connected ? 'success' : 'secondary'}>
-              {state.connected ? t('statusConnected') : t('statusNotConnected')}
-            </Badge>
-
-            {state.connected && state.apiKeyLast4 && (
-              <span className="text-muted-foreground text-sm">
-                {t('connectedWith', { last4: state.apiKeyLast4 })}
-              </span>
-            )}
-
-            {state.connected && connectedDateLabel && (
-              <span className="text-muted-foreground text-sm">
-                {t('connectedAt', { date: connectedDateLabel })}
-              </span>
-            )}
-          </div>
-
           {state.connectionIssue && (
             <p className="text-sm text-destructive">
               {tErrors(state.connectionIssue.replace('errors.', ''))}
@@ -296,65 +274,72 @@ export function ProductAssuranceSection({ productId }: ProductAssuranceSectionPr
             </form>
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant={hasValidMapping ? 'success' : 'secondary'} size="sm">
-                    {hasValidMapping ? t('statusMapped') : t('statusNotMapped')}
-                  </Badge>
-                  {hasValidMapping && selectedTulipItem && (
-                    <span className="text-muted-foreground text-sm">
-                      {t('mappedTo', { title: selectedTulipItem.label })}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDialogOpen(true)}
-                  disabled={
-                    mappingMutation.isPending ||
-                    productStateQuery.isRefetching ||
-                    pushProductMutation.isPending ||
-                    createProductMutation.isPending
-                  }
-                >
-                  {t('configureButton')}
-                </Button>
+              <div className="flex items-center gap-2">
+                <Badge variant={hasValidMapping ? 'success' : 'secondary'} size="sm">
+                  {hasValidMapping ? t('statusMapped') : t('statusNotMapped')}
+                </Badge>
+                {hasValidMapping && selectedTulipItem && (
+                  <span className="text-muted-foreground text-sm">
+                    {t('mappedTo', { title: selectedTulipItem.label })}
+                  </span>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label>{t('mappingLabel')}</Label>
-                <Combobox
-                  items={tulipItems}
-                  value={selectedTulipItem}
-                  onValueChange={(item) => {
-                    void mappingMutation.mutateAsync({
-                      productId: state.product.id,
-                      tulipProductId: item?.value ?? null,
-                    })
-                  }}
-                >
-                  <ComboboxInput
-                    showTrigger
-                    showClear={!!state.product.tulipProductId}
-                    placeholder={t('mappingPlaceholder')}
-                    disabled={mappingMutation.isPending || productStateQuery.isRefetching}
-                  />
-                  <ComboboxPopup>
-                    <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
-                    <ComboboxList>
-                      {(item) => (
-                        <ComboboxItem key={item.value} value={item}>
-                          {item.label}
-                        </ComboboxItem>
-                      )}
-                    </ComboboxList>
-                  </ComboboxPopup>
-                </Combobox>
-                {mappingMutation.isPending && (
-                  <p className="text-muted-foreground text-xs">{t('mappingSaving')}</p>
-                )}
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div className="space-y-3 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{t('createAndLinkOption')}</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogOpen(true)}
+                    disabled={
+                      mappingMutation.isPending ||
+                      productStateQuery.isRefetching ||
+                      pushProductMutation.isPending ||
+                      createProductMutation.isPending
+                    }
+                  >
+                    {t('configureButton')}
+                  </Button>
+                </div>
+
+                <div className="space-y-3 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{t('linkExistingOption')}</p>
+                  <div className="space-y-2">
+                    <Label>{t('mappingLabel')}</Label>
+                    <Combobox
+                      items={tulipItems}
+                      value={selectedTulipItem}
+                      onValueChange={(item) => {
+                        void mappingMutation.mutateAsync({
+                          productId: state.product.id,
+                          tulipProductId: item?.value ?? null,
+                        })
+                      }}
+                    >
+                      <ComboboxInput
+                        showTrigger
+                        showClear={!!state.product.tulipProductId}
+                        placeholder={t('mappingPlaceholder')}
+                        disabled={mappingMutation.isPending || productStateQuery.isRefetching}
+                      />
+                      <ComboboxPopup>
+                        <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
+                        <ComboboxList>
+                          {(item) => (
+                            <ComboboxItem key={item.value} value={item}>
+                              {item.label}
+                            </ComboboxItem>
+                          )}
+                        </ComboboxList>
+                      </ComboboxPopup>
+                    </Combobox>
+                    {mappingMutation.isPending && (
+                      <p className="text-muted-foreground text-xs">{t('mappingSaving')}</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}

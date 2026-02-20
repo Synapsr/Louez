@@ -865,6 +865,8 @@
           "statusMapped": "Mapped",
           "statusNotMapped": "Not mapped",
           "mappedTo": "Mapped to {title}",
+          "createAndLinkOption": "I create a new product on Tulip and link it",
+          "linkExistingOption": "I already have a product on Tulip and link it",
           "configureButton": "Configure",
           "mappingLabel": "Tulip product",
           "mappingPlaceholder": "Not mapped",
@@ -2029,6 +2031,7 @@
         "detailNotFoundTitle": "Integration not found",
         "detailNotFoundDescription": "This integration could not be loaded.",
         "disableAction": "Disable integration",
+        "openConfigurationAction": "Open configuration",
         "enableAction": "Enable integration",
         "visitWebsite": "Visit website",
         "tabs": {
@@ -2042,6 +2045,8 @@
         "configurationLockedDescription": "Enable this integration first to access its configuration page.",
         "configurationUnavailableTitle": "Configuration unavailable",
         "configurationUnavailableDescription": "This integration does not expose a configuration panel yet.",
+        "dangerZoneTitle": "Danger zone",
+        "dangerZoneDescription": "Disable this integration to stop synchronization and hide related checkout behavior.",
         "aboutTitle": "About",
         "metadataTitle": "Integration details",
         "metadata": {

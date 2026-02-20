@@ -865,6 +865,8 @@
           "statusMapped": "Mappé",
           "statusNotMapped": "Non mappé",
           "mappedTo": "Mappé vers {title}",
+          "createAndLinkOption": "Je crée un nouveau produit sur Tulip et je le lie",
+          "linkExistingOption": "J'ai déjà un produit sur Tulip et je le lie",
           "configureButton": "Configurer",
           "mappingLabel": "Produit Tulip",
           "mappingPlaceholder": "Non mappé",
@@ -2029,6 +2031,7 @@
         "detailNotFoundTitle": "Intégration introuvable",
         "detailNotFoundDescription": "Cette intégration n'a pas pu être chargée.",
         "disableAction": "Désactiver l'intégration",
+        "openConfigurationAction": "Ouvrir la configuration",
         "enableAction": "Activer l'intégration",
         "visitWebsite": "Voir le site",
         "tabs": {
@@ -2042,6 +2045,8 @@
         "configurationLockedDescription": "Activez d'abord cette intégration pour accéder à sa page de configuration.",
         "configurationUnavailableTitle": "Configuration indisponible",
         "configurationUnavailableDescription": "Cette intégration n'expose pas encore de panneau de configuration.",
+        "dangerZoneTitle": "Zone de danger",
+        "dangerZoneDescription": "Désactivez cette intégration pour arrêter la synchronisation et masquer son comportement au checkout.",
         "aboutTitle": "À propos",
         "metadataTitle": "Détails de l'intégration",
         "metadata": {
