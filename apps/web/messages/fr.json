@@ -1178,7 +1178,30 @@
         "access_link_sent": "Lien d'accès envoyé",
         "modified": "Réservation modifiée",
         "showAll": "Voir tout ({count} événements)",
-        "showLess": "Voir moins"
+        "showLess": "Voir moins",
+        "paymentFailure": {
+          "technicalDetail": "Détail technique : {message}",
+          "payment_failed": {
+            "authenticationRequired": "L'authentification bancaire n'a pas été validée. Demandez au client de réessayer et de confirmer la vérification 3D Secure.",
+            "cardDeclined": "La banque a refusé la carte. Demandez au client de réessayer ou d'utiliser une autre carte.",
+            "insufficientFunds": "Le paiement a échoué car la carte n'avait pas de fonds suffisants.",
+            "expiredCard": "La carte utilisée est expirée. Demandez au client d'utiliser une carte valide.",
+            "incorrectCvc": "Le code de sécurité (CVC) de la carte est invalide.",
+            "processingError": "Le paiement a échoué à cause d'un problème de traitement temporaire. Réessayez dans quelques minutes.",
+            "doNotHonor": "La banque a refusé le paiement sans précision. Demandez au client de contacter sa banque ou d'utiliser une autre carte.",
+            "generic": "Le paiement en ligne a échoué. Demandez au client de réessayer ou d'utiliser une autre carte."
+          },
+          "deposit_failed": {
+            "authenticationRequired": "L'empreinte de caution a échoué car l'authentification bancaire n'a pas été validée. Demandez au client de réessayer et de confirmer le 3D Secure.",
+            "cardDeclined": "La banque a refusé l'empreinte de caution. Demandez au client d'utiliser une autre carte.",
+            "insufficientFunds": "La carte n'a pas de fonds disponibles suffisants pour l'empreinte de caution.",
+            "expiredCard": "La carte utilisée pour l'empreinte de caution est expirée.",
+            "incorrectCvc": "Le code de sécurité (CVC) est invalide pour cette empreinte de caution.",
+            "processingError": "L'empreinte de caution a échoué à cause d'un problème temporaire. Réessayez dans quelques minutes.",
+            "doNotHonor": "La banque a refusé l'empreinte de caution sans précision. Demandez au client de contacter sa banque ou d'utiliser une autre carte.",
+            "generic": "L'empreinte de caution a échoué. Demandez au client de réessayer ou d'utiliser une autre carte."
+          }
+        }
       },
       "unitAssignment": {
         "title": "Assignation des unités",

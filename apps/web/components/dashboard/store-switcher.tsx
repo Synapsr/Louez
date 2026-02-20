@@ -145,8 +145,10 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
       if (result.success) {
         const nextPath = getStoreSwitchDestination(pathname);
         setOpen(false);
-        router.replace(nextPath);
-        router.refresh();
+
+        // Force a full navigation so TanStack Query cache from previous store
+        // does not leak into the next store context on same-route switches.
+        window.location.assign(nextPath);
       }
     });
   };
