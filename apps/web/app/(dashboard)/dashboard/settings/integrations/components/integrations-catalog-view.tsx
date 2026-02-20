@@ -1,10 +1,12 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useState } from 'react';
+
+import Link from 'next/link';
+
+import { useQuery } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -14,106 +16,116 @@ import {
   CardHeader,
   CardTitle,
   Input,
-} from '@louez/ui'
+} from '@louez/ui';
 
 import type {
   IntegrationCatalogItem,
   IntegrationCategorySummary,
-} from '@/lib/integrations/registry/types'
-import { orpc } from '@/lib/orpc/react'
+} from '@/lib/integrations/registry/types';
+import { orpc } from '@/lib/orpc/react';
 
-import { IntegrationCard } from './integration-card'
+import { IntegrationCard } from './integration-card';
 
 type IntegrationsCatalogViewProps = {
-  category?: string
-}
+  category?: string;
+};
 
-type StatusFilter = 'all' | 'enabled' | 'disabled'
+type StatusFilter = 'all' | 'enabled' | 'disabled';
 
 export function IntegrationsCatalogView({
   category,
 }: IntegrationsCatalogViewProps) {
-  const t = useTranslations()
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const t = useTranslations();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
-      const value = t(key as never)
+      const value = t(key as never);
       if (!value || value === key) {
-        return fallback
+        return fallback;
       }
 
-      return value
+      return value;
     } catch {
-      return fallback
+      return fallback;
     }
-  }
+  };
 
   const catalogQuery = useQuery({
     ...orpc.dashboard.integrations.listCatalog.queryOptions({ input: {} }),
     enabled: !category,
-  })
+  });
 
   const categoryQuery = useQuery({
     ...orpc.dashboard.integrations.listCategory.queryOptions({
       input: { category: category || '' },
     }),
     enabled: Boolean(category),
-  })
+  });
 
-  const data = category ? categoryQuery.data : catalogQuery.data
-  const isLoading = category ? categoryQuery.isLoading : catalogQuery.isLoading
-  const isError = category ? categoryQuery.isError : catalogQuery.isError
+  const data = category ? categoryQuery.data : catalogQuery.data;
+  const isLoading = category ? categoryQuery.isLoading : catalogQuery.isLoading;
+  const isError = category ? categoryQuery.isError : catalogQuery.isError;
 
-  const parsedData = data && !('error' in data) ? data : null
+  const parsedData = data && !('error' in data) ? data : null;
   const integrations: IntegrationCatalogItem[] = parsedData
     ? (parsedData.integrations as unknown as IntegrationCatalogItem[])
-    : []
+    : [];
   const categories: IntegrationCategorySummary[] = parsedData
     ? (parsedData.categories as unknown as IntegrationCategorySummary[])
-    : []
+    : [];
 
-  const normalizedSearch = search.trim().toLowerCase()
+  const normalizedSearch = search.trim().toLowerCase();
 
-  const filteredIntegrations = integrations.filter((item: IntegrationCatalogItem) => {
-    const statusMatch =
-      statusFilter === 'all' ||
-      (statusFilter === 'enabled' ? item.enabled : !item.enabled)
+  const filteredIntegrations = integrations.filter(
+    (item: IntegrationCatalogItem) => {
+      const statusMatch =
+        statusFilter === 'all' ||
+        (statusFilter === 'enabled' ? item.enabled : !item.enabled);
 
-    if (!statusMatch) {
-      return false
-    }
+      if (!statusMatch) {
+        return false;
+      }
 
-    if (!normalizedSearch) {
-      return true
-    }
+      if (!normalizedSearch) {
+        return true;
+      }
 
-    const name = resolveMessage(item.nameKey, item.id).toLowerCase()
-    const description =
-      resolveMessage(item.descriptionKey, item.descriptionKey).toLowerCase()
+      const name = resolveMessage(item.nameKey, item.id).toLowerCase();
+      const description = resolveMessage(
+        item.descriptionKey,
+        item.descriptionKey,
+      ).toLowerCase();
 
-    return name.includes(normalizedSearch) || description.includes(normalizedSearch)
-  })
+      return (
+        name.includes(normalizedSearch) ||
+        description.includes(normalizedSearch)
+      );
+    },
+  );
 
   const groupedByCategory = categories
     .map((currentCategory: IntegrationCategorySummary) => {
       const items = filteredIntegrations.filter(
         (item: IntegrationCatalogItem) => item.category === currentCategory.id,
-      )
+      );
 
       return {
         ...currentCategory,
         items,
-      }
+      };
     })
-    .filter((group) => group.items.length > 0)
+    .filter((group) => group.items.length > 0);
 
   if (isLoading) {
     return (
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">
-          {resolveMessage('dashboard.settings.integrationsHub.title', 'Integrations')}
+          {resolveMessage(
+            'dashboard.settings.integrationsHub.title',
+            'Integrations',
+          )}
         </h2>
         <p className="text-muted-foreground">
           {resolveMessage(
@@ -122,7 +134,7 @@ export function IntegrationsCatalogView({
           )}
         </p>
       </div>
-    )
+    );
   }
 
   if (isError) {
@@ -130,7 +142,10 @@ export function IntegrationsCatalogView({
       <Card>
         <CardHeader>
           <CardTitle>
-            {resolveMessage('dashboard.settings.integrationsHub.title', 'Integrations')}
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.title',
+              'Integrations',
+            )}
           </CardTitle>
           <CardDescription>
             {resolveMessage(
@@ -140,14 +155,17 @@ export function IntegrationsCatalogView({
           </CardDescription>
         </CardHeader>
       </Card>
-    )
+    );
   }
 
   return (
     <div className="space-y-8">
       <div className="space-y-2">
         <h2 className="text-2xl font-bold tracking-tight">
-          {resolveMessage('dashboard.settings.integrationsHub.title', 'Integrations')}
+          {resolveMessage(
+            'dashboard.settings.integrationsHub.title',
+            'Integrations',
+          )}
         </h2>
         <p className="text-muted-foreground">
           {resolveMessage(
@@ -155,13 +173,37 @@ export function IntegrationsCatalogView({
             'Enable and configure integrations by category.',
           )}
         </p>
+        <div className="flex flex-wrap gap-2">
+          <Badge variant="outline">
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.statusLabels.enabled',
+              'Enabled',
+            )}
+            :{' '}
+            {
+              integrations.filter(
+                (item: IntegrationCatalogItem) => item.enabled,
+              ).length
+            }
+          </Badge>
+          <Badge variant="outline">
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.statusLabels.connected',
+              'Connected',
+            )}
+            :{' '}
+            {
+              integrations.filter(
+                (item: IntegrationCatalogItem) => item.connected,
+              ).length
+            }
+          </Badge>
+        </div>
       </div>
-
       <div className="flex flex-col gap-3 md:flex-row md:items-center">
         <div className="relative w-full md:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
-            className="pl-9"
             placeholder={resolveMessage(
               'dashboard.settings.integrationsHub.searchPlaceholder',
               'Search integrations',
@@ -170,7 +212,6 @@ export function IntegrationsCatalogView({
             onChange={(event) => setSearch(event.target.value)}
           />
         </div>
-
         {category && (
           <div className="flex flex-wrap gap-2">
             {(['all', 'enabled', 'disabled'] as const).map((value) => (
@@ -182,7 +223,9 @@ export function IntegrationsCatalogView({
               >
                 <span
                   className={
-                    statusFilter === value ? 'font-semibold text-foreground' : 'text-muted-foreground'
+                    statusFilter === value
+                      ? 'text-foreground font-semibold'
+                      : 'text-muted-foreground'
                   }
                 >
                   {resolveMessage(
@@ -195,25 +238,27 @@ export function IntegrationsCatalogView({
           </div>
         )}
       </div>
-
       {!category && (
         <section className="space-y-3">
           <h3 className="text-lg font-semibold">
-            {resolveMessage('dashboard.settings.integrationsHub.categoriesTitle', 'Categories')}
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.categoriesTitle',
+              'Categories',
+            )}
           </h3>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {categories.map((item: IntegrationCategorySummary) => {
               const categoryIntegrations = integrations.filter(
                 (integration: IntegrationCatalogItem) =>
                   integration.category === item.id,
-              )
+              );
 
               return (
                 <Link
                   key={item.id}
                   href={`/dashboard/settings/integrations/categories/${item.id}`}
                 >
-                  <Card className="h-full transition hover:border-primary/40 hover:bg-muted/40">
+                  <Card className="hover:border-primary/40 hover:bg-muted/40 h-full transition">
                     <CardHeader>
                       <CardTitle>
                         {resolveMessage(
@@ -229,7 +274,7 @@ export function IntegrationsCatalogView({
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         {resolveMessage(
                           'dashboard.settings.integrationsHub.categoryCount',
                           '{count} integrations',
@@ -239,30 +284,29 @@ export function IntegrationsCatalogView({
                         {categoryIntegrations
                           .slice(0, 4)
                           .map((integration: IntegrationCatalogItem) => (
-                          <div
-                            key={integration.id}
-                            className="h-8 w-8 overflow-hidden rounded-full border bg-background p-1"
-                          >
-                            <img
-                              src={integration.logoPath}
-                              alt={resolveMessage(
-                                integration.nameKey,
-                                integration.id,
-                              )}
-                              className="h-full w-full object-contain"
-                            />
-                          </div>
-                        ))}
+                            <div
+                              key={integration.id}
+                              className="bg-background h-8 w-8 overflow-hidden rounded-full border p-1"
+                            >
+                              <img
+                                src={integration.logoPath}
+                                alt={resolveMessage(
+                                  integration.nameKey,
+                                  integration.id,
+                                )}
+                                className="h-full w-full object-contain"
+                              />
+                            </div>
+                          ))}
                       </div>
                     </CardContent>
                   </Card>
                 </Link>
-              )
+              );
             })}
           </div>
         </section>
       )}
-
       {category ? (
         <section className="space-y-4">
           <div className="flex items-center justify-between">
@@ -274,15 +318,18 @@ export function IntegrationsCatalogView({
             </h3>
             <Link
               href="/dashboard/settings/integrations"
-              className="text-sm text-primary"
+              className="text-primary text-sm"
             >
-              {resolveMessage('dashboard.settings.integrationsHub.backToCatalog', 'Back to catalog')}
+              {resolveMessage(
+                'dashboard.settings.integrationsHub.backToCatalog',
+                'Back to catalog',
+              )}
             </Link>
           </div>
 
           {filteredIntegrations.length === 0 ? (
             <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
+              <CardContent className="text-muted-foreground pt-6 text-sm">
                 {resolveMessage(
                   'dashboard.settings.integrationsHub.emptyCategory',
                   'No integrations match your filters.',
@@ -292,71 +339,6 @@ export function IntegrationsCatalogView({
           ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {filteredIntegrations.map((item: IntegrationCatalogItem) => (
-              <IntegrationCard
-                key={item.id}
-                href={`/dashboard/settings/integrations/${item.id}`}
-                logoPath={item.logoPath}
-                name={resolveMessage(item.nameKey, item.id)}
-                description={resolveMessage(
-                  item.descriptionKey,
-                  resolveMessage(
-                    'dashboard.settings.integrationsHub.fallbackDescription',
-                    'Integration details are available on the detail page.',
-                  ),
-                )}
-                enabled={item.enabled}
-                connected={item.connected}
-                  enabledLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.enabled',
-                    'Enabled',
-                  )}
-                  disabledLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.disabled',
-                    'Disabled',
-                  )}
-                  connectedLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.connected',
-                    'Connected',
-                  )}
-                  statusLabel={resolveMessage(
-                    `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
-                    item.status,
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      ) : (
-        groupedByCategory.map((group: IntegrationCategorySummary & {
-          items: IntegrationCatalogItem[]
-        }) => (
-          <section key={group.id} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {resolveMessage(
-                    `dashboard.settings.integrationsHub.categories.${group.id}.name`,
-                    group.id,
-                  )}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {resolveMessage(
-                    `dashboard.settings.integrationsHub.categories.${group.id}.description`,
-                    '',
-                  )}
-                </p>
-              </div>
-              <Link
-                href={`/dashboard/settings/integrations/categories/${group.id}`}
-                className="text-sm text-primary"
-              >
-                {resolveMessage('dashboard.settings.integrationsHub.viewAll', 'View all')}
-              </Link>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {group.items.slice(0, 3).map((item: IntegrationCatalogItem) => (
                 <IntegrationCard
                   key={item.id}
                   href={`/dashboard/settings/integrations/${item.id}`}
@@ -390,26 +372,81 @@ export function IntegrationsCatalogView({
                 />
               ))}
             </div>
-          </section>
-        ))
-      )}
+          )}
+        </section>
+      ) : (
+        groupedByCategory.map(
+          (
+            group: IntegrationCategorySummary & {
+              items: IntegrationCatalogItem[];
+            },
+          ) => (
+            <section key={group.id} className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {resolveMessage(
+                      `dashboard.settings.integrationsHub.categories.${group.id}.name`,
+                      group.id,
+                    )}
+                  </h3>
+                  <p className="text-muted-foreground text-sm">
+                    {resolveMessage(
+                      `dashboard.settings.integrationsHub.categories.${group.id}.description`,
+                      '',
+                    )}
+                  </p>
+                </div>
+                <Link
+                  href={`/dashboard/settings/integrations/categories/${group.id}`}
+                  className="text-primary text-sm"
+                >
+                  {resolveMessage(
+                    'dashboard.settings.integrationsHub.viewAll',
+                    'View all',
+                  )}
+                </Link>
+              </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Badge variant="outline">
-          {resolveMessage(
-            'dashboard.settings.integrationsHub.statusLabels.enabled',
-            'Enabled',
-          )}
-          : {integrations.filter((item: IntegrationCatalogItem) => item.enabled).length}
-        </Badge>
-        <Badge variant="outline">
-          {resolveMessage(
-            'dashboard.settings.integrationsHub.statusLabels.connected',
-            'Connected',
-          )}
-          : {integrations.filter((item: IntegrationCatalogItem) => item.connected).length}
-        </Badge>
-      </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {group.items.slice(0, 3).map((item: IntegrationCatalogItem) => (
+                  <IntegrationCard
+                    key={item.id}
+                    href={`/dashboard/settings/integrations/${item.id}`}
+                    logoPath={item.logoPath}
+                    name={resolveMessage(item.nameKey, item.id)}
+                    description={resolveMessage(
+                      item.descriptionKey,
+                      resolveMessage(
+                        'dashboard.settings.integrationsHub.fallbackDescription',
+                        'Integration details are available on the detail page.',
+                      ),
+                    )}
+                    enabled={item.enabled}
+                    connected={item.connected}
+                    enabledLabel={resolveMessage(
+                      'dashboard.settings.integrationsHub.statusLabels.enabled',
+                      'Enabled',
+                    )}
+                    disabledLabel={resolveMessage(
+                      'dashboard.settings.integrationsHub.statusLabels.disabled',
+                      'Disabled',
+                    )}
+                    connectedLabel={resolveMessage(
+                      'dashboard.settings.integrationsHub.statusLabels.connected',
+                      'Connected',
+                    )}
+                    statusLabel={resolveMessage(
+                      `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
+                      item.status,
+                    )}
+                  />
+                ))}
+              </div>
+            </section>
+          ),
+        )
+      )}
     </div>
-  )
+  );
 }

@@ -1,10 +1,12 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useMemo, useState } from 'react';
+
+import Link from 'next/link';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeftIcon, ExternalLink } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -19,38 +21,43 @@ import {
   TabsList,
   TabsTrigger,
   toastManager,
-} from '@louez/ui'
+} from '@louez/ui';
 
-import { getIntegration } from '@/lib/integrations/registry'
-import type { IntegrationDetail } from '@/lib/integrations/registry/types'
-import { orpc } from '@/lib/orpc/react'
+import { getIntegration } from '@/lib/integrations/registry';
+import type { IntegrationDetail } from '@/lib/integrations/registry/types';
+import { orpc } from '@/lib/orpc/react';
 
 type IntegrationDetailViewProps = {
-  integrationId: string
-}
+  integrationId: string;
+};
 
-export function IntegrationDetailView({ integrationId }: IntegrationDetailViewProps) {
-  const t = useTranslations()
-  const queryClient = useQueryClient()
+type IntegrationTab = 'features' | 'configuration' | 'about';
+
+export function IntegrationDetailView({
+  integrationId,
+}: IntegrationDetailViewProps) {
+  const t = useTranslations();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<IntegrationTab>('features');
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
-      const value = t(key as never)
+      const value = t(key as never);
       if (!value || value === key) {
-        return fallback
+        return fallback;
       }
 
-      return value
+      return value;
     } catch {
-      return fallback
+      return fallback;
     }
-  }
+  };
 
   const detailQuery = useQuery(
     orpc.dashboard.integrations.getDetail.queryOptions({
       input: { integrationId },
     }),
-  )
+  );
 
   const setEnabledMutation = useMutation(
     orpc.dashboard.integrations.setEnabled.mutationOptions({
@@ -63,46 +70,52 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
               : 'dashboard.settings.integrationsHub.toasts.disabled',
             input.enabled ? 'Integration enabled.' : 'Integration disabled.',
           ),
-        })
+        });
 
         await queryClient.invalidateQueries({
           queryKey: orpc.dashboard.integrations.getDetail.key({
             input: { integrationId },
           }),
-        })
+        });
         await queryClient.invalidateQueries({
           queryKey: orpc.dashboard.integrations.listCatalog.key({ input: {} }),
-        })
+        });
         if (integration?.category) {
           await queryClient.invalidateQueries({
             queryKey: orpc.dashboard.integrations.listCategory.key({
               input: { category: integration.category },
             }),
-          })
+          });
         }
       },
       onError: () => {
         toastManager.add({
           type: 'error',
           title: resolveMessage('errors.generic', 'Something went wrong.'),
-        })
+        });
       },
     }),
-  )
+  );
 
   const integration: IntegrationDetail | null =
     detailQuery.data && !('error' in detailQuery.data)
       ? (detailQuery.data.integration as unknown as IntegrationDetail)
-      : null
-  const registration = useMemo(() => getIntegration(integrationId), [integrationId])
-  const ConfigurationPanel = registration?.adapter.getConfigurationPanel?.()
+      : null;
+  const registration = useMemo(
+    () => getIntegration(integrationId),
+    [integrationId],
+  );
+  const ConfigurationPanel = registration?.adapter.getConfigurationPanel?.();
 
   if (detailQuery.isLoading) {
     return (
-      <p className="text-sm text-muted-foreground">
-        {resolveMessage('dashboard.settings.integrationsHub.loading', 'Loading integration...')}
+      <p className="text-muted-foreground text-sm">
+        {resolveMessage(
+          'dashboard.settings.integrationsHub.loading',
+          'Loading integration...',
+        )}
       </p>
-    )
+    );
   }
 
   if (detailQuery.isError || !integration) {
@@ -123,20 +136,27 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
           </CardDescription>
         </CardHeader>
       </Card>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
-      <Link href="/dashboard/settings/integrations" className="text-sm text-primary">
-        {resolveMessage('dashboard.settings.integrationsHub.backToCatalog', 'Back to catalog')}
+      <Link
+        href="/dashboard/settings/integrations"
+        className="text-primary flex items-center gap-2 text-sm"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        {resolveMessage(
+          'dashboard.settings.integrationsHub.backToCatalog',
+          'Back to catalog',
+        )}
       </Link>
 
       <Card>
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-start">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="h-14 w-14 overflow-hidden rounded-lg border bg-background p-2">
+              <div className="bg-background h-14 w-14 overflow-hidden rounded-lg border p-2">
                 <img
                   src={integration.logoPath}
                   alt={resolveMessage(integration.nameKey, integration.id)}
@@ -197,16 +217,21 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
               variant={integration.enabled ? 'outline' : 'default'}
               disabled={setEnabledMutation.isPending}
               onClick={() => {
+                if (integration.enabled) {
+                  setActiveTab('configuration');
+                  return;
+                }
+
                 setEnabledMutation.mutate({
                   integrationId,
-                  enabled: !integration.enabled,
-                })
+                  enabled: true,
+                });
               }}
             >
               {integration.enabled
                 ? resolveMessage(
-                    'dashboard.settings.integrationsHub.disableAction',
-                    'Disable integration',
+                    'dashboard.settings.integrationsHub.openConfigurationAction',
+                    'Open configuration',
                   )
                 : resolveMessage(
                     'dashboard.settings.integrationsHub.enableAction',
@@ -218,20 +243,42 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
               type="button"
               variant="outline"
               render={
-                <a href={integration.websiteUrl} target="_blank" rel="noreferrer" />
+                <a
+                  href={integration.websiteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                />
               }
             >
-              {resolveMessage('dashboard.settings.integrationsHub.visitWebsite', 'Visit website')}
+              {resolveMessage(
+                'dashboard.settings.integrationsHub.visitWebsite',
+                'Visit website',
+              )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
       <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">
-        <Tabs defaultValue="features" className="space-y-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => {
+            if (
+              value === 'features' ||
+              value === 'configuration' ||
+              value === 'about'
+            ) {
+              setActiveTab(value);
+            }
+          }}
+          className="space-y-4"
+        >
           <TabsList variant="underline">
             <TabsTrigger value="features">
-              {resolveMessage('dashboard.settings.integrationsHub.tabs.features', 'Features')}
+              {resolveMessage(
+                'dashboard.settings.integrationsHub.tabs.features',
+                'Features',
+              )}
             </TabsTrigger>
             <TabsTrigger value="configuration">
               {resolveMessage(
@@ -240,7 +287,10 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
               )}
             </TabsTrigger>
             <TabsTrigger value="about">
-              {resolveMessage('dashboard.settings.integrationsHub.tabs.about', 'About')}
+              {resolveMessage(
+                'dashboard.settings.integrationsHub.tabs.about',
+                'About',
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -248,11 +298,14 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {resolveMessage('dashboard.settings.integrationsHub.featuresTitle', 'What it does')}
+                  {resolveMessage(
+                    'dashboard.settings.integrationsHub.featuresTitle',
+                    'What it does',
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <ul className="list-disc space-y-2 pl-5 text-sm text-muted-foreground">
+                <ul className="text-muted-foreground list-disc space-y-2 pl-5 text-sm">
                   {integration.featureKeys.map((featureKey: string) => (
                     <li key={featureKey}>
                       {resolveMessage(featureKey, featureKey)}
@@ -265,14 +318,17 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {resolveMessage('dashboard.settings.integrationsHub.galleryTitle', 'Gallery')}
+                  {resolveMessage(
+                    'dashboard.settings.integrationsHub.galleryTitle',
+                    'Gallery',
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2">
                 {integration.galleryPaths.map((imagePath: string) => (
                   <div
                     key={imagePath}
-                    className="overflow-hidden rounded-md border bg-background"
+                    className="bg-background overflow-hidden rounded-md border"
                   >
                     <img
                       src={imagePath}
@@ -310,7 +366,7 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
                       setEnabledMutation.mutate({
                         integrationId,
                         enabled: true,
-                      })
+                      });
                     }}
                   >
                     {resolveMessage(
@@ -320,25 +376,66 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
                   </Button>
                 </CardContent>
               </Card>
-            ) : ConfigurationPanel ? (
-              <ConfigurationPanel />
             ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle>
-                    {resolveMessage(
-                      'dashboard.settings.integrationsHub.configurationUnavailableTitle',
-                      'Configuration unavailable',
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    {resolveMessage(
-                      'dashboard.settings.integrationsHub.configurationUnavailableDescription',
-                      'This integration does not expose a configuration panel yet.',
-                    )}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <>
+                {ConfigurationPanel ? (
+                  <ConfigurationPanel />
+                ) : (
+                  <>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>
+                          {resolveMessage(
+                            'dashboard.settings.integrationsHub.configurationUnavailableTitle',
+                            'Configuration unavailable',
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          {resolveMessage(
+                            'dashboard.settings.integrationsHub.configurationUnavailableDescription',
+                            'This integration does not expose a configuration panel yet.',
+                          )}
+                        </CardDescription>
+                      </CardHeader>
+                    </Card>
+
+                    <Card className="border-destructive/40">
+                      <CardHeader>
+                        <CardTitle>
+                          {resolveMessage(
+                            'dashboard.settings.integrationsHub.dangerZoneTitle',
+                            'Danger zone',
+                          )}
+                        </CardTitle>
+                        <CardDescription>
+                          {resolveMessage(
+                            'dashboard.settings.integrationsHub.dangerZoneDescription',
+                            'Disable this integration to stop synchronization and hide its checkout behavior.',
+                          )}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          disabled={setEnabledMutation.isPending}
+                          onClick={() => {
+                            setEnabledMutation.mutate({
+                              integrationId,
+                              enabled: false,
+                            });
+                          }}
+                        >
+                          {resolveMessage(
+                            'dashboard.settings.integrationsHub.disableAction',
+                            'Disable integration',
+                          )}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -346,11 +443,16 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {resolveMessage('dashboard.settings.integrationsHub.aboutTitle', 'About')}
+                  {resolveMessage(
+                    'dashboard.settings.integrationsHub.aboutTitle',
+                    'About',
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
-                <p>{resolveMessage(integration.aboutKey, integration.aboutKey)}</p>
+              <CardContent className="text-muted-foreground space-y-3 text-sm">
+                <p>
+                  {resolveMessage(integration.aboutKey, integration.aboutKey)}
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -359,27 +461,29 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>
-              {resolveMessage('dashboard.settings.integrationsHub.metadataTitle', 'Integration details')}
+              {resolveMessage(
+                'dashboard.settings.integrationsHub.metadataTitle',
+                'Integration details',
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {resolveMessage('dashboard.settings.integrationsHub.metadata.provider', 'Provider')}
+              <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                {resolveMessage(
+                  'dashboard.settings.integrationsHub.metadata.provider',
+                  'Provider',
+                )}
               </p>
               <p className="font-medium">{integration.providerName}</p>
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {resolveMessage('dashboard.settings.integrationsHub.metadata.pricing', 'Pricing')}
-              </p>
-              <p className="font-medium">{integration.pricingLabel}</p>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {resolveMessage('dashboard.settings.integrationsHub.metadata.category', 'Category')}
+              <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                {resolveMessage(
+                  'dashboard.settings.integrationsHub.metadata.category',
+                  'Category',
+                )}
               </p>
               <p className="font-medium">
                 {resolveMessage(
@@ -390,30 +494,34 @@ export function IntegrationDetailView({ integrationId }: IntegrationDetailViewPr
             </div>
 
             <div>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                {resolveMessage('dashboard.settings.integrationsHub.metadata.resources', 'Resources')}
+              <p className="text-muted-foreground text-xs tracking-wide uppercase">
+                {resolveMessage(
+                  'dashboard.settings.integrationsHub.metadata.resources',
+                  'Resources',
+                )}
               </p>
               <div className="mt-2 flex flex-col gap-2">
-                {integration.resourceLinks.map((resource: {
-                  labelKey: string
-                  url: string
-                }) => (
-                  <a
-                    key={resource.url}
-                    href={resource.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-primary"
-                  >
-                    <span>{resolveMessage(resource.labelKey, resource.url)}</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
-                ))}
+                {integration.resourceLinks.map(
+                  (resource: { labelKey: string; url: string }) => (
+                    <a
+                      key={resource.url}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary inline-flex items-center gap-1"
+                    >
+                      <span>
+                        {resolveMessage(resource.labelKey, resource.url)}
+                      </span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ),
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

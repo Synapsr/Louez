@@ -458,12 +458,14 @@ export function ProductForm({
                     disabled={isSaving}
                   />
                 </div>
+
+                {product?.id ? (
+                  <div id="section-assurance" className="scroll-mt-8">
+                    <ProductAssuranceSection productId={product.id} />
+                  </div>
+                ) : null}
               </div>
             </div>
-
-            {product?.id ? (
-              <ProductAssuranceSection productId={product.id} />
-            ) : null}
 
             <FloatingSaveBar
               isDirty={isDirty}

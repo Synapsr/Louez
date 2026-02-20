@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { FileText, ImageIcon, Link2, Package, Receipt } from 'lucide-react';
+import { FileText, ImageIcon, Link2, Package, Receipt, Shield } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { cn } from '@louez/utils';
@@ -13,6 +13,7 @@ const SECTION_IDS = [
   'section-pricing',
   'section-stock',
   'section-accessories',
+  'section-assurance',
 ] as const;
 
 type SectionId = (typeof SECTION_IDS)[number];
@@ -47,6 +48,11 @@ export function ProductFormEditToc() {
       id: 'section-accessories',
       label: t('accessories'),
       icon: <Link2 className="h-3.5 w-3.5" />,
+    },
+    {
+      id: 'section-assurance',
+      label: t('assurance.title'),
+      icon: <Shield className="h-3.5 w-3.5" />,
     },
   ];
 
