@@ -20,18 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui';
-import { Switch } from '@louez/ui';
 
 interface TulipConfigurationSectionProps {
   disabled: boolean;
   settings: {
     publicMode: 'required' | 'optional' | 'no_public';
-    includeInFinalPrice: boolean;
   };
   isPending: boolean;
   onSave: (input: {
     publicMode: 'required' | 'optional' | 'no_public';
-    includeInFinalPrice: boolean;
   }) => Promise<void>;
 }
 
@@ -46,13 +43,9 @@ export function TulipConfigurationSection({
   );
 
   const [publicMode, setPublicMode] = useState(settings.publicMode);
-  const [includeInFinalPrice, setIncludeInFinalPrice] = useState(
-    settings.includeInFinalPrice,
-  );
 
   useEffect(() => {
     setPublicMode(settings.publicMode);
-    setIncludeInFinalPrice(settings.includeInFinalPrice);
   }, [settings]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -60,7 +53,6 @@ export function TulipConfigurationSection({
 
     await onSave({
       publicMode,
-      includeInFinalPrice,
     });
   };
 
@@ -108,20 +100,6 @@ export function TulipConfigurationSection({
                 <SelectItem value="no_public">{t('modeNoPublic')}</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border p-4">
-            <div className="space-y-0.5">
-              <p className="text-sm font-medium">{t('includePriceLabel')}</p>
-              <p className="text-muted-foreground text-sm">
-                {t('includePriceHelp')}
-              </p>
-            </div>
-            <Switch
-              checked={includeInFinalPrice}
-              onCheckedChange={setIncludeInFinalPrice}
-              disabled={disabled || isPending}
-            />
           </div>
 
           <div className="flex justify-end">

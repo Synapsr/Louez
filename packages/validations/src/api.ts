@@ -291,8 +291,6 @@ export const dashboardIntegrationsConnectTulipInputSchema = z.object({
 
 export const dashboardIntegrationsUpdateTulipConfigurationInputSchema = z.object({
   publicMode: z.enum(['required', 'optional', 'no_public']),
-  includeInFinalPrice: z.boolean(),
-  contractType: z.enum(['LCD', 'LMD', 'LLD']),
 })
 
 export const dashboardIntegrationsUpsertTulipProductMappingInputSchema = z.object({
@@ -317,6 +315,7 @@ export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
 })
 
 export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
@@ -328,6 +327,7 @@ export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
 })
 
 export const dashboardIntegrationsDisconnectTulipInputSchema = z.object({})

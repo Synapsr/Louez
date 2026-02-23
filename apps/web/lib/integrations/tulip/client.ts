@@ -74,6 +74,7 @@ async function request<T>(
 }
 
 export type TulipProduct = {
+  uuid?: string;
   uid?: string;
   product_id?: string;
   title?: string;
@@ -84,9 +85,22 @@ export type TulipProduct = {
     product_subtype?: string;
     brand?: string;
     model?: string;
+    margin?: number | string | null;
   };
   value_excl?: number;
 };
+
+export function getTulipProductOwnerUuid(
+  product: Pick<TulipProduct, 'uuid' | 'uid'>,
+): string | null {
+  const uuid = typeof product.uuid === 'string' ? product.uuid.trim() : '';
+  if (uuid) {
+    return uuid;
+  }
+
+  const uid = typeof product.uid === 'string' ? product.uid.trim() : '';
+  return uid || null;
+}
 
 export type TulipRenter = {
   uid: string;
@@ -156,22 +170,34 @@ export async function tulipGetRenter(
 
 export async function tulipListProducts(
   apiKey: string,
+  options?: {
+    renterUid?: string | null;
+  },
 ): Promise<TulipProduct[]> {
   const payload = await request<unknown>('/products', apiKey);
   const envelope = unwrapEnvelope(payload);
+  let products: TulipProduct[] = [];
 
   if (Array.isArray(envelope)) {
-    return envelope as TulipProduct[];
+    products = envelope as TulipProduct[];
   }
 
-  if (envelope && typeof envelope === 'object') {
+  if (products.length === 0 && envelope && typeof envelope === 'object') {
     const obj = envelope as TulipRecord;
     if (Array.isArray(obj.products)) {
-      return obj.products as TulipProduct[];
+      products = obj.products as TulipProduct[];
     }
   }
 
-  return [];
+  const expectedRenterUid =
+    typeof options?.renterUid === 'string' ? options.renterUid.trim() : '';
+  if (!expectedRenterUid) {
+    return products;
+  }
+
+  return products.filter(
+    (product) => getTulipProductOwnerUuid(product) === expectedRenterUid,
+  );
 }
 
 export async function tulipCreateProduct(

@@ -148,14 +148,11 @@ export const DEFAULT_INSPECTION_SETTINGS: InspectionSettings = {
 // ============================================================================
 
 export type TulipPublicMode = 'required' | 'optional' | 'no_public'
-export type TulipContractType = 'LCD' | 'LMD' | 'LLD'
 
 export interface TulipIntegrationSettings {
   connectedAt?: string
   publicMode?: TulipPublicMode
-  includeInFinalPrice?: boolean
   renterUid?: string
-  contractType?: TulipContractType
 }
 
 export interface IntegrationStateSettings {

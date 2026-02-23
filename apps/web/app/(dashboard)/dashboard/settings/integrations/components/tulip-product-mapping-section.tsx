@@ -14,7 +14,6 @@ import {
   CardHeader,
   CardTitle,
   Input,
-  Label,
 } from '@louez/ui';
 import {
   Combobox,
@@ -43,139 +42,22 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
-type TulipCatalogItem = {
-  type: string;
-  label: string;
-  subtypes: Array<{
-    type: string;
-    label: string;
-  }>;
-};
+import type {
+  TulipCatalogItem,
+  TulipProductDraft,
+} from '@/lib/integrations/tulip/product-form-utils';
+import {
+  buildActionInput,
+  initDraftFromTulipProduct,
+  resolveTulipCatalog,
+  validateDraft,
+} from '@/lib/integrations/tulip/product-form-utils';
 
-const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
-  {
-    type: 'bike',
-    label: 'bike',
-    subtypes: ['standard', 'electric', 'cargo', 'remorque'].map((value) => ({
-      type: value,
-      label: value,
-    })),
-  },
-  {
-    type: 'wintersports',
-    label: 'wintersports',
-    subtypes: ['ski', 'snowboard', 'snowshoe'].map((value) => ({
-      type: value,
-      label: value,
-    })),
-  },
-  {
-    type: 'watersports',
-    label: 'watersports',
-    subtypes: [
-      'kitesurf',
-      'foil',
-      'windsurf',
-      'sailboat',
-      'kayak',
-      'canoe',
-      'water-ski',
-      'wakeboard',
-      'mono-ski',
-      'buoy',
-      'paddle',
-      'surf',
-      'pedalo',
-    ].map((value) => ({ type: value, label: value })),
-  },
-  {
-    type: 'event',
-    label: 'event',
-    subtypes: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'].map(
-      (value) => ({ type: value, label: value }),
-    ),
-  },
-  {
-    type: 'high-tech',
-    label: 'high-tech',
-    subtypes: [
-      'action-cam',
-      'drone',
-      'camera',
-      'video-camera',
-      'stabilizer',
-      'phone',
-      'computer',
-      'tablet',
-    ].map((value) => ({ type: value, label: value })),
-  },
-  {
-    type: 'small-tools',
-    label: 'small-tools',
-    subtypes: [
-      'small-appliance',
-      'large-appliance',
-      'construction-equipment',
-      'diy-tools',
-      'electric-diy-tools',
-      'gardening-tools',
-      'electric-gardening-tools',
-    ].map((value) => ({ type: value, label: value })),
-  },
-];
-
-type ProductActionInput = {
-  productId: string;
-  title: string | null;
-  brand: string | null;
-  model: string | null;
-  valueExcl: number | null;
-  productType: string | null;
-  productSubtype: string | null;
-  purchasedDate: string | null;
-};
-
-function normalizeCatalogValue(value: string | null | undefined): string | null {
-  const normalized = typeof value === 'string' ? value.trim() : '';
-  return normalized || null;
-}
-
-function resolveProductType(
-  catalog: TulipCatalogItem[],
-  value: string | null | undefined,
-): string {
-  return (
-    normalizeCatalogValue(value) ||
-    catalog[0]?.type ||
-    TULIP_FALLBACK_CATALOG[0]?.type ||
-    'event'
-  );
-}
-
-function resolveProductSubtype(
-  catalog: TulipCatalogItem[],
-  productType: string,
-  value: string | null | undefined,
-): string {
-  const normalized = normalizeCatalogValue(value);
-  const subtypeList =
-    catalog.find((item) => item.type === productType)?.subtypes ?? [];
-
-  if (normalized) {
-    if (subtypeList.length === 0) {
-      return normalized;
-    }
-    const match = subtypeList.find((item) => item.type === normalized);
-    if (match) {
-      return match.type;
-    }
-  }
-
-  return subtypeList[0]?.type || normalized || 'standard';
-}
+import { TulipProductFormFields } from '../../../products/components/tulip-product-form-fields';
 
 interface TulipProductMappingSectionProps {
   disabled: boolean;
+  supportsMargin: boolean;
   products: Array<{
     id: string;
     name: string;
@@ -187,6 +69,7 @@ interface TulipProductMappingSectionProps {
     id: string;
     title: string;
     louezManaged: boolean;
+    margin: number | null;
     valueExcl: number | null;
     brand: string | null;
     model: string | null;
@@ -205,43 +88,14 @@ interface TulipProductMappingSectionProps {
     productId: string,
     tulipProductId: string | null,
   ) => Promise<void>;
-  onPushProduct: (input: ProductActionInput) => Promise<void>;
-  onCreateProduct: (input: ProductActionInput) => Promise<void>;
+  onPushProduct: (input: ReturnType<typeof buildActionInput>) => Promise<void>;
+  onCreateProduct: (input: ReturnType<typeof buildActionInput>) => Promise<void>;
   onRefresh: () => Promise<void>;
-}
-
-type SheetDraft = {
-  title: string;
-  brand: string;
-  model: string;
-  valueExcl: string;
-  productType: string;
-  productSubtype: string;
-  purchasedDate: string;
-};
-
-type ComboboxOption = {
-  label: string;
-  value: string;
-  kind?: 'existing' | 'create';
-};
-
-function toUniqueSortedOptions(
-  values: Array<string | null | undefined>,
-): ComboboxOption[] {
-  return Array.from(
-    new Set(
-      values
-        .map((value) => value?.trim())
-        .filter((value): value is string => Boolean(value)),
-    ),
-  )
-    .sort((a, b) => a.localeCompare(b))
-    .map((value) => ({ label: value, value, kind: 'existing' as const }));
 }
 
 export function TulipProductMappingSection({
   disabled,
+  supportsMargin,
   products,
   tulipCatalog,
   tulipProducts,
@@ -270,12 +124,10 @@ export function TulipProductMappingSection({
   // Sheet state
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
-  const [sheetDraft, setSheetDraft] = useState<SheetDraft | null>(null);
-  const [brandInputValue, setBrandInputValue] = useState('');
-  const [modelInputValue, setModelInputValue] = useState('');
+  const [sheetDraft, setSheetDraft] = useState<TulipProductDraft | null>(null);
 
-  const resolvedTulipCatalog = useMemo(
-    () => (tulipCatalog.length > 0 ? tulipCatalog : TULIP_FALLBACK_CATALOG),
+  const resolvedCatalog = useMemo(
+    () => resolveTulipCatalog(tulipCatalog),
     [tulipCatalog],
   );
   const tulipItems = useMemo(
@@ -292,92 +144,6 @@ export function TulipProductMappingSection({
   );
   const hasValidMapping = (tulipProductId: string | null): boolean =>
     Boolean(tulipProductId && tulipProductById.has(tulipProductId));
-  const currentSheetProductType =
-    sheetDraft?.productType ?? resolvedTulipCatalog[0]?.type ?? 'event';
-  const categoryItems = useMemo(() => {
-    const items = resolvedTulipCatalog.map((item) => ({
-      label: item.label || item.type,
-      value: item.type,
-    }));
-    const currentType = normalizeCatalogValue(sheetDraft?.productType);
-    if (currentType && !items.some((item) => item.value === currentType)) {
-      items.unshift({ label: currentType, value: currentType });
-    }
-    return items;
-  }, [resolvedTulipCatalog, sheetDraft?.productType]);
-  const subtypeItems = useMemo(
-    () => {
-      const typeFromCatalog =
-        resolvedTulipCatalog.find((item) => item.type === currentSheetProductType)
-          ?.subtypes ?? [];
-      const items = typeFromCatalog.map((item) => ({
-        label: item.label || item.type,
-        value: item.type,
-      }));
-      const currentSubtype = normalizeCatalogValue(sheetDraft?.productSubtype);
-      if (currentSubtype && !items.some((item) => item.value === currentSubtype)) {
-        items.unshift({ label: currentSubtype, value: currentSubtype });
-      }
-      return items;
-    },
-    [
-      currentSheetProductType,
-      resolvedTulipCatalog,
-      sheetDraft?.productSubtype,
-    ],
-  );
-  const knownBrandItems = useMemo(
-    () => toUniqueSortedOptions(tulipProducts.map((tp) => tp.brand)),
-    [tulipProducts],
-  );
-  const knownModelItems = useMemo(() => {
-    const selectedBrand = sheetDraft?.brand.trim().toLowerCase();
-    const sourceProducts = selectedBrand
-      ? tulipProducts.filter(
-          (tp) => tp.brand?.trim().toLowerCase() === selectedBrand,
-        )
-      : tulipProducts;
-
-    return toUniqueSortedOptions(sourceProducts.map((tp) => tp.model));
-  }, [sheetDraft?.brand, tulipProducts]);
-  const brandItems = useMemo(() => {
-    const customValue = brandInputValue.trim();
-    if (!customValue) {
-      return knownBrandItems;
-    }
-
-    if (
-      knownBrandItems.some(
-        (item) => item.value.toLowerCase() === customValue.toLowerCase(),
-      )
-    ) {
-      return knownBrandItems;
-    }
-
-    return [
-      { label: customValue, value: customValue, kind: 'create' as const },
-      ...knownBrandItems,
-    ];
-  }, [brandInputValue, knownBrandItems]);
-  const modelItems = useMemo(() => {
-    const customValue = modelInputValue.trim();
-    if (!customValue) {
-      return knownModelItems;
-    }
-
-    if (
-      knownModelItems.some(
-        (item) => item.value.toLowerCase() === customValue.toLowerCase(),
-      )
-    ) {
-      return knownModelItems;
-    }
-
-    return [
-      { label: customValue, value: customValue, kind: 'create' as const },
-      ...knownModelItems,
-    ];
-  }, [knownModelItems, modelInputValue]);
 
   let filteredProducts = products;
   if (statusFilter === 'mapped') {
@@ -414,77 +180,35 @@ export function TulipProductMappingSection({
         : null)
     : null;
 
-  // Sheet draft validation
-  const normalizedValueExcl =
-    sheetDraft?.valueExcl.trim().replace(',', '.') ?? '';
-  const parsedValueExcl =
-    normalizedValueExcl.length === 0 ? null : Number(normalizedValueExcl);
-  const hasInvalidValueExcl =
-    normalizedValueExcl.length > 0 && !Number.isFinite(parsedValueExcl);
-  const hasInvalidPurchasedDate = sheetDraft?.purchasedDate
-    ? Number.isNaN(
-        new Date(`${sheetDraft.purchasedDate}T00:00:00.000Z`).getTime(),
-      )
-    : false;
-  const hasMissingProductType = !normalizeCatalogValue(sheetDraft?.productType);
-  const hasMissingSubtype = !normalizeCatalogValue(sheetDraft?.productSubtype);
+  const validation = validateDraft(sheetDraft);
   const disableSaveButton =
     disabled ||
     isRefreshing ||
     !sheetDraft ||
-    hasMissingProductType ||
-    hasMissingSubtype ||
-    hasInvalidValueExcl ||
-    hasInvalidPurchasedDate ||
+    validation.hasMissingProductType ||
+    validation.hasMissingSubtype ||
+    validation.hasInvalidValueExcl ||
+    validation.hasInvalidMargin ||
+    validation.hasInvalidPurchasedDate ||
     isPushPending ||
     isCreatePending;
 
   const handleEditClick = (productId: string) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
-    const tp = tulipProducts.find((t) => t.id === product.tulipProductId);
-    const resolvedProductType = resolveProductType(
-      resolvedTulipCatalog,
-      tp?.productType,
-    );
-    setSheetDraft({
-      title: '',
-      productType: resolvedProductType,
-      productSubtype: resolveProductSubtype(
-        resolvedTulipCatalog,
-        resolvedProductType,
-        tp?.productSubtype,
-      ),
-      brand: tp?.brand ?? '',
-      model: tp?.model ?? '',
-      purchasedDate: tp?.purchasedDate ? tp.purchasedDate.slice(0, 10) : '',
-      valueExcl:
-        tp?.valueExcl != null
-          ? tp.valueExcl.toFixed(2)
-          : product.price.toFixed(2),
-    });
-    setBrandInputValue(tp?.brand ?? '');
-    setModelInputValue(tp?.model ?? '');
+    const tp = product.tulipProductId
+      ? (tulipProductById.get(product.tulipProductId) ?? null)
+      : null;
+
+    setSheetDraft(initDraftFromTulipProduct(resolvedCatalog, tp, product.price));
     setEditingProductId(productId);
     setSheetOpen(true);
   };
 
   const handleSheetSave = async () => {
     if (!editingProduct || !sheetDraft) return;
-    const normalized = sheetDraft.valueExcl.trim().replace(',', '.');
-    const parsed = normalized.length === 0 ? null : Number(normalized);
-    const input: ProductActionInput = {
-      productId: editingProduct.id,
-      title: sheetDraft.title.trim() || null,
-      productType: normalizeCatalogValue(sheetDraft.productType),
-      productSubtype: normalizeCatalogValue(sheetDraft.productSubtype),
-      brand: sheetDraft.brand.trim() || null,
-      model: sheetDraft.model.trim() || null,
-      purchasedDate: sheetDraft.purchasedDate
-        ? new Date(`${sheetDraft.purchasedDate}T00:00:00.000Z`).toISOString()
-        : null,
-      valueExcl: Number.isFinite(parsed) ? parsed : null,
-    };
+    const input = buildActionInput(editingProduct.id, sheetDraft);
+
     if (editingProductHasValidMapping) {
       await onPushProduct(input);
     } else {
@@ -492,6 +216,12 @@ export function TulipProductMappingSection({
     }
     setSheetOpen(false);
   };
+
+  const editingDefaultTitle = editingTulipProduct
+    ? editingTulipProduct.louezManaged
+      ? `${editingTulipProduct.title} (Louez)`
+      : editingTulipProduct.title
+    : (editingProduct?.name ?? '');
 
   return (
     <Card>
@@ -728,295 +458,25 @@ export function TulipProductMappingSection({
                     </Badge>
                     {editingProductHasValidMapping && editingTulipProduct && (
                       <span className="text-muted-foreground text-sm">
-                        &rarr;{' '}
-                        {editingTulipProduct.louezManaged
-                          ? `${editingTulipProduct.title} (Louez)`
-                          : editingTulipProduct.title}
+                        &rarr; {editingDefaultTitle}
                       </span>
                     )}
                   </div>
 
-                  {/* Category */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.productTitle')}</Label>
-                    <Input
-                      value={sheetDraft.title}
-                      placeholder={t('productTitlePlaceholder', {
-                        defaultTitle: editingTulipProduct
-                          ? editingTulipProduct.louezManaged
-                            ? `${editingTulipProduct.title} (Louez)`
-                            : editingTulipProduct.title
-                          : editingProduct.name,
-                      })}
-                      onChange={(e) =>
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, title: e.target.value } : prev,
-                        )
-                      }
-                      disabled={disabled || isRefreshing}
-                    />
-                  </div>
-
-                  {/* Category */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.category')}</Label>
-                    <Combobox
-                      items={categoryItems}
-                      value={
-                        categoryItems.find(
-                          (i) => i.value === sheetDraft.productType,
-                        ) ?? null
-                      }
-                      onValueChange={(item) => {
-                        if (!item) return;
-                        setSheetDraft((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                productType: item.value,
-                                productSubtype: resolveProductSubtype(
-                                  resolvedTulipCatalog,
-                                  item.value,
-                                  prev.productSubtype,
-                                ),
-                              }
-                            : prev,
-                        );
-                      }}
-                    >
-                      <ComboboxInput
-                        showTrigger
-                        placeholder={t('categoryPlaceholder')}
-                        disabled={disabled || isRefreshing}
-                      />
-                      <ComboboxPopup>
-                        <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item.value} value={item}>
-                              {item.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxPopup>
-                    </Combobox>
-                  </div>
-
-                  {/* Subtype */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.productSubtype')}</Label>
-                    <Combobox
-                      items={subtypeItems}
-                      value={
-                        subtypeItems.find(
-                          (i) => i.value === sheetDraft.productSubtype,
-                        ) ?? null
-                      }
-                      onValueChange={(item) => {
-                        if (!item) return;
-                        setSheetDraft((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                productSubtype: item.value,
-                              }
-                            : prev,
-                        );
-                      }}
-                    >
-                      <ComboboxInput
-                        showTrigger
-                        placeholder={t('productSubtypePlaceholder')}
-                        disabled={disabled || isRefreshing}
-                      />
-                      <ComboboxPopup>
-                        <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item.value} value={item}>
-                              {item.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxPopup>
-                    </Combobox>
-                  </div>
-
-                  {/* Brand */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.brand')}</Label>
-                    <Combobox
-                      items={brandItems}
-                      value={
-                        brandItems.find(
-                          (item) =>
-                            item.value.toLowerCase() ===
-                            sheetDraft.brand.trim().toLowerCase(),
-                        ) ?? null
-                      }
-                      inputValue={brandInputValue}
-                      onInputValueChange={(value) => {
-                        if (value === undefined) return;
-                        const nextValue = value;
-                        setBrandInputValue(nextValue);
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, brand: nextValue } : prev,
-                        );
-                      }}
-                      onValueChange={(item) => {
-                        if (!item) return;
-                        const nextValue = item.value;
-                        setBrandInputValue(nextValue);
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, brand: nextValue } : prev,
-                        );
-                      }}
-                    >
-                      <ComboboxInput
-                        showTrigger
-                        placeholder={t('brandPlaceholder')}
-                        disabled={disabled || isRefreshing}
-                        onKeyDown={(event) => {
-                          if (event.key !== 'Enter') return;
-                          event.preventDefault();
-                          const nextValue = brandInputValue.trim();
-                          setBrandInputValue(nextValue);
-                          setSheetDraft((prev) =>
-                            prev ? { ...prev, brand: nextValue } : prev,
-                          );
-                          event.currentTarget.blur();
-                        }}
-                        onBlur={() => {
-                          const nextValue = brandInputValue.trim();
-                          setBrandInputValue(nextValue);
-                          setSheetDraft((prev) =>
-                            prev ? { ...prev, brand: nextValue } : prev,
-                          );
-                        }}
-                      />
-                      <ComboboxPopup>
-                        <ComboboxEmpty>{t('noBrandResults')}</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item.value} value={item}>
-                              {item.kind === 'create'
-                                ? t('createOption', { value: item.value })
-                                : item.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxPopup>
-                    </Combobox>
-                  </div>
-
-                  {/* Model */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.model')}</Label>
-                    <Combobox
-                      items={modelItems}
-                      value={
-                        modelItems.find(
-                          (item) =>
-                            item.value.toLowerCase() ===
-                            sheetDraft.model.trim().toLowerCase(),
-                        ) ?? null
-                      }
-                      inputValue={modelInputValue}
-                      onInputValueChange={(value) => {
-                        if (value === undefined) return;
-                        const nextValue = value;
-                        setModelInputValue(nextValue);
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, model: nextValue } : prev,
-                        );
-                      }}
-                      onValueChange={(item) => {
-                        if (!item) return;
-                        const nextValue = item.value;
-                        setModelInputValue(nextValue);
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, model: nextValue } : prev,
-                        );
-                      }}
-                    >
-                      <ComboboxInput
-                        showTrigger
-                        placeholder={t('modelPlaceholder')}
-                        disabled={disabled || isRefreshing}
-                        onKeyDown={(event) => {
-                          if (event.key !== 'Enter') return;
-                          event.preventDefault();
-                          const nextValue = modelInputValue.trim();
-                          setModelInputValue(nextValue);
-                          setSheetDraft((prev) =>
-                            prev ? { ...prev, model: nextValue } : prev,
-                          );
-                          event.currentTarget.blur();
-                        }}
-                        onBlur={() => {
-                          const nextValue = modelInputValue.trim();
-                          setModelInputValue(nextValue);
-                          setSheetDraft((prev) =>
-                            prev ? { ...prev, model: nextValue } : prev,
-                          );
-                        }}
-                      />
-                      <ComboboxPopup>
-                        <ComboboxEmpty>{t('noModelResults')}</ComboboxEmpty>
-                        <ComboboxList>
-                          {(item) => (
-                            <ComboboxItem key={item.value} value={item}>
-                              {item.kind === 'create'
-                                ? t('createOption', { value: item.value })
-                                : item.label}
-                            </ComboboxItem>
-                          )}
-                        </ComboboxList>
-                      </ComboboxPopup>
-                    </Combobox>
-                  </div>
-
-                  {/* Purchase price */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.purchasedDate')}</Label>
-                    <Input
-                      type="date"
-                      value={sheetDraft.purchasedDate}
-                      onChange={(e) =>
-                        setSheetDraft((prev) =>
-                          prev
-                            ? { ...prev, purchasedDate: e.target.value }
-                            : prev,
-                        )
-                      }
-                      disabled={disabled || isRefreshing}
-                    />
-                    {hasInvalidPurchasedDate && (
-                      <p className="text-destructive text-xs">
-                        {t('invalidPurchasedDate')}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Purchase price */}
-                  <div className="space-y-2">
-                    <Label>{t('fields.purchasePriceHt')}</Label>
-                    <Input
-                      value={sheetDraft.valueExcl}
-                      placeholder={editingProduct.price.toFixed(2)}
-                      onChange={(e) =>
-                        setSheetDraft((prev) =>
-                          prev ? { ...prev, valueExcl: e.target.value } : prev,
-                        )
-                      }
-                      disabled={disabled || isRefreshing}
-                    />
-                    {hasInvalidValueExcl && (
-                      <p className="text-destructive text-xs">
-                        {t('invalidPurchasePrice')}
-                      </p>
-                    )}
-                  </div>
+                  <TulipProductFormFields
+                    draft={sheetDraft}
+                    onDraftChange={(updater) =>
+                      setSheetDraft((prev) => (prev ? updater(prev) : prev))
+                    }
+                    disabled={disabled || isRefreshing}
+                    supportsMargin={supportsMargin}
+                    defaultPrice={editingProduct.price}
+                    defaultTitle={editingDefaultTitle}
+                    resolvedCatalog={resolvedCatalog}
+                    tulipProducts={tulipProducts}
+                    t={t}
+                    validation={validation}
+                  />
                 </div>
               )}
             </SheetPanel>

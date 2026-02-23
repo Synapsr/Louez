@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import {
   ArrowUpRight,
@@ -66,6 +67,7 @@ interface StatCardProps {
   subtitle?: string
   badge?: string
   trend?: number | null
+  href?: string
 }
 
 const iconTextColors: Record<IconVariant, string> = {
@@ -84,9 +86,10 @@ function StatCard({
   subtitle,
   badge,
   trend,
+  href,
 }: StatCardProps) {
-  return (
-    <Card className="stat-card">
+  const card = (
+    <Card className={cn('stat-card', href && 'transition-colors hover:bg-muted/50 cursor-pointer')}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -134,6 +137,12 @@ function StatCard({
       </CardContent>
     </Card>
   )
+
+  if (href) {
+    return <Link href={href}>{card}</Link>
+  }
+
+  return card
 }
 
 export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
@@ -148,6 +157,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.activeProductCount}
           icon={Package}
           iconVariant="primary"
+          href="/dashboard/products"
           subtitle={
             metrics.draftProductCount > 0
               ? t('stats.drafts', { count: metrics.draftProductCount })
@@ -159,6 +169,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.customerCount}
           icon={Users}
           iconVariant="blue"
+          href="/dashboard/customers"
         />
       </div>
     )

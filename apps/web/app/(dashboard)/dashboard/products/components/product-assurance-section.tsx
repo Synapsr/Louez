@@ -370,6 +370,7 @@ export function ProductAssuranceSection({
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           disabled={isDialogBusy}
+          supportsMargin={state.supportsMargin}
           product={state.product}
           tulipCatalog={state.tulipCatalog}
           tulipProducts={state.tulipProducts}

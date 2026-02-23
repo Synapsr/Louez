@@ -25,7 +25,6 @@ interface CheckoutConfirmStepProps {
   tulipInsurance?: {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
-    includeInFinalPrice: boolean;
   };
   tulipQuotePreview?: {
     mode: 'required' | 'optional' | 'no_public';

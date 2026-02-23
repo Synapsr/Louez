@@ -69,6 +69,7 @@ function createEmptyTulipQuotePreview(
   return {
     mode,
     connected: false,
+    inclusionEnabled: false,
     quoteUnavailable: false,
     quoteError: null,
     requestedOptIn: false,

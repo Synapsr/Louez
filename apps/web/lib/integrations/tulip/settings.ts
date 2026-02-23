@@ -1,6 +1,5 @@
 import type {
   StoreSettings,
-  TulipContractType,
   TulipIntegrationSettings,
   TulipPublicMode,
 } from '@louez/types'
@@ -11,15 +10,11 @@ export interface TulipResolvedSettings {
   enabled: boolean
   connectedAt: string | null
   publicMode: TulipPublicMode
-  includeInFinalPrice: boolean
   renterUid: string | null
-  contractType: TulipContractType
 }
 
 export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'connectedAt' | 'renterUid'> = {
   publicMode: 'required',
-  includeInFinalPrice: true,
-  contractType: 'LCD',
 }
 
 export function getTulipSettings(settings: StoreSettings | null | undefined): TulipResolvedSettings {
@@ -33,9 +28,7 @@ export function getTulipSettings(settings: StoreSettings | null | undefined): Tu
     enabled,
     connectedAt: raw.connectedAt ?? null,
     publicMode: enabled ? storedPublicMode : 'no_public',
-    includeInFinalPrice: raw.includeInFinalPrice ?? DEFAULT_TULIP_SETTINGS.includeInFinalPrice,
     renterUid: raw.renterUid ?? null,
-    contractType: raw.contractType ?? DEFAULT_TULIP_SETTINGS.contractType,
   }
 }
 

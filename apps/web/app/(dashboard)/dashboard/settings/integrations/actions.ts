@@ -9,7 +9,6 @@ import { z } from 'zod';
 import { db, products, productsTulip, stores } from '@louez/db';
 import type {
   StoreSettings,
-  TulipContractType,
   TulipPublicMode,
 } from '@louez/types';
 
@@ -188,7 +187,15 @@ function getTulipProductId(value: { product_id?: string | null }): string | null
   return id || null;
 }
 
-function getTulipLegacyUid(value: { uid?: string | null }): string | null {
+function getTulipLegacyUid(value: {
+  uuid?: string | null;
+  uid?: string | null;
+}): string | null {
+  const uuid = typeof value.uuid === 'string' ? value.uuid.trim() : '';
+  if (uuid) {
+    return uuid;
+  }
+
   const uid = typeof value.uid === 'string' ? value.uid.trim() : '';
   return uid || null;
 }
@@ -216,6 +223,79 @@ function normalizeTulipOptionalText(
 ): string | null {
   const normalized = typeof value === 'string' ? value.trim() : '';
   return normalized || null;
+}
+
+function parseTulipMargin(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+type TulipMappingRecord = {
+  productId: string;
+  tulipProductId: string;
+};
+
+async function readTulipMappingsByProductIds(
+  productIds: string[],
+): Promise<TulipMappingRecord[]> {
+  if (productIds.length === 0) {
+    return [];
+  }
+
+  const mappings = await db.query.productsTulip.findMany({
+    where: inArray(productsTulip.productId, productIds),
+    columns: {
+      productId: true,
+      tulipProductId: true,
+    },
+  });
+
+  return mappings.map((mapping) => ({
+    productId: mapping.productId,
+    tulipProductId: mapping.tulipProductId,
+  }));
+}
+
+async function readTulipMappingByProductId(
+  productId: string,
+): Promise<{ tulipProductId: string } | null> {
+  const mappings = await readTulipMappingsByProductIds([productId]);
+  const mapping = mappings[0];
+  if (!mapping) {
+    return null;
+  }
+
+  return {
+    tulipProductId: mapping.tulipProductId,
+  };
+}
+
+async function upsertTulipMappingRow(params: {
+  productId: string;
+  tulipProductId: string;
+}) {
+  await db
+    .insert(productsTulip)
+    .values({
+      id: nanoid(),
+      productId: params.productId,
+      tulipProductId: params.tulipProductId,
+    })
+    .onDuplicateKeyUpdate({
+      set: {
+        tulipProductId: params.tulipProductId,
+      },
+    });
 }
 
 function toValidIsoDateString(
@@ -265,12 +345,14 @@ function isLouezManagedTulipProduct(product: TulipProduct): boolean {
 
 async function resolveCreatedTulipProductId({
   apiKey,
+  renterUid,
   createdProduct,
   expectedTitle,
   expectedBrand,
   expectedModel,
 }: {
   apiKey: string;
+  renterUid: string;
   createdProduct: TulipProduct | null;
   expectedTitle: string;
   expectedBrand: string | null;
@@ -287,7 +369,7 @@ async function resolveCreatedTulipProductId({
   }
 
   const createResponseUid = getTulipLegacyUid(createdProduct ?? {});
-  const catalog = await tulipListProducts(apiKey);
+  const catalog = await tulipListProducts(apiKey, { renterUid });
 
   const candidates = catalog
     .map((candidate) => {
@@ -435,14 +517,14 @@ const setIntegrationEnabledSchema = z.object({
 export type TulipIntegrationState = {
   connected: boolean;
   enabled: boolean;
+  supportsMargin: boolean;
+  inclusionEnabled: boolean;
   connectedAt: string | null;
   connectionIssue: string | null;
   calendlyUrl: string;
   settings: {
     publicMode: TulipPublicMode;
-    includeInFinalPrice: boolean;
     renterUid: string | null;
-    contractType: TulipContractType;
   };
   renters: Array<{
     uid: string;
@@ -453,6 +535,7 @@ export type TulipIntegrationState = {
     id: string;
     title: string;
     louezManaged: boolean;
+    margin: number | null;
     productType: string | null;
     productSubtype: string | null;
     purchasedDate: string | null;
@@ -470,13 +553,12 @@ export type TulipIntegrationState = {
 
 export type TulipProductState = {
   connected: boolean;
+  supportsMargin: boolean;
   connectedAt: string | null;
   connectionIssue: string | null;
   calendlyUrl: string;
   settings: {
     publicMode: TulipPublicMode;
-    includeInFinalPrice: boolean;
-    contractType: TulipContractType;
   };
   tulipCatalog: TulipCatalogItem[];
   tulipProducts: TulipIntegrationState['tulipProducts'];
@@ -498,8 +580,6 @@ const connectTulipApiKeySchema = z.object({
 
 const updateTulipConfigurationSchema = z.object({
   publicMode: z.enum(['required', 'optional', 'no_public']),
-  includeInFinalPrice: z.boolean(),
-  contractType: z.enum(['LCD', 'LMD', 'LLD']),
 });
 
 const upsertTulipProductMappingSchema = z.object({
@@ -516,6 +596,7 @@ const pushTulipProductUpdateSchema = z.object({
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
 });
 
 const createTulipProductSchema = z.object({
@@ -527,6 +608,7 @@ const createTulipProductSchema = z.object({
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
 });
 
 const disconnectTulipSchema = z.object({});
@@ -621,19 +703,12 @@ async function getProductsWithMappings(
     return [];
   }
 
-  let mappings: Array<{ productId: string; tulipProductId: string }> = [];
+  let mappings: TulipMappingRecord[] = [];
 
   try {
-    mappings = await db.query.productsTulip.findMany({
-      where: inArray(
-        productsTulip.productId,
-        storeProducts.map((product) => product.id),
-      ),
-      columns: {
-        productId: true,
-        tulipProductId: true,
-      },
-    });
+    mappings = await readTulipMappingsByProductIds(
+      storeProducts.map((product) => product.id),
+    );
   } catch (error) {
     console.warn(
       '[tulip] Unable to read products_tulip mappings, falling back to unmapped state',
@@ -645,14 +720,19 @@ async function getProductsWithMappings(
   }
 
   const mappingByProductId = new Map(
-    mappings.map((mapping) => [mapping.productId, mapping.tulipProductId]),
+    mappings.map((mapping) => [
+      mapping.productId,
+      {
+        tulipProductId: mapping.tulipProductId,
+      },
+    ]),
   );
 
   return storeProducts.map((product) => ({
     id: product.id,
     name: product.name,
     price: Number(product.price),
-    tulipProductId: mappingByProductId.get(product.id) ?? null,
+    tulipProductId: mappingByProductId.get(product.id)?.tulipProductId ?? null,
   }));
 }
 
@@ -668,6 +748,7 @@ function normalizeTulipProducts(
         id,
         title: product.title || id,
         louezManaged: isLouezManagedTulipProduct(product),
+        margin: parseTulipMargin(product.data?.margin),
         productType: product.product_type || null,
         productSubtype: product.data?.product_subtype || null,
         purchasedDate:
@@ -834,6 +915,8 @@ export async function getTulipIntegrationStateAction(): Promise<
     let connectionIssue: string | null = null;
     let didLoadTulipProducts = false;
     let connected = false;
+    let supportsMargin = false;
+    let inclusionEnabled = false;
 
     const apiKey = getTulipApiKey(
       (store.settings as StoreSettings | null) || null,
@@ -842,11 +925,13 @@ export async function getTulipIntegrationStateAction(): Promise<
     if (apiKey && renterUid) {
       const [renterResult, tulipProductsResult] = await Promise.allSettled([
         tulipGetRenter(apiKey, renterUid),
-        tulipListProducts(apiKey),
+        tulipListProducts(apiKey, { renterUid }),
       ]);
 
       if (renterResult.status === 'fulfilled' && renterResult.value?.uid) {
         connected = true;
+        supportsMargin = renterResult.value.options?.option === true;
+        inclusionEnabled = renterResult.value.options?.inclusion === true;
         tulipCatalog = normalizeTulipCatalog(renterResult.value.options?.products);
       } else if (renterResult.status === 'fulfilled') {
         connectionIssue = 'errors.tulipRenterNotFound';
@@ -908,14 +993,14 @@ export async function getTulipIntegrationStateAction(): Promise<
     return {
       connected,
       enabled: connected,
+      supportsMargin,
+      inclusionEnabled,
       connectedAt: settings.connectedAt,
       connectionIssue,
       calendlyUrl: env.TULIP_CALENDLY_URL || 'https://calendly.com/',
       settings: {
         publicMode: settings.publicMode,
-        includeInFinalPrice: settings.includeInFinalPrice,
         renterUid: settings.renterUid,
-        contractType: settings.contractType,
       },
       renters,
       tulipCatalog,
@@ -958,17 +1043,13 @@ export async function getTulipProductStateAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const mapping = await db.query.productsTulip.findFirst({
-      where: eq(productsTulip.productId, product.id),
-      columns: {
-        tulipProductId: true,
-      },
-    });
+    const mapping = await readTulipMappingByProductId(product.id);
 
     let tulipCatalog: TulipProductState['tulipCatalog'] = [];
     let tulipProducts: TulipProductState['tulipProducts'] = [];
     let connectionIssue: string | null = null;
     let connected = false;
+    let supportsMargin = false;
 
     const apiKey = getTulipApiKey(storeSettings);
     const renterUid = settings.renterUid?.trim() || null;
@@ -979,6 +1060,7 @@ export async function getTulipProductStateAction(
           connectionIssue = 'errors.tulipRenterNotFound';
         } else {
           connected = true;
+          supportsMargin = renter.options?.option === true;
           tulipCatalog = normalizeTulipCatalog(renter.options?.products);
         }
       } catch (error) {
@@ -993,7 +1075,7 @@ export async function getTulipProductStateAction(
 
     if (connected && apiKey) {
       try {
-        const rawProducts = await tulipListProducts(apiKey);
+        const rawProducts = await tulipListProducts(apiKey, { renterUid });
         tulipProducts = normalizeTulipProducts(rawProducts);
       } catch (error) {
         if (
@@ -1027,13 +1109,12 @@ export async function getTulipProductStateAction(
 
     return {
       connected,
+      supportsMargin,
       connectedAt: settings.connectedAt,
       connectionIssue,
       calendlyUrl: env.TULIP_CALENDLY_URL || 'https://calendly.com/',
       settings: {
         publicMode: settings.publicMode,
-        includeInFinalPrice: settings.includeInFinalPrice,
-        contractType: settings.contractType,
       },
       tulipCatalog,
       tulipProducts,
@@ -1135,8 +1216,6 @@ export async function updateTulipConfigurationAction(
       (store.settings as StoreSettings | null) || null,
       {
         publicMode: validated.publicMode,
-        includeInFinalPrice: validated.includeInFinalPrice,
-        contractType: validated.contractType,
       },
     );
 
@@ -1184,13 +1263,7 @@ export async function upsertTulipProductMappingAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const existingMapping = await db.query.productsTulip.findFirst({
-      where: eq(productsTulip.productId, validated.productId),
-      columns: {
-        tulipProductId: true,
-      },
-    });
-
+    const existingMapping = await readTulipMappingByProductId(validated.productId);
     if (existingMapping?.tulipProductId === validated.tulipProductId) {
       return { success: true };
     }
@@ -1209,7 +1282,7 @@ export async function upsertTulipProductMappingAction(
         return { error: 'errors.tulipNotConfigured' };
       }
 
-      const tulipCatalog = await tulipListProducts(apiKey);
+      const tulipCatalog = await tulipListProducts(apiKey, { renterUid });
       const selectedTulipProduct =
         tulipCatalog.find(
           (candidate) =>
@@ -1248,6 +1321,7 @@ export async function upsertTulipProductMappingAction(
         const selectedModel = normalizeTulipOptionalText(
           selectedTulipProduct.data?.model,
         );
+        const selectedMargin = parseTulipMargin(selectedTulipProduct.data?.margin);
         const selectedTitle =
           normalizeTulipOptionalText(selectedTulipProduct.title) ?? product.name;
         const selectedPurchasedDate = toValidIsoDateString(
@@ -1265,6 +1339,7 @@ export async function upsertTulipProductMappingAction(
             product_subtype: resolvedSubtype,
             ...(selectedBrand ? { brand: selectedBrand } : {}),
             ...(selectedModel ? { model: selectedModel } : {}),
+            ...(selectedMargin != null ? { margin: selectedMargin } : {}),
           },
           ...(selectedPurchasedDate
             ? { purchased_date: selectedPurchasedDate }
@@ -1279,6 +1354,7 @@ export async function upsertTulipProductMappingAction(
         const createdClone = await tulipCreateProduct(apiKey, clonePayload);
         const clonedProductId = await resolveCreatedTulipProductId({
           apiKey,
+          renterUid,
           createdProduct: createdClone,
           expectedTitle: selectedTitle,
           expectedBrand: selectedBrand,
@@ -1292,18 +1368,10 @@ export async function upsertTulipProductMappingAction(
         resolvedTulipProductId = clonedProductId;
       }
 
-      await db
-        .insert(productsTulip)
-        .values({
-          id: nanoid(),
-          productId: validated.productId,
-          tulipProductId: resolvedTulipProductId,
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            tulipProductId: resolvedTulipProductId,
-          },
-        });
+      await upsertTulipMappingRow({
+        productId: validated.productId,
+        tulipProductId: resolvedTulipProductId,
+      });
     }
 
     revalidatePath('/dashboard/settings/integrations');
@@ -1331,6 +1399,11 @@ export async function pushTulipProductUpdateAction(
     if (!apiKey) {
       return { error: 'errors.tulipNotConfigured' };
     }
+    const renterUid =
+      getTulipSettings(storeSettings).renterUid?.trim() || null;
+    if (!renterUid) {
+      return { error: 'errors.tulipNotConfigured' };
+    }
 
     const product = await db.query.products.findFirst({
       where: and(
@@ -1348,16 +1421,12 @@ export async function pushTulipProductUpdateAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const mapping = await db.query.productsTulip.findFirst({
-      where: eq(productsTulip.productId, product.id),
-      columns: {
-        tulipProductId: true,
-      },
-    });
+    const mapping = await readTulipMappingByProductId(product.id);
 
     if (!mapping?.tulipProductId) {
       return { error: 'errors.tulipProductNotMapped' };
     }
+    let resolvedTulipProductId = mapping.tulipProductId;
 
     const title = validated.title?.trim() || null;
     const payload: Record<string, unknown> = {
@@ -1388,15 +1457,17 @@ export async function pushTulipProductUpdateAction(
 
     const brand = validated.brand?.trim();
     const model = validated.model?.trim();
+    const margin = validated.margin;
     const purchasedDate = validated.purchasedDate
       ? new Date(validated.purchasedDate).toISOString()
       : null;
 
-    if (resolvedSubtype || brand || model) {
+    if (resolvedSubtype || brand || model || margin != null) {
       payload.data = {
         ...(resolvedSubtype ? { product_subtype: resolvedSubtype } : {}),
         ...(brand ? { brand } : {}),
         ...(model ? { model } : {}),
+        ...(margin != null ? { margin } : {}),
       };
     }
     if (purchasedDate) {
@@ -1404,16 +1475,16 @@ export async function pushTulipProductUpdateAction(
     }
 
     try {
-      await tulipUpdateProduct(apiKey, mapping.tulipProductId, payload);
+      await tulipUpdateProduct(apiKey, resolvedTulipProductId, payload);
     } catch (error) {
       if (error instanceof TulipApiError && getTulipErrorCode(error.payload) === 4999) {
         console.warn('[tulip][update-product] mapped product id not found, attempting mapping repair', {
           storeId: store.id,
           productId: product.id,
-          mappedTulipProductId: mapping.tulipProductId,
+          mappedTulipProductId: resolvedTulipProductId,
         });
 
-        const rawCatalog = await tulipListProducts(apiKey);
+        const rawCatalog = await tulipListProducts(apiKey, { renterUid });
         const payloadTitle = typeof payload.title === 'string' ? payload.title : product.name;
         const payloadData =
           payload.data && typeof payload.data === 'object'
@@ -1467,7 +1538,7 @@ export async function pushTulipProductUpdateAction(
         };
 
         const candidatesFromLegacyUid = candidates.filter(
-          (candidate) => candidate.uid === mapping.tulipProductId,
+          (candidate) => candidate.uid === resolvedTulipProductId,
         );
         const candidatesFromLegacyUidAndPayload = candidatesFromLegacyUid.filter(matchesPayload);
         const candidatesFromPayload = candidates.filter(matchesPayload);
@@ -1482,21 +1553,14 @@ export async function pushTulipProductUpdateAction(
           (candidatesFromPayload.length === 1 ? candidatesFromPayload[0]?.id : null);
 
         if (repairedTulipProductId) {
-          await db
-            .insert(productsTulip)
-            .values({
-              id: nanoid(),
-              productId: product.id,
-              tulipProductId: repairedTulipProductId,
-            })
-            .onDuplicateKeyUpdate({
-              set: {
-                tulipProductId: repairedTulipProductId,
-              },
-            });
+          resolvedTulipProductId = repairedTulipProductId;
+          await upsertTulipMappingRow({
+            productId: product.id,
+            tulipProductId: resolvedTulipProductId,
+          });
 
           try {
-            await tulipUpdateProduct(apiKey, repairedTulipProductId, payload);
+            await tulipUpdateProduct(apiKey, resolvedTulipProductId, payload);
           } catch (retryError) {
             if (
               retryError instanceof TulipApiError &&
@@ -1505,7 +1569,7 @@ export async function pushTulipProductUpdateAction(
               console.warn('[tulip][update-product] repaired mapping still points to missing product; clearing mapping', {
                 storeId: store.id,
                 productId: product.id,
-                repairedTulipProductId,
+                repairedTulipProductId: resolvedTulipProductId,
               });
               await db
                 .delete(productsTulip)
@@ -1521,7 +1585,7 @@ export async function pushTulipProductUpdateAction(
           console.warn('[tulip][update-product] unable to repair mapping automatically; clearing stale mapping', {
             storeId: store.id,
             productId: product.id,
-            mappedTulipProductId: mapping.tulipProductId,
+            mappedTulipProductId: resolvedTulipProductId,
             legacyUidCandidates: candidatesFromLegacyUid.length,
             payloadCandidates: candidatesFromPayload.length,
           });
@@ -1609,17 +1673,6 @@ export async function createTulipProductAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const existingMapping = await db.query.productsTulip.findFirst({
-      where: eq(productsTulip.productId, product.id),
-      columns: {
-        tulipProductId: true,
-      },
-    });
-
-    if (existingMapping?.tulipProductId) {
-      return { error: 'errors.tulipProductAlreadyMapped' };
-    }
-
     const requestedProductType = normalizeTulipOptionalText(validated.productType);
     const requestedSubtype = normalizeTulipOptionalText(validated.productSubtype);
     const resolvedProductType = requestedProductType || 'event';
@@ -1649,6 +1702,7 @@ export async function createTulipProductAction(
     const resolvedTitle = validated.title?.trim() || product.name;
     const resolvedBrand = validated.brand?.trim() || null;
     const resolvedModel = validated.model?.trim() || null;
+    const resolvedMargin = validated.margin ?? null;
     const resolvedPurchasedDate = validated.purchasedDate
       ? new Date(validated.purchasedDate).toISOString()
       : null;
@@ -1662,6 +1716,7 @@ export async function createTulipProductAction(
         product_subtype: resolvedSubtype,
         ...(resolvedBrand ? { brand: resolvedBrand } : {}),
         ...(resolvedModel ? { model: resolvedModel } : {}),
+        ...(resolvedMargin != null ? { margin: resolvedMargin } : {}),
       },
       ...(resolvedPurchasedDate
         ? { purchased_date: resolvedPurchasedDate }
@@ -1703,6 +1758,7 @@ export async function createTulipProductAction(
 
     const resolvedTulipProductId = await resolveCreatedTulipProductId({
       apiKey,
+      renterUid,
       createdProduct,
       expectedTitle: resolvedTitle,
       expectedBrand: resolvedBrand,
@@ -1718,18 +1774,10 @@ export async function createTulipProductAction(
       return { error: 'errors.tulipInvalidProductResponse' };
     }
 
-    await db
-      .insert(productsTulip)
-        .values({
-          id: nanoid(),
-          productId: product.id,
-          tulipProductId: resolvedTulipProductId,
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            tulipProductId: resolvedTulipProductId,
-          },
-        });
+    await upsertTulipMappingRow({
+      productId: product.id,
+      tulipProductId: resolvedTulipProductId,
+    });
 
     revalidatePath('/dashboard/settings/integrations');
     return { success: true };

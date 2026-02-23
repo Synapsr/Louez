@@ -4,11 +4,20 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { ImageIcon, Truck } from 'lucide-react';
+import { ImageIcon, Shield, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
-import { Badge, Card, CardContent, Separator } from '@louez/ui';
+import {
+  Badge,
+  Card,
+  CardContent,
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@louez/ui';
 import {
   type ProductPricing,
   calculateRentalPrice,
@@ -43,7 +52,6 @@ interface CheckoutOrderSummaryProps {
   tulipInsurance?: {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
-    includeInFinalPrice: boolean;
   };
   tulipInsuranceOptIn: boolean;
   isTulipQuoteLoading: boolean;
@@ -138,125 +146,145 @@ export function CheckoutOrderSummary({
           )}
 
           <div className="space-y-3">
-            {items.map((item, index) => {
-              const duration = calculateDuration(
-                item.startDate,
-                item.endDate,
-                item.pricingMode,
-              );
-
-              const itemPricingMode = item.productPricingMode || pricingMode;
-              let itemTotal = item.price * item.quantity * duration;
-              let itemSavings = 0;
-              let discountPercent: number | null = null;
-
-              if (item.pricingTiers && item.pricingTiers.length > 0) {
-                const pricing: ProductPricing = {
-                  basePrice: item.price,
-                  deposit: item.deposit,
-                  pricingMode: itemPricingMode,
-                  tiers: item.pricingTiers.map((tier, index) => ({
-                    ...tier,
-                    displayOrder: index,
-                  })),
-                };
-
-                const result = calculateRentalPrice(
-                  pricing,
-                  duration,
-                  item.quantity,
+            <TooltipProvider>
+              {items.map((item, index) => {
+                const duration = calculateDuration(
+                  item.startDate,
+                  item.endDate,
+                  item.pricingMode,
                 );
-                itemTotal = result.subtotal;
-                itemSavings = result.savings;
-                discountPercent = result.discountPercent;
-              }
 
-              const resolutionState = lineResolutions[item.lineId];
-              const requestedAttributes = item.selectedAttributes;
-              const resolvedAttributes =
-                item.resolvedAttributes ||
-                (resolutionState?.status === 'resolved'
-                  ? resolutionState.selectedAttributes
-                  : undefined);
+                const itemPricingMode = item.productPricingMode || pricingMode;
+                let itemTotal = item.price * item.quantity * duration;
+                let itemSavings = 0;
+                let discountPercent: number | null = null;
 
-              return (
-                <div
-                  key={item.lineId || `${item.productId}-${index}`}
-                  className="flex gap-3"
-                >
-                  <div className="bg-muted relative aspect-4/3 h-14 w-auto shrink-0 overflow-hidden rounded-lg">
-                    {item.productImage ? (
-                      <Image
-                        src={item.productImage}
-                        alt={item.productName}
-                        fill
-                        className="max-h-full max-w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <ImageIcon className="text-muted-foreground h-5 w-5" />
+                if (item.pricingTiers && item.pricingTiers.length > 0) {
+                  const pricing: ProductPricing = {
+                    basePrice: item.price,
+                    deposit: item.deposit,
+                    pricingMode: itemPricingMode,
+                    tiers: item.pricingTiers.map((tier, index) => ({
+                      ...tier,
+                      displayOrder: index,
+                    })),
+                  };
+
+                  const result = calculateRentalPrice(
+                    pricing,
+                    duration,
+                    item.quantity,
+                  );
+                  itemTotal = result.subtotal;
+                  itemSavings = result.savings;
+                  discountPercent = result.discountPercent;
+                }
+
+                const resolutionState = lineResolutions[item.lineId];
+                const requestedAttributes = item.selectedAttributes;
+                const resolvedAttributes =
+                  item.resolvedAttributes ||
+                  (resolutionState?.status === 'resolved'
+                    ? resolutionState.selectedAttributes
+                    : undefined);
+                const isInsuredProduct =
+                  showInsuranceSummary && insuredProductIdSet.has(item.productId);
+
+                return (
+                  <div
+                    key={item.lineId || `${item.productId}-${index}`}
+                    className="flex gap-3"
+                  >
+                    <div className="bg-muted relative aspect-4/3 h-14 w-auto shrink-0 overflow-hidden rounded-lg">
+                      {item.productImage ? (
+                        <Image
+                          src={item.productImage}
+                          alt={item.productName}
+                          fill
+                          className="max-h-full max-w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <ImageIcon className="text-muted-foreground h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.productName}
+                        </p>
+                        {isInsuredProduct && (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <span className="cursor-help">
+                                  <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                </span>
+                              }
+                            />
+                            <TooltipContent side="top">
+                              <p>{t('insuranceCoveredProductTooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {item.productName}
-                    </p>
-                    {requestedAttributes &&
-                      Object.keys(requestedAttributes).length > 0 && (
+                      {requestedAttributes &&
+                        Object.keys(requestedAttributes).length > 0 && (
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {t('requestedAttributesLabel')}:{' '}
+                            {Object.entries(requestedAttributes)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join(' • ')}
+                          </p>
+                        )}
+                      {resolvedAttributes &&
+                        Object.keys(resolvedAttributes).length > 0 && (
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {t('resolvedAttributesLabel')}:{' '}
+                            {Object.entries(resolvedAttributes)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join(' • ')}
+                          </p>
+                        )}
+                      {resolutionState?.status === 'loading' && (
                         <p className="text-muted-foreground truncate text-[11px]">
-                          {t('requestedAttributesLabel')}:{' '}
-                          {Object.entries(requestedAttributes)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(' • ')}
+                          {t('lineCheckingAvailability')}
                         </p>
                       )}
-                    {resolvedAttributes &&
-                      Object.keys(resolvedAttributes).length > 0 && (
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {t('resolvedAttributesLabel')}:{' '}
-                          {Object.entries(resolvedAttributes)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(' • ')}
+                      {resolutionState?.status === 'invalid' && (
+                        <p className="text-destructive truncate text-[11px]">
+                          {t('lineNeedsUpdateInline')}
                         </p>
                       )}
-                    {resolutionState?.status === 'loading' && (
-                      <p className="text-muted-foreground truncate text-[11px]">
-                        {t('lineCheckingAvailability')}
+                      <p className="text-muted-foreground text-xs">
+                        {item.quantity} {'\u00d7'}{' '}
+                        {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
+                        {duration}
                       </p>
-                    )}
-                    {resolutionState?.status === 'invalid' && (
-                      <p className="text-destructive truncate text-[11px]">
-                        {t('lineNeedsUpdateInline')}
+                      {discountPercent != null && discountPercent > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                        >
+                          -{Math.floor(discountPercent)}%
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">
+                        {formatCurrency(itemTotal, currency)}
                       </p>
-                    )}
-                    <p className="text-muted-foreground text-xs">
-                      {item.quantity} {'\u00d7'}{' '}
-                      {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
-                      {duration}
-                    </p>
-                    {discountPercent != null && discountPercent > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                      >
-                        -{Math.floor(discountPercent)}%
-                      </Badge>
-                    )}
+                      {itemSavings > 0 && (
+                        <p className="text-xs text-green-600">
+                          -{formatCurrency(itemSavings, currency)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {formatCurrency(itemTotal, currency)}
-                    </p>
-                    {itemSavings > 0 && (
-                      <p className="text-xs text-green-600">
-                        -{formatCurrency(itemSavings, currency)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </TooltipProvider>
           </div>
 
           <Separator />

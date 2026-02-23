@@ -3,7 +3,6 @@ import type { ComponentType, ReactNode } from 'react';
 import type {
   DeliverySettings,
   TaxSettings,
-  TulipContractType,
 } from '@louez/types';
 
 export interface CheckoutFormProps {
@@ -22,8 +21,6 @@ export interface CheckoutFormProps {
   tulipInsurance?: {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
-    includeInFinalPrice: boolean;
-    contractType: TulipContractType;
   };
 }
 

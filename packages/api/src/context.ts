@@ -218,14 +218,14 @@ export interface BaseContext {
       | {
           connected: boolean
           enabled: boolean
+          supportsMargin: boolean
+          inclusionEnabled: boolean
           connectedAt: string | null
           connectionIssue: string | null
           calendlyUrl: string
           settings: {
             publicMode: 'required' | 'optional' | 'no_public'
-            includeInFinalPrice: boolean
             renterUid: string | null
-            contractType: 'LCD' | 'LMD' | 'LLD'
           }
           renters: Array<{ uid: string; enabled: boolean }>
           tulipCatalog: Array<{
@@ -240,6 +240,7 @@ export interface BaseContext {
             id: string
             title: string
             louezManaged: boolean
+            margin: number | null
             productType: string | null
             productSubtype: string | null
             purchasedDate: string | null
@@ -259,13 +260,12 @@ export interface BaseContext {
     getTulipProductState?: (input: { productId: string }) => Promise<
       | {
           connected: boolean
+          supportsMargin: boolean
           connectedAt: string | null
           connectionIssue: string | null
           calendlyUrl: string
           settings: {
             publicMode: 'required' | 'optional' | 'no_public'
-            includeInFinalPrice: boolean
-            contractType: 'LCD' | 'LMD' | 'LLD'
           }
           tulipCatalog: Array<{
             type: string
@@ -279,6 +279,7 @@ export interface BaseContext {
             id: string
             title: string
             louezManaged: boolean
+            margin: number | null
             productType: string | null
             productSubtype: string | null
             purchasedDate: string | null
@@ -298,8 +299,6 @@ export interface BaseContext {
     connectTulipApiKey?: (input: { renterUid: string }) => Promise<{ success?: boolean; error?: string }>
     updateTulipConfiguration?: (input: {
       publicMode: 'required' | 'optional' | 'no_public'
-      includeInFinalPrice: boolean
-      contractType: 'LCD' | 'LMD' | 'LLD'
     }) => Promise<{ success?: boolean; error?: string }>
     upsertTulipProductMapping?: (input: {
       productId: string
@@ -314,6 +313,7 @@ export interface BaseContext {
       brand?: string | null
       model?: string | null
       valueExcl?: number | null
+      margin?: number | null
     }) => Promise<{ success?: boolean; error?: string }>
     createTulipProduct?: (input: {
       productId: string
@@ -324,6 +324,7 @@ export interface BaseContext {
       brand?: string | null
       model?: string | null
       valueExcl?: number | null
+      margin?: number | null
     }) => Promise<{ success?: boolean; error?: string }>
     disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>
   };
