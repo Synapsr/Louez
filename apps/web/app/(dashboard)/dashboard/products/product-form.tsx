@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -58,6 +58,32 @@ function pricingModeToMinutes(mode: PricingMode): number {
   return 1440;
 }
 
+function getDuplicateRateTierIndexes(
+  rateTiers: RateTierInput[] | undefined,
+): number[] {
+  if (!rateTiers?.length) return [];
+
+  const byPeriod = new Map<number, number[]>();
+
+  rateTiers.forEach((tier, index) => {
+    const period = priceDurationToMinutes(tier.duration, tier.unit);
+    const existing = byPeriod.get(period);
+    if (existing) {
+      existing.push(index);
+      return;
+    }
+    byPeriod.set(period, [index]);
+  });
+
+  const duplicates = new Set<number>();
+  for (const indexes of byPeriod.values()) {
+    if (indexes.length < 2) continue;
+    indexes.forEach((index) => duplicates.add(index));
+  }
+
+  return Array.from(duplicates).sort((a, b) => a - b);
+}
+
 export function ProductForm({
   product,
   categories,
@@ -80,9 +106,16 @@ export function ProductForm({
     submitProduct,
     createCategoryByName,
     getActionErrorMessage,
+    getActionErrorDetails,
   } = useProductFormMutations({
     productId: product?.id,
   });
+  const [duplicateRateTierIndexes, setDuplicateRateTierIndexes] = useState<
+    number[]
+  >([]);
+  const [pendingDuplicateRateTierIndexes, setPendingDuplicateRateTierIndexes] =
+    useState<number[] | null>(null);
+  const hasShownDuplicateRateToastRef = useRef(false);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =
@@ -202,6 +235,8 @@ export function ProductForm({
     onSubmit: async ({ value }) => {
       try {
         await submitProduct(value);
+        setDuplicateRateTierIndexes([]);
+        setPendingDuplicateRateTierIndexes(null);
 
         toastManager.add({
           title: product ? t('productUpdated') : t('productCreated'),
@@ -209,6 +244,23 @@ export function ProductForm({
         });
         router.push('/dashboard/products');
       } catch (error) {
+        const details = getActionErrorDetails(error);
+        const isDuplicateRatePeriodsError =
+          details?.code === 'duplicate_rate_periods' &&
+          Array.isArray(details.duplicateRateTierIndexes) &&
+          details.duplicateRateTierIndexes.length > 0;
+
+        if (isDuplicateRatePeriodsError) {
+          const duplicateIndexes = details.duplicateRateTierIndexes ?? [];
+          setPendingDuplicateRateTierIndexes(duplicateIndexes);
+
+          toastManager.add({
+            title: t('pricingTiers.duplicateDurationError'),
+            type: 'error',
+          });
+          return;
+        }
+
         toastManager.add({
           title: getActionErrorMessage(error),
           type: 'error',
@@ -219,6 +271,10 @@ export function ProductForm({
 
   const watchedValues = useStore(form.store, (s) => s.values);
   const submissionAttempts = useStore(form.store, (s) => s.submissionAttempts);
+  const rateTiersSubmitError = useStore(
+    form.store,
+    (s) => s.fieldMeta.rateTiers?.errorMap?.onSubmit,
+  );
   const hasUnitsSubmitError = useStore(
     form.store,
     (s) => Boolean(s.fieldMeta.units?.errorMap?.onSubmit),
@@ -264,7 +320,7 @@ export function ProductForm({
   );
 
   const clearSubmitError = useCallback(
-    (name: 'name' | 'price' | 'quantity' | 'units') => {
+    (name: 'name' | 'price' | 'quantity' | 'units' | 'rateTiers') => {
       form.setFieldMeta(name, (prev) => ({
         ...prev,
         errorMap: {
@@ -274,6 +330,27 @@ export function ProductForm({
       }));
     },
     [form],
+  );
+
+  const clearDuplicateRateTierErrors = useCallback(() => {
+    setDuplicateRateTierIndexes((prev) => (prev.length > 0 ? [] : prev));
+    setPendingDuplicateRateTierIndexes(null);
+    clearSubmitError('rateTiers');
+  }, [clearSubmitError]);
+
+  const localDuplicateRateTierIndexes = useMemo(
+    () => getDuplicateRateTierIndexes(watchedValues.rateTiers as RateTierInput[]),
+    [watchedValues.rateTiers],
+  );
+  const effectiveDuplicateRateTierIndexes = useMemo(
+    () =>
+      Array.from(
+        new Set([
+          ...duplicateRateTierIndexes,
+          ...localDuplicateRateTierIndexes,
+        ]),
+      ).sort((a, b) => a - b),
+    [duplicateRateTierIndexes, localDuplicateRateTierIndexes],
   );
 
   const validateCurrentStep = useCallback(
@@ -349,6 +426,78 @@ export function ProductForm({
   } = useProductFormStepFlow({
     validateCurrentStep,
   });
+
+  useEffect(() => {
+    if (!pendingDuplicateRateTierIndexes?.length) return;
+
+    setDuplicateRateTierIndexes(pendingDuplicateRateTierIndexes);
+    form.setFieldMeta('rateTiers', (prev) => ({
+      ...prev,
+      isTouched: true,
+      errorMap: {
+        ...prev?.errorMap,
+        onSubmit: t('pricingTiers.duplicateDurationError'),
+      },
+    }));
+
+    if (!isEditMode) {
+      goToStep(2);
+    } else if (typeof window !== 'undefined') {
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById('section-pricing')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+
+    setPendingDuplicateRateTierIndexes(null);
+  }, [
+    form,
+    goToStep,
+    isEditMode,
+    pendingDuplicateRateTierIndexes,
+    t,
+  ]);
+
+  useEffect(() => {
+    const hasDuplicateRates = localDuplicateRateTierIndexes.length > 0;
+    const hasSubmitted = submissionAttempts > 0;
+
+    if (!hasDuplicateRates || !hasSubmitted) {
+      hasShownDuplicateRateToastRef.current = false;
+      return;
+    }
+
+    form.setFieldMeta('rateTiers', (prev) => ({
+      ...prev,
+      isTouched: true,
+      errorMap: {
+        ...prev?.errorMap,
+        onSubmit: t('pricingTiers.duplicateDurationError'),
+      },
+    }));
+
+    if (!isEditMode && currentStep > 2) {
+      goToStep(2);
+    }
+
+    if (!hasShownDuplicateRateToastRef.current) {
+      toastManager.add({
+        title: t('pricingTiers.duplicateDurationError'),
+        type: 'error',
+      });
+      hasShownDuplicateRateToastRef.current = true;
+    }
+  }, [
+    currentStep,
+    form,
+    goToStep,
+    isEditMode,
+    localDuplicateRateTierIndexes,
+    submissionAttempts,
+    t,
+    rateTiersSubmitError,
+  ]);
 
   const selectedCategory = categories.find(
     (c) => c.id === watchedValues.categoryId,
@@ -428,6 +577,8 @@ export function ProductForm({
                     currency={currency}
                     currencySymbol={currencySymbol}
                     isSaving={isSaving}
+                    duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
+                    onRateTiersEdit={clearDuplicateRateTierErrors}
                     storeTaxSettings={storeTaxSettings}
                     availableAccessories={availableAccessories}
                     showAccessories={false}
@@ -560,6 +711,8 @@ export function ProductForm({
                 currency={currency}
                 currencySymbol={currencySymbol}
                 isSaving={isSaving}
+                duplicateRateTierIndexes={effectiveDuplicateRateTierIndexes}
+                onRateTiersEdit={clearDuplicateRateTierErrors}
                 storeTaxSettings={storeTaxSettings}
                 availableAccessories={availableAccessories}
                 showAccessories={false}

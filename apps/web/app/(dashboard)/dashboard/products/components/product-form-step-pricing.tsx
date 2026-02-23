@@ -39,6 +39,8 @@ interface ProductFormStepPricingProps {
   currency: string;
   currencySymbol: string;
   isSaving: boolean;
+  duplicateRateTierIndexes?: number[];
+  onRateTiersEdit?: () => void;
   storeTaxSettings?: TaxSettings;
   availableAccessories: AvailableAccessory[];
   showAccessories: boolean;
@@ -66,6 +68,8 @@ export function ProductFormStepPricing({
   currency,
   currencySymbol,
   isSaving,
+  duplicateRateTierIndexes = [],
+  onRateTiersEdit,
   storeTaxSettings,
   availableAccessories,
   showAccessories,
@@ -193,12 +197,16 @@ export function ProductFormStepPricing({
               <RatesEditor
                 basePriceDuration={watchedValues.basePriceDuration}
                 rates={field.state.value || []}
-                onChange={field.handleChange}
+                onChange={(next) => {
+                  field.handleChange(next);
+                  onRateTiersEdit?.();
+                }}
                 enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
                 onEnforceStrictTiersChange={(value) =>
                   form.setFieldValue('enforceStrictTiers', value)
                 }
                 onRequireBaseRate={() => setHighlightBaseRate(true)}
+                invalidRateIndexes={duplicateRateTierIndexes}
                 currency={currency}
                 disabled={isSaving}
               />
