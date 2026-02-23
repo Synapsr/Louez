@@ -39,6 +39,11 @@ interface ConfirmDialogsProps {
   loadingAction: string | null
 }
 
+type ActionWarning = {
+  key: string
+  params?: Record<string, string | number>
+}
+
 export function useReservationActions(): UseReservationActionsReturn {
   const t = useTranslations('dashboard.reservations')
   const tCommon = useTranslations('common')
@@ -49,6 +54,64 @@ export function useReservationActions(): UseReservationActionsReturn {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+
+  const formatWarning = (warning: ActionWarning) => {
+    const key = warning.key.replace('errors.', '')
+    return tErrors(key, warning.params || {})
+  }
+
+  const showWarnings = (warnings: unknown, newStatus: ReservationStatus) => {
+    if (!Array.isArray(warnings) || warnings.length === 0) {
+      return
+    }
+
+    const parsedWarnings: ActionWarning[] = warnings
+      .filter(
+        (warning): warning is ActionWarning =>
+          Boolean(warning) &&
+          typeof warning === 'object' &&
+          'key' in warning &&
+          typeof (warning as { key?: unknown }).key === 'string',
+      )
+      .map((warning) => ({
+        key: warning.key,
+        params: warning.params,
+      }))
+
+    if (parsedWarnings.length === 0) {
+      return
+    }
+
+    if (newStatus === 'confirmed') {
+      const tulipWarnings = parsedWarnings.filter((warning) =>
+        warning.key.startsWith('errors.tulip'),
+      )
+
+      if (tulipWarnings.length > 0) {
+        toastManager.add({
+          title: tulipWarnings.map(formatWarning).join(' • '),
+          type: 'warning',
+        })
+      }
+
+      const otherWarnings = parsedWarnings.filter(
+        (warning) => !warning.key.startsWith('errors.tulip'),
+      )
+      if (otherWarnings.length > 0) {
+        toastManager.add({
+          title: otherWarnings.map(formatWarning).join(' • '),
+          type: 'warning',
+        })
+      }
+
+      return
+    }
+
+    toastManager.add({
+      title: parsedWarnings.map(formatWarning).join(' • '),
+      type: 'warning',
+    })
+  }
 
   const updateStatusMutation = useMutation(
     orpc.dashboard.reservations.updateStatus.mutationOptions({
@@ -138,15 +201,7 @@ export function useReservationActions(): UseReservationActionsReturn {
       })
 
       const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
-      if (warnings && warnings.length > 0) {
-        const warningMessage = warnings
-          .map((warning: { key: string; params?: Record<string, string | number> }) => {
-            const key = warning.key.replace('errors.', '')
-            return tErrors(key, warning.params || {})
-          })
-          .join(' • ')
-        toastManager.add({ title: warningMessage, type: 'warning' })
-      }
+      showWarnings(warnings, newStatus)
 
       toastManager.add({ title: t('statusUpdated'), type: 'success' })
       await invalidateReservationAll(queryClient, reservation.id)
@@ -168,15 +223,7 @@ export function useReservationActions(): UseReservationActionsReturn {
       })
 
       const warnings = result && typeof result === 'object' && 'warnings' in result ? (result as any).warnings : undefined
-      if (warnings && warnings.length > 0) {
-        const warningMessage = warnings
-          .map((warning: { key: string; params?: Record<string, string | number> }) => {
-            const key = warning.key.replace('errors.', '')
-            return tErrors(key, warning.params || {})
-          })
-          .join(' • ')
-        toastManager.add({ title: warningMessage, type: 'warning' })
-      }
+      showWarnings(warnings, 'rejected')
 
       toastManager.add({ title: t('reservationRejected'), type: 'success' })
       await invalidateReservationAll(queryClient, selectedReservation.id)
