@@ -60,6 +60,7 @@ interface RatesEditorProps {
   enforceStrictTiers: boolean;
   onEnforceStrictTiersChange: (value: boolean) => void;
   onRequireBaseRate?: () => void;
+  invalidRateIndexes?: number[];
   currency: string;
   disabled?: boolean;
 }
@@ -111,11 +112,16 @@ export function RatesEditor({
   enforceStrictTiers,
   onEnforceStrictTiersChange,
   onRequireBaseRate,
+  invalidRateIndexes = [],
   currency,
   disabled = false,
 }: RatesEditorProps) {
   const t = useTranslations('dashboard.products.form');
   const tCommon = useTranslations('common');
+  const invalidIndexes = useMemo(
+    () => new Set(invalidRateIndexes),
+    [invalidRateIndexes],
+  );
   const basePrice = basePriceDuration ? toNumber(basePriceDuration.price) : 0;
   const basePeriod = basePriceDuration
     ? priceDurationToMinutes(basePriceDuration.duration, basePriceDuration.unit)
@@ -323,6 +329,7 @@ export function RatesEditor({
   return (
     <div className="space-y-3">
       {rates.map((rate, index) => {
+        const isInvalidRate = invalidIndexes.has(index);
         const tierPrice = toNumber(rate.price);
         const tierPeriod = priceDurationToMinutes(rate.duration, rate.unit);
         const computedReduction =
@@ -347,7 +354,9 @@ export function RatesEditor({
         return (
           <div
             key={rate.id ?? `new-${index}`}
-            className="group bg-card relative overflow-hidden rounded-lg border"
+            className={`group bg-card relative overflow-hidden rounded-lg border ${
+              isInvalidRate ? 'border-destructive/70 bg-destructive/5' : ''
+            }`}
           >
             <div className="flex flex-wrap items-center gap-3 p-2.5 sm:flex-nowrap">
               <div className="flex min-w-0 flex-col gap-1">
@@ -368,6 +377,7 @@ export function RatesEditor({
                   }
                   currency={currency}
                   disabled={disabled}
+                  invalid={isInvalidRate}
                 />
                 {hasDiscount && (
                   <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
@@ -421,6 +431,11 @@ export function RatesEditor({
                 </Button>
               </div>
             </div>
+            {isInvalidRate && (
+              <div className="px-2.5 pb-2 text-sm font-medium text-red-600">
+                {t('pricingTiers.duplicateDurationError')}
+              </div>
+            )}
           </div>
         );
       })}

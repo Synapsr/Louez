@@ -11,6 +11,23 @@ interface UseProductFormMutationsParams {
   productId?: string
 }
 
+export interface ProductActionErrorDetails {
+  code?: string
+  duplicateRateTierIndexes?: number[]
+}
+
+interface ProductActionErrorPayload {
+  error: string
+  details?: ProductActionErrorDetails
+}
+
+function isProductActionErrorPayload(
+  value: unknown,
+): value is ProductActionErrorPayload {
+  if (!value || typeof value !== 'object') return false
+  return 'error' in value && typeof (value as { error?: unknown }).error === 'string'
+}
+
 export function useProductFormMutations({
   productId,
 }: UseProductFormMutationsParams) {
@@ -23,7 +40,13 @@ export function useProductFormMutations({
         : await createProduct(value)
 
       if (result.error) {
-        throw new Error(result.error)
+        throw {
+          error: result.error,
+          details:
+            'details' in result && result.details
+              ? result.details
+              : undefined,
+        } satisfies ProductActionErrorPayload
       }
 
       return result
@@ -44,6 +67,14 @@ export function useProductFormMutations({
 
   const getActionErrorMessage = useCallback(
     (error: unknown) => {
+      if (isProductActionErrorPayload(error)) {
+        if (error.error.startsWith('errors.')) {
+          return tErrors(error.error.replace('errors.', ''))
+        }
+
+        return error.error
+      }
+
       if (error instanceof Error) {
         if (error.message.startsWith('errors.')) {
           return tErrors(error.message.replace('errors.', ''))
@@ -55,6 +86,16 @@ export function useProductFormMutations({
       return tErrors('generic')
     },
     [tErrors]
+  )
+
+  const getActionErrorDetails = useCallback(
+    (error: unknown): ProductActionErrorDetails | undefined => {
+      if (isProductActionErrorPayload(error)) {
+        return error.details
+      }
+      return undefined
+    },
+    []
   )
 
   const submitProduct = useCallback(
@@ -75,5 +116,6 @@ export function useProductFormMutations({
     submitProduct,
     createCategoryByName,
     getActionErrorMessage,
+    getActionErrorDetails,
   }
 }

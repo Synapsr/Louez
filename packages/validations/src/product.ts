@@ -73,6 +73,38 @@ export type RateTierInput = z.infer<typeof rateTierSchema>
 export type ProductUnitInput = z.infer<typeof productUnitSchema>
 export type BookingAttributeAxisInput = z.infer<typeof bookingAttributeAxisSchema>
 
+function priceDurationToMinutes(
+  duration: number,
+  unit: 'minute' | 'hour' | 'day' | 'week',
+): number {
+  switch (unit) {
+    case 'minute':
+      return duration
+    case 'hour':
+      return duration * 60
+    case 'day':
+      return duration * 60 * 24
+    case 'week':
+      return duration * 60 * 24 * 7
+    default:
+      return duration
+  }
+}
+
+function hasDuplicateRateTierPeriods(
+  rateTiers: Array<{ duration: number; unit: 'minute' | 'hour' | 'day' | 'week' }>,
+): boolean {
+  const periods = new Set<number>()
+  for (const tier of rateTiers) {
+    const period = priceDurationToMinutes(tier.duration, tier.unit)
+    if (periods.has(period)) {
+      return true
+    }
+    periods.add(period)
+  }
+  return false
+}
+
 // Schema factory that accepts translation function
 // YouTube URL validation regex
 const youtubeUrlRegex = /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|shorts\/)|youtu\.be\/)[\w-]+/
@@ -209,6 +241,14 @@ export const createProductSchema = (t: (key: string, params?: Record<string, str
       }
     }
 
+    if (data.rateTiers && data.rateTiers.length > 0 && hasDuplicateRateTierPeriods(data.rateTiers)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: t('duplicateValue'),
+        path: ['rateTiers'],
+      })
+    }
+
   })
 
 export const createCategorySchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
@@ -298,6 +338,14 @@ export const productSchema = z.object({
         }
       }
     }
+  }
+
+  if (data.rateTiers && data.rateTiers.length > 0 && hasDuplicateRateTierPeriods(data.rateTiers)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'validation.duplicateValue',
+      path: ['rateTiers'],
+    })
   }
 
 })
