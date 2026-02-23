@@ -65,7 +65,11 @@ import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
 } from '@/lib/utils/reservation-rules'
-import { createTulipContractForReservation } from '@/lib/integrations/tulip/contracts'
+import {
+  cancelTulipContractForReservation,
+  createTulipContractForReservation,
+  syncTulipContractForReservation,
+} from '@/lib/integrations/tulip/contracts'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -399,6 +403,18 @@ export async function cancelReservation(reservationId: string) {
     undefined,
     { previousStatus: reservation.status }
   )
+
+  if (reservation.tulipContractId) {
+    try {
+      await cancelTulipContractForReservation({ reservationId })
+    } catch (error) {
+      console.error('[tulip] Failed to cancel contract from dashboard cancellation:', {
+        reservationId,
+        contractId: reservation.tulipContractId,
+        error,
+      })
+    }
+  }
 
   // Dispatch admin notifications (SMS, Discord) based on preferences
   dispatchNotification('reservation_cancelled', {
@@ -1307,6 +1323,22 @@ export async function updateReservation(
     })
     .where(eq(reservations.id, reservationId))
 
+  let tulipWarning: { key: string; params?: Record<string, string | number> } | null = null
+  if (reservation.status === 'confirmed' || reservation.status === 'ongoing') {
+    try {
+      await syncTulipContractForReservation({ reservationId })
+    } catch (error) {
+      console.error('[tulip] Failed to sync contract after reservation edit:', {
+        reservationId,
+        error,
+      })
+
+      tulipWarning = {
+        key: getErrorKey(error, 'errors.tulipContractUpdateFailed'),
+      }
+    }
+  }
+
   // Calculate difference for activity log
   const difference = newSubtotalAmount - previousState.subtotalAmount
 
@@ -1341,12 +1373,21 @@ export async function updateReservation(
   revalidatePath('/dashboard/reservations')
   revalidatePath(`/dashboard/reservations/${reservationId}`)
 
+  const responseWarnings = [
+    ...validationWarnings.map((warning) => ({
+      code: warning.code,
+      key: warning.key,
+      params: warning.params,
+    })),
+    ...(tulipWarning ? [tulipWarning] : []),
+  ]
+
   return {
     success: true,
     difference,
     newTotal: newSubtotalAmount,
     previousTotal: previousState.subtotalAmount,
-    ...(validationWarnings.length > 0 && { warnings: validationWarnings }),
+    ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
   }
 }
 

@@ -1,4 +1,10 @@
-import { db, customers, reservationActivity, reservations } from '@louez/db'
+import {
+  db,
+  customers,
+  productsTulip,
+  reservationActivity,
+  reservations,
+} from '@louez/db'
 import { and, asc, count, desc, eq, gte, inArray, like, lte, not, or, sql } from 'drizzle-orm'
 import { ORPCError } from '@orpc/server'
 
@@ -236,5 +242,36 @@ export async function getDashboardReservationById(params: {
     throw new ORPCError('NOT_FOUND', { message: 'errors.reservationNotFound' })
   }
 
-  return reservation
+  const reservationProductIds = reservation.items
+    .map((item) => item.productId)
+    .filter((productId): productId is string => typeof productId === 'string')
+
+  if (reservationProductIds.length === 0) {
+    return {
+      ...reservation,
+      insuredProductIds: [],
+    }
+  }
+
+  const mappedProducts = await db.query.productsTulip.findMany({
+    where: inArray(productsTulip.productId, reservationProductIds),
+    columns: {
+      productId: true,
+    },
+  })
+
+  const insuredProductIds = Array.from(
+    new Set(
+      mappedProducts
+        .map((mapping) => mapping.productId)
+        .filter(
+          (productId): productId is string => typeof productId === 'string',
+        ),
+    ),
+  )
+
+  return {
+    ...reservation,
+    insuredProductIds,
+  }
 }

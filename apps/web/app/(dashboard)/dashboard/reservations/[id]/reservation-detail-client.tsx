@@ -10,6 +10,7 @@ import {
   ExternalLink,
   MapPin,
   Package,
+  Shield,
   User,
 } from 'lucide-react'
 
@@ -154,6 +155,14 @@ export function ReservationDetailClient({
 
   const hasContract = (reservation.documents || []).some(
     (d: any) => d.type === 'contract',
+  )
+  const insuredProductIds = new Set<string>(
+    Array.isArray(reservation.insuredProductIds)
+      ? reservation.insuredProductIds.filter(
+          (productId: unknown): productId is string =>
+            typeof productId === 'string' && productId.trim().length > 0,
+        )
+      : [],
   )
 
   const formattedDepartureInspection = departureInspection
@@ -317,6 +326,11 @@ export function ReservationDetailClient({
                   </TableHeader>
                   <TableBody>
                     {(reservation.items || []).map((item: any) => {
+                      const itemProductId =
+                        typeof item.productId === 'string' ? item.productId : null
+                      const isTulipInsured =
+                        itemProductId !== null &&
+                        insuredProductIds.has(itemProductId)
                       const trackUnits = item.product?.trackUnits || false
                       const assignedUnitIds =
                         item.assignedUnits?.map((au: any) => au.productUnitId) ||
@@ -339,8 +353,19 @@ export function ReservationDetailClient({
                           <TableCell className="font-medium">
                             <div>
                               <div className="space-y-1">
-                                <div>
-                                  {item.productSnapshot?.name || item.product?.name}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span>
+                                    {item.productSnapshot?.name || item.product?.name}
+                                  </span>
+                                  {isTulipInsured && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                                    >
+                                      <Shield className="mr-1 h-3 w-3" />
+                                      {t('tulipInsuredBadge')}
+                                    </Badge>
+                                  )}
                                 </div>
                                 {displayAttributes &&
                                   Object.keys(displayAttributes).length > 0 && (

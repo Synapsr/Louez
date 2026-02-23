@@ -249,10 +249,20 @@ export async function tulipUpdateProduct(
   return null;
 }
 
-type TulipContract = {
+export type TulipContract = {
   cid?: string;
   price?: number;
 };
+
+function parseContractResponse(envelope: unknown): TulipContract {
+  const contractEnvelope = envelope as TulipRecord | null;
+  const contract = contractEnvelope?.contract;
+  if (!contract || typeof contract !== 'object') {
+    throw new Error('errors.tulipInvalidContractResponse');
+  }
+
+  return contract as TulipContract;
+}
 
 export async function tulipCreateContract(
   apiKey: string,
@@ -264,10 +274,43 @@ export async function tulipCreateContract(
     method: 'POST',
     body: payload,
   });
-  const envelope = unwrapEnvelope(response) as TulipRecord | null;
-  const contract = envelope?.contract;
-  if (!contract || typeof contract !== 'object') {
-    throw new Error('errors.tulipInvalidContractResponse');
-  }
-  return contract as TulipContract;
+  return parseContractResponse(unwrapEnvelope(response));
+}
+
+export async function tulipUpdateContract(
+  apiKey: string,
+  contractId: string,
+  payload: Record<string, unknown>,
+  preview: boolean,
+): Promise<TulipContract> {
+  const query = preview ? '?preview=true' : '';
+  const response = await request<unknown>(
+    `/contracts/${contractId}${query}`,
+    apiKey,
+    {
+      method: 'PATCH',
+      body: payload,
+    },
+  );
+
+  return parseContractResponse(unwrapEnvelope(response));
+}
+
+export async function tulipCancelContract(
+  apiKey: string,
+  contractId: string,
+  payload: Record<string, unknown>,
+  preview: boolean,
+): Promise<TulipContract> {
+  const query = preview ? '?preview=true' : '';
+  const response = await request<unknown>(
+    `/contracts/${contractId}${query}`,
+    apiKey,
+    {
+      method: 'DELETE',
+      body: payload,
+    },
+  );
+
+  return parseContractResponse(unwrapEnvelope(response));
 }
