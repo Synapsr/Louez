@@ -115,6 +115,42 @@ function buildRateTierRows(
   return rows.sort((a, b) => a.period - b.period)
 }
 
+function hasDuplicateRatePeriods(
+  rows: Array<{ period: number }>,
+): boolean {
+  const periods = new Set<number>()
+  for (const row of rows) {
+    if (periods.has(row.period)) {
+      return true
+    }
+    periods.add(row.period)
+  }
+  return false
+}
+
+function getDuplicateRatePeriodIndexes(
+  rows: Array<{ period: number }>,
+): number[] {
+  const byPeriod = new Map<number, number[]>()
+
+  rows.forEach((row, index) => {
+    const existing = byPeriod.get(row.period)
+    if (existing) {
+      existing.push(index)
+      return
+    }
+    byPeriod.set(row.period, [index])
+  })
+
+  const duplicateIndexes = new Set<number>()
+  for (const indexes of byPeriod.values()) {
+    if (indexes.length < 2) continue
+    indexes.forEach((index) => duplicateIndexes.add(index))
+  }
+
+  return Array.from(duplicateIndexes).sort((a, b) => a - b)
+}
+
 export async function createProduct(data: ProductInput) {
   const store = await getStoreForUser()
   if (!store) {
@@ -151,6 +187,15 @@ export async function createProduct(data: ProductInput) {
     parseFloat(price) || 0,
     basePeriodMinutes,
   )
+  if (hasDuplicateRatePeriods(rateTierRows)) {
+    return {
+      error: 'errors.invalidData',
+      details: {
+        code: 'duplicate_rate_periods',
+        duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
+      },
+    }
+  }
 
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
@@ -167,59 +212,66 @@ export async function createProduct(data: ProductInput) {
 
   const productId = nanoid()
 
-  await db.insert(products).values({
-    id: productId,
-    storeId: store.id,
-    name: validated.data.name,
-    description: validated.data.description || null,
-    categoryId: validated.data.categoryId || null,
-    price: price,
-    deposit: deposit,
-    pricingMode: legacyPricingMode,
-    basePeriodMinutes,
-    quantity: quantity,
-    status: validated.data.status,
-    images: validated.data.images || [],
-    videoUrl: validated.data.videoUrl || null,
-    taxSettings: validated.data.taxSettings || null,
-    enforceStrictTiers: validated.data.enforceStrictTiers || false,
-    trackUnits: trackUnits,
-    bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
-      ? bookingAttributeAxes
-      : null,
-  })
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(products).values({
+        id: productId,
+        storeId: store.id,
+        name: validated.data.name,
+        description: validated.data.description || null,
+        categoryId: validated.data.categoryId || null,
+        price: price,
+        deposit: deposit,
+        pricingMode: legacyPricingMode,
+        basePeriodMinutes,
+        quantity: quantity,
+        status: validated.data.status,
+        images: validated.data.images || [],
+        videoUrl: validated.data.videoUrl || null,
+        taxSettings: validated.data.taxSettings || null,
+        enforceStrictTiers: validated.data.enforceStrictTiers || false,
+        trackUnits: trackUnits,
+        bookingAttributeAxes: trackUnits && bookingAttributeAxes.length > 0
+          ? bookingAttributeAxes
+          : null,
+      })
 
-  // Create pricing tiers if provided
-  if (rateTierRows.length > 0) {
-    await db.insert(productPricingTiers).values(
-      rateTierRows.map((tier, index) => ({
-        id: nanoid(),
-        productId: productId,
-        minDuration: tier.minDuration,
-        discountPercent: tier.discountPercent,
-        period: tier.period,
-        price: tier.price,
-        displayOrder: index,
-      }))
-    )
-  }
+      // Create pricing tiers if provided
+      if (rateTierRows.length > 0) {
+        await tx.insert(productPricingTiers).values(
+          rateTierRows.map((tier, index) => ({
+            id: nanoid(),
+            productId: productId,
+            minDuration: tier.minDuration,
+            discountPercent: tier.discountPercent,
+            period: tier.period,
+            price: tier.price,
+            displayOrder: index,
+          }))
+        )
+      }
 
-  // Create units if tracking is enabled
-  if (trackUnits && units.length > 0) {
-    await db.insert(productUnits).values(
-      units.map((unit) => ({
-        attributes: resolveUnitAttributes(bookingAttributeAxes, unit),
-        combinationKey: buildCombinationKey(
-          bookingAttributeAxes,
-          resolveUnitAttributes(bookingAttributeAxes, unit),
-        ),
-        id: nanoid(),
-        productId: productId,
-        identifier: unit.identifier.trim(),
-        notes: unit.notes?.trim() || null,
-        status: unit.status || 'available',
-      }))
-    )
+      // Create units if tracking is enabled
+      if (trackUnits && units.length > 0) {
+        await tx.insert(productUnits).values(
+          units.map((unit) => ({
+            attributes: resolveUnitAttributes(bookingAttributeAxes, unit),
+            combinationKey: buildCombinationKey(
+              bookingAttributeAxes,
+              resolveUnitAttributes(bookingAttributeAxes, unit),
+            ),
+            id: nanoid(),
+            productId: productId,
+            identifier: unit.identifier.trim(),
+            notes: unit.notes?.trim() || null,
+            status: unit.status || 'available',
+          }))
+        )
+      }
+    })
+  } catch (error) {
+    console.error('Error creating product:', error)
+    return { error: 'errors.invalidData' }
   }
 
   notifyProductCreated(
@@ -276,6 +328,15 @@ export async function updateProduct(productId: string, data: ProductInput) {
     parseFloat(price) || 0,
     basePeriodMinutes,
   )
+  if (hasDuplicateRatePeriods(rateTierRows)) {
+    return {
+      error: 'errors.invalidData',
+      details: {
+        code: 'duplicate_rate_periods',
+        duplicateRateTierIndexes: getDuplicateRatePeriodIndexes(rateTierRows),
+      },
+    }
+  }
 
   // Unit tracking
   const trackUnits = validated.data.trackUnits || false
