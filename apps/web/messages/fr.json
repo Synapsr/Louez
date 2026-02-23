@@ -888,6 +888,8 @@
             "noBrandResults": "Aucune suggestion de marque",
             "noModelResults": "Aucune suggestion de modèle",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
+            "invalidMargin": "Saisissez une marge valide.",
+            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "fields": {
               "productTitle": "Nom du produit (optionnel)",
@@ -896,7 +898,8 @@
               "brand": "Marque",
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
-              "purchasePriceHt": "Prix d'achat HT"
+              "purchasePriceHt": "Prix d'achat HT",
+              "margin": "Marge"
             }
           }
         }
@@ -1925,8 +1928,6 @@
             "renterPlaceholder": "Renseignez et validez d'abord l'UUID boutique",
             "renterNone": "Aucun loueur sélectionné",
             "renterDisabled": "désactivé",
-            "contractTypeLabel": "Type de contrat",
-            "contractTypeHelp": "LCD = courte durée, LMD = moyenne durée, LLD = longue durée.",
             "saveButton": "Enregistrer la configuration",
             "savingButton": "Enregistrement..."
           },
@@ -1955,6 +1956,8 @@
             "noBrandResults": "Aucune suggestion de marque",
             "noModelResults": "Aucune suggestion de modèle",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
+            "invalidMargin": "Saisissez une marge valide.",
+            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "createButton": "Créer dans Tulip",
             "creatingButton": "Création...",
@@ -1990,7 +1993,8 @@
               "brand": "Marque",
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
-              "purchasePriceHt": "Prix d'achat HT"
+              "purchasePriceHt": "Prix d'achat HT",
+              "margin": "Marge"
             }
           }
         }
@@ -4556,7 +4560,7 @@
     "tulipQuoteFailed": "Impossible de calculer la garantie casse/vol pour cette réservation.",
     "tulipContractPastDate": "Tulip a refusé la création du contrat : les dates ne peuvent pas être dans le passé.",
     "tulipContractActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
-    "tulipContractTypeDisabled": "Le type de contrat Tulip configuré n'est pas activé pour cette boutique."
+    "tulipContractTypeDisabled": "Le type de contrat Tulip requis pour cette durée n'est pas activé pour cette boutique."
   },
   "welcome": {
     "greeting": "Bienvenue sur Louez.io",

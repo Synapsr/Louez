@@ -68,11 +68,9 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const tulipSettings = getTulipSettings((store.settings as StoreSettings | null) || null)
   const tulipConnected = tulipSettings.enabled
   const tulipMode = tulipConnected ? tulipSettings.publicMode : 'no_public'
-  const effectiveRequireCustomerAddress = !(
-    tulipConnected &&
-    tulipMode !== 'no_public' &&
-    tulipSettings.contractType === 'LCD'
-  )
+  // LMD/LLD customer identity fields are mandatory on Tulip; keeping address
+  // fields required avoids checkout flows that later fail contract creation.
+  const effectiveRequireCustomerAddress = true
 
   return (
     <>
@@ -105,8 +103,6 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           tulipInsurance={{
             enabled: tulipConnected && tulipMode !== 'no_public',
             mode: tulipMode,
-            includeInFinalPrice: tulipSettings.includeInFinalPrice,
-            contractType: tulipSettings.contractType,
           }}
         />
       </div>

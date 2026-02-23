@@ -30,14 +30,14 @@ import { TulipSetupSection } from './tulip-setup-section'
 const FALLBACK_STATE = {
   connected: false,
   enabled: false,
+  supportsMargin: false,
+  inclusionEnabled: false,
   connectedAt: null,
   connectionIssue: null,
   calendlyUrl: 'https://calendly.com/',
   settings: {
     publicMode: 'required' as const,
-    includeInFinalPrice: true,
     renterUid: null,
-    contractType: 'LCD' as const,
   },
   renters: [],
   tulipCatalog: [],
@@ -256,16 +256,13 @@ export function TulipAssurancePanel() {
         }}
       />
 
-      {isConnected && (
+      {isConnected && !state.inclusionEnabled && (
         <TulipConfigurationSection
           disabled={false}
           settings={state.settings}
           isPending={updateConfigurationMutation.isPending}
           onSave={async (input) => {
-            await updateConfigurationMutation.mutateAsync({
-              ...input,
-              contractType: state.settings.contractType,
-            })
+            await updateConfigurationMutation.mutateAsync(input)
           }}
         />
       )}
@@ -273,6 +270,7 @@ export function TulipAssurancePanel() {
       {isConnected && (
         <TulipProductMappingSection
           disabled={!isConnected}
+          supportsMargin={state.supportsMargin}
           products={state.products}
           tulipCatalog={state.tulipCatalog}
           tulipProducts={state.tulipProducts}

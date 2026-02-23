@@ -175,6 +175,7 @@ type CheckoutTulipQuoteInput = {
 type CheckoutTulipQuoteResult = {
   mode: TulipPublicMode
   connected: boolean
+  inclusionEnabled: boolean
   quoteUnavailable: boolean
   quoteError: string | null
   requestedOptIn: boolean
@@ -212,6 +213,7 @@ async function resolveCheckoutTulipQuote(
     return {
       mode: modeInfo.mode,
       connected: modeInfo.connected,
+      inclusionEnabled: false,
       quoteUnavailable: false,
       quoteError: null,
       requestedOptIn,
@@ -245,11 +247,15 @@ async function resolveCheckoutTulipQuote(
       optIn: requestedOptIn,
     })
 
+    const inclusionEnabled = preview.inclusionEnabled === true
     const amount =
-      preview.shouldApply && Number.isFinite(preview.amount) && preview.amount > 0
+      !inclusionEnabled &&
+      preview.shouldApply &&
+      Number.isFinite(preview.amount) &&
+      preview.amount > 0
         ? Math.round(preview.amount * 100) / 100
         : 0
-    const appliedOptIn = requestedOptIn && amount > 0
+    const appliedOptIn = requestedOptIn && preview.shouldApply
 
     console.info('[tulip][checkout-quote] resolved', {
       storeId: input.storeId,
@@ -257,6 +263,7 @@ async function resolveCheckoutTulipQuote(
       requestedOptIn,
       appliedOptIn,
       amount,
+      inclusionEnabled,
       insuredProductCount: preview.insuredProductCount,
       uninsuredProductCount: preview.uninsuredProductCount,
       insuredProductIds: preview.insuredProductIds,
@@ -265,6 +272,7 @@ async function resolveCheckoutTulipQuote(
     return {
       mode: modeInfo.mode,
       connected: modeInfo.connected,
+      inclusionEnabled,
       quoteUnavailable: false,
       quoteError: null,
       requestedOptIn,
@@ -290,6 +298,7 @@ async function resolveCheckoutTulipQuote(
       return {
         mode: modeInfo.mode,
         connected: modeInfo.connected,
+        inclusionEnabled: false,
         quoteUnavailable: true,
         quoteError: errorKey,
         requestedOptIn,
@@ -340,6 +349,7 @@ export async function getTulipQuotePreview(input: {
     return {
       mode: 'no_public',
       connected: false,
+      inclusionEnabled: false,
       quoteUnavailable: true,
       quoteError: 'errors.storeNotFound',
       requestedOptIn: false,
@@ -378,6 +388,7 @@ export async function getTulipQuotePreview(input: {
     return {
       mode: modeInfo.mode,
       connected: modeInfo.connected,
+      inclusionEnabled: false,
       quoteUnavailable: true,
       quoteError: errorKey,
       requestedOptIn:

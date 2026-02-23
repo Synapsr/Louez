@@ -1,7 +1,12 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, productsTulip, reservations } from '@louez/db'
 
-import { TulipApiError, tulipCreateContract, tulipGetRenter } from './client'
+import {
+  TulipApiError,
+  tulipCreateContract,
+  tulipGetRenter,
+  tulipListProducts,
+} from './client'
 import { getTulipApiKey, getTulipSettings, shouldApplyTulipInsurance } from './settings'
 
 type TulipCustomerInput = {
@@ -28,6 +33,7 @@ type ResolvedTulipItemInput = {
   productId: string
   tulipProductId: string
   quantity: number
+  margin: number | null
 }
 
 export type TulipCoverageSummary = {
@@ -39,6 +45,7 @@ export type TulipCoverageSummary = {
 export type TulipQuotePreviewResult = {
   shouldApply: boolean
   amount: number
+  inclusionEnabled: boolean
   insuredProductCount: number
   uninsuredProductCount: number
   insuredProductIds: string[]
@@ -61,51 +68,72 @@ function getTulipErrorCode(payload: unknown): number | null {
   return typeof code === 'number' ? code : null
 }
 
-function requiresContractIdentityOption(params: {
-  contractType: TulipContractType
-  startDate: Date
-  endDate: Date
-}): boolean {
-  if (params.contractType === 'LLD') {
-    return true
-  }
-
-  if (params.contractType !== 'LMD') {
-    return false
-  }
-
-  const thresholdDate = new Date(params.startDate)
-  thresholdDate.setMonth(thresholdDate.getMonth() + 5)
-  return params.endDate > thresholdDate
+function addDays(baseDate: Date, days: number): Date {
+  const date = new Date(baseDate)
+  date.setDate(date.getDate() + days)
+  return date
 }
 
-function assertCustomerData(
+function addMonths(baseDate: Date, months: number): Date {
+  const date = new Date(baseDate)
+  date.setMonth(date.getMonth() + months)
+  return date
+}
+
+function resolveTulipContractTypeFromDates(
+  startDate: Date,
+  endDate: Date,
+): TulipContractType {
+  if (endDate >= addMonths(startDate, 12)) {
+    return 'LLD'
+  }
+
+  if (endDate >= addDays(startDate, 30)) {
+    return 'LMD'
+  }
+
+  return 'LCD'
+}
+
+function requiresContractIdentityOption(contractType: TulipContractType): boolean {
+  return contractType === 'LMD' || contractType === 'LLD'
+}
+
+function assertRequiredIdentityFields(
   customer: TulipCustomerInput,
-  requireIdentityOption: boolean,
+  contractType: TulipContractType,
 ) {
-  if (!customer.firstName || !customer.lastName) {
+  if (!requiresContractIdentityOption(contractType)) {
+    return
+  }
+
+  const hasAddress =
+    Boolean(customer.address) && Boolean(customer.city) && Boolean(customer.postalCode)
+  const hasCountry = Boolean(customer.country || 'FR')
+
+  if (!hasAddress || !hasCountry) {
     throw new Error('errors.tulipCustomerDataIncomplete')
   }
-  if (!customer.email || !customer.phone) {
-    throw new Error('errors.tulipCustomerDataIncomplete')
+
+  if (customer.customerType === 'business' && customer.companyName) {
+    return
   }
-  if (
-    requireIdentityOption &&
-    (!customer.address || !customer.city || !customer.postalCode)
-  ) {
+
+  if (!customer.firstName || !customer.lastName || !customer.phone) {
     throw new Error('errors.tulipCustomerDataIncomplete')
   }
 }
 
 function buildCustomerPayload(
   customer: TulipCustomerInput,
-  requireIdentityOption: boolean,
+  contractType: TulipContractType,
 ): {
   options: string[]
   company?: Record<string, unknown>
   individual?: Record<string, unknown>
 } {
-  assertCustomerData(customer, requireIdentityOption)
+  const requireIdentityOption = requiresContractIdentityOption(contractType)
+  assertRequiredIdentityFields(customer, contractType)
 
   const options = ['break', 'theft']
   const baseAddress = {
@@ -113,6 +141,20 @@ function buildCustomerPayload(
     city: customer.city,
     zipcode: customer.postalCode,
     country: customer.country || 'FR',
+  }
+
+  if (requireIdentityOption && customer.customerType === 'business' && customer.companyName) {
+    options.push('company')
+
+    return {
+      options,
+      company: {
+        ...baseAddress,
+        company_name: customer.companyName,
+        ...(customer.firstName ? { first_name: customer.firstName } : {}),
+        ...(customer.lastName ? { last_name: customer.lastName } : {}),
+      },
+    }
   }
 
   if (customer.customerType === 'business' && customer.companyName) {
@@ -155,16 +197,64 @@ function buildCustomerPayload(
   }
 }
 
-async function getTulipMappingMap(productIds: string[]): Promise<Map<string, string>> {
+function parseNumericMargin(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
+async function getTulipMappingMap(
+  productIds: string[],
+): Promise<Map<string, { tulipProductId: string }>> {
   if (productIds.length === 0) {
     return new Map()
   }
 
   const mappings = await db.query.productsTulip.findMany({
     where: inArray(productsTulip.productId, productIds),
+    columns: {
+      productId: true,
+      tulipProductId: true,
+    },
   })
 
-  return new Map(mappings.map((mapping) => [mapping.productId, mapping.tulipProductId]))
+  return new Map(
+    mappings.map((mapping) => [
+      mapping.productId,
+      {
+        tulipProductId: mapping.tulipProductId,
+      },
+    ]),
+  )
+}
+
+async function getTulipMarginByProductIdMap(
+  apiKey: string,
+  renterUid: string,
+): Promise<Map<string, number | null>> {
+  const tulipProducts = await tulipListProducts(apiKey, { renterUid })
+  const marginMap = new Map<string, number | null>()
+
+  for (const product of tulipProducts) {
+    const productId =
+      typeof product.product_id === 'string' ? product.product_id.trim() : ''
+    if (!productId) {
+      continue
+    }
+
+    marginMap.set(productId, parseNumericMargin(product.data?.margin))
+  }
+
+  return marginMap
 }
 
 function getCoverageSummary(
@@ -183,6 +273,9 @@ function getCoverageSummary(
 
 async function resolveTulipCoverage(
   items: TulipItemInput[],
+  options?: {
+    tulipMarginByProductId?: Map<string, number | null>
+  },
 ): Promise<{ insuredItems: ResolvedTulipItemInput[] } & TulipCoverageSummary> {
   if (items.length === 0) {
     return {
@@ -198,15 +291,16 @@ async function resolveTulipCoverage(
 
   const insuredItems: ResolvedTulipItemInput[] = []
   for (const item of items) {
-    const tulipProductId = mappingMap.get(item.productId)
-    if (!tulipProductId) {
+    const mapping = mappingMap.get(item.productId)
+    if (!mapping?.tulipProductId) {
       continue
     }
 
     insuredItems.push({
       productId: item.productId,
-      tulipProductId,
+      tulipProductId: mapping.tulipProductId,
       quantity: item.quantity,
+      margin: options?.tulipMarginByProductId?.get(mapping.tulipProductId) ?? null,
     })
   }
 
@@ -252,6 +346,9 @@ function buildProductPayload(
           user_name: userName,
           product_marked: safeProductMarked,
           internal_id: safeProductMarked,
+          ...(typeof item.margin === 'number' && Number.isFinite(item.margin)
+            ? { margin: item.margin }
+            : {}),
         },
       })
 
@@ -272,14 +369,7 @@ async function buildContractPayload(params: {
 }) {
   const userName = `${params.customer.firstName} ${params.customer.lastName}`.trim()
   const productsPayload = buildProductPayload(params.insuredItems, userName)
-  const customerPayload = buildCustomerPayload(
-    params.customer,
-    requiresContractIdentityOption({
-      contractType: params.contractType,
-      startDate: params.startDate,
-      endDate: params.endDate,
-    }),
-  )
+  const customerPayload = buildCustomerPayload(params.customer, params.contractType)
 
   return {
     uid: params.renterUid,
@@ -499,7 +589,7 @@ async function assertTulipContractTypeEnabled(params: {
   renterUid: string
   contractType: TulipContractType
   fallbackKey: string
-}): Promise<void> {
+}): Promise<Awaited<ReturnType<typeof tulipGetRenter>>> {
   let renter: Awaited<ReturnType<typeof tulipGetRenter>> = null
 
   try {
@@ -519,6 +609,8 @@ async function assertTulipContractTypeEnabled(params: {
   if (!contractEnabled) {
     throw new Error('errors.tulipContractTypeDisabled')
   }
+
+  return renter
 }
 
 function getLegacyTulipInsuranceAmount(
@@ -599,6 +691,7 @@ export async function previewTulipQuoteForCheckout(params: {
     return {
       shouldApply: false as const,
       amount: 0,
+      inclusionEnabled: false,
       insuredProductCount: coverage.insuredProductCount,
       uninsuredProductCount: coverage.uninsuredProductCount,
       insuredProductIds: coverage.insuredProductIds,
@@ -611,6 +704,7 @@ export async function previewTulipQuoteForCheckout(params: {
     return {
       shouldApply: false as const,
       amount: 0,
+      inclusionEnabled: false,
       insuredProductCount: coverage.insuredProductCount,
       uninsuredProductCount: coverage.uninsuredProductCount,
       insuredProductIds: coverage.insuredProductIds,
@@ -622,20 +716,34 @@ export async function previewTulipQuoteForCheckout(params: {
     throw new Error('errors.tulipNotConfigured')
   }
 
-  await assertTulipContractTypeEnabled({
+  const resolvedContractType = resolveTulipContractTypeFromDates(
+    params.startDate,
+    params.endDate,
+  )
+
+  const renter = await assertTulipContractTypeEnabled({
     apiKey,
     renterUid: tulipSettings.renterUid,
-    contractType: tulipSettings.contractType,
+    contractType: resolvedContractType,
     fallbackKey: 'errors.tulipQuoteFailed',
   })
 
+  const tulipMarginByProductId = await getTulipMarginByProductIdMap(
+    apiKey,
+    tulipSettings.renterUid,
+  )
+  const insuredItemsWithMargin = coverage.insuredItems.map((item) => ({
+    ...item,
+    margin: tulipMarginByProductId.get(item.tulipProductId) ?? null,
+  }))
+
   const payload = await buildContractPayload({
     renterUid: tulipSettings.renterUid,
-    contractType: tulipSettings.contractType,
+    contractType: resolvedContractType,
     startDate: params.startDate,
     endDate: params.endDate,
     customer: params.customer,
-    insuredItems: coverage.insuredItems,
+    insuredItems: insuredItemsWithMargin,
   })
 
   let contract: Awaited<ReturnType<typeof tulipCreateContract>>
@@ -668,6 +776,7 @@ export async function previewTulipQuoteForCheckout(params: {
   return {
     shouldApply: true as const,
     amount: Number(contract.price || 0),
+    inclusionEnabled: renter?.options?.inclusion === true,
     insuredProductCount: coverage.insuredProductCount,
     uninsuredProductCount: coverage.uninsuredProductCount,
     insuredProductIds: coverage.insuredProductIds,
@@ -725,8 +834,8 @@ export async function createTulipContractForReservation(params: {
     items: reservation.items,
   })
 
-  if (!insuranceSelection.optIn || insuranceSelection.amount <= 0) {
-    console.info('[tulip][contract-create] marked not required: opt-in disabled or zero amount', {
+  if (!insuranceSelection.optIn) {
+    console.info('[tulip][contract-create] marked not required: opt-in disabled', {
       reservationId: reservation.id,
       optIn: insuranceSelection.optIn,
       amount: insuranceSelection.amount,
@@ -769,10 +878,15 @@ export async function createTulipContractForReservation(params: {
     throw new Error('errors.tulipNotConfigured')
   }
 
+  const resolvedContractType = resolveTulipContractTypeFromDates(
+    reservation.startDate,
+    reservation.endDate,
+  )
+
   await assertTulipContractTypeEnabled({
     apiKey,
     renterUid: tulipSettings.renterUid,
-    contractType: tulipSettings.contractType,
+    contractType: resolvedContractType,
     fallbackKey: 'errors.tulipContractCreationFailed',
   })
 
@@ -783,7 +897,12 @@ export async function createTulipContractForReservation(params: {
       quantity: item.quantity,
     }))
 
-  const coverage = await resolveTulipCoverage(insuranceCandidateItems)
+  const coverage = await resolveTulipCoverage(insuranceCandidateItems, {
+    tulipMarginByProductId: await getTulipMarginByProductIdMap(
+      apiKey,
+      tulipSettings.renterUid,
+    ),
+  })
 
   console.info('[tulip][contract-create] coverage resolved', {
     reservationId: reservation.id,
@@ -811,7 +930,7 @@ export async function createTulipContractForReservation(params: {
 
   const payload = await buildContractPayload({
     renterUid: tulipSettings.renterUid,
-    contractType: tulipSettings.contractType,
+    contractType: resolvedContractType,
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     customer: {

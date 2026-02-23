@@ -888,6 +888,8 @@
             "noBrandResults": "No brand suggestions",
             "noModelResults": "No model suggestions",
             "invalidPurchasePrice": "Enter a valid purchase price.",
+            "invalidMargin": "Enter a valid margin.",
+            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "fields": {
               "productTitle": "Product name (optional)",
@@ -896,7 +898,8 @@
               "brand": "Brand",
               "model": "Model",
               "purchasedDate": "Purchase date",
-              "purchasePriceHt": "Purchase price (excl. tax)"
+              "purchasePriceHt": "Purchase price (excl. tax)",
+              "margin": "Margin"
             }
           }
         }
@@ -1925,8 +1928,6 @@
             "renterPlaceholder": "Enter and validate the store UUID first",
             "renterNone": "No renter selected",
             "renterDisabled": "disabled",
-            "contractTypeLabel": "Contract type",
-            "contractTypeHelp": "LCD = short term, LMD = medium term, LLD = long term.",
             "saveButton": "Save configuration",
             "savingButton": "Saving..."
           },
@@ -1955,6 +1956,8 @@
             "noBrandResults": "No brand suggestions",
             "noModelResults": "No model suggestions",
             "invalidPurchasePrice": "Enter a valid purchase price.",
+            "invalidMargin": "Enter a valid margin.",
+            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "createButton": "Create in Tulip",
             "creatingButton": "Creating...",
@@ -1990,7 +1993,8 @@
               "brand": "Brand",
               "model": "Model",
               "purchasedDate": "Purchase date",
-              "purchasePriceHt": "Purchase price (excl. tax)"
+              "purchasePriceHt": "Purchase price (excl. tax)",
+              "margin": "Margin"
             }
           }
         }
@@ -4561,7 +4565,7 @@
     "tulipQuoteFailed": "Unable to calculate breakage/theft coverage for this reservation.",
     "tulipContractPastDate": "Tulip refused contract creation: contract dates cannot be in the past.",
     "tulipContractActionForbidden": "Tulip refused this action for the current account configuration.",
-    "tulipContractTypeDisabled": "The configured Tulip contract type is not enabled for this store."
+    "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
