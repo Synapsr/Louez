@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { db, productsTulip, reservations } from '@louez/db'
 
-import { TulipApiError, tulipCreateContract } from './client'
+import { TulipApiError, tulipCreateContract, tulipGetRenter } from './client'
 import { getTulipApiKey, getTulipSettings, shouldApplyTulipInsurance } from './settings'
 
 type TulipCustomerInput = {
@@ -21,6 +21,8 @@ type TulipItemInput = {
   productId: string
   quantity: number
 }
+
+type TulipContractType = 'LCD' | 'LMD' | 'LLD'
 
 type ResolvedTulipItemInput = {
   productId: string
@@ -60,7 +62,7 @@ function getTulipErrorCode(payload: unknown): number | null {
 }
 
 function requiresContractIdentityOption(params: {
-  contractType: 'LCD' | 'LMD' | 'LLD'
+  contractType: TulipContractType
   startDate: Date
   endDate: Date
 }): boolean {
@@ -492,6 +494,33 @@ function toTulipContractError(error: unknown, fallbackKey: string): Error {
   return new Error(fallbackKey)
 }
 
+async function assertTulipContractTypeEnabled(params: {
+  apiKey: string
+  renterUid: string
+  contractType: TulipContractType
+  fallbackKey: string
+}): Promise<void> {
+  let renter: Awaited<ReturnType<typeof tulipGetRenter>> = null
+
+  try {
+    renter = await tulipGetRenter(params.apiKey, params.renterUid)
+  } catch (error) {
+    if (error instanceof TulipApiError && error.status === 404) {
+      throw new Error('errors.tulipRenterNotFound')
+    }
+    throw toTulipContractError(error, params.fallbackKey)
+  }
+
+  if (!renter?.uid) {
+    throw new Error('errors.tulipRenterNotFound')
+  }
+
+  const contractEnabled = renter.options?.[params.contractType] === true
+  if (!contractEnabled) {
+    throw new Error('errors.tulipContractTypeDisabled')
+  }
+}
+
 function getLegacyTulipInsuranceAmount(
   items: Array<{
     isCustomItem: boolean
@@ -592,6 +621,13 @@ export async function previewTulipQuoteForCheckout(params: {
   if (!apiKey || !tulipSettings.renterUid) {
     throw new Error('errors.tulipNotConfigured')
   }
+
+  await assertTulipContractTypeEnabled({
+    apiKey,
+    renterUid: tulipSettings.renterUid,
+    contractType: tulipSettings.contractType,
+    fallbackKey: 'errors.tulipQuoteFailed',
+  })
 
   const payload = await buildContractPayload({
     renterUid: tulipSettings.renterUid,
@@ -732,6 +768,13 @@ export async function createTulipContractForReservation(params: {
   if (!apiKey || !tulipSettings.renterUid) {
     throw new Error('errors.tulipNotConfigured')
   }
+
+  await assertTulipContractTypeEnabled({
+    apiKey,
+    renterUid: tulipSettings.renterUid,
+    contractType: tulipSettings.contractType,
+    fallbackKey: 'errors.tulipContractCreationFailed',
+  })
 
   const insuranceCandidateItems = reservation.items
     .filter((item) => item.productId && !item.isCustomItem)

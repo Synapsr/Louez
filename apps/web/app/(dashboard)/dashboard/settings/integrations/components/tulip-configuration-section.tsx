@@ -27,14 +27,11 @@ interface TulipConfigurationSectionProps {
   settings: {
     publicMode: 'required' | 'optional' | 'no_public';
     includeInFinalPrice: boolean;
-    renterUid: string | null;
-    contractType: 'LCD' | 'LMD' | 'LLD';
   };
   isPending: boolean;
   onSave: (input: {
     publicMode: 'required' | 'optional' | 'no_public';
     includeInFinalPrice: boolean;
-    contractType: 'LCD' | 'LMD' | 'LLD';
   }) => Promise<void>;
 }
 
@@ -52,12 +49,10 @@ export function TulipConfigurationSection({
   const [includeInFinalPrice, setIncludeInFinalPrice] = useState(
     settings.includeInFinalPrice,
   );
-  const [contractType, setContractType] = useState(settings.contractType);
 
   useEffect(() => {
     setPublicMode(settings.publicMode);
     setIncludeInFinalPrice(settings.includeInFinalPrice);
-    setContractType(settings.contractType);
   }, [settings]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -66,7 +61,6 @@ export function TulipConfigurationSection({
     await onSave({
       publicMode,
       includeInFinalPrice,
-      contractType,
     });
   };
 
@@ -128,33 +122,6 @@ export function TulipConfigurationSection({
               onCheckedChange={setIncludeInFinalPrice}
               disabled={disabled || isPending}
             />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="assurance-contract-type">
-              {t('contractTypeLabel')}
-            </Label>
-            <Select
-              value={contractType}
-              onValueChange={(value) => {
-                if (value === 'LCD' || value === 'LMD' || value === 'LLD') {
-                  setContractType(value);
-                }
-              }}
-              disabled={disabled || isPending}
-            >
-              <SelectTrigger id="assurance-contract-type">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="LCD">LCD</SelectItem>
-                <SelectItem value="LMD">LMD</SelectItem>
-                <SelectItem value="LLD">LLD</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-muted-foreground text-sm">
-              {t('contractTypeHelp')}
-            </p>
           </div>
 
           <div className="flex justify-end">

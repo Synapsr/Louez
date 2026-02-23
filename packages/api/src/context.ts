@@ -62,55 +62,8 @@ export type CustomerData = {
   phone: string | null;
 };
 
-type TulipProductType =
-  | 'bike'
-  | 'wintersports'
-  | 'watersports'
-  | 'event'
-  | 'high-tech'
-  | 'small-tools'
-
-type TulipProductSubtype =
-  | 'standard'
-  | 'electric'
-  | 'cargo'
-  | 'remorque'
-  | 'furniture'
-  | 'tent'
-  | 'decorations'
-  | 'tableware'
-  | 'entertainment'
-  | 'action-cam'
-  | 'drone'
-  | 'camera'
-  | 'video-camera'
-  | 'stabilizer'
-  | 'phone'
-  | 'computer'
-  | 'tablet'
-  | 'small-appliance'
-  | 'large-appliance'
-  | 'construction-equipment'
-  | 'diy-tools'
-  | 'electric-diy-tools'
-  | 'gardening-tools'
-  | 'electric-gardening-tools'
-  | 'kitesurf'
-  | 'foil'
-  | 'windsurf'
-  | 'sailboat'
-  | 'kayak'
-  | 'canoe'
-  | 'water-ski'
-  | 'wakeboard'
-  | 'mono-ski'
-  | 'buoy'
-  | 'paddle'
-  | 'surf'
-  | 'pedalo'
-  | 'ski'
-  | 'snowboard'
-  | 'snowshoe'
+type TulipProductType = string
+type TulipProductSubtype = string
 
 /**
  * Base context provided to all procedures
@@ -264,7 +217,7 @@ export interface BaseContext {
     getTulipIntegrationState?: () => Promise<
       | {
           connected: boolean
-          apiKeyLast4: string | null
+          enabled: boolean
           connectedAt: string | null
           connectionIssue: string | null
           calendlyUrl: string
@@ -275,9 +228,18 @@ export interface BaseContext {
             contractType: 'LCD' | 'LMD' | 'LLD'
           }
           renters: Array<{ uid: string; enabled: boolean }>
+          tulipCatalog: Array<{
+            type: string
+            label: string
+            subtypes: Array<{
+              type: string
+              label: string
+            }>
+          }>
           tulipProducts: Array<{
             id: string
             title: string
+            louezManaged: boolean
             productType: string | null
             productSubtype: string | null
             purchasedDate: string | null
@@ -297,7 +259,6 @@ export interface BaseContext {
     getTulipProductState?: (input: { productId: string }) => Promise<
       | {
           connected: boolean
-          apiKeyLast4: string | null
           connectedAt: string | null
           connectionIssue: string | null
           calendlyUrl: string
@@ -306,9 +267,18 @@ export interface BaseContext {
             includeInFinalPrice: boolean
             contractType: 'LCD' | 'LMD' | 'LLD'
           }
+          tulipCatalog: Array<{
+            type: string
+            label: string
+            subtypes: Array<{
+              type: string
+              label: string
+            }>
+          }>
           tulipProducts: Array<{
             id: string
             title: string
+            louezManaged: boolean
             productType: string | null
             productSubtype: string | null
             purchasedDate: string | null
@@ -325,7 +295,7 @@ export interface BaseContext {
         }
       | { error: string }
     >
-    connectTulipApiKey?: (input: { apiKey: string }) => Promise<{ success?: boolean; error?: string }>
+    connectTulipApiKey?: (input: { renterUid: string }) => Promise<{ success?: boolean; error?: string }>
     updateTulipConfiguration?: (input: {
       publicMode: 'required' | 'optional' | 'no_public'
       includeInFinalPrice: boolean

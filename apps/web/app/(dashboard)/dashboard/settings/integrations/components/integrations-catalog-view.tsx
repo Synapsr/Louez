@@ -365,6 +365,7 @@ export function IntegrationsCatalogView({
                     'dashboard.settings.integrationsHub.statusLabels.connected',
                     'Connected',
                   )}
+                  showConnectedState={item.id !== 'tulip'}
                   statusLabel={resolveMessage(
                     `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
                     item.status,
@@ -436,6 +437,7 @@ export function IntegrationsCatalogView({
                       'dashboard.settings.integrationsHub.statusLabels.connected',
                       'Connected',
                     )}
+                    showConnectedState={item.id !== 'tulip'}
                     statusLabel={resolveMessage(
                       `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
                       item.status,

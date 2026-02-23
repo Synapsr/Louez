@@ -77,6 +77,7 @@ export type TulipProduct = {
   uid?: string;
   product_id?: string;
   title?: string;
+  description?: string;
   product_type?: string;
   purchased_date?: string;
   data?: {
@@ -100,6 +101,20 @@ export type TulipRenterDetails = {
     LCD?: boolean;
     LMD?: boolean;
     LLD?: boolean;
+    products?: Array<{
+      product_type?: string;
+      translations?: {
+        en?: string;
+        fr?: string;
+      };
+      product_subtypes?: Array<{
+        type?: string;
+        translations?: {
+          en?: string;
+          fr?: string;
+        };
+      }>;
+    }>;
   };
 };
 

@@ -5,14 +5,10 @@ import type {
   TulipPublicMode,
 } from '@louez/types'
 
-import { isIntegrationEnabled } from '@/lib/integrations/registry/state'
-
-import { decryptTulipApiKey } from './crypto'
+import { env } from '@/env'
 
 export interface TulipResolvedSettings {
   enabled: boolean
-  apiKeyEncrypted: string | null
-  apiKeyLast4: string | null
   connectedAt: string | null
   publicMode: TulipPublicMode
   includeInFinalPrice: boolean
@@ -20,7 +16,7 @@ export interface TulipResolvedSettings {
   contractType: TulipContractType
 }
 
-export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'apiKeyEncrypted' | 'apiKeyLast4' | 'connectedAt' | 'renterUid'> = {
+export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'connectedAt' | 'renterUid'> = {
   publicMode: 'required',
   includeInFinalPrice: true,
   contractType: 'LCD',
@@ -28,14 +24,13 @@ export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'ap
 
 export function getTulipSettings(settings: StoreSettings | null | undefined): TulipResolvedSettings {
   const raw = settings?.integrationData?.tulip || {}
-  const isConnected = Boolean(raw.apiKeyEncrypted && raw.renterUid)
-  const enabled = isIntegrationEnabled(settings, 'tulip', isConnected)
+  const apiKey = getTulipApiKey(settings)
+  const isConnected = Boolean(apiKey && raw.renterUid)
+  const enabled = isConnected
   const storedPublicMode = raw.publicMode ?? DEFAULT_TULIP_SETTINGS.publicMode
 
   return {
     enabled,
-    apiKeyEncrypted: raw.apiKeyEncrypted ?? null,
-    apiKeyLast4: raw.apiKeyLast4 ?? null,
     connectedAt: raw.connectedAt ?? null,
     publicMode: enabled ? storedPublicMode : 'no_public',
     includeInFinalPrice: raw.includeInFinalPrice ?? DEFAULT_TULIP_SETTINGS.includeInFinalPrice,
@@ -66,20 +61,20 @@ export function mergeTulipSettings(
   }
 }
 
-export function getTulipApiKey(settings: StoreSettings | null | undefined): string | null {
-  const encrypted = settings?.integrationData?.tulip?.apiKeyEncrypted
-  if (!encrypted) {
+export function getTulipApiKey(settings?: StoreSettings | null | undefined): string | null {
+  void settings
+  const apiKey = env.TULIP_API_KEY?.trim()
+  if (!apiKey) {
     return null
   }
 
-  return decryptTulipApiKey(encrypted)
+  return apiKey
 }
 
 export function isTulipConnected(settings: StoreSettings | null | undefined): boolean {
   const tulipSettings = getTulipSettings(settings)
   return Boolean(
-    tulipSettings.enabled &&
-      tulipSettings.apiKeyEncrypted &&
+    getTulipApiKey(settings) &&
       tulipSettings.renterUid,
   )
 }

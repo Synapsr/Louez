@@ -24,59 +24,86 @@ import {
   Label,
 } from '@louez/ui'
 
-const TULIP_PRODUCT_TYPES = [
-  'bike',
-  'wintersports',
-  'watersports',
-  'event',
-  'high-tech',
-  'small-tools',
-] as const
+type TulipCatalogItem = {
+  type: string
+  label: string
+  subtypes: Array<{
+    type: string
+    label: string
+  }>
+}
 
-type TulipProductType = (typeof TULIP_PRODUCT_TYPES)[number]
-
-const TULIP_SUBTYPES_BY_TYPE = {
-  bike: ['standard', 'electric', 'cargo', 'remorque'],
-  wintersports: ['ski', 'snowboard', 'snowshoe'],
-  watersports: [
-    'kitesurf',
-    'foil',
-    'windsurf',
-    'sailboat',
-    'kayak',
-    'canoe',
-    'water-ski',
-    'wakeboard',
-    'mono-ski',
-    'buoy',
-    'paddle',
-    'surf',
-    'pedalo',
-  ],
-  event: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'],
-  'high-tech': [
-    'action-cam',
-    'drone',
-    'camera',
-    'video-camera',
-    'stabilizer',
-    'phone',
-    'computer',
-    'tablet',
-  ],
-  'small-tools': [
-    'small-appliance',
-    'large-appliance',
-    'construction-equipment',
-    'diy-tools',
-    'electric-diy-tools',
-    'gardening-tools',
-    'electric-gardening-tools',
-  ],
-} as const satisfies Record<TulipProductType, readonly string[]>
-
-type TulipProductSubtype =
-  (typeof TULIP_SUBTYPES_BY_TYPE)[TulipProductType][number]
+const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
+  {
+    type: 'bike',
+    label: 'bike',
+    subtypes: ['standard', 'electric', 'cargo', 'remorque'].map((value) => ({
+      type: value,
+      label: value,
+    })),
+  },
+  {
+    type: 'wintersports',
+    label: 'wintersports',
+    subtypes: ['ski', 'snowboard', 'snowshoe'].map((value) => ({
+      type: value,
+      label: value,
+    })),
+  },
+  {
+    type: 'watersports',
+    label: 'watersports',
+    subtypes: [
+      'kitesurf',
+      'foil',
+      'windsurf',
+      'sailboat',
+      'kayak',
+      'canoe',
+      'water-ski',
+      'wakeboard',
+      'mono-ski',
+      'buoy',
+      'paddle',
+      'surf',
+      'pedalo',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'event',
+    label: 'event',
+    subtypes: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'].map(
+      (value) => ({ type: value, label: value }),
+    ),
+  },
+  {
+    type: 'high-tech',
+    label: 'high-tech',
+    subtypes: [
+      'action-cam',
+      'drone',
+      'camera',
+      'video-camera',
+      'stabilizer',
+      'phone',
+      'computer',
+      'tablet',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'small-tools',
+    label: 'small-tools',
+    subtypes: [
+      'small-appliance',
+      'large-appliance',
+      'construction-equipment',
+      'diy-tools',
+      'electric-diy-tools',
+      'gardening-tools',
+      'electric-gardening-tools',
+    ].map((value) => ({ type: value, label: value })),
+  },
+]
 
 type ComboboxOption = {
   label: string
@@ -89,37 +116,48 @@ type DialogDraft = {
   brand: string
   model: string
   valueExcl: string
-  productType: TulipProductType
-  productSubtype: TulipProductSubtype
+  productType: string
+  productSubtype: string
   purchasedDate: string
 }
 
-function getSubtypeOptionsForType(
-  productType: TulipProductType,
-): readonly TulipProductSubtype[] {
-  return TULIP_SUBTYPES_BY_TYPE[productType]
+function normalizeCatalogValue(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  return normalized || null
 }
 
-function normalizeTulipProductType(
+function resolveProductType(
+  catalog: TulipCatalogItem[],
   value: string | null | undefined,
-): TulipProductType {
-  if (value && (TULIP_PRODUCT_TYPES as readonly string[]).includes(value)) {
-    return value as TulipProductType
-  }
-
-  return 'event'
+): string {
+  return (
+    normalizeCatalogValue(value) ||
+    catalog[0]?.type ||
+    TULIP_FALLBACK_CATALOG[0]?.type ||
+    'event'
+  )
 }
 
-function normalizeTulipProductSubtype(
+function resolveProductSubtype(
+  catalog: TulipCatalogItem[],
+  productType: string,
   value: string | null | undefined,
-  productType: TulipProductType,
-): TulipProductSubtype {
-  const allowedSubtypes = getSubtypeOptionsForType(productType)
-  if (value && (allowedSubtypes as readonly string[]).includes(value)) {
-    return value as TulipProductSubtype
+): string {
+  const normalized = normalizeCatalogValue(value)
+  const subtypeList =
+    catalog.find((item) => item.type === productType)?.subtypes ?? []
+
+  if (normalized) {
+    if (subtypeList.length === 0) {
+      return normalized
+    }
+    const match = subtypeList.find((item) => item.type === normalized)
+    if (match) {
+      return match.type
+    }
   }
 
-  return allowedSubtypes[0] ?? 'standard'
+  return subtypeList[0]?.type || normalized || 'standard'
 }
 
 function toUniqueSortedOptions(
@@ -142,8 +180,8 @@ export type ProductAssuranceActionInput = {
   brand: string | null
   model: string | null
   valueExcl: number | null
-  productType: TulipProductType | null
-  productSubtype: TulipProductSubtype | null
+  productType: string | null
+  productSubtype: string | null
   purchasedDate: string | null
 }
 
@@ -157,9 +195,11 @@ interface ProductAssuranceDialogProps {
     price: number
     tulipProductId: string | null
   }
+  tulipCatalog: TulipCatalogItem[]
   tulipProducts: Array<{
     id: string
     title: string
+    louezManaged: boolean
     valueExcl: number | null
     brand: string | null
     model: string | null
@@ -178,6 +218,7 @@ export function ProductAssuranceDialog({
   onOpenChange,
   disabled,
   product,
+  tulipCatalog,
   tulipProducts,
   isCreatePending,
   isPushPending,
@@ -195,6 +236,10 @@ export function ProductAssuranceDialog({
     () => new Map(tulipProducts.map((item) => [item.id, item] as const)),
     [tulipProducts],
   )
+  const resolvedTulipCatalog = useMemo(
+    () => (tulipCatalog.length > 0 ? tulipCatalog : TULIP_FALLBACK_CATALOG),
+    [tulipCatalog],
+  )
 
   const hasValidMapping =
     !!product.tulipProductId && tulipProductById.has(product.tulipProductId)
@@ -205,16 +250,18 @@ export function ProductAssuranceDialog({
     const mappedTulipProduct = product.tulipProductId
       ? (tulipProductById.get(product.tulipProductId) ?? null)
       : null
-    const resolvedProductType = normalizeTulipProductType(
+    const resolvedProductType = resolveProductType(
+      resolvedTulipCatalog,
       mappedTulipProduct?.productType,
     )
 
     setDraft({
       title: '',
       productType: resolvedProductType,
-      productSubtype: normalizeTulipProductSubtype(
-        mappedTulipProduct?.productSubtype,
+      productSubtype: resolveProductSubtype(
+        resolvedTulipCatalog,
         resolvedProductType,
+        mappedTulipProduct?.productSubtype,
       ),
       brand: mappedTulipProduct?.brand ?? '',
       model: mappedTulipProduct?.model ?? '',
@@ -228,25 +275,51 @@ export function ProductAssuranceDialog({
     })
     setBrandInputValue(mappedTulipProduct?.brand ?? '')
     setModelInputValue(mappedTulipProduct?.model ?? '')
-  }, [open, product.price, product.tulipProductId, tulipProductById])
+  }, [
+    open,
+    product.price,
+    product.tulipProductId,
+    resolvedTulipCatalog,
+    tulipProductById,
+  ])
 
   const mappedTulipProduct =
     product.tulipProductId && hasValidMapping
       ? (tulipProductById.get(product.tulipProductId) ?? null)
       : null
 
+  const currentDraftProductType = draft?.productType ?? resolvedTulipCatalog[0]?.type ?? 'event'
   const subtypeItems = useMemo(
-    () =>
-      getSubtypeOptionsForType(draft?.productType ?? 'event').map((value) => ({
-        label: value,
-        value,
-      })),
-    [draft?.productType],
+    () => {
+      const typeFromCatalog =
+        resolvedTulipCatalog.find((item) => item.type === currentDraftProductType)
+          ?.subtypes ?? []
+      const items = typeFromCatalog.map((item) => ({
+        label: item.label || item.type,
+        value: item.type,
+      }))
+      const currentSubtype = normalizeCatalogValue(draft?.productSubtype)
+      if (currentSubtype && !items.some((item) => item.value === currentSubtype)) {
+        items.unshift({ label: currentSubtype, value: currentSubtype })
+      }
+      return items
+    },
+    [currentDraftProductType, draft?.productSubtype, resolvedTulipCatalog],
   )
 
   const categoryItems = useMemo(
-    () => TULIP_PRODUCT_TYPES.map((value) => ({ label: value, value })),
-    [],
+    () => {
+      const items = resolvedTulipCatalog.map((item) => ({
+        label: item.label || item.type,
+        value: item.type,
+      }))
+      const currentType = normalizeCatalogValue(draft?.productType)
+      if (currentType && !items.some((item) => item.value === currentType)) {
+        items.unshift({ label: currentType, value: currentType })
+      }
+      return items
+    },
+    [draft?.productType, resolvedTulipCatalog],
   )
 
   const knownBrandItems = useMemo(
@@ -314,10 +387,14 @@ export function ProductAssuranceDialog({
   const hasInvalidPurchasedDate = draft?.purchasedDate
     ? Number.isNaN(new Date(`${draft.purchasedDate}T00:00:00.000Z`).getTime())
     : false
+  const hasMissingProductType = !normalizeCatalogValue(draft?.productType)
+  const hasMissingSubtype = !normalizeCatalogValue(draft?.productSubtype)
 
   const disableSaveButton =
     disabled ||
     !draft ||
+    hasMissingProductType ||
+    hasMissingSubtype ||
     hasInvalidValueExcl ||
     hasInvalidPurchasedDate ||
     isCreatePending ||
@@ -332,8 +409,8 @@ export function ProductAssuranceDialog({
     const input: ProductAssuranceActionInput = {
       productId: product.id,
       title: draft.title.trim() || null,
-      productType: draft.productType,
-      productSubtype: draft.productSubtype,
+      productType: normalizeCatalogValue(draft.productType),
+      productSubtype: normalizeCatalogValue(draft.productSubtype),
       brand: draft.brand.trim() || null,
       model: draft.model.trim() || null,
       purchasedDate: draft.purchasedDate
@@ -369,7 +446,10 @@ export function ProductAssuranceDialog({
                 </Badge>
                 {hasValidMapping && mappedTulipProduct && (
                   <span className="text-muted-foreground text-sm">
-                    &rarr; {mappedTulipProduct.title}
+                    &rarr;{' '}
+                    {mappedTulipProduct.louezManaged
+                      ? `${mappedTulipProduct.title} (Louez)`
+                      : mappedTulipProduct.title}
                   </span>
                 )}
               </div>
@@ -379,7 +459,11 @@ export function ProductAssuranceDialog({
                 <Input
                   value={draft.title}
                   placeholder={t('productTitlePlaceholder', {
-                    defaultTitle: mappedTulipProduct?.title || product.name,
+                    defaultTitle: mappedTulipProduct
+                      ? mappedTulipProduct.louezManaged
+                        ? `${mappedTulipProduct.title} (Louez)`
+                        : mappedTulipProduct.title
+                      : product.name,
                   })}
                   onChange={(event) =>
                     setDraft((prev) =>
@@ -404,10 +488,11 @@ export function ProductAssuranceDialog({
                       prev
                         ? {
                             ...prev,
-                            productType: item.value as TulipProductType,
-                            productSubtype: normalizeTulipProductSubtype(
+                            productType: item.value,
+                            productSubtype: resolveProductSubtype(
+                              resolvedTulipCatalog,
+                              item.value,
                               prev.productSubtype,
-                              item.value as TulipProductType,
                             ),
                           }
                         : prev,
@@ -447,7 +532,7 @@ export function ProductAssuranceDialog({
                       prev
                         ? {
                             ...prev,
-                            productSubtype: item.value as TulipProductSubtype,
+                            productSubtype: item.value,
                           }
                         : prev,
                     )

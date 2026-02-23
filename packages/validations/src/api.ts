@@ -286,7 +286,7 @@ export const dashboardIntegrationsSetEnabledInputSchema = z.object({
 })
 
 export const dashboardIntegrationsConnectTulipInputSchema = z.object({
-  apiKey: z.string().trim().min(8).max(500),
+  renterUid: z.string().trim().min(1).max(120),
 })
 
 export const dashboardIntegrationsUpdateTulipConfigurationInputSchema = z.object({
@@ -300,57 +300,8 @@ export const dashboardIntegrationsUpsertTulipProductMappingInputSchema = z.objec
   tulipProductId: z.string().trim().min(1).max(50).nullable(),
 })
 
-const tulipProductTypeSchema = z.enum([
-  'bike',
-  'wintersports',
-  'watersports',
-  'event',
-  'high-tech',
-  'small-tools',
-])
-
-const tulipProductSubtypeSchema = z.enum([
-  'standard',
-  'electric',
-  'cargo',
-  'remorque',
-  'furniture',
-  'tent',
-  'decorations',
-  'tableware',
-  'entertainment',
-  'action-cam',
-  'drone',
-  'camera',
-  'video-camera',
-  'stabilizer',
-  'phone',
-  'computer',
-  'tablet',
-  'small-appliance',
-  'large-appliance',
-  'construction-equipment',
-  'diy-tools',
-  'electric-diy-tools',
-  'gardening-tools',
-  'electric-gardening-tools',
-  'kitesurf',
-  'foil',
-  'windsurf',
-  'sailboat',
-  'kayak',
-  'canoe',
-  'water-ski',
-  'wakeboard',
-  'mono-ski',
-  'buoy',
-  'paddle',
-  'surf',
-  'pedalo',
-  'ski',
-  'snowboard',
-  'snowshoe',
-])
+const tulipProductTypeSchema = z.string().trim().min(1).max(80)
+const tulipProductSubtypeSchema = z.string().trim().min(1).max(80)
 
 const tulipPurchasedDateSchema = z.union([
   z.string().datetime({ offset: true }),

@@ -15,6 +15,7 @@ type IntegrationCardProps = {
   disabledLabel: string
   connectedLabel: string
   statusLabel: string
+  showConnectedState?: boolean
 }
 
 export function IntegrationCard({
@@ -28,6 +29,7 @@ export function IntegrationCard({
   disabledLabel,
   connectedLabel,
   statusLabel,
+  showConnectedState = true,
 }: IntegrationCardProps) {
   return (
     <Link href={href}>
@@ -52,7 +54,9 @@ export function IntegrationCard({
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>{description}</p>
-          {connected && <p className="font-medium text-foreground">{connectedLabel}</p>}
+          {showConnectedState && connected && (
+            <p className="font-medium text-foreground">{connectedLabel}</p>
+          )}
         </CardContent>
       </Card>
     </Link>

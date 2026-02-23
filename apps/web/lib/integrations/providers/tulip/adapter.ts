@@ -1,7 +1,6 @@
 import type { StoreSettings } from '@louez/types'
 
 import { getTulipSettings } from '@/lib/integrations/tulip/settings'
-import { setIntegrationEnabledState } from '@/lib/integrations/registry/state'
 import type {
   IntegrationAdapter,
   IntegrationRuntimeStatus,
@@ -13,9 +12,7 @@ function getTulipRuntimeStatus(
   settings: StoreSettings | null | undefined,
 ): IntegrationRuntimeStatus {
   const tulipSettings = getTulipSettings(settings)
-  const legacyConnected = Boolean(
-    tulipSettings.apiKeyEncrypted && tulipSettings.renterUid,
-  )
+  const legacyConnected = tulipSettings.enabled
 
   return {
     enabled: tulipSettings.enabled,
@@ -27,7 +24,9 @@ function getTulipRuntimeStatus(
 
 export const tulipIntegrationAdapter: IntegrationAdapter = {
   getStatus: getTulipRuntimeStatus,
-  setEnabled: (settings, enabled) =>
-    setIntegrationEnabledState(settings, 'tulip', enabled),
+  setEnabled: (settings) => settings || {
+    reservationMode: 'payment',
+    advanceNoticeMinutes: 1440,
+  },
   getConfigurationPanel: () => TulipConfigurationPanel,
 }

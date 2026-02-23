@@ -56,7 +56,7 @@ export function ProductAssuranceSection({
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [apiKey, setApiKey] = useState('');
+  const [renterUidInput, setRenterUidInput] = useState('');
 
   const productStateQuery = useQuery(
     orpc.dashboard.integrations.getTulipProductState.queryOptions({
@@ -81,7 +81,7 @@ export function ProductAssuranceSection({
     orpc.dashboard.integrations.connectTulip.mutationOptions({
       onSuccess: async () => {
         toastManager.add({ title: t('setupSuccess'), type: 'success' });
-        setApiKey('');
+        setRenterUidInput('');
         await invalidateState();
       },
       onError: (error) => {
@@ -145,11 +145,11 @@ export function ProductAssuranceSection({
   const handleConnect = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const sanitized = apiKey.trim();
+    const sanitized = renterUidInput.trim();
     if (!sanitized) return;
 
     try {
-      await connectMutation.mutateAsync({ apiKey: sanitized });
+      await connectMutation.mutateAsync({ renterUid: sanitized });
     } catch {
       // Error handling is centralized in the mutation onError callback.
     }
@@ -214,7 +214,7 @@ export function ProductAssuranceSection({
   const state = productStateQuery.data;
 
   const tulipItems = state.tulipProducts.map((item) => ({
-    label: item.title,
+    label: item.louezManaged ? `${item.title} (Louez)` : item.title,
     value: item.id,
   }));
   const tulipProductById = new Map(
@@ -254,15 +254,15 @@ export function ProductAssuranceSection({
           {!state.connected ? (
             <form className="space-y-4" onSubmit={handleConnect}>
               <div className="grid gap-2">
-                <Label htmlFor={`product-tulip-api-key-${productId}`}>
+                <Label htmlFor={`product-tulip-renter-id-${productId}`}>
                   {t('apiKeyLabel')}
                 </Label>
                 <Input
-                  id={`product-tulip-api-key-${productId}`}
-                  type="password"
-                  value={apiKey}
+                  id={`product-tulip-renter-id-${productId}`}
+                  type="text"
+                  value={renterUidInput}
                   placeholder={t('apiKeyPlaceholder')}
-                  onChange={(event) => setApiKey(event.target.value)}
+                  onChange={(event) => setRenterUidInput(event.target.value)}
                   disabled={connectMutation.isPending}
                 />
               </div>
@@ -271,7 +271,8 @@ export function ProductAssuranceSection({
                 <Button
                   type="submit"
                   disabled={
-                    connectMutation.isPending || apiKey.trim().length === 0
+                    connectMutation.isPending ||
+                    renterUidInput.trim().length === 0
                   }
                 >
                   {connectMutation.isPending
@@ -370,6 +371,7 @@ export function ProductAssuranceSection({
           onOpenChange={setDialogOpen}
           disabled={isDialogBusy}
           product={state.product}
+          tulipCatalog={state.tulipCatalog}
           tulipProducts={state.tulipProducts}
           isCreatePending={createProductMutation.isPending}
           isPushPending={pushProductMutation.isPending}

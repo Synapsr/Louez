@@ -92,10 +92,10 @@ export const env = createEnv({
       .optional(),
 
     // ===== Tulip Integrations (Optional) =====
+    TULIP_API_KEY: z.string().optional(),
     TULIP_API_BASE_URL: z
       .url('TULIP_API_BASE_URL must be a valid URL')
       .default('https://api.mytulip.io/v2'),
-    TULIP_ENCRYPTION_KEY: z.string().min(16).optional(),
     TULIP_CALENDLY_URL: z
       .string()
       .url('TULIP_CALENDLY_URL must be a valid URL')
@@ -169,7 +169,7 @@ export const env = createEnv({
     PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS,
     DISCORD_ADMIN_WEBHOOK_URL: process.env.DISCORD_ADMIN_WEBHOOK_URL,
     TULIP_API_BASE_URL: process.env.TULIP_API_BASE_URL,
-    TULIP_ENCRYPTION_KEY: process.env.TULIP_ENCRYPTION_KEY,
+    TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
     CRON_SECRET: process.env.CRON_SECRET,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,

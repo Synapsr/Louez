@@ -190,11 +190,7 @@ function getCheckoutTulipMode(storeSettings: StoreSettings | null): {
   connected: boolean
 } {
   const tulipSettings = getTulipSettings(storeSettings)
-  const connected = Boolean(
-    tulipSettings.enabled &&
-      tulipSettings.apiKeyEncrypted &&
-      tulipSettings.renterUid,
-  )
+  const connected = tulipSettings.enabled
   return {
     mode: connected ? tulipSettings.publicMode : 'no_public',
     connected,

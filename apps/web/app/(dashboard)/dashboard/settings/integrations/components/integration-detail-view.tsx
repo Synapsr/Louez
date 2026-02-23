@@ -101,6 +101,9 @@ export function IntegrationDetailView({
     detailQuery.data && !('error' in detailQuery.data)
       ? (detailQuery.data.integration as unknown as IntegrationDetail)
       : null;
+  const usesConnectionAsEnabledState = integration?.id === 'tulip';
+  const showConfigurationLockedCard =
+    !usesConnectionAsEnabledState && !integration?.enabled;
   const registration = useMemo(
     () => getIntegration(integrationId),
     [integrationId],
@@ -191,17 +194,19 @@ export function IntegrationDetailView({
                       'Disabled',
                     )}
               </Badge>
-              <Badge variant={integration.connected ? 'success' : 'secondary'}>
-                {integration.connected
-                  ? resolveMessage(
-                      'dashboard.settings.integrationsHub.statusLabels.connected',
-                      'Connected',
-                    )
-                  : resolveMessage(
-                      'dashboard.settings.integrationsHub.statusLabels.notConnected',
-                      'Not connected',
-                    )}
-              </Badge>
+              {!usesConnectionAsEnabledState && (
+                <Badge variant={integration.connected ? 'success' : 'secondary'}>
+                  {integration.connected
+                    ? resolveMessage(
+                        'dashboard.settings.integrationsHub.statusLabels.connected',
+                        'Connected',
+                      )
+                    : resolveMessage(
+                        'dashboard.settings.integrationsHub.statusLabels.notConnected',
+                        'Not connected',
+                      )}
+                </Badge>
+              )}
               <Badge variant="outline">
                 {resolveMessage(
                   `dashboard.settings.integrationsHub.lifecycle.${integration.status}`,
@@ -214,10 +219,10 @@ export function IntegrationDetailView({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant={integration.enabled ? 'outline' : 'default'}
+              variant={integration.enabled || usesConnectionAsEnabledState ? 'outline' : 'default'}
               disabled={setEnabledMutation.isPending}
               onClick={() => {
-                if (integration.enabled) {
+                if (integration.enabled || usesConnectionAsEnabledState) {
                   setActiveTab('configuration');
                   return;
                 }
@@ -228,7 +233,7 @@ export function IntegrationDetailView({
                 });
               }}
             >
-              {integration.enabled
+              {integration.enabled || usesConnectionAsEnabledState
                 ? resolveMessage(
                     'dashboard.settings.integrationsHub.openConfigurationAction',
                     'Open configuration',
@@ -342,7 +347,7 @@ export function IntegrationDetailView({
           </TabsContent>
 
           <TabsContent value="configuration" className="space-y-4">
-            {!integration.enabled ? (
+            {showConfigurationLockedCard ? (
               <Card>
                 <CardHeader>
                   <CardTitle>
@@ -414,24 +419,26 @@ export function IntegrationDetailView({
                           )}
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          disabled={setEnabledMutation.isPending}
-                          onClick={() => {
-                            setEnabledMutation.mutate({
-                              integrationId,
-                              enabled: false,
-                            });
-                          }}
-                        >
-                          {resolveMessage(
-                            'dashboard.settings.integrationsHub.disableAction',
-                            'Disable integration',
-                          )}
-                        </Button>
-                      </CardContent>
+                      {!usesConnectionAsEnabledState && (
+                        <CardContent>
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={setEnabledMutation.isPending}
+                            onClick={() => {
+                              setEnabledMutation.mutate({
+                                integrationId,
+                                enabled: false,
+                              });
+                            }}
+                          >
+                            {resolveMessage(
+                              'dashboard.settings.integrationsHub.disableAction',
+                              'Disable integration',
+                            )}
+                          </Button>
+                        </CardContent>
+                      )}
                     </Card>
                   </>
                 )}

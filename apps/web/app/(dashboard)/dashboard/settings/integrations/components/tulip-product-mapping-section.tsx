@@ -43,99 +43,135 @@ import {
 } from '@louez/ui';
 import { cn } from '@louez/utils';
 
+type TulipCatalogItem = {
+  type: string;
+  label: string;
+  subtypes: Array<{
+    type: string;
+    label: string;
+  }>;
+};
+
+const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
+  {
+    type: 'bike',
+    label: 'bike',
+    subtypes: ['standard', 'electric', 'cargo', 'remorque'].map((value) => ({
+      type: value,
+      label: value,
+    })),
+  },
+  {
+    type: 'wintersports',
+    label: 'wintersports',
+    subtypes: ['ski', 'snowboard', 'snowshoe'].map((value) => ({
+      type: value,
+      label: value,
+    })),
+  },
+  {
+    type: 'watersports',
+    label: 'watersports',
+    subtypes: [
+      'kitesurf',
+      'foil',
+      'windsurf',
+      'sailboat',
+      'kayak',
+      'canoe',
+      'water-ski',
+      'wakeboard',
+      'mono-ski',
+      'buoy',
+      'paddle',
+      'surf',
+      'pedalo',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'event',
+    label: 'event',
+    subtypes: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'].map(
+      (value) => ({ type: value, label: value }),
+    ),
+  },
+  {
+    type: 'high-tech',
+    label: 'high-tech',
+    subtypes: [
+      'action-cam',
+      'drone',
+      'camera',
+      'video-camera',
+      'stabilizer',
+      'phone',
+      'computer',
+      'tablet',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'small-tools',
+    label: 'small-tools',
+    subtypes: [
+      'small-appliance',
+      'large-appliance',
+      'construction-equipment',
+      'diy-tools',
+      'electric-diy-tools',
+      'gardening-tools',
+      'electric-gardening-tools',
+    ].map((value) => ({ type: value, label: value })),
+  },
+];
+
 type ProductActionInput = {
   productId: string;
   title: string | null;
   brand: string | null;
   model: string | null;
   valueExcl: number | null;
-  productType: TulipProductType | null;
-  productSubtype: TulipProductSubtype | null;
+  productType: string | null;
+  productSubtype: string | null;
   purchasedDate: string | null;
 };
 
-const TULIP_PRODUCT_TYPES = [
-  'bike',
-  'wintersports',
-  'watersports',
-  'event',
-  'high-tech',
-  'small-tools',
-] as const;
-type TulipProductType = (typeof TULIP_PRODUCT_TYPES)[number];
-
-const TULIP_SUBTYPES_BY_TYPE = {
-  bike: ['standard', 'electric', 'cargo', 'remorque'],
-  wintersports: ['ski', 'snowboard', 'snowshoe'],
-  watersports: [
-    'kitesurf',
-    'foil',
-    'windsurf',
-    'sailboat',
-    'kayak',
-    'canoe',
-    'water-ski',
-    'wakeboard',
-    'mono-ski',
-    'buoy',
-    'paddle',
-    'surf',
-    'pedalo',
-  ],
-  event: ['furniture', 'tent', 'decorations', 'tableware', 'entertainment'],
-  'high-tech': [
-    'action-cam',
-    'drone',
-    'camera',
-    'video-camera',
-    'stabilizer',
-    'phone',
-    'computer',
-    'tablet',
-  ],
-  'small-tools': [
-    'small-appliance',
-    'large-appliance',
-    'construction-equipment',
-    'diy-tools',
-    'electric-diy-tools',
-    'gardening-tools',
-    'electric-gardening-tools',
-  ],
-} as const satisfies Record<TulipProductType, readonly string[]>;
-
-type TulipProductSubtype =
-  (typeof TULIP_SUBTYPES_BY_TYPE)[TulipProductType][number];
-
-function getSubtypeOptionsForType(
-  productType: TulipProductType,
-): readonly TulipProductSubtype[] {
-  return TULIP_SUBTYPES_BY_TYPE[productType];
+function normalizeCatalogValue(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized || null;
 }
 
-function normalizeTulipProductType(
+function resolveProductType(
+  catalog: TulipCatalogItem[],
   value: string | null | undefined,
-): TulipProductType {
-  if (value && (TULIP_PRODUCT_TYPES as readonly string[]).includes(value)) {
-    return value as TulipProductType;
-  }
-
-  return 'event';
+): string {
+  return (
+    normalizeCatalogValue(value) ||
+    catalog[0]?.type ||
+    TULIP_FALLBACK_CATALOG[0]?.type ||
+    'event'
+  );
 }
 
-function normalizeTulipProductSubtype(
+function resolveProductSubtype(
+  catalog: TulipCatalogItem[],
+  productType: string,
   value: string | null | undefined,
-  productType: TulipProductType,
-): TulipProductSubtype {
-  const allowedSubtypes = getSubtypeOptionsForType(productType);
-  if (
-    value &&
-    (allowedSubtypes as readonly string[]).includes(value)
-  ) {
-    return value as TulipProductSubtype;
+): string {
+  const normalized = normalizeCatalogValue(value);
+  const subtypeList =
+    catalog.find((item) => item.type === productType)?.subtypes ?? [];
+
+  if (normalized) {
+    if (subtypeList.length === 0) {
+      return normalized;
+    }
+    const match = subtypeList.find((item) => item.type === normalized);
+    if (match) {
+      return match.type;
+    }
   }
 
-  return allowedSubtypes[0] ?? 'standard';
+  return subtypeList[0]?.type || normalized || 'standard';
 }
 
 interface TulipProductMappingSectionProps {
@@ -146,9 +182,11 @@ interface TulipProductMappingSectionProps {
     price: number;
     tulipProductId: string | null;
   }>;
+  tulipCatalog: TulipCatalogItem[];
   tulipProducts: Array<{
     id: string;
     title: string;
+    louezManaged: boolean;
     valueExcl: number | null;
     brand: string | null;
     model: string | null;
@@ -177,8 +215,8 @@ type SheetDraft = {
   brand: string;
   model: string;
   valueExcl: string;
-  productType: TulipProductType;
-  productSubtype: TulipProductSubtype;
+  productType: string;
+  productSubtype: string;
   purchasedDate: string;
 };
 
@@ -205,6 +243,7 @@ function toUniqueSortedOptions(
 export function TulipProductMappingSection({
   disabled,
   products,
+  tulipCatalog,
   tulipProducts,
   isMappingPending,
   mappingProductId,
@@ -235,8 +274,16 @@ export function TulipProductMappingSection({
   const [brandInputValue, setBrandInputValue] = useState('');
   const [modelInputValue, setModelInputValue] = useState('');
 
+  const resolvedTulipCatalog = useMemo(
+    () => (tulipCatalog.length > 0 ? tulipCatalog : TULIP_FALLBACK_CATALOG),
+    [tulipCatalog],
+  );
   const tulipItems = useMemo(
-    () => tulipProducts.map((tp) => ({ label: tp.title, value: tp.id })),
+    () =>
+      tulipProducts.map((tp) => ({
+        label: tp.louezManaged ? `${tp.title} (Louez)` : tp.title,
+        value: tp.id,
+      })),
     [tulipProducts],
   );
   const tulipProductById = useMemo(
@@ -245,14 +292,39 @@ export function TulipProductMappingSection({
   );
   const hasValidMapping = (tulipProductId: string | null): boolean =>
     Boolean(tulipProductId && tulipProductById.has(tulipProductId));
-  const categoryItems = TULIP_PRODUCT_TYPES.map((v) => ({ label: v, value: v }));
+  const currentSheetProductType =
+    sheetDraft?.productType ?? resolvedTulipCatalog[0]?.type ?? 'event';
+  const categoryItems = useMemo(() => {
+    const items = resolvedTulipCatalog.map((item) => ({
+      label: item.label || item.type,
+      value: item.type,
+    }));
+    const currentType = normalizeCatalogValue(sheetDraft?.productType);
+    if (currentType && !items.some((item) => item.value === currentType)) {
+      items.unshift({ label: currentType, value: currentType });
+    }
+    return items;
+  }, [resolvedTulipCatalog, sheetDraft?.productType]);
   const subtypeItems = useMemo(
-    () =>
-      getSubtypeOptionsForType(sheetDraft?.productType ?? 'event').map((v) => ({
-        label: v,
-        value: v,
-      })),
-    [sheetDraft?.productType],
+    () => {
+      const typeFromCatalog =
+        resolvedTulipCatalog.find((item) => item.type === currentSheetProductType)
+          ?.subtypes ?? [];
+      const items = typeFromCatalog.map((item) => ({
+        label: item.label || item.type,
+        value: item.type,
+      }));
+      const currentSubtype = normalizeCatalogValue(sheetDraft?.productSubtype);
+      if (currentSubtype && !items.some((item) => item.value === currentSubtype)) {
+        items.unshift({ label: currentSubtype, value: currentSubtype });
+      }
+      return items;
+    },
+    [
+      currentSheetProductType,
+      resolvedTulipCatalog,
+      sheetDraft?.productSubtype,
+    ],
   );
   const knownBrandItems = useMemo(
     () => toUniqueSortedOptions(tulipProducts.map((tp) => tp.brand)),
@@ -354,10 +426,14 @@ export function TulipProductMappingSection({
         new Date(`${sheetDraft.purchasedDate}T00:00:00.000Z`).getTime(),
       )
     : false;
+  const hasMissingProductType = !normalizeCatalogValue(sheetDraft?.productType);
+  const hasMissingSubtype = !normalizeCatalogValue(sheetDraft?.productSubtype);
   const disableSaveButton =
     disabled ||
     isRefreshing ||
     !sheetDraft ||
+    hasMissingProductType ||
+    hasMissingSubtype ||
     hasInvalidValueExcl ||
     hasInvalidPurchasedDate ||
     isPushPending ||
@@ -367,13 +443,17 @@ export function TulipProductMappingSection({
     const product = products.find((p) => p.id === productId);
     if (!product) return;
     const tp = tulipProducts.find((t) => t.id === product.tulipProductId);
-    const resolvedProductType = normalizeTulipProductType(tp?.productType);
+    const resolvedProductType = resolveProductType(
+      resolvedTulipCatalog,
+      tp?.productType,
+    );
     setSheetDraft({
       title: '',
       productType: resolvedProductType,
-      productSubtype: normalizeTulipProductSubtype(
-        tp?.productSubtype,
+      productSubtype: resolveProductSubtype(
+        resolvedTulipCatalog,
         resolvedProductType,
+        tp?.productSubtype,
       ),
       brand: tp?.brand ?? '',
       model: tp?.model ?? '',
@@ -396,8 +476,8 @@ export function TulipProductMappingSection({
     const input: ProductActionInput = {
       productId: editingProduct.id,
       title: sheetDraft.title.trim() || null,
-      productType: sheetDraft.productType,
-      productSubtype: sheetDraft.productSubtype,
+      productType: normalizeCatalogValue(sheetDraft.productType),
+      productSubtype: normalizeCatalogValue(sheetDraft.productSubtype),
       brand: sheetDraft.brand.trim() || null,
       model: sheetDraft.model.trim() || null,
       purchasedDate: sheetDraft.purchasedDate
@@ -648,7 +728,10 @@ export function TulipProductMappingSection({
                     </Badge>
                     {editingProductHasValidMapping && editingTulipProduct && (
                       <span className="text-muted-foreground text-sm">
-                        &rarr; {editingTulipProduct.title}
+                        &rarr;{' '}
+                        {editingTulipProduct.louezManaged
+                          ? `${editingTulipProduct.title} (Louez)`
+                          : editingTulipProduct.title}
                       </span>
                     )}
                   </div>
@@ -659,7 +742,11 @@ export function TulipProductMappingSection({
                     <Input
                       value={sheetDraft.title}
                       placeholder={t('productTitlePlaceholder', {
-                        defaultTitle: editingTulipProduct?.title || editingProduct.name,
+                        defaultTitle: editingTulipProduct
+                          ? editingTulipProduct.louezManaged
+                            ? `${editingTulipProduct.title} (Louez)`
+                            : editingTulipProduct.title
+                          : editingProduct.name,
                       })}
                       onChange={(e) =>
                         setSheetDraft((prev) =>
@@ -686,10 +773,11 @@ export function TulipProductMappingSection({
                           prev
                             ? {
                                 ...prev,
-                                productType: item.value as TulipProductType,
-                                productSubtype: normalizeTulipProductSubtype(
+                                productType: item.value,
+                                productSubtype: resolveProductSubtype(
+                                  resolvedTulipCatalog,
+                                  item.value,
                                   prev.productSubtype,
-                                  item.value as TulipProductType,
                                 ),
                               }
                             : prev,
@@ -730,8 +818,7 @@ export function TulipProductMappingSection({
                           prev
                             ? {
                                 ...prev,
-                                productSubtype:
-                                  item.value as TulipProductSubtype,
+                                productSubtype: item.value,
                               }
                             : prev,
                         );

@@ -66,11 +66,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
   const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
   const tulipSettings = getTulipSettings((store.settings as StoreSettings | null) || null)
-  const tulipConnected = Boolean(
-    tulipSettings.enabled &&
-      tulipSettings.apiKeyEncrypted &&
-      tulipSettings.renterUid,
-  )
+  const tulipConnected = tulipSettings.enabled
   const tulipMode = tulipConnected ? tulipSettings.publicMode : 'no_public'
   const effectiveRequireCustomerAddress = !(
     tulipConnected &&

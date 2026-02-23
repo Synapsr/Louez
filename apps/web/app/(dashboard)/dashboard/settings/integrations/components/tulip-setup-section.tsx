@@ -17,23 +17,23 @@ import {
 
 interface TulipSetupSectionProps {
   connected: boolean
-  apiKeyLast4: string | null
+  renterUid: string | null
   connectedAt: string | null
   calendlyUrl: string
   isPending: boolean
-  onConnect: (apiKey: string) => Promise<void>
+  onConnect: (renterUid: string) => Promise<void>
 }
 
 export function TulipSetupSection({
   connected,
-  apiKeyLast4,
+  renterUid,
   connectedAt,
   calendlyUrl,
   isPending,
   onConnect,
 }: TulipSetupSectionProps) {
   const t = useTranslations('dashboard.settings.integrationsPage.assurance.setup')
-  const [apiKey, setApiKey] = useState('')
+  const [inputRenterUid, setInputRenterUid] = useState('')
 
   const connectedDateLabel = useMemo(() => {
     if (!connectedAt) return null
@@ -47,13 +47,13 @@ export function TulipSetupSection({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const sanitized = apiKey.trim()
+    const sanitized = inputRenterUid.trim()
     if (!sanitized) {
       return
     }
 
     await onConnect(sanitized)
-    setApiKey('')
+    setInputRenterUid('')
   }
 
   return (
@@ -68,9 +68,9 @@ export function TulipSetupSection({
             {connected ? t('statusConnected') : t('statusNotConnected')}
           </Badge>
 
-          {connected && apiKeyLast4 && (
+          {connected && renterUid && (
             <span className="text-sm text-muted-foreground">
-              {t('connectedWith', { last4: apiKeyLast4 })}
+              {t('connectedWith', { renterUid })}
             </span>
           )}
 
@@ -83,19 +83,19 @@ export function TulipSetupSection({
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div className="grid gap-2">
-            <Label htmlFor="tulip-api-key">{t('apiKeyLabel')}</Label>
+            <Label htmlFor="tulip-renter-id">{t('apiKeyLabel')}</Label>
             <Input
-              id="tulip-api-key"
-              type="password"
+              id="tulip-renter-id"
+              type="text"
               placeholder={t('apiKeyPlaceholder')}
-              value={apiKey}
-              onChange={(event) => setApiKey(event.target.value)}
+              value={inputRenterUid}
+              onChange={(event) => setInputRenterUid(event.target.value)}
               disabled={isPending}
             />
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={isPending || apiKey.trim().length === 0}>
+            <Button type="submit" disabled={isPending || inputRenterUid.trim().length === 0}>
               {isPending ? t('validatingButton') : t('validateButton')}
             </Button>
             <Button

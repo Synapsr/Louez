@@ -29,7 +29,7 @@ import { TulipSetupSection } from './tulip-setup-section'
 
 const FALLBACK_STATE = {
   connected: false,
-  apiKeyLast4: null,
+  enabled: false,
   connectedAt: null,
   connectionIssue: null,
   calendlyUrl: 'https://calendly.com/',
@@ -40,6 +40,7 @@ const FALLBACK_STATE = {
     contractType: 'LCD' as const,
   },
   renters: [],
+  tulipCatalog: [],
   tulipProducts: [],
   products: [],
 }
@@ -246,12 +247,12 @@ export function TulipAssurancePanel() {
 
       <TulipSetupSection
         connected={state.connected}
-        apiKeyLast4={state.apiKeyLast4}
+        renterUid={state.settings.renterUid}
         connectedAt={state.connectedAt}
         calendlyUrl={state.calendlyUrl}
         isPending={connectTulipMutation.isPending}
-        onConnect={async (apiKey) => {
-          await connectTulipMutation.mutateAsync({ apiKey })
+        onConnect={async (renterUid) => {
+          await connectTulipMutation.mutateAsync({ renterUid })
         }}
       />
 
@@ -261,7 +262,10 @@ export function TulipAssurancePanel() {
           settings={state.settings}
           isPending={updateConfigurationMutation.isPending}
           onSave={async (input) => {
-            await updateConfigurationMutation.mutateAsync(input)
+            await updateConfigurationMutation.mutateAsync({
+              ...input,
+              contractType: state.settings.contractType,
+            })
           }}
         />
       )}
@@ -270,6 +274,7 @@ export function TulipAssurancePanel() {
         <TulipProductMappingSection
           disabled={!isConnected}
           products={state.products}
+          tulipCatalog={state.tulipCatalog}
           tulipProducts={state.tulipProducts}
           isMappingPending={upsertMappingMutation.isPending}
           mappingProductId={mappingProductId}

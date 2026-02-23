@@ -151,8 +151,6 @@ export type TulipPublicMode = 'required' | 'optional' | 'no_public'
 export type TulipContractType = 'LCD' | 'LMD' | 'LLD'
 
 export interface TulipIntegrationSettings {
-  apiKeyEncrypted?: string
-  apiKeyLast4?: string
   connectedAt?: string
   publicMode?: TulipPublicMode
   includeInFinalPrice?: boolean
