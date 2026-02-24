@@ -93,53 +93,62 @@ async function refreshCacheInBackground(placeId: string, existingCache: boolean)
  * and refreshes in background to avoid blocking visitors
  */
 export async function getCachedPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
-  // Check cache first
-  const cached = await db.query.googlePlacesCache.findFirst({
-    where: eq(googlePlacesCache.placeId, placeId),
-  })
+  try {
+    // Check cache first
+    const cached = await db.query.googlePlacesCache.findFirst({
+      where: eq(googlePlacesCache.placeId, placeId),
+    })
 
-  const now = new Date()
+    const now = new Date()
 
-  // Return cached data if not expired
-  if (cached && cached.expiresAt > now) {
-    return transformCacheToDetails(cached)
-  }
+    // Return cached data if not expired
+    if (cached && cached.expiresAt > now) {
+      return transformCacheToDetails(cached)
+    }
 
-  // If we have stale cache, return it immediately and refresh in background
-  // This implements "stale-while-revalidate" pattern
-  if (cached) {
-    // Trigger background refresh (fire and forget - don't await)
-    refreshCacheInBackground(placeId, true).catch(() => {})
-    // Return stale data immediately
-    return transformCacheToDetails(cached)
-  }
+    // If we have stale cache, return it immediately and refresh in background
+    // This implements "stale-while-revalidate" pattern
+    if (cached) {
+      // Trigger background refresh (fire and forget - don't await)
+      refreshCacheInBackground(placeId, true).catch(() => {})
+      // Return stale data immediately
+      return transformCacheToDetails(cached)
+    }
 
-  // No cache exists - must fetch synchronously for first request
-  const fresh = await getPlaceDetails(placeId)
-  if (!fresh) {
+    // No cache exists - must fetch synchronously for first request
+    const fresh = await getPlaceDetails(placeId)
+    if (!fresh) {
+      return null
+    }
+
+    // Process reviews to cache photos as base64
+    const reviewsWithPhotos = await processReviewsWithPhotos(fresh.reviews)
+
+    // Save to cache (best effort; storefront rendering should not depend on this write)
+    const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000)
+    try {
+      await db.insert(googlePlacesCache).values({
+        placeId: fresh.placeId,
+        name: fresh.name,
+        address: fresh.address,
+        rating: fresh.rating?.toString() || null,
+        reviewCount: fresh.reviewCount,
+        reviews: reviewsWithPhotos,
+        mapsUrl: fresh.mapsUrl,
+        fetchedAt: now,
+        expiresAt,
+      })
+    } catch (cacheWriteError) {
+      console.error('Error saving Google Places cache entry:', cacheWriteError)
+    }
+
+    return {
+      ...fresh,
+      reviews: reviewsWithPhotos,
+    }
+  } catch (error) {
+    console.error('Error reading Google Places cache:', error)
     return null
-  }
-
-  // Process reviews to cache photos as base64
-  const reviewsWithPhotos = await processReviewsWithPhotos(fresh.reviews)
-
-  // Save to cache
-  const expiresAt = new Date(now.getTime() + CACHE_TTL_HOURS * 60 * 60 * 1000)
-  await db.insert(googlePlacesCache).values({
-    placeId: fresh.placeId,
-    name: fresh.name,
-    address: fresh.address,
-    rating: fresh.rating?.toString() || null,
-    reviewCount: fresh.reviewCount,
-    reviews: reviewsWithPhotos,
-    mapsUrl: fresh.mapsUrl,
-    fetchedAt: now,
-    expiresAt,
-  })
-
-  return {
-    ...fresh,
-    reviews: reviewsWithPhotos,
   }
 }
 

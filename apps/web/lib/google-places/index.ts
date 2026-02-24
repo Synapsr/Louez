@@ -2,6 +2,7 @@ import type { GoogleReview } from '@louez/types'
 import { env } from '@/env'
 
 const GOOGLE_PLACES_API_KEY = env.GOOGLE_PLACES_API_KEY
+const QUOTA_OR_BILLING_STATUSES = new Set(['OVER_QUERY_LIMIT', 'OVER_DAILY_LIMIT', 'REQUEST_DENIED'])
 
 export interface PlaceSearchResult {
   placeId: string
@@ -29,6 +30,17 @@ export interface PlaceDetails {
   mapsUrl: string
 }
 
+function logPlacesApiError(context: 'search' | 'details', status?: string, message?: string): void {
+  if (status && QUOTA_OR_BILLING_STATUSES.has(status)) {
+    console.warn(
+      `Google Places ${context} unavailable due to quota/billing limits (${status}). Returning fallback data.`
+    )
+    return
+  }
+
+  console.error('Google Places API error:', status, message)
+}
+
 /**
  * Search for places using Google Places API Text Search
  */
@@ -52,7 +64,7 @@ export async function searchPlaces(query: string): Promise<PlaceSearchResult[]> 
     const data = await response.json()
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      console.error('Google Places API error:', data.status, data.error_message)
+      logPlacesApiError('search', data.status, data.error_message)
       return []
     }
 
@@ -100,7 +112,7 @@ export async function getPlaceDetails(placeId: string): Promise<PlaceDetails | n
     const data = await response.json()
 
     if (data.status !== 'OK') {
-      console.error('Google Places API error:', data.status, data.error_message)
+      logPlacesApiError('details', data.status, data.error_message)
       return null
     }
 
