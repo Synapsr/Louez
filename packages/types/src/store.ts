@@ -153,6 +153,7 @@ export interface TulipIntegrationSettings {
   connectedAt?: string
   publicMode?: TulipPublicMode
   renterUid?: string
+  archivedRenterUid?: string
 }
 
 export interface IntegrationStateSettings {

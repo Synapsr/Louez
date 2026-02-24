@@ -29,6 +29,7 @@ import type {
 } from './contracts-types';
 import {
   getTulipApiKey,
+  getTulipRenterUidForContracts,
   getTulipSettings,
   shouldApplyTulipInsurance,
 } from './settings';
@@ -413,9 +414,7 @@ export async function syncTulipContractForReservation(params: {
   const storeSettings = reservation.store.settings as any;
   const tulipSettings = getTulipSettings(storeSettings);
   const apiKey = getTulipApiKey(storeSettings);
-  const renterUid = tulipSettings.renterUid;
-
-  if (!apiKey || !renterUid) {
+  if (!apiKey) {
     throw new Error('errors.tulipNotConfigured');
   }
 
@@ -442,6 +441,11 @@ export async function syncTulipContractForReservation(params: {
       action: 'cancelled' as const,
       contractId: null,
     };
+  }
+
+  const renterUid = getTulipRenterUidForContracts(storeSettings);
+  if (!renterUid) {
+    throw new Error('errors.tulipNotConfigured');
   }
 
   const resolvedContractType = resolveTulipContractTypeFromDates(
@@ -563,9 +567,7 @@ export async function cancelTulipContractForReservation(params: {
 
   const storeSettings = reservation.store.settings as any;
   const apiKey = getTulipApiKey(storeSettings);
-  const renterUid = getTulipSettings(storeSettings).renterUid;
-
-  if (!apiKey || !renterUid) {
+  if (!apiKey) {
     throw new Error('errors.tulipNotConfigured');
   }
 

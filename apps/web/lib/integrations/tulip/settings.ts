@@ -32,6 +32,13 @@ export function getTulipSettings(settings: StoreSettings | null | undefined): Tu
   }
 }
 
+function getTulipArchivedRenterUid(settings: StoreSettings | null | undefined): string | null {
+  const raw = settings?.integrationData?.tulip
+  const archivedRenterUid =
+    typeof raw?.archivedRenterUid === 'string' ? raw.archivedRenterUid.trim() : ''
+  return archivedRenterUid.length > 0 ? archivedRenterUid : null
+}
+
 export function mergeTulipSettings(
   current: StoreSettings | null | undefined,
   patch: Partial<TulipIntegrationSettings>,
@@ -70,6 +77,17 @@ export function isTulipConnected(settings: StoreSettings | null | undefined): bo
     getTulipApiKey(settings) &&
       tulipSettings.renterUid,
   )
+}
+
+export function getTulipRenterUidForContracts(
+  settings: StoreSettings | null | undefined,
+): string | null {
+  const activeRenterUid = getTulipSettings(settings).renterUid?.trim() || null
+  if (activeRenterUid) {
+    return activeRenterUid
+  }
+
+  return getTulipArchivedRenterUid(settings)
 }
 
 export function shouldApplyTulipInsurance(

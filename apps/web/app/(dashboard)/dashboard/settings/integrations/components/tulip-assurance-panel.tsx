@@ -1,8 +1,9 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useTranslations } from 'next-intl'
+import { useState } from 'react';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 
 import {
   AlertDialog,
@@ -19,13 +20,13 @@ import {
   CardHeader,
   CardTitle,
   toastManager,
-} from '@louez/ui'
+} from '@louez/ui';
 
-import { orpc } from '@/lib/orpc/react'
+import { orpc } from '@/lib/orpc/react';
 
-import { TulipConfigurationSection } from './tulip-configuration-section'
-import { TulipProductMappingSection } from './tulip-product-mapping-section'
-import { TulipSetupSection } from './tulip-setup-section'
+import { TulipConfigurationSection } from './tulip-configuration-section';
+import { TulipProductMappingSection } from './tulip-product-mapping-section';
+import { TulipSetupSection } from './tulip-setup-section';
 
 const FALLBACK_STATE = {
   connected: false,
@@ -43,147 +44,147 @@ const FALLBACK_STATE = {
   tulipCatalog: [],
   tulipProducts: [],
   products: [],
-}
+};
 
 function extractErrorKey(error: unknown): string {
   if (error instanceof Error) {
-    const match = error.message.match(/errors\.[a-zA-Z0-9_.-]+/)
+    const match = error.message.match(/errors\.[a-zA-Z0-9_.-]+/);
     if (match?.[0]) {
-      return match[0]
+      return match[0];
     }
   }
 
-  return 'errors.generic'
+  return 'errors.generic';
 }
 
 export function TulipAssurancePanel() {
-  const t = useTranslations('dashboard.settings.integrationsPage.assurance')
-  const tErrors = useTranslations('errors')
-  const queryClient = useQueryClient()
+  const t = useTranslations('dashboard.settings.integrationsPage.assurance');
+  const tErrors = useTranslations('errors');
+  const queryClient = useQueryClient();
 
-  const [mappingProductId, setMappingProductId] = useState<string | null>(null)
-  const [pushProductId, setPushProductId] = useState<string | null>(null)
-  const [createProductId, setCreateProductId] = useState<string | null>(null)
-  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false)
+  const [mappingProductId, setMappingProductId] = useState<string | null>(null);
+  const [pushProductId, setPushProductId] = useState<string | null>(null);
+  const [createProductId, setCreateProductId] = useState<string | null>(null);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
 
   const tulipStateQuery = useQuery(
     orpc.dashboard.integrations.getTulipState.queryOptions({
       input: {},
     }),
-  )
+  );
 
   const invalidateTulipState = async () => {
     await queryClient.invalidateQueries({
       queryKey: orpc.dashboard.integrations.getTulipState.key({ input: {} }),
-    })
-  }
+    });
+  };
 
   const connectTulipMutation = useMutation(
     orpc.dashboard.integrations.connectTulip.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ title: t('setupSuccess'), type: 'success' })
-        await invalidateTulipState()
+        toastManager.add({ title: t('setupSuccess'), type: 'success' });
+        await invalidateTulipState();
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
     }),
-  )
+  );
 
   const updateConfigurationMutation = useMutation(
     orpc.dashboard.integrations.updateTulipConfiguration.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ title: t('configurationSaved'), type: 'success' })
-        await invalidateTulipState()
+        toastManager.add({ title: t('configurationSaved'), type: 'success' });
+        await invalidateTulipState();
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
     }),
-  )
+  );
 
   const disconnectTulipMutation = useMutation(
     orpc.dashboard.integrations.disconnectTulip.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ title: t('disconnectSuccess'), type: 'success' })
-        await invalidateTulipState()
+        toastManager.add({ title: t('disconnectSuccess'), type: 'success' });
+        await invalidateTulipState();
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
       onSettled: () => {
-        setDisconnectDialogOpen(false)
+        setDisconnectDialogOpen(false);
       },
     }),
-  )
+  );
 
   const upsertMappingMutation = useMutation(
     orpc.dashboard.integrations.upsertTulipProductMapping.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ title: t('mappingSaved'), type: 'success' })
-        await invalidateTulipState()
+        toastManager.add({ title: t('mappingSaved'), type: 'success' });
+        await invalidateTulipState();
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
       onSettled: () => {
-        setMappingProductId(null)
+        setMappingProductId(null);
       },
     }),
-  )
+  );
 
   const pushProductMutation = useMutation(
     orpc.dashboard.integrations.pushTulipProductUpdate.mutationOptions({
       onSuccess: () => {
-        toastManager.add({ title: t('productUpdated'), type: 'success' })
+        toastManager.add({ title: t('productUpdated'), type: 'success' });
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
       onSettled: () => {
-        setPushProductId(null)
+        setPushProductId(null);
       },
     }),
-  )
+  );
 
   const createProductMutation = useMutation(
     orpc.dashboard.integrations.createTulipProduct.mutationOptions({
       onSuccess: async () => {
-        toastManager.add({ title: t('productCreated'), type: 'success' })
-        await invalidateTulipState()
+        toastManager.add({ title: t('productCreated'), type: 'success' });
+        await invalidateTulipState();
       },
       onError: (error) => {
-        const errorKey = extractErrorKey(error)
+        const errorKey = extractErrorKey(error);
         toastManager.add({
           title: tErrors(errorKey.replace('errors.', '')),
           type: 'error',
-        })
+        });
       },
       onSettled: () => {
-        setCreateProductId(null)
+        setCreateProductId(null);
       },
     }),
-  )
+  );
 
   if (tulipStateQuery.isLoading) {
     return (
@@ -193,58 +194,20 @@ export function TulipAssurancePanel() {
           <CardDescription>{t('description')}</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{t('loading')}</p>
+          <p className="text-muted-foreground text-sm">{t('loading')}</p>
         </CardContent>
       </Card>
-    )
+    );
   }
-
-  const loadErrorKey =
-    tulipStateQuery.data && 'error' in tulipStateQuery.data
-      ? tulipStateQuery.data.error
-      : tulipStateQuery.isError
-        ? 'errors.generic'
-        : null
 
   const state =
     tulipStateQuery.data && !('error' in tulipStateQuery.data)
       ? tulipStateQuery.data
-      : FALLBACK_STATE
-  const isConnected = state.connected
+      : FALLBACK_STATE;
+  const isConnected = state.connected;
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('title')}</CardTitle>
-          <CardDescription>{t('description')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-sm text-muted-foreground">{t('helper')}</p>
-          {loadErrorKey && (
-            <p className="text-sm text-destructive">
-              {tErrors(loadErrorKey.replace('errors.', ''))}
-            </p>
-          )}
-          {loadErrorKey && (
-            <button
-              className="text-sm font-medium text-primary"
-              onClick={() => {
-                void tulipStateQuery.refetch()
-              }}
-              type="button"
-            >
-              {t('retry')}
-            </button>
-          )}
-          {state.connectionIssue && (
-            <p className="text-sm text-destructive">
-              {tErrors(state.connectionIssue.replace('errors.', ''))}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
       <TulipSetupSection
         connected={state.connected}
         renterUid={state.settings.renterUid}
@@ -252,21 +215,19 @@ export function TulipAssurancePanel() {
         calendlyUrl={state.calendlyUrl}
         isPending={connectTulipMutation.isPending}
         onConnect={async (renterUid) => {
-          await connectTulipMutation.mutateAsync({ renterUid })
+          await connectTulipMutation.mutateAsync({ renterUid });
         }}
       />
-
       {isConnected && !state.inclusionEnabled && (
         <TulipConfigurationSection
           disabled={false}
           settings={state.settings}
           isPending={updateConfigurationMutation.isPending}
           onSave={async (input) => {
-            await updateConfigurationMutation.mutateAsync(input)
+            await updateConfigurationMutation.mutateAsync(input);
           }}
         />
       )}
-
       {isConnected && (
         <TulipProductMappingSection
           disabled={!isConnected}
@@ -282,23 +243,25 @@ export function TulipAssurancePanel() {
           createProductId={createProductId}
           isRefreshing={tulipStateQuery.isRefetching}
           onRefresh={async () => {
-            await tulipStateQuery.refetch()
+            await tulipStateQuery.refetch();
           }}
           onMappingChange={async (productId, tulipProductId) => {
-            setMappingProductId(productId)
-            await upsertMappingMutation.mutateAsync({ productId, tulipProductId })
+            setMappingProductId(productId);
+            await upsertMappingMutation.mutateAsync({
+              productId,
+              tulipProductId,
+            });
           }}
           onPushProduct={async (input) => {
-            setPushProductId(input.productId)
-            await pushProductMutation.mutateAsync(input)
+            setPushProductId(input.productId);
+            await pushProductMutation.mutateAsync(input);
           }}
           onCreateProduct={async (input) => {
-            setCreateProductId(input.productId)
-            await createProductMutation.mutateAsync(input)
+            setCreateProductId(input.productId);
+            await createProductMutation.mutateAsync(input);
           }}
         />
       )}
-
       {isConnected && (
         <Card>
           <CardHeader>
@@ -312,10 +275,15 @@ export function TulipAssurancePanel() {
             >
               {t('disconnect.button')}
             </Button>
-            <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+            <AlertDialog
+              open={disconnectDialogOpen}
+              onOpenChange={setDisconnectDialogOpen}
+            >
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>{t('disconnect.confirmTitle')}</AlertDialogTitle>
+                  <AlertDialogTitle>
+                    {t('disconnect.confirmTitle')}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
                     {t('disconnect.confirmDescription')}
                   </AlertDialogDescription>
@@ -328,7 +296,7 @@ export function TulipAssurancePanel() {
                     variant="destructive"
                     disabled={disconnectTulipMutation.isPending}
                     onClick={async () => {
-                      await disconnectTulipMutation.mutateAsync({})
+                      await disconnectTulipMutation.mutateAsync({});
                     }}
                   >
                     {disconnectTulipMutation.isPending
@@ -342,5 +310,5 @@ export function TulipAssurancePanel() {
         </Card>
       )}
     </div>
-  )
+  );
 }

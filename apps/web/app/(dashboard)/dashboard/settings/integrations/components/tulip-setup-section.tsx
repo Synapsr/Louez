@@ -81,32 +81,34 @@ export function TulipSetupSection({
           )}
         </div>
 
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <div className="grid gap-2">
-            <Label htmlFor="tulip-renter-id">{t('apiKeyLabel')}</Label>
-            <Input
-              id="tulip-renter-id"
-              type="text"
-              placeholder={t('apiKeyPlaceholder')}
-              value={inputRenterUid}
-              onChange={(event) => setInputRenterUid(event.target.value)}
-              disabled={isPending}
-            />
-          </div>
+        {!connected && (
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <div className="grid gap-2">
+              <Label htmlFor="tulip-renter-id">{t('apiKeyLabel')}</Label>
+              <Input
+                id="tulip-renter-id"
+                type="text"
+                placeholder={t('apiKeyPlaceholder')}
+                value={inputRenterUid}
+                onChange={(event) => setInputRenterUid(event.target.value)}
+                disabled={isPending}
+              />
+            </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={isPending || inputRenterUid.trim().length === 0}>
-              {isPending ? t('validatingButton') : t('validateButton')}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              render={<a href={calendlyUrl} target="_blank" rel="noreferrer" />}
-            >
-              {t('bookAppointmentButton')}
-            </Button>
-          </div>
-        </form>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={isPending || inputRenterUid.trim().length === 0}>
+                {isPending ? t('validatingButton') : t('validateButton')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                render={<a href={calendlyUrl} target="_blank" rel="noreferrer" />}
+              >
+                {t('bookAppointmentButton')}
+              </Button>
+            </div>
+          </form>
+        )}
       </CardContent>
     </Card>
   )

@@ -1177,6 +1177,7 @@ export async function connectTulipApiKeyAction(
       {
         connectedAt: new Date().toISOString(),
         renterUid: renter.uid,
+        archivedRenterUid: undefined,
       },
     );
 
@@ -1799,9 +1800,11 @@ export async function disconnectTulipAction(
 
     const { store } = storeResult;
     const currentSettings = (store.settings as StoreSettings | null) || null;
+    const activeRenterUid = getTulipSettings(currentSettings).renterUid?.trim() || null;
     const nextSettings = mergeTulipSettings(currentSettings, {
       connectedAt: undefined,
       renterUid: undefined,
+      archivedRenterUid: activeRenterUid || undefined,
     });
 
     await db.transaction(async (tx) => {
