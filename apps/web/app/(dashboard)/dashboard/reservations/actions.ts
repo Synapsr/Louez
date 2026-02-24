@@ -59,6 +59,8 @@ import type {
   BookingAttributeAxis,
   PricingBreakdown,
   PricingMode,
+  StoreSettings,
+  TulipPublicMode,
   UnitAttributes,
 } from '@louez/types'
 import {
@@ -70,6 +72,7 @@ import {
   createTulipContractForReservation,
   syncTulipContractForReservation,
 } from '@/lib/integrations/tulip/contracts'
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -90,6 +93,46 @@ function getErrorKey(error: unknown, fallback: string): string {
   }
 
   return fallback
+}
+
+function resolveTulipInsuranceOptIn(params: {
+  mode: TulipPublicMode
+  requested?: boolean
+  current?: boolean | null
+  defaultOptional?: boolean
+}): boolean {
+  if (params.mode === 'required') {
+    return true
+  }
+
+  if (params.mode === 'no_public') {
+    return false
+  }
+
+  if (typeof params.requested === 'boolean') {
+    return params.requested
+  }
+
+  if (typeof params.current === 'boolean') {
+    return params.current
+  }
+
+  return params.defaultOptional ?? true
+}
+
+function getDashboardTulipInsuranceMode(
+  settings: StoreSettings | null | undefined,
+): TulipPublicMode {
+  const tulipSettings = getTulipSettings(settings || null)
+  if (!tulipSettings.enabled) {
+    return 'no_public'
+  }
+
+  if (tulipSettings.publicMode === 'required') {
+    return 'required'
+  }
+
+  return 'optional'
 }
 
 async function logReservationActivity(
@@ -514,6 +557,7 @@ interface CreateReservationData {
     pricingMode: PricingMode
   }>
   internalNotes?: string
+  tulipInsuranceOptIn?: boolean
   sendConfirmationEmail?: boolean
 }
 
@@ -554,6 +598,13 @@ export async function createManualReservation(data: CreateReservationData) {
   if (!customerId) {
     return { error: 'errors.customerRequired' }
   }
+
+  const tulipMode = getDashboardTulipInsuranceMode(store.settings as StoreSettings | null)
+  const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
+    mode: tulipMode,
+    requested: data.tulipInsuranceOptIn,
+    defaultOptional: true,
+  })
 
   // Calculate totals
   let subtotalAmount = 0
@@ -760,6 +811,8 @@ export async function createManualReservation(data: CreateReservationData) {
     totalAmount: subtotalAmount.toFixed(2),
     internalNotes: data.internalNotes || null,
     source: 'manual',
+    tulipInsuranceOptIn,
+    tulipInsuranceAmount: null,
   })
 
   // Create reservation items for catalog products
@@ -980,6 +1033,7 @@ interface UpdateReservationItem {
 interface UpdateReservationData {
   startDate?: Date
   endDate?: Date
+  tulipInsuranceOptIn?: boolean
   items?: UpdateReservationItem[]
 }
 
@@ -1031,6 +1085,13 @@ export async function updateReservation(
   // Determine new dates
   const newStartDate = data.startDate || reservation.startDate
   const newEndDate = data.endDate || reservation.endDate
+  const tulipMode = getDashboardTulipInsuranceMode(store.settings as StoreSettings | null)
+  const nextTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
+    mode: tulipMode,
+    requested: data.tulipInsuranceOptIn,
+    current: reservation.tulipInsuranceOptIn,
+    defaultOptional: true,
+  })
 
   const validationWarnings = evaluateReservationRules({
     startDate: newStartDate,
@@ -1319,6 +1380,8 @@ export async function updateReservation(
       subtotalAmount: newSubtotalAmount.toFixed(2),
       depositAmount: newDepositAmount.toFixed(2),
       totalAmount: newSubtotalAmount.toFixed(2),
+      tulipInsuranceOptIn: nextTulipInsuranceOptIn,
+      ...(nextTulipInsuranceOptIn ? {} : { tulipInsuranceAmount: null }),
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId))

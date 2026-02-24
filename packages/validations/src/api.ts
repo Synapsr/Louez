@@ -172,6 +172,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
   payload: z.object({
     startDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     endDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+    tulipInsuranceOptIn: z.boolean().optional(),
     items: z
       .array(
         z.object({
@@ -231,6 +232,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
       )
       .optional(),
     internalNotes: z.string().max(100000).optional(),
+    tulipInsuranceOptIn: z.boolean().optional(),
     sendConfirmationEmail: z.boolean().optional(),
   }),
 })

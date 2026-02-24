@@ -1117,6 +1117,14 @@
         "subtotal": "Sous-total",
         "deposit": "Caution",
         "total": "Total",
+        "tulipInsurance": {
+          "title": "Assurance Tulip",
+          "appliesMappedProducts": "S'applique uniquement aux produits mappés vers Tulip.",
+          "required": "La garantie est obligatoire pour cette réservation.",
+          "optionalLabel": "Activer la garantie pour cette réservation",
+          "insurableProduct": "Assurable",
+          "assuredProduct": "Assuré"
+        },
         "duration": "Durée",
         "exact": "exact",
         "durationDays": "{count, plural, one {# jour} other {# jours}}",

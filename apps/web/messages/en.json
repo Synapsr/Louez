@@ -1108,6 +1108,14 @@
         "subtotal": "Subtotal",
         "deposit": "Deposit",
         "total": "Total",
+        "tulipInsurance": {
+          "title": "Tulip insurance",
+          "appliesMappedProducts": "Applies only to products mapped to Tulip.",
+          "required": "Coverage is required for this reservation.",
+          "optionalLabel": "Enable coverage for this reservation",
+          "insurableProduct": "Insurable",
+          "assuredProduct": "Insured"
+        },
         "duration": "Duration",
         "exact": "exact",
         "durationDays": "{count, plural, one {# day} other {# days}}",
