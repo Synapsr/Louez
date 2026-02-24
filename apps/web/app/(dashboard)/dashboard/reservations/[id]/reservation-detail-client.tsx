@@ -164,6 +164,14 @@ export function ReservationDetailClient({
         )
       : [],
   )
+  const tulipContractId =
+    typeof reservation.tulipContractId === 'string' &&
+    reservation.tulipContractId.trim().length > 0
+      ? reservation.tulipContractId.trim()
+      : null
+  const tulipContractUrl = tulipContractId
+    ? `https://app.mycolibri.io/fr/contrat/${encodeURIComponent(tulipContractId)}`
+    : null
 
   const formattedDepartureInspection = departureInspection
     ? {
@@ -515,6 +523,39 @@ export function ReservationDetailClient({
         </div>
 
         <div className="space-y-4">
+          {tulipContractUrl && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  {t('tulipContractCardTitle')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {t('tulipContractCardDescription')}
+                </p>
+                <p className="text-xs font-mono text-muted-foreground break-all">
+                  {tulipContractId}
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  render={
+                    <a
+                      href={tulipContractUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                >
+                  {t('actions.viewContract')}
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <SmartReservationActions
             reservationId={reservation.id}
             status={status}

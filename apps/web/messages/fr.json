@@ -969,6 +969,8 @@
       "productUnitPrice": "Prix unit.",
       "productTotal": "Total",
       "tulipInsuredBadge": "Assuré Tulip",
+      "tulipContractCardTitle": "Contrat assurance",
+      "tulipContractCardDescription": "Ouvrir le contrat dans Colibri.",
       "manageStatus": "Gérez le statut de la réservation",
       "acceptRequest": "Accepter la demande",
       "rejectRequest": "Refuser la demande",
