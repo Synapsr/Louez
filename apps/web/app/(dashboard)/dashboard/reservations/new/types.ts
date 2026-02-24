@@ -1,6 +1,12 @@
 import type { ComponentType, ReactNode } from 'react'
 
-import type { BookingAttributeAxis, BusinessHours, PricingMode, UnitAttributes } from '@louez/types'
+import type {
+  BookingAttributeAxis,
+  BusinessHours,
+  PricingMode,
+  TulipPublicMode,
+  UnitAttributes,
+} from '@louez/types'
 
 export interface Customer {
   id: string
@@ -24,6 +30,7 @@ export interface Product {
   name: string
   price: string
   deposit: string | null
+  tulipInsurable?: boolean
   quantity: number
   pricingMode: PricingMode | null
   basePeriodMinutes?: number | null
@@ -76,6 +83,7 @@ export interface AvailabilityWarning {
 export interface NewReservationFormProps {
   customers: Customer[]
   products: Product[]
+  tulipInsuranceMode: TulipPublicMode
   businessHours?: BusinessHours
   advanceNoticeMinutes?: number
   existingReservations?: Array<{
