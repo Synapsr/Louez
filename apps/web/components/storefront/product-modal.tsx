@@ -959,15 +959,17 @@ export function ProductModal({
                   const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="overflow-hidden rounded-xl border">
-                      <div className="flex items-center gap-2 px-4 py-3">
-                        <Layers className="h-4 w-4 text-primary" />
+                    <div className="rounded-xl border bg-primary/5 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
+                        </div>
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
                         </span>
                       </div>
 
-                      <div>
+                      <div className="space-y-1.5">
                         {visibleRows.map((rate) => {
                           const isCurrentRate =
                             contextualDisplay?.selectedRateId === rate.id;
@@ -976,8 +978,10 @@ export function ProductModal({
                             <div
                               key={rate.id}
                               className={cn(
-                                'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
-                                isCurrentRate && 'bg-primary/5',
+                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                isCurrentRate
+                                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                                  : 'bg-background',
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -1035,7 +1039,7 @@ export function ProductModal({
                             }}
                           >
                             <div className="overflow-hidden">
-                              <div>
+                              <div className="space-y-1.5">
                                 {hiddenRows.map((rate) => {
                                   const isCurrentRate =
                                     contextualDisplay?.selectedRateId === rate.id;
@@ -1044,8 +1048,10 @@ export function ProductModal({
                                     <div
                                       key={rate.id}
                                       className={cn(
-                                        'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
-                                        isCurrentRate && 'bg-primary/5',
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                        isCurrentRate
+                                          ? 'bg-primary/10 ring-1 ring-primary/20'
+                                          : 'bg-background',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
@@ -1104,7 +1110,7 @@ export function ProductModal({
                         <button
                           type="button"
                           onClick={() => setTiersExpanded((prev) => !prev)}
-                          className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-4 py-2.5 text-xs font-medium transition-colors"
+                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
                         >
                           {isExpanded ? (
                             <>
@@ -1142,17 +1148,19 @@ export function ProductModal({
                   const hiddenTiers = sortedLegacyTiers.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="overflow-hidden rounded-xl border">
-                      <div className="flex items-center gap-2 px-4 py-3">
-                        <Layers className="h-4 w-4 text-primary" />
+                    <div className="rounded-xl border bg-primary/5 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
+                        </div>
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
                         </span>
                       </div>
 
-                      <div>
+                      <div className="space-y-1.5">
                         {/* Base price row */}
-                        <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm">
+                        <div className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs">
                           <span className="text-muted-foreground">
                             1 {pricingUnitLabel}
                           </span>
@@ -1179,8 +1187,10 @@ export function ProductModal({
                             <div
                               key={tier.id}
                               className={cn(
-                                'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
-                                isCurrentTier && 'bg-primary/5',
+                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                isCurrentTier
+                                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                                  : 'bg-background',
                               )}
                             >
                               <div className="flex items-center gap-2">
@@ -1218,7 +1228,7 @@ export function ProductModal({
                             }}
                           >
                             <div className="overflow-hidden">
-                              <div>
+                              <div className="space-y-1.5">
                                 {hiddenTiers.map((tier) => {
                                   const effectivePrice = calculateEffectivePrice(
                                     price,
@@ -1236,8 +1246,10 @@ export function ProductModal({
                                     <div
                                       key={tier.id}
                                       className={cn(
-                                        'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
-                                        isCurrentTier && 'bg-primary/5',
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                        isCurrentTier
+                                          ? 'bg-primary/10 ring-1 ring-primary/20'
+                                          : 'bg-background',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
@@ -1276,7 +1288,7 @@ export function ProductModal({
                         <button
                           type="button"
                           onClick={() => setTiersExpanded((prev) => !prev)}
-                          className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-4 py-2.5 text-xs font-medium transition-colors"
+                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
                         >
                           {isExpanded ? (
                             <>
