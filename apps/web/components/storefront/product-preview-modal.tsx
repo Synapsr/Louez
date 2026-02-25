@@ -174,9 +174,7 @@ export function ProductPreviewModal({
     [product],
   );
   const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
-  const displayDiscount = maxDiscountPercent == null
-    ? pricingSummary.maxReductionPercent
-    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0);
+  const showDiscount = maxDiscountPercent == null || pricingSummary.maxReductionPercent <= maxDiscountPercent;
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -535,11 +533,11 @@ export function ProductPreviewModal({
                 <span className="text-muted-foreground text-base">
                   / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
-                {displayDiscount > 0 && (
+                {pricingSummary.maxReductionPercent > 0 && showDiscount && (
                   <Badge className="ml-2 bg-primary/10 text-primary">
                     <TrendingDown className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {
-                      percent: Math.floor(displayDiscount),
+                      percent: Math.floor(pricingSummary.maxReductionPercent),
                     })}
                   </Badge>
                 )}
