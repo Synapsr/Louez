@@ -49,11 +49,7 @@ export function useCheckoutLineResolutions({
               combinationKey: result.combinationKey,
               selectedAttributes: result.selectedAttributes,
             };
-          } catch (error) {
-            console.error(
-              `[checkout] resolveCombination failed for product ${item.productId}:`,
-              error,
-            );
+          } catch {
             nextResolved[item.lineId] = { status: 'invalid' };
           }
         }),
