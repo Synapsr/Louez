@@ -124,13 +124,13 @@ function generateStoreSettings(config: StoreConfig): StoreSettings {
   // Add business hours
   if (config.businessHoursEnabled) {
     const schedule: BusinessHours['schedule'] = {
-      0: { isOpen: false, openTime: '09:00', closeTime: '18:00' }, // Sunday closed
-      1: { isOpen: true, openTime: '09:00', closeTime: '18:00' },
-      2: { isOpen: true, openTime: '09:00', closeTime: '18:00' },
-      3: { isOpen: true, openTime: '09:00', closeTime: '18:00' },
-      4: { isOpen: true, openTime: '09:00', closeTime: '18:00' },
-      5: { isOpen: true, openTime: '09:00', closeTime: '18:00' },
-      6: { isOpen: true, openTime: '10:00', closeTime: '17:00' }, // Saturday shorter
+      0: { isOpen: false, ranges: [{ openTime: '09:00', closeTime: '18:00' }] }, // Sunday closed
+      1: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
+      2: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
+      3: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
+      4: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
+      5: { isOpen: true, ranges: [{ openTime: '09:00', closeTime: '18:00' }] },
+      6: { isOpen: true, ranges: [{ openTime: '10:00', closeTime: '17:00' }] }, // Saturday shorter
     }
 
     settings.businessHours = {

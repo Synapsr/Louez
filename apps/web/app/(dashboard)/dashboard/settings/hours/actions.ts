@@ -45,10 +45,8 @@ export async function updateBusinessHours(data: BusinessHoursInput) {
 
     revalidatePath('/dashboard/settings/hours')
     revalidatePath('/dashboard/settings')
-    // Also revalidate storefront pages that use business hours
-    revalidatePath(`/${store.slug}`)
-    revalidatePath(`/${store.slug}/catalog`)
-    revalidatePath(`/${store.slug}/rental`)
+    // Revalidate all storefront pages under this store (layout-level covers product pages too)
+    revalidatePath(`/${store.slug}`, 'layout')
     return { success: true }
   } catch (error) {
     console.error('Error updating business hours:', error)

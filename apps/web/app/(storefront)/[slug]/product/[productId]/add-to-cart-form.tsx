@@ -10,7 +10,7 @@ import {
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import type { PricingMode } from '@louez/types';
+import type { PricingMode, BusinessHours } from '@louez/types';
 import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
@@ -94,6 +94,8 @@ interface AddToCartFormProps {
   enforceStrictTiers?: boolean;
   advanceNotice?: number;
   minRentalMinutes?: number;
+  businessHours?: BusinessHours;
+  timezone?: string;
   accessories?: Accessory[];
   trackUnits?: boolean;
   bookingAttributeAxes?: Array<{
@@ -127,6 +129,8 @@ export function AddToCartForm({
   enforceStrictTiers = false,
   advanceNotice = 0,
   minRentalMinutes = 0,
+  businessHours,
+  timezone,
   accessories = [],
   trackUnits = false,
   bookingAttributeAxes = [],
@@ -484,6 +488,8 @@ export function AddToCartForm({
         }}
         pricingMode={pricingMode}
         minDate={getMinStartDate(advanceNotice)}
+        businessHours={businessHours}
+        timezone={timezone}
         translations={{
           startDate: t('startDate'),
           endDate: t('endDate'),

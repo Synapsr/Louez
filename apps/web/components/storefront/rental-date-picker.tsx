@@ -15,7 +15,9 @@ import {
   PopoverTrigger,
 } from '@louez/ui'
 import { Label } from '@louez/ui'
+import type { BusinessHours } from '@louez/types'
 import { applyTimeToDate, createTimeSlots, getTimeFromDate } from '@/components/storefront/date-picker/core/use-rental-date-core'
+import { getAvailableTimeSlots, isDateAvailable } from '@/lib/utils/business-hours'
 
 interface RentalDatePickerProps {
   startDate: Date | undefined
@@ -24,6 +26,8 @@ interface RentalDatePickerProps {
   onEndDateChange: (date: Date | undefined) => void
   pricingMode: 'day' | 'hour' | 'week'
   minDate?: Date
+  businessHours?: BusinessHours
+  timezone?: string
   className?: string
   translations?: {
     startDate: string
@@ -33,18 +37,20 @@ interface RentalDatePickerProps {
   }
 }
 
-const TIME_SLOTS = createTimeSlots('08:00', '20:00')
+const DEFAULT_TIME_SLOTS = createTimeSlots('08:00', '20:00')
 
 function TimeSelector({
   value,
   onChange,
   disabled,
   label,
+  slots,
 }: {
   value?: string
   onChange: (time: string) => void
   disabled?: boolean
   label: string
+  slots: string[]
 }) {
   return (
     <div className="mt-3 border-t pt-3">
@@ -53,7 +59,7 @@ function TimeSelector({
         <span className="text-sm font-medium">{label}</span>
       </div>
       <div className="grid grid-cols-5 gap-1 max-h-32 overflow-y-auto">
-        {TIME_SLOTS.map((time) => (
+        {slots.map((time) => (
           <Button
             key={time}
             variant={value === time ? 'default' : 'outline'}
@@ -76,6 +82,8 @@ export function RentalDatePicker({
   onEndDateChange,
   pricingMode,
   minDate = new Date(),
+  businessHours,
+  timezone,
   className,
   translations: translationsProp,
 }: RentalDatePickerProps) {
@@ -94,6 +102,25 @@ export function RentalDatePicker({
   }
 
   const showTime = pricingMode === 'hour'
+
+  const startSlots = React.useMemo(() => {
+    if (!startDate) return DEFAULT_TIME_SLOTS
+    return getAvailableTimeSlots(startDate, businessHours, 30, timezone)
+  }, [startDate, businessHours, timezone])
+
+  const endSlots = React.useMemo(() => {
+    if (!endDate) return DEFAULT_TIME_SLOTS
+    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
+  }, [endDate, businessHours, timezone])
+
+  const isDateDisabledByBusinessHours = React.useCallback(
+    (date: Date): boolean => {
+      if (!businessHours?.enabled) return false
+      const check = isDateAvailable(date, businessHours, timezone)
+      return !check.available
+    },
+    [businessHours, timezone],
+  )
 
   // Handle start date selection
   const handleStartDateSelect = (date: Date | undefined) => {
@@ -198,7 +225,7 @@ export function RentalDatePicker({
               mode="single"
               selected={startDate}
               onSelect={handleStartDateSelect}
-              disabled={(date) => date < effectiveMinDate}
+              disabled={(date) => date < effectiveMinDate || isDateDisabledByBusinessHours(date)}
               locale={fr}
             />
             {showTime && (
@@ -208,6 +235,7 @@ export function RentalDatePicker({
                   onChange={handleStartTimeChange}
                   disabled={!startDate}
                   label={translations.selectTime}
+                  slots={startSlots}
                 />
                 <Button
                   className="w-full mt-3"
@@ -242,7 +270,7 @@ export function RentalDatePicker({
               selected={endDate}
               onSelect={handleEndDateSelect}
               disabled={(date) =>
-                date < effectiveMinDate || (startDate ? date < startDate : false)
+                date < effectiveMinDate || (startDate ? date < startDate : false) || isDateDisabledByBusinessHours(date)
               }
               locale={fr}
             />
@@ -253,6 +281,7 @@ export function RentalDatePicker({
                   onChange={handleEndTimeChange}
                   disabled={!endDate}
                   label={translations.selectTime}
+                  slots={endSlots}
                 />
                 <Button
                   className="w-full mt-3"

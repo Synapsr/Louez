@@ -6,7 +6,7 @@ import { format, addDays, isToday, isTomorrow } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { fr } from 'date-fns/locale'
 import { cn } from '@louez/utils'
-import type { BusinessHours } from '@louez/types'
+import type { BusinessHours, TimeRange } from '@louez/types'
 import { isInClosurePeriod, getDaySchedule } from '@/lib/utils/business-hours'
 
 interface StoreStatusBadgeProps {
@@ -22,7 +22,21 @@ interface StoreStatus {
     day: Date
     time: string
   }
-  reason?: 'closed_today' | 'closure_period' | 'outside_hours' | 'not_configured'
+  reason?: 'closed_today' | 'closure_period' | 'outside_hours' | 'break' | 'not_configured'
+}
+
+/**
+ * Find the time range that contains the given time, or null if none.
+ */
+function findCurrentRange(time: string, ranges: TimeRange[]): TimeRange | null {
+  return ranges.find((r) => time >= r.openTime && time <= r.closeTime) ?? null
+}
+
+/**
+ * Find the next range that starts after the given time, or null.
+ */
+function findNextRangeToday(time: string, ranges: TimeRange[]): TimeRange | null {
+  return ranges.find((r) => r.openTime > time) ?? null
 }
 
 function getStoreStatus(businessHours: BusinessHours | undefined, timezone?: string): StoreStatus {
@@ -35,68 +49,88 @@ function getStoreStatus(businessHours: BusinessHours | undefined, timezone?: str
   // Check closure periods
   const closurePeriod = isInClosurePeriod(now, businessHours.closurePeriods)
   if (closurePeriod) {
-    // Find next opening after closure period
     const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'closure_period', nextOpening }
   }
 
-  // Get today's schedule (in store timezone)
+  // Get today's schedule (normalized with ranges)
   const daySchedule = getDaySchedule(now, businessHours, timezone)
-  // Get current time in the store's timezone
   const currentTime = timezone
     ? formatInTimeZone(now, timezone, 'HH:mm')
     : format(now, 'HH:mm')
 
-  if (!daySchedule.isOpen) {
-    // Store is closed today, find next opening
+  if (!daySchedule.isOpen || daySchedule.ranges.length === 0) {
     const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'closed_today', nextOpening }
   }
 
-  // Check if before opening time
-  if (currentTime < daySchedule.openTime) {
+  const firstRange = daySchedule.ranges[0]
+  const lastRange = daySchedule.ranges[daySchedule.ranges.length - 1]
+
+  // Before today's first opening
+  if (currentTime < firstRange.openTime) {
     return {
       isOpen: false,
       reason: 'outside_hours',
-      nextOpening: { day: now, time: daySchedule.openTime }
+      nextOpening: { day: now, time: firstRange.openTime },
     }
   }
 
-  // Check if after closing time
-  if (currentTime > daySchedule.closeTime) {
+  // After today's last closing
+  if (currentTime > lastRange.closeTime) {
     const nextOpening = findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'outside_hours', nextOpening }
   }
 
-  // Store is open
-  return { isOpen: true, closesAt: daySchedule.closeTime }
+  // Check if currently in an open range
+  const currentRange = findCurrentRange(currentTime, daySchedule.ranges)
+  if (currentRange) {
+    return { isOpen: true, closesAt: currentRange.closeTime }
+  }
+
+  // Between two ranges (break / pause)
+  const nextRange = findNextRangeToday(currentTime, daySchedule.ranges)
+  if (nextRange) {
+    return {
+      isOpen: false,
+      reason: 'break',
+      nextOpening: { day: now, time: nextRange.openTime },
+    }
+  }
+
+  // Fallback
+  const nextOpening = findNextOpening(now, businessHours, timezone)
+  return { isOpen: false, reason: 'outside_hours', nextOpening }
 }
 
-function findNextOpening(fromDate: Date, businessHours: BusinessHours, timezone?: string): { day: Date; time: string } | undefined {
-  // Search up to 14 days ahead
+function findNextOpening(
+  fromDate: Date,
+  businessHours: BusinessHours,
+  timezone?: string
+): { day: Date; time: string } | undefined {
   for (let i = 0; i < 14; i++) {
     const checkDate = i === 0 ? fromDate : addDays(fromDate, i)
 
-    // Skip if in closure period
     if (isInClosurePeriod(checkDate, businessHours.closurePeriods)) {
       continue
     }
 
     const daySchedule = getDaySchedule(checkDate, businessHours, timezone)
 
-    if (daySchedule.isOpen) {
+    if (daySchedule.isOpen && daySchedule.ranges.length > 0) {
       const currentTime = timezone
         ? formatInTimeZone(fromDate, timezone, 'HH:mm')
         : format(fromDate, 'HH:mm')
 
-      // If it's today and we haven't passed opening time yet
-      if (i === 0 && currentTime < daySchedule.openTime) {
-        return { day: checkDate, time: daySchedule.openTime }
-      }
-
-      // If it's a future day
-      if (i > 0) {
-        return { day: checkDate, time: daySchedule.openTime }
+      if (i === 0) {
+        // Same day: find next range that hasn't closed yet
+        const nextRange = daySchedule.ranges.find((r) => r.openTime > currentTime)
+        if (nextRange) {
+          return { day: checkDate, time: nextRange.openTime }
+        }
+      } else {
+        // Future day: return first range
+        return { day: checkDate, time: daySchedule.ranges[0].openTime }
       }
     }
   }
@@ -107,7 +141,6 @@ function findNextOpening(fromDate: Date, businessHours: BusinessHours, timezone?
 function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: string) => string): string {
   const { day, time } = nextOpening
 
-  // Format time without leading zeros for hours (9h00 instead of 09h00)
   const [hours, minutes] = time.split(':')
   const formattedTime = `${parseInt(hours)}h${minutes}`
 
@@ -119,7 +152,6 @@ function formatNextOpening(nextOpening: { day: Date; time: string }, t: (key: st
     return `${t('opensTomorrow')} ${formattedTime}`
   }
 
-  // Show day name for other days
   const dayName = format(day, 'EEEE', { locale: fr })
   return `${t('opensOn')} ${dayName} ${formattedTime}`
 }
@@ -128,7 +160,6 @@ export function StoreStatusBadge({ businessHours, timezone, className }: StoreSt
   const t = useTranslations('storefront.status')
   const [status, setStatus] = useState<StoreStatus>(() => getStoreStatus(businessHours, timezone))
 
-  // Update status every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setStatus(getStoreStatus(businessHours, timezone))
@@ -137,7 +168,6 @@ export function StoreStatusBadge({ businessHours, timezone, className }: StoreSt
     return () => clearInterval(interval)
   }, [businessHours, timezone])
 
-  // Don't show badge if business hours aren't configured
   if (status.reason === 'not_configured') {
     return null
   }
