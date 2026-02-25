@@ -710,21 +710,16 @@ export function ProductModal({
       };
     }
 
-    const cheapestPerMinute = [...rateRows].sort(
-      (a, b) => a.price / a.periodMinutes - b.price / b.periodMinutes,
-    )[0];
-
-    if (!cheapestPerMinute) {
-      return null;
-    }
+    // Fallback: show the base rate rather than normalising a
+    // different period's price, which would produce a misleading figure.
+    const baseRow = rateRows.find((r) => r.id === '__base__');
+    if (!baseRow) return null;
 
     return {
-      price:
-        (cheapestPerMinute.price / cheapestPerMinute.periodMinutes) *
-        contextualPeriodMinutes,
-      periodMinutes: contextualPeriodMinutes,
-      isFrom: cheapestPerMinute.id !== '__base__',
-      selectedRateId: cheapestPerMinute.id,
+      price: baseRow.price,
+      periodMinutes: baseRow.periodMinutes,
+      isFrom: false,
+      selectedRateId: baseRow.id,
     };
   }, [contextualPeriodMinutes, isRateBased, rateRows]);
 

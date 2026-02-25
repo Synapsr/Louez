@@ -15,6 +15,7 @@ export interface CheckoutFormProps {
   storeAddress?: string | null;
   storeLatitude?: number | null;
   storeLongitude?: number | null;
+  hasActivePromoCodes?: boolean;
 }
 
 export interface CheckoutFormValues {

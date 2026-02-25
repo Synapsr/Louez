@@ -45,7 +45,10 @@ export function useCheckoutDelivery({
   const isDeliveryForced =
     deliveryMode === 'required' || deliveryMode === 'included';
   const isDeliveryIncluded = deliveryMode === 'included';
+  const allowDifferentReturnAddress =
+    deliverySettings?.allowDifferentReturnAddress ?? false;
 
+  // Delivery state
   const [deliveryOption, setDeliveryOption] = useState<DeliveryOption>(
     isDeliveryForced ? 'delivery' : 'pickup',
   );
@@ -56,11 +59,47 @@ export function useCheckoutDelivery({
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
+  // Return address state
+  const [hasDifferentReturnAddress, setHasDifferentReturnAddress] =
+    useState(false);
+  const [returnAddress, setReturnAddress] = useState<DeliveryAddress>(
+    DEFAULT_DELIVERY_ADDRESS,
+  );
+  const [returnDistance, setReturnDistance] = useState<number | null>(null);
+  const [returnError, setReturnError] = useState<string | null>(null);
+
   useEffect(() => {
     if (isDeliveryForced) {
       setDeliveryOption('delivery');
     }
   }, [isDeliveryForced]);
+
+  /**
+   * Compute delivery fee from current delivery + return distances.
+   * Centralised to avoid duplicating the calculation logic.
+   */
+  const computeFee = useCallback(
+    (
+      delDistance: number | null,
+      retDistance: number | null,
+      hasDiffReturn: boolean,
+    ) => {
+      if (
+        delDistance === null ||
+        !deliverySettings ||
+        isDeliveryIncluded
+      ) {
+        return 0;
+      }
+      return calculateDeliveryFee(
+        delDistance,
+        deliverySettings,
+        subtotal,
+        hasDiffReturn ? retDistance : null,
+      );
+    },
+    [deliverySettings, isDeliveryIncluded, subtotal],
+  );
 
   const handleDeliveryAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
@@ -105,55 +144,150 @@ export function useCheckoutDelivery({
         return;
       }
 
-      const fee = isDeliveryIncluded
-        ? 0
-        : calculateDeliveryFee(distance, deliverySettings, subtotal);
-      setDeliveryFee(fee);
+      setDeliveryFee(
+        computeFee(distance, returnDistance, hasDifferentReturnAddress),
+      );
     },
     [
+      computeFee,
       deliverySettings,
-      isDeliveryIncluded,
+      hasDifferentReturnAddress,
+      returnDistance,
       storeLatitude,
       storeLongitude,
-      subtotal,
       t,
     ],
   );
 
-  const handleDeliveryOptionChange = useCallback((option: DeliveryOption) => {
-    setDeliveryOption(option);
+  const handleReturnAddressChange = useCallback(
+    (address: string, latitude: number | null, longitude: number | null) => {
+      setReturnAddress((prev) => ({
+        ...prev,
+        address,
+        latitude,
+        longitude,
+      }));
+      setReturnError(null);
 
-    if (option === 'pickup') {
-      setDeliveryFee(0);
-      setDeliveryDistance(null);
-      setDeliveryError(null);
-    }
-  }, []);
+      if (
+        latitude === null ||
+        longitude === null ||
+        storeLatitude === null ||
+        storeLatitude === undefined ||
+        storeLongitude === null ||
+        storeLongitude === undefined ||
+        !deliverySettings
+      ) {
+        setReturnDistance(null);
+        // Recalculate fee without return distance
+        setDeliveryFee(computeFee(deliveryDistance, null, false));
+        return;
+      }
+
+      const distance = calculateHaversineDistance(
+        storeLatitude,
+        storeLongitude,
+        latitude,
+        longitude,
+      );
+      setReturnDistance(distance);
+
+      const validation = validateDelivery(distance, deliverySettings);
+      if (!validation.valid) {
+        setReturnError(
+          t('returnTooFar', {
+            maxKm: deliverySettings.maximumDistance ?? 0,
+          }),
+        );
+        // Keep delivery fee without return distance
+        setDeliveryFee(computeFee(deliveryDistance, null, false));
+        return;
+      }
+
+      setDeliveryFee(computeFee(deliveryDistance, distance, true));
+    },
+    [
+      computeFee,
+      deliveryDistance,
+      deliverySettings,
+      storeLatitude,
+      storeLongitude,
+      t,
+    ],
+  );
+
+  const handleDifferentReturnAddressToggle = useCallback(
+    (checked: boolean) => {
+      setHasDifferentReturnAddress(checked);
+
+      if (!checked) {
+        // Reset return state
+        setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
+        setReturnDistance(null);
+        setReturnError(null);
+        // Recalculate fee without return distance
+        setDeliveryFee(computeFee(deliveryDistance, null, false));
+      }
+    },
+    [computeFee, deliveryDistance],
+  );
+
+  const handleDeliveryOptionChange = useCallback(
+    (option: DeliveryOption) => {
+      setDeliveryOption(option);
+
+      if (option === 'pickup') {
+        setDeliveryFee(0);
+        setDeliveryDistance(null);
+        setDeliveryError(null);
+        // Also reset return address state
+        setHasDifferentReturnAddress(false);
+        setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
+        setReturnDistance(null);
+        setReturnError(null);
+      }
+    },
+    [],
+  );
 
   return useMemo(
     () => ({
       isDeliveryEnabled,
       isDeliveryForced,
       isDeliveryIncluded,
+      allowDifferentReturnAddress,
       deliveryOption,
       deliveryAddress,
       deliveryDistance,
       deliveryFee,
       deliveryError,
+      hasDifferentReturnAddress,
+      returnAddress,
+      returnDistance,
+      returnError,
       handleDeliveryOptionChange,
       handleDeliveryAddressChange,
+      handleReturnAddressChange,
+      handleDifferentReturnAddressToggle,
     }),
     [
+      allowDifferentReturnAddress,
       deliveryAddress,
       deliveryDistance,
       deliveryError,
       deliveryFee,
       deliveryOption,
+      hasDifferentReturnAddress,
       handleDeliveryAddressChange,
       handleDeliveryOptionChange,
+      handleDifferentReturnAddressToggle,
+      handleReturnAddressChange,
       isDeliveryEnabled,
       isDeliveryForced,
       isDeliveryIncluded,
+      returnAddress,
+      returnDistance,
+      returnError,
     ],
   );
 }

@@ -12,8 +12,10 @@ import {
   ArrowRight,
   CalendarIcon,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Clock,
   ImageIcon,
   Play,
@@ -126,6 +128,7 @@ export function ProductPreviewModal({
   const [startTimeOpen, setStartTimeOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [endTimeOpen, setEndTimeOpen] = useState(false);
+  const [tiersExpanded, setTiersExpanded] = useState(false);
 
   // Reset state when modal opens and track product view
   useEffect(() => {
@@ -135,6 +138,7 @@ export function ProductPreviewModal({
       setEndDate(undefined);
       setStartTime('09:00');
       setEndTime('18:00');
+      setTiersExpanded(false);
       // Track product view when modal opens
       trackEvent({
         eventType: 'product_view',
@@ -168,21 +172,6 @@ export function ProductPreviewModal({
     [product],
   );
   const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
-  const normalizedRateRows = useMemo(
-    () =>
-      rateRows.map((rate) => ({
-        ...rate,
-        displayUnitPrice:
-          (rate.price / Math.max(1, rate.periodMinutes)) * displayPeriodMinutes,
-      })),
-    [displayPeriodMinutes, rateRows],
-  );
-  const baseRate = rateRows.find((rate) => rate.id === '__base__') ?? {
-    id: '__base__',
-    periodMinutes: 1440,
-    price,
-    reductionPercent: 0,
-  };
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -567,38 +556,26 @@ export function ProductPreviewModal({
             )}
 
             {/* Pricing tiers */}
-            {rateRows.length > 1 && (
-              <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                    <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <span className="text-sm font-semibold">
-                    {tProduct('tieredPricing.ratesTitle')}
-                  </span>
-                </div>
+            {rateRows.length > 1 && (() => {
+              const MAX_VISIBLE = 3;
+              const hasHidden = rateRows.length > MAX_VISIBLE;
+              const hiddenCount = rateRows.length - MAX_VISIBLE;
+              const visibleRows = rateRows.slice(0, MAX_VISIBLE);
+              const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
-                <div className="space-y-1.5">
-                  <div className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
-                    <span className="text-muted-foreground">
-                      {formatPeriodLabel(baseRate.periodMinutes, {
-                        alwaysShowCount: true,
-                      })}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(
-                        (baseRate.price / Math.max(1, baseRate.periodMinutes)) *
-                          displayPeriodMinutes,
-                        currency,
-                      )}
-                      / {formatPeriodLabel(displayPeriodMinutes)}
+              return (
+                <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
+                      <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <span className="text-sm font-semibold">
+                      {tProduct('tieredPricing.ratesTitle')}
                     </span>
                   </div>
 
-                  {normalizedRateRows
-                    .filter((rate) => rate.id !== '__base__')
-                    .map((rate) => {
-                    return (
+                  <div className="space-y-1.5">
+                    {visibleRows.map((rate) => (
                       <div
                         key={rate.id}
                         className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
@@ -616,15 +593,72 @@ export function ProductPreviewModal({
                           )}
                         </div>
                         <span className="font-semibold">
-                          {formatCurrency(rate.displayUnitPrice, currency)}/
-                          {formatPeriodLabel(displayPeriodMinutes)}
+                          {formatCurrency(rate.price, currency)} /{' '}
+                          {formatPeriodLabel(rate.periodMinutes)}
                         </span>
                       </div>
-                    );
-                  })}
+                    ))}
+
+                    {/* Collapsible hidden tiers */}
+                    {hasHidden && (
+                      <div
+                        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                        style={{
+                          gridTemplateRows: tiersExpanded ? '1fr' : '0fr',
+                        }}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="space-y-1.5">
+                            {hiddenRows.map((rate) => (
+                              <div
+                                key={rate.id}
+                                className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {formatPeriodLabel(rate.periodMinutes, {
+                                      alwaysShowCount: true,
+                                    })}
+                                  </span>
+                                  {rate.reductionPercent > 0 && (
+                                    <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                                      -{Math.floor(rate.reductionPercent)}%
+                                    </Badge>
+                                  )}
+                                </div>
+                                <span className="font-semibold">
+                                  {formatCurrency(rate.price, currency)} /{' '}
+                                  {formatPeriodLabel(rate.periodMinutes)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {hasHidden && (
+                      <button
+                        type="button"
+                        onClick={() => setTiersExpanded((v) => !v)}
+                        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
+                      >
+                        {tiersExpanded
+                          ? tProduct('tieredPricing.showLess')
+                          : tProduct('tieredPricing.showMore', {
+                              count: hiddenCount,
+                            })}
+                        {tiersExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 

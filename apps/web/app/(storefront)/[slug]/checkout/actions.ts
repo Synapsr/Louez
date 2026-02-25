@@ -1,10 +1,10 @@
 'use server'
 
 import { db } from '@louez/db'
-import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity } from '@louez/db'
+import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes } from '@louez/db'
 import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes } from '@louez/types'
+import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes, PromoCodeSnapshot } from '@louez/types'
 import type { TaxSettings, ProductTaxSettings, StoreSettings } from '@louez/types'
 import type { Rate } from '@louez/types'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
@@ -59,6 +59,13 @@ interface DeliveryInput {
   country?: string
   latitude?: number
   longitude?: number
+  // Return address (when different from delivery address)
+  returnAddress?: string
+  returnCity?: string
+  returnPostalCode?: string
+  returnCountry?: string
+  returnLatitude?: number
+  returnLongitude?: number
 }
 
 interface CreateReservationInput {
@@ -81,6 +88,7 @@ interface CreateReservationInput {
   totalAmount: number
   locale?: 'fr' | 'en'
   delivery?: DeliveryInput
+  promoCode?: string
 }
 
 async function generateUniqueReservationNumber(storeId: string, maxRetries = 5): Promise<string> {
@@ -373,6 +381,7 @@ export async function createReservation(input: CreateReservationInput) {
     // ===== DELIVERY VALIDATION AND FEE CALCULATION =====
     let deliveryFee = 0
     let deliveryDistanceKm: number | null = null
+    let returnDistanceKm: number | null = null
     const deliverySettings = storeSettings?.delivery
     const deliveryMode = deliverySettings?.mode || 'optional'
     const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
@@ -444,11 +453,44 @@ export async function createReservation(input: CreateReservationInput) {
         }
       }
 
+      // Validate and calculate return distance if a different return address is provided
+      if (
+        input.delivery.returnLatitude != null &&
+        input.delivery.returnLongitude != null &&
+        deliverySettings.allowDifferentReturnAddress
+      ) {
+        // Validate return coordinates range
+        if (
+          input.delivery.returnLatitude < -90 ||
+          input.delivery.returnLatitude > 90 ||
+          input.delivery.returnLongitude < -180 ||
+          input.delivery.returnLongitude > 180
+        ) {
+          return { error: 'errors.returnAddressInvalid' }
+        }
+
+        returnDistanceKm = calculateHaversineDistance(
+          storeLatitude,
+          storeLongitude,
+          input.delivery.returnLatitude,
+          input.delivery.returnLongitude
+        )
+
+        // Validate return distance against maximum
+        const returnValidation = validateDelivery(returnDistanceKm, deliverySettings)
+        if (!returnValidation.valid) {
+          return {
+            error: 'errors.returnAddressTooFar',
+            errorParams: returnValidation.errorParams,
+          }
+        }
+      }
+
       // Calculate delivery fee (server-side, never trust client)
       // If mode is 'included', fee is always 0
       deliveryFee = isDeliveryIncluded
         ? 0
-        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal)
+        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal, returnDistanceKm)
     }
 
     // Client `totalAmount` excludes deposit and includes delivery fee.
@@ -484,11 +526,87 @@ export async function createReservation(input: CreateReservationInput) {
       })
     }
 
+    // ========== Promo code validation ==========
+    let serverDiscountAmount = 0
+    let validatedPromoCodeId: string | null = null
+    let promoCodeSnapshotData: PromoCodeSnapshot | null = null
+
+    if (input.promoCode) {
+      const [promoRow] = await db
+        .select()
+        .from(promoCodes)
+        .where(
+          and(
+            eq(promoCodes.storeId, input.storeId),
+            sql`UPPER(${promoCodes.code}) = UPPER(${input.promoCode})`,
+            eq(promoCodes.isActive, true)
+          )
+        )
+        .for('update')
+
+      if (!promoRow) {
+        return { error: 'errors.promoCodeInvalid' }
+      }
+
+      const now = new Date()
+      if (promoRow.startsAt && promoRow.startsAt > now) {
+        return { error: 'errors.promoCodeNotStarted' }
+      }
+      if (promoRow.expiresAt && promoRow.expiresAt < now) {
+        return { error: 'errors.promoCodeExpired' }
+      }
+      if (
+        promoRow.maxUsageCount !== null &&
+        promoRow.currentUsageCount >= promoRow.maxUsageCount
+      ) {
+        return { error: 'errors.promoCodeExhausted' }
+      }
+
+      const minAmount = promoRow.minimumAmount
+        ? parseFloat(promoRow.minimumAmount)
+        : 0
+      if (minAmount > 0 && serverSubtotal < minAmount) {
+        return {
+          error: 'errors.promoCodeMinimumNotMet',
+          errorParams: {
+            amount: minAmount.toFixed(2),
+          },
+        }
+      }
+
+      const promoValue = parseFloat(promoRow.value)
+      if (promoRow.type === 'percentage') {
+        serverDiscountAmount = Math.min(
+          (serverSubtotal * promoValue) / 100,
+          serverSubtotal
+        )
+      } else {
+        serverDiscountAmount = Math.min(promoValue, serverSubtotal)
+      }
+      serverDiscountAmount = Math.round(serverDiscountAmount * 100) / 100
+
+      await db
+        .update(promoCodes)
+        .set({
+          currentUsageCount: sql`${promoCodes.currentUsageCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(promoCodes.id, promoRow.id))
+
+      validatedPromoCodeId = promoRow.id
+      promoCodeSnapshotData = {
+        code: promoRow.code,
+        type: promoRow.type,
+        value: promoValue,
+      }
+    }
+
     // Use server-calculated values for all monetary operations
     const finalSubtotal = serverSubtotal
+    const finalDiscount = serverDiscountAmount
     const finalDeposit = serverTotalDeposit
     const finalDeliveryFee = deliveryFee
-    const finalTotal = serverTotalWithDelivery
+    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee + finalDeposit
 
     const startDates = input.items.map((item) => new Date(item.startDate))
     const endDates = input.items.map((item) => new Date(item.endDate))
@@ -768,6 +886,16 @@ export async function createReservation(input: CreateReservationInput) {
         deliveryLongitude: input.delivery?.option === 'delivery' ? input.delivery.longitude?.toString() : null,
         deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
         deliveryFee: finalDeliveryFee.toFixed(2),
+        promoCodeId: validatedPromoCodeId,
+        discountAmount: finalDiscount.toFixed(2),
+        promoCodeSnapshot: promoCodeSnapshotData,
+        returnAddress: input.delivery?.option === 'delivery' ? input.delivery.returnAddress ?? null : null,
+        returnCity: input.delivery?.option === 'delivery' ? input.delivery.returnCity ?? null : null,
+        returnPostalCode: input.delivery?.option === 'delivery' ? input.delivery.returnPostalCode ?? null : null,
+        returnCountry: input.delivery?.option === 'delivery' ? input.delivery.returnCountry ?? null : null,
+        returnLatitude: input.delivery?.option === 'delivery' && input.delivery.returnLatitude != null ? input.delivery.returnLatitude.toString() : null,
+        returnLongitude: input.delivery?.option === 'delivery' && input.delivery.returnLongitude != null ? input.delivery.returnLongitude.toString() : null,
+        returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
       })
 
       for (let i = 0; i < input.items.length; i++) {
@@ -1038,17 +1166,18 @@ export async function createReservation(input: CreateReservationInput) {
         const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
         const isPartialPayment = depositPercentage < 100
 
-        // Calculate the amount to charge now
+        // Calculate the amount to charge now (after promo discount)
         // Round to 2 decimal places to avoid floating point issues
+        const subtotalAfterDiscount = finalSubtotal - finalDiscount
         const amountToCharge = isPartialPayment
-          ? Math.round(finalSubtotal * depositPercentage) / 100
-          : finalSubtotal
+          ? Math.round(subtotalAfterDiscount * depositPercentage) / 100
+          : subtotalAfterDiscount
 
         // Ensure minimum Stripe amount (50 cents for most currencies)
         const MINIMUM_STRIPE_AMOUNT = 0.50
         const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
-        // Don't exceed the full amount
-        const finalChargeAmount = Math.min(effectiveChargeAmount, finalSubtotal)
+        // Don't exceed the full amount (after discount)
+        const finalChargeAmount = Math.min(effectiveChargeAmount, subtotalAfterDiscount)
 
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit

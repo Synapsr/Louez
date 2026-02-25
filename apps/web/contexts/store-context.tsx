@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
+import { setStorefrontSlug } from '@/lib/orpc/client'
 
 interface StoreContextValue {
   currency: string
@@ -26,6 +27,10 @@ export function StoreProvider({
   storeName,
   timezone,
 }: StoreProviderProps) {
+  // Set the store slug for the ORPC client synchronously during render,
+  // so it's available before any child component makes API calls.
+  setStorefrontSlug(storeSlug)
+
   return (
     <StoreContext.Provider value={{ currency, storeSlug, storeName, timezone }}>
       {children}

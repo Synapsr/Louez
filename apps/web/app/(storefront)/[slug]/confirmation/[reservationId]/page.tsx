@@ -5,12 +5,9 @@ import { db } from '@louez/db'
 import { stores, reservations } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
-import { CheckCircle, Calendar, Mail, Clock, User, Truck, Store, MapPin } from 'lucide-react'
+import { CheckCircle, Calendar, Mail, Clock, User, Tag, Truck, Store, MapPin } from 'lucide-react'
 
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
-import { Separator } from '@louez/ui'
-import { Badge } from '@louez/ui'
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
@@ -159,6 +156,21 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                           </span>
                         </p>
                       )}
+                      {reservation.returnAddress && (
+                        <div className="mt-3 pt-3 border-t border-border/50">
+                          <p className="text-xs font-medium text-muted-foreground mb-1">
+                            {t('returnAddressLabel')}
+                          </p>
+                          <p className="text-sm text-muted-foreground flex items-start gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                            <span>
+                              {reservation.returnAddress}
+                              {reservation.returnCity && `, ${reservation.returnCity}`}
+                              {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
+                            </span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </>
                 ) : (
@@ -214,6 +226,20 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                     {t('deliveryFeeLabel')}
                   </span>
                   <span>{formatCurrency(deliveryFee, currency)}</span>
+                </div>
+              )}
+              {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span className="flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5" />
+                    {t('discountLabel')}
+                    {reservation.promoCodeSnapshot && (
+                      <Badge variant="secondary" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                        {(reservation.promoCodeSnapshot as { code: string }).code}
+                      </Badge>
+                    )}
+                  </span>
+                  <span>-{formatCurrency(parseFloat(reservation.discountAmount), currency)}</span>
                 </div>
               )}
               {parseFloat(reservation.depositAmount) > 0 && (

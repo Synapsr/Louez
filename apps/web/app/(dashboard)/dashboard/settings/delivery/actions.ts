@@ -19,6 +19,7 @@ const deliverySettingsSchema = z.object({
   minimumFee: z.number().min(0).max(1000),
   maximumDistance: z.number().min(1).max(500).nullable(),
   freeDeliveryThreshold: z.number().min(0).max(100000).nullable(),
+  allowDifferentReturnAddress: z.boolean(),
 })
 
 type DeliverySettingsInput = z.infer<typeof deliverySettingsSchema>
@@ -47,6 +48,7 @@ export async function updateDeliverySettings(data: DeliverySettingsInput) {
     minimumFee: validated.data.minimumFee,
     maximumDistance: validated.data.maximumDistance,
     freeDeliveryThreshold: validated.data.freeDeliveryThreshold,
+    allowDifferentReturnAddress: validated.data.allowDifferentReturnAddress,
   }
 
   const currentSettings = store.settings || {

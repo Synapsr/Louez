@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { ImageIcon, Truck } from 'lucide-react';
+import { ImageIcon, Tag, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
@@ -19,8 +19,10 @@ import { getDetailedDuration } from '@/lib/utils/duration';
 
 import type { CartItem } from '@/contexts/cart-context';
 
+import type { ValidatedPromo } from '../promo-actions';
 import type { DeliveryOption, LineResolutionState } from '../types';
 import { calculateDuration } from '../utils';
+import { CheckoutPromoCode } from './checkout-promo-code';
 
 interface CheckoutOrderSummaryProps {
   items: CartItem[];
@@ -41,6 +43,12 @@ interface CheckoutOrderSummaryProps {
   deliveryDistance: number | null;
   deliveryFee: number;
   lineResolutions?: Record<string, LineResolutionState>;
+  hasActivePromoCodes?: boolean;
+  storeId?: string;
+  appliedPromo: ValidatedPromo | null;
+  discountAmount: number;
+  onApplyPromo: (promo: ValidatedPromo) => void;
+  onRemovePromo: () => void;
 }
 
 export function CheckoutOrderSummary({
@@ -62,6 +70,12 @@ export function CheckoutOrderSummary({
   deliveryDistance,
   deliveryFee,
   lineResolutions = {},
+  hasActivePromoCodes,
+  storeId,
+  appliedPromo,
+  discountAmount,
+  onApplyPromo,
+  onRemovePromo,
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
@@ -244,6 +258,27 @@ export function CheckoutOrderSummary({
               </>
             )}
 
+            {hasActivePromoCodes && storeId && (
+              <CheckoutPromoCode
+                storeId={storeId}
+                subtotal={subtotal}
+                currency={currency}
+                appliedPromo={appliedPromo}
+                onApply={onApplyPromo}
+                onRemove={onRemovePromo}
+              />
+            )}
+
+            {discountAmount > 0 && appliedPromo && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  {t('promoCode.discount', { code: appliedPromo.code })}
+                </span>
+                <span>-{formatCurrency(discountAmount, currency)}</span>
+              </div>
+            )}
+
             {deliveryOption === 'delivery' && deliveryDistance !== null && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1.5">
@@ -276,7 +311,7 @@ export function CheckoutOrderSummary({
                   <span>{t('toPayNow')}</span>
                   <span className="text-primary">
                     {formatCurrency(
-                      Math.round(subtotal * depositPercentage) / 100,
+                      Math.round((subtotal - discountAmount) * depositPercentage) / 100,
                       currency,
                     )}
                   </span>
@@ -284,7 +319,7 @@ export function CheckoutOrderSummary({
                 <p className="text-muted-foreground text-xs">
                   {t('remainingAtPickup', {
                     amount: formatCurrency(
-                      Math.round(subtotal * (100 - depositPercentage)) / 100,
+                      Math.round((subtotal - discountAmount) * (100 - depositPercentage)) / 100,
                       currency,
                     ),
                   })}
