@@ -23,6 +23,7 @@ interface CheckoutConfirmStepProps {
   totalWithDelivery: number;
   currency: string;
   canSubmitCheckout: boolean;
+  discountAmount?: number;
   onBack: () => void;
   onEditContact: () => void;
 }
@@ -37,6 +38,7 @@ export function CheckoutConfirmStep({
   totalWithDelivery,
   currency,
   canSubmitCheckout,
+  discountAmount = 0,
   onBack,
   onEditContact,
 }: CheckoutConfirmStepProps) {
@@ -144,7 +146,7 @@ export function CheckoutConfirmStep({
                     {depositPercentage < 100
                       ? t('payDeposit', {
                           amount: formatCurrency(
-                            Math.round(subtotal * depositPercentage) / 100,
+                            Math.round((subtotal - discountAmount) * depositPercentage) / 100,
                             currency,
                           ),
                         })

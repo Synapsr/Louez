@@ -69,6 +69,17 @@ function getStoreSlugFromPath(): string | null {
 }
 
 /**
+ * Store slug set by the StoreProvider during render.
+ * Used as a fallback when URL-based detection fails (e.g. PREVIEW_STORE_SLUG mode
+ * where the middleware rewrites URLs but the browser URL has no slug).
+ */
+let _storefrontSlug: string | null = null
+
+export function setStorefrontSlug(slug: string) {
+  _storefrontSlug = slug
+}
+
+/**
  * RPC Link configuration for client-server communication
  */
 function getRpcUrl(): string {
@@ -83,8 +94,8 @@ const link = new RPCLink({
   url: getRpcUrl(),
   headers: () => {
     // Include store slug header for storefront routes.
-    // Prefer subdomain resolution to avoid mis-detecting routes like /rental as slug.
-    const storeSlug = getStoreSlugFromHost() || getStoreSlugFromPath()
+    // Prefer subdomain resolution, then path-based, then StoreProvider context fallback.
+    const storeSlug = getStoreSlugFromHost() || getStoreSlugFromPath() || _storefrontSlug
     return storeSlug ? { 'x-store-slug': storeSlug } : {}
   },
   fetch: (input, init) => {

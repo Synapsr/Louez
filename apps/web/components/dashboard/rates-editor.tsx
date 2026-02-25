@@ -605,7 +605,7 @@ function ReductionInput({
         type="number"
         min={0}
         max={99}
-        step="0.01"
+        step="any"
         value={draft ?? value}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}

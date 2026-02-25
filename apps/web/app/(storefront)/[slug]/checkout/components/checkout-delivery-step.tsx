@@ -14,6 +14,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   RadioGroup,
   RadioGroupItem,
 } from '@louez/ui';
@@ -36,8 +37,19 @@ interface CheckoutDeliveryStepProps {
   storeAddress?: string | null;
   isDeliveryForced: boolean;
   isDeliveryIncluded: boolean;
+  allowDifferentReturnAddress: boolean;
+  hasDifferentReturnAddress: boolean;
+  returnAddress: DeliveryAddress;
+  returnDistance: number | null;
+  returnError: string | null;
   onDeliveryOptionChange: (option: DeliveryOption) => void;
   onDeliveryAddressChange: (
+    address: string,
+    latitude: number | null,
+    longitude: number | null,
+  ) => void;
+  onDifferentReturnAddressToggle: (checked: boolean) => void;
+  onReturnAddressChange: (
     address: string,
     latitude: number | null,
     longitude: number | null,
@@ -58,14 +70,27 @@ export function CheckoutDeliveryStep({
   storeAddress,
   isDeliveryForced,
   isDeliveryIncluded,
+  allowDifferentReturnAddress,
+  hasDifferentReturnAddress,
+  returnAddress,
+  returnDistance,
+  returnError,
   onDeliveryOptionChange,
   onDeliveryAddressChange,
+  onDifferentReturnAddressToggle,
+  onReturnAddressChange,
   onBack,
   onContinue,
 }: CheckoutDeliveryStepProps) {
   const t = useTranslations('storefront.checkout');
   const shouldShowDeliveryInput =
     deliveryOption === 'delivery' || isDeliveryForced;
+
+  const isReturnAddressIncomplete =
+    hasDifferentReturnAddress &&
+    (returnAddress.latitude === null ||
+      returnAddress.longitude === null ||
+      Boolean(returnError));
 
   return (
     <Card>
@@ -201,6 +226,7 @@ export function CheckoutDeliveryStep({
 
         {shouldShowDeliveryInput && (
           <div className={cn('space-y-4', !isDeliveryForced && 'border-t pt-6')}>
+            {/* Delivery address */}
             <div>
               <label className="text-sm font-medium">{t('deliveryAddress')}</label>
               <div className="mt-2">
@@ -214,12 +240,19 @@ export function CheckoutDeliveryStep({
               </div>
             </div>
 
+            {/* Distance & fee summary */}
             {deliveryDistance !== null && !deliveryError && (
               <div className="bg-muted/50 rounded-lg p-4">
                 <div className="flex justify-between text-sm">
                   <span>{t('deliveryDistance')}</span>
                   <span>{deliveryDistance.toFixed(1)} km</span>
                 </div>
+                {hasDifferentReturnAddress && returnDistance !== null && !returnError && (
+                  <div className="mt-1 flex justify-between text-sm">
+                    <span>{t('returnDistance')}</span>
+                    <span>{returnDistance.toFixed(1)} km</span>
+                  </div>
+                )}
                 {!isDeliveryIncluded && (
                   <div className="mt-2 flex justify-between font-medium">
                     <span>{t('deliveryFee')}</span>
@@ -245,10 +278,16 @@ export function CheckoutDeliveryStep({
                   )}
                 {deliverySettings.roundTrip && !isDeliveryIncluded && (
                   <p className="text-muted-foreground mt-2 text-xs">
-                    {t('roundTripNote', {
-                      distance: deliveryDistance.toFixed(1),
-                      total: (deliveryDistance * 2).toFixed(1),
-                    })}
+                    {hasDifferentReturnAddress && returnDistance !== null && !returnError
+                      ? t('roundTripNoteDifferentReturn', {
+                          deliveryKm: deliveryDistance.toFixed(1),
+                          returnKm: returnDistance.toFixed(1),
+                          total: (deliveryDistance + returnDistance).toFixed(1),
+                        })
+                      : t('roundTripNote', {
+                          distance: deliveryDistance.toFixed(1),
+                          total: (deliveryDistance * 2).toFixed(1),
+                        })}
                   </p>
                 )}
               </div>
@@ -257,6 +296,54 @@ export function CheckoutDeliveryStep({
             {deliveryError && (
               <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
                 {deliveryError}
+              </div>
+            )}
+
+            {/* Different return address option */}
+            {allowDifferentReturnAddress && (
+              <div className="space-y-4 border-t pt-4">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <Checkbox
+                    checked={hasDifferentReturnAddress}
+                    onCheckedChange={(checked) =>
+                      onDifferentReturnAddressToggle(checked === true)
+                    }
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">
+                      {t('differentReturnAddress')}
+                    </span>
+                    <p className="text-muted-foreground text-xs mt-0.5">
+                      {t('differentReturnAddressDescription')}
+                    </p>
+                  </div>
+                </label>
+
+                {hasDifferentReturnAddress && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">
+                        {t('returnAddress')}
+                      </label>
+                      <div className="mt-2">
+                        <AddressInput
+                          value={returnAddress.address}
+                          latitude={returnAddress.latitude}
+                          longitude={returnAddress.longitude}
+                          onChange={onReturnAddressChange}
+                          placeholder={t('returnAddressPlaceholder')}
+                        />
+                      </div>
+                    </div>
+
+                    {returnError && (
+                      <div className="bg-destructive/10 text-destructive rounded-lg p-4 text-sm">
+                        {returnError}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -275,7 +362,8 @@ export function CheckoutDeliveryStep({
               deliveryOption === 'delivery' &&
               (deliveryAddress.latitude === null ||
                 deliveryAddress.longitude === null ||
-                Boolean(deliveryError))
+                Boolean(deliveryError) ||
+                isReturnAddressIncomplete)
             }
           >
             {t('continue')}

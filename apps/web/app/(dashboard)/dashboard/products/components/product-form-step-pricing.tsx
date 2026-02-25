@@ -134,6 +134,33 @@ export function ProductFormStepPricing({
             );
           }}
         </form.Field>
+        <form.Field name="rateTiers">
+          {(field) => (
+            <div>
+              <RatesEditor
+                basePriceDuration={watchedValues.basePriceDuration}
+                rates={field.state.value || []}
+                onChange={(next) => {
+                  field.handleChange(next);
+                  onRateTiersEdit?.();
+                }}
+                enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
+                onEnforceStrictTiersChange={(value) =>
+                  form.setFieldValue('enforceStrictTiers', value)
+                }
+                onRequireBaseRate={() => setHighlightBaseRate(true)}
+                invalidRateIndexes={duplicateRateTierIndexes}
+                currency={currency}
+                disabled={isSaving}
+              />
+              {field.state.meta.errors.length > 0 && (
+                <p className="text-destructive text-sm font-medium">
+                  {getFieldError(field.state.meta.errors[0])}
+                </p>
+              )}
+            </div>
+          )}
+        </form.Field>
         {storeTaxSettings?.enabled && (
           <>
             <Separator />
@@ -159,7 +186,7 @@ export function ProductFormStepPricing({
                           type="number"
                           min="0"
                           max="100"
-                          step="0.01"
+                          step="any"
                           placeholder="20"
                           className="pr-8"
                           value={field.state.value ?? ''}
@@ -191,33 +218,6 @@ export function ProductFormStepPricing({
             </div>
           </>
         )}
-        <form.Field name="rateTiers">
-          {(field) => (
-            <div>
-              <RatesEditor
-                basePriceDuration={watchedValues.basePriceDuration}
-                rates={field.state.value || []}
-                onChange={(next) => {
-                  field.handleChange(next);
-                  onRateTiersEdit?.();
-                }}
-                enforceStrictTiers={watchedValues.enforceStrictTiers ?? true}
-                onEnforceStrictTiersChange={(value) =>
-                  form.setFieldValue('enforceStrictTiers', value)
-                }
-                onRequireBaseRate={() => setHighlightBaseRate(true)}
-                invalidRateIndexes={duplicateRateTierIndexes}
-                currency={currency}
-                disabled={isSaving}
-              />
-              {field.state.meta.errors.length > 0 && (
-                <p className="text-destructive text-sm font-medium">
-                  {getFieldError(field.state.meta.errors[0])}
-                </p>
-              )}
-            </div>
-          )}
-        </form.Field>
         <Separator />
         <div className="grid items-start gap-4 sm:grid-cols-2">
           <form.AppField name="deposit">

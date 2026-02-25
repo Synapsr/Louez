@@ -24,6 +24,9 @@ interface BuildReservationPayloadInput {
   totalAmount: number;
   deliveryOption: DeliveryOption;
   deliveryAddress: DeliveryAddress;
+  hasDifferentReturnAddress: boolean;
+  returnAddress: DeliveryAddress;
+  promoCode?: string;
 }
 
 export function buildReservationPayload({
@@ -37,6 +40,9 @@ export function buildReservationPayload({
   totalAmount,
   deliveryOption,
   deliveryAddress,
+  hasDifferentReturnAddress,
+  returnAddress,
+  promoCode,
 }: BuildReservationPayloadInput): CreateReservationInput {
   return {
     storeId,
@@ -103,6 +109,7 @@ export function buildReservationPayload({
     depositAmount,
     totalAmount,
     locale,
+    promoCode,
     delivery:
       deliveryOption === 'delivery' &&
       deliveryAddress.latitude !== null &&
@@ -115,6 +122,18 @@ export function buildReservationPayload({
             country: deliveryAddress.country,
             latitude: deliveryAddress.latitude,
             longitude: deliveryAddress.longitude,
+            ...(hasDifferentReturnAddress &&
+            returnAddress.latitude !== null &&
+            returnAddress.longitude !== null
+              ? {
+                  returnAddress: returnAddress.address,
+                  returnCity: returnAddress.city,
+                  returnPostalCode: returnAddress.postalCode,
+                  returnCountry: returnAddress.country,
+                  returnLatitude: returnAddress.latitude,
+                  returnLongitude: returnAddress.longitude,
+                }
+              : {}),
           }
         : { option: 'pickup' },
   };
