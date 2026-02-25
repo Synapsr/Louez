@@ -70,6 +70,7 @@ const createDeliverySettingsSchema = (
       .min(0, t('minValue', { min: 0 }))
       .max(100000, t('maxValue', { max: 100000 }))
       .nullable(),
+    allowDifferentReturnAddress: z.boolean(),
   })
 
 type DeliverySettingsInput = z.infer<
@@ -121,6 +122,7 @@ export function DeliverySettingsForm({
       minimumFee: currentDelivery.minimumFee,
       maximumDistance: currentDelivery.maximumDistance,
       freeDeliveryThreshold: currentDelivery.freeDeliveryThreshold,
+    allowDifferentReturnAddress: currentDelivery.allowDifferentReturnAddress ?? false,
     },
     validators: { onSubmit: deliverySettingsSchema },
     onSubmit: async ({ value }) => {
@@ -136,6 +138,8 @@ export function DeliverySettingsForm({
           return
         }
         toastManager.add({ title: t('saved'), type: 'success' })
+        form.options.defaultValues = value
+        form.reset()
         router.refresh()
       })
     },
@@ -567,6 +571,18 @@ export function DeliverySettingsForm({
                       </div>
                     )}
                   </form.Field>
+                </div>
+
+                {/* Allow different return address */}
+                <div className="col-span-full">
+                  <form.AppField name="allowDifferentReturnAddress">
+                    {(field) => (
+                      <field.Switch
+                        label={t('allowDifferentReturnAddress')}
+                        description={t('allowDifferentReturnAddressDescription')}
+                      />
+                    )}
+                  </form.AppField>
                 </div>
               </div>
             </div>
