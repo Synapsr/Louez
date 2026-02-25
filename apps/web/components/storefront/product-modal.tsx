@@ -15,6 +15,7 @@ import {
   Plus,
   Layers,
   ShoppingCart,
+  TrendingDown,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -1448,6 +1449,7 @@ export function ProductModal({
 
               {savings > 0 && discountPercent && (
                 <Badge className="bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                  <TrendingDown className="mr-1 h-3.5 w-3.5" />
                   -{Math.floor(discountPercent)}%
                 </Badge>
               )}

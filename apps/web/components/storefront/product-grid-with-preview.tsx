@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { ImageIcon, Calendar, Layers } from 'lucide-react'
+import { ImageIcon, Calendar, TrendingDown } from 'lucide-react'
 
 import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -119,7 +119,7 @@ function ProductCardInteractive({
             <Badge
               className="absolute top-3 left-3 text-xs font-medium bg-primary/10 text-primary"
             >
-              <Layers className="h-3 w-3 mr-1" />
+              <TrendingDown className="h-3 w-3 mr-1" />
               -{Math.floor(pricingSummary.maxReductionPercent)}%
             </Badge>
           )}

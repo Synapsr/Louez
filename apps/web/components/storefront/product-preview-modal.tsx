@@ -20,6 +20,7 @@ import {
   ImageIcon,
   Layers,
   Play,
+  TrendingDown,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -532,7 +533,7 @@ export function ProductPreviewModal({
                 </span>
                 {pricingSummary.maxReductionPercent > 0 && (
                   <Badge className="ml-2 bg-primary/10 text-primary">
-                    <Layers className="mr-1 h-3 w-3" />
+                    <TrendingDown className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {
                       percent: Math.floor(pricingSummary.maxReductionPercent),
                     })}
