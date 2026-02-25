@@ -2391,6 +2391,8 @@
         "closed": "Closed",
         "openTime": "Opening",
         "closeTime": "Closing",
+        "addRange": "Add a time slot",
+        "removeRange": "Remove this slot",
         "applyToAll": "Apply to all open days",
         "applyToAllDescription": "Apply these hours to all days marked as open",
         "applied": "Hours applied",
@@ -3123,7 +3125,9 @@
         "yourSavings": "Your savings",
         "youSave": "You save {amount}",
         "discountApplied": "{percent}% discount applied",
-        "longTermDiscount": "Long-term discount"
+        "longTermDiscount": "Long-term discount",
+        "showMore": "Show more ({count})",
+        "showLess": "Show less"
       },
       "startDate": "Start date",
       "endDate": "End date",

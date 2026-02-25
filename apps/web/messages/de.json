@@ -2381,6 +2381,8 @@
         "closed": "Geschlossen",
         "openTime": "Öffnung",
         "closeTime": "Schließung",
+        "addRange": "Zeitfenster hinzufügen",
+        "removeRange": "Dieses Zeitfenster entfernen",
         "applyToAll": "Auf alle geöffneten Tage anwenden",
         "applyToAllDescription": "Diese Zeiten auf alle als geöffnet markierten Tage anwenden",
         "applied": "Zeiten angewendet",
@@ -3109,7 +3111,9 @@
         "yourSavings": "Ihre Ersparnis",
         "youSave": "Sie sparen {amount}",
         "discountApplied": "{percent}% Rabatt angewendet",
-        "longTermDiscount": "Langzeitrabatt"
+        "longTermDiscount": "Langzeitrabatt",
+        "showMore": "Mehr anzeigen ({count})",
+        "showLess": "Weniger anzeigen"
       },
       "startDate": "Startdatum",
       "endDate": "Enddatum",

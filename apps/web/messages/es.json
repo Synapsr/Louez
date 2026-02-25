@@ -2383,6 +2383,8 @@
         "closed": "Cerrado",
         "openTime": "Apertura",
         "closeTime": "Cierre",
+        "addRange": "Agregar franja horaria",
+        "removeRange": "Eliminar esta franja",
         "applyToAll": "Aplicar a todos los dias abiertos",
         "applyToAllDescription": "Aplicar estos horarios a todos los dias marcados como abiertos",
         "applied": "Horarios aplicados",
@@ -3111,7 +3113,9 @@
         "yourSavings": "Su ahorro",
         "youSave": "Ahorra {amount}",
         "discountApplied": "{percent}% de descuento aplicado",
-        "longTermDiscount": "Descuento a largo plazo"
+        "longTermDiscount": "Descuento a largo plazo",
+        "showMore": "Ver mas ({count})",
+        "showLess": "Ver menos"
       },
       "startDate": "Fecha de inicio",
       "endDate": "Fecha de fin",

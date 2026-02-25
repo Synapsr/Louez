@@ -2369,6 +2369,8 @@
         "closed": "Gesloten",
         "openTime": "Opening",
         "closeTime": "Sluiting",
+        "addRange": "Tijdslot toevoegen",
+        "removeRange": "Dit tijdslot verwijderen",
         "applyToAll": "Toepassen op alle open dagen",
         "applyToAllDescription": "Pas deze tijden toe op alle dagen gemarkeerd als open",
         "applied": "Tijden toegepast",
@@ -3097,7 +3099,9 @@
         "yourSavings": "Uw besparing",
         "youSave": "U bespaart {amount}",
         "discountApplied": "{percent}% korting toegepast",
-        "longTermDiscount": "Langdurige korting"
+        "longTermDiscount": "Langdurige korting",
+        "showMore": "Meer tonen ({count})",
+        "showLess": "Minder tonen"
       },
       "startDate": "Startdatum",
       "endDate": "Einddatum",

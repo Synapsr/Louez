@@ -2369,6 +2369,8 @@
         "closed": "Zamknięte",
         "openTime": "Otwarcie",
         "closeTime": "Zamknięcie",
+        "addRange": "Dodaj przedział czasowy",
+        "removeRange": "Usuń ten przedział",
         "applyToAll": "Zastosuj do wszystkich otwartych dni",
         "applyToAllDescription": "Zastosuj te godziny do wszystkich dni oznaczonych jako otwarte",
         "applied": "Godziny zastosowane",
@@ -3097,7 +3099,9 @@
         "yourSavings": "Twoje oszczędności",
         "youSave": "Oszczędzasz {amount}",
         "discountApplied": "Zniżka {percent}% zastosowana",
-        "longTermDiscount": "Zniżka długoterminowa"
+        "longTermDiscount": "Zniżka długoterminowa",
+        "showMore": "Pokaż więcej ({count})",
+        "showLess": "Pokaż mniej"
       },
       "startDate": "Data rozpoczęcia",
       "endDate": "Data zakończenia",
