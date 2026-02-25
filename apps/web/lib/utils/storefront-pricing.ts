@@ -32,7 +32,6 @@ export interface StorefrontPricingSummary {
   displayPeriodMinutes: number
   showStartingFrom: boolean
   maxReductionPercent: number
-  allReductionPercents: number[]
 }
 
 function parseMoney(value: string | number | null | undefined): number {
@@ -157,14 +156,12 @@ export function getStorefrontPricingSummary(
 ): StorefrontPricingSummary {
   const rows = normalizeRateRows(product)
   const baseRow = rows.find((r) => r.id === '__base__') ?? rows[0]
-  const reductionPercents = rows.map((row) => row.reductionPercent).filter((p) => p > 0)
-  const maxReductionPercent = Math.max(...reductionPercents, 0)
+  const maxReductionPercent = Math.max(...rows.map((row) => row.reductionPercent), 0)
 
   return {
     displayPrice: baseRow.price,
     displayPeriodMinutes: baseRow.periodMinutes,
     showStartingFrom: false,
     maxReductionPercent,
-    allReductionPercents: reductionPercents,
   }
 }
