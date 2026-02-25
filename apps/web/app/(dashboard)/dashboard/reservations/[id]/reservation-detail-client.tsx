@@ -491,15 +491,6 @@ export function ReservationDetailClient({
                       </TableRow>
                     )}
 
-                    <TableRow className="bg-muted/30">
-                      <TableCell colSpan={3} className="text-right font-semibold">
-                        {t('total')}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {parseFloat(reservation.totalAmount).toFixed(2)}
-                        {currencySymbol}
-                      </TableCell>
-                    </TableRow>
                   </TableFooter>
                 </Table>
               </div>

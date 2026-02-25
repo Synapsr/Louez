@@ -172,7 +172,7 @@ export function ReservationsCardView({
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-lg">
-                          {parseFloat(reservation.totalAmount).toFixed(2)} {currencySymbol}
+                          {parseFloat(reservation.subtotalAmount).toFixed(2)} {currencySymbol}
                         </span>
                         <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                       </div>
