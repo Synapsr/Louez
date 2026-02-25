@@ -959,17 +959,15 @@ export function ProductModal({
                   const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="rounded-xl border bg-primary/5 p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <div className="rounded-lg bg-primary/10 p-1.5">
-                          <Layers className="h-4 w-4 text-primary" />
-                        </div>
+                    <div className="overflow-hidden rounded-xl border">
+                      <div className="flex items-center gap-2 px-4 py-3">
+                        <Layers className="h-4 w-4 text-primary" />
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div>
                         {visibleRows.map((rate) => {
                           const isCurrentRate =
                             contextualDisplay?.selectedRateId === rate.id;
@@ -978,18 +976,15 @@ export function ProductModal({
                             <div
                               key={rate.id}
                               className={cn(
-                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                                isCurrentRate
-                                  ? 'bg-primary/10 ring-1 ring-primary/30'
-                                  : 'bg-background/60',
+                                'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
+                                isCurrentRate && 'bg-primary/5',
                               )}
                             >
                               <div className="flex items-center gap-2">
                                 <span
                                   className={cn(
                                     'font-medium',
-                                    isCurrentRate &&
-                                      'text-primary',
+                                    isCurrentRate && 'text-primary',
                                   )}
                                 >
                                   {formatPeriodLabel(rate.periodMinutes, {
@@ -997,14 +992,7 @@ export function ProductModal({
                                   })}
                                 </span>
                                 {rate.reductionPercent > 0 && (
-                                  <Badge
-                                    className={cn(
-                                      'text-xs font-semibold',
-                                      isCurrentRate
-                                        ? 'bg-primary text-primary-foreground hover:bg-primary'
-                                        : 'bg-primary/10 text-primary',
-                                    )}
-                                  >
+                                  <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                     -{Math.floor(rate.reductionPercent)}%
                                   </Badge>
                                 )}
@@ -1013,8 +1001,7 @@ export function ProductModal({
                                 <span
                                   className={cn(
                                     'font-semibold',
-                                    isCurrentRate &&
-                                      'text-primary',
+                                    isCurrentRate && 'text-primary',
                                   )}
                                 >
                                   {formatCurrency(rate.price, currency)}
@@ -1048,7 +1035,7 @@ export function ProductModal({
                             }}
                           >
                             <div className="overflow-hidden">
-                              <div className="space-y-1.5">
+                              <div>
                                 {hiddenRows.map((rate) => {
                                   const isCurrentRate =
                                     contextualDisplay?.selectedRateId === rate.id;
@@ -1057,18 +1044,15 @@ export function ProductModal({
                                     <div
                                       key={rate.id}
                                       className={cn(
-                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                                        isCurrentRate
-                                          ? 'bg-primary/10 ring-1 ring-primary/30'
-                                          : 'bg-background/60',
+                                        'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
+                                        isCurrentRate && 'bg-primary/5',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
                                         <span
                                           className={cn(
                                             'font-medium',
-                                            isCurrentRate &&
-                                              'text-primary',
+                                            isCurrentRate && 'text-primary',
                                           )}
                                         >
                                           {formatPeriodLabel(rate.periodMinutes, {
@@ -1076,14 +1060,7 @@ export function ProductModal({
                                           })}
                                         </span>
                                         {rate.reductionPercent > 0 && (
-                                          <Badge
-                                            className={cn(
-                                              'text-xs font-semibold',
-                                              isCurrentRate
-                                                ? 'bg-primary text-primary-foreground hover:bg-primary'
-                                                : 'bg-primary/10 text-primary',
-                                            )}
-                                          >
+                                          <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                             -{Math.floor(rate.reductionPercent)}%
                                           </Badge>
                                         )}
@@ -1092,8 +1069,7 @@ export function ProductModal({
                                         <span
                                           className={cn(
                                             'font-semibold',
-                                            isCurrentRate &&
-                                              'text-primary',
+                                            isCurrentRate && 'text-primary',
                                           )}
                                         >
                                           {formatCurrency(rate.price, currency)}
@@ -1128,7 +1104,7 @@ export function ProductModal({
                         <button
                           type="button"
                           onClick={() => setTiersExpanded((prev) => !prev)}
-                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                          className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-4 py-2.5 text-xs font-medium transition-colors"
                         >
                           {isExpanded ? (
                             <>
@@ -1166,19 +1142,17 @@ export function ProductModal({
                   const hiddenTiers = sortedLegacyTiers.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="rounded-xl border bg-primary/5 p-4">
-                      <div className="mb-3 flex items-center gap-2">
-                        <div className="rounded-lg bg-primary/10 p-1.5">
-                          <Layers className="h-4 w-4 text-primary" />
-                        </div>
+                    <div className="overflow-hidden rounded-xl border">
+                      <div className="flex items-center gap-2 px-4 py-3">
+                        <Layers className="h-4 w-4 text-primary" />
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
+                      <div>
                         {/* Base price row */}
-                        <div className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
+                        <div className="flex items-center justify-between border-t px-4 py-2.5 text-sm">
                           <span className="text-muted-foreground">
                             1 {pricingUnitLabel}
                           </span>
@@ -1205,38 +1179,27 @@ export function ProductModal({
                             <div
                               key={tier.id}
                               className={cn(
-                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                                isCurrentTier
-                                  ? 'bg-primary/10 ring-1 ring-primary/30'
-                                  : 'bg-background/60',
+                                'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
+                                isCurrentTier && 'bg-primary/5',
                               )}
                             >
                               <div className="flex items-center gap-2">
                                 <span
                                   className={cn(
                                     'font-medium',
-                                    isCurrentTier &&
-                                      'text-primary',
+                                    isCurrentTier && 'text-primary',
                                   )}
                                 >
                                   {tier.minDuration}+ {pricingUnitLabelPlural}
                                 </span>
-                                <Badge
-                                  className={cn(
-                                    'text-xs font-semibold',
-                                    isCurrentTier
-                                      ? 'bg-primary text-primary-foreground hover:bg-primary'
-                                      : 'bg-primary/10 text-primary',
-                                  )}
-                                >
+                                <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                   -{Math.floor(tier.discountPercent)}%
                                 </Badge>
                               </div>
                               <span
                                 className={cn(
                                   'font-semibold',
-                                  isCurrentTier &&
-                                    'text-primary',
+                                  isCurrentTier && 'text-primary',
                                 )}
                               >
                                 {formatCurrency(effectivePrice, currency)}/
@@ -1255,7 +1218,7 @@ export function ProductModal({
                             }}
                           >
                             <div className="overflow-hidden">
-                              <div className="space-y-1.5">
+                              <div>
                                 {hiddenTiers.map((tier) => {
                                   const effectivePrice = calculateEffectivePrice(
                                     price,
@@ -1273,38 +1236,27 @@ export function ProductModal({
                                     <div
                                       key={tier.id}
                                       className={cn(
-                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                                        isCurrentTier
-                                          ? 'bg-primary/10 ring-1 ring-primary/30'
-                                          : 'bg-background/60',
+                                        'flex items-center justify-between border-t px-4 py-2.5 text-sm transition-colors',
+                                        isCurrentTier && 'bg-primary/5',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
                                         <span
                                           className={cn(
                                             'font-medium',
-                                            isCurrentTier &&
-                                              'text-primary',
+                                            isCurrentTier && 'text-primary',
                                           )}
                                         >
                                           {tier.minDuration}+ {pricingUnitLabelPlural}
                                         </span>
-                                        <Badge
-                                          className={cn(
-                                            'text-xs font-semibold',
-                                            isCurrentTier
-                                              ? 'bg-primary text-primary-foreground hover:bg-primary'
-                                              : 'bg-primary/10 text-primary',
-                                          )}
-                                        >
+                                        <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                           -{Math.floor(tier.discountPercent)}%
                                         </Badge>
                                       </div>
                                       <span
                                         className={cn(
                                           'font-semibold',
-                                          isCurrentTier &&
-                                            'text-primary',
+                                          isCurrentTier && 'text-primary',
                                         )}
                                       >
                                         {formatCurrency(effectivePrice, currency)}/
@@ -1324,7 +1276,7 @@ export function ProductModal({
                         <button
                           type="button"
                           onClick={() => setTiersExpanded((prev) => !prev)}
-                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                          className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1.5 border-t px-4 py-2.5 text-xs font-medium transition-colors"
                         >
                           {isExpanded ? (
                             <>

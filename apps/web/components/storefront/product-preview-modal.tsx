@@ -565,21 +565,19 @@ export function ProductPreviewModal({
               const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
               return (
-                <div className="rounded-xl border bg-primary/5 p-4">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="rounded-lg bg-primary/10 p-1.5">
-                      <Layers className="h-4 w-4 text-primary" />
-                    </div>
+                <div className="overflow-hidden rounded-xl border">
+                  <div className="flex items-center gap-2 px-4 py-3">
+                    <Layers className="h-4 w-4 text-primary" />
                     <span className="text-sm font-semibold">
                       {tProduct('tieredPricing.ratesTitle')}
                     </span>
                   </div>
 
-                  <div className="space-y-1.5">
+                  <div>
                     {visibleRows.map((rate) => (
                       <div
                         key={rate.id}
-                        className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                        className="flex items-center justify-between border-t px-4 py-2.5 text-sm"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
@@ -620,11 +618,11 @@ export function ProductPreviewModal({
                         }}
                       >
                         <div className="overflow-hidden">
-                          <div className="space-y-1.5">
+                          <div>
                             {hiddenRows.map((rate) => (
                               <div
                                 key={rate.id}
-                                className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                                className="flex items-center justify-between border-t px-4 py-2.5 text-sm"
                               >
                                 <div className="flex items-center gap-2">
                                   <span className="font-medium">
@@ -664,7 +662,7 @@ export function ProductPreviewModal({
                       <button
                         type="button"
                         onClick={() => setTiersExpanded((v) => !v)}
-                        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
+                        className="text-muted-foreground hover:bg-muted/50 hover:text-foreground flex w-full items-center justify-center gap-1 border-t px-4 py-2.5 text-xs font-medium transition-colors"
                       >
                         {tiersExpanded
                           ? tProduct('tieredPricing.showLess')
