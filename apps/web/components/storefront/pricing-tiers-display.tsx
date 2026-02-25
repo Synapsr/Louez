@@ -57,6 +57,18 @@ export function PricingTiersDisplay({
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelShort = getUnitLabel(pricingMode, 'short')
 
+  // Check if the product's max discount exceeds the store setting
+  const maxTierDiscount = Math.max(
+    ...sortedTiers.map((tier) => {
+      const d = typeof tier.discountPercent === 'string'
+        ? parseFloat(tier.discountPercent ?? '0')
+        : (tier.discountPercent ?? 0)
+      return d
+    }),
+    0,
+  )
+  const showDiscountBadges = maxDiscountPercentSetting == null || maxTierDiscount <= maxDiscountPercentSetting
+
   // Find which tier is currently applied
   const appliedTierIndex = currentDuration
     ? sortedTiers.reduce((acc, tier, index) => {
@@ -119,7 +131,7 @@ export function PricingTiersDisplay({
                   <span className={`text-sm ${isApplied ? 'font-medium' : ''}`}>
                     {tier.minDuration}+ {unitLabel}
                   </span>
-                  {(maxDiscountPercentSetting == null || discountPercent <= maxDiscountPercentSetting) && (
+                  {showDiscountBadges && (
                     <Badge
                       variant="secondary"
                       className={`text-xs ${
