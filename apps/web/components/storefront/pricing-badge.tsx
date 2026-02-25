@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingDown } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { Badge } from '@louez/ui'
 
 interface PricingBadgeProps {
@@ -19,8 +19,7 @@ export function PricingBadge({
   if (variant === 'compact') {
     return (
       <Badge
-        variant="secondary"
-        className={`bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-xs font-medium ${className}`}
+        className={`bg-primary/10 text-primary text-xs font-medium ${className}`}
       >
         -{maxDiscount}%
       </Badge>
@@ -29,10 +28,9 @@ export function PricingBadge({
 
   return (
     <Badge
-      variant="secondary"
-      className={`bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 gap-1 ${className}`}
+      className={`bg-primary/10 text-primary gap-1 ${className}`}
     >
-      <TrendingDown className="h-3 w-3" />
+      <Layers className="h-3 w-3" />
       <span>Jusqu'à -{maxDiscount}%</span>
     </Badge>
   )

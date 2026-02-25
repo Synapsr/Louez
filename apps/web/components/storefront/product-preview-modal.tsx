@@ -18,8 +18,8 @@ import {
   ChevronUp,
   Clock,
   ImageIcon,
+  Layers,
   Play,
-  TrendingDown,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -531,8 +531,8 @@ export function ProductPreviewModal({
                   / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
                 {pricingSummary.maxReductionPercent > 0 && (
-                  <Badge variant="success" className="ml-2">
-                    <TrendingDown className="mr-1 h-3 w-3" />
+                  <Badge className="ml-2 bg-primary/10 text-primary">
+                    <Layers className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {
                       percent: Math.floor(pricingSummary.maxReductionPercent),
                     })}
@@ -564,10 +564,10 @@ export function ProductPreviewModal({
               const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
               return (
-                <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
+                <div className="rounded-xl border bg-primary/5 p-4">
                   <div className="mb-3 flex items-center gap-2">
-                    <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                      <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <div className="rounded-lg bg-primary/10 p-1.5">
+                      <Layers className="h-4 w-4 text-primary" />
                     </div>
                     <span className="text-sm font-semibold">
                       {tProduct('tieredPricing.ratesTitle')}
@@ -587,15 +587,26 @@ export function ProductPreviewModal({
                             })}
                           </span>
                           {rate.reductionPercent > 0 && (
-                            <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                            <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                               -{Math.floor(rate.reductionPercent)}%
                             </Badge>
                           )}
                         </div>
-                        <span className="font-semibold">
-                          {formatCurrency(rate.price, currency)} /{' '}
-                          {formatPeriodLabel(rate.periodMinutes)}
-                        </span>
+                        <div className="text-right">
+                          <span className="font-semibold">
+                            {formatCurrency(rate.price, currency)}
+                          </span>
+                          {(() => {
+                            const period = minutesToPriceDuration(rate.periodMinutes);
+                            if (period.duration <= 1) return null;
+                            const unitMinutes = rate.periodMinutes / period.duration;
+                            return (
+                              <div className="text-muted-foreground text-xs">
+                                {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
                     ))}
 
@@ -621,15 +632,26 @@ export function ProductPreviewModal({
                                     })}
                                   </span>
                                   {rate.reductionPercent > 0 && (
-                                    <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                                    <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                       -{Math.floor(rate.reductionPercent)}%
                                     </Badge>
                                   )}
                                 </div>
-                                <span className="font-semibold">
-                                  {formatCurrency(rate.price, currency)} /{' '}
-                                  {formatPeriodLabel(rate.periodMinutes)}
-                                </span>
+                                <div className="text-right">
+                                  <span className="font-semibold">
+                                    {formatCurrency(rate.price, currency)}
+                                  </span>
+                                  {(() => {
+                                    const period = minutesToPriceDuration(rate.periodMinutes);
+                                    if (period.duration <= 1) return null;
+                                    const unitMinutes = rate.periodMinutes / period.duration;
+                                    return (
+                                      <div className="text-muted-foreground text-xs">
+                                        {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
                               </div>
                             ))}
                           </div>

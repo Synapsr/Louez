@@ -13,8 +13,8 @@ import {
   Minus,
   Play,
   Plus,
+  Layers,
   ShoppingCart,
-  TrendingDown,
 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -958,10 +958,10 @@ export function ProductModal({
                   const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
+                    <div className="rounded-xl border bg-primary/5 p-4">
                       <div className="mb-3 flex items-center gap-2">
-                        <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                          <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
                         </div>
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
@@ -979,7 +979,7 @@ export function ProductModal({
                               className={cn(
                                 'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
                                 isCurrentRate
-                                  ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
+                                  ? 'bg-primary/10 ring-1 ring-primary/30'
                                   : 'bg-background/60',
                               )}
                             >
@@ -988,7 +988,7 @@ export function ProductModal({
                                   className={cn(
                                     'font-medium',
                                     isCurrentRate &&
-                                      'text-green-700 dark:text-green-300',
+                                      'text-primary',
                                   )}
                                 >
                                   {formatPeriodLabel(rate.periodMinutes, {
@@ -1000,24 +1000,40 @@ export function ProductModal({
                                     className={cn(
                                       'text-xs font-semibold',
                                       isCurrentRate
-                                        ? 'bg-green-600 text-white hover:bg-green-600'
-                                        : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                        ? 'bg-primary text-primary-foreground hover:bg-primary'
+                                        : 'bg-primary/10 text-primary',
                                     )}
                                   >
                                     -{Math.floor(rate.reductionPercent)}%
                                   </Badge>
                                 )}
                               </div>
-                              <span
-                                className={cn(
-                                  'font-semibold',
-                                  isCurrentRate &&
-                                    'text-green-700 dark:text-green-300',
-                                )}
-                              >
-                                {formatCurrency(rate.price, currency)} /{' '}
-                                {formatPeriodLabel(rate.periodMinutes)}
-                              </span>
+                              <div className="text-right">
+                                <span
+                                  className={cn(
+                                    'font-semibold',
+                                    isCurrentRate &&
+                                      'text-primary',
+                                  )}
+                                >
+                                  {formatCurrency(rate.price, currency)}
+                                </span>
+                                {(() => {
+                                  const period = minutesToPriceDuration(rate.periodMinutes);
+                                  if (period.duration <= 1) return null;
+                                  const unitMinutes = rate.periodMinutes / period.duration;
+                                  return (
+                                    <div className={cn(
+                                      'text-xs',
+                                      isCurrentRate
+                                        ? 'text-primary/70'
+                                        : 'text-muted-foreground',
+                                    )}>
+                                      {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           );
                         })}
@@ -1042,7 +1058,7 @@ export function ProductModal({
                                       className={cn(
                                         'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
                                         isCurrentRate
-                                          ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
+                                          ? 'bg-primary/10 ring-1 ring-primary/30'
                                           : 'bg-background/60',
                                       )}
                                     >
@@ -1051,7 +1067,7 @@ export function ProductModal({
                                           className={cn(
                                             'font-medium',
                                             isCurrentRate &&
-                                              'text-green-700 dark:text-green-300',
+                                              'text-primary',
                                           )}
                                         >
                                           {formatPeriodLabel(rate.periodMinutes, {
@@ -1063,24 +1079,40 @@ export function ProductModal({
                                             className={cn(
                                               'text-xs font-semibold',
                                               isCurrentRate
-                                                ? 'bg-green-600 text-white hover:bg-green-600'
-                                                : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                                ? 'bg-primary text-primary-foreground hover:bg-primary'
+                                                : 'bg-primary/10 text-primary',
                                             )}
                                           >
                                             -{Math.floor(rate.reductionPercent)}%
                                           </Badge>
                                         )}
                                       </div>
-                                      <span
-                                        className={cn(
-                                          'font-semibold',
-                                          isCurrentRate &&
-                                            'text-green-700 dark:text-green-300',
-                                        )}
-                                      >
-                                        {formatCurrency(rate.price, currency)} /{' '}
-                                        {formatPeriodLabel(rate.periodMinutes)}
-                                      </span>
+                                      <div className="text-right">
+                                        <span
+                                          className={cn(
+                                            'font-semibold',
+                                            isCurrentRate &&
+                                              'text-primary',
+                                          )}
+                                        >
+                                          {formatCurrency(rate.price, currency)}
+                                        </span>
+                                        {(() => {
+                                          const period = minutesToPriceDuration(rate.periodMinutes);
+                                          if (period.duration <= 1) return null;
+                                          const unitMinutes = rate.periodMinutes / period.duration;
+                                          return (
+                                            <div className={cn(
+                                              'text-xs',
+                                              isCurrentRate
+                                                ? 'text-primary/70'
+                                                : 'text-muted-foreground',
+                                            )}>
+                                              {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
                                     </div>
                                   );
                                 })}
@@ -1133,10 +1165,10 @@ export function ProductModal({
                   const hiddenTiers = sortedLegacyTiers.slice(MAX_VISIBLE);
 
                   return (
-                    <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
+                    <div className="rounded-xl border bg-primary/5 p-4">
                       <div className="mb-3 flex items-center gap-2">
-                        <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                          <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
                         </div>
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
@@ -1174,7 +1206,7 @@ export function ProductModal({
                               className={cn(
                                 'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
                                 isCurrentTier
-                                  ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
+                                  ? 'bg-primary/10 ring-1 ring-primary/30'
                                   : 'bg-background/60',
                               )}
                             >
@@ -1183,7 +1215,7 @@ export function ProductModal({
                                   className={cn(
                                     'font-medium',
                                     isCurrentTier &&
-                                      'text-green-700 dark:text-green-300',
+                                      'text-primary',
                                   )}
                                 >
                                   {tier.minDuration}+ {pricingUnitLabelPlural}
@@ -1192,8 +1224,8 @@ export function ProductModal({
                                   className={cn(
                                     'text-xs font-semibold',
                                     isCurrentTier
-                                      ? 'bg-green-600 text-white hover:bg-green-600'
-                                      : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                      ? 'bg-primary text-primary-foreground hover:bg-primary'
+                                      : 'bg-primary/10 text-primary',
                                   )}
                                 >
                                   -{Math.floor(tier.discountPercent)}%
@@ -1203,7 +1235,7 @@ export function ProductModal({
                                 className={cn(
                                   'font-semibold',
                                   isCurrentTier &&
-                                    'text-green-700 dark:text-green-300',
+                                    'text-primary',
                                 )}
                               >
                                 {formatCurrency(effectivePrice, currency)}/
@@ -1242,7 +1274,7 @@ export function ProductModal({
                                       className={cn(
                                         'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
                                         isCurrentTier
-                                          ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
+                                          ? 'bg-primary/10 ring-1 ring-primary/30'
                                           : 'bg-background/60',
                                       )}
                                     >
@@ -1251,7 +1283,7 @@ export function ProductModal({
                                           className={cn(
                                             'font-medium',
                                             isCurrentTier &&
-                                              'text-green-700 dark:text-green-300',
+                                              'text-primary',
                                           )}
                                         >
                                           {tier.minDuration}+ {pricingUnitLabelPlural}
@@ -1260,8 +1292,8 @@ export function ProductModal({
                                           className={cn(
                                             'text-xs font-semibold',
                                             isCurrentTier
-                                              ? 'bg-green-600 text-white hover:bg-green-600'
-                                              : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                              ? 'bg-primary text-primary-foreground hover:bg-primary'
+                                              : 'bg-primary/10 text-primary',
                                           )}
                                         >
                                           -{Math.floor(tier.discountPercent)}%
@@ -1271,7 +1303,7 @@ export function ProductModal({
                                         className={cn(
                                           'font-semibold',
                                           isCurrentTier &&
-                                            'text-green-700 dark:text-green-300',
+                                            'text-primary',
                                         )}
                                       >
                                         {formatCurrency(effectivePrice, currency)}/
@@ -1415,7 +1447,7 @@ export function ProductModal({
               </div>
 
               {savings > 0 && discountPercent && (
-                <Badge className="bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                <Badge className="bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
                   -{Math.floor(discountPercent)}%
                 </Badge>
               )}
