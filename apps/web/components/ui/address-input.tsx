@@ -222,7 +222,7 @@ export function AddressInput({
             onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
-            className={cn(inputValue ? 'pr-[4.5rem]' : 'pr-10')}
+            className={cn('pl-9', inputValue ? 'pr-[4.5rem]' : 'pr-10')}
             autoComplete="one-time-code"
             autoCorrect="off"
             autoCapitalize="off"
