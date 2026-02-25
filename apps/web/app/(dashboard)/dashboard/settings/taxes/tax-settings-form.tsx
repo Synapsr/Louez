@@ -85,6 +85,8 @@ export function TaxSettingsForm({ store }: TaxSettingsFormProps) {
           return
         }
         toastManager.add({ title: t('saved'), type: 'success' })
+        form.options.defaultValues = value
+        form.reset()
         router.refresh()
       })
     },
