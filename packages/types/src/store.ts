@@ -1,7 +1,11 @@
+export interface TimeRange {
+  openTime: string   // "HH:mm" e.g. "09:00"
+  closeTime: string  // "HH:mm" e.g. "18:00"
+}
+
 export interface DaySchedule {
   isOpen: boolean
-  openTime: string   // "09:00"
-  closeTime: string  // "18:00"
+  ranges: TimeRange[]  // At least 1 range when isOpen=true
 }
 
 export interface ClosurePeriod {
@@ -105,6 +109,8 @@ export interface DeliverySettings {
   maximumDistance: number | null
   /** Order subtotal above which delivery is free, null = no free delivery */
   freeDeliveryThreshold: number | null
+  /** Whether customers can specify a different address for equipment return */
+  allowDifferentReturnAddress?: boolean
 }
 
 // ============================================================================
@@ -255,6 +261,18 @@ export interface ProductSnapshot {
   images: string[]
   combinationKey?: string | null
   selectedAttributes?: UnitAttributes | null
+}
+
+// ============================================================================
+// Promo Code Types
+// ============================================================================
+
+export type PromoCodeType = 'percentage' | 'fixed'
+
+export interface PromoCodeSnapshot {
+  code: string
+  type: PromoCodeType
+  value: number
 }
 
 // ============================================================================

@@ -15,7 +15,7 @@ import {
   formatCurrency,
   getDeterministicCombinationSortValue,
 } from '@louez/utils'
-import type { StoreSettings, StoreTheme } from '@louez/types'
+import type { StoreSettings, StoreTheme, BusinessHours } from '@louez/types'
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { ProductCard } from '@/components/storefront/product-card'
 import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
@@ -404,6 +404,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
               enforceStrictTiers={product.enforceStrictTiers ?? false}
               advanceNotice={storeSettings.advanceNoticeMinutes || 0}
               minRentalMinutes={getMinRentalMinutes(storeSettings as StoreSettings)}
+              businessHours={storeSettings.businessHours as BusinessHours | undefined}
+              timezone={storeSettings.timezone}
               accessories={availableAccessories}
               trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
               bookingAttributeAxes={bookingAttributeAxes}
