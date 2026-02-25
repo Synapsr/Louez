@@ -3160,7 +3160,7 @@
         "yourSavings": "Il tuo risparmio",
         "youSave": "Risparmi {amount}",
         "discountApplied": "Sconto {percent}% applicato",
-        "longTermDiscount": "Sconto a lungo termine",
+        "longTermDiscount": "Sconto",
         "showMore": "Mostra di piu ({count})",
         "showLess": "Mostra meno"
       },
@@ -3318,7 +3318,7 @@
       "dates": "Date",
       "price": "Prezzo",
       "subtotal": "Subtotale noleggio",
-      "discount": "Sconto a lungo termine",
+      "discount": "Sconto",
       "discountedSubtotal": "Subtotale dopo sconto",
       "youSave": "Risparmi {amount}",
       "deposit": "Deposito",
@@ -3428,12 +3428,12 @@
       },
       "pricing": {
         "subtotal": "Subtotale noleggio",
-        "discount": "Sconto a lungo termine",
+        "discount": "Sconto",
         "discountBadge": "-{percent}%",
         "deposit": "Deposito",
         "depositRefundable": "(rimborsabile)",
         "total": "Totale da pagare",
-        "savingsBanner": "Risparmi {amount} con lo sconto a lungo termine"
+        "savingsBanner": "Risparmi {amount} grazie allo sconto"
       },
       "depositInfo": "Una trattenuta di {amount} sara effettuata sulla tua carta come deposito cauzionale. Questo importo non sara addebitato e sara rilasciato al ritorno dell'attrezzatura.",
       "toPayNow": "Da pagare ora",

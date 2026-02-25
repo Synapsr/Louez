@@ -2017,6 +2017,12 @@
         "addHeroImages": "Agregar imagenes",
         "heroImagesHint": "Hasta 5 imagenes en slider",
         "heroImagesOptional": "Estas imagenes apareceran en un slider en la pagina de inicio de su tienda. Opcional.",
+        "maxDiscount": {
+          "title": "Limitar la visualización de descuentos",
+          "description": "Ocultar las insignias de descuento cuando el porcentaje es demasiado alto",
+          "upTo": "Mostrar descuentos hasta",
+          "hint": "Los descuentos que superen este porcentaje se ocultarán en la tienda."
+        },
         "moreImages": "imagen(es)",
         "preview": "Vista previa en vivo",
         "previewDescription": "Vista previa de la apariencia de su tienda",
@@ -3174,7 +3180,7 @@
         "yourSavings": "Su ahorro",
         "youSave": "Ahorra {amount}",
         "discountApplied": "{percent}% de descuento aplicado",
-        "longTermDiscount": "Descuento a largo plazo",
+        "longTermDiscount": "Descuento",
         "showMore": "Ver mas ({count})",
         "showLess": "Ver menos"
       },
@@ -3332,7 +3338,7 @@
       "dates": "Fechas",
       "price": "Precio",
       "subtotal": "Subtotal alquiler",
-      "discount": "Descuento a largo plazo",
+      "discount": "Descuento",
       "discountedSubtotal": "Subtotal despues del descuento",
       "youSave": "Ahorra {amount}",
       "deposit": "Deposito",
@@ -3442,12 +3448,12 @@
       },
       "pricing": {
         "subtotal": "Subtotal alquiler",
-        "discount": "Descuento a largo plazo",
+        "discount": "Descuento",
         "discountBadge": "-{percent}%",
         "deposit": "Deposito",
         "depositRefundable": "(reembolsable)",
         "total": "Total a pagar",
-        "savingsBanner": "Ahorra {amount} con el descuento a largo plazo"
+        "savingsBanner": "Ahorra {amount} con el descuento"
       },
       "depositInfo": "Se realizara una retencion de {amount} en su tarjeta como deposito de seguridad. Esta cantidad no sera cobrada y se liberara al devolver el equipo.",
       "toPayNow": "A pagar ahora",

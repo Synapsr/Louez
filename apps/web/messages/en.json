@@ -2025,6 +2025,12 @@
         "addHeroImages": "Add images",
         "heroImagesHint": "Up to 5 images in slider",
         "heroImagesOptional": "These images will appear in a slider on your store's homepage. Optional.",
+        "maxDiscount": {
+          "title": "Limit discount display",
+          "description": "Hide discount badges when the percentage is too high",
+          "upTo": "Show discounts up to",
+          "hint": "Discounts exceeding this percentage will be hidden on the storefront."
+        },
         "moreImages": "image(s)",
         "preview": "Live preview",
         "previewDescription": "Preview of your store's appearance",
@@ -3186,7 +3192,7 @@
         "yourSavings": "Your savings",
         "youSave": "You save {amount}",
         "discountApplied": "{percent}% discount applied",
-        "longTermDiscount": "Long-term discount",
+        "longTermDiscount": "Discount",
         "showMore": "Show more ({count})",
         "showLess": "Show less"
       },
@@ -3350,7 +3356,7 @@
       "dates": "Dates",
       "price": "Price",
       "subtotal": "Rental subtotal",
-      "discount": "Long-term discount",
+      "discount": "Discount",
       "discountedSubtotal": "Subtotal after discount",
       "youSave": "You save {amount}",
       "deposit": "Deposit",
@@ -3461,12 +3467,12 @@
       },
       "pricing": {
         "subtotal": "Rental subtotal",
-        "discount": "Long-term discount",
+        "discount": "Discount",
         "discountBadge": "-{percent}%",
         "deposit": "Deposit",
         "depositRefundable": "(refundable)",
         "total": "Total to pay",
-        "savingsBanner": "You save {amount} with the long-term discount"
+        "savingsBanner": "You save {amount} with the discount"
       },
       "depositInfo": "A security deposit of {amount} is required.",
       "toPayNow": "To pay now",

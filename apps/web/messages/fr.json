@@ -2025,6 +2025,12 @@
         "addHeroImages": "Ajouter des images",
         "heroImagesHint": "Jusqu'à 5 images en slider",
         "heroImagesOptional": "Ces images apparaîtront dans un slider sur la page d'accueil de votre boutique. Optionnel.",
+        "maxDiscount": {
+          "title": "Limiter l'affichage des réductions",
+          "description": "Masquer les badges de réduction lorsque le pourcentage est trop élevé",
+          "upTo": "Afficher les réductions jusqu'à",
+          "hint": "Les réductions dépassant ce pourcentage seront masquées sur la boutique."
+        },
         "moreImages": "image(s)",
         "preview": "Aperçu en direct",
         "previewDescription": "Prévisualisation de l'apparence de votre boutique",
@@ -3186,7 +3192,7 @@
         "yourSavings": "Vos économies",
         "youSave": "Vous économisez {amount}",
         "discountApplied": "Réduction {percent}% appliquée",
-        "longTermDiscount": "Réduction longue durée",
+        "longTermDiscount": "Réduction",
         "showMore": "Voir plus ({count})",
         "showLess": "Voir moins"
       },
@@ -3350,7 +3356,7 @@
       "dates": "Dates",
       "price": "Prix",
       "subtotal": "Sous-total location",
-      "discount": "Réduction longue durée",
+      "discount": "Réduction",
       "discountedSubtotal": "Sous-total après réduction",
       "youSave": "Vous économisez {amount}",
       "deposit": "Caution",
@@ -3461,12 +3467,12 @@
       },
       "pricing": {
         "subtotal": "Sous-total location",
-        "discount": "Réduction longue durée",
+        "discount": "Réduction",
         "discountBadge": "-{percent}%",
         "deposit": "Caution",
         "depositRefundable": "(remboursable)",
         "total": "Total à payer",
-        "savingsBanner": "Vous économisez {amount} grâce à la réduction longue durée"
+        "savingsBanner": "Vous économisez {amount} grâce à la réduction"
       },
       "depositInfo": "Une caution de {amount} est demandée.",
       "toPayNow": "À payer maintenant",

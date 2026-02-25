@@ -3160,7 +3160,7 @@
         "yourSavings": "Uw besparing",
         "youSave": "U bespaart {amount}",
         "discountApplied": "{percent}% korting toegepast",
-        "longTermDiscount": "Langdurige korting",
+        "longTermDiscount": "Korting",
         "showMore": "Meer tonen ({count})",
         "showLess": "Minder tonen"
       },
@@ -3318,7 +3318,7 @@
       "dates": "Data",
       "price": "Prijs",
       "subtotal": "Subtotaal verhuur",
-      "discount": "Langdurige korting",
+      "discount": "Korting",
       "discountedSubtotal": "Subtotaal na korting",
       "youSave": "U bespaart {amount}",
       "deposit": "Borg",
@@ -3428,12 +3428,12 @@
       },
       "pricing": {
         "subtotal": "Subtotaal verhuur",
-        "discount": "Langdurige korting",
+        "discount": "Korting",
         "discountBadge": "-{percent}%",
         "deposit": "Borg",
         "depositRefundable": "(restitueerbaar)",
         "total": "Te betalen totaal",
-        "savingsBanner": "U bespaart {amount} met de langdurige korting"
+        "savingsBanner": "U bespaart {amount} dankzij de korting"
       },
       "depositInfo": "Er wordt een reservering van {amount} op uw kaart geplaatst als borg. Dit bedrag wordt niet afgeschreven en vrijgegeven bij retour van het materiaal.",
       "toPayNow": "Nu te betalen",

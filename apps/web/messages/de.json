@@ -2015,6 +2015,12 @@
         "addHeroImages": "Bilder hinzufügen",
         "heroImagesHint": "Bis zu 5 Bilder im Slider",
         "heroImagesOptional": "Diese Bilder erscheinen in einem Slider auf der Startseite Ihres Shops. Optional.",
+        "maxDiscount": {
+          "title": "Rabattanzeige begrenzen",
+          "description": "Rabattabzeichen ausblenden, wenn der Prozentsatz zu hoch ist",
+          "upTo": "Rabatte anzeigen bis zu",
+          "hint": "Rabatte, die diesen Prozentsatz überschreiten, werden im Shop ausgeblendet."
+        },
         "moreImages": "Bild(er)",
         "preview": "Live-Vorschau",
         "previewDescription": "Vorschau des Erscheinungsbilds Ihres Shops",
@@ -3172,7 +3178,7 @@
         "yourSavings": "Ihre Ersparnis",
         "youSave": "Sie sparen {amount}",
         "discountApplied": "{percent}% Rabatt angewendet",
-        "longTermDiscount": "Langzeitrabatt",
+        "longTermDiscount": "Rabatt",
         "showMore": "Mehr anzeigen ({count})",
         "showLess": "Weniger anzeigen"
       },
@@ -3330,7 +3336,7 @@
       "dates": "Daten",
       "price": "Preis",
       "subtotal": "Miet-Zwischensumme",
-      "discount": "Langzeitrabatt",
+      "discount": "Rabatt",
       "discountedSubtotal": "Zwischensumme nach Rabatt",
       "youSave": "Sie sparen {amount}",
       "deposit": "Kaution",
@@ -3440,12 +3446,12 @@
       },
       "pricing": {
         "subtotal": "Miet-Zwischensumme",
-        "discount": "Langzeitrabatt",
+        "discount": "Rabatt",
         "discountBadge": "-{percent}%",
         "deposit": "Kaution",
         "depositRefundable": "(erstattbar)",
         "total": "Zu zahlender Betrag",
-        "savingsBanner": "Sie sparen {amount} mit dem Langzeitrabatt"
+        "savingsBanner": "Sie sparen {amount} dank des Rabatts"
       },
       "depositInfo": "Eine Reservierung von {amount} wird als Kaution auf Ihrer Karte hinterlegt. Dieser Betrag wird nicht belastet und bei Rückgabe der Ausrüstung freigegeben.",
       "toPayNow": "Jetzt zu zahlen",

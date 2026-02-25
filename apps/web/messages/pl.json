@@ -3160,7 +3160,7 @@
         "yourSavings": "Twoje oszczędności",
         "youSave": "Oszczędzasz {amount}",
         "discountApplied": "Zniżka {percent}% zastosowana",
-        "longTermDiscount": "Zniżka długoterminowa",
+        "longTermDiscount": "Zniżka",
         "showMore": "Pokaż więcej ({count})",
         "showLess": "Pokaż mniej"
       },
@@ -3318,7 +3318,7 @@
       "dates": "Daty",
       "price": "Cena",
       "subtotal": "Suma wynajmu",
-      "discount": "Zniżka długoterminowa",
+      "discount": "Zniżka",
       "discountedSubtotal": "Suma po zniżce",
       "youSave": "Oszczędzasz {amount}",
       "deposit": "Kaucja",
@@ -3428,12 +3428,12 @@
       },
       "pricing": {
         "subtotal": "Suma wynajmu",
-        "discount": "Zniżka długoterminowa",
+        "discount": "Zniżka",
         "discountBadge": "-{percent}%",
         "deposit": "Kaucja",
         "depositRefundable": "(zwrotna)",
         "total": "Do zapłaty",
-        "savingsBanner": "Oszczędzasz {amount} dzięki zniżce długoterminowej"
+        "savingsBanner": "Oszczędzasz {amount} dzięki zniżce"
       },
       "depositInfo": "Blokada {amount} zostanie nałożona na Twoją kartę jako kaucja zabezpieczająca. Ta kwota nie zostanie pobrana i zostanie zwolniona po zwrocie sprzętu.",
       "toPayNow": "Do zapłaty teraz",

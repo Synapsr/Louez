@@ -3161,7 +3161,7 @@
         "yourSavings": "Sua economia",
         "youSave": "Voce economiza {amount}",
         "discountApplied": "Desconto de {percent}% aplicado",
-        "longTermDiscount": "Desconto de longa duracao",
+        "longTermDiscount": "Desconto",
         "showMore": "Ver mais ({count})",
         "showLess": "Ver menos"
       },
@@ -3319,7 +3319,7 @@
       "dates": "Datas",
       "price": "Preco",
       "subtotal": "Subtotal do aluguel",
-      "discount": "Desconto de longa duracao",
+      "discount": "Desconto",
       "discountedSubtotal": "Subtotal apos desconto",
       "youSave": "Voce economiza {amount}",
       "deposit": "Caucao",
@@ -3442,12 +3442,12 @@
       },
       "pricing": {
         "subtotal": "Subtotal do aluguel",
-        "discount": "Desconto de longa duracao",
+        "discount": "Desconto",
         "discountBadge": "-{percent}%",
         "deposit": "Caucao",
         "depositRefundable": "(reembolsavel)",
         "total": "Total a pagar",
-        "savingsBanner": "Voce economiza {amount} com o desconto de longa duracao"
+        "savingsBanner": "Voce economiza {amount} com o desconto"
       },
       "depositInfo": "Uma retencao de {amount} sera feita no seu cartao como deposito de seguranca. Este valor nao sera cobrado e sera liberado na devolucao do equipamento.",
       "toPayNow": "A pagar agora",
