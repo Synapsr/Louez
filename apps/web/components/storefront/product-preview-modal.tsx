@@ -589,7 +589,7 @@ export function ProductPreviewModal({
                               alwaysShowCount: true,
                             })}
                           </span>
-                          {rate.reductionPercent > 0 && (
+                          {rate.reductionPercent > 0 && showDiscount && (
                             <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                               -{Math.floor(rate.reductionPercent)}%
                             </Badge>
@@ -634,7 +634,7 @@ export function ProductPreviewModal({
                                       alwaysShowCount: true,
                                     })}
                                   </span>
-                                  {rate.reductionPercent > 0 && (
+                                  {rate.reductionPercent > 0 && showDiscount && (
                                     <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                       -{Math.floor(rate.reductionPercent)}%
                                     </Badge>
