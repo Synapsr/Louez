@@ -46,7 +46,10 @@ export function ProductCard({ product }: ProductCardProps) {
   const isAvailable = product.quantity > 0
 
   const pricingSummary = getStorefrontPricingSummary(product)
-  const showDiscount = maxDiscountPercent == null || pricingSummary.maxReductionPercent <= maxDiscountPercent
+  // Show the max discount that's within the store limit, or the absolute max if no limit
+  const cardDiscount = maxDiscountPercent == null
+    ? pricingSummary.maxReductionPercent
+    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
   const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
   const periodLabel =
     displayPeriod.unit === 'minute'
@@ -96,12 +99,12 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Pricing tiers badge */}
-          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && showDiscount && (
+          {isAvailable && cardDiscount > 0 && product.quantity > 2 && (
             <Badge
               className="absolute top-3 left-3 text-xs font-medium bg-primary/10 text-primary"
             >
               <TrendingDown className="h-3 w-3 mr-1" />
-              -{Math.floor(pricingSummary.maxReductionPercent)}%
+              -{Math.floor(cardDiscount)}%
             </Badge>
           )}
         </div>
