@@ -6,7 +6,7 @@ import { Layers, Check } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 import {
   calculateEffectivePrice,
@@ -40,6 +40,7 @@ export function PricingTiersDisplay({
 }: PricingTiersDisplayProps) {
   const t = useTranslations('storefront.product.tieredPricing')
   const currency = useStoreCurrency()
+  const maxDiscountPercentSetting = useStoreMaxDiscountPercent()
 
   if (!tiers.length) return null
 
@@ -118,16 +119,18 @@ export function PricingTiersDisplay({
                   <span className={`text-sm ${isApplied ? 'font-medium' : ''}`}>
                     {tier.minDuration}+ {unitLabel}
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className={`text-xs ${
-                      isApplied
-                        ? 'bg-primary/15 text-primary'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    -{Math.floor(discountPercent)}%
-                  </Badge>
+                  {(maxDiscountPercentSetting == null || discountPercent <= maxDiscountPercentSetting) && (
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs ${
+                        isApplied
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      -{Math.floor(discountPercent)}%
+                    </Badge>
+                  )}
                 </div>
                 <span className={`font-medium ${isApplied ? 'text-primary' : ''}`}>
                   {formatCurrency(effectivePrice, currency)}/{unitLabelShort}

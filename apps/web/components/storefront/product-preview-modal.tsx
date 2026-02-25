@@ -52,7 +52,7 @@ import {
 
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency } from '@/contexts/store-context';
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context';
 
 interface PricingTier {
   id: string;
@@ -112,6 +112,7 @@ export function ProductPreviewModal({
   const tDateSelection = useTranslations('storefront.dateSelection');
   const tCommon = useTranslations('common');
   const currency = useStoreCurrency();
+  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const router = useRouter();
   const { setGlobalDates, setPricingMode } = useCart();
   const { getUrl } = useStorefrontUrl(storeSlug);
@@ -531,7 +532,7 @@ export function ProductPreviewModal({
                 <span className="text-muted-foreground text-base">
                   / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
-                {pricingSummary.maxReductionPercent > 0 && (
+                {pricingSummary.maxReductionPercent > 0 && (maxDiscountPercent == null || pricingSummary.maxReductionPercent <= maxDiscountPercent) && (
                   <Badge className="ml-2 bg-primary/10 text-primary">
                     <TrendingDown className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {

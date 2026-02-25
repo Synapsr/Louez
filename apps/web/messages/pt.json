@@ -2004,6 +2004,12 @@
         "addHeroImages": "Adicionar imagens",
         "heroImagesHint": "Ate 5 imagens em slider",
         "heroImagesOptional": "Estas imagens aparecerao em um slider na pagina inicial da sua loja. Opcional.",
+        "maxDiscount": {
+          "title": "Limitar exibição de descontos",
+          "description": "Ocultar selos de desconto quando a porcentagem é muito alta",
+          "upTo": "Mostrar descontos até",
+          "hint": "Descontos acima desta porcentagem serão ocultados na loja."
+        },
         "moreImages": "imagem(ns)",
         "preview": "Previa ao vivo",
         "previewDescription": "Previa da aparencia da sua loja",

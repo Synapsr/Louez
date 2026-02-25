@@ -2003,6 +2003,12 @@
         "addHeroImages": "Afbeeldingen toevoegen",
         "heroImagesHint": "Tot 5 afbeeldingen in slider",
         "heroImagesOptional": "Deze afbeeldingen verschijnen in een slider op de homepage van uw winkel. Optioneel.",
+        "maxDiscount": {
+          "title": "Kortingsweergave beperken",
+          "description": "Kortingsbadges verbergen wanneer het percentage te hoog is",
+          "upTo": "Kortingen tonen tot",
+          "hint": "Kortingen boven dit percentage worden verborgen in de winkel."
+        },
         "moreImages": "afbeelding(en)",
         "preview": "Live voorbeeld",
         "previewDescription": "Voorbeeld van het uiterlijk van uw winkel",

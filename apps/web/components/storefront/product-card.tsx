@@ -9,7 +9,7 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
@@ -41,10 +41,12 @@ export function ProductCard({ product }: ProductCardProps) {
   const tCatalog = useTranslations('storefront.catalog')
   const tCommon = useTranslations('common')
   const currency = useStoreCurrency()
+  const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
   const pricingSummary = getStorefrontPricingSummary(product)
+  const showDiscount = maxDiscountPercent == null || pricingSummary.maxReductionPercent <= maxDiscountPercent
   const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
   const periodLabel =
     displayPeriod.unit === 'minute'
@@ -94,7 +96,7 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Pricing tiers badge */}
-          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && (
+          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && showDiscount && (
             <Badge
               className="absolute top-3 left-3 text-xs font-medium bg-primary/10 text-primary"
             >

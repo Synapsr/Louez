@@ -190,6 +190,7 @@ export interface StoreTheme {
   mode: 'light' | 'dark'
   primaryColor: string
   heroImages?: string[]
+  maxDiscountPercent?: number | null
 }
 
 /**

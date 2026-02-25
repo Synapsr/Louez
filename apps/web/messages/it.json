@@ -2003,6 +2003,12 @@
         "addHeroImages": "Aggiungi immagini",
         "heroImagesHint": "Fino a 5 immagini nello slider",
         "heroImagesOptional": "Queste immagini appariranno in uno slider nella homepage del tuo negozio. Opzionale.",
+        "maxDiscount": {
+          "title": "Limitare la visualizzazione degli sconti",
+          "description": "Nascondere i badge di sconto quando la percentuale è troppo alta",
+          "upTo": "Mostra sconti fino a",
+          "hint": "Gli sconti che superano questa percentuale saranno nascosti nel negozio."
+        },
         "moreImages": "immagine/i",
         "preview": "Anteprima live",
         "previewDescription": "Anteprima dell'aspetto del tuo negozio",

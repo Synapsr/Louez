@@ -260,6 +260,7 @@ export const updateStoreAppearanceInputSchema = z.object({
       mode: z.enum(['light', 'dark']),
       primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
       heroImages: z.array(s3UrlSchema).max(5).optional(),
+      maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })
     .optional(),
 })

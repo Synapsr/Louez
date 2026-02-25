@@ -2003,6 +2003,12 @@
         "addHeroImages": "Dodaj zdjęcia",
         "heroImagesHint": "Do 5 zdjęć w sliderze",
         "heroImagesOptional": "Te zdjęcia pojawią się w sliderze na stronie głównej sklepu. Opcjonalne.",
+        "maxDiscount": {
+          "title": "Ogranicz wyświetlanie rabatów",
+          "description": "Ukryj odznaki rabatowe, gdy procent jest zbyt wysoki",
+          "upTo": "Pokaż rabaty do",
+          "hint": "Rabaty przekraczające ten procent będą ukryte w sklepie."
+        },
         "moreImages": "zdjęć",
         "preview": "Podgląd na żywo",
         "previewDescription": "Podgląd wyglądu Twojego sklepu",
