@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
-import { Plus, ImageIcon, Minus, Check, TrendingDown } from 'lucide-react'
+import { Plus, ImageIcon, Minus, Check, Layers } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import type { Rate } from '@louez/types'
 
@@ -439,8 +439,8 @@ export function ProductCardAvailable({
 
             {/* Discount badge or cart indicator */}
             {hasDiscount && !inCart && (
-              <Badge variant="success" className="text-xs shrink-0">
-                <TrendingDown className="h-3 w-3 mr-0.5" />
+              <Badge className="bg-primary/10 text-primary text-xs shrink-0">
+                <Layers className="h-3 w-3 mr-0.5" />
                 -{Math.floor(discountPercent!)}%
               </Badge>
             )}
