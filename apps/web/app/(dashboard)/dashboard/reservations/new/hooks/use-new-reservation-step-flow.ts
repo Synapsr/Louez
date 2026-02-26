@@ -1,31 +1,47 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslations } from 'next-intl'
 
-import type { ReservationStep, StepDirection } from '../types'
+import type { ReservationStep, ReservationStepId, StepDirection } from '../types'
 
 interface UseNewReservationStepFlowParams {
   validateCurrentStep: () => boolean
+  isDeliveryEnabled: boolean
 }
 
 export function useNewReservationStepFlow({
   validateCurrentStep,
+  isDeliveryEnabled,
 }: UseNewReservationStepFlowParams) {
   const t = useTranslations('dashboard.reservations.manualForm')
 
-  const steps = useMemo<ReservationStep[]>(
-    () => [
+  const steps = useMemo<ReservationStep[]>(() => {
+    const baseSteps: ReservationStep[] = [
       { id: 'customer', title: t('steps.customer'), description: t('steps.customerDescription') },
       { id: 'period', title: t('steps.period'), description: t('steps.periodDescription') },
       { id: 'products', title: t('steps.products'), description: t('steps.productsDescription') },
-      { id: 'confirm', title: t('steps.confirm'), description: t('steps.confirmDescription') },
-    ],
-    [t]
-  )
+    ]
+
+    if (isDeliveryEnabled) {
+      baseSteps.push({
+        id: 'delivery',
+        title: t('steps.delivery'),
+        description: t('steps.deliveryDescription'),
+      })
+    }
+
+    baseSteps.push({
+      id: 'confirm',
+      title: t('steps.confirm'),
+      description: t('steps.confirmDescription'),
+    })
+
+    return baseSteps
+  }, [t, isDeliveryEnabled])
 
   const [currentStep, setCurrentStep] = useState(0)
   const [stepDirection, setStepDirection] = useState<StepDirection>('forward')
 
-  const currentStepIndex = currentStep
+  const currentStepId: ReservationStepId | undefined = steps[currentStep]?.id
 
   const goToNextStep = useCallback(() => {
     if (!validateCurrentStep() || currentStep >= steps.length - 1) {
@@ -60,8 +76,8 @@ export function useNewReservationStepFlow({
   return {
     steps,
     currentStep,
+    currentStepId,
     stepDirection,
-    currentStepIndex,
     goToNextStep,
     goToPreviousStep,
     goToStep,

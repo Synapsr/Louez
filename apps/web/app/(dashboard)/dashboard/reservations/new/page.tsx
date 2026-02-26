@@ -93,6 +93,10 @@ export default async function NewReservationPage() {
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         existingReservations={activeReservations}
+        deliverySettings={store.settings?.delivery}
+        storeLatitude={store.latitude ? parseFloat(store.latitude) : null}
+        storeLongitude={store.longitude ? parseFloat(store.longitude) : null}
+        storeAddress={store.address}
       />
     </div>
   )

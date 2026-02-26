@@ -145,21 +145,23 @@ export function isTimeSlotAvailable(
 }
 
 /**
- * Calculate detailed duration breakdown (days and hours)
+ * Calculate detailed duration breakdown (days, hours, and minutes)
  */
 export function getDetailedDuration(
   startDate: Date | string,
   endDate: Date | string
-): { days: number; hours: number; totalHours: number } {
+): { days: number; hours: number; minutes: number; totalHours: number; totalMinutes: number } {
   const start = typeof startDate === 'string' ? new Date(startDate) : startDate
   const end = typeof endDate === 'string' ? new Date(endDate) : endDate
 
   const diffMs = end.getTime() - start.getTime()
-  const totalHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const totalMinutes = Math.floor(diffMs / (1000 * 60))
+  const totalHours = Math.floor(totalMinutes / 60)
   const days = Math.floor(totalHours / 24)
   const hours = totalHours % 24
+  const minutes = totalMinutes % 60
 
-  return { days, hours, totalHours }
+  return { days, hours, minutes, totalHours, totalMinutes }
 }
 
 /**

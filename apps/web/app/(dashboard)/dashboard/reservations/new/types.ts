@@ -1,6 +1,6 @@
 import type { ComponentType, ReactNode } from 'react'
 
-import type { BookingAttributeAxis, BusinessHours, PricingMode, UnitAttributes } from '@louez/types'
+import type { BookingAttributeAxis, BusinessHours, DeliverySettings, PricingMode, UnitAttributes } from '@louez/types'
 
 export interface Customer {
   id: string
@@ -73,6 +73,17 @@ export interface AvailabilityWarning {
   conflictingReservations?: number
 }
 
+export type DeliveryOption = 'pickup' | 'delivery'
+
+export interface DeliveryAddress {
+  address: string
+  city: string
+  postalCode: string
+  country: string
+  latitude: number | null
+  longitude: number | null
+}
+
 export interface NewReservationFormProps {
   customers: Customer[]
   products: Product[]
@@ -85,6 +96,10 @@ export interface NewReservationFormProps {
     status: string
     items: Array<{ productId: string | null; quantity: number }>
   }>
+  deliverySettings?: DeliverySettings
+  storeLatitude?: number | null
+  storeLongitude?: number | null
+  storeAddress?: string | null
 }
 
 export type StepFieldName =
@@ -107,8 +122,10 @@ export interface NewReservationFormValues {
   internalNotes: string
 }
 
+export type ReservationStepId = 'customer' | 'period' | 'products' | 'delivery' | 'confirm'
+
 export interface ReservationStep {
-  id: 'customer' | 'period' | 'products' | 'confirm'
+  id: ReservationStepId
   title: string
   description: string
 }
@@ -136,4 +153,9 @@ export interface ProductPricingDetails {
   hasDiscount: boolean
   applicableTierDiscountPercent: number | null
   hasTieredPricing: boolean
+  isRateBased: boolean
+  lineSubtotal: number
+  lineOriginalSubtotal: number
+  lineSavings: number
+  reductionPercent: number | null
 }

@@ -65,6 +65,11 @@ import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
 } from '@/lib/utils/reservation-rules'
+import {
+  calculateDeliveryFee,
+  calculateHaversineDistance,
+  validateDelivery,
+} from '@/lib/utils/geo'
 
 async function getStoreForUser() {
   return getCurrentStore()
@@ -464,6 +469,21 @@ interface CreateReservationData {
     quantity: number
     pricingMode: PricingMode
   }>
+  delivery?: {
+    option: 'pickup' | 'delivery'
+    address?: string
+    city?: string
+    postalCode?: string
+    country?: string
+    latitude?: number
+    longitude?: number
+    returnAddress?: string
+    returnCity?: string
+    returnPostalCode?: string
+    returnCountry?: string
+    returnLatitude?: number
+    returnLongitude?: number
+  }
   internalNotes?: string
   sendConfirmationEmail?: boolean
 }
@@ -693,11 +713,68 @@ export async function createManualReservation(data: CreateReservationData) {
     }
   })
 
+  // Delivery validation and fee calculation
+  let deliveryFeeAmount = 0
+  let deliveryDistanceKm: number | null = null
+  let returnDistanceKm: number | null = null
+  const storeDeliverySettings = store.settings?.delivery
+
+  if (data.delivery?.option === 'delivery') {
+    if (!storeDeliverySettings?.enabled) {
+      return { error: 'errors.deliveryNotEnabled' }
+    }
+
+    if (!data.delivery.latitude || !data.delivery.longitude) {
+      return { error: 'errors.deliveryAddressRequired' }
+    }
+
+    if (!store.latitude || !store.longitude) {
+      return { error: 'errors.storeCoordinatesNotConfigured' }
+    }
+
+    const sLat = parseFloat(store.latitude)
+    const sLon = parseFloat(store.longitude)
+
+    deliveryDistanceKm = calculateHaversineDistance(
+      sLat, sLon,
+      data.delivery.latitude, data.delivery.longitude,
+    )
+
+    const validation = validateDelivery(deliveryDistanceKm, storeDeliverySettings)
+    if (!validation.valid) {
+      return { error: validation.errorKey || 'errors.deliveryTooFar' }
+    }
+
+    // Validate return address if provided
+    if (
+      data.delivery.returnLatitude != null &&
+      data.delivery.returnLongitude != null &&
+      storeDeliverySettings.allowDifferentReturnAddress
+    ) {
+      returnDistanceKm = calculateHaversineDistance(
+        sLat, sLon,
+        data.delivery.returnLatitude, data.delivery.returnLongitude,
+      )
+
+      const returnValidation = validateDelivery(returnDistanceKm, storeDeliverySettings)
+      if (!returnValidation.valid) {
+        return { error: 'errors.returnAddressTooFar' }
+      }
+    }
+
+    // Calculate delivery fee server-side
+    const isIncluded = storeDeliverySettings.mode === 'included'
+    deliveryFeeAmount = isIncluded
+      ? 0
+      : calculateDeliveryFee(deliveryDistanceKm, storeDeliverySettings, subtotalAmount, returnDistanceKm)
+  }
+
   // Generate reservation number
   const reservationNumber = await generateReservationNumber(store.id)
 
   // Create reservation
   const reservationId = nanoid()
+  const isDelivery = data.delivery?.option === 'delivery'
   await db.insert(reservations).values({
     id: reservationId,
     storeId: store.id,
@@ -708,9 +785,26 @@ export async function createManualReservation(data: CreateReservationData) {
     endDate: data.endDate,
     subtotalAmount: subtotalAmount.toFixed(2),
     depositAmount: depositAmount.toFixed(2),
-    totalAmount: subtotalAmount.toFixed(2),
+    totalAmount: (subtotalAmount + deliveryFeeAmount).toFixed(2),
     internalNotes: data.internalNotes || null,
     source: 'manual',
+    // Delivery fields
+    deliveryOption: data.delivery?.option || 'pickup',
+    deliveryAddress: isDelivery ? data.delivery?.address ?? null : null,
+    deliveryCity: isDelivery ? data.delivery?.city ?? null : null,
+    deliveryPostalCode: isDelivery ? data.delivery?.postalCode ?? null : null,
+    deliveryCountry: isDelivery ? data.delivery?.country ?? null : null,
+    deliveryLatitude: isDelivery && data.delivery?.latitude ? data.delivery.latitude.toString() : null,
+    deliveryLongitude: isDelivery && data.delivery?.longitude ? data.delivery.longitude.toString() : null,
+    deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+    deliveryFee: deliveryFeeAmount.toFixed(2),
+    returnAddress: isDelivery ? data.delivery?.returnAddress ?? null : null,
+    returnCity: isDelivery ? data.delivery?.returnCity ?? null : null,
+    returnPostalCode: isDelivery ? data.delivery?.returnPostalCode ?? null : null,
+    returnCountry: isDelivery ? data.delivery?.returnCountry ?? null : null,
+    returnLatitude: isDelivery && data.delivery?.returnLatitude != null ? data.delivery.returnLatitude.toString() : null,
+    returnLongitude: isDelivery && data.delivery?.returnLongitude != null ? data.delivery.returnLongitude.toString() : null,
+    returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
   })
 
   // Create reservation items for catalog products
