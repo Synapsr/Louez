@@ -48,7 +48,7 @@ import {
 } from '@louez/utils'
 import {
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   calculateDuration,
   calculateDurationMinutes,
   generatePricingBreakdown,
@@ -595,12 +595,13 @@ export async function createManualReservation(data: CreateReservationData) {
       const priceResult = isRateBasedProduct({
         basePeriodMinutes: product.basePeriodMinutes,
       })
-        ? calculateRentalPriceV2(
+        ? calculateRateBasedPrice(
             {
               basePrice: parseFloat(product.price),
               basePeriodMinutes: product.basePeriodMinutes!,
               deposit: parseFloat(product.deposit || '0'),
               rates,
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
             },
             durationMinutes,
             item.quantity,
@@ -1128,12 +1129,13 @@ export async function updateReservation(
           const priceResult = isRateBasedProduct({
             basePeriodMinutes: product.basePeriodMinutes,
           })
-            ? calculateRentalPriceV2(
+            ? calculateRateBasedPrice(
                 {
                   basePrice: parseFloat(product.price),
                   basePeriodMinutes: product.basePeriodMinutes!,
                   deposit: parseFloat(product.deposit || '0'),
                   rates,
+                  enforceStrictTiers: product.enforceStrictTiers ?? false,
                 },
                 durationMinutes,
                 item.quantity,
@@ -1257,12 +1259,13 @@ export async function updateReservation(
           const priceResult = isRateBasedProduct({
             basePeriodMinutes: product.basePeriodMinutes,
           })
-            ? calculateRentalPriceV2(
+            ? calculateRateBasedPrice(
                 {
                   basePrice: parseFloat(product.price),
                   basePeriodMinutes: product.basePeriodMinutes!,
                   deposit: parseFloat(product.deposit || '0'),
                   rates,
+                  enforceStrictTiers: product.enforceStrictTiers ?? false,
                 },
                 itemDurationMinutes,
                 item.quantity,

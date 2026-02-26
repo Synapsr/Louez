@@ -26,6 +26,11 @@ export interface RateBasedPricing {
   enforceStrictTiers?: boolean
 }
 
+export interface RatePlanEntry {
+  rate: Rate
+  quantity: number
+}
+
 export interface RateCalculationResult {
   subtotal: number
   deposit: number
@@ -37,6 +42,7 @@ export interface RateCalculationResult {
   durationMinutes: number
   quantity: number
   originalSubtotal: number
+  plan: RatePlanEntry[]
 }
 
 /**
