@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import type { Locale } from 'date-fns'
-import { Check } from 'lucide-react'
+import { Check, MapPin, Truck } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
@@ -19,6 +19,8 @@ import { cn, formatCurrency } from '@louez/utils'
 import type {
   CustomItem,
   Customer,
+  DeliveryAddress,
+  DeliveryOption,
   NewReservationFormComponentApi,
   NewReservationFormValues,
   Product,
@@ -46,6 +48,11 @@ interface NewReservationStepReviewProps {
     selectedItem?: SelectedProduct
   ) => ProductPricingDetails
   getCustomItemTotal: (item: CustomItem) => number
+  deliveryOption?: DeliveryOption
+  deliveryAddress?: DeliveryAddress
+  deliveryFee?: number
+  deliveryDistance?: number | null
+  isDeliveryIncluded?: boolean
 }
 
 export function NewReservationStepReview({
@@ -65,8 +72,16 @@ export function NewReservationStepReview({
   deposit,
   getProductPricingDetails,
   getCustomItemTotal,
+  deliveryOption,
+  deliveryAddress,
+  deliveryFee = 0,
+  deliveryDistance,
+  isDeliveryIncluded,
 }: NewReservationStepReviewProps) {
   const t = useTranslations('dashboard.reservations.manualForm')
+
+  const showDeliverySection = deliveryOption === 'delivery'
+  const total = subtotal + deliveryFee
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -136,6 +151,41 @@ export function NewReservationStepReview({
             </div>
           </div>
 
+          {/* Delivery section */}
+          {showDeliverySection && deliveryAddress && (
+            <div>
+              <h4 className="mb-2 text-sm font-medium">{t('deliveryTitle')}</h4>
+              <div className="rounded-lg border p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('deliveryOptionLabel')}</span>
+                </div>
+                {deliveryAddress.address && (
+                  <p className="text-sm text-muted-foreground">
+                    {deliveryAddress.address}
+                  </p>
+                )}
+                {deliveryDistance != null && (
+                  <p className="text-sm text-muted-foreground">
+                    {deliveryDistance.toFixed(1)} km
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {deliveryOption === 'pickup' && deliveryOption !== undefined && (
+            <div>
+              <h4 className="mb-2 text-sm font-medium">{t('deliveryTitle')}</h4>
+              <div className="rounded-lg border p-3">
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{t('deliveryNo')}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
             <h4 className="mb-2 text-sm font-medium">
               {t('products')} ({selectedProducts.length + customItems.length})
@@ -188,7 +238,7 @@ export function NewReservationStepReview({
                           : ''
                       }
                     >
-                      {formatCurrency(pricing.effectivePrice * item.quantity * pricing.productDuration)}
+                      {formatCurrency(pricing.lineSubtotal)}
                     </span>
                   </div>
                 )
@@ -237,6 +287,18 @@ export function NewReservationStepReview({
               <span className="text-muted-foreground">{t('subtotal')}</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
+            {showDeliverySection && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">{t('deliveryFee')}</span>
+                <span className={isDeliveryIncluded || deliveryFee === 0 ? 'text-green-600' : ''}>
+                  {isDeliveryIncluded
+                    ? t('included')
+                    : deliveryFee === 0
+                      ? t('free')
+                      : formatCurrency(deliveryFee)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('deposit')}</span>
               <span>{formatCurrency(deposit)}</span>
@@ -244,7 +306,7 @@ export function NewReservationStepReview({
             <Separator />
             <div className="flex justify-between text-lg font-bold">
               <span>{t('total')}</span>
-              <span>{formatCurrency(subtotal)}</span>
+              <span>{formatCurrency(total)}</span>
             </div>
           </CardContent>
         </Card>

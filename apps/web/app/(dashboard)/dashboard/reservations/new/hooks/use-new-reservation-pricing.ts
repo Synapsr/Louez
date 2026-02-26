@@ -1,9 +1,14 @@
 import { useCallback, useMemo } from 'react'
 
-import { findApplicableTier } from '@louez/utils'
+import {
+  calculateDurationMinutes,
+  calculateRentalPriceV2,
+  findApplicableTier,
+  isRateBasedProduct,
+} from '@louez/utils'
 import { getDetailedDuration } from '@/lib/utils/duration'
 
-import type { PricingMode, PricingTier } from '@louez/types'
+import type { PricingMode, PricingTier, Rate } from '@louez/types'
 
 import type {
   CustomItem,
@@ -62,12 +67,77 @@ export function useNewReservationPricing({
   const getProductPricingDetails = useCallback(
     (product: Product, selectedItem?: SelectedProduct): ProductPricingDetails => {
       const productPricingMode = (product.pricingMode ?? 'day') as PricingMode
+      const basePrice = parseFloat(product.price)
+      const hasPriceOverride = Boolean(selectedItem?.priceOverride)
+      const quantity = selectedItem?.quantity ?? 1
+      const rateBased = isRateBasedProduct({ basePeriodMinutes: product.basePeriodMinutes })
+
       const productDuration =
         startDate && endDate
           ? calculateDurationForMode(startDate, endDate, productPricingMode)
           : 0
 
-      const basePrice = parseFloat(product.price)
+      // Rate-based pricing path (basePeriodMinutes > 0)
+      if (rateBased && startDate && endDate) {
+        const durationMins = calculateDurationMinutes(startDate, endDate)
+
+        const rates: Rate[] = (product.pricingTiers || [])
+          .filter(
+            (tier): tier is typeof tier & { period: number; price: string } =>
+              typeof tier.period === 'number' &&
+              tier.period > 0 &&
+              typeof tier.price === 'string'
+          )
+          .map((tier, index) => ({
+            id: tier.id,
+            price: parseFloat(tier.price),
+            period: tier.period,
+            displayOrder: tier.displayOrder ?? index,
+          }))
+
+        const v2Result = calculateRentalPriceV2(
+          {
+            basePrice,
+            basePeriodMinutes: product.basePeriodMinutes!,
+            deposit: parseFloat(product.deposit || '0'),
+            rates,
+          },
+          durationMins,
+          quantity,
+        )
+
+        // For price override: replace the DP-computed subtotal with manual calculation
+        const overrideUnitPrice = selectedItem?.priceOverride?.unitPrice
+        const lineSubtotal = hasPriceOverride && overrideUnitPrice != null
+          ? overrideUnitPrice * productDuration * quantity
+          : v2Result.subtotal
+
+        // calculatedPrice: DP-equivalent per unit per period (for override dialog reference)
+        const dpPerUnitPerPeriod = productDuration > 0
+          ? v2Result.subtotal / quantity / productDuration
+          : basePrice
+
+        return {
+          productPricingMode,
+          productDuration,
+          basePrice,
+          calculatedPrice: dpPerUnitPerPeriod,
+          effectivePrice: hasPriceOverride && overrideUnitPrice != null
+            ? overrideUnitPrice
+            : dpPerUnitPerPeriod,
+          hasPriceOverride,
+          hasDiscount: v2Result.savings > 0,
+          applicableTierDiscountPercent: null,
+          hasTieredPricing: rates.length > 0,
+          isRateBased: true,
+          lineSubtotal,
+          lineOriginalSubtotal: v2Result.originalSubtotal,
+          lineSavings: v2Result.originalSubtotal - lineSubtotal,
+          reductionPercent: v2Result.reductionPercent,
+        }
+      }
+
+      // Progressive/tiered pricing path
       const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
         id: tier.id,
         minDuration: tier.minDuration ?? 1,
@@ -82,10 +152,12 @@ export function useNewReservationPricing({
         ? basePrice * (1 - applicableTierDiscount / 100)
         : basePrice
 
-      const hasPriceOverride = Boolean(selectedItem?.priceOverride)
       const effectivePrice = hasPriceOverride
         ? selectedItem?.priceOverride?.unitPrice ?? calculatedPrice
         : calculatedPrice
+
+      const lineSubtotal = effectivePrice * productDuration * quantity
+      const lineOriginalSubtotal = basePrice * productDuration * quantity
 
       return {
         productPricingMode,
@@ -97,6 +169,11 @@ export function useNewReservationPricing({
         hasDiscount: Boolean(applicableTier && applicableTierDiscount > 0),
         applicableTierDiscountPercent: applicableTier?.discountPercent ?? null,
         hasTieredPricing: productTiers.length > 0,
+        isRateBased: false,
+        lineSubtotal,
+        lineOriginalSubtotal,
+        lineSavings: lineOriginalSubtotal - lineSubtotal,
+        reductionPercent: applicableTier?.discountPercent ?? null,
       }
     },
     [calculateDurationForMode, endDate, startDate]
@@ -129,8 +206,8 @@ export function useNewReservationPricing({
       const productDeposit = parseFloat(product.deposit || '0')
       const pricing = getProductPricingDetails(product, item)
 
-      originalAmount += pricing.basePrice * pricing.productDuration * item.quantity
-      subtotalAmount += pricing.effectivePrice * pricing.productDuration * item.quantity
+      originalAmount += pricing.lineOriginalSubtotal
+      subtotalAmount += pricing.lineSubtotal
       depositAmount += productDeposit * item.quantity
     }
 

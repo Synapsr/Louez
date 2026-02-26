@@ -30,7 +30,7 @@ import {
   SelectValue,
   Separator,
 } from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
+import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils'
 
 import type { PricingMode } from '@louez/types'
 import { getLineQuantityConstraints } from '../utils/variant-lines'
@@ -115,6 +115,20 @@ export function NewReservationStepProducts({
     return tCommon('dayUnit', { count })
   }
 
+  const formatPeriodLabel = (periodMinutes: number) => {
+    const period = minutesToPriceDuration(periodMinutes)
+    if (period.unit === 'minute') return `${period.duration} min`
+    if (period.duration === 1) return getPricingUnitLabel(period.unit as PricingMode)
+    return `${period.duration} ${getDurationLabel(period.unit as PricingMode, period.duration)}`
+  }
+
+  const getProductPeriodLabel = (product: Product, mode: PricingMode) => {
+    if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
+      return formatPeriodLabel(product.basePeriodMinutes)
+    }
+    return getPricingUnitLabel(mode)
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -167,7 +181,9 @@ export function NewReservationStepProducts({
               hasDiscount,
               applicableTierDiscountPercent,
               hasTieredPricing,
+              reductionPercent,
             } = summaryPricing
+            const discountDisplay = applicableTierDiscountPercent ?? reductionPercent
 
             const lineStates = productLines.map((line) => {
               const pricing = getProductPricingDetails(product, line)
@@ -211,23 +227,36 @@ export function NewReservationStepProducts({
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{product.name}</p>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        {hasDiscount ? (
+                      <div className="mt-0.5">
+                        {summaryPricing.productDuration > 0 ? (
                           <>
-                            <span className="text-sm text-muted-foreground line-through">
-                              {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <span className="text-sm font-medium text-green-600">
-                              {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <Badge variant="success" className="text-xs">
-                              -{applicableTierDiscountPercent}%
-                            </Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-primary">
+                                {formatCurrency(summaryPricing.lineSubtotal)}
+                              </span>
+                              {summaryPricing.lineSavings > 0 && (
+                                <>
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    {formatCurrency(summaryPricing.lineOriginalSubtotal)}
+                                  </span>
+                                  {discountDisplay != null && discountDisplay > 0 && (
+                                    <Badge variant="success" className="text-xs">
+                                      -{Math.round(discountDisplay)}%
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {formatCurrency(basePrice)}/{getProductPeriodLabel(product, productPricingMode)}
+                            </p>
                           </>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              {formatCurrency(basePrice)}/{getProductPeriodLabel(product, productPricingMode)}
+                            </span>
+                          </div>
                         )}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
@@ -417,21 +446,21 @@ export function NewReservationStepProducts({
                                         : 'text-orange-600'
                                     )}
                                   >
-                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineSubtotal)}
                                   </span>
                                 </div>
                               ) : pricing.hasDiscount ? (
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-muted-foreground line-through">
-                                    {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineOriginalSubtotal)}
                                   </span>
                                   <span className="font-medium text-green-600">
-                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineSubtotal)}
                                   </span>
                                 </div>
                               ) : (
                                 <span className="font-medium">
-                                  {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                  {formatCurrency(pricing.lineSubtotal)}
                                 </span>
                               )}
                             </div>
