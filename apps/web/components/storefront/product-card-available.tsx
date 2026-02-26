@@ -18,7 +18,7 @@ import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
 import {
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   calculateDurationMinutes,
   isRateBasedProduct,
   type ProductPricing,
@@ -59,6 +59,7 @@ interface ProductCardAvailableProps {
     category?: { name: string } | null
     pricingMode?: PricingMode | null
     basePeriodMinutes?: number | null
+    enforceStrictTiers?: boolean
     pricingTiers?: PricingTier[]
     videoUrl?: string | null
     accessories?: Accessory[]
@@ -144,12 +145,13 @@ export function ProductCardAvailable({
   })
 
   const priceResult = isRateBased
-    ? calculateRentalPriceV2(
+    ? calculateRateBasedPrice(
         {
           basePrice: price,
           basePeriodMinutes: product.basePeriodMinutes!,
           deposit,
           rates: rateTiers,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
         },
         durationMinutes,
         1,
@@ -245,6 +247,7 @@ export function ProductCardAvailable({
           maxQuantity,
           pricingMode: effectivePricingMode,
           basePeriodMinutes: product.basePeriodMinutes ?? null,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
           pricingTiers: product.pricingTiers?.map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration ?? 1,

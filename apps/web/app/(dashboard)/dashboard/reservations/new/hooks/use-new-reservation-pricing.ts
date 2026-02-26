@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react'
 
 import {
   calculateDurationMinutes,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   findApplicableTier,
   isRateBasedProduct,
 } from '@louez/utils'
@@ -95,26 +95,27 @@ export function useNewReservationPricing({
             displayOrder: tier.displayOrder ?? index,
           }))
 
-        const v2Result = calculateRentalPriceV2(
+        const rateResult = calculateRateBasedPrice(
           {
             basePrice,
             basePeriodMinutes: product.basePeriodMinutes!,
             deposit: parseFloat(product.deposit || '0'),
             rates,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
           },
           durationMins,
           quantity,
         )
 
-        // For price override: replace the DP-computed subtotal with manual calculation
+        // For price override: replace the computed subtotal with manual calculation
         const overrideUnitPrice = selectedItem?.priceOverride?.unitPrice
         const lineSubtotal = hasPriceOverride && overrideUnitPrice != null
           ? overrideUnitPrice * productDuration * quantity
-          : v2Result.subtotal
+          : rateResult.subtotal
 
-        // calculatedPrice: DP-equivalent per unit per period (for override dialog reference)
+        // calculatedPrice: computed per unit per period (for override dialog reference)
         const dpPerUnitPerPeriod = productDuration > 0
-          ? v2Result.subtotal / quantity / productDuration
+          ? rateResult.subtotal / quantity / productDuration
           : basePrice
 
         return {
@@ -126,14 +127,16 @@ export function useNewReservationPricing({
             ? overrideUnitPrice
             : dpPerUnitPerPeriod,
           hasPriceOverride,
-          hasDiscount: v2Result.savings > 0,
+          hasDiscount: rateResult.savings > 0,
           applicableTierDiscountPercent: null,
           hasTieredPricing: rates.length > 0,
           isRateBased: true,
           lineSubtotal,
-          lineOriginalSubtotal: v2Result.originalSubtotal,
-          lineSavings: v2Result.originalSubtotal - lineSubtotal,
-          reductionPercent: v2Result.reductionPercent,
+          lineOriginalSubtotal: rateResult.originalSubtotal,
+          lineSavings: rateResult.originalSubtotal - lineSubtotal,
+          reductionPercent: rateResult.reductionPercent,
+          ratePlan: rateResult.plan,
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
         }
       }
 
@@ -174,6 +177,8 @@ export function useNewReservationPricing({
         lineOriginalSubtotal,
         lineSavings: lineOriginalSubtotal - lineSubtotal,
         reductionPercent: applicableTier?.discountPercent ?? null,
+        ratePlan: null,
+        basePeriodMinutes: null,
       }
     },
     [calculateDurationForMode, endDate, startDate]

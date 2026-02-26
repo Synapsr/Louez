@@ -12,7 +12,7 @@ import { calculateDuration, type PricingMode } from '@/lib/utils/duration'
 import type { Rate } from '@louez/types'
 import {
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   calculateDurationMinutes,
   isRateBasedProduct,
   type ProductPricing,
@@ -40,6 +40,8 @@ export interface CartItem {
   pricingTiers?: CartItemPricingTier[]
   // Rate-based pricing period in minutes
   basePeriodMinutes?: number | null
+  // Whether strict tier pricing is enforced
+  enforceStrictTiers?: boolean
   // Product-specific pricing mode
   productPricingMode?: PricingMode | null
   // Booking attributes (tracked-unit advanced mode)
@@ -395,12 +397,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             displayOrder: index,
           }))
 
-        const result = calculateRentalPriceV2(
+        const result = calculateRateBasedPrice(
           {
             basePrice: item.price,
             basePeriodMinutes: item.basePeriodMinutes!,
             deposit: item.deposit,
             rates,
+            enforceStrictTiers: item.enforceStrictTiers ?? false,
           },
           itemDurationMinutes,
           item.quantity,
@@ -452,12 +455,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             displayOrder: index,
           }))
 
-        const result = calculateRentalPriceV2(
+        const result = calculateRateBasedPrice(
           {
             basePrice: item.price,
             basePeriodMinutes: item.basePeriodMinutes!,
             deposit: item.deposit,
             rates,
+            enforceStrictTiers: item.enforceStrictTiers ?? false,
           },
           itemDurationMinutes,
           item.quantity,

@@ -31,7 +31,7 @@ import {
   buildCombinationKey,
   calculateDurationMinutes,
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   getAvailableDurations,
   getAvailableDurationMinutes,
   getDeterministicCombinationSortValue,
@@ -307,7 +307,7 @@ export function AddToCartForm({
     }));
 
   const priceResult = isRateBased
-    ? calculateRentalPriceV2(
+    ? calculateRateBasedPrice(
         {
           basePrice: price,
           basePeriodMinutes: basePeriodMinutes ?? 1440,
@@ -399,6 +399,7 @@ export function AddToCartForm({
             ),
             pricingMode,
             basePeriodMinutes: basePeriodMinutes ?? null,
+            enforceStrictTiers,
             pricingTiers: normalizedCartTiers.map((tier) => ({
               id: tier.id,
               minDuration: tier.minDuration,
@@ -424,6 +425,7 @@ export function AddToCartForm({
           maxQuantity: Math.max(1, effectiveMaxQuantity),
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
+          enforceStrictTiers,
           pricingTiers: normalizedCartTiers.map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration,

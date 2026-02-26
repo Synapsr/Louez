@@ -32,7 +32,7 @@ import {
 } from '@louez/ui';
 import {
   type DurationUnit,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   computeReductionPercent,
   formatCurrency,
   minutesToPriceDuration,
@@ -174,7 +174,7 @@ export function RatesEditor({
     if (!basePrice || !basePeriod) return [];
 
     return previewDurations.map((durationMinutes) => {
-      const result = calculateRentalPriceV2(
+      const result = calculateRateBasedPrice(
         {
           basePrice,
           basePeriodMinutes: basePeriod,

@@ -47,7 +47,7 @@ import {
   calculateDurationMinutes,
   calculateEffectivePrice,
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
@@ -128,6 +128,7 @@ interface ProductModalProps {
     category?: { name: string } | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
+    enforceStrictTiers?: boolean;
     pricingTiers?: PricingTier[];
     videoUrl?: string | null;
     accessories?: Accessory[];
@@ -283,12 +284,13 @@ export function ProductModal({
   });
 
   const priceResult = isRateBased
-    ? calculateRentalPriceV2(
+    ? calculateRateBasedPrice(
         {
           basePrice: price,
           basePeriodMinutes: product.basePeriodMinutes!,
           deposit,
           rates: rateTiers,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
         },
         durationMinutes,
         quantity,

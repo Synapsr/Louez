@@ -25,7 +25,7 @@ import {
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
   calculateDurationMinutes as calcDurationMinutes,
   calculateDuration as calcDuration,
   isRateBasedProduct,
@@ -307,11 +307,12 @@ export async function createReservation(input: CreateReservationInput) {
       const pricingResult = isRateBasedProduct({
         basePeriodMinutes: product.basePeriodMinutes,
       })
-        ? calculateRentalPriceV2(
+        ? calculateRateBasedPrice(
             {
               basePrice: Number(product.price),
               basePeriodMinutes: product.basePeriodMinutes!,
               deposit: Number(product.deposit || 0),
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
               rates:
                 product.pricingTiers
                   ?.filter(

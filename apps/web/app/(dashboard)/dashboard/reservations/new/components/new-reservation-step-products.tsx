@@ -129,6 +129,27 @@ export function NewReservationStepProducts({
     return getPricingUnitLabel(mode)
   }
 
+  const formatRatePlanBreakdown = (
+    plan: Array<{ rate: { period: number; price: number }; quantity: number }>,
+    lineSubtotal?: number
+  ) => {
+    if (plan.length === 1) {
+      const entry = plan[0]
+      const periodLabel = formatPeriodLabel(entry.rate.period)
+      // Show the applied tier period and the actual charged amount
+      return `${periodLabel} · ${formatCurrency(lineSubtotal ?? entry.rate.price)}`
+    }
+    return plan
+      .sort((a, b) => b.rate.period - a.rate.period)
+      .map((entry) => {
+        const periodLabel = formatPeriodLabel(entry.rate.period)
+        const price = entry.rate.price * entry.quantity
+        const qtyPrefix = entry.quantity > 1 ? `${entry.quantity}× ` : ''
+        return `${qtyPrefix}${periodLabel} · ${formatCurrency(price)}`
+      })
+      .join(' + ')
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -241,14 +262,16 @@ export function NewReservationStepProducts({
                                   </span>
                                   {discountDisplay != null && discountDisplay > 0 && (
                                     <Badge variant="success" className="text-xs">
-                                      -{Math.round(discountDisplay)}%
+                                      -{Math.floor(discountDisplay)}%
                                     </Badge>
                                   )}
                                 </>
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              {formatCurrency(basePrice)}/{getProductPeriodLabel(product, productPricingMode)}
+                              {summaryPricing.isRateBased && summaryPricing.ratePlan && summaryPricing.ratePlan.length > 0
+                                ? formatRatePlanBreakdown(summaryPricing.ratePlan, summaryPricing.lineSubtotal)
+                                : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
                             </p>
                           </>
                         ) : (
@@ -413,8 +436,17 @@ export function NewReservationStepProducts({
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
                               <span className="text-muted-foreground">
-                                {line.quantity} × {pricing.productDuration}{' '}
-                                {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
+                                {pricing.isRateBased && pricing.ratePlan && pricing.ratePlan.length > 0 ? (
+                                  <>
+                                    {line.quantity > 1 && `${line.quantity} × `}
+                                    {formatRatePlanBreakdown(pricing.ratePlan, pricing.lineSubtotal / Math.max(1, line.quantity))}
+                                  </>
+                                ) : (
+                                  <>
+                                    {line.quantity} × {pricing.productDuration}{' '}
+                                    {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
+                                  </>
+                                )}
                               </span>
                               <Button
                                 type="button"
