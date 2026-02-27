@@ -9,19 +9,15 @@ import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
 import { Badge, Card, CardContent, Separator } from '@louez/ui';
-import {
-  type ProductPricing,
-  calculateRentalPrice,
-  formatCurrency,
-} from '@louez/utils';
+import { formatCurrency } from '@louez/utils';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { CartItem } from '@/contexts/cart-context';
 
 import type { ValidatedPromo } from '../promo-actions';
 import type { DeliveryOption, LineResolutionState } from '../types';
-import { calculateDuration } from '../utils';
 import { CheckoutPromoCode } from './checkout-promo-code';
 
 interface CheckoutOrderSummaryProps {
@@ -118,37 +114,14 @@ export function CheckoutOrderSummary({
 
           <div className="space-y-3">
             {items.map((item, index) => {
-              const duration = calculateDuration(
-                item.startDate,
-                item.endDate,
-                item.pricingMode,
+              const priceResult = calculateCartItemPrice(
+                item,
+                globalStartDate,
+                globalEndDate,
               );
-
-              const itemPricingMode = item.productPricingMode || pricingMode;
-              let itemTotal = item.price * item.quantity * duration;
-              let itemSavings = 0;
-              let discountPercent: number | null = null;
-
-              if (item.pricingTiers && item.pricingTiers.length > 0) {
-                const pricing: ProductPricing = {
-                  basePrice: item.price,
-                  deposit: item.deposit,
-                  pricingMode: itemPricingMode,
-                  tiers: item.pricingTiers.map((tier, index) => ({
-                    ...tier,
-                    displayOrder: index,
-                  })),
-                };
-
-                const result = calculateRentalPrice(
-                  pricing,
-                  duration,
-                  item.quantity,
-                );
-                itemTotal = result.subtotal;
-                itemSavings = result.savings;
-                discountPercent = result.discountPercent;
-              }
+              const itemTotal = priceResult.subtotal;
+              const itemSavings = priceResult.savings;
+              const discountPercent = priceResult.discountPercent;
 
               const resolutionState = lineResolutions[item.lineId];
               const requestedAttributes = item.selectedAttributes;
@@ -211,8 +184,10 @@ export function CheckoutOrderSummary({
                     )}
                     <p className="text-muted-foreground text-xs">
                       {item.quantity} {'\u00d7'}{' '}
-                      {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
-                      {duration}
+                      {formatCurrency(
+                        itemTotal / Math.max(1, item.quantity),
+                        currency,
+                      )}
                     </p>
                     {discountPercent != null && discountPercent > 0 && (
                       <Badge

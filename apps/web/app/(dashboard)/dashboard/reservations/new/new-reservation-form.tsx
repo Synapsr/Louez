@@ -1070,6 +1070,7 @@ export function NewReservationForm({
               startDate={watchStartDate}
               endDate={watchEndDate}
               duration={duration}
+              detailedDuration={detailedDuration}
               locale={locale}
               dateLocale={dateLocale}
               selectedProducts={selectedProducts}
