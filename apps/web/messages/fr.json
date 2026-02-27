@@ -784,7 +784,8 @@
           "chart": {
             "strictLine": "Paliers fixes",
             "progressiveLine": "Progressif",
-            "savings": "Économie client"
+            "savings": "Économie client",
+            "basePricing": "Tarifs de base"
           }
         },
         "unitTracking": {
@@ -897,6 +898,7 @@
         "seasonDuplicated": "Période dupliquée avec succès",
         "seasonalSettingsHint": "La TVA, la caution et les remises progressives sont configurées dans les tarifs de base.",
         "switchToBasePricing": "Revenir aux tarifs de base",
+        "savingPeriod": "Sauvegarde...",
         "periodSaved": "Tarifs sauvegardés"
       },
       "deleteConfirm": {

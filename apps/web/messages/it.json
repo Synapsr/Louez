@@ -754,7 +754,8 @@
           "chart": {
             "strictLine": "Livelli fissi",
             "progressiveLine": "Progressivo",
-            "savings": "Risparmio cliente"
+            "savings": "Risparmio cliente",
+            "basePricing": "Tariffe base"
           }
         },
         "unitTracking": {
@@ -854,6 +855,7 @@
         "seasonDuplicated": "Periodo duplicato con successo",
         "seasonalSettingsHint": "IVA, cauzione e sconti progressivi sono configurati nei prezzi base.",
         "switchToBasePricing": "Passa ai prezzi base",
+        "savingPeriod": "Salvataggio...",
         "periodSaved": "Prezzi salvati"
       },
       "deleteConfirm": {

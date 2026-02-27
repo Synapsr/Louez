@@ -793,7 +793,8 @@
           "chart": {
             "strictLine": "Feste Stufen",
             "progressiveLine": "Progressiv",
-            "savings": "Kundenersparnis"
+            "savings": "Kundenersparnis",
+            "basePricing": "Basistarife"
           }
         },
         "unitTracking": {
@@ -904,6 +905,7 @@
         "seasonDuplicated": "Periode erfolgreich dupliziert",
         "seasonalSettingsHint": "MwSt., Kaution und progressive Rabatte werden in den Basispreisen konfiguriert.",
         "switchToBasePricing": "Zu den Basispreisen wechseln",
+        "savingPeriod": "Speichern...",
         "periodSaved": "Preise gespeichert"
       },
       "deleteConfirm": {

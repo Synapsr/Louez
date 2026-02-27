@@ -106,7 +106,7 @@ export async function createSeasonalPricing(input: SeasonalPricingInput) {
 
   // Validate date range
   if (data.startDate >= data.endDate) {
-    return { error: 'dashboard.products.form.seasonDateError' as const }
+    return { error: 'seasonDateError' as const }
   }
 
   // Verify ownership
@@ -116,7 +116,7 @@ export async function createSeasonalPricing(input: SeasonalPricingInput) {
   // Check overlap
   const hasOverlap = await checkDateOverlap(data.productId, data.startDate, data.endDate)
   if (hasOverlap) {
-    return { error: 'dashboard.products.form.seasonOverlapError' as const }
+    return { error: 'seasonOverlapError' as const }
   }
 
   const seasonId = nanoid()
@@ -176,7 +176,7 @@ export async function updateSeasonalPricing(
   const data = validated.data
 
   if (data.startDate >= data.endDate) {
-    return { error: 'dashboard.products.form.seasonDateError' as const }
+    return { error: 'seasonDateError' as const }
   }
 
   // Check overlap (exclude self)
@@ -187,7 +187,7 @@ export async function updateSeasonalPricing(
     id
   )
   if (hasOverlap) {
-    return { error: 'dashboard.products.form.seasonOverlapError' as const }
+    return { error: 'seasonOverlapError' as const }
   }
 
   const price = normalizePriceInput(data.price)
@@ -279,7 +279,7 @@ export async function duplicateSeasonalPricing(id: string) {
     newEndDate
   )
   if (hasOverlap) {
-    return { error: 'dashboard.products.form.seasonOverlapError' as const }
+    return { error: 'seasonOverlapError' as const }
   }
 
   const newId = nanoid()

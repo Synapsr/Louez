@@ -1,14 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import { format } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
 import {
   CalendarRange,
+  Check,
   Copy,
   Info,
   Link2,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Puzzle,
@@ -16,8 +18,8 @@ import {
 } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 
-import type { PricingMode, TaxSettings } from '@louez/types';
-import { cn, minutesToPriceDuration } from '@louez/utils';
+import type { PricingMode, Rate, TaxSettings } from '@louez/types';
+import { cn, minutesToPriceDuration, priceDurationToMinutes } from '@louez/utils';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -44,7 +46,7 @@ import {
 } from '@louez/ui';
 
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
-import { RatesEditor } from '@/components/dashboard/rates-editor';
+import { RatesEditor, buildChartData, PricingChart } from '@/components/dashboard/rates-editor';
 import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
 import {
   PriceDurationInput,
@@ -156,6 +158,8 @@ export function ProductFormStepPricing({
     id: string; name: string; startDate: string; endDate: string;
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   // Track the previous period id to detect changes and auto-save
   const isSeasonalMode = selectedSeasonalPeriodId !== null;
@@ -195,16 +199,56 @@ export function ProductFormStepPricing({
     const result = await updateSeasonalPricing(periodId, payload);
     if (result && 'error' in result) {
       toastManager.add({ title: t(result.error as any) || result.error, type: 'error' });
-    } else {
-      toastManager.add({ title: t('periodSaved'), type: 'success' });
+      return false;
     }
+    return true;
   }, [seasonalPriceDuration, seasonalRateTiers, seasonalPricings, t]);
 
+  // Debounced auto-save: triggers 1.5s after the last edit
+  useEffect(() => {
+    if (!seasonalDirty || !selectedSeasonalPeriodId) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setAutoSaveStatus('saving');
+      const success = await saveCurrentSeasonalPricing(selectedSeasonalPeriodId);
+      if (success) {
+        setSeasonalDirty(false);
+        setAutoSaveStatus('saved');
+        // Update the price in the list (for the period selector badge)
+        if (onSeasonalPricingsChange && seasonalPriceDuration) {
+          const updated = seasonalPricings.map((sp) => {
+            if (sp.id !== selectedSeasonalPeriodId) return sp;
+            return { ...sp, price: seasonalPriceDuration.price.replace(',', '.') };
+          });
+          onSeasonalPricingsChange(updated);
+        }
+        setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      } else {
+        setAutoSaveStatus('idle');
+      }
+    }, 1500);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [seasonalDirty, seasonalPriceDuration, seasonalRateTiers]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Save immediately when switching periods
   const handleSelectPeriod = useCallback(async (newPeriodId: string | null) => {
+    // Clear any pending debounce timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = null;
+    }
     // Auto-save current period if dirty
     if (seasonalDirty && selectedSeasonalPeriodId) {
       await saveCurrentSeasonalPricing(selectedSeasonalPeriodId);
-      // Refresh seasonal pricings list after save
       if (onSeasonalPricingsChange && seasonalPriceDuration) {
         const updated = seasonalPricings.map((sp) => {
           if (sp.id !== selectedSeasonalPeriodId) return sp;
@@ -213,6 +257,7 @@ export function ProductFormStepPricing({
         onSeasonalPricingsChange(updated);
       }
     }
+    setAutoSaveStatus('idle');
     onSelectSeasonalPeriod?.(newPeriodId);
   }, [seasonalDirty, selectedSeasonalPeriodId, saveCurrentSeasonalPricing, onSelectSeasonalPeriod, onSeasonalPricingsChange, seasonalPriceDuration, seasonalPricings]);
 
@@ -319,6 +364,38 @@ export function ProductFormStepPricing({
     });
   };
 
+  // Chart data for the currently edited seasonal period
+  const tCommon = useTranslations('common');
+  const seasonalValidRates: Rate[] = useMemo(
+    () =>
+      seasonalRateTiers
+        .map((tier, index) => ({
+          id: tier.id ?? `seasonal-${index}`,
+          price: Number.parseFloat(tier.price.replace(',', '.')) || 0,
+          period: priceDurationToMinutes(tier.duration, tier.unit),
+          displayOrder: index,
+        }))
+        .filter((r) => r.price > 0 && r.period > 0),
+    [seasonalRateTiers],
+  );
+
+  const seasonalBasePeriod = seasonalPriceDuration
+    ? priceDurationToMinutes(seasonalPriceDuration.duration, seasonalPriceDuration.unit)
+    : 0;
+  const seasonalBasePrice = seasonalPriceDuration
+    ? Number.parseFloat(seasonalPriceDuration.price.replace(',', '.')) || 0
+    : 0;
+
+  const seasonalChartData = useMemo(
+    () => buildChartData(seasonalBasePrice, seasonalBasePeriod, seasonalValidRates, tCommon),
+    [seasonalBasePrice, seasonalBasePeriod, seasonalValidRates, tCommon],
+  );
+
+  const seasonalChartAnchorTicks = useMemo(
+    () => seasonalChartData.filter((p) => p.isTierAnchor).map((p) => p.durationMinutes),
+    [seasonalChartData],
+  );
+
   // Seasonal banner for when a period is selected
   const seasonalBanner = selectedPeriod ? (
     <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
@@ -331,6 +408,22 @@ export function ProductFormStepPricing({
           {format(new Date(selectedPeriod.endDate + 'T00:00:00'), 'd MMM yyyy', { locale: calendarLocale })}
         </p>
       </div>
+      {autoSaveStatus !== 'idle' && (
+        <div className="flex items-center gap-1.5 self-center shrink-0">
+          {autoSaveStatus === 'saving' && (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">{t('savingPeriod')}</span>
+            </>
+          )}
+          {autoSaveStatus === 'saved' && (
+            <>
+              <Check className="h-3 w-3 text-emerald-600" />
+              <span className="text-xs text-emerald-600">{t('periodSaved')}</span>
+            </>
+          )}
+        </div>
+      )}
       <div className="flex items-center gap-1 shrink-0">
         <Button
           variant="ghost"
@@ -425,6 +518,20 @@ export function ProductFormStepPricing({
               disabled={isSaving || isSavingSeasonal}
               hideProgressiveToggle
             />
+            {/* Seasonal pricing curve preview */}
+            {seasonalChartData.length > 0 && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <PricingChart
+                  data={seasonalChartData}
+                  anchorTicks={seasonalChartAnchorTicks}
+                  isProgressive={!(watchedValues.enforceStrictTiers ?? true)}
+                  gradientId="seasonal"
+                  currency={currency}
+                  tCommon={tCommon}
+                  t={t}
+                />
+              </div>
+            )}
             {/* Hint to go back to base pricing for TVA/deposit/progressive */}
             <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-3.5 py-3">
               <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />

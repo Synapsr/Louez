@@ -754,7 +754,8 @@
           "chart": {
             "strictLine": "Vaste stappen",
             "progressiveLine": "Progressief",
-            "savings": "Klantbesparing"
+            "savings": "Klantbesparing",
+            "basePricing": "Basistarieven"
           }
         },
         "unitTracking": {
@@ -854,6 +855,7 @@
         "seasonDuplicated": "Periode succesvol gedupliceerd",
         "seasonalSettingsHint": "BTW, borg en progressieve kortingen worden geconfigureerd in de basisprijzen.",
         "switchToBasePricing": "Naar basisprijzen gaan",
+        "savingPeriod": "Opslaan...",
         "periodSaved": "Prijzen opgeslagen"
       },
       "deleteConfirm": {

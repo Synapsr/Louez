@@ -754,7 +754,8 @@
           "chart": {
             "strictLine": "Níveis fixos",
             "progressiveLine": "Progressivo",
-            "savings": "Economia do cliente"
+            "savings": "Economia do cliente",
+            "basePricing": "Tarifas base"
           }
         },
         "unitTracking": {
@@ -854,6 +855,7 @@
         "seasonDuplicated": "Período duplicado com sucesso",
         "seasonalSettingsHint": "IVA, caução e descontos progressivos são configurados nos preços base.",
         "switchToBasePricing": "Voltar aos preços base",
+        "savingPeriod": "Guardando...",
         "periodSaved": "Preços guardados"
       },
       "deleteConfirm": {

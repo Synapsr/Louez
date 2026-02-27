@@ -784,7 +784,8 @@
           "chart": {
             "strictLine": "Fixed tiers",
             "progressiveLine": "Progressive",
-            "savings": "Customer savings"
+            "savings": "Customer savings",
+            "basePricing": "Base pricing"
           }
         },
         "unitTracking": {
@@ -897,6 +898,7 @@
         "seasonDuplicated": "Period duplicated successfully",
         "seasonalSettingsHint": "VAT, deposit, and progressive discounts are configured in base pricing.",
         "switchToBasePricing": "Switch to base pricing",
+        "savingPeriod": "Saving...",
         "periodSaved": "Pricing saved"
       },
       "deleteConfirm": {

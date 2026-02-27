@@ -754,7 +754,8 @@
           "chart": {
             "strictLine": "Stałe progi",
             "progressiveLine": "Progresywny",
-            "savings": "Oszczędność klienta"
+            "savings": "Oszczędność klienta",
+            "basePricing": "Cennik bazowy"
           }
         },
         "unitTracking": {
@@ -854,6 +855,7 @@
         "seasonDuplicated": "Okres zduplikowany pomyślnie",
         "seasonalSettingsHint": "VAT, kaucja i rabaty progresywne są konfigurowane w cenach bazowych.",
         "switchToBasePricing": "Przejdź do cen bazowych",
+        "savingPeriod": "Zapisywanie...",
         "periodSaved": "Ceny zapisane"
       },
       "deleteConfirm": {

@@ -793,7 +793,8 @@
           "chart": {
             "strictLine": "Niveles fijos",
             "progressiveLine": "Progresivo",
-            "savings": "Ahorro del cliente"
+            "savings": "Ahorro del cliente",
+            "basePricing": "Tarifas base"
           }
         },
         "unitTracking": {
@@ -904,6 +905,7 @@
         "seasonDuplicated": "Período duplicado con éxito",
         "seasonalSettingsHint": "El IVA, la fianza y los descuentos progresivos se configuran en los precios base.",
         "switchToBasePricing": "Volver a precios base",
+        "savingPeriod": "Guardando...",
         "periodSaved": "Precios guardados"
       },
       "deleteConfirm": {
