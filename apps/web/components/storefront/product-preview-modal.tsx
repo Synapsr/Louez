@@ -174,7 +174,13 @@ export function ProductPreviewModal({
     [product],
   );
   const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
-  const showDiscount = maxDiscountPercent == null || pricingSummary.maxReductionPercent <= maxDiscountPercent;
+  // Highest discount within the store limit, for the header badge
+  const modalDiscount = maxDiscountPercent == null
+    ? pricingSummary.maxReductionPercent
+    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0);
+  // Whether a specific tier's discount badge should be displayed
+  const isDiscountVisible = (reductionPercent: number) =>
+    reductionPercent > 0 && (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -533,11 +539,11 @@ export function ProductPreviewModal({
                 <span className="text-muted-foreground text-base">
                   / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
-                {pricingSummary.maxReductionPercent > 0 && showDiscount && (
+                {modalDiscount > 0 && (
                   <Badge className="ml-2 bg-primary/10 text-primary">
                     <TrendingDown className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {
-                      percent: Math.floor(pricingSummary.maxReductionPercent),
+                      percent: Math.floor(modalDiscount),
                     })}
                   </Badge>
                 )}
@@ -589,7 +595,7 @@ export function ProductPreviewModal({
                               alwaysShowCount: true,
                             })}
                           </span>
-                          {rate.reductionPercent > 0 && showDiscount && (
+                          {isDiscountVisible(rate.reductionPercent) && (
                             <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                               -{Math.floor(rate.reductionPercent)}%
                             </Badge>
@@ -634,7 +640,7 @@ export function ProductPreviewModal({
                                       alwaysShowCount: true,
                                     })}
                                   </span>
-                                  {rate.reductionPercent > 0 && showDiscount && (
+                                  {isDiscountVisible(rate.reductionPercent) && (
                                     <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                       -{Math.floor(rate.reductionPercent)}%
                                     </Badge>
