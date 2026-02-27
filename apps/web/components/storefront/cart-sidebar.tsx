@@ -50,6 +50,7 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 interface CartSidebarProps {
   storeSlug: string;
@@ -184,7 +185,7 @@ export function CartSidebar({
                       )}
                     <p className="text-muted-foreground text-xs">
                       {formatCurrency(
-                        item.price * getItemDuration(item),
+                        calculateCartItemPrice(item, globalStartDate, globalEndDate).subtotal / Math.max(1, item.quantity),
                         currency,
                       )}{' '}
                       × {item.quantity}
