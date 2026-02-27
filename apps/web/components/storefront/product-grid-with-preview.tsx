@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { ImageIcon, Calendar, TrendingDown } from 'lucide-react'
@@ -45,6 +45,7 @@ interface ProductGridWithPreviewProps {
   businessHours?: BusinessHours
   advanceNotice?: number
   timezone?: string
+  initialProductId?: string
 }
 
 function ProductCardInteractive({
@@ -160,9 +161,27 @@ export function ProductGridWithPreview({
   businessHours,
   advanceNotice,
   timezone,
+  initialProductId,
 }: ProductGridWithPreviewProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const initialOpenDone = useRef(false)
+
+  // Auto-open modal when initialProductId is provided via query param
+  useEffect(() => {
+    if (initialProductId && !initialOpenDone.current) {
+      const product = products.find((p) => p.id === initialProductId)
+      if (product) {
+        initialOpenDone.current = true
+        setSelectedProduct(product)
+        setIsModalOpen(true)
+        // Clean up the query param from the URL without navigation
+        const url = new URL(window.location.href)
+        url.searchParams.delete('product')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }, [initialProductId, products])
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product)

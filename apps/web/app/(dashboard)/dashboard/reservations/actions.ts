@@ -3,7 +3,7 @@
 import { db } from '@louez/db'
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes, productUnits, reservationItemUnits } from '@louez/db'
+import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes, productUnits, reservationItemUnits, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
 import { eq, and, sql, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { nanoid } from 'nanoid'
@@ -49,11 +49,13 @@ import {
 import {
   calculateRentalPrice,
   calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
   calculateDuration,
   calculateDurationMinutes,
   generatePricingBreakdown,
   isRateBasedProduct,
   type PricingTier,
+  type SeasonalPricingConfig,
 } from '@louez/utils'
 import type {
   BookingAttributeAxis,
@@ -80,6 +82,55 @@ function toPricingMode(value: unknown): PricingMode {
     return value
   }
   return 'day'
+}
+
+async function fetchSeasonalPricingConfigs(productId: string): Promise<SeasonalPricingConfig[]> {
+  const seasonalPricingsRaw = await db
+    .select()
+    .from(productSeasonalPricing)
+    .where(eq(productSeasonalPricing.productId, productId))
+
+  if (seasonalPricingsRaw.length === 0) return []
+
+  const spIds = seasonalPricingsRaw.map((sp) => sp.id)
+  const spTiersRaw = await db
+    .select()
+    .from(productSeasonalPricingTiers)
+    .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds))
+
+  const spTiersByPricingId = new Map<string, typeof spTiersRaw>()
+  for (const tier of spTiersRaw) {
+    const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || []
+    tiers.push(tier)
+    spTiersByPricingId.set(tier.seasonalPricingId, tiers)
+  }
+
+  return seasonalPricingsRaw.map((sp) => {
+    const spTiers = spTiersByPricingId.get(sp.id) || []
+    return {
+      id: sp.id,
+      name: sp.name,
+      startDate: sp.startDate,
+      endDate: sp.endDate,
+      basePrice: parseFloat(sp.price),
+      tiers: spTiers
+        .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+        .map((t) => ({
+          id: t.id,
+          minDuration: t.minDuration!,
+          discountPercent: parseFloat(t.discountPercent!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+      rates: spTiers
+        .filter((t) => t.period !== null && t.price !== null)
+        .map((t) => ({
+          id: t.id,
+          period: t.period!,
+          price: parseFloat(t.price!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+    }
+  })
 }
 
 type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
@@ -592,59 +643,65 @@ export async function createManualReservation(data: CreateReservationData) {
           displayOrder: tier.displayOrder ?? index,
         }))
 
-      const priceResult = isRateBasedProduct({
-        basePeriodMinutes: product.basePeriodMinutes,
-      })
-        ? calculateRateBasedPrice(
-            {
-              basePrice: parseFloat(product.price),
-              basePeriodMinutes: product.basePeriodMinutes!,
-              deposit: parseFloat(product.deposit || '0'),
-              rates,
-              enforceStrictTiers: product.enforceStrictTiers ?? false,
-            },
-            durationMinutes,
-            item.quantity,
-          )
-        : calculateRentalPrice(
-            {
-              basePrice: parseFloat(product.price),
-              deposit: parseFloat(product.deposit || '0'),
-              pricingMode: effectivePricingMode,
-              tiers,
-            },
-            duration,
-            item.quantity,
-          )
+      // Fetch seasonal pricings for this product
+      const seasonalPricingConfigs = await fetchSeasonalPricingConfigs(product.id)
 
-      let pricingBreakdown =
-        'effectivePricePerUnit' in priceResult
-          ? generatePricingBreakdown(priceResult, effectivePricingMode)
-          : {
+      const seasonalResult = calculateSeasonalAwarePrice(
+        {
+          basePrice: parseFloat(product.price),
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
+          deposit: parseFloat(product.deposit || '0'),
+          pricingMode: effectivePricingMode,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
+          tiers,
+          rates,
+        },
+        seasonalPricingConfigs,
+        data.startDate,
+        data.endDate,
+        item.quantity,
+      )
+
+      // Build a compatible result for existing code paths
+      const priceResult = {
+        subtotal: seasonalResult.subtotal,
+        originalSubtotal: seasonalResult.originalSubtotal,
+        savings: seasonalResult.savings,
+        deposit: seasonalResult.deposit,
+        total: seasonalResult.total,
+      }
+
+      let pricingBreakdown: PricingBreakdown = {
               basePrice: parseFloat(product.price),
-              effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
+              effectivePrice: seasonalResult.subtotal / Math.max(1, item.quantity),
               duration: durationMinutes,
               pricingMode: effectivePricingMode,
-              discountPercent: priceResult.reductionPercent,
-              discountAmount: priceResult.savings,
-              tierApplied: priceResult.appliedRate
-                ? `${priceResult.appliedRate.period}m`
+              discountPercent: seasonalResult.savings > 0 && seasonalResult.originalSubtotal > 0
+                ? Math.round((seasonalResult.savings / seasonalResult.originalSubtotal) * 100)
                 : null,
+              discountAmount: seasonalResult.savings,
+              tierApplied: null,
               durationMinutes,
-              appliedPeriods: priceResult.periodsUsed,
+              appliedPeriods: undefined,
               optimizerVersion: 'v2',
               taxRate: null,
               taxAmount: null,
               subtotalExclTax: null,
               subtotalInclTax: null,
+              ...(seasonalResult.isSeasonal ? {
+                seasonalSegments: seasonalResult.segments.map(seg => ({
+                  seasonalPricingId: seg.seasonalPricingId,
+                  seasonalPricingName: seg.seasonalPricingName,
+                  startDate: seg.startDate.toISOString(),
+                  endDate: seg.endDate.toISOString(),
+                  subtotal: seg.subtotal,
+                })),
+              } : {}),
             }
 
       // Check for price override
       const hasPriceOverride = !!item.priceOverride
-      let effectiveUnitPrice =
-        'effectivePricePerUnit' in priceResult
-          ? priceResult.effectivePricePerUnit
-          : priceResult.subtotal / Math.max(1, item.quantity)
+      let effectiveUnitPrice = priceResult.subtotal / Math.max(1, item.quantity)
       let effectiveSubtotal = priceResult.subtotal
 
       if (hasPriceOverride) {
@@ -656,10 +713,7 @@ export async function createManualReservation(data: CreateReservationData) {
           ...pricingBreakdown,
           effectivePrice: effectiveUnitPrice,
           isManualOverride: true,
-          originalPrice:
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity),
+          originalPrice: priceResult.subtotal / Math.max(1, item.quantity),
         }
       }
 
@@ -1126,56 +1180,60 @@ export async function updateReservation(
               displayOrder: tier.displayOrder ?? index,
             }))
 
-          const priceResult = isRateBasedProduct({
-            basePeriodMinutes: product.basePeriodMinutes,
-          })
-            ? calculateRateBasedPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  basePeriodMinutes: product.basePeriodMinutes!,
-                  deposit: parseFloat(product.deposit || '0'),
-                  rates,
-                  enforceStrictTiers: product.enforceStrictTiers ?? false,
-                },
-                durationMinutes,
-                item.quantity,
-              )
-            : calculateRentalPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  deposit: parseFloat(product.deposit || '0'),
-                  pricingMode: itemPricingMode,
-                  tiers,
-                },
-                duration,
-                item.quantity,
-              )
+          // Fetch seasonal pricings for this product
+          const seasonalPricingConfigsForItem = await fetchSeasonalPricingConfigs(product.id)
 
-          pricingBreakdown =
-            'effectivePricePerUnit' in priceResult
-              ? generatePricingBreakdown(priceResult, itemPricingMode)
-              : {
+          const seasonalResultForItem = calculateSeasonalAwarePrice(
+            {
+              basePrice: parseFloat(product.price),
+              basePeriodMinutes: product.basePeriodMinutes ?? null,
+              deposit: parseFloat(product.deposit || '0'),
+              pricingMode: itemPricingMode,
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
+              tiers,
+              rates,
+            },
+            seasonalPricingConfigsForItem,
+            newStartDate,
+            newEndDate,
+            item.quantity,
+          )
+
+          const priceResult = {
+            subtotal: seasonalResultForItem.subtotal,
+            originalSubtotal: seasonalResultForItem.originalSubtotal,
+            savings: seasonalResultForItem.savings,
+            deposit: seasonalResultForItem.deposit,
+          }
+
+          pricingBreakdown = {
                   basePrice: parseFloat(product.price),
-                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
+                  effectivePrice: seasonalResultForItem.subtotal / Math.max(1, item.quantity),
                   duration: durationMinutes,
                   pricingMode: itemPricingMode,
-                  discountPercent: priceResult.reductionPercent,
-                  discountAmount: priceResult.savings,
-                  tierApplied: priceResult.appliedRate
-                    ? `${priceResult.appliedRate.period}m`
+                  discountPercent: seasonalResultForItem.savings > 0 && seasonalResultForItem.originalSubtotal > 0
+                    ? Math.round((seasonalResultForItem.savings / seasonalResultForItem.originalSubtotal) * 100)
                     : null,
+                  discountAmount: seasonalResultForItem.savings,
+                  tierApplied: null,
                   durationMinutes,
-                  appliedPeriods: priceResult.periodsUsed,
+                  appliedPeriods: undefined,
                   optimizerVersion: 'v2',
                   taxRate: null,
                   taxAmount: null,
                   subtotalExclTax: null,
                   subtotalInclTax: null,
+                  ...(seasonalResultForItem.isSeasonal ? {
+                    seasonalSegments: seasonalResultForItem.segments.map(seg => ({
+                      seasonalPricingId: seg.seasonalPricingId,
+                      seasonalPricingName: seg.seasonalPricingName,
+                      startDate: seg.startDate.toISOString(),
+                      endDate: seg.endDate.toISOString(),
+                      subtotal: seg.subtotal,
+                    })),
+                  } : {}),
                 }
-          finalUnitPrice =
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity)
+          finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity)
           totalPrice = priceResult.subtotal
         }
       } else if (item.isManualPrice) {
@@ -1256,56 +1314,54 @@ export async function updateReservation(
               displayOrder: tier.displayOrder ?? index,
             }))
 
-          const priceResult = isRateBasedProduct({
-            basePeriodMinutes: product.basePeriodMinutes,
-          })
-            ? calculateRateBasedPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  basePeriodMinutes: product.basePeriodMinutes!,
-                  deposit: parseFloat(product.deposit || '0'),
-                  rates,
-                  enforceStrictTiers: product.enforceStrictTiers ?? false,
-                },
-                itemDurationMinutes,
-                item.quantity,
-              )
-            : calculateRentalPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  deposit: parseFloat(product.deposit || '0'),
-                  pricingMode: effectivePricingMode,
-                  tiers,
-                },
-                itemDuration,
-                item.quantity,
-              )
-          const newBreakdown: PricingBreakdown =
-            'effectivePricePerUnit' in priceResult
-              ? generatePricingBreakdown(priceResult, effectivePricingMode)
-              : {
-                  basePrice: parseFloat(product.price),
-                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
-                  duration: itemDurationMinutes,
-                  pricingMode: effectivePricingMode,
-                  discountPercent: priceResult.reductionPercent,
-                  discountAmount: priceResult.savings,
-                  tierApplied: priceResult.appliedRate
-                    ? `${priceResult.appliedRate.period}m`
-                    : null,
-                  durationMinutes: itemDurationMinutes,
-                  appliedPeriods: priceResult.periodsUsed,
-                  optimizerVersion: 'v2',
-                  taxRate: null,
-                  taxAmount: null,
-                  subtotalExclTax: null,
-                  subtotalInclTax: null,
-                }
-          finalUnitPrice =
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity)
-          totalPrice = priceResult.subtotal
+          // Fetch seasonal pricings for this product
+          const seasonalPricingConfigsForDate = await fetchSeasonalPricingConfigs(product.id)
+
+          const seasonalResultForDate = calculateSeasonalAwarePrice(
+            {
+              basePrice: parseFloat(product.price),
+              basePeriodMinutes: product.basePeriodMinutes ?? null,
+              deposit: parseFloat(product.deposit || '0'),
+              pricingMode: effectivePricingMode,
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
+              tiers,
+              rates,
+            },
+            seasonalPricingConfigsForDate,
+            newStartDate,
+            newEndDate,
+            item.quantity,
+          )
+
+          const newBreakdown: PricingBreakdown = {
+            basePrice: parseFloat(product.price),
+            effectivePrice: seasonalResultForDate.subtotal / Math.max(1, item.quantity),
+            duration: itemDurationMinutes,
+            pricingMode: effectivePricingMode,
+            discountPercent: seasonalResultForDate.savings > 0 && seasonalResultForDate.originalSubtotal > 0
+              ? Math.round((seasonalResultForDate.savings / seasonalResultForDate.originalSubtotal) * 100)
+              : null,
+            discountAmount: seasonalResultForDate.savings,
+            tierApplied: null,
+            durationMinutes: itemDurationMinutes,
+            appliedPeriods: undefined,
+            optimizerVersion: 'v2',
+            taxRate: null,
+            taxAmount: null,
+            subtotalExclTax: null,
+            subtotalInclTax: null,
+            ...(seasonalResultForDate.isSeasonal ? {
+              seasonalSegments: seasonalResultForDate.segments.map(seg => ({
+                seasonalPricingId: seg.seasonalPricingId,
+                seasonalPricingName: seg.seasonalPricingName,
+                startDate: seg.startDate.toISOString(),
+                endDate: seg.endDate.toISOString(),
+                subtotal: seg.subtotal,
+              })),
+            } : {}),
+          }
+          finalUnitPrice = seasonalResultForDate.subtotal / Math.max(1, item.quantity)
+          totalPrice = seasonalResultForDate.subtotal
 
           await db
             .update(reservationItems)

@@ -1,13 +1,23 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
-import { Eye, Info, Plus, Trash2 } from 'lucide-react';
+import { Eye, HelpCircle, Plus, Trash2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  ResponsiveContainer,
+  Legend,
+  ReferenceDot,
+} from 'recharts';
 
 import type { Rate } from '@louez/types';
 import {
-  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -16,19 +26,11 @@ import {
   DialogPanel,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
+  DialogFooter,
   Input,
   Label,
   Switch,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
 } from '@louez/ui';
 import {
   type DurationUnit,
@@ -63,6 +65,87 @@ interface RatesEditorProps {
   invalidRateIndexes?: number[];
   currency: string;
   disabled?: boolean;
+  hideProgressiveToggle?: boolean;
+}
+
+interface ChartDataPoint {
+  durationMinutes: number
+  durationLabel: string
+  strictTotal: number
+  progressiveTotal: number
+  isTierAnchor: boolean
+}
+
+/**
+ * Format a duration in minutes into a compact human-readable label.
+ * Examples: "4h", "2j", "1j 12h", "1sem".
+ * Compound labels are used when a value doesn't divide evenly into the
+ * larger unit (e.g. 2160 min → "1j 12h" instead of "1.5j").
+ */
+function formatDurationShort(
+  minutes: number,
+  tCommon: (key: string, opts: { count: number }) => string,
+): string {
+  const abbrev = (unit: DurationUnit, count: number) => {
+    const key =
+      unit === 'minute'
+        ? 'minuteUnit'
+        : unit === 'hour'
+          ? 'hourUnit'
+          : unit === 'week'
+            ? 'weekUnit'
+            : 'dayUnit';
+    return `${count}${tCommon(key, { count }).charAt(0).toLowerCase()}`;
+  };
+
+  if (minutes >= 10080 && minutes % 10080 === 0) {
+    return abbrev('week', minutes / 10080);
+  }
+  if (minutes >= 1440) {
+    const days = Math.floor(minutes / 1440);
+    const remainingHours = Math.round((minutes % 1440) / 60);
+    if (remainingHours === 0) return abbrev('day', days);
+    return `${abbrev('day', days)} ${abbrev('hour', remainingHours)}`;
+  }
+  if (minutes >= 60) {
+    return abbrev('hour', Math.round(minutes / 60));
+  }
+  return abbrev('minute', minutes);
+}
+
+/**
+ * Format a duration in minutes into a full human-readable label for tooltips.
+ * Examples: "4 heures", "2 jours", "1 jour 12 heures".
+ */
+function formatDurationLong(
+  minutes: number,
+  tCommon: (key: string, opts: { count: number }) => string,
+): string {
+  const full = (unit: DurationUnit, count: number) => {
+    const key =
+      unit === 'minute'
+        ? 'minuteUnit'
+        : unit === 'hour'
+          ? 'hourUnit'
+          : unit === 'week'
+            ? 'weekUnit'
+            : 'dayUnit';
+    return `${count} ${tCommon(key, { count })}`;
+  };
+
+  if (minutes >= 10080 && minutes % 10080 === 0) {
+    return full('week', minutes / 10080);
+  }
+  if (minutes >= 1440) {
+    const days = Math.floor(minutes / 1440);
+    const remainingHours = Math.round((minutes % 1440) / 60);
+    if (remainingHours === 0) return full('day', days);
+    return `${full('day', days)} ${full('hour', remainingHours)}`;
+  }
+  if (minutes >= 60) {
+    return full('hour', Math.round(minutes / 60));
+  }
+  return full('minute', minutes);
 }
 
 const DURATION_MULTIPLIERS_BY_UNIT: Record<DurationUnit, number[]> = {
@@ -115,6 +198,7 @@ export function RatesEditor({
   invalidRateIndexes = [],
   currency,
   disabled = false,
+  hideProgressiveToggle = false,
 }: RatesEditorProps) {
   const t = useTranslations('dashboard.products.form');
   const tCommon = useTranslations('common');
@@ -173,21 +257,30 @@ export function RatesEditor({
   const previewRows = useMemo(() => {
     if (!basePrice || !basePeriod) return [];
 
+    const pricingBase = {
+      basePrice,
+      basePeriodMinutes: basePeriod,
+      deposit: 0,
+      rates: validRates,
+    };
+
     return previewDurations.map((durationMinutes) => {
-      const result = calculateRateBasedPrice(
-        {
-          basePrice,
-          basePeriodMinutes: basePeriod,
-          deposit: 0,
-          rates: validRates,
-          enforceStrictTiers,
-        },
+      const strictResult = calculateRateBasedPrice(
+        { ...pricingBase, enforceStrictTiers: true },
+        durationMinutes,
+        1,
+      );
+      const progressiveResult = calculateRateBasedPrice(
+        { ...pricingBase, enforceStrictTiers: false },
         durationMinutes,
         1,
       );
 
+      const currentResult = enforceStrictTiers
+        ? strictResult
+        : progressiveResult;
       const unitPrice =
-        (result.subtotal / Math.max(1, durationMinutes)) * basePeriod;
+        (currentResult.subtotal / Math.max(1, durationMinutes)) * basePeriod;
       const durationInfo = minutesToPriceDuration(durationMinutes);
       const durationLabel = `${durationInfo.duration} ${tCommon(
         `${
@@ -206,9 +299,9 @@ export function RatesEditor({
         durationMinutes,
         durationLabel,
         unitPrice,
-        total: result.subtotal,
-        savings: result.savings,
-        reductionPercent: result.reductionPercent,
+        total: currentResult.subtotal,
+        savings: strictResult.subtotal - progressiveResult.subtotal,
+        reductionPercent: currentResult.reductionPercent,
       };
     });
   }, [
@@ -219,6 +312,121 @@ export function RatesEditor({
     tCommon,
     validRates,
   ]);
+
+  const chartData: ChartDataPoint[] = useMemo(() => {
+    if (!basePrice || !basePeriod || validRates.length === 0) return [];
+
+    const anchors = [
+      basePeriod,
+      ...validRates.map((r) => r.period),
+    ].sort((a, b) => a - b);
+    const anchorSet = new Set(anchors);
+
+    // Standard step sizes (minutes). We pick the one that gives 3-12
+    // intermediate points between consecutive anchors.
+    const CLEAN_STEPS = [
+      15, 30, 60, 120, 240, 360, 720, 1440, 2880, 4320, 10080,
+    ];
+    function pickStep(range: number): number {
+      for (const s of CLEAN_STEPS) {
+        const n = Math.floor(range / s) - 1;
+        if (n >= 2 && n <= 12) return s;
+      }
+      return CLEAN_STEPS[CLEAN_STEPS.length - 1];
+    }
+
+    const sampleSet = new Set<number>();
+    for (const a of anchors) sampleSet.add(a);
+
+    // Intermediate points at clean multiples between each anchor pair
+    for (let i = 0; i < anchors.length - 1; i++) {
+      const lo = anchors[i];
+      const hi = anchors[i + 1];
+      const step = pickStep(hi - lo);
+      const start = Math.ceil((lo + 1) / step) * step;
+      for (let v = start; v < hi; v += step) {
+        sampleSet.add(v);
+      }
+    }
+
+    // Extrapolation beyond last anchor (3 clean points)
+    const last = anchors[anchors.length - 1];
+    const prevAnchor = anchors.length > 1 ? anchors[anchors.length - 2] : 0;
+    const extraStep = pickStep(last - prevAnchor || last);
+    for (let i = 1; i <= 3; i++) {
+      sampleSet.add(last + extraStep * i);
+    }
+
+    const pricingBase = {
+      basePrice,
+      basePeriodMinutes: basePeriod,
+      deposit: 0,
+      rates: validRates,
+    };
+
+    return [...sampleSet]
+      .sort((a, b) => a - b)
+      .map((mins) => ({
+        durationMinutes: mins,
+        durationLabel: formatDurationShort(mins, tCommon),
+        strictTotal: calculateRateBasedPrice(
+          { ...pricingBase, enforceStrictTiers: true },
+          mins,
+          1,
+        ).subtotal,
+        progressiveTotal: calculateRateBasedPrice(
+          { ...pricingBase, enforceStrictTiers: false },
+          mins,
+          1,
+        ).subtotal,
+        isTierAnchor: anchorSet.has(mins),
+      }));
+  }, [basePeriod, basePrice, validRates, tCommon]);
+
+  const chartAnchorTicks = useMemo(
+    () => chartData.filter((p) => p.isTierAnchor).map((p) => p.durationMinutes),
+    [chartData],
+  );
+
+  const renderChartTooltip = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ({ active, payload }: any) => {
+      if (!active || !payload?.length) return null;
+      const data = payload[0].payload as ChartDataPoint;
+      const label = formatDurationLong(data.durationMinutes, tCommon);
+      const savings = data.strictTotal - data.progressiveTotal;
+
+      return (
+        <div className="rounded-lg border bg-background p-3 text-sm shadow-lg">
+          <p className="mb-1.5 font-medium">{label}</p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-block h-0 w-3 border-t-[1.5px] border-dashed"
+                style={{ borderColor: 'var(--muted-foreground)' }}
+              />
+              <span className="text-muted-foreground">
+                {t('pricingTiers.chart.strictLine')}: {formatCurrency(data.strictTotal, currency)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-0.5 w-3 rounded bg-emerald-500" />
+              <span>
+                {t('pricingTiers.chart.progressiveLine')}: {formatCurrency(data.progressiveTotal, currency)}
+              </span>
+            </div>
+            {savings > 0 && (
+              <p className="mt-1 border-t pt-1 font-medium text-emerald-600 dark:text-emerald-400">
+                {t('pricingTiers.chart.savings')}: −{formatCurrency(savings, currency)}
+              </p>
+            )}
+          </div>
+        </div>
+      );
+    },
+    [t, tCommon, currency],
+  );
+
   const hasBaseRate = basePrice > 0 && basePeriod > 0;
   const hasMultipleDistinctPrices = useMemo(() => {
     if (!hasBaseRate) return false;
@@ -453,32 +661,88 @@ export function RatesEditor({
         </Button>
       </div>
 
-      {hasMultipleDistinctPrices && (
-        <div className="flex items-center justify-between rounded-lg border p-4">
-          <div className="space-y-2">
-            <div className="space-y-0.5">
+      {hasMultipleDistinctPrices && !hideProgressiveToggle && (
+        <div className="rounded-lg border p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0 space-y-0.5">
               <div className="flex items-center gap-1.5">
                 <Label className="text-sm font-medium">
-                  {t('pricingTiers.enforceStrictTiers')}
+                  {t('pricingTiers.progressive.label')}
                 </Label>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Info className="text-muted-foreground h-4 w-4 cursor-help" />
-                      }
-                    />
-                    <TooltipContent side="top" className="max-w-xs">
-                      <p>{t('pricingTiers.enforceStrictTiersTooltip')}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                <Dialog>
+                  <DialogTrigger
+                    render={
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground inline-flex cursor-help transition-colors"
+                      />
+                    }
+                  >
+                    <HelpCircle className="h-4 w-4" />
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>
+                        {t('pricingTiers.progressive.modal.title')}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {t('pricingTiers.progressive.modal.intro')}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogPanel>
+                      <div className="space-y-3">
+                        <div className="rounded-lg border p-3">
+                          <p className="text-sm font-medium">
+                            {t('pricingTiers.progressive.modal.withoutTitle')}
+                          </p>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            {t('pricingTiers.progressive.modal.withoutText')}
+                          </p>
+                          <div className="bg-muted/50 mt-2 rounded-md px-3 py-2 text-sm">
+                            {t('pricingTiers.progressive.modal.withoutExample')}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+                          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                            {t('pricingTiers.progressive.modal.withTitle')}
+                          </p>
+                          <p className="text-muted-foreground mt-1 text-sm">
+                            {t('pricingTiers.progressive.modal.withText')}
+                          </p>
+                          <div className="mt-2 rounded-md bg-emerald-100/50 px-3 py-2 text-sm dark:bg-emerald-950/30">
+                            {t('pricingTiers.progressive.modal.withExample')}
+                          </div>
+                        </div>
+                      </div>
+                    </DialogPanel>
+                    <DialogFooter>
+                      <DialogClose
+                        render={
+                          <Button type="button" variant="outline" size="sm" />
+                        }
+                      >
+                        {tCommon('close')}
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
               <p className="text-muted-foreground text-sm">
-                {t('pricingTiers.enforceStrictTiersDescription')}
+                {t('pricingTiers.progressive.description')}
               </p>
             </div>
-            {previewRows.length > 0 && (
+            <Switch
+              checked={progressiveDiscountEnabled}
+              onCheckedChange={(checked) =>
+                onEnforceStrictTiersChange(!Boolean(checked))
+              }
+              disabled={disabled}
+            />
+          </div>
+
+          {/* Strict mode: modal preview with chart + table */}
+          {!progressiveDiscountEnabled && previewRows.length > 0 && (
+            <div className="mt-3">
               <Dialog>
                 <DialogTrigger
                   render={<Button type="button" variant="outline" size="sm" />}
@@ -494,81 +758,254 @@ export function RatesEditor({
                     </DialogDescription>
                   </DialogHeader>
                   <DialogPanel>
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>{t('pricingTiers.duration')}</TableHead>
-                            <TableHead>
-                              {t('pricingTiers.pricePerUnit')}
-                            </TableHead>
-                            <TableHead className="text-right">
-                              {t('pricingTiers.total')}
-                            </TableHead>
-                            <TableHead className="text-right">
-                              {t('pricingTiers.savings')}
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {previewRows.map((row) => {
-                            const reductionPercent = row.reductionPercent ?? 0;
-                            return (
-                              <TableRow
-                                key={row.durationMinutes}
-                                className={
-                                  row.savings > 0 ? 'bg-emerald-500/5' : undefined
-                                }
-                              >
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <span>{row.durationLabel}</span>
-                                    {reductionPercent > 0 && (
-                                      <Badge
-                                        variant="outline"
-                                        className="text-emerald-600 dark:text-emerald-400"
-                                      >
-                                        -{Math.floor(reductionPercent)}%
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {formatCurrency(row.unitPrice, currency)}
-                                  {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  {formatCurrency(row.total, currency)}
-                                </TableCell>
-                                <TableCell
-                                  className={`text-right ${
-                                    row.savings > 0
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : 'text-muted-foreground'
-                                  }`}
+                    {chartData.length > 0 && (
+                      <div className="mb-4 rounded-lg border bg-card p-3">
+                        <div className="h-[200px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                              data={chartData}
+                              margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient
+                                  id="previewProgressiveGradient"
+                                  x1="0"
+                                  y1="0"
+                                  x2="0"
+                                  y2="1"
                                 >
-                                  {row.savings > 0
-                                    ? `-${formatCurrency(row.savings, currency)}`
-                                    : '-'}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
+                                  <stop
+                                    offset="5%"
+                                    stopColor="#22c55e"
+                                    stopOpacity={0.2}
+                                  />
+                                  <stop
+                                    offset="95%"
+                                    stopColor="#22c55e"
+                                    stopOpacity={0}
+                                  />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid
+                                strokeDasharray="3 3"
+                                stroke="var(--border)"
+                                vertical={false}
+                              />
+                              <XAxis
+                                dataKey="durationMinutes"
+                                type="number"
+                                domain={['dataMin', 'dataMax']}
+                                ticks={chartAnchorTicks}
+                                tickFormatter={(mins: number) =>
+                                  formatDurationShort(mins, tCommon)
+                                }
+                                tick={{
+                                  fontSize: 11,
+                                  fill: 'var(--muted-foreground)',
+                                }}
+                                tickLine={false}
+                                axisLine={false}
+                              />
+                              <YAxis
+                                tick={{
+                                  fontSize: 11,
+                                  fill: 'var(--muted-foreground)',
+                                }}
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(v: number) =>
+                                  formatCurrency(v, currency)
+                                }
+                                width={65}
+                              />
+                              <RechartsTooltip content={renderChartTooltip} />
+                              <Legend
+                                verticalAlign="top"
+                                height={28}
+                                iconType="line"
+                                formatter={(value: string) => (
+                                  <span className="text-xs text-muted-foreground">
+                                    {value}
+                                  </span>
+                                )}
+                              />
+                              <Area
+                                type="linear"
+                                dataKey="strictTotal"
+                                name={t('pricingTiers.chart.strictLine')}
+                                stroke="var(--muted-foreground)"
+                                strokeWidth={1.5}
+                                strokeDasharray="6 3"
+                                fillOpacity={0}
+                                dot={false}
+                                activeDot={false}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="progressiveTotal"
+                                name={t('pricingTiers.chart.progressiveLine')}
+                                stroke="#22c55e"
+                                strokeWidth={2}
+                                fillOpacity={1}
+                                fill="url(#previewProgressiveGradient)"
+                                dot={false}
+                                activeDot={false}
+                              />
+                              {chartData
+                                .filter((p) => p.isTierAnchor)
+                                .map((p) => (
+                                  <ReferenceDot
+                                    key={p.durationMinutes}
+                                    x={p.durationMinutes}
+                                    y={p.progressiveTotal}
+                                    r={4}
+                                    fill="#22c55e"
+                                    stroke="var(--background)"
+                                    strokeWidth={2}
+                                  />
+                                ))}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+                    <PreviewTable
+                      rows={previewRows}
+                      currency={currency}
+                      baseUnitLabel={baseUnitLabel}
+                      t={t}
+                    />
                   </DialogPanel>
                 </DialogContent>
               </Dialog>
-            )}
-          </div>
-          <Switch
-            checked={progressiveDiscountEnabled}
-            onCheckedChange={(checked) =>
-              onEnforceStrictTiersChange(!Boolean(checked))
-            }
-            disabled={disabled}
-          />
+            </div>
+          )}
+
+          {/* Progressive mode: inline chart + table */}
+          {progressiveDiscountEnabled && chartData.length > 0 && (
+            <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="rounded-lg border bg-card p-3">
+                <div className="h-[200px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart
+                      data={chartData}
+                      margin={{ top: 5, right: 10, left: 0, bottom: 0 }}
+                    >
+                      <defs>
+                        <linearGradient
+                          id="progressiveGradient"
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="5%"
+                            stopColor="#22c55e"
+                            stopOpacity={0.2}
+                          />
+                          <stop
+                            offset="95%"
+                            stopColor="#22c55e"
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--border)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="durationMinutes"
+                        type="number"
+                        domain={['dataMin', 'dataMax']}
+                        ticks={chartAnchorTicks}
+                        tickFormatter={(mins: number) =>
+                          formatDurationShort(mins, tCommon)
+                        }
+                        tick={{
+                          fontSize: 11,
+                          fill: 'var(--muted-foreground)',
+                        }}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        tick={{
+                          fontSize: 11,
+                          fill: 'var(--muted-foreground)',
+                        }}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(v: number) =>
+                          formatCurrency(v, currency)
+                        }
+                        width={65}
+                      />
+                      <RechartsTooltip content={renderChartTooltip} />
+                      <Legend
+                        verticalAlign="top"
+                        height={28}
+                        iconType="line"
+                        formatter={(value: string) => (
+                          <span className="text-xs text-muted-foreground">
+                            {value}
+                          </span>
+                        )}
+                      />
+                      <Area
+                        type="linear"
+                        dataKey="strictTotal"
+                        name={t('pricingTiers.chart.strictLine')}
+                        stroke="var(--muted-foreground)"
+                        strokeWidth={1.5}
+                        strokeDasharray="6 3"
+                        fillOpacity={0}
+                        dot={false}
+                        activeDot={false}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="progressiveTotal"
+                        name={t('pricingTiers.chart.progressiveLine')}
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        fillOpacity={1}
+                        fill="url(#progressiveGradient)"
+                        dot={false}
+                        activeDot={false}
+                      />
+                      {chartData
+                        .filter((p) => p.isTierAnchor)
+                        .map((p) => (
+                          <ReferenceDot
+                            key={p.durationMinutes}
+                            x={p.durationMinutes}
+                            y={p.progressiveTotal}
+                            r={4}
+                            fill="#22c55e"
+                            stroke="var(--background)"
+                            strokeWidth={2}
+                          />
+                        ))}
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {previewRows.length > 0 && (
+                <div className="mt-3">
+                  <PreviewTable
+                    rows={previewRows}
+                    currency={currency}
+                    baseUnitLabel={baseUnitLabel}
+                    t={t}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -623,6 +1060,86 @@ function ReductionInput({
       <span className="text-muted-foreground pointer-events-none absolute inset-y-0 right-2.5 z-10 flex items-center text-xs">
         %
       </span>
+    </div>
+  );
+}
+
+function PreviewTable({
+  rows,
+  currency,
+  baseUnitLabel,
+  t,
+  showSavings = true,
+}: {
+  rows: Array<{
+    durationMinutes: number;
+    durationLabel: string;
+    unitPrice: number;
+    total: number;
+    savings: number;
+    reductionPercent: number | null;
+  }>;
+  currency: string;
+  baseUnitLabel: string | null;
+  t: (key: string) => string;
+  showSavings?: boolean;
+}) {
+  const gridCols = showSavings
+    ? 'grid-cols-[1fr_auto_auto_auto]'
+    : 'grid-cols-[1fr_auto_auto]';
+
+  return (
+    <div className="space-y-1">
+      <div
+        className={`text-muted-foreground grid ${gridCols} gap-x-4 px-2 pb-1 text-xs font-medium`}
+      >
+        <span>{t('pricingTiers.duration')}</span>
+        <span>{t('pricingTiers.pricePerUnit')}</span>
+        <span className="text-right">{t('pricingTiers.total')}</span>
+        {showSavings && (
+          <span className="text-right">{t('pricingTiers.savings')}</span>
+        )}
+      </div>
+      {rows.map((row) => {
+        const reductionPercent = row.reductionPercent ?? 0;
+        return (
+          <div
+            key={row.durationMinutes}
+            className={`grid ${gridCols} items-center gap-x-4 rounded-md px-2 py-1.5 text-sm ${
+              showSavings && row.savings > 0 ? 'bg-emerald-500/5' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <span>{row.durationLabel}</span>
+              {reductionPercent > 0 && (
+                <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  -{Math.floor(reductionPercent)}%
+                </span>
+              )}
+            </div>
+            <span className="text-muted-foreground text-xs tabular-nums">
+              {formatCurrency(row.unitPrice, currency)}
+              {baseUnitLabel ? ` / ${baseUnitLabel}` : ''}
+            </span>
+            <span className="text-right font-medium tabular-nums">
+              {formatCurrency(row.total, currency)}
+            </span>
+            {showSavings && (
+              <span
+                className={`text-right text-xs tabular-nums ${
+                  row.savings > 0
+                    ? 'font-medium text-emerald-600 dark:text-emerald-400'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                {row.savings > 0
+                  ? `−${formatCurrency(row.savings, currency)}`
+                  : '-'}
+              </span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

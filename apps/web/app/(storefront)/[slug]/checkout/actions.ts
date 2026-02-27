@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@louez/db'
-import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes } from '@louez/db'
+import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
 import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes, PromoCodeSnapshot } from '@louez/types'
@@ -26,6 +26,7 @@ import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExc
 import {
   calculateRentalPrice,
   calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
   calculateDurationMinutes as calcDurationMinutes,
   calculateDuration as calcDuration,
   isRateBasedProduct,
@@ -33,6 +34,7 @@ import {
   matchesSelectedAttributes,
   DEFAULT_COMBINATION_KEY,
 } from '@louez/utils'
+import type { SeasonalPricingConfig } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 import { env } from '@/env'
@@ -304,59 +306,106 @@ export async function createReservation(input: CreateReservationInput) {
       const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
       const durationMinutes = calcDurationMinutes(item.startDate, item.endDate)
 
-      const pricingResult = isRateBasedProduct({
-        basePeriodMinutes: product.basePeriodMinutes,
-      })
-        ? calculateRateBasedPrice(
-            {
-              basePrice: Number(product.price),
-              basePeriodMinutes: product.basePeriodMinutes!,
-              deposit: Number(product.deposit || 0),
-              enforceStrictTiers: product.enforceStrictTiers ?? false,
-              rates:
-                product.pricingTiers
-                  ?.filter(
-                    (tier): tier is typeof tier & { period: number; price: string } =>
-                      typeof tier.period === 'number' &&
-                      tier.period > 0 &&
-                      typeof tier.price === 'string',
-                  )
-                  .map(
-                    (tier, index): Rate => ({
-                      id: tier.id,
-                      period: tier.period,
-                      price: Number(tier.price),
-                      displayOrder: tier.displayOrder ?? index,
-                    }),
-                  ) || [],
-            },
-            durationMinutes,
-            item.quantity,
-          )
-        : calculateRentalPrice(
-            {
-              basePrice: Number(product.price),
-              deposit: Number(product.deposit || 0),
-              pricingMode: productPricingMode,
-              tiers:
-                product.pricingTiers?.map((tier) => ({
-                  id: tier.id,
-                  minDuration: tier.minDuration ?? 1,
-                  discountPercent: Number(tier.discountPercent ?? 0),
-                  displayOrder: tier.displayOrder || 0,
-                })) || [],
-            },
-            duration,
-            item.quantity,
-          )
+      // Fetch seasonal pricings for this product
+      const seasonalPricingsRaw = await db
+        .select()
+        .from(productSeasonalPricing)
+        .where(eq(productSeasonalPricing.productId, product.id))
+
+      let seasonalPricingConfigs: SeasonalPricingConfig[] = []
+      if (seasonalPricingsRaw.length > 0) {
+        const spIds = seasonalPricingsRaw.map((sp) => sp.id)
+        const spTiersRaw = await db
+          .select()
+          .from(productSeasonalPricingTiers)
+          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds))
+
+        const spTiersByPricingId = new Map<string, typeof spTiersRaw>()
+        for (const tier of spTiersRaw) {
+          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || []
+          tiers.push(tier)
+          spTiersByPricingId.set(tier.seasonalPricingId, tiers)
+        }
+
+        seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
+          const spTiers = spTiersByPricingId.get(sp.id) || []
+          return {
+            id: sp.id,
+            name: sp.name,
+            startDate: sp.startDate,
+            endDate: sp.endDate,
+            basePrice: Number(sp.price),
+            tiers: spTiers
+              .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+              .map((t) => ({
+                id: t.id,
+                minDuration: t.minDuration!,
+                discountPercent: Number(t.discountPercent!),
+                displayOrder: t.displayOrder ?? 0,
+              })),
+            rates: spTiers
+              .filter((t) => t.period !== null && t.price !== null)
+              .map((t) => ({
+                id: t.id,
+                period: t.period!,
+                price: Number(t.price!),
+                displayOrder: t.displayOrder ?? 0,
+              })),
+          }
+        })
+      }
+
+      // Use seasonal-aware pricing (short-circuits to normal pricing when no seasonal configs)
+      const baseTiers = product.pricingTiers?.map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: Number(tier.discountPercent ?? 0),
+        displayOrder: tier.displayOrder || 0,
+      })) || []
+      const baseRates: Rate[] = product.pricingTiers
+        ?.filter(
+          (tier): tier is typeof tier & { period: number; price: string } =>
+            typeof tier.period === 'number' &&
+            tier.period > 0 &&
+            typeof tier.price === 'string',
+        )
+        .map(
+          (tier, index): Rate => ({
+            id: tier.id,
+            period: tier.period,
+            price: Number(tier.price),
+            displayOrder: tier.displayOrder ?? index,
+          }),
+        ) || []
+
+      const seasonalResult = calculateSeasonalAwarePrice(
+        {
+          basePrice: Number(product.price),
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
+          deposit: Number(product.deposit || 0),
+          pricingMode: productPricingMode,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
+          tiers: baseTiers,
+          rates: baseRates,
+        },
+        seasonalPricingConfigs,
+        item.startDate,
+        item.endDate,
+        item.quantity,
+      )
+
+      const pricingResult = {
+        subtotal: seasonalResult.subtotal,
+        originalSubtotal: seasonalResult.originalSubtotal,
+        savings: seasonalResult.savings,
+        deposit: seasonalResult.deposit,
+        effectivePricePerUnit: seasonalResult.subtotal / Math.max(1, item.quantity),
+      }
 
       serverCalculatedItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice:
-          'effectivePricePerUnit' in pricingResult
-            ? pricingResult.effectivePricePerUnit
-            : pricingResult.subtotal / Math.max(1, item.quantity),
+        unitPrice: pricingResult.effectivePricePerUnit,
         depositPerUnit: Number(product.deposit || 0),
         subtotal: pricingResult.subtotal,
         totalDeposit: pricingResult.deposit,

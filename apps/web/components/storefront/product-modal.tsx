@@ -44,10 +44,12 @@ import {
 } from '@louez/utils';
 import {
   type ProductPricing,
+  type SeasonalPricingConfig,
   calculateDurationMinutes,
   calculateEffectivePrice,
   calculateRentalPrice,
   calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
   isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
@@ -142,6 +144,7 @@ interface ProductModalProps {
       status: 'available' | 'maintenance' | 'retired' | null;
       attributes: Record<string, string> | null;
     }>;
+    seasonalPricings?: SeasonalPricingConfig[];
   };
   isOpen: boolean;
   onClose: () => void;
@@ -283,35 +286,73 @@ export function ProductModal({
     basePeriodMinutes: product.basePeriodMinutes,
   });
 
-  const priceResult = isRateBased
-    ? calculateRateBasedPrice(
-        {
-          basePrice: price,
-          basePeriodMinutes: product.basePeriodMinutes!,
-          deposit,
-          rates: rateTiers,
-          enforceStrictTiers: product.enforceStrictTiers ?? false,
-        },
-        durationMinutes,
-        quantity,
-      )
-    : calculateRentalPrice(
-        {
-          basePrice: price,
-          deposit,
-          pricingMode: effectivePricingMode,
-          tiers: legacyTiers,
-        } as ProductPricing,
-        duration,
-        quantity,
-      );
+  // Use seasonal-aware calculation when seasonal pricings exist
+  const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0;
+
+  const priceResult = hasSeasonalPricings
+    ? (() => {
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: price,
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit,
+            pricingMode: effectivePricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: legacyTiers,
+            rates: rateTiers,
+          },
+          product.seasonalPricings!,
+          startDate,
+          endDate,
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: result.savings > 0 && result.originalSubtotal > 0
+            ? Math.round((result.savings / result.originalSubtotal) * 100)
+            : null,
+          isSeasonal: result.isSeasonal,
+        };
+      })()
+    : (() => {
+        const result = isRateBased
+          ? calculateRateBasedPrice(
+              {
+                basePrice: price,
+                basePeriodMinutes: product.basePeriodMinutes!,
+                deposit,
+                rates: rateTiers,
+                enforceStrictTiers: product.enforceStrictTiers ?? false,
+              },
+              durationMinutes,
+              quantity,
+            )
+          : calculateRentalPrice(
+              {
+                basePrice: price,
+                deposit,
+                pricingMode: effectivePricingMode,
+                tiers: legacyTiers,
+              } as ProductPricing,
+              duration,
+              quantity,
+            );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: 'reductionPercent' in result
+            ? result.reductionPercent
+            : result.discountPercent,
+          isSeasonal: false,
+        };
+      })();
   const totalPrice = priceResult.subtotal;
   const originalPrice = priceResult.originalSubtotal;
   const savings = priceResult.savings;
-  const discountPercent =
-    'reductionPercent' in priceResult
-      ? priceResult.reductionPercent
-      : priceResult.discountPercent;
+  const discountPercent = priceResult.discountPercent;
 
   const maxQuantity = Math.min(availableQuantity, product.quantity);
   const isUnavailable = availableQuantity === 0;
@@ -510,6 +551,7 @@ export function ProductModal({
                   : (tier.price ?? null),
             })),
             productPricingMode: product.pricingMode,
+            seasonalPricings: product.seasonalPricings,
             selectedAttributes: allocation.combination.selectedAttributes,
           },
           storeSlug,
@@ -584,6 +626,7 @@ export function ProductModal({
                 : (tier.price ?? null),
           })),
           productPricingMode: product.pricingMode,
+          seasonalPricings: product.seasonalPricings,
           selectedAttributes,
         },
         storeSlug,

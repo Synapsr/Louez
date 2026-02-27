@@ -317,6 +317,14 @@ export interface PricingBreakdown {
   // Manual price override fields
   isManualOverride?: boolean
   originalPrice?: number  // Price before manual override
+  // Seasonal pricing breakdown
+  seasonalSegments?: Array<{
+    seasonalPricingId: string | null
+    seasonalPricingName: string | null
+    startDate: string
+    endDate: string
+    subtotal: number
+  }>
 }
 
 export interface PlanFeatures {

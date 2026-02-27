@@ -27,6 +27,7 @@ interface CatalogPageProps {
   searchParams: Promise<{
     category?: string
     search?: string
+    product?: string
   }>
 }
 
@@ -88,7 +89,7 @@ export default async function CatalogPage({
   searchParams,
 }: CatalogPageProps) {
   const { slug } = await params
-  const { category: categoryId, search } = await searchParams
+  const { category: categoryId, search, product: initialProductId } = await searchParams
   const t = await getTranslations('storefront.catalog')
 
   // Fetch store without products relation to avoid lateral join issues
@@ -365,6 +366,7 @@ export default async function CatalogPage({
             businessHours={businessHours}
             advanceNotice={advanceNotice}
             timezone={timezone}
+            initialProductId={initialProductId}
           />
         ) : (
           <Card className="py-16">

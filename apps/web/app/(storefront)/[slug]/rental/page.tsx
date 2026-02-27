@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores, products, categories, productPricingTiers, productAccessories, productUnits } from '@louez/db'
+import { stores, products, categories, productPricingTiers, productAccessories, productUnits, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
 import { eq, and, inArray, desc, asc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { storefrontRedirect } from '@/lib/storefront-url'
@@ -148,6 +148,15 @@ export default async function RentalPage({
     status: 'available' | 'maintenance' | 'retired' | null
     attributes: Record<string, string> | null
   }
+  interface SeasonalPricingForProduct {
+    id: string
+    name: string
+    startDate: string
+    endDate: string
+    basePrice: number
+    tiers: { id: string; minDuration: number; discountPercent: number; displayOrder: number }[]
+    rates: { id: string; period: number; price: number; displayOrder: number }[]
+  }
   let productsList: (
     typeof products.$inferSelect
     & {
@@ -155,6 +164,7 @@ export default async function RentalPage({
       pricingTiers?: PricingTier[]
       accessories?: Accessory[]
       units?: ProductUnitSummary[]
+      seasonalPricings?: SeasonalPricingForProduct[]
     }
   )[] = []
   if (productIds.length > 0) {
@@ -214,6 +224,60 @@ export default async function RentalPage({
         displayOrder: tier.displayOrder,
       })
       pricingTiersByProductId.set(tier.productId, tiers)
+    }
+
+    // Fetch seasonal pricings for all products
+    const seasonalPricingsResults = await db
+      .select()
+      .from(productSeasonalPricing)
+      .where(inArray(productSeasonalPricing.productId, productIdsArray))
+
+    const seasonalPricingIds = seasonalPricingsResults.map((sp) => sp.id)
+    const seasonalTiersResults = seasonalPricingIds.length > 0
+      ? await db
+          .select()
+          .from(productSeasonalPricingTiers)
+          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds))
+      : []
+
+    // Group seasonal tiers by seasonal pricing ID
+    const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersResults>()
+    for (const tier of seasonalTiersResults) {
+      const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || []
+      tiers.push(tier)
+      seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers)
+    }
+
+    // Group seasonal pricings by product ID, converting to SeasonalPricingConfig format
+    const seasonalPricingsByProductId = new Map<string, SeasonalPricingForProduct[]>()
+    for (const sp of seasonalPricingsResults) {
+      const spTiers = seasonalTiersByPricingId.get(sp.id) || []
+      const config: SeasonalPricingForProduct = {
+        id: sp.id,
+        name: sp.name,
+        startDate: sp.startDate,
+        endDate: sp.endDate,
+        basePrice: parseFloat(sp.price),
+        tiers: spTiers
+          .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+          .map((t) => ({
+            id: t.id,
+            minDuration: t.minDuration!,
+            discountPercent: parseFloat(t.discountPercent!),
+            displayOrder: t.displayOrder ?? 0,
+          })),
+        rates: spTiers
+          .filter((t) => t.period !== null && t.price !== null)
+          .map((t) => ({
+            id: t.id,
+            period: t.period!,
+            price: parseFloat(t.price!),
+            displayOrder: t.displayOrder ?? 0,
+          })),
+      }
+      const existing = seasonalPricingsByProductId.get(sp.productId) || []
+      existing.push(config)
+      seasonalPricingsByProductId.set(sp.productId, existing)
     }
 
     // Fetch unit attributes for all products (fallback for storefront selectors)
@@ -374,6 +438,7 @@ export default async function RentalPage({
           : null,
         pricingTiers: pricingTiersByProductId.get(row.id) || [],
         accessories: accessoriesByProductId.get(row.id) || [],
+        seasonalPricings: seasonalPricingsByProductId.get(row.id) || [],
       }))
   }
 

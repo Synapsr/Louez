@@ -44,6 +44,13 @@ export {
   formatTaxLabel,
 } from './tax'
 
+// Seasonal pricing
+export {
+  findSeasonalPricingForDate,
+  buildRawSegments,
+  calculateSeasonalAwarePrice,
+} from './seasonal'
+
 // Formatting utilities
 export {
   formatDuration,
