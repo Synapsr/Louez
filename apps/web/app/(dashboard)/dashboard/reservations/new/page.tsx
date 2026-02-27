@@ -16,11 +16,14 @@ async function getCustomers(storeId: string) {
 }
 
 async function getProductsWithTiers(storeId: string) {
-  // Fetch products with their pricing tiers
+  // Fetch products with their pricing tiers and seasonal pricings
   const result = await db.query.products.findMany({
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
     with: {
       pricingTiers: true,
+      seasonalPricings: {
+        with: { tiers: true },
+      },
       units: {
         columns: {
           status: true,
@@ -30,7 +33,34 @@ async function getProductsWithTiers(storeId: string) {
     },
     limit: 500,
   })
-  return result.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+  return result
+    .map((p) => ({
+      ...p,
+      seasonalPricings: p.seasonalPricings.map((sp) => ({
+        id: sp.id,
+        name: sp.name,
+        startDate: sp.startDate,
+        endDate: sp.endDate,
+        basePrice: parseFloat(sp.price),
+        tiers: sp.tiers
+          .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+          .map((t) => ({
+            id: t.id,
+            minDuration: t.minDuration!,
+            discountPercent: parseFloat(t.discountPercent!),
+            displayOrder: t.displayOrder ?? 0,
+          })),
+        rates: sp.tiers
+          .filter((t) => t.period !== null && t.price !== null)
+          .map((t) => ({
+            id: t.id,
+            period: t.period!,
+            price: parseFloat(t.price!),
+            displayOrder: t.displayOrder ?? 0,
+          })),
+      })),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 }
 
 // Fetch existing reservations for availability conflict checking

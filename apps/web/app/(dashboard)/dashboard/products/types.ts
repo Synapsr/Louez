@@ -9,6 +9,22 @@ export interface Category {
   name: string
 }
 
+export interface SeasonalPricingData {
+  id: string
+  name: string
+  startDate: string
+  endDate: string
+  price: string
+  tiers: Array<{
+    id: string
+    period: number | null
+    price: string | null
+    minDuration: number | null
+    discountPercent: string | null
+    displayOrder: number | null
+  }>
+}
+
 export interface PricingTierData {
   id: string
   minDuration?: number | null

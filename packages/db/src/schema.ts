@@ -5,6 +5,7 @@ import {
   text,
   longtext,
   timestamp,
+  date,
   boolean,
   int,
   decimal,
@@ -406,6 +407,60 @@ export const productPricingTiers = mysqlTable(
     uniqueProductPeriod: unique('product_pricing_tiers_unique_period').on(
       table.productId,
       table.period
+    ),
+  })
+)
+
+// ============================================================================
+// Product Seasonal Pricing
+// ============================================================================
+
+export const productSeasonalPricing = mysqlTable(
+  'product_seasonal_pricing',
+  {
+    id: id(),
+    productId: varchar('product_id', { length: 21 }).notNull(),
+    name: varchar('name', { length: 100 }).notNull(),
+    startDate: date('start_date', { mode: 'string' }).notNull(),
+    endDate: date('end_date', { mode: 'string' }).notNull(),
+    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    productIdx: index('product_seasonal_pricing_product_idx').on(table.productId),
+    productDateIdx: index('product_seasonal_pricing_product_date_idx').on(
+      table.productId,
+      table.startDate,
+      table.endDate
+    ),
+  })
+)
+
+export const productSeasonalPricingTiers = mysqlTable(
+  'product_seasonal_pricing_tiers',
+  {
+    id: id(),
+    seasonalPricingId: varchar('seasonal_pricing_id', { length: 21 }).notNull(),
+
+    // Threshold (same structure as productPricingTiers)
+    minDuration: int('min_duration'),
+    period: int('period'),
+
+    // Discount
+    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }),
+    price: decimal('price', { precision: 10, scale: 2 }),
+
+    // Display order
+    displayOrder: int('display_order').default(0),
+
+    // Metadata
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    seasonalPricingIdx: index('seasonal_pricing_tiers_seasonal_idx').on(
+      table.seasonalPricingId
     ),
   })
 )
@@ -1103,6 +1158,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   reservationItems: many(reservationItems),
   pricingTiers: many(productPricingTiers),
+  seasonalPricings: many(productSeasonalPricing),
   units: many(productUnits),
   accessories: many(productAccessories, { relationName: 'productAccessories' }),
   accessoryOf: many(productAccessories, { relationName: 'accessoryOf' }),
@@ -1112,6 +1168,21 @@ export const productPricingTiersRelations = relations(productPricingTiers, ({ on
   product: one(products, {
     fields: [productPricingTiers.productId],
     references: [products.id],
+  }),
+}))
+
+export const productSeasonalPricingRelations = relations(productSeasonalPricing, ({ one, many }) => ({
+  product: one(products, {
+    fields: [productSeasonalPricing.productId],
+    references: [products.id],
+  }),
+  tiers: many(productSeasonalPricingTiers),
+}))
+
+export const productSeasonalPricingTiersRelations = relations(productSeasonalPricingTiers, ({ one }) => ({
+  seasonalPricing: one(productSeasonalPricing, {
+    fields: [productSeasonalPricingTiers.seasonalPricingId],
+    references: [productSeasonalPricing.id],
   }),
 }))
 

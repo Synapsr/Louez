@@ -77,6 +77,16 @@ interface Accessory {
   pricingTiers?: PricingTier[];
 }
 
+interface SeasonalPricingData {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  basePrice: number;
+  tiers: { id: string; minDuration: number; discountPercent: number; displayOrder: number }[];
+  rates: { id: string; period: number; price: number; displayOrder: number }[];
+}
+
 interface Product {
   id: string;
   name: string;
@@ -88,6 +98,7 @@ interface Product {
   category: { id: string; name: string } | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
+  enforceStrictTiers?: boolean;
   pricingTiers?: PricingTier[];
   videoUrl?: string | null;
   accessories?: Accessory[];
@@ -97,6 +108,7 @@ interface Product {
     status: 'available' | 'maintenance' | 'retired' | null;
     attributes: Record<string, string> | null;
   }>;
+  seasonalPricings?: SeasonalPricingData[];
 }
 
 interface Category {

@@ -14,8 +14,10 @@ import {
   calculateRentalPrice,
   calculateRateBasedPrice,
   calculateDurationMinutes,
+  calculateSeasonalAwarePrice,
   isRateBasedProduct,
   type ProductPricing,
+  type SeasonalPricingConfig,
 } from '@louez/utils'
 
 interface CartItemPricingTier {
@@ -48,6 +50,8 @@ export interface CartItem {
   selectedAttributes?: Record<string, string>
   resolvedCombinationKey?: string
   resolvedAttributes?: Record<string, string>
+  // Seasonal pricing overrides (per-product)
+  seasonalPricings?: SeasonalPricingConfig[]
   // Legacy fields for backwards compatibility
   startDate: string
   endDate: string
@@ -377,9 +381,53 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return getItemDuration(items[0])
   }, [items, getItemDuration])
 
-  // Calculate subtotal with tiered pricing
+  // Calculate subtotal with tiered pricing (seasonal-aware)
   const getSubtotal = useCallback(() => {
     return items.reduce((sum, item) => {
+      const start = globalStartDate || item.startDate
+      const end = globalEndDate || item.endDate
+
+      // Use seasonal-aware calculation when seasonal pricings exist
+      if (item.seasonalPricings && item.seasonalPricings.length > 0 && start && end) {
+        const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+        const rates: Rate[] = (item.pricingTiers || [])
+          .filter(
+            (tier): tier is CartItemPricingTier & { price: number; period: number } =>
+              typeof tier.price === 'number' &&
+              tier.price >= 0 &&
+              typeof tier.period === 'number' &&
+              tier.period > 0,
+          )
+          .map((tier, index) => ({
+            id: tier.id,
+            price: tier.price,
+            period: tier.period,
+            displayOrder: index,
+          }))
+
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: item.price,
+            basePeriodMinutes: item.basePeriodMinutes ?? null,
+            deposit: item.deposit,
+            pricingMode: itemPricingMode,
+            enforceStrictTiers: item.enforceStrictTiers ?? false,
+            tiers: (item.pricingTiers || []).map((t, i) => ({
+              id: t.id,
+              minDuration: t.minDuration,
+              discountPercent: t.discountPercent,
+              displayOrder: i,
+            })),
+            rates,
+          },
+          item.seasonalPricings,
+          start,
+          end,
+          item.quantity,
+        )
+        return sum + result.subtotal
+      }
+
       const itemDurationMinutes = getItemDurationMinutes(item)
       if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
         const rates: Rate[] = (item.pricingTiers || [])
@@ -433,11 +481,55 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // Otherwise use simple calculation
       return sum + item.price * item.quantity * itemDuration
     }, 0)
-  }, [items, getItemDuration, getItemDurationMinutes])
+  }, [items, globalStartDate, globalEndDate, getItemDuration, getItemDurationMinutes])
 
-  // Calculate original subtotal (without discounts)
+  // Calculate original subtotal (without discounts, seasonal-aware)
   const getOriginalSubtotal = useCallback(() => {
     return items.reduce((sum, item) => {
+      const start = globalStartDate || item.startDate
+      const end = globalEndDate || item.endDate
+
+      // Use seasonal-aware calculation when seasonal pricings exist
+      if (item.seasonalPricings && item.seasonalPricings.length > 0 && start && end) {
+        const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
+        const rates: Rate[] = (item.pricingTiers || [])
+          .filter(
+            (tier): tier is CartItemPricingTier & { price: number; period: number } =>
+              typeof tier.price === 'number' &&
+              tier.price >= 0 &&
+              typeof tier.period === 'number' &&
+              tier.period > 0,
+          )
+          .map((tier, index) => ({
+            id: tier.id,
+            price: tier.price,
+            period: tier.period,
+            displayOrder: index,
+          }))
+
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: item.price,
+            basePeriodMinutes: item.basePeriodMinutes ?? null,
+            deposit: item.deposit,
+            pricingMode: itemPricingMode,
+            enforceStrictTiers: item.enforceStrictTiers ?? false,
+            tiers: (item.pricingTiers || []).map((t, i) => ({
+              id: t.id,
+              minDuration: t.minDuration,
+              discountPercent: t.discountPercent,
+              displayOrder: i,
+            })),
+            rates,
+          },
+          item.seasonalPricings,
+          start,
+          end,
+          item.quantity,
+        )
+        return sum + result.originalSubtotal
+      }
+
       const itemDurationMinutes = getItemDurationMinutes(item)
       if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
         const rates: Rate[] = (item.pricingTiers || [])
@@ -471,7 +563,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
       return sum + item.price * item.quantity * getItemDuration(item)
     }, 0)
-  }, [items, getItemDuration, getItemDurationMinutes])
+  }, [items, globalStartDate, globalEndDate, getItemDuration, getItemDurationMinutes])
 
   // Calculate total savings from tiered pricing
   const getTotalSavings = useCallback(() => {

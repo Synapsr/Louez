@@ -1,6 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 
 import type { BookingAttributeAxis, BusinessHours, DeliverySettings, PricingMode, Rate, UnitAttributes } from '@louez/types'
+import type { SeasonalPricingConfig } from '@louez/utils'
 
 export interface Customer {
   id: string
@@ -36,6 +37,7 @@ export interface Product {
     attributes: UnitAttributes | null
   }>
   pricingTiers: ProductPricingTier[]
+  seasonalPricings?: SeasonalPricingConfig[]
 }
 
 export interface SelectedProduct {

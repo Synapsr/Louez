@@ -3,6 +3,7 @@ import { useCallback, useMemo } from 'react'
 import {
   calculateDurationMinutes,
   calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
   findApplicableTier,
   isRateBasedProduct,
 } from '@louez/utils'
@@ -77,23 +78,83 @@ export function useNewReservationPricing({
           ? calculateDurationForMode(startDate, endDate, productPricingMode)
           : 0
 
+      const rates: Rate[] = (product.pricingTiers || [])
+        .filter(
+          (tier): tier is typeof tier & { period: number; price: string } =>
+            typeof tier.period === 'number' &&
+            tier.period > 0 &&
+            typeof tier.price === 'string'
+        )
+        .map((tier, index) => ({
+          id: tier.id,
+          price: parseFloat(tier.price),
+          period: tier.period,
+          displayOrder: tier.displayOrder ?? index,
+        }))
+
+      const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: parseFloat(tier.discountPercent ?? '0'),
+        displayOrder: tier.displayOrder || 0,
+      }))
+
+      const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0
+
+      // Seasonal-aware pricing path
+      if (hasSeasonalPricings && startDate && endDate) {
+        const seasonalResult = calculateSeasonalAwarePrice(
+          {
+            basePrice,
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit: parseFloat(product.deposit || '0'),
+            pricingMode: productPricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: productTiers,
+            rates,
+          },
+          product.seasonalPricings!,
+          startDate,
+          endDate,
+          quantity,
+        )
+
+        const overrideUnitPrice = selectedItem?.priceOverride?.unitPrice
+        const lineSubtotal = hasPriceOverride && overrideUnitPrice != null
+          ? overrideUnitPrice * productDuration * quantity
+          : seasonalResult.subtotal
+
+        const dpPerUnitPerPeriod = productDuration > 0
+          ? seasonalResult.subtotal / quantity / productDuration
+          : basePrice
+
+        return {
+          productPricingMode,
+          productDuration,
+          basePrice,
+          calculatedPrice: dpPerUnitPerPeriod,
+          effectivePrice: hasPriceOverride && overrideUnitPrice != null
+            ? overrideUnitPrice
+            : dpPerUnitPerPeriod,
+          hasPriceOverride,
+          hasDiscount: seasonalResult.savings > 0,
+          applicableTierDiscountPercent: null,
+          hasTieredPricing: rates.length > 0 || productTiers.length > 0,
+          isRateBased: rateBased,
+          lineSubtotal,
+          lineOriginalSubtotal: seasonalResult.originalSubtotal,
+          lineSavings: seasonalResult.originalSubtotal - lineSubtotal,
+          reductionPercent: seasonalResult.originalSubtotal > 0
+            ? Math.round((seasonalResult.savings / seasonalResult.originalSubtotal) * 100)
+            : null,
+          ratePlan: null,
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
+        }
+      }
+
       // Rate-based pricing path (basePeriodMinutes > 0)
       if (rateBased && startDate && endDate) {
         const durationMins = calculateDurationMinutes(startDate, endDate)
-
-        const rates: Rate[] = (product.pricingTiers || [])
-          .filter(
-            (tier): tier is typeof tier & { period: number; price: string } =>
-              typeof tier.period === 'number' &&
-              tier.period > 0 &&
-              typeof tier.price === 'string'
-          )
-          .map((tier, index) => ({
-            id: tier.id,
-            price: parseFloat(tier.price),
-            period: tier.period,
-            displayOrder: tier.displayOrder ?? index,
-          }))
 
         const rateResult = calculateRateBasedPrice(
           {
@@ -141,13 +202,6 @@ export function useNewReservationPricing({
       }
 
       // Progressive/tiered pricing path
-      const productTiers: PricingTier[] = product.pricingTiers.map((tier) => ({
-        id: tier.id,
-        minDuration: tier.minDuration ?? 1,
-        discountPercent: parseFloat(tier.discountPercent ?? '0'),
-        displayOrder: tier.displayOrder || 0,
-      }))
-
       const applicableTier =
         productDuration > 0 ? findApplicableTier(productTiers, productDuration) : null
       const applicableTierDiscount = applicableTier?.discountPercent ?? 0

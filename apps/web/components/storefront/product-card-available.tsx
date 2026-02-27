@@ -20,8 +20,10 @@ import {
   calculateRentalPrice,
   calculateRateBasedPrice,
   calculateDurationMinutes,
+  calculateSeasonalAwarePrice,
   isRateBasedProduct,
   type ProductPricing,
+  type SeasonalPricingConfig,
 } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import type { CombinationAvailability } from '@louez/types'
@@ -69,6 +71,7 @@ interface ProductCardAvailableProps {
       status: 'available' | 'maintenance' | 'retired' | null
       attributes: Record<string, string> | null
     }>
+    seasonalPricings?: SeasonalPricingConfig[]
   }
   storeSlug: string
   availableQuantity: number
@@ -144,36 +147,72 @@ export function ProductCardAvailable({
     basePeriodMinutes: product.basePeriodMinutes,
   })
 
-  const priceResult = isRateBased
-    ? calculateRateBasedPrice(
-        {
-          basePrice: price,
-          basePeriodMinutes: product.basePeriodMinutes!,
-          deposit,
-          rates: rateTiers,
-          enforceStrictTiers: product.enforceStrictTiers ?? false,
-        },
-        durationMinutes,
-        1,
-      )
-    : calculateRentalPrice(
-        {
-          basePrice: price,
-          deposit,
-          pricingMode: effectivePricingMode,
-          tiers: normalizedTiers,
-        } as ProductPricing,
-        pricedDuration,
-        1,
-      )
+  // Use seasonal-aware calculation when seasonal pricings exist
+  const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0
+
+  const priceResult = hasSeasonalPricings
+    ? (() => {
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: price,
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit,
+            pricingMode: effectivePricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: normalizedTiers,
+            rates: rateTiers,
+          },
+          product.seasonalPricings!,
+          startDate,
+          endDate,
+          1,
+        )
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: result.savings > 0 && result.originalSubtotal > 0
+            ? Math.round((result.savings / result.originalSubtotal) * 100)
+            : null,
+        }
+      })()
+    : (() => {
+        const result = isRateBased
+          ? calculateRateBasedPrice(
+              {
+                basePrice: price,
+                basePeriodMinutes: product.basePeriodMinutes!,
+                deposit,
+                rates: rateTiers,
+                enforceStrictTiers: product.enforceStrictTiers ?? false,
+              },
+              durationMinutes,
+              1,
+            )
+          : calculateRentalPrice(
+              {
+                basePrice: price,
+                deposit,
+                pricingMode: effectivePricingMode,
+                tiers: normalizedTiers,
+              } as ProductPricing,
+              pricedDuration,
+              1,
+            )
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: 'reductionPercent' in result
+            ? result.reductionPercent
+            : result.discountPercent,
+        }
+      })()
 
   const totalPrice = priceResult.subtotal
   const originalPrice = priceResult.originalSubtotal
   const hasDiscount = priceResult.savings > 0
-  const discountPercent =
-    'reductionPercent' in priceResult
-      ? priceResult.reductionPercent
-      : priceResult.discountPercent
+  const discountPercent = priceResult.discountPercent
 
   const status: AvailabilityStatus = inCart
     ? 'in_cart'
@@ -261,6 +300,7 @@ export function ProductCardAvailable({
                 : (tier.price ?? null),
           })),
           productPricingMode: product.pricingMode,
+          seasonalPricings: product.seasonalPricings,
         },
         storeSlug
       )

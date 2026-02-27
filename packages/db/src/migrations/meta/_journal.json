@@ -218,6 +218,13 @@
       "when": 1772019562787,
       "tag": "0030_add_return_address_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1772127063474,
+      "tag": "0031_add_seasonal_pricing",
+      "breakpoints": true
     }
   ]
 }
