@@ -405,6 +405,9 @@ export function CheckoutForm({
     (tulipQuoteQuery.isLoading ||
       (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data));
 
+  const isTulipQuoteFetched =
+    tulipQuoteQuery.data !== undefined || tulipQuoteQuery.isError;
+
   useEffect(() => {
     if (
       tulipQuotePreview.mode === 'optional' &&
@@ -587,8 +590,6 @@ export function CheckoutForm({
                     totalWithDelivery={totalWithEstimatedInsurance}
                     currency={currency}
                     tulipInsurance={tulipInsurance}
-                    tulipQuotePreview={tulipQuotePreview}
-                    isTulipQuoteLoading={isTulipQuoteLoading}
                     canSubmitCheckout={canSubmitCheckoutWithTulip}
                     discountAmount={discountAmount}
                     onBack={goToPreviousStep}
@@ -621,6 +622,7 @@ export function CheckoutForm({
           tulipInsurance={tulipInsurance}
           tulipInsuranceOptIn={tulipInsuranceOptIn}
           isTulipQuoteLoading={isTulipQuoteLoading}
+          isTulipQuoteFetched={isTulipQuoteFetched}
           tulipQuotePreview={tulipQuotePreview}
           lineResolutions={lineResolutions}
           hasActivePromoCodes={hasActivePromoCodes}

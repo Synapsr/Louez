@@ -3798,6 +3798,7 @@
       "insuranceNoInsurableProducts": "No insurable product in this cart.",
       "insurancePartialCoverage": "{insured} covered product(s), {uninsured} not covered.",
       "insuranceCoveredProductTooltip": "This product is covered by breakage/theft coverage.",
+      "insuranceEligibleProductTooltip": "Eligible for breakage/theft coverage.",
       "insuranceEstimating": "Calculating estimated coverage...",
       "insuranceEstimatedAmount": "Estimated coverage amount: {amount}",
       "insuranceEstimatedDisclaimer": "Estimated amount, automatically recalculated on confirmation.",

@@ -53,6 +53,7 @@ interface CheckoutOrderSummaryProps {
   };
   tulipInsuranceOptIn: boolean;
   isTulipQuoteLoading: boolean;
+  isTulipQuoteFetched: boolean;
   tulipQuotePreview?: {
     mode: 'required' | 'optional' | 'no_public';
     quoteUnavailable: boolean;
@@ -94,6 +95,7 @@ export function CheckoutOrderSummary({
   tulipInsurance,
   tulipInsuranceOptIn,
   isTulipQuoteLoading,
+  isTulipQuoteFetched,
   tulipQuotePreview,
   lineResolutions = {},
   hasActivePromoCodes,
@@ -107,7 +109,7 @@ export function CheckoutOrderSummary({
   const tCart = useTranslations('storefront.cart');
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
-  const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading;
+  const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading && isTulipQuoteFetched;
   const insuredProductIdSet = new Set(
     tulipQuotePreview?.insuredProductIds ?? [],
   );
@@ -210,7 +212,7 @@ export function CheckoutOrderSummary({
                               }
                             />
                             <TooltipContent side="top">
-                              <p>{t('insuranceCoveredProductTooltip')}</p>
+                              <p>{t('insuranceEligibleProductTooltip')}</p>
                             </TooltipContent>
                           </Tooltip>
                         )}
@@ -382,10 +384,15 @@ export function CheckoutOrderSummary({
                 </p>
               )}
 
-            {showInsuranceSummary && estimatedInsuranceAmount > 0 && (
-              <p className="text-muted-foreground text-xs">
-                {t('insuranceEstimatedDisclaimer')}
-              </p>
+            {showInsuranceUi && isTulipQuoteLoading && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t('insuranceLineLabel')}
+                </span>
+                <span className="text-muted-foreground animate-pulse">
+                  {t('insuranceEstimating')}
+                </span>
+              </div>
             )}
 
             <Separator />

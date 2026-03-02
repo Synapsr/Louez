@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button, Card, CardContent, Checkbox, Label } from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 
+
 import { getFieldError } from '@/hooks/form/form-context';
 
 import type {
@@ -26,17 +27,6 @@ interface CheckoutConfirmStepProps {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
   };
-  tulipQuotePreview?: {
-    mode: 'required' | 'optional' | 'no_public';
-    quoteUnavailable: boolean;
-    quoteError: string | null;
-    appliedOptIn: boolean;
-    amount: number;
-    insuredProductCount: number;
-    uninsuredProductCount: number;
-    error: string | null;
-  };
-  isTulipQuoteLoading: boolean;
   canSubmitCheckout: boolean;
   discountAmount?: number;
   onBack: () => void;
@@ -53,21 +43,14 @@ export function CheckoutConfirmStep({
   totalWithDelivery,
   currency,
   tulipInsurance,
-  tulipQuotePreview,
-  isTulipQuoteLoading,
   canSubmitCheckout,
   discountAmount = 0,
   onBack,
   onEditContact,
 }: CheckoutConfirmStepProps) {
   const t = useTranslations('storefront.checkout');
-  const tErrors = useTranslations('errors');
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
-  const optionalQuoteErrorKey =
-    tulipQuotePreview?.quoteError?.startsWith('errors.')
-      ? tulipQuotePreview.quoteError.replace('errors.', '')
-      : null;
 
   return (
     <Card>
@@ -136,65 +119,6 @@ export function CheckoutConfirmStep({
                 </div>
               )}
             </form.Field>
-          )}
-
-          {showInsuranceUi && (
-            <div className="space-y-2">
-              {isTulipQuoteLoading && (
-                <p className="text-muted-foreground text-sm">
-                  {t('insuranceEstimating')}
-                </p>
-              )}
-
-              {!isTulipQuoteLoading &&
-                tulipQuotePreview?.mode === 'required' &&
-                tulipQuotePreview.error && (
-                  <p className="text-destructive text-sm">
-                    {tErrors(tulipQuotePreview.error.replace('errors.', ''))}
-                  </p>
-                )}
-
-              {!isTulipQuoteLoading &&
-                tulipQuotePreview?.mode === 'optional' &&
-                tulipQuotePreview.quoteUnavailable && (
-                  <p className="text-muted-foreground text-sm">
-                    {optionalQuoteErrorKey
-                      ? tErrors(optionalQuoteErrorKey)
-                      : t('insuranceOptionalUnavailable')}
-                  </p>
-                )}
-
-              {!isTulipQuoteLoading &&
-                (tulipQuotePreview?.insuredProductCount ?? 0) === 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    {t('insuranceNoInsurableProducts')}
-                  </p>
-                )}
-
-              {!isTulipQuoteLoading &&
-                (tulipQuotePreview?.insuredProductCount ?? 0) > 0 &&
-                (tulipQuotePreview?.uninsuredProductCount ?? 0) > 0 && (
-                  <p className="text-muted-foreground text-sm">
-                    {t('insurancePartialCoverage', {
-                      insured: tulipQuotePreview?.insuredProductCount ?? 0,
-                      uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
-                    })}
-                  </p>
-                )}
-
-              {!isTulipQuoteLoading &&
-                tulipQuotePreview?.appliedOptIn &&
-                tulipQuotePreview.amount > 0 && (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm">
-                    {t('insuranceEstimatedAmount', {
-                      amount: formatCurrency(tulipQuotePreview.amount, currency),
-                    })}
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {t('insuranceEstimatedDisclaimer')}
-                    </p>
-                  </div>
-                )}
-            </div>
           )}
 
           {cgv && (
