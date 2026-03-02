@@ -1,5 +1,15 @@
+import { config } from 'dotenv'
+import { resolve } from 'path'
 import type { NextConfig } from 'next'
 import createNextIntlPlugin from 'next-intl/plugin'
+
+// Monorepo: .env files live at the repository root (../../ relative to apps/web/).
+// Next.js only loads .env from its own directory, so we bridge the gap with dotenv.
+// .env.local is loaded first so its values take priority over .env.
+// Neither overrides env vars already set in the system (safe for production).
+const rootDir = resolve(process.cwd(), '../..')
+config({ path: resolve(rootDir, '.env.local') })
+config({ path: resolve(rootDir, '.env') })
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 

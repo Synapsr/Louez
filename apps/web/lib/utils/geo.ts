@@ -40,15 +40,19 @@ export function calculateHaversineDistance(
 
 /**
  * Calculate delivery fee based on distance and settings
- * @param distanceKm - Distance in kilometers
+ * @param distanceKm - Delivery distance in kilometers (store → delivery address)
  * @param settings - Delivery settings from store
  * @param orderSubtotal - Order subtotal for free delivery threshold check
+ * @param returnDistanceKm - Optional return distance in km (return address → store).
+ *   When provided and roundTrip is true, uses actual return distance instead of
+ *   doubling the delivery distance.
  * @returns Delivery fee in store currency
  */
 export function calculateDeliveryFee(
   distanceKm: number,
   settings: DeliverySettings,
-  orderSubtotal: number
+  orderSubtotal: number,
+  returnDistanceKm?: number | null
 ): number {
   // Check free delivery threshold
   if (
@@ -58,8 +62,18 @@ export function calculateDeliveryFee(
     return 0
   }
 
-  // Calculate effective distance (double if round-trip)
-  const effectiveDistance = settings.roundTrip ? distanceKm * 2 : distanceKm
+  // Calculate effective distance
+  let effectiveDistance: number
+  if (settings.roundTrip) {
+    // When a different return address is provided, use actual return distance
+    // Otherwise, assume same address and double the delivery distance
+    effectiveDistance =
+      returnDistanceKm != null && returnDistanceKm > 0
+        ? distanceKm + returnDistanceKm
+        : distanceKm * 2
+  } else {
+    effectiveDistance = distanceKm
+  }
 
   // Calculate fee based on distance
   const calculatedFee = effectiveDistance * settings.pricePerKm

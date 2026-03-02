@@ -12,10 +12,13 @@ import {
   ArrowRight,
   CalendarIcon,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Clock,
   ImageIcon,
+  Layers,
   Play,
   TrendingDown,
 } from 'lucide-react';
@@ -49,7 +52,7 @@ import {
 
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency } from '@/contexts/store-context';
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context';
 
 interface PricingTier {
   id: string;
@@ -109,6 +112,7 @@ export function ProductPreviewModal({
   const tDateSelection = useTranslations('storefront.dateSelection');
   const tCommon = useTranslations('common');
   const currency = useStoreCurrency();
+  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const router = useRouter();
   const { setGlobalDates, setPricingMode } = useCart();
   const { getUrl } = useStorefrontUrl(storeSlug);
@@ -126,6 +130,7 @@ export function ProductPreviewModal({
   const [startTimeOpen, setStartTimeOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
   const [endTimeOpen, setEndTimeOpen] = useState(false);
+  const [tiersExpanded, setTiersExpanded] = useState(false);
 
   // Reset state when modal opens and track product view
   useEffect(() => {
@@ -135,6 +140,7 @@ export function ProductPreviewModal({
       setEndDate(undefined);
       setStartTime('09:00');
       setEndTime('18:00');
+      setTiersExpanded(false);
       // Track product view when modal opens
       trackEvent({
         eventType: 'product_view',
@@ -168,21 +174,13 @@ export function ProductPreviewModal({
     [product],
   );
   const displayPeriodMinutes = pricingSummary.displayPeriodMinutes;
-  const normalizedRateRows = useMemo(
-    () =>
-      rateRows.map((rate) => ({
-        ...rate,
-        displayUnitPrice:
-          (rate.price / Math.max(1, rate.periodMinutes)) * displayPeriodMinutes,
-      })),
-    [displayPeriodMinutes, rateRows],
-  );
-  const baseRate = rateRows.find((rate) => rate.id === '__base__') ?? {
-    id: '__base__',
-    periodMinutes: 1440,
-    price,
-    reductionPercent: 0,
-  };
+  // Highest discount within the store limit, for the header badge
+  const modalDiscount = maxDiscountPercent == null
+    ? pricingSummary.maxReductionPercent
+    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0);
+  // Whether a specific tier's discount badge should be displayed
+  const isDiscountVisible = (reductionPercent: number) =>
+    reductionPercent > 0 && (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
 
   const images =
     product.images && product.images.length > 0 ? product.images : [];
@@ -541,11 +539,11 @@ export function ProductPreviewModal({
                 <span className="text-muted-foreground text-base">
                   / {formatPeriodLabel(displayPeriodMinutes)}
                 </span>
-                {pricingSummary.maxReductionPercent > 0 && (
-                  <Badge variant="success" className="ml-2">
+                {modalDiscount > 0 && (
+                  <Badge className="ml-2 bg-primary/10 text-primary">
                     <TrendingDown className="mr-1 h-3 w-3" />
                     {tProduct('tieredPricing.badge', {
-                      percent: Math.floor(pricingSummary.maxReductionPercent),
+                      percent: Math.floor(modalDiscount),
                     })}
                   </Badge>
                 )}
@@ -567,41 +565,29 @@ export function ProductPreviewModal({
             )}
 
             {/* Pricing tiers */}
-            {rateRows.length > 1 && (
-              <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
-                <div className="mb-3 flex items-center gap-2">
-                  <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                    <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
-                  </div>
-                  <span className="text-sm font-semibold">
-                    {tProduct('tieredPricing.ratesTitle')}
-                  </span>
-                </div>
+            {rateRows.length > 1 && (() => {
+              const MAX_VISIBLE = 3;
+              const hasHidden = rateRows.length > MAX_VISIBLE;
+              const hiddenCount = rateRows.length - MAX_VISIBLE;
+              const visibleRows = rateRows.slice(0, MAX_VISIBLE);
+              const hiddenRows = rateRows.slice(MAX_VISIBLE);
 
-                <div className="space-y-1.5">
-                  <div className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
-                    <span className="text-muted-foreground">
-                      {formatPeriodLabel(baseRate.periodMinutes, {
-                        alwaysShowCount: true,
-                      })}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(
-                        (baseRate.price / Math.max(1, baseRate.periodMinutes)) *
-                          displayPeriodMinutes,
-                        currency,
-                      )}
-                      / {formatPeriodLabel(displayPeriodMinutes)}
+              return (
+                <div className="rounded-xl border bg-primary/5 p-4">
+                  <div className="mb-3 flex items-center gap-2">
+                    <div className="rounded-lg bg-primary/10 p-1.5">
+                      <Layers className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="text-sm font-semibold">
+                      {tProduct('tieredPricing.ratesTitle')}
                     </span>
                   </div>
 
-                  {normalizedRateRows
-                    .filter((rate) => rate.id !== '__base__')
-                    .map((rate) => {
-                    return (
+                  <div className="space-y-1.5">
+                    {visibleRows.map((rate) => (
                       <div
                         key={rate.id}
-                        className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-2 text-sm"
+                        className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
                       >
                         <div className="flex items-center gap-2">
                           <span className="font-medium">
@@ -609,22 +595,101 @@ export function ProductPreviewModal({
                               alwaysShowCount: true,
                             })}
                           </span>
-                          {rate.reductionPercent > 0 && (
-                            <Badge className="bg-green-100 text-xs font-semibold text-green-700 dark:bg-green-900/60 dark:text-green-300">
+                          {isDiscountVisible(rate.reductionPercent) && (
+                            <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                               -{Math.floor(rate.reductionPercent)}%
                             </Badge>
                           )}
                         </div>
-                        <span className="font-semibold">
-                          {formatCurrency(rate.displayUnitPrice, currency)}/
-                          {formatPeriodLabel(displayPeriodMinutes)}
-                        </span>
+                        <div className="text-right">
+                          <span className="font-semibold">
+                            {formatCurrency(rate.price, currency)}
+                          </span>
+                          {(() => {
+                            const period = minutesToPriceDuration(rate.periodMinutes);
+                            if (period.duration <= 1) return null;
+                            const unitMinutes = rate.periodMinutes / period.duration;
+                            return (
+                              <div className="text-muted-foreground text-xs">
+                                {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                              </div>
+                            );
+                          })()}
+                        </div>
                       </div>
-                    );
-                  })}
+                    ))}
+
+                    {/* Collapsible hidden tiers */}
+                    {hasHidden && (
+                      <div
+                        className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                        style={{
+                          gridTemplateRows: tiersExpanded ? '1fr' : '0fr',
+                        }}
+                      >
+                        <div className="overflow-hidden">
+                          <div className="space-y-1.5">
+                            {hiddenRows.map((rate) => (
+                              <div
+                                key={rate.id}
+                                className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">
+                                    {formatPeriodLabel(rate.periodMinutes, {
+                                      alwaysShowCount: true,
+                                    })}
+                                  </span>
+                                  {isDiscountVisible(rate.reductionPercent) && (
+                                    <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                      -{Math.floor(rate.reductionPercent)}%
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-semibold">
+                                    {formatCurrency(rate.price, currency)}
+                                  </span>
+                                  {(() => {
+                                    const period = minutesToPriceDuration(rate.periodMinutes);
+                                    if (period.duration <= 1) return null;
+                                    const unitMinutes = rate.periodMinutes / period.duration;
+                                    return (
+                                      <div className="text-muted-foreground text-xs">
+                                        {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {hasHidden && (
+                      <button
+                        type="button"
+                        onClick={() => setTiersExpanded((v) => !v)}
+                        className="text-muted-foreground hover:text-foreground flex w-full items-center justify-center gap-1 pt-1 text-xs font-medium transition-colors"
+                      >
+                        {tiersExpanded
+                          ? tProduct('tieredPricing.showLess')
+                          : tProduct('tieredPricing.showMore', {
+                              count: hiddenCount,
+                            })}
+                        {tiersExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
 

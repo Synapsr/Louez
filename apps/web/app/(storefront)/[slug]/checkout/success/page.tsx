@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { storefrontRedirect } from '@/lib/storefront-url'
 import { getTranslations } from 'next-intl/server'
 import Link from 'next/link'
-import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Loader2 } from 'lucide-react'
+import { CheckCircle2, Clock, Calendar, ArrowRight, Shield, Loader2, Tag } from 'lucide-react'
 
 import { db } from '@louez/db'
 import { reservations, stores, payments, reservationActivity } from '@louez/db'
@@ -326,6 +326,17 @@ export default async function CheckoutSuccessPage({
                 {formatCurrency(Number(reservation.totalAmount), currency)}
               </span>
             </div>
+            {reservation.discountAmount && Number(reservation.discountAmount) > 0 && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="h-3 w-3" />
+                  {t('success.promoDiscount')}
+                </span>
+                <span>
+                  -{formatCurrency(Number(reservation.discountAmount), currency)}
+                </span>
+              </div>
+            )}
             {Number(reservation.depositAmount) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('success.deposit')}</span>

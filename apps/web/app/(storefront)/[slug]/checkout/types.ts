@@ -22,6 +22,7 @@ export interface CheckoutFormProps {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
   };
+  hasActivePromoCodes?: boolean;
 }
 
 export interface CheckoutFormValues {

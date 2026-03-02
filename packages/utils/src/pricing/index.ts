@@ -8,8 +8,7 @@ export {
   findApplicableTier,
   calculateEffectivePrice,
   calculateRentalPrice,
-  calculateRentalPriceV2,
-  calculateBestRate,
+  calculateRateBasedPrice,
   calculateUnitPrice,
   generatePricingBreakdown,
   getPricingModeLabel,
@@ -44,6 +43,13 @@ export {
   calculateRentalPriceWithTax,
   formatTaxLabel,
 } from './tax'
+
+// Seasonal pricing
+export {
+  findSeasonalPricingForDate,
+  buildRawSegments,
+  calculateSeasonalAwarePrice,
+} from './seasonal'
 
 // Formatting utilities
 export {

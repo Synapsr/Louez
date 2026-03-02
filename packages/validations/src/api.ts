@@ -231,6 +231,23 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
         }),
       )
       .optional(),
+    delivery: z
+      .object({
+        option: z.enum(['pickup', 'delivery']),
+        address: z.string().max(1000).optional(),
+        city: z.string().max(255).optional(),
+        postalCode: z.string().max(20).optional(),
+        country: z.string().max(2).optional(),
+        latitude: z.number().min(-90).max(90).optional(),
+        longitude: z.number().min(-180).max(180).optional(),
+        returnAddress: z.string().max(1000).optional(),
+        returnCity: z.string().max(255).optional(),
+        returnPostalCode: z.string().max(20).optional(),
+        returnCountry: z.string().max(2).optional(),
+        returnLatitude: z.number().min(-90).max(90).optional(),
+        returnLongitude: z.number().min(-180).max(180).optional(),
+      })
+      .optional(),
     internalNotes: z.string().max(100000).optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
     sendConfirmationEmail: z.boolean().optional(),
@@ -262,6 +279,7 @@ export const updateStoreAppearanceInputSchema = z.object({
       mode: z.enum(['light', 'dark']),
       primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Invalid hex color'),
       heroImages: z.array(s3UrlSchema).max(5).optional(),
+      maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })
     .optional(),
 })

@@ -5,6 +5,7 @@ import {
   text,
   longtext,
   timestamp,
+  date,
   boolean,
   int,
   decimal,
@@ -27,6 +28,7 @@ import type {
   NotificationSettings,
   CustomerNotificationSettings,
   UnitAttributes,
+  PromoCodeSnapshot,
 } from '@louez/types'
 
 // Helper for generating IDs
@@ -409,6 +411,60 @@ export const productPricingTiers = mysqlTable(
   })
 )
 
+// ============================================================================
+// Product Seasonal Pricing
+// ============================================================================
+
+export const productSeasonalPricing = mysqlTable(
+  'product_seasonal_pricing',
+  {
+    id: id(),
+    productId: varchar('product_id', { length: 21 }).notNull(),
+    name: varchar('name', { length: 100 }).notNull(),
+    startDate: date('start_date', { mode: 'string' }).notNull(),
+    endDate: date('end_date', { mode: 'string' }).notNull(),
+    price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    productIdx: index('product_seasonal_pricing_product_idx').on(table.productId),
+    productDateIdx: index('product_seasonal_pricing_product_date_idx').on(
+      table.productId,
+      table.startDate,
+      table.endDate
+    ),
+  })
+)
+
+export const productSeasonalPricingTiers = mysqlTable(
+  'product_seasonal_pricing_tiers',
+  {
+    id: id(),
+    seasonalPricingId: varchar('seasonal_pricing_id', { length: 21 }).notNull(),
+
+    // Threshold (same structure as productPricingTiers)
+    minDuration: int('min_duration'),
+    period: int('period'),
+
+    // Discount
+    discountPercent: decimal('discount_percent', { precision: 10, scale: 6 }),
+    price: decimal('price', { precision: 10, scale: 2 }),
+
+    // Display order
+    displayOrder: int('display_order').default(0),
+
+    // Metadata
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    seasonalPricingIdx: index('seasonal_pricing_tiers_seasonal_idx').on(
+      table.seasonalPricingId
+    ),
+  })
+)
+
 export const customerType = mysqlEnum('customer_type', ['individual', 'business'])
 
 export const customers = mysqlTable(
@@ -548,6 +604,20 @@ export const reservations = mysqlTable(
     deliveryLongitude: decimal('delivery_longitude', { precision: 10, scale: 7 }),
     deliveryDistanceKm: decimal('delivery_distance_km', { precision: 8, scale: 2 }),
     deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default('0'),
+
+    // Return address (when different from delivery address)
+    returnAddress: text('return_address'),
+    returnCity: varchar('return_city', { length: 255 }),
+    returnPostalCode: varchar('return_postal_code', { length: 20 }),
+    returnCountry: varchar('return_country', { length: 2 }),
+    returnLatitude: decimal('return_latitude', { precision: 10, scale: 7 }),
+    returnLongitude: decimal('return_longitude', { precision: 10, scale: 7 }),
+    returnDistanceKm: decimal('return_distance_km', { precision: 8, scale: 2 }),
+
+    // Promo code
+    promoCodeId: varchar('promo_code_id', { length: 21 }),
+    discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0'),
+    promoCodeSnapshot: json('promo_code_snapshot').$type<PromoCodeSnapshot>(),
 
     // Source
     source: varchar('source', { length: 20 }).default('online'),
@@ -970,6 +1040,37 @@ export const googlePlacesCache = mysqlTable(
 )
 
 // ============================================================================
+// Promo Codes
+// ============================================================================
+
+export const promoCodeType = mysqlEnum('promo_code_type', ['percentage', 'fixed'])
+
+export const promoCodes = mysqlTable(
+  'promo_codes',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    code: varchar('code', { length: 50 }).notNull(),
+    description: text('description'),
+    type: promoCodeType.notNull(),
+    value: decimal('value', { precision: 10, scale: 2 }).notNull(),
+    minimumAmount: decimal('minimum_amount', { precision: 10, scale: 2 }),
+    maxUsageCount: int('max_usage_count'),
+    currentUsageCount: int('current_usage_count').notNull().default(0),
+    startsAt: timestamp('starts_at', { mode: 'date' }),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('promo_codes_store_idx').on(table.storeId),
+    uniqueCodePerStore: unique('promo_codes_unique_code').on(table.storeId, table.code),
+    activeIdx: index('promo_codes_active_idx').on(table.storeId, table.isActive),
+  })
+)
+
+// ============================================================================
 // Relations
 // ============================================================================
 
@@ -1051,8 +1152,16 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   products: many(products),
   customers: many(customers),
   reservations: many(reservations),
+  promoCodes: many(promoCodes),
   emailLogs: many(emailLogs),
   smsLogs: many(smsLogs),
+}))
+
+export const promoCodesRelations = relations(promoCodes, ({ one }) => ({
+  store: one(stores, {
+    fields: [promoCodes.storeId],
+    references: [stores.id],
+  }),
 }))
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
@@ -1074,6 +1183,7 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   reservationItems: many(reservationItems),
   pricingTiers: many(productPricingTiers),
+  seasonalPricings: many(productSeasonalPricing),
   units: many(productUnits),
   accessories: many(productAccessories, { relationName: 'productAccessories' }),
   accessoryOf: many(productAccessories, { relationName: 'accessoryOf' }),
@@ -1094,6 +1204,21 @@ export const productPricingTiersRelations = relations(productPricingTiers, ({ on
   product: one(products, {
     fields: [productPricingTiers.productId],
     references: [products.id],
+  }),
+}))
+
+export const productSeasonalPricingRelations = relations(productSeasonalPricing, ({ one, many }) => ({
+  product: one(products, {
+    fields: [productSeasonalPricing.productId],
+    references: [products.id],
+  }),
+  tiers: many(productSeasonalPricingTiers),
+}))
+
+export const productSeasonalPricingTiersRelations = relations(productSeasonalPricingTiers, ({ one }) => ({
+  seasonalPricing: one(productSeasonalPricing, {
+    fields: [productSeasonalPricingTiers.seasonalPricingId],
+    references: [productSeasonalPricing.id],
   }),
 }))
 
@@ -1254,6 +1379,10 @@ export const reservationsRelations = relations(reservations, ({ one, many }) => 
   customer: one(customers, {
     fields: [reservations.customerId],
     references: [customers.id],
+  }),
+  promoCode: one(promoCodes, {
+    fields: [reservations.promoCodeId],
+    references: [promoCodes.id],
   }),
   items: many(reservationItems),
   payments: many(payments),

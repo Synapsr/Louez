@@ -1,7 +1,11 @@
+export interface TimeRange {
+  openTime: string   // "HH:mm" e.g. "09:00"
+  closeTime: string  // "HH:mm" e.g. "18:00"
+}
+
 export interface DaySchedule {
   isOpen: boolean
-  openTime: string   // "09:00"
-  closeTime: string  // "18:00"
+  ranges: TimeRange[]  // At least 1 range when isOpen=true
 }
 
 export interface ClosurePeriod {
@@ -105,6 +109,8 @@ export interface DeliverySettings {
   maximumDistance: number | null
   /** Order subtotal above which delivery is free, null = no free delivery */
   freeDeliveryThreshold: number | null
+  /** Whether customers can specify a different address for equipment return */
+  allowDifferentReturnAddress?: boolean
 }
 
 // ============================================================================
@@ -209,6 +215,7 @@ export interface StoreTheme {
   mode: 'light' | 'dark'
   primaryColor: string
   heroImages?: string[]
+  maxDiscountPercent?: number | null
 }
 
 /**
@@ -283,6 +290,18 @@ export interface ProductSnapshot {
 }
 
 // ============================================================================
+// Promo Code Types
+// ============================================================================
+
+export type PromoCodeType = 'percentage' | 'fixed'
+
+export interface PromoCodeSnapshot {
+  code: string
+  type: PromoCodeType
+  value: number
+}
+
+// ============================================================================
 // Pricing Types
 // ============================================================================
 
@@ -323,6 +342,14 @@ export interface PricingBreakdown {
   // Manual price override fields
   isManualOverride?: boolean
   originalPrice?: number  // Price before manual override
+  // Seasonal pricing breakdown
+  seasonalSegments?: Array<{
+    seasonalPricingId: string | null
+    seasonalPricingName: string | null
+    startDate: string
+    endDate: string
+    subtotal: number
+  }>
 }
 
 export interface PlanFeatures {

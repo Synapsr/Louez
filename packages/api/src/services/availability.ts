@@ -16,6 +16,7 @@ import type {
 import {
   DEFAULT_COMBINATION_KEY,
   getDeterministicCombinationSortValue,
+  normalizeDaySchedule,
 } from '@louez/utils'
 import { and, eq, gt, inArray, lt } from 'drizzle-orm'
 import { ApiServiceError } from './errors'
@@ -131,13 +132,19 @@ function validateDateTimeInBusinessHours(
   }
 
   const { weekday, time } = getWeekdayAndTimeInTimezone(date, timezone)
-  const schedule = businessHours.schedule[weekday]
+  const schedule = normalizeDaySchedule(
+    businessHours.schedule[weekday] as unknown as Record<string, unknown>,
+  )
 
-  if (!schedule?.isOpen) {
+  if (!schedule.isOpen) {
     return { valid: false, reason: 'day_closed' }
   }
 
-  if (time < schedule.openTime || time > schedule.closeTime) {
+  const inRange = schedule.ranges.some(
+    (r) => time >= r.openTime && time <= r.closeTime,
+  )
+
+  if (!inRange) {
     return { valid: false, reason: 'outside_hours' }
   }
 

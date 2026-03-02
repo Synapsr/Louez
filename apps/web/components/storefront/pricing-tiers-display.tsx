@@ -1,12 +1,12 @@
 'use client'
 
 import { useTranslations } from 'next-intl'
-import { TrendingDown, Check } from 'lucide-react'
+import { Layers, Check } from 'lucide-react'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 import {
   calculateEffectivePrice,
@@ -40,6 +40,7 @@ export function PricingTiersDisplay({
 }: PricingTiersDisplayProps) {
   const t = useTranslations('storefront.product.tieredPricing')
   const currency = useStoreCurrency()
+  const maxDiscountPercentSetting = useStoreMaxDiscountPercent()
 
   if (!tiers.length) return null
 
@@ -56,6 +57,18 @@ export function PricingTiersDisplay({
   const unitLabel = getUnitLabel(pricingMode, 'plural')
   const unitLabelShort = getUnitLabel(pricingMode, 'short')
 
+  // Check if the product's max discount exceeds the store setting
+  const maxTierDiscount = Math.max(
+    ...sortedTiers.map((tier) => {
+      const d = typeof tier.discountPercent === 'string'
+        ? parseFloat(tier.discountPercent ?? '0')
+        : (tier.discountPercent ?? 0)
+      return d
+    }),
+    0,
+  )
+  const showDiscountBadges = maxDiscountPercentSetting == null || maxTierDiscount <= maxDiscountPercentSetting
+
   // Find which tier is currently applied
   const appliedTierIndex = currentDuration
     ? sortedTiers.reduce((acc, tier, index) => {
@@ -71,7 +84,7 @@ export function PricingTiersDisplay({
     <Card className={className}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <TrendingDown className="h-4 w-4 text-green-600" />
+          <Layers className="h-4 w-4 text-primary" />
           {t('ratesTitle')}
         </CardTitle>
       </CardHeader>
@@ -107,29 +120,31 @@ export function PricingTiersDisplay({
                 key={tier.id}
                 className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${
                   isApplied
-                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800'
+                    ? 'bg-primary/10 border border-primary/20'
                     : 'hover:bg-muted/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   {isApplied && (
-                    <Check className="h-4 w-4 text-green-600" />
+                    <Check className="h-4 w-4 text-primary" />
                   )}
                   <span className={`text-sm ${isApplied ? 'font-medium' : ''}`}>
                     {tier.minDuration}+ {unitLabel}
                   </span>
-                  <Badge
-                    variant="secondary"
-                    className={`text-xs ${
-                      isApplied
-                        ? 'bg-green-100 text-green-700 dark:bg-green-800 dark:text-green-300'
-                        : 'bg-muted'
-                    }`}
-                  >
-                    -{Math.floor(discountPercent)}%
-                  </Badge>
+                  {showDiscountBadges && (
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs ${
+                        isApplied
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      -{Math.floor(discountPercent)}%
+                    </Badge>
+                  )}
                 </div>
-                <span className={`font-medium ${isApplied ? 'text-green-700 dark:text-green-300' : ''}`}>
+                <span className={`font-medium ${isApplied ? 'text-primary' : ''}`}>
                   {formatCurrency(effectivePrice, currency)}/{unitLabelShort}
                 </span>
               </div>

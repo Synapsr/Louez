@@ -9,7 +9,7 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import type { PricingMode } from '@louez/types'
 import { getStorefrontPricingSummary } from '@/lib/utils/storefront-pricing'
 
@@ -41,10 +41,15 @@ export function ProductCard({ product }: ProductCardProps) {
   const tCatalog = useTranslations('storefront.catalog')
   const tCommon = useTranslations('common')
   const currency = useStoreCurrency()
+  const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
   const pricingSummary = getStorefrontPricingSummary(product)
+  // Show the max discount that's within the store limit, or the absolute max if no limit
+  const cardDiscount = maxDiscountPercent == null
+    ? pricingSummary.maxReductionPercent
+    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
   const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
   const periodLabel =
     displayPeriod.unit === 'minute'
@@ -94,13 +99,12 @@ export function ProductCard({ product }: ProductCardProps) {
           )}
 
           {/* Pricing tiers badge */}
-          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && (
+          {isAvailable && cardDiscount > 0 && product.quantity > 2 && (
             <Badge
-              variant="secondary"
-              className="absolute top-3 left-3 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/70 dark:text-green-300"
+              className="absolute top-3 left-3 text-xs font-medium bg-primary/10 text-primary"
             >
               <TrendingDown className="h-3 w-3 mr-1" />
-              -{Math.floor(pricingSummary.maxReductionPercent)}%
+              -{Math.floor(cardDiscount)}%
             </Badge>
           )}
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import { useTranslations } from 'next-intl'
 import { ImageIcon, Calendar, TrendingDown } from 'lucide-react'
@@ -9,7 +9,7 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Button } from '@louez/ui'
 import { formatCurrency, minutesToPriceDuration } from '@louez/utils'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import { ProductPreviewModal } from './product-preview-modal'
 import type { PricingMode } from '@louez/types'
 import type { BusinessHours } from '@louez/types'
@@ -45,6 +45,7 @@ interface ProductGridWithPreviewProps {
   businessHours?: BusinessHours
   advanceNotice?: number
   timezone?: string
+  initialProductId?: string
 }
 
 function ProductCardInteractive({
@@ -58,10 +59,14 @@ function ProductCardInteractive({
   const tCatalog = useTranslations('storefront.catalog')
   const tCommon = useTranslations('common')
   const currency = useStoreCurrency()
+  const maxDiscountPercent = useStoreMaxDiscountPercent()
   const mainImage = product.images?.[0]
   const isAvailable = product.quantity > 0
 
   const pricingSummary = getStorefrontPricingSummary(product)
+  const cardDiscount = maxDiscountPercent == null
+    ? pricingSummary.maxReductionPercent
+    : Math.max(...pricingSummary.allReductionPercents.filter((p) => p <= maxDiscountPercent), 0)
   const displayPeriod = minutesToPriceDuration(pricingSummary.displayPeriodMinutes)
   const periodLabel =
     displayPeriod.unit === 'minute'
@@ -115,13 +120,12 @@ function ProductCardInteractive({
           )}
 
           {/* Discount badge */}
-          {isAvailable && pricingSummary.maxReductionPercent > 0 && product.quantity > 2 && (
+          {isAvailable && cardDiscount > 0 && product.quantity > 2 && (
             <Badge
-              variant="secondary"
-              className="absolute top-3 left-3 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/70 dark:text-green-300"
+              className="absolute top-3 left-3 text-xs font-medium bg-primary/10 text-primary"
             >
               <TrendingDown className="h-3 w-3 mr-1" />
-              -{Math.floor(pricingSummary.maxReductionPercent)}%
+              -{Math.floor(cardDiscount)}%
             </Badge>
           )}
         </div>
@@ -157,9 +161,27 @@ export function ProductGridWithPreview({
   businessHours,
   advanceNotice,
   timezone,
+  initialProductId,
 }: ProductGridWithPreviewProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const initialOpenDone = useRef(false)
+
+  // Auto-open modal when initialProductId is provided via query param
+  useEffect(() => {
+    if (initialProductId && !initialOpenDone.current) {
+      const product = products.find((p) => p.id === initialProductId)
+      if (product) {
+        initialOpenDone.current = true
+        setSelectedProduct(product)
+        setIsModalOpen(true)
+        // Clean up the query param from the URL without navigation
+        const url = new URL(window.location.href)
+        url.searchParams.delete('product')
+        window.history.replaceState({}, '', url.toString())
+      }
+    }
+  }, [initialProductId, products])
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product)

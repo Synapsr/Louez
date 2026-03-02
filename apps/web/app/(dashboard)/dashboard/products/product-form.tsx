@@ -41,10 +41,12 @@ import { ProductImageCropDialog } from './components/product-image-crop-dialog';
 import { useProductFormMedia } from './hooks/use-product-form-media';
 import { useProductFormMutations } from './hooks/use-product-form-mutations';
 import { useProductFormStepFlow } from './hooks/use-product-form-step-flow';
+import { getProductSeasonalPricings } from './seasonal-actions';
 import type {
   BookingAttributeAxisData,
   ProductFormComponentApi,
   ProductFormProps,
+  SeasonalPricingData,
 } from './types';
 
 function pricingModeToUnit(mode: PricingMode): 'hour' | 'day' | 'week' {
@@ -117,6 +119,37 @@ export function ProductForm({
   const [pendingDuplicateRateTierIndexes, setPendingDuplicateRateTierIndexes] =
     useState<number[] | null>(null);
   const hasShownDuplicateRateToastRef = useRef(false);
+
+  // Seasonal pricing state (edit mode only)
+  const [seasonalPricings, setSeasonalPricings] = useState<SeasonalPricingData[]>([]);
+  const [selectedSeasonalPeriodId, setSelectedSeasonalPeriodId] = useState<string | null>(null);
+  const [isLoadingSeasonalPricings, setIsLoadingSeasonalPricings] = useState(false);
+
+  useEffect(() => {
+    if (!product?.id) return;
+    setIsLoadingSeasonalPricings(true);
+    getProductSeasonalPricings(product.id).then((result) => {
+      if (result && 'data' in result) {
+        setSeasonalPricings(result.data as SeasonalPricingData[]);
+      }
+      setIsLoadingSeasonalPricings(false);
+    });
+  }, [product?.id]);
+
+  // When seasonal pricings are emptied (signal to reload), refetch
+  useEffect(() => {
+    if (!product?.id || seasonalPricings.length > 0) return;
+    if (isLoadingSeasonalPricings) return;
+    // Only reload if we had a selected period (meaning a duplicate happened)
+    if (!selectedSeasonalPeriodId) return;
+    setIsLoadingSeasonalPricings(true);
+    getProductSeasonalPricings(product.id).then((result) => {
+      if (result && 'data' in result) {
+        setSeasonalPricings(result.data as SeasonalPricingData[]);
+      }
+      setIsLoadingSeasonalPricings(false);
+    });
+  }, [product?.id, seasonalPricings.length, isLoadingSeasonalPricings, selectedSeasonalPeriodId]);
 
   // Convert product pricing tiers to input format
   const initialPricingTiers: LegacyPricingTierInput[] =
@@ -587,6 +620,12 @@ export function ProductForm({
                     showUnitValidationErrors={
                       hasUnitsSubmitError || submissionAttempts > 0
                     }
+                    productId={product?.id}
+                    seasonalPricings={seasonalPricings}
+                    selectedSeasonalPeriodId={selectedSeasonalPeriodId}
+                    onSelectSeasonalPeriod={setSelectedSeasonalPeriodId}
+                    onSeasonalPricingsChange={setSeasonalPricings}
+                    isLoadingSeasonalPricings={isLoadingSeasonalPricings}
                   />
                 </div>
 

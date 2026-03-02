@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Plus, Trash2, TrendingDown, Info } from 'lucide-react'
+import { Plus, Trash2, TrendingDown, HelpCircle } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -24,10 +24,15 @@ import {
   TableRow,
 } from '@louez/ui'
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogTitle,
+  DialogTrigger,
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
@@ -64,6 +69,7 @@ export function PricingTiersEditor({
   disabled = false,
 }: PricingTiersEditorProps) {
   const t = useTranslations('dashboard.products.form.pricingTiers')
+  const tCommon = useTranslations('common')
   const [isEnabled, setIsEnabled] = useState(tiers.length > 0)
   const [editingDurations, setEditingDurations] = useState<Record<number, string>>({})
   const [editingDiscounts, setEditingDiscounts] = useState<Record<number, string>>({})
@@ -550,34 +556,85 @@ export function PricingTiersEditor({
 
           {/* Strict tiers toggle — only visible when tiers are defined */}
           {tiers.length > 0 && (
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5">
-                  <Label
-                    htmlFor="enforce-strict-tiers-toggle"
-                    className="text-base font-medium"
-                  >
-                    {t('enforceStrictTiers')}
-                  </Label>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger render={<Info className="h-4 w-4 text-muted-foreground cursor-help" />} />
-                      <TooltipContent side="top" className="max-w-xs">
-                        <p>{t('enforceStrictTiersTooltip')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+            <div className="rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor="enforce-strict-tiers-toggle"
+                      className="text-base font-medium"
+                    >
+                      {t('progressive.label')}
+                    </Label>
+                    <Dialog>
+                      <DialogTrigger
+                        render={
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground inline-flex cursor-help transition-colors"
+                          />
+                        }
+                      >
+                        <HelpCircle className="h-4 w-4" />
+                      </DialogTrigger>
+                      <DialogContent className="max-w-lg">
+                        <DialogHeader>
+                          <DialogTitle>
+                            {t('progressive.modal.title')}
+                          </DialogTitle>
+                          <DialogDescription>
+                            {t('progressive.modal.intro')}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogPanel>
+                          <div className="space-y-3">
+                            <div className="rounded-lg border p-3">
+                              <p className="text-sm font-medium">
+                                {t('progressive.modal.withoutTitle')}
+                              </p>
+                              <p className="text-muted-foreground mt-1 text-sm">
+                                {t('progressive.modal.withoutText')}
+                              </p>
+                              <div className="bg-muted/50 mt-2 rounded-md px-3 py-2 text-sm">
+                                {t('progressive.modal.withoutExample')}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900 dark:bg-emerald-950/20">
+                              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                                {t('progressive.modal.withTitle')}
+                              </p>
+                              <p className="text-muted-foreground mt-1 text-sm">
+                                {t('progressive.modal.withText')}
+                              </p>
+                              <div className="mt-2 rounded-md bg-emerald-100/50 px-3 py-2 text-sm dark:bg-emerald-950/30">
+                                {t('progressive.modal.withExample')}
+                              </div>
+                            </div>
+                          </div>
+                        </DialogPanel>
+                        <DialogFooter>
+                          <DialogClose
+                            render={
+                              <Button type="button" variant="outline" size="sm" />
+                            }
+                          >
+                            {tCommon('close')}
+                          </DialogClose>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {t('progressive.description')}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {t('enforceStrictTiersDescription')}
-                </p>
+                <Switch
+                  id="enforce-strict-tiers-toggle"
+                  checked={enforceStrictTiers}
+                  onCheckedChange={onEnforceStrictTiersChange}
+                  disabled={disabled}
+                />
               </div>
-              <Switch
-                id="enforce-strict-tiers-toggle"
-                checked={enforceStrictTiers}
-                onCheckedChange={onEnforceStrictTiersChange}
-                disabled={disabled}
-              />
             </div>
           )}
 
@@ -585,17 +642,7 @@ export function PricingTiersEditor({
           {basePrice > 0 && tiers.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <CardTitle className="text-base">{t('preview')}</CardTitle>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger render={<Info className="h-4 w-4 text-muted-foreground cursor-help" />} />
-                      <TooltipContent>
-                        <p>{t('previewTooltip')}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
+                <CardTitle className="text-base">{t('preview')}</CardTitle>
                 <CardDescription>{t('previewDescription')}</CardDescription>
               </CardHeader>
               <CardContent>

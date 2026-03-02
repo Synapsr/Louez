@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 
-import { isWithinBusinessHours, getDaySchedule } from '@/lib/utils/business-hours'
+import { isWithinBusinessHours, getDaySchedule, formatDaySchedule } from '@/lib/utils/business-hours'
 import { dateRangesOverlap, getMinStartDateTime } from '@/lib/utils/duration'
 import { formatDurationFromMinutes } from '@/lib/utils/rental-duration'
 
@@ -71,8 +71,7 @@ export function useNewReservationWarnings({
               field: 'start',
               message: t('warnings.startOutsideHours'),
               details: t('warnings.outsideHoursDetails', {
-                open: startDaySchedule.openTime,
-                close: startDaySchedule.closeTime,
+                hours: formatDaySchedule(startDaySchedule),
               }),
             })
           } else if (startCheck.reason === 'closure_period' && startCheck.closurePeriod) {
@@ -104,8 +103,7 @@ export function useNewReservationWarnings({
             field: 'end',
             message: t('warnings.endOutsideHours'),
             details: t('warnings.outsideHoursDetails', {
-              open: endDaySchedule.openTime,
-              close: endDaySchedule.closeTime,
+              hours: formatDaySchedule(endDaySchedule),
             }),
           })
         } else if (endCheck.reason === 'closure_period' && endCheck.closurePeriod) {

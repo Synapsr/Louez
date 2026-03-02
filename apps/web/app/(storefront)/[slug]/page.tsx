@@ -31,6 +31,21 @@ interface StorefrontPageProps {
   params: Promise<{ slug: string }>
 }
 
+function getSafeNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return null
+}
+
 export async function generateMetadata({
   params,
 }: StorefrontPageProps): Promise<Metadata> {
@@ -153,6 +168,8 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
   const heroImages = storeWithRelations.theme?.heroImages || []
   const hasHeroImages = heroImages.length > 0
   const reviewBoosterSettings = store.reviewBoosterSettings as ReviewBoosterSettings | null
+  const reviewRating = getSafeNumber(reviewBoosterSettings?.googleRating)
+  const reviewCount = getSafeNumber(reviewBoosterSettings?.googleReviewCount)
 
   // Prepare store data for JSON-LD
   const storeForSchema = {
@@ -227,12 +244,12 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                 {/* Status and rating badges */}
                 <div className="flex flex-wrap items-center gap-3 mb-4">
                   <StoreStatusBadge businessHours={businessHours} timezone={timezone} />
-                  {reviewBoosterSettings?.googleRating && (
+                  {reviewRating !== null && (
                     <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1 text-sm">
                       <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      <span className="font-medium">{reviewBoosterSettings.googleRating.toFixed(1)}</span>
-                      {reviewBoosterSettings.googleReviewCount && (
-                        <span className="text-muted-foreground text-xs">({reviewBoosterSettings.googleReviewCount})</span>
+                      <span className="font-medium">{reviewRating.toFixed(1)}</span>
+                      {reviewCount !== null && (
+                        <span className="text-muted-foreground text-xs">({reviewCount})</span>
                       )}
                     </div>
                   )}
@@ -303,12 +320,12 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
                 {/* Status and rating badges */}
                 <div className="flex flex-wrap justify-center items-center gap-3 mb-6">
                   <StoreStatusBadge businessHours={businessHours} timezone={timezone} />
-                  {reviewBoosterSettings?.googleRating && (
+                  {reviewRating !== null && (
                     <div className="flex items-center gap-1.5 bg-amber-500/10 rounded-full px-3 py-1.5 text-sm">
                       <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
-                      <span className="font-medium">{reviewBoosterSettings.googleRating.toFixed(1)}</span>
-                      {reviewBoosterSettings.googleReviewCount && (
-                        <span className="text-muted-foreground text-xs">({reviewBoosterSettings.googleReviewCount} {t('hero.reviewsBadge')})</span>
+                      <span className="font-medium">{reviewRating.toFixed(1)}</span>
+                      {reviewCount !== null && (
+                        <span className="text-muted-foreground text-xs">({reviewCount} {t('hero.reviewsBadge')})</span>
                       )}
                     </div>
                   )}

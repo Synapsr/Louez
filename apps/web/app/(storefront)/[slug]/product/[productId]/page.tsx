@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores, products, categories } from '@louez/db'
+import { stores, products, categories, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
+import { inArray } from 'drizzle-orm'
 import { eq, and, ne, asc, desc } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Check, ImageIcon } from 'lucide-react'
@@ -15,7 +16,7 @@ import {
   formatCurrency,
   getDeterministicCombinationSortValue,
 } from '@louez/utils'
-import type { StoreSettings, StoreTheme } from '@louez/types'
+import type { StoreSettings, StoreTheme, BusinessHours } from '@louez/types'
 import { getMinRentalMinutes } from '@/lib/utils/rental-duration'
 import { ProductCard } from '@/components/storefront/product-card'
 import { PricingTiersDisplay } from '@/components/storefront/pricing-tiers-display'
@@ -139,6 +140,55 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound()
   }
+
+  // Fetch seasonal pricings for this product
+  const seasonalPricingsRaw = await db
+    .select()
+    .from(productSeasonalPricing)
+    .where(eq(productSeasonalPricing.productId, product.id))
+
+  const seasonalPricingIds = seasonalPricingsRaw.map((sp) => sp.id)
+  const seasonalTiersRaw = seasonalPricingIds.length > 0
+    ? await db
+        .select()
+        .from(productSeasonalPricingTiers)
+        .where(inArray(productSeasonalPricingTiers.seasonalPricingId, seasonalPricingIds))
+    : []
+
+  // Group seasonal tiers by seasonal pricing ID
+  const seasonalTiersByPricingId = new Map<string, typeof seasonalTiersRaw>()
+  for (const tier of seasonalTiersRaw) {
+    const tiers = seasonalTiersByPricingId.get(tier.seasonalPricingId) || []
+    tiers.push(tier)
+    seasonalTiersByPricingId.set(tier.seasonalPricingId, tiers)
+  }
+
+  const seasonalPricings = seasonalPricingsRaw.map((sp) => {
+    const spTiers = seasonalTiersByPricingId.get(sp.id) || []
+    return {
+      id: sp.id,
+      name: sp.name,
+      startDate: sp.startDate,
+      endDate: sp.endDate,
+      basePrice: parseFloat(sp.price),
+      tiers: spTiers
+        .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+        .map((t) => ({
+          id: t.id,
+          minDuration: t.minDuration!,
+          discountPercent: parseFloat(t.discountPercent!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+      rates: spTiers
+        .filter((t) => t.period !== null && t.price !== null)
+        .map((t) => ({
+          id: t.id,
+          period: t.period!,
+          price: parseFloat(t.price!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+    }
+  })
 
   // Filter accessories to only include active ones with stock
   const availableAccessories = (product.accessories || [])
@@ -404,6 +454,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
               enforceStrictTiers={product.enforceStrictTiers ?? false}
               advanceNotice={storeSettings.advanceNoticeMinutes || 0}
               minRentalMinutes={getMinRentalMinutes(storeSettings as StoreSettings)}
+              businessHours={storeSettings.businessHours as BusinessHours | undefined}
+              timezone={storeSettings.timezone}
               accessories={availableAccessories}
               trackUnits={Boolean(product.trackUnits || bookingAttributeAxes.length > 0)}
               bookingAttributeAxes={bookingAttributeAxes}
@@ -413,6 +465,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 attributes: (unit.attributes as Record<string, string> | null) || null,
               }))}
               bookingCombinations={bookingCombinations}
+              seasonalPricings={seasonalPricings}
             />
           )}
 

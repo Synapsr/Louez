@@ -48,8 +48,8 @@ export function ReservationsFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const currentView = searchParams.get('view') || 'table';
-  const currentSearch = searchParams.get('search') || '';
+  const currentView = searchParams.get('view') || 'cards'
+  const currentSearch = searchParams.get('search') || ''
 
   const createQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -95,14 +95,12 @@ export function ReservationsFilters({
   }, 300);
 
   const handleViewChange = (value: any[]) => {
-    const selected = value[0] as string | undefined;
-    if (!selected) return;
-    router.push(
-      `/dashboard/reservations?${createQueryString({
-        view: selected === 'table' ? null : selected,
-      })}`,
-    );
-  };
+    const selected = value[0] as string | undefined
+    if (!selected) return
+    router.push(`/dashboard/reservations?${createQueryString({
+      view: selected === 'cards' ? null : selected,
+    })}`)
+  }
 
   const getCount = (status: string): number => {
     if (status === 'all') return counts.all;
@@ -209,11 +207,11 @@ export function ReservationsFilters({
           onValueChange={handleViewChange}
           className="hidden sm:flex"
         >
-          <ToggleGroupItem value="table" aria-label={t('viewTable')}>
-            <List className="h-4 w-4" />
-          </ToggleGroupItem>
           <ToggleGroupItem value="cards" aria-label={t('viewCards')}>
             <LayoutGrid className="h-4 w-4" />
+          </ToggleGroupItem>
+          <ToggleGroupItem value="table" aria-label={t('viewTable')}>
+            <List className="h-4 w-4" />
           </ToggleGroupItem>
         </ToggleGroup>
       </div>

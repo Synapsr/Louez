@@ -1,8 +1,8 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "a043cc75-c5bc-4c82-9f85-d1778f548ab4",
-  "prevId": "15da6eea-8bea-4124-8ffe-78142f54e573",
+  "id": "811acfe4-6643-4621-be87-2b0c450c12c5",
+  "prevId": "10c4ccde-f226-4af3-9ed5-f88666faf32e",
   "tables": {
     "accounts": {
       "name": "accounts",
@@ -2081,14 +2081,28 @@
           "name": "min_duration",
           "type": "int",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "period": {
+          "name": "period",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "discount_percent": {
           "name": "discount_percent",
           "type": "decimal(10,6)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         },
         "display_order": {
@@ -2140,6 +2154,13 @@
           "columns": [
             "product_id",
             "min_duration"
+          ]
+        },
+        "product_pricing_tiers_unique_period": {
+          "name": "product_pricing_tiers_unique_period",
+          "columns": [
+            "product_id",
+            "period"
           ]
         }
       },
@@ -2447,6 +2468,13 @@
           "autoincrement": false,
           "default": "'0'"
         },
+        "base_period_minutes": {
+          "name": "base_period_minutes",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "pricing_mode": {
           "name": "pricing_mode",
           "type": "enum('hour','day','week')",
@@ -2576,8 +2604,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "products_tulip": {
-      "name": "products_tulip",
+    "promo_codes": {
+      "name": "promo_codes",
       "columns": {
         "id": {
           "name": "id",
@@ -2586,58 +2614,134 @@
           "notNull": true,
           "autoincrement": false
         },
-        "product_id": {
-          "name": "product_id",
+        "store_id": {
+          "name": "store_id",
           "type": "varchar(21)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "tulip_product_id": {
-          "name": "tulip_product_id",
+        "code": {
+          "name": "code",
           "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "promo_code_type": {
+          "name": "promo_code_type",
+          "type": "enum('percentage','fixed')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "value": {
+          "name": "value",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "minimum_amount": {
+          "name": "minimum_amount",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "max_usage_count": {
+          "name": "max_usage_count",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "current_usage_count": {
+          "name": "current_usage_count",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(now())"
         }
       },
       "indexes": {
-        "products_tulip_tulip_product_idx": {
-          "name": "products_tulip_tulip_product_idx",
+        "promo_codes_store_idx": {
+          "name": "promo_codes_store_idx",
           "columns": [
-            "tulip_product_id"
+            "store_id"
+          ],
+          "isUnique": false
+        },
+        "promo_codes_active_idx": {
+          "name": "promo_codes_active_idx",
+          "columns": [
+            "store_id",
+            "is_active"
           ],
           "isUnique": false
         }
       },
-      "foreignKeys": {
-        "products_tulip_product_id_products_id_fk": {
-          "name": "products_tulip_product_id_products_id_fk",
-          "tableFrom": "products_tulip",
-          "tableTo": "products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {
-        "products_tulip_id": {
-          "name": "products_tulip_id",
+        "promo_codes_id": {
+          "name": "promo_codes_id",
           "columns": [
             "id"
           ]
         }
       },
       "uniqueConstraints": {
-        "products_tulip_product_idx": {
-          "name": "products_tulip_product_idx",
+        "promo_codes_unique_code": {
+          "name": "promo_codes_unique_code",
           "columns": [
-            "product_id"
+            "store_id",
+            "code"
           ]
         }
       },
@@ -3284,6 +3388,28 @@
           "autoincrement": false,
           "default": "'0'"
         },
+        "promo_code_id": {
+          "name": "promo_code_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "discount_amount": {
+          "name": "discount_amount",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'0'"
+        },
+        "promo_code_snapshot": {
+          "name": "promo_code_snapshot",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "source": {
           "name": "source",
           "type": "varchar(20)",
@@ -3291,20 +3417,6 @@
           "notNull": false,
           "autoincrement": false,
           "default": "'online'"
-        },
-        "tulip_contract_id": {
-          "name": "tulip_contract_id",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "tulip_contract_status": {
-          "name": "tulip_contract_status",
-          "type": "varchar(20)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

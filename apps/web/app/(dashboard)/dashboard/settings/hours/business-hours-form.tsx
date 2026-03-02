@@ -42,14 +42,16 @@ import {
 } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { Textarea } from '@louez/ui'
-import { Label } from '@louez/ui'
 import { updateBusinessHours } from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { RootError } from '@/components/form/root-error'
 import { businessHoursSchema, defaultBusinessHours, type BusinessHoursInput } from '@louez/validations'
 import { generateTimeSlots, DAY_KEYS } from '@/lib/utils/business-hours'
+import { normalizeDaySchedule } from '@louez/utils'
 import type { StoreSettings } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
+
+const MAX_RANGES_PER_DAY = 4
 
 interface Store {
   id: string
@@ -67,7 +69,18 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
   const t = useTranslations('dashboard.settings.businessHours')
   const tCommon = useTranslations('common')
 
-  const businessHours = store.settings?.businessHours || defaultBusinessHours
+  // Normalize legacy format: stores that still have { openTime, closeTime }
+  // at the day level (instead of ranges[]) need conversion for the form.
+  const rawBusinessHours = store.settings?.businessHours || defaultBusinessHours
+  const businessHours = {
+    ...rawBusinessHours,
+    schedule: Object.fromEntries(
+      Object.entries(rawBusinessHours.schedule).map(([key, value]) => [
+        key,
+        normalizeDaySchedule(value as unknown as Record<string, unknown>),
+      ]),
+    ),
+  } as BusinessHoursInput
 
   const [rootError, setRootError] = useState<string | null>(null)
   const form = useAppForm({
@@ -82,6 +95,9 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
           return
         }
         toastManager.add({ title: t('saved'), type: 'success' })
+        // Update the form baseline so isDirty becomes false
+        form.options.defaultValues = value
+        form.reset()
         router.refresh()
       })
     },
@@ -243,7 +259,9 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
   )
 }
 
-// Day Schedule Row Component
+// ---------------------------------------------------------------------------
+// Day Schedule Row - supports multiple time ranges per day
+// ---------------------------------------------------------------------------
 function DayScheduleRow({
   dayKey,
   form,
@@ -258,78 +276,133 @@ function DayScheduleRow({
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schedule = useStore(form.store, (s: any) => s.values.schedule)
-  const isOpen = schedule[dayKey]?.isOpen ?? false
+  const daySchedule = schedule[dayKey]
+  const isOpen = daySchedule?.isOpen ?? false
+  const ranges = daySchedule?.ranges ?? [{ openTime: '09:00', closeTime: '18:00' }]
+
+  const addRange = () => {
+    if (ranges.length >= MAX_RANGES_PER_DAY) return
+
+    // Compute a sensible default: start 1h after last close, end 2h later.
+    // Clamp to valid hours and ensure open < close.
+    const lastRange = ranges[ranges.length - 1]
+    const [lastHour] = lastRange.closeTime.split(':').map(Number)
+    const openHour = Math.min(lastHour + 1, 22)
+    const closeHour = Math.min(openHour + 2, 23)
+
+    form.pushFieldValue(`schedule.${dayKey}.ranges`, {
+      openTime: `${openHour.toString().padStart(2, '0')}:00`,
+      closeTime: `${closeHour.toString().padStart(2, '0')}:00`,
+    })
+  }
+
+  const removeRange = (index: number) => {
+    if (ranges.length <= 1) return
+    form.removeFieldValue(`schedule.${dayKey}.ranges`, index)
+  }
 
   return (
-    <div className="flex items-center gap-3 py-3 px-1">
-      <form.Field name={`schedule.${dayKey}.isOpen` as any}>
-        {(field: any) => (
-          <Switch
-            checked={field.state.value}
-            onCheckedChange={(checked) => field.handleChange(checked)}
-          />
-        )}
-      </form.Field>
-      <span className={`font-medium text-sm w-24 shrink-0 ${!isOpen ? 'text-muted-foreground' : ''}`}>
-        {t(`days.${dayKey}`)}
-      </span>
+    <div className="py-3 px-1">
+      <div className="flex items-center gap-3">
+        <form.Field name={`schedule.${dayKey}.isOpen` as any}>
+          {(field: any) => (
+            <Switch
+              checked={field.state.value}
+              onCheckedChange={(checked) => field.handleChange(checked)}
+            />
+          )}
+        </form.Field>
+        <span className={`font-medium text-sm w-24 shrink-0 ${!isOpen ? 'text-muted-foreground' : ''}`}>
+          {t(`days.${dayKey}`)}
+        </span>
 
-      {isOpen ? (
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <form.Field name={`schedule.${dayKey}.openTime` as any}>
-            {(field: any) => (
-              <Select
-                value={field.state.value}
-                onValueChange={(value) => {
-                  if (value !== null) field.handleChange(value)
-                }}
+        {isOpen ? (
+          <div className="flex flex-col gap-2 flex-1 min-w-0">
+            {ranges.map((_range: { openTime: string; closeTime: string }, rangeIndex: number) => (
+              <div key={rangeIndex} className="flex items-center gap-2">
+                <form.Field name={`schedule.${dayKey}.ranges[${rangeIndex}].openTime` as any}>
+                  {(field: any) => (
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => {
+                        if (value !== null) field.handleChange(value)
+                      }}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue>{field.state.value}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time} label={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </form.Field>
+                <span className="text-muted-foreground text-sm">-</span>
+                <form.Field name={`schedule.${dayKey}.ranges[${rangeIndex}].closeTime` as any}>
+                  {(field: any) => (
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => {
+                        if (value !== null) field.handleChange(value)
+                      }}
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue>{field.state.value}</SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time} label={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </form.Field>
+                {ranges.length > 1 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => removeRange(rangeIndex)}
+                    aria-label={t('removeRange')}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            ))}
+            {ranges.length < MAX_RANGES_PER_DAY && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="self-start h-7 text-xs text-muted-foreground hover:text-foreground"
+                onClick={addRange}
               >
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue>{field.state.value}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time} label={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                <Plus className="mr-1 h-3 w-3" />
+                {t('addRange')}
+              </Button>
             )}
-          </form.Field>
-          <span className="text-muted-foreground text-sm">-</span>
-          <form.Field name={`schedule.${dayKey}.closeTime` as any}>
-            {(field: any) => (
-              <Select
-                value={field.state.value}
-                onValueChange={(value) => {
-                  if (value !== null) field.handleChange(value)
-                }}
-              >
-                <SelectTrigger className="w-[100px]">
-                  <SelectValue>{field.state.value}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time} label={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </form.Field>
-        </div>
-      ) : (
-        <Badge variant="secondary" className="text-muted-foreground">
-          {t('closed')}
-        </Badge>
-      )}
+          </div>
+        ) : (
+          <Badge variant="secondary" className="text-muted-foreground">
+            {t('closed')}
+          </Badge>
+        )}
+      </div>
     </div>
   )
 }
 
-// Closure Period Dialog Component
+// ---------------------------------------------------------------------------
+// Closure Period Dialog
+// ---------------------------------------------------------------------------
 function ClosurePeriodDialog({
   open,
   onOpenChange,
@@ -378,7 +451,6 @@ function ClosurePeriodDialog({
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
-      // Reset form on close
       setName('')
       setStartDate('')
       setEndDate('')

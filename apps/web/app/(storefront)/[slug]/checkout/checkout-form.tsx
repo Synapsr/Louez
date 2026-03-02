@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -18,6 +18,7 @@ import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
 
 import { createReservation, getTulipQuotePreview } from './actions';
+import type { ValidatedPromo } from './promo-actions';
 import { buildReservationPayload } from './reservation-payload';
 import type {
   CheckoutFormProps,
@@ -106,6 +107,7 @@ export function CheckoutForm({
   storeLatitude,
   storeLongitude,
   tulipInsurance,
+  hasActivePromoCodes,
 }: CheckoutFormProps) {
   const router = useRouter();
   const locale = useLocale() as 'fr' | 'en';
@@ -131,17 +133,51 @@ export function CheckoutForm({
   const totalSavings = getTotalSavings();
   const originalSubtotal = getOriginalSubtotal();
 
+  const [appliedPromo, setAppliedPromo] = useState<ValidatedPromo | null>(null);
+
+  const discountAmount = useMemo(() => {
+    if (!appliedPromo) return 0;
+    if (appliedPromo.type === 'percentage') {
+      return Math.round(Math.min((subtotal * appliedPromo.value) / 100, subtotal) * 100) / 100;
+    }
+    return Math.round(Math.min(appliedPromo.value, subtotal) * 100) / 100;
+  }, [appliedPromo, subtotal]);
+
+  // Auto-remove promo code if subtotal drops below minimum amount
+  useEffect(() => {
+    if (!appliedPromo) return;
+    if (appliedPromo.minimumAmount > 0 && subtotal < appliedPromo.minimumAmount) {
+      setAppliedPromo(null);
+      toastManager.add({ title: t('promoCode.minimumNotMet'), type: 'error' });
+    }
+  }, [appliedPromo, subtotal, t]);
+
+  const handleApplyPromo = useCallback((promo: ValidatedPromo) => {
+    setAppliedPromo(promo);
+  }, []);
+
+  const handleRemovePromo = useCallback(() => {
+    setAppliedPromo(null);
+  }, []);
+
   const {
     isDeliveryEnabled,
     isDeliveryForced,
     isDeliveryIncluded,
+    allowDifferentReturnAddress,
     deliveryOption,
     deliveryAddress,
     deliveryDistance,
     deliveryFee,
     deliveryError,
+    hasDifferentReturnAddress,
+    returnAddress,
+    returnDistance,
+    returnError,
     handleDeliveryOptionChange,
     handleDeliveryAddressChange,
+    handleReturnAddressChange,
+    handleDifferentReturnAddressToggle,
   } = useCheckoutDelivery({
     deliverySettings,
     storeLatitude,
@@ -150,7 +186,7 @@ export function CheckoutForm({
   });
 
   const totalWithDelivery =
-    total + (deliveryOption === 'delivery' ? deliveryFee : 0);
+    total - discountAmount + (deliveryOption === 'delivery' ? deliveryFee : 0);
   const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
 
   const {
@@ -425,6 +461,9 @@ export function CheckoutForm({
         deliveryOption,
         deliveryAddress,
         tulipInsuranceMode,
+        hasDifferentReturnAddress,
+        returnAddress,
+        promoCode: appliedPromo?.code,
       });
 
       const result = await createReservation(payload);
@@ -523,8 +562,15 @@ export function CheckoutForm({
                       storeAddress={storeAddress}
                       isDeliveryForced={isDeliveryForced}
                       isDeliveryIncluded={isDeliveryIncluded}
+                      allowDifferentReturnAddress={allowDifferentReturnAddress}
+                      hasDifferentReturnAddress={hasDifferentReturnAddress}
+                      returnAddress={returnAddress}
+                      returnDistance={returnDistance}
+                      returnError={returnError}
                       onDeliveryOptionChange={handleDeliveryOptionChange}
                       onDeliveryAddressChange={handleDeliveryAddressChange}
+                      onDifferentReturnAddressToggle={handleDifferentReturnAddressToggle}
+                      onReturnAddressChange={handleReturnAddressChange}
                       onBack={goToPreviousStep}
                       onContinue={goToNextStep}
                     />
@@ -544,6 +590,7 @@ export function CheckoutForm({
                     tulipQuotePreview={tulipQuotePreview}
                     isTulipQuoteLoading={isTulipQuoteLoading}
                     canSubmitCheckout={canSubmitCheckoutWithTulip}
+                    discountAmount={discountAmount}
                     onBack={goToPreviousStep}
                     onEditContact={() => goToStep('contact')}
                   />
@@ -576,6 +623,12 @@ export function CheckoutForm({
           isTulipQuoteLoading={isTulipQuoteLoading}
           tulipQuotePreview={tulipQuotePreview}
           lineResolutions={lineResolutions}
+          hasActivePromoCodes={hasActivePromoCodes}
+          storeId={storeId}
+          appliedPromo={appliedPromo}
+          discountAmount={discountAmount}
+          onApplyPromo={handleApplyPromo}
+          onRemovePromo={handleRemovePromo}
         />
       </div>
     </div>

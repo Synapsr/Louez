@@ -1,7 +1,5 @@
 import type { CartItem } from '@/contexts/cart-context';
-
-import type { ProductPricing } from '@louez/utils';
-import { calculateRentalPrice } from '@louez/utils';
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { createReservation } from './actions';
 import type {
@@ -9,13 +7,12 @@ import type {
   DeliveryAddress,
   DeliveryOption,
 } from './types';
-import { calculateDuration } from './utils';
 
 type CreateReservationInput = Parameters<typeof createReservation>[0];
 
 interface BuildReservationPayloadInput {
   storeId: string;
-  pricingMode: 'day' | 'hour' | 'week';
+  pricingMode?: 'day' | 'hour' | 'week';
   locale: 'fr' | 'en';
   values: CheckoutFormValues;
   items: CartItem[];
@@ -25,11 +22,13 @@ interface BuildReservationPayloadInput {
   deliveryOption: DeliveryOption;
   deliveryAddress: DeliveryAddress;
   tulipInsuranceMode: 'required' | 'optional' | 'no_public';
+  hasDifferentReturnAddress: boolean;
+  returnAddress: DeliveryAddress;
+  promoCode?: string;
 }
 
 export function buildReservationPayload({
   storeId,
-  pricingMode,
   locale,
   values,
   items,
@@ -39,6 +38,9 @@ export function buildReservationPayload({
   deliveryOption,
   deliveryAddress,
   tulipInsuranceMode,
+  hasDifferentReturnAddress,
+  returnAddress,
+  promoCode,
 }: BuildReservationPayloadInput): CreateReservationInput {
   return {
     storeId,
@@ -56,29 +58,9 @@ export function buildReservationPayload({
       postalCode: values.postalCode || undefined,
     },
     items: items.map((item) => {
-      const itemPricingMode = item.productPricingMode || pricingMode;
-      const duration = calculateDuration(
-        item.startDate,
-        item.endDate,
-        itemPricingMode,
-      );
-
-      let effectiveUnitPrice = item.price;
-
-      if (item.pricingTiers && item.pricingTiers.length > 0) {
-        const pricing: ProductPricing = {
-          basePrice: item.price,
-          deposit: item.deposit,
-          pricingMode: itemPricingMode,
-          tiers: item.pricingTiers.map((tier, index) => ({
-            ...tier,
-            displayOrder: index,
-          })),
-        };
-
-        const result = calculateRentalPrice(pricing, duration, item.quantity);
-        effectiveUnitPrice = result.effectivePricePerUnit;
-      }
+      const priceResult = calculateCartItemPrice(item, null, null);
+      const effectiveUnitPrice =
+        priceResult.subtotal / Math.max(1, item.quantity);
 
       return {
         lineId: item.lineId,
@@ -111,6 +93,7 @@ export function buildReservationPayload({
     depositAmount,
     totalAmount,
     locale,
+    promoCode,
     delivery:
       deliveryOption === 'delivery' &&
       deliveryAddress.latitude !== null &&
@@ -123,6 +106,18 @@ export function buildReservationPayload({
             country: deliveryAddress.country,
             latitude: deliveryAddress.latitude,
             longitude: deliveryAddress.longitude,
+            ...(hasDifferentReturnAddress &&
+            returnAddress.latitude !== null &&
+            returnAddress.longitude !== null
+              ? {
+                  returnAddress: returnAddress.address,
+                  returnCity: returnAddress.city,
+                  returnPostalCode: returnAddress.postalCode,
+                  returnCountry: returnAddress.country,
+                  returnLatitude: returnAddress.latitude,
+                  returnLongitude: returnAddress.longitude,
+                }
+              : {}),
           }
         : { option: 'pickup' },
   };

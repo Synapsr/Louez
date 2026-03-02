@@ -10,6 +10,9 @@ import {
   ExternalLink,
   MapPin,
   Package,
+  Store,
+  Tag,
+  Truck,
   Shield,
   User,
 } from 'lucide-react'
@@ -483,6 +486,29 @@ export function ReservationDetailClient({
                       </TableRow>
                     )}
 
+                    {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={3}
+                          className="text-right text-green-600"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            <Tag className="h-3.5 w-3.5" />
+                            {t('promoDiscount')}
+                            {reservation.promoCodeSnapshot && (
+                              <Badge variant="secondary" className="ml-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                                {(reservation.promoCodeSnapshot as { code: string }).code}
+                              </Badge>
+                            )}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right text-green-600">
+                          -{parseFloat(reservation.discountAmount).toFixed(2)}
+                          {currencySymbol}
+                        </TableCell>
+                      </TableRow>
+                    )}
+
                     {parseFloat(reservation.depositAmount) > 0 && (
                       <TableRow>
                         <TableCell
@@ -498,15 +524,6 @@ export function ReservationDetailClient({
                       </TableRow>
                     )}
 
-                    <TableRow className="bg-muted/30">
-                      <TableCell colSpan={3} className="text-right font-semibold">
-                        {t('total')}
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">
-                        {parseFloat(reservation.totalAmount).toFixed(2)}
-                        {currencySymbol}
-                      </TableCell>
-                    </TableRow>
                   </TableFooter>
                 </Table>
               </div>
@@ -574,6 +591,68 @@ export function ReservationDetailClient({
             hasDepartureInspection={!!departureInspection}
             hasReturnInspection={!!returnInspection}
           />
+
+          {/* Delivery & Return card - only shown for delivery orders */}
+          {reservation.deliveryOption === 'delivery' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  {t('deliveryAndReturn')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t('deliveryAddressLabel')}
+                  </p>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                    <p className="text-sm">
+                      {reservation.deliveryAddress}
+                      {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
+                      {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
+                    </p>
+                  </div>
+                  {reservation.deliveryDistanceKm && (
+                    <p className="text-xs text-muted-foreground ml-5.5">
+                      {parseFloat(reservation.deliveryDistanceKm).toFixed(1)} km
+                    </p>
+                  )}
+                </div>
+
+                {reservation.returnAddress && (
+                  <div className="space-y-1.5 border-t pt-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      {t('returnAddressLabel')}
+                    </p>
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                      <p className="text-sm">
+                        {reservation.returnAddress}
+                        {reservation.returnCity && `, ${reservation.returnCity}`}
+                        {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
+                      </p>
+                    </div>
+                    {reservation.returnDistanceKm && (
+                      <p className="text-xs text-muted-foreground ml-5.5">
+                        {parseFloat(reservation.returnDistanceKm).toFixed(1)} km
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
+                  <div className="flex justify-between items-center border-t pt-3 text-sm">
+                    <span className="text-muted-foreground">{t('deliveryFeeLabel')}</span>
+                    <span className="font-medium">
+                      {parseFloat(reservation.deliveryFee).toFixed(2)}{currencySymbol}
+                    </span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <InspectionStatusCard
             reservationId={reservation.id}

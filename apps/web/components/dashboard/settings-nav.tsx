@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield, Link2 } from 'lucide-react'
+import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield, Link2, Tag } from 'lucide-react'
 import { cn } from '@louez/utils'
 import { useMemo } from 'react'
 
@@ -68,6 +68,11 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/notifications',
     icon: Bell,
     labelKey: 'notifications.title',
+  },
+  {
+    href: '/dashboard/settings/promo-codes',
+    icon: Tag,
+    labelKey: 'promoCodes.title',
   },
 ]
 

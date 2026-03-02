@@ -32,7 +32,7 @@ import {
   SelectValue,
   Separator,
 } from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
+import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils'
 
 import type { PricingMode } from '@louez/types'
 import { getLineQuantityConstraints } from '../utils/variant-lines'
@@ -123,6 +123,41 @@ export function NewReservationStepProducts({
     return tCommon('dayUnit', { count })
   }
 
+  const formatPeriodLabel = (periodMinutes: number) => {
+    const period = minutesToPriceDuration(periodMinutes)
+    if (period.unit === 'minute') return `${period.duration} min`
+    if (period.duration === 1) return getPricingUnitLabel(period.unit as PricingMode)
+    return `${period.duration} ${getDurationLabel(period.unit as PricingMode, period.duration)}`
+  }
+
+  const getProductPeriodLabel = (product: Product, mode: PricingMode) => {
+    if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
+      return formatPeriodLabel(product.basePeriodMinutes)
+    }
+    return getPricingUnitLabel(mode)
+  }
+
+  const formatRatePlanBreakdown = (
+    plan: Array<{ rate: { period: number; price: number }; quantity: number }>,
+    lineSubtotal?: number
+  ) => {
+    if (plan.length === 1) {
+      const entry = plan[0]
+      const periodLabel = formatPeriodLabel(entry.rate.period)
+      // Show the applied tier period and the actual charged amount
+      return `${periodLabel} · ${formatCurrency(lineSubtotal ?? entry.rate.price)}`
+    }
+    return plan
+      .sort((a, b) => b.rate.period - a.rate.period)
+      .map((entry) => {
+        const periodLabel = formatPeriodLabel(entry.rate.period)
+        const price = entry.rate.price * entry.quantity
+        const qtyPrefix = entry.quantity > 1 ? `${entry.quantity}× ` : ''
+        return `${qtyPrefix}${periodLabel} · ${formatCurrency(price)}`
+      })
+      .join(' + ')
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -175,7 +210,9 @@ export function NewReservationStepProducts({
               hasDiscount,
               applicableTierDiscountPercent,
               hasTieredPricing,
+              reductionPercent,
             } = summaryPricing
+            const discountDisplay = applicableTierDiscountPercent ?? reductionPercent
 
             const lineStates = productLines.map((line) => {
               const pricing = getProductPricingDetails(product, line)
@@ -230,23 +267,38 @@ export function NewReservationStepProducts({
                           </Badge>
                         )}
                       </div>
-                      <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                        {hasDiscount ? (
+                      <div className="mt-0.5">
+                        {summaryPricing.productDuration > 0 ? (
                           <>
-                            <span className="text-sm text-muted-foreground line-through">
-                              {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <span className="text-sm font-medium text-green-600">
-                              {formatCurrency(effectivePrice)}/{getPricingUnitLabel(productPricingMode)}
-                            </span>
-                            <Badge variant="success" className="text-xs">
-                              -{applicableTierDiscountPercent}%
-                            </Badge>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-sm font-semibold text-primary">
+                                {formatCurrency(summaryPricing.lineSubtotal)}
+                              </span>
+                              {summaryPricing.lineSavings > 0 && (
+                                <>
+                                  <span className="text-xs text-muted-foreground line-through">
+                                    {formatCurrency(summaryPricing.lineOriginalSubtotal)}
+                                  </span>
+                                  {discountDisplay != null && discountDisplay > 0 && (
+                                    <Badge variant="success" className="text-xs">
+                                      -{Math.floor(discountDisplay)}%
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {summaryPricing.isRateBased && summaryPricing.ratePlan && summaryPricing.ratePlan.length > 0
+                                ? formatRatePlanBreakdown(summaryPricing.ratePlan, summaryPricing.lineSubtotal)
+                                : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
+                            </p>
                           </>
                         ) : (
-                          <span className="text-sm text-muted-foreground">
-                            {formatCurrency(basePrice)}/{getPricingUnitLabel(productPricingMode)}
-                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm text-muted-foreground">
+                              {formatCurrency(basePrice)}/{getProductPeriodLabel(product, productPricingMode)}
+                            </span>
+                          </div>
                         )}
                       </div>
                       <div className="mt-1 flex items-center gap-2">
@@ -403,8 +455,17 @@ export function NewReservationStepProducts({
                           <div className="flex items-center justify-between text-sm">
                             <div className="flex items-center gap-2">
                               <span className="text-muted-foreground">
-                                {line.quantity} × {pricing.productDuration}{' '}
-                                {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
+                                {pricing.isRateBased && pricing.ratePlan && pricing.ratePlan.length > 0 ? (
+                                  <>
+                                    {line.quantity > 1 && `${line.quantity} × `}
+                                    {formatRatePlanBreakdown(pricing.ratePlan, pricing.lineSubtotal / Math.max(1, line.quantity))}
+                                  </>
+                                ) : (
+                                  <>
+                                    {line.quantity} × {pricing.productDuration}{' '}
+                                    {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
+                                  </>
+                                )}
                               </span>
                               <Button
                                 type="button"
@@ -436,21 +497,21 @@ export function NewReservationStepProducts({
                                         : 'text-orange-600'
                                     )}
                                   >
-                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineSubtotal)}
                                   </span>
                                 </div>
                               ) : pricing.hasDiscount ? (
                                 <div className="flex items-center gap-2">
                                   <span className="text-xs text-muted-foreground line-through">
-                                    {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineOriginalSubtotal)}
                                   </span>
                                   <span className="font-medium text-green-600">
-                                    {formatCurrency(pricing.effectivePrice * line.quantity * pricing.productDuration)}
+                                    {formatCurrency(pricing.lineSubtotal)}
                                   </span>
                                 </div>
                               ) : (
                                 <span className="font-medium">
-                                  {formatCurrency(pricing.basePrice * line.quantity * pricing.productDuration)}
+                                  {formatCurrency(pricing.lineSubtotal)}
                                 </span>
                               )}
                             </div>

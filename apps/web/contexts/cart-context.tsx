@@ -9,14 +9,8 @@ import {
   type ReactNode,
 } from 'react'
 import { calculateDuration, type PricingMode } from '@/lib/utils/duration'
-import type { Rate } from '@louez/types'
-import {
-  calculateRentalPrice,
-  calculateRentalPriceV2,
-  calculateDurationMinutes,
-  isRateBasedProduct,
-  type ProductPricing,
-} from '@louez/utils'
+import type { SeasonalPricingConfig } from '@louez/utils'
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing'
 
 interface CartItemPricingTier {
   id: string
@@ -40,12 +34,16 @@ export interface CartItem {
   pricingTiers?: CartItemPricingTier[]
   // Rate-based pricing period in minutes
   basePeriodMinutes?: number | null
+  // Whether strict tier pricing is enforced
+  enforceStrictTiers?: boolean
   // Product-specific pricing mode
   productPricingMode?: PricingMode | null
   // Booking attributes (tracked-unit advanced mode)
   selectedAttributes?: Record<string, string>
   resolvedCombinationKey?: string
   resolvedAttributes?: Record<string, string>
+  // Seasonal pricing overrides (per-product)
+  seasonalPricings?: SeasonalPricingConfig[]
   // Legacy fields for backwards compatibility
   startDate: string
   endDate: string
@@ -363,111 +361,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return calculateDuration(start, end, itemPricingMode)
   }, [globalStartDate, globalEndDate])
 
-  const getItemDurationMinutes = useCallback((item: CartItem) => {
-    const start = globalStartDate || item.startDate
-    const end = globalEndDate || item.endDate
-    if (!start || !end) return 1
-    return calculateDurationMinutes(start, end)
-  }, [globalStartDate, globalEndDate])
-
   const getDuration = useCallback(() => {
     if (items.length === 0) return 1
     return getItemDuration(items[0])
   }, [items, getItemDuration])
 
-  // Calculate subtotal with tiered pricing
+  // Calculate subtotal with tiered pricing (seasonal-aware)
   const getSubtotal = useCallback(() => {
     return items.reduce((sum, item) => {
-      const itemDurationMinutes = getItemDurationMinutes(item)
-      if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
-        const rates: Rate[] = (item.pricingTiers || [])
-          .filter(
-            (tier): tier is CartItemPricingTier & { price: number; period: number } =>
-              typeof tier.price === 'number' &&
-              tier.price >= 0 &&
-              typeof tier.period === 'number' &&
-              tier.period > 0,
-          )
-          .map((tier, index) => ({
-            id: tier.id,
-            price: tier.price,
-            period: tier.period,
-            displayOrder: index,
-          }))
-
-        const result = calculateRentalPriceV2(
-          {
-            basePrice: item.price,
-            basePeriodMinutes: item.basePeriodMinutes!,
-            deposit: item.deposit,
-            rates,
-          },
-          itemDurationMinutes,
-          item.quantity,
-        )
-
-        return sum + result.subtotal
-      }
-
-      const itemPricingMode = item.productPricingMode || item.pricingMode || 'day'
-      const itemDuration = getItemDuration(item)
-
-      // If item has pricing tiers, use tiered calculation
-      if (item.pricingTiers && item.pricingTiers.length > 0) {
-        const pricing: ProductPricing = {
-          basePrice: item.price,
-          deposit: item.deposit,
-          pricingMode: itemPricingMode,
-          tiers: item.pricingTiers.map((t, i) => ({
-            ...t,
-            displayOrder: i,
-          })),
-        }
-        const result = calculateRentalPrice(pricing, itemDuration, item.quantity)
-        return sum + result.subtotal
-      }
-
-      // Otherwise use simple calculation
-      return sum + item.price * item.quantity * itemDuration
+      return sum + calculateCartItemPrice(item, globalStartDate, globalEndDate).subtotal
     }, 0)
-  }, [items, getItemDuration, getItemDurationMinutes])
+  }, [items, globalStartDate, globalEndDate])
 
-  // Calculate original subtotal (without discounts)
+  // Calculate original subtotal (without discounts, seasonal-aware)
   const getOriginalSubtotal = useCallback(() => {
     return items.reduce((sum, item) => {
-      const itemDurationMinutes = getItemDurationMinutes(item)
-      if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
-        const rates: Rate[] = (item.pricingTiers || [])
-          .filter(
-            (tier): tier is CartItemPricingTier & { price: number; period: number } =>
-              typeof tier.price === 'number' &&
-              tier.price >= 0 &&
-              typeof tier.period === 'number' &&
-              tier.period > 0,
-          )
-          .map((tier, index) => ({
-            id: tier.id,
-            price: tier.price,
-            period: tier.period,
-            displayOrder: index,
-          }))
-
-        const result = calculateRentalPriceV2(
-          {
-            basePrice: item.price,
-            basePeriodMinutes: item.basePeriodMinutes!,
-            deposit: item.deposit,
-            rates,
-          },
-          itemDurationMinutes,
-          item.quantity,
-        )
-        return sum + result.originalSubtotal
-      }
-
-      return sum + item.price * item.quantity * getItemDuration(item)
+      return sum + calculateCartItemPrice(item, globalStartDate, globalEndDate).originalSubtotal
     }, 0)
-  }, [items, getItemDuration, getItemDurationMinutes])
+  }, [items, globalStartDate, globalEndDate])
 
   // Calculate total savings from tiered pricing
   const getTotalSavings = useCallback(() => {

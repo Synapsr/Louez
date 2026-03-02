@@ -1,60 +1,26 @@
-'use server'
+'use server';
 
-import { db } from '@louez/db'
-import { auth } from '@/lib/auth'
-import { getCurrentStore } from '@/lib/store-context'
-import { reservations, reservationItems, customers, products, reservationActivity, payments, verificationCodes, productUnits, reservationItemUnits } from '@louez/db'
-import { eq, and, sql, inArray } from 'drizzle-orm'
-import { revalidatePath } from 'next/cache'
-import { nanoid } from 'nanoid'
-import type { ReservationStatus } from '@louez/validations'
-import { env } from '@/env'
+import { revalidatePath } from 'next/cache';
+
+import { and, eq, inArray, sql } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+import { db } from '@louez/db';
 import {
-  sendReservationConfirmationEmail,
-  sendReminderPickupEmail,
-  sendReminderReturnEmail,
-  sendInstantAccessEmail,
-  sendPaymentRequestEmail,
-  sendDepositAuthorizationRequestEmail,
-} from '@/lib/email/send'
-import {
-  sendAccessLinkSms,
-  sendPaymentRequestSms,
-  sendDepositAuthorizationRequestSms,
-  isSmsConfigured,
-} from '@/lib/sms'
-import { dispatchNotification } from '@/lib/notifications/dispatcher'
-import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
-import {
-  notifyNewReservation,
-  notifyReservationConfirmed,
-  notifyReservationRejected,
-  notifyReservationCancelled,
-  notifyEquipmentPickedUp,
-  notifyReservationCompleted,
-  notifyPaymentReceived,
-} from '@/lib/discord/platform-notifications'
-import type { NotificationEventType } from '@louez/types'
-import type { Rate } from '@louez/types'
-import { getLocaleFromCountry } from '@/lib/email/i18n'
-import { sendEmail } from '@/lib/email/client'
-import { getContrastColorHex } from '@/lib/utils/colors'
-import {
-  buildCombinationKey,
-  canonicalizeAttributes,
-  DEFAULT_COMBINATION_KEY,
-  getCurrencySymbol,
-  hasCompleteAttributes,
-} from '@louez/utils'
-import {
-  calculateRentalPrice,
-  calculateRentalPriceV2,
-  calculateDuration,
-  calculateDurationMinutes,
-  generatePricingBreakdown,
-  isRateBasedProduct,
-  type PricingTier,
-} from '@louez/utils'
+  customers,
+  payments,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
+  productUnits,
+  products,
+  reservationActivity,
+  reservationItemUnits,
+  reservationItems,
+  reservations,
+  verificationCodes,
+} from '@louez/db';
+import type { NotificationEventType } from '@louez/types';
+import type { Rate } from '@louez/types';
 import type {
   BookingAttributeAxis,
   PricingBreakdown,
@@ -62,87 +28,226 @@ import type {
   StoreSettings,
   TulipPublicMode,
   UnitAttributes,
-} from '@louez/types'
+} from '@louez/types';
 import {
-  evaluateReservationRules,
-  formatReservationWarningsForLog,
-} from '@/lib/utils/reservation-rules'
+  DEFAULT_COMBINATION_KEY,
+  buildCombinationKey,
+  canonicalizeAttributes,
+  getCurrencySymbol,
+  hasCompleteAttributes,
+} from '@louez/utils';
+import {
+  type PricingTier,
+  type SeasonalPricingConfig,
+  calculateDuration,
+  calculateDurationMinutes,
+  calculateRateBasedPrice,
+  calculateRentalPrice,
+  calculateSeasonalAwarePrice,
+  generatePricingBreakdown,
+  isRateBasedProduct,
+} from '@louez/utils';
+import type { ReservationStatus } from '@louez/validations';
+
+import { auth } from '@/lib/auth';
+import {
+  notifyEquipmentPickedUp,
+  notifyNewReservation,
+  notifyPaymentReceived,
+  notifyReservationCancelled,
+  notifyReservationCompleted,
+  notifyReservationConfirmed,
+  notifyReservationRejected,
+} from '@/lib/discord/platform-notifications';
+import { sendEmail } from '@/lib/email/client';
+import { getLocaleFromCountry } from '@/lib/email/i18n';
+import {
+  sendDepositAuthorizationRequestEmail,
+  sendInstantAccessEmail,
+  sendPaymentRequestEmail,
+  sendReminderPickupEmail,
+  sendReminderReturnEmail,
+  sendReservationConfirmationEmail,
+} from '@/lib/email/send';
 import {
   cancelTulipContractForReservation,
   createTulipContractForReservation,
   syncTulipContractForReservation,
-} from '@/lib/integrations/tulip/contracts'
-import { getTulipSettings } from '@/lib/integrations/tulip/settings'
+} from '@/lib/integrations/tulip/contracts';
+import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
+import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import {
+  isSmsConfigured,
+  sendAccessLinkSms,
+  sendDepositAuthorizationRequestSms,
+  sendPaymentRequestSms,
+} from '@/lib/sms';
+import { getCurrentStore } from '@/lib/store-context';
+// ============================================================================
+// Deposit Authorization Hold (Empreinte Bancaire)
+// ============================================================================
+
+import {
+  captureDeposit,
+  createDepositAuthorization,
+  createPaymentRequestSession,
+  createRefund,
+  getChargeRefundableAmount,
+  getPaymentMethodDetails,
+  releaseDeposit,
+  toStripeCents,
+} from '@/lib/stripe';
+import { getContrastColorHex } from '@/lib/utils/colors';
+import {
+  calculateDeliveryFee,
+  calculateHaversineDistance,
+  validateDelivery,
+} from '@/lib/utils/geo';
+import {
+  evaluateReservationRules,
+  formatReservationWarningsForLog,
+} from '@/lib/utils/reservation-rules';
+
+import { env } from '@/env';
 
 async function getStoreForUser() {
-  return getCurrentStore()
+  return getCurrentStore();
 }
 
 function toPricingMode(value: unknown): PricingMode {
   if (value === 'hour' || value === 'day' || value === 'week') {
-    return value
+    return value;
   }
-  return 'day'
+  return 'day';
 }
 
-type ActivityType = 'created' | 'confirmed' | 'rejected' | 'cancelled' | 'picked_up' | 'returned' | 'note_updated' | 'payment_added' | 'payment_updated' | 'access_link_sent' | 'modified' | 'inspection_departure_started' | 'inspection_departure_completed' | 'inspection_return_started' | 'inspection_return_completed' | 'inspection_damage_detected' | 'inspection_signed'
+async function fetchSeasonalPricingConfigs(
+  productId: string,
+): Promise<SeasonalPricingConfig[]> {
+  const seasonalPricingsRaw = await db
+    .select()
+    .from(productSeasonalPricing)
+    .where(eq(productSeasonalPricing.productId, productId));
+
+  if (seasonalPricingsRaw.length === 0) return [];
+
+  const spIds = seasonalPricingsRaw.map((sp) => sp.id);
+  const spTiersRaw = await db
+    .select()
+    .from(productSeasonalPricingTiers)
+    .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
+
+  const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
+  for (const tier of spTiersRaw) {
+    const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
+    tiers.push(tier);
+    spTiersByPricingId.set(tier.seasonalPricingId, tiers);
+  }
+
+  return seasonalPricingsRaw.map((sp) => {
+    const spTiers = spTiersByPricingId.get(sp.id) || [];
+    return {
+      id: sp.id,
+      name: sp.name,
+      startDate: sp.startDate,
+      endDate: sp.endDate,
+      basePrice: parseFloat(sp.price),
+      tiers: spTiers
+        .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+        .map((t) => ({
+          id: t.id,
+          minDuration: t.minDuration!,
+          discountPercent: parseFloat(t.discountPercent!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+      rates: spTiers
+        .filter((t) => t.period !== null && t.price !== null)
+        .map((t) => ({
+          id: t.id,
+          period: t.period!,
+          price: parseFloat(t.price!),
+          displayOrder: t.displayOrder ?? 0,
+        })),
+    };
+  });
+}
+
+type ActivityType =
+  | 'created'
+  | 'confirmed'
+  | 'rejected'
+  | 'cancelled'
+  | 'picked_up'
+  | 'returned'
+  | 'note_updated'
+  | 'payment_added'
+  | 'payment_updated'
+  | 'access_link_sent'
+  | 'modified'
+  | 'inspection_departure_started'
+  | 'inspection_departure_completed'
+  | 'inspection_return_started'
+  | 'inspection_return_completed'
+  | 'inspection_damage_detected'
+  | 'inspection_signed';
 
 function getErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith('errors.')) {
-    return error.message
+    return error.message;
   }
 
-  return fallback
+  return fallback;
 }
 
 function resolveTulipInsuranceOptIn(params: {
-  mode: TulipPublicMode
-  requested?: boolean
-  current?: boolean | null
-  defaultOptional?: boolean
+  mode: TulipPublicMode;
+  requested?: boolean;
+  current?: boolean | null;
+  defaultOptional?: boolean;
 }): boolean {
   if (params.mode === 'required') {
-    return true
+    return true;
   }
 
   if (params.mode === 'no_public') {
-    return false
+    return false;
   }
 
   if (typeof params.requested === 'boolean') {
-    return params.requested
+    return params.requested;
   }
 
   if (typeof params.current === 'boolean') {
-    return params.current
+    return params.current;
   }
 
-  return params.defaultOptional ?? true
+  return params.defaultOptional ?? true;
 }
 
 function getDashboardTulipInsuranceMode(
   settings: StoreSettings | null | undefined,
 ): TulipPublicMode {
-  const tulipSettings = getTulipSettings(settings || null)
+  const tulipSettings = getTulipSettings(settings || null);
   if (!tulipSettings.enabled) {
-    return 'no_public'
+    return 'no_public';
   }
 
   if (tulipSettings.publicMode === 'required') {
-    return 'required'
+    return 'required';
   }
 
-  return 'optional'
+  return 'optional';
 }
 
 async function logReservationActivity(
   reservationId: string,
   activityType: ActivityType,
   description?: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ) {
-  const session = await auth()
-  const userId = session?.user?.id || null
+  const session = await auth();
+  const userId = session?.user?.id || null;
 
   await db.insert(reservationActivity).values({
     id: nanoid(),
@@ -151,11 +256,11 @@ async function logReservationActivity(
     activityType,
     description,
     metadata,
-  })
+  });
 }
 
 async function generateReservationNumber(storeId: string): Promise<string> {
-  const year = new Date().getFullYear()
+  const year = new Date().getFullYear();
 
   // Get count of reservations this year
   const result = await db
@@ -164,39 +269,39 @@ async function generateReservationNumber(storeId: string): Promise<string> {
     .where(
       and(
         eq(reservations.storeId, storeId),
-        sql`YEAR(${reservations.createdAt}) = ${year}`
-      )
-    )
+        sql`YEAR(${reservations.createdAt}) = ${year}`,
+      ),
+    );
 
-  const count = result[0]?.count || 0
-  const nextNumber = count + 1
+  const count = result[0]?.count || 0;
+  const nextNumber = count + 1;
 
-  return `${year}-${String(nextNumber).padStart(4, '0')}`
+  return `${year}-${String(nextNumber).padStart(4, '0')}`;
 }
 
 export async function updateReservationStatus(
   reservationId: string,
   status: ReservationStatus,
-  rejectionReason?: string
+  rejectionReason?: string,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
       items: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   const validationWarnings =
@@ -206,25 +311,25 @@ export async function updateReservationStatus(
           endDate: reservation.endDate,
           storeSettings: store.settings,
         })
-      : []
+      : [];
 
-  const previousStatus = reservation.status
+  const previousStatus = reservation.status;
   const updateData: Record<string, unknown> = {
     status,
     updatedAt: new Date(),
-  }
+  };
 
   // Set timestamps based on status transition
   if (status === 'ongoing') {
-    updateData.pickedUpAt = new Date()
+    updateData.pickedUpAt = new Date();
   } else if (status === 'completed') {
-    updateData.returnedAt = new Date()
+    updateData.returnedAt = new Date();
   }
 
   await db
     .update(reservations)
     .set(updateData)
-    .where(eq(reservations.id, reservationId))
+    .where(eq(reservations.id, reservationId));
 
   // Log activity based on status transition
   const activityMap: Record<string, ActivityType> = {
@@ -232,13 +337,13 @@ export async function updateReservationStatus(
     rejected: 'rejected',
     ongoing: 'picked_up',
     completed: 'returned',
-  }
+  };
 
   if (activityMap[status]) {
     const warningDescription =
       status === 'confirmed' && validationWarnings.length > 0
         ? formatReservationWarningsForLog(validationWarnings)
-        : undefined
+        : undefined;
 
     await logReservationActivity(
       reservationId,
@@ -251,29 +356,35 @@ export async function updateReservationStatus(
           validationWarnings,
           validationWarningsCount: validationWarnings.length,
         }),
-      }
-    )
+      },
+    );
   }
 
-  let tulipWarning: { key: string; params?: Record<string, string | number> } | null = null
+  let tulipWarning: {
+    key: string;
+    params?: Record<string, string | number>;
+  } | null = null;
   if (status === 'confirmed') {
     try {
-      await createTulipContractForReservation({ reservationId })
+      await createTulipContractForReservation({ reservationId });
     } catch (error) {
-      console.error('[tulip] Failed to create contract from dashboard confirmation:', {
-        reservationId,
-        error,
-      })
+      console.error(
+        '[tulip] Failed to create contract from dashboard confirmation:',
+        {
+          reservationId,
+          error,
+        },
+      );
 
       tulipWarning = {
         key: getErrorKey(error, 'errors.tulipContractCreationFailed'),
-      }
+      };
     }
   }
 
   // Send emails based on status change
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
 
   // Build customer notification context
   const customerNotificationCtx = {
@@ -307,11 +418,15 @@ export async function updateReservationStatus(
       depositAmount: parseFloat(reservation.depositAmount),
       taxEnabled: !!reservation.taxRate,
       taxRate: reservation.taxRate ? parseFloat(reservation.taxRate) : null,
-      subtotalExclTax: reservation.subtotalExclTax ? parseFloat(reservation.subtotalExclTax) : null,
-      taxAmount: reservation.taxAmount ? parseFloat(reservation.taxAmount) : null,
+      subtotalExclTax: reservation.subtotalExclTax
+        ? parseFloat(reservation.subtotalExclTax)
+        : null,
+      taxAmount: reservation.taxAmount
+        ? parseFloat(reservation.taxAmount)
+        : null,
     },
     reservationUrl,
-  }
+  };
 
   // Dispatch customer notification based on status change
   if (previousStatus === 'pending' && status === 'confirmed') {
@@ -321,23 +436,29 @@ export async function updateReservationStatus(
       quantity: item.quantity,
       unitPrice: parseFloat(item.unitPrice),
       totalPrice: parseFloat(item.totalPrice),
-    }))
+    }));
 
     dispatchCustomerNotification('customer_request_accepted', {
       ...customerNotificationCtx,
       items: emailItems,
       paymentUrl: null,
     }).catch((error: unknown) => {
-      console.error('Failed to dispatch customer request accepted notification:', error)
-    })
+      console.error(
+        'Failed to dispatch customer request accepted notification:',
+        error,
+      );
+    });
   } else if (status === 'rejected') {
     // Request rejected
     dispatchCustomerNotification('customer_request_rejected', {
       ...customerNotificationCtx,
       reason: rejectionReason,
     }).catch((error: unknown) => {
-      console.error('Failed to dispatch customer request rejected notification:', error)
-    })
+      console.error(
+        'Failed to dispatch customer request rejected notification:',
+        error,
+      );
+    });
   }
 
   // Dispatch admin notifications (SMS, Discord) based on preferences
@@ -346,9 +467,9 @@ export async function updateReservationStatus(
     rejected: 'reservation_rejected',
     ongoing: 'reservation_picked_up',
     completed: 'reservation_completed',
-  }
+  };
 
-  const eventType = notificationEventMap[status]
+  const eventType = notificationEventMap[status];
   if (eventType) {
     dispatchNotification(eventType, {
       store: {
@@ -374,61 +495,68 @@ export async function updateReservationStatus(
         phone: reservation.customer.phone,
       },
     }).catch((error) => {
-      console.error('Failed to dispatch admin notification:', error)
-    })
+      console.error('Failed to dispatch admin notification:', error);
+    });
   }
 
   // Platform admin notification
-  const storeInfo = { id: store.id, name: store.name, slug: store.slug }
-  const currency = store.settings?.currency
+  const storeInfo = { id: store.id, name: store.name, slug: store.slug };
+  const currency = store.settings?.currency;
   if (status === 'confirmed') {
-    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {})
+    notifyReservationConfirmed(storeInfo, reservation.number).catch(() => {});
   } else if (status === 'rejected') {
-    notifyReservationRejected(storeInfo, reservation.number).catch(() => {})
+    notifyReservationRejected(storeInfo, reservation.number).catch(() => {});
   } else if (status === 'ongoing') {
-    notifyEquipmentPickedUp(storeInfo, reservation.number).catch(() => {})
+    notifyEquipmentPickedUp(storeInfo, reservation.number).catch(() => {});
   } else if (status === 'completed') {
-    notifyReservationCompleted(storeInfo, reservation.number, parseFloat(reservation.totalAmount), currency).catch(() => {})
+    notifyReservationCompleted(
+      storeInfo,
+      reservation.number,
+      parseFloat(reservation.totalAmount),
+      currency,
+    ).catch(() => {});
   }
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
   const responseWarnings = [
     ...validationWarnings.map((warning) => ({
       key: warning.key,
       params: warning.params,
     })),
     ...(tulipWarning ? [tulipWarning] : []),
-  ]
+  ];
 
   return {
     success: true,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
-  }
+  };
 }
 
 export async function cancelReservation(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
-  if (['cancelled', 'completed', 'rejected'].includes(reservation.status || '')) {
-    return { error: 'errors.cannotCancelReservation' }
+  if (
+    ['cancelled', 'completed', 'rejected'].includes(reservation.status || '')
+  ) {
+    return { error: 'errors.cannotCancelReservation' };
   }
 
   await db
@@ -437,25 +565,25 @@ export async function cancelReservation(reservationId: string) {
       status: 'cancelled',
       updatedAt: new Date(),
     })
-    .where(eq(reservations.id, reservationId))
+    .where(eq(reservations.id, reservationId));
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'cancelled',
-    undefined,
-    { previousStatus: reservation.status }
-  )
+  await logReservationActivity(reservationId, 'cancelled', undefined, {
+    previousStatus: reservation.status,
+  });
 
   if (reservation.tulipContractId) {
     try {
-      await cancelTulipContractForReservation({ reservationId })
+      await cancelTulipContractForReservation({ reservationId });
     } catch (error) {
-      console.error('[tulip] Failed to cancel contract from dashboard cancellation:', {
-        reservationId,
-        contractId: reservation.tulipContractId,
-        error,
-      })
+      console.error(
+        '[tulip] Failed to cancel contract from dashboard cancellation:',
+        {
+          reservationId,
+          contractId: reservation.tulipContractId,
+          error,
+        },
+      );
     }
   }
 
@@ -484,38 +612,38 @@ export async function cancelReservation(reservationId: string) {
       phone: reservation.customer.phone,
     },
   }).catch((error) => {
-    console.error('Failed to dispatch cancellation notification:', error)
-  })
+    console.error('Failed to dispatch cancellation notification:', error);
+  });
 
   // Platform admin notification
   notifyReservationCancelled(
     { id: store.id, name: store.name, slug: store.slug },
-    reservation.number
-  ).catch(() => {})
+    reservation.number,
+  ).catch(() => {});
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  return { success: true };
 }
 
 export async function updateReservationNotes(
   reservationId: string,
-  internalNotes: string
+  internalNotes: string,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   await db
@@ -524,50 +652,65 @@ export async function updateReservationNotes(
       internalNotes,
       updatedAt: new Date(),
     })
-    .where(eq(reservations.id, reservationId))
+    .where(eq(reservations.id, reservationId));
 
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true }
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  return { success: true };
 }
 
 interface CreateReservationData {
-  customerId?: string
+  customerId?: string;
   newCustomer?: {
-    email: string
-    firstName: string
-    lastName: string
-    phone?: string
-  }
-  startDate: Date
-  endDate: Date
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+  };
+  startDate: Date;
+  endDate: Date;
   items: Array<{
-    productId: string
-    quantity: number
-    selectedAttributes?: UnitAttributes
+    productId: string;
+    quantity: number;
+    selectedAttributes?: UnitAttributes;
     priceOverride?: {
-      unitPrice: number
-    }
-  }>
+      unitPrice: number;
+    };
+  }>;
   customItems?: Array<{
-    name: string
-    description: string
-    unitPrice: number
-    deposit: number
-    quantity: number
-    pricingMode: PricingMode
-  }>
-  internalNotes?: string
-  tulipInsuranceOptIn?: boolean
-  sendConfirmationEmail?: boolean
+    name: string;
+    description: string;
+    unitPrice: number;
+    deposit: number;
+    quantity: number;
+    pricingMode: PricingMode;
+  }>;
+  delivery?: {
+    option: 'pickup' | 'delivery';
+    address?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+    returnAddress?: string;
+    returnCity?: string;
+    returnPostalCode?: string;
+    returnCountry?: string;
+    returnLatitude?: number;
+    returnLongitude?: number;
+  };
+  internalNotes?: string;
+  tulipInsuranceOptIn?: boolean;
+  sendConfirmationEmail?: boolean;
 }
 
 export async function createManualReservation(data: CreateReservationData) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
-  let customerId = data.customerId
+  let customerId = data.customerId;
 
   // Create new customer if needed
   if (!customerId && data.newCustomer) {
@@ -575,14 +718,14 @@ export async function createManualReservation(data: CreateReservationData) {
     const existingCustomer = await db.query.customers.findFirst({
       where: and(
         eq(customers.storeId, store.id),
-        eq(customers.email, data.newCustomer.email)
+        eq(customers.email, data.newCustomer.email),
       ),
-    })
+    });
 
     if (existingCustomer) {
-      customerId = existingCustomer.id
+      customerId = existingCustomer.id;
     } else {
-      const newCustomerId = nanoid()
+      const newCustomerId = nanoid();
       await db.insert(customers).values({
         id: newCustomerId,
         storeId: store.id,
@@ -590,25 +733,27 @@ export async function createManualReservation(data: CreateReservationData) {
         firstName: data.newCustomer.firstName,
         lastName: data.newCustomer.lastName,
         phone: data.newCustomer.phone || null,
-      })
-      customerId = newCustomerId
+      });
+      customerId = newCustomerId;
     }
   }
 
   if (!customerId) {
-    return { error: 'errors.customerRequired' }
+    return { error: 'errors.customerRequired' };
   }
 
-  const tulipMode = getDashboardTulipInsuranceMode(store.settings as StoreSettings | null)
+  const tulipMode = getDashboardTulipInsuranceMode(
+    store.settings as StoreSettings | null,
+  );
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
     defaultOptional: true,
-  })
+  });
 
   // Calculate totals
-  let subtotalAmount = 0
-  let depositAmount = 0
+  let subtotalAmount = 0;
+  let depositAmount = 0;
 
   // Process catalog products with pricing tiers
   const productDetails = await Promise.all(
@@ -616,40 +761,52 @@ export async function createManualReservation(data: CreateReservationData) {
       const product = await db.query.products.findFirst({
         where: and(
           eq(products.id, item.productId),
-          eq(products.storeId, store.id)
+          eq(products.storeId, store.id),
         ),
         with: {
           pricingTiers: true,
         },
-      })
+      });
 
       if (!product) {
-        throw new Error(`errors.productNotFound`)
+        throw new Error(`errors.productNotFound`);
       }
 
-      const bookingAttributeAxes = (product.bookingAttributeAxes || []) as BookingAttributeAxis[]
+      const bookingAttributeAxes = (product.bookingAttributeAxes ||
+        []) as BookingAttributeAxis[];
       const normalizedSelectedAttributes = canonicalizeAttributes(
         bookingAttributeAxes,
-        item.selectedAttributes
-      )
-      const hasSelectedAttributes = Object.keys(normalizedSelectedAttributes).length > 0
+        item.selectedAttributes,
+      );
+      const hasSelectedAttributes =
+        Object.keys(normalizedSelectedAttributes).length > 0;
       const hasCompleteSelection = hasCompleteAttributes(
         bookingAttributeAxes,
-        normalizedSelectedAttributes
-      )
+        normalizedSelectedAttributes,
+      );
       const combinationKey =
         bookingAttributeAxes.length > 0
           ? hasCompleteSelection
-            ? buildCombinationKey(bookingAttributeAxes, normalizedSelectedAttributes)
+            ? buildCombinationKey(
+                bookingAttributeAxes,
+                normalizedSelectedAttributes,
+              )
             : null
           : product.trackUnits
             ? DEFAULT_COMBINATION_KEY
-            : null
+            : null;
 
       // Get effective pricing mode for this product
-      const effectivePricingMode = toPricingMode(product.pricingMode)
-      const duration = calculateDuration(data.startDate, data.endDate, effectivePricingMode)
-      const durationMinutes = calculateDurationMinutes(data.startDate, data.endDate)
+      const effectivePricingMode = toPricingMode(product.pricingMode);
+      const duration = calculateDuration(
+        data.startDate,
+        data.endDate,
+        effectivePricingMode,
+      );
+      const durationMinutes = calculateDurationMinutes(
+        data.startDate,
+        data.endDate,
+      );
 
       // Convert pricing tiers to the expected format
       const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
@@ -657,93 +814,106 @@ export async function createManualReservation(data: CreateReservationData) {
         minDuration: tier.minDuration ?? 1,
         discountPercent: parseFloat(tier.discountPercent ?? '0'),
         displayOrder: tier.displayOrder || 0,
-      }))
+      }));
       const rates: Rate[] = (product.pricingTiers || [])
         .filter(
           (tier): tier is typeof tier & { period: number; price: string } =>
             typeof tier.period === 'number' &&
             tier.period > 0 &&
-            typeof tier.price === 'string'
+            typeof tier.price === 'string',
         )
         .map((tier, index) => ({
           id: tier.id,
           period: tier.period,
           price: parseFloat(tier.price),
           displayOrder: tier.displayOrder ?? index,
-        }))
+        }));
 
-      const priceResult = isRateBasedProduct({
-        basePeriodMinutes: product.basePeriodMinutes,
-      })
-        ? calculateRentalPriceV2(
-            {
-              basePrice: parseFloat(product.price),
-              basePeriodMinutes: product.basePeriodMinutes!,
-              deposit: parseFloat(product.deposit || '0'),
-              rates,
-            },
-            durationMinutes,
-            item.quantity,
-          )
-        : calculateRentalPrice(
-            {
-              basePrice: parseFloat(product.price),
-              deposit: parseFloat(product.deposit || '0'),
-              pricingMode: effectivePricingMode,
-              tiers,
-            },
-            duration,
-            item.quantity,
-          )
+      // Fetch seasonal pricings for this product
+      const seasonalPricingConfigs = await fetchSeasonalPricingConfigs(
+        product.id,
+      );
 
-      let pricingBreakdown =
-        'effectivePricePerUnit' in priceResult
-          ? generatePricingBreakdown(priceResult, effectivePricingMode)
-          : {
-              basePrice: parseFloat(product.price),
-              effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
-              duration: durationMinutes,
-              pricingMode: effectivePricingMode,
-              discountPercent: priceResult.reductionPercent,
-              discountAmount: priceResult.savings,
-              tierApplied: priceResult.appliedRate
-                ? `${priceResult.appliedRate.period}m`
-                : null,
-              durationMinutes,
-              appliedPeriods: priceResult.periodsUsed,
-              optimizerVersion: 'v2',
-              taxRate: null,
-              taxAmount: null,
-              subtotalExclTax: null,
-              subtotalInclTax: null,
+      const seasonalResult = calculateSeasonalAwarePrice(
+        {
+          basePrice: parseFloat(product.price),
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
+          deposit: parseFloat(product.deposit || '0'),
+          pricingMode: effectivePricingMode,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
+          tiers,
+          rates,
+        },
+        seasonalPricingConfigs,
+        data.startDate,
+        data.endDate,
+        item.quantity,
+      );
+
+      // Build a compatible result for existing code paths
+      const priceResult = {
+        subtotal: seasonalResult.subtotal,
+        originalSubtotal: seasonalResult.originalSubtotal,
+        savings: seasonalResult.savings,
+        deposit: seasonalResult.deposit,
+        total: seasonalResult.total,
+      };
+
+      let pricingBreakdown: PricingBreakdown = {
+        basePrice: parseFloat(product.price),
+        effectivePrice: seasonalResult.subtotal / Math.max(1, item.quantity),
+        duration: durationMinutes,
+        pricingMode: effectivePricingMode,
+        discountPercent:
+          seasonalResult.savings > 0 && seasonalResult.originalSubtotal > 0
+            ? Math.round(
+                (seasonalResult.savings / seasonalResult.originalSubtotal) *
+                  100,
+              )
+            : null,
+        discountAmount: seasonalResult.savings,
+        tierApplied: null,
+        durationMinutes,
+        appliedPeriods: undefined,
+        optimizerVersion: 'v2',
+        taxRate: null,
+        taxAmount: null,
+        subtotalExclTax: null,
+        subtotalInclTax: null,
+        ...(seasonalResult.isSeasonal
+          ? {
+              seasonalSegments: seasonalResult.segments.map((seg) => ({
+                seasonalPricingId: seg.seasonalPricingId,
+                seasonalPricingName: seg.seasonalPricingName,
+                startDate: seg.startDate.toISOString(),
+                endDate: seg.endDate.toISOString(),
+                subtotal: seg.subtotal,
+              })),
             }
+          : {}),
+      };
 
       // Check for price override
-      const hasPriceOverride = !!item.priceOverride
+      const hasPriceOverride = !!item.priceOverride;
       let effectiveUnitPrice =
-        'effectivePricePerUnit' in priceResult
-          ? priceResult.effectivePricePerUnit
-          : priceResult.subtotal / Math.max(1, item.quantity)
-      let effectiveSubtotal = priceResult.subtotal
+        priceResult.subtotal / Math.max(1, item.quantity);
+      let effectiveSubtotal = priceResult.subtotal;
 
       if (hasPriceOverride) {
-        effectiveUnitPrice = item.priceOverride!.unitPrice
-        effectiveSubtotal = effectiveUnitPrice * duration * item.quantity
+        effectiveUnitPrice = item.priceOverride!.unitPrice;
+        effectiveSubtotal = effectiveUnitPrice * duration * item.quantity;
 
         // Update pricing breakdown to reflect the override
         pricingBreakdown = {
           ...pricingBreakdown,
           effectivePrice: effectiveUnitPrice,
           isManualOverride: true,
-          originalPrice:
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity),
-        }
+          originalPrice: priceResult.subtotal / Math.max(1, item.quantity),
+        };
       }
 
-      subtotalAmount += effectiveSubtotal
-      depositAmount += priceResult.deposit
+      subtotalAmount += effectiveSubtotal;
+      depositAmount += priceResult.deposit;
 
       return {
         product,
@@ -753,20 +923,26 @@ export async function createManualReservation(data: CreateReservationData) {
         totalPrice: effectiveSubtotal.toFixed(2),
         pricingBreakdown,
         combinationKey,
-        selectedAttributes: hasSelectedAttributes ? normalizedSelectedAttributes : null,
+        selectedAttributes: hasSelectedAttributes
+          ? normalizedSelectedAttributes
+          : null,
         isCustomItem: false,
-      }
-    })
-  )
+      };
+    }),
+  );
 
   // Process custom items (no tiered pricing for custom items)
   const customItemDetails = (data.customItems || []).map((item) => {
-    const duration = calculateDuration(data.startDate, data.endDate, item.pricingMode)
-    const totalPrice = item.unitPrice * duration * item.quantity
-    const totalDeposit = item.deposit * item.quantity
+    const duration = calculateDuration(
+      data.startDate,
+      data.endDate,
+      item.pricingMode,
+    );
+    const totalPrice = item.unitPrice * duration * item.quantity;
+    const totalDeposit = item.deposit * item.quantity;
 
-    subtotalAmount += totalPrice
-    depositAmount += totalDeposit
+    subtotalAmount += totalPrice;
+    depositAmount += totalDeposit;
 
     return {
       name: item.name,
@@ -790,14 +966,86 @@ export async function createManualReservation(data: CreateReservationData) {
         isManualOverride: true,
       } satisfies PricingBreakdown,
       isCustomItem: true,
+    };
+  });
+
+  // Delivery validation and fee calculation
+  let deliveryFeeAmount = 0;
+  let deliveryDistanceKm: number | null = null;
+  let returnDistanceKm: number | null = null;
+  const storeDeliverySettings = store.settings?.delivery;
+
+  if (data.delivery?.option === 'delivery') {
+    if (!storeDeliverySettings?.enabled) {
+      return { error: 'errors.deliveryNotEnabled' };
     }
-  })
+
+    if (!data.delivery.latitude || !data.delivery.longitude) {
+      return { error: 'errors.deliveryAddressRequired' };
+    }
+
+    if (!store.latitude || !store.longitude) {
+      return { error: 'errors.storeCoordinatesNotConfigured' };
+    }
+
+    const sLat = parseFloat(store.latitude);
+    const sLon = parseFloat(store.longitude);
+
+    deliveryDistanceKm = calculateHaversineDistance(
+      sLat,
+      sLon,
+      data.delivery.latitude,
+      data.delivery.longitude,
+    );
+
+    const validation = validateDelivery(
+      deliveryDistanceKm,
+      storeDeliverySettings,
+    );
+    if (!validation.valid) {
+      return { error: validation.errorKey || 'errors.deliveryTooFar' };
+    }
+
+    // Validate return address if provided
+    if (
+      data.delivery.returnLatitude != null &&
+      data.delivery.returnLongitude != null &&
+      storeDeliverySettings.allowDifferentReturnAddress
+    ) {
+      returnDistanceKm = calculateHaversineDistance(
+        sLat,
+        sLon,
+        data.delivery.returnLatitude,
+        data.delivery.returnLongitude,
+      );
+
+      const returnValidation = validateDelivery(
+        returnDistanceKm,
+        storeDeliverySettings,
+      );
+      if (!returnValidation.valid) {
+        return { error: 'errors.returnAddressTooFar' };
+      }
+    }
+
+    // Calculate delivery fee server-side
+    const isIncluded = storeDeliverySettings.mode === 'included';
+    deliveryFeeAmount = isIncluded
+      ? 0
+      : calculateDeliveryFee(
+          deliveryDistanceKm,
+          storeDeliverySettings,
+          subtotalAmount,
+          returnDistanceKm,
+        );
+  }
 
   // Generate reservation number
-  const reservationNumber = await generateReservationNumber(store.id)
+  const reservationNumber = await generateReservationNumber(store.id);
 
   // Create reservation
-  const reservationId = nanoid()
+  const reservationId = nanoid();
+  const isDelivery = data.delivery?.option === 'delivery';
   await db.insert(reservations).values({
     id: reservationId,
     storeId: store.id,
@@ -808,12 +1056,43 @@ export async function createManualReservation(data: CreateReservationData) {
     endDate: data.endDate,
     subtotalAmount: subtotalAmount.toFixed(2),
     depositAmount: depositAmount.toFixed(2),
-    totalAmount: subtotalAmount.toFixed(2),
+    totalAmount: (subtotalAmount + deliveryFeeAmount).toFixed(2),
     internalNotes: data.internalNotes || null,
     source: 'manual',
     tulipInsuranceOptIn,
     tulipInsuranceAmount: null,
-  })
+    // Delivery fields
+    deliveryOption: data.delivery?.option || 'pickup',
+    deliveryAddress: isDelivery ? (data.delivery?.address ?? null) : null,
+    deliveryCity: isDelivery ? (data.delivery?.city ?? null) : null,
+    deliveryPostalCode: isDelivery ? (data.delivery?.postalCode ?? null) : null,
+    deliveryCountry: isDelivery ? (data.delivery?.country ?? null) : null,
+    deliveryLatitude:
+      isDelivery && data.delivery?.latitude
+        ? data.delivery.latitude.toString()
+        : null,
+    deliveryLongitude:
+      isDelivery && data.delivery?.longitude
+        ? data.delivery.longitude.toString()
+        : null,
+    deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
+    deliveryFee: deliveryFeeAmount.toFixed(2),
+    returnAddress: isDelivery ? (data.delivery?.returnAddress ?? null) : null,
+    returnCity: isDelivery ? (data.delivery?.returnCity ?? null) : null,
+    returnPostalCode: isDelivery
+      ? (data.delivery?.returnPostalCode ?? null)
+      : null,
+    returnCountry: isDelivery ? (data.delivery?.returnCountry ?? null) : null,
+    returnLatitude:
+      isDelivery && data.delivery?.returnLatitude != null
+        ? data.delivery.returnLatitude.toString()
+        : null,
+    returnLongitude:
+      isDelivery && data.delivery?.returnLongitude != null
+        ? data.delivery.returnLongitude.toString()
+        : null,
+    returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
+  });
 
   // Create reservation items for catalog products
   for (const detail of productDetails) {
@@ -835,7 +1114,7 @@ export async function createManualReservation(data: CreateReservationData) {
         combinationKey: detail.combinationKey,
         selectedAttributes: detail.selectedAttributes,
       },
-    })
+    });
   }
 
   // Create reservation items for custom items
@@ -854,7 +1133,7 @@ export async function createManualReservation(data: CreateReservationData) {
         description: customItem.description,
         images: [],
       },
-    })
+    });
   }
 
   // Log activity for manual reservation creation (auto-confirmed)
@@ -862,25 +1141,25 @@ export async function createManualReservation(data: CreateReservationData) {
     reservationId,
     'created',
     'Manual reservation created',
-    { source: 'manual', status: 'confirmed' }
-  )
+    { source: 'manual', status: 'confirmed' },
+  );
 
   try {
-    await createTulipContractForReservation({ reservationId })
+    await createTulipContractForReservation({ reservationId });
   } catch (error) {
     console.error('[tulip] Failed to create contract for manual reservation:', {
       reservationId,
       error,
-    })
+    });
   }
 
   // Get customer info for email
   const customer = await db.query.customers.findFirst({
     where: eq(customers.id, customerId),
-  })
+  });
 
   // Send confirmation email for manual reservations (if enabled)
-  const shouldSendEmail = data.sendConfirmationEmail !== false
+  const shouldSendEmail = data.sendConfirmationEmail !== false;
   if (customer && shouldSendEmail) {
     const storeData = {
       id: store.id,
@@ -891,13 +1170,13 @@ export async function createManualReservation(data: CreateReservationData) {
       phone: store.phone,
       address: store.address,
       theme: store.theme,
-    }
+    };
 
     const customerData = {
       firstName: customer.firstName,
       lastName: customer.lastName,
       email: customer.email,
-    }
+    };
 
     // Combine catalog products and custom items for email
     const emailItems = [
@@ -913,10 +1192,10 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: parseFloat(item.unitPrice),
         totalPrice: parseFloat(item.totalPrice),
       })),
-    ]
+    ];
 
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+    const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
 
     // TODO: Use customer's stored locale preference when available
     sendReservationConfirmationEmail({
@@ -936,8 +1215,8 @@ export async function createManualReservation(data: CreateReservationData) {
       reservationUrl,
       locale: getLocaleFromCountry(store.settings?.country),
     }).catch((error) => {
-      console.error('Failed to send reservation confirmation email:', error)
-    })
+      console.error('Failed to send reservation confirmation email:', error);
+    });
   }
 
   // Platform admin notification
@@ -945,7 +1224,7 @@ export async function createManualReservation(data: CreateReservationData) {
     ? `${customer.firstName} ${customer.lastName}`
     : data.newCustomer
       ? `${data.newCustomer.firstName} ${data.newCustomer.lastName}`
-      : 'Unknown'
+      : 'Unknown';
   notifyNewReservation(
     { id: store.id, name: store.name, slug: store.slug },
     {
@@ -953,24 +1232,24 @@ export async function createManualReservation(data: CreateReservationData) {
       customerName,
       totalAmount: subtotalAmount,
       currency: store.settings?.currency,
-    }
-  ).catch(() => {})
+    },
+  ).catch(() => {});
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath('/dashboard')
-  return { success: true, reservationId }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath('/dashboard');
+  return { success: true, reservationId };
 }
 
 export async function getReservation(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return null
+    return null;
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
@@ -982,33 +1261,33 @@ export async function getReservation(reservationId: string) {
       payments: true,
       documents: true,
     },
-  })
+  });
 
-  return reservation
+  return reservation;
 }
 
 export async function getStoreCustomers() {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return []
+    return [];
   }
 
   return db.query.customers.findMany({
     where: eq(customers.storeId, store.id),
     orderBy: (customers, { desc }) => [desc(customers.createdAt)],
-  })
+  });
 }
 
 export async function getStoreProducts() {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return []
+    return [];
   }
 
   return db.query.products.findMany({
     where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
     orderBy: (products, { asc }) => [asc(products.name)],
-  })
+  });
 }
 
 // ============================================================================
@@ -1016,53 +1295,53 @@ export async function getStoreProducts() {
 // ============================================================================
 
 interface UpdateReservationItem {
-  id?: string // Existing item ID (for update) or undefined (for new)
-  productId?: string | null // null for custom items
-  quantity: number
-  unitPrice: number
-  depositPerUnit: number
-  isManualPrice?: boolean
-  pricingMode?: PricingMode
+  id?: string; // Existing item ID (for update) or undefined (for new)
+  productId?: string | null; // null for custom items
+  quantity: number;
+  unitPrice: number;
+  depositPerUnit: number;
+  isManualPrice?: boolean;
+  pricingMode?: PricingMode;
   productSnapshot: {
-    name: string
-    description?: string | null
-    images?: string[]
-  }
+    name: string;
+    description?: string | null;
+    images?: string[];
+  };
 }
 
 interface UpdateReservationData {
-  startDate?: Date
-  endDate?: Date
-  tulipInsuranceOptIn?: boolean
-  items?: UpdateReservationItem[]
+  startDate?: Date;
+  endDate?: Date;
+  tulipInsuranceOptIn?: boolean;
+  items?: UpdateReservationItem[];
 }
 
 export async function updateReservation(
   reservationId: string,
-  data: UpdateReservationData
+  data: UpdateReservationData,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       items: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   // Cannot edit completed reservations
   if (reservation.status === 'completed') {
-    return { error: 'errors.cannotEditCompletedReservation' }
+    return { error: 'errors.cannotEditCompletedReservation' };
   }
 
   // Store previous state for activity log
@@ -1080,126 +1359,158 @@ export async function updateReservation(
       totalPrice: parseFloat(item.totalPrice),
       productSnapshot: item.productSnapshot,
     })),
-  }
+  };
 
   // Determine new dates
-  const newStartDate = data.startDate || reservation.startDate
-  const newEndDate = data.endDate || reservation.endDate
-  const tulipMode = getDashboardTulipInsuranceMode(store.settings as StoreSettings | null)
+  const newStartDate = data.startDate || reservation.startDate;
+  const newEndDate = data.endDate || reservation.endDate;
+  const tulipMode = getDashboardTulipInsuranceMode(
+    store.settings as StoreSettings | null,
+  );
   const nextTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
     current: reservation.tulipInsuranceOptIn,
     defaultOptional: true,
-  })
+  });
 
   const validationWarnings = evaluateReservationRules({
     startDate: newStartDate,
     endDate: newEndDate,
     storeSettings: store.settings,
-  })
+  });
 
   // Calculate new totals
-  let newSubtotalAmount = 0
-  let newDepositAmount = 0
+  let newSubtotalAmount = 0;
+  let newDepositAmount = 0;
 
   // Process items
   if (data.items && data.items.length > 0) {
     // Delete existing items
-    await db.delete(reservationItems).where(
-      eq(reservationItems.reservationId, reservationId)
-    )
+    await db
+      .delete(reservationItems)
+      .where(eq(reservationItems.reservationId, reservationId));
 
     // Insert new items
     for (const item of data.items) {
-      let pricingBreakdown: PricingBreakdown | null = null
-      let finalUnitPrice = item.unitPrice
-      let itemPricingMode: PricingMode = toPricingMode(item.pricingMode)
-      let duration = calculateDuration(newStartDate, newEndDate, itemPricingMode)
-      let totalPrice = item.unitPrice * duration * item.quantity
+      let pricingBreakdown: PricingBreakdown | null = null;
+      let finalUnitPrice = item.unitPrice;
+      let itemPricingMode: PricingMode = toPricingMode(item.pricingMode);
+      let duration = calculateDuration(
+        newStartDate,
+        newEndDate,
+        itemPricingMode,
+      );
+      let totalPrice = item.unitPrice * duration * item.quantity;
 
       // If not manual price and has a productId, calculate with tiers
       if (!item.isManualPrice && item.productId) {
         const product = await db.query.products.findFirst({
           where: eq(products.id, item.productId),
           with: { pricingTiers: true },
-        })
+        });
 
         if (product) {
-          const effectivePricingMode = toPricingMode(product.pricingMode)
-          itemPricingMode = effectivePricingMode
-          duration = calculateDuration(newStartDate, newEndDate, itemPricingMode)
-          const durationMinutes = calculateDurationMinutes(newStartDate, newEndDate)
-          const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
-            id: tier.id,
-            minDuration: tier.minDuration ?? 1,
-            discountPercent: parseFloat(tier.discountPercent ?? '0'),
-            displayOrder: tier.displayOrder || 0,
-          }))
+          const effectivePricingMode = toPricingMode(product.pricingMode);
+          itemPricingMode = effectivePricingMode;
+          duration = calculateDuration(
+            newStartDate,
+            newEndDate,
+            itemPricingMode,
+          );
+          const durationMinutes = calculateDurationMinutes(
+            newStartDate,
+            newEndDate,
+          );
+          const tiers: PricingTier[] = (product.pricingTiers || []).map(
+            (tier) => ({
+              id: tier.id,
+              minDuration: tier.minDuration ?? 1,
+              discountPercent: parseFloat(tier.discountPercent ?? '0'),
+              displayOrder: tier.displayOrder || 0,
+            }),
+          );
           const rates: Rate[] = (product.pricingTiers || [])
             .filter(
               (tier): tier is typeof tier & { period: number; price: string } =>
                 typeof tier.period === 'number' &&
                 tier.period > 0 &&
-                typeof tier.price === 'string'
+                typeof tier.price === 'string',
             )
             .map((tier, index) => ({
               id: tier.id,
               period: tier.period,
               price: parseFloat(tier.price),
               displayOrder: tier.displayOrder ?? index,
-            }))
+            }));
 
-          const priceResult = isRateBasedProduct({
-            basePeriodMinutes: product.basePeriodMinutes,
-          })
-            ? calculateRentalPriceV2(
-                {
-                  basePrice: parseFloat(product.price),
-                  basePeriodMinutes: product.basePeriodMinutes!,
-                  deposit: parseFloat(product.deposit || '0'),
-                  rates,
-                },
-                durationMinutes,
-                item.quantity,
-              )
-            : calculateRentalPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  deposit: parseFloat(product.deposit || '0'),
-                  pricingMode: itemPricingMode,
-                  tiers,
-                },
-                duration,
-                item.quantity,
-              )
+          // Fetch seasonal pricings for this product
+          const seasonalPricingConfigsForItem =
+            await fetchSeasonalPricingConfigs(product.id);
 
-          pricingBreakdown =
-            'effectivePricePerUnit' in priceResult
-              ? generatePricingBreakdown(priceResult, itemPricingMode)
-              : {
-                  basePrice: parseFloat(product.price),
-                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
-                  duration: durationMinutes,
-                  pricingMode: itemPricingMode,
-                  discountPercent: priceResult.reductionPercent,
-                  discountAmount: priceResult.savings,
-                  tierApplied: priceResult.appliedRate
-                    ? `${priceResult.appliedRate.period}m`
-                    : null,
-                  durationMinutes,
-                  appliedPeriods: priceResult.periodsUsed,
-                  optimizerVersion: 'v2',
-                  taxRate: null,
-                  taxAmount: null,
-                  subtotalExclTax: null,
-                  subtotalInclTax: null,
+          const seasonalResultForItem = calculateSeasonalAwarePrice(
+            {
+              basePrice: parseFloat(product.price),
+              basePeriodMinutes: product.basePeriodMinutes ?? null,
+              deposit: parseFloat(product.deposit || '0'),
+              pricingMode: itemPricingMode,
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
+              tiers,
+              rates,
+            },
+            seasonalPricingConfigsForItem,
+            newStartDate,
+            newEndDate,
+            item.quantity,
+          );
+
+          const priceResult = {
+            subtotal: seasonalResultForItem.subtotal,
+            originalSubtotal: seasonalResultForItem.originalSubtotal,
+            savings: seasonalResultForItem.savings,
+            deposit: seasonalResultForItem.deposit,
+          };
+
+          pricingBreakdown = {
+            basePrice: parseFloat(product.price),
+            effectivePrice:
+              seasonalResultForItem.subtotal / Math.max(1, item.quantity),
+            duration: durationMinutes,
+            pricingMode: itemPricingMode,
+            discountPercent:
+              seasonalResultForItem.savings > 0 &&
+              seasonalResultForItem.originalSubtotal > 0
+                ? Math.round(
+                    (seasonalResultForItem.savings /
+                      seasonalResultForItem.originalSubtotal) *
+                      100,
+                  )
+                : null,
+            discountAmount: seasonalResultForItem.savings,
+            tierApplied: null,
+            durationMinutes,
+            appliedPeriods: undefined,
+            optimizerVersion: 'v2',
+            taxRate: null,
+            taxAmount: null,
+            subtotalExclTax: null,
+            subtotalInclTax: null,
+            ...(seasonalResultForItem.isSeasonal
+              ? {
+                  seasonalSegments: seasonalResultForItem.segments.map(
+                    (seg) => ({
+                      seasonalPricingId: seg.seasonalPricingId,
+                      seasonalPricingName: seg.seasonalPricingName,
+                      startDate: seg.startDate.toISOString(),
+                      endDate: seg.endDate.toISOString(),
+                      subtotal: seg.subtotal,
+                    }),
+                  ),
                 }
-          finalUnitPrice =
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity)
-          totalPrice = priceResult.subtotal
+              : {}),
+          };
+          finalUnitPrice = priceResult.subtotal / Math.max(1, item.quantity);
+          totalPrice = priceResult.subtotal;
         }
       } else if (item.isManualPrice) {
         pricingBreakdown = {
@@ -1215,12 +1526,12 @@ export async function updateReservation(
           subtotalExclTax: null,
           subtotalInclTax: null,
           isManualOverride: true,
-        }
+        };
       }
 
-      const itemDeposit = item.depositPerUnit * item.quantity
-      newSubtotalAmount += totalPrice
-      newDepositAmount += itemDeposit
+      const itemDeposit = item.depositPerUnit * item.quantity;
+      newSubtotalAmount += totalPrice;
+      newDepositAmount += itemDeposit;
 
       await db.insert(reservationItems).values({
         id: nanoid(),
@@ -1237,97 +1548,121 @@ export async function updateReservation(
           description: item.productSnapshot.description || null,
           images: item.productSnapshot.images || [],
         },
-      })
+      });
     }
   } else {
     // Just recalculate existing items with new duration
     for (const item of reservation.items) {
-      const pricingBreakdown = item.pricingBreakdown as Record<string, unknown> | null
-      const isManualPrice = pricingBreakdown?.isManualOverride === true
+      const pricingBreakdown = item.pricingBreakdown as Record<
+        string,
+        unknown
+      > | null;
+      const isManualPrice = pricingBreakdown?.isManualOverride === true;
 
-      let totalPrice: number
-      let finalUnitPrice = parseFloat(item.unitPrice)
+      let totalPrice: number;
+      let finalUnitPrice = parseFloat(item.unitPrice);
 
       if (!isManualPrice && item.productId) {
         // Recalculate with tiers
         const product = await db.query.products.findFirst({
           where: eq(products.id, item.productId),
           with: { pricingTiers: true },
-        })
+        });
 
         if (product) {
-          const effectivePricingMode = toPricingMode(product.pricingMode)
-          const itemDuration = calculateDuration(newStartDate, newEndDate, effectivePricingMode)
-          const itemDurationMinutes = calculateDurationMinutes(newStartDate, newEndDate)
-          const tiers: PricingTier[] = (product.pricingTiers || []).map((tier) => ({
-            id: tier.id,
-            minDuration: tier.minDuration ?? 1,
-            discountPercent: parseFloat(tier.discountPercent ?? '0'),
-            displayOrder: tier.displayOrder || 0,
-          }))
+          const effectivePricingMode = toPricingMode(product.pricingMode);
+          const itemDuration = calculateDuration(
+            newStartDate,
+            newEndDate,
+            effectivePricingMode,
+          );
+          const itemDurationMinutes = calculateDurationMinutes(
+            newStartDate,
+            newEndDate,
+          );
+          const tiers: PricingTier[] = (product.pricingTiers || []).map(
+            (tier) => ({
+              id: tier.id,
+              minDuration: tier.minDuration ?? 1,
+              discountPercent: parseFloat(tier.discountPercent ?? '0'),
+              displayOrder: tier.displayOrder || 0,
+            }),
+          );
           const rates: Rate[] = (product.pricingTiers || [])
             .filter(
               (tier): tier is typeof tier & { period: number; price: string } =>
                 typeof tier.period === 'number' &&
                 tier.period > 0 &&
-                typeof tier.price === 'string'
+                typeof tier.price === 'string',
             )
             .map((tier, index) => ({
               id: tier.id,
               period: tier.period,
               price: parseFloat(tier.price),
               displayOrder: tier.displayOrder ?? index,
-            }))
+            }));
 
-          const priceResult = isRateBasedProduct({
-            basePeriodMinutes: product.basePeriodMinutes,
-          })
-            ? calculateRentalPriceV2(
-                {
-                  basePrice: parseFloat(product.price),
-                  basePeriodMinutes: product.basePeriodMinutes!,
-                  deposit: parseFloat(product.deposit || '0'),
-                  rates,
-                },
-                itemDurationMinutes,
-                item.quantity,
-              )
-            : calculateRentalPrice(
-                {
-                  basePrice: parseFloat(product.price),
-                  deposit: parseFloat(product.deposit || '0'),
-                  pricingMode: effectivePricingMode,
-                  tiers,
-                },
-                itemDuration,
-                item.quantity,
-              )
-          const newBreakdown: PricingBreakdown =
-            'effectivePricePerUnit' in priceResult
-              ? generatePricingBreakdown(priceResult, effectivePricingMode)
-              : {
-                  basePrice: parseFloat(product.price),
-                  effectivePrice: priceResult.subtotal / Math.max(1, item.quantity),
-                  duration: itemDurationMinutes,
-                  pricingMode: effectivePricingMode,
-                  discountPercent: priceResult.reductionPercent,
-                  discountAmount: priceResult.savings,
-                  tierApplied: priceResult.appliedRate
-                    ? `${priceResult.appliedRate.period}m`
-                    : null,
-                  durationMinutes: itemDurationMinutes,
-                  appliedPeriods: priceResult.periodsUsed,
-                  optimizerVersion: 'v2',
-                  taxRate: null,
-                  taxAmount: null,
-                  subtotalExclTax: null,
-                  subtotalInclTax: null,
+          // Fetch seasonal pricings for this product
+          const seasonalPricingConfigsForDate =
+            await fetchSeasonalPricingConfigs(product.id);
+
+          const seasonalResultForDate = calculateSeasonalAwarePrice(
+            {
+              basePrice: parseFloat(product.price),
+              basePeriodMinutes: product.basePeriodMinutes ?? null,
+              deposit: parseFloat(product.deposit || '0'),
+              pricingMode: effectivePricingMode,
+              enforceStrictTiers: product.enforceStrictTiers ?? false,
+              tiers,
+              rates,
+            },
+            seasonalPricingConfigsForDate,
+            newStartDate,
+            newEndDate,
+            item.quantity,
+          );
+
+          const newBreakdown: PricingBreakdown = {
+            basePrice: parseFloat(product.price),
+            effectivePrice:
+              seasonalResultForDate.subtotal / Math.max(1, item.quantity),
+            duration: itemDurationMinutes,
+            pricingMode: effectivePricingMode,
+            discountPercent:
+              seasonalResultForDate.savings > 0 &&
+              seasonalResultForDate.originalSubtotal > 0
+                ? Math.round(
+                    (seasonalResultForDate.savings /
+                      seasonalResultForDate.originalSubtotal) *
+                      100,
+                  )
+                : null,
+            discountAmount: seasonalResultForDate.savings,
+            tierApplied: null,
+            durationMinutes: itemDurationMinutes,
+            appliedPeriods: undefined,
+            optimizerVersion: 'v2',
+            taxRate: null,
+            taxAmount: null,
+            subtotalExclTax: null,
+            subtotalInclTax: null,
+            ...(seasonalResultForDate.isSeasonal
+              ? {
+                  seasonalSegments: seasonalResultForDate.segments.map(
+                    (seg) => ({
+                      seasonalPricingId: seg.seasonalPricingId,
+                      seasonalPricingName: seg.seasonalPricingName,
+                      startDate: seg.startDate.toISOString(),
+                      endDate: seg.endDate.toISOString(),
+                      subtotal: seg.subtotal,
+                    }),
+                  ),
                 }
+              : {}),
+          };
           finalUnitPrice =
-            'effectivePricePerUnit' in priceResult
-              ? priceResult.effectivePricePerUnit
-              : priceResult.subtotal / Math.max(1, item.quantity)
-          totalPrice = priceResult.subtotal
+            seasonalResultForDate.subtotal / Math.max(1, item.quantity);
+          totalPrice = seasonalResultForDate.subtotal;
 
           await db
             .update(reservationItems)
@@ -1336,38 +1671,50 @@ export async function updateReservation(
               totalPrice: totalPrice.toFixed(2),
               pricingBreakdown: newBreakdown,
             })
-            .where(eq(reservationItems.id, item.id))
+            .where(eq(reservationItems.id, item.id));
         } else {
-          const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode)
-          const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode)
-          totalPrice = finalUnitPrice * itemDuration * item.quantity
+          const fallbackPricingMode = toPricingMode(
+            pricingBreakdown?.pricingMode,
+          );
+          const itemDuration = calculateDuration(
+            newStartDate,
+            newEndDate,
+            fallbackPricingMode,
+          );
+          totalPrice = finalUnitPrice * itemDuration * item.quantity;
           await db
             .update(reservationItems)
             .set({ totalPrice: totalPrice.toFixed(2) })
-            .where(eq(reservationItems.id, item.id))
+            .where(eq(reservationItems.id, item.id));
         }
       } else {
         // Manual price - just multiply by new duration
-        const fallbackPricingMode = toPricingMode(pricingBreakdown?.pricingMode)
-        const itemDuration = calculateDuration(newStartDate, newEndDate, fallbackPricingMode)
-        totalPrice = finalUnitPrice * itemDuration * item.quantity
+        const fallbackPricingMode = toPricingMode(
+          pricingBreakdown?.pricingMode,
+        );
+        const itemDuration = calculateDuration(
+          newStartDate,
+          newEndDate,
+          fallbackPricingMode,
+        );
+        totalPrice = finalUnitPrice * itemDuration * item.quantity;
         await db
           .update(reservationItems)
           .set({
             totalPrice: totalPrice.toFixed(2),
             pricingBreakdown: pricingBreakdown
-              ? {
+              ? ({
                   ...pricingBreakdown,
                   duration: itemDuration,
                   pricingMode: fallbackPricingMode,
-                } as PricingBreakdown
+                } as PricingBreakdown)
               : null,
           })
-          .where(eq(reservationItems.id, item.id))
+          .where(eq(reservationItems.id, item.id));
       }
 
-      newSubtotalAmount += totalPrice
-      newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity
+      newSubtotalAmount += totalPrice;
+      newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
     }
   }
 
@@ -1384,26 +1731,29 @@ export async function updateReservation(
       ...(nextTulipInsuranceOptIn ? {} : { tulipInsuranceAmount: null }),
       updatedAt: new Date(),
     })
-    .where(eq(reservations.id, reservationId))
+    .where(eq(reservations.id, reservationId));
 
-  let tulipWarning: { key: string; params?: Record<string, string | number> } | null = null
+  let tulipWarning: {
+    key: string;
+    params?: Record<string, string | number>;
+  } | null = null;
   if (reservation.status === 'confirmed' || reservation.status === 'ongoing') {
     try {
-      await syncTulipContractForReservation({ reservationId })
+      await syncTulipContractForReservation({ reservationId });
     } catch (error) {
       console.error('[tulip] Failed to sync contract after reservation edit:', {
         reservationId,
         error,
-      })
+      });
 
       tulipWarning = {
         key: getErrorKey(error, 'errors.tulipContractUpdateFailed'),
-      }
+      };
     }
   }
 
   // Calculate difference for activity log
-  const difference = newSubtotalAmount - previousState.subtotalAmount
+  const difference = newSubtotalAmount - previousState.subtotalAmount;
 
   // Log activity
   await logReservationActivity(
@@ -1430,11 +1780,11 @@ export async function updateReservation(
         validationWarnings,
         validationWarningsCount: validationWarnings.length,
       }),
-    }
-  )
+    },
+  );
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
 
   const responseWarnings = [
     ...validationWarnings.map((warning) => ({
@@ -1443,7 +1793,7 @@ export async function updateReservation(
       params: warning.params,
     })),
     ...(tulipWarning ? [tulipWarning] : []),
-  ]
+  ];
 
   return {
     success: true,
@@ -1451,54 +1801,59 @@ export async function updateReservation(
     newTotal: newSubtotalAmount,
     previousTotal: previousState.subtotalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
-  }
+  };
 }
 
 // ============================================================================
 // Payment Actions
 // ============================================================================
 
-export type PaymentType = 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'adjustment'
-export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'check' | 'other'
+export type PaymentType =
+  | 'rental'
+  | 'deposit'
+  | 'deposit_return'
+  | 'damage'
+  | 'adjustment';
+export type PaymentMethod = 'cash' | 'card' | 'transfer' | 'check' | 'other';
 
 interface RecordPaymentData {
-  type: PaymentType
-  amount: number
-  method: PaymentMethod
-  paidAt?: Date
-  notes?: string
+  type: PaymentType;
+  amount: number;
+  method: PaymentMethod;
+  paidAt?: Date;
+  notes?: string;
 }
 
 export async function recordPayment(
   reservationId: string,
-  data: RecordPaymentData
+  data: RecordPaymentData,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   if (data.amount === 0) {
-    return { error: 'errors.invalidAmount' }
+    return { error: 'errors.invalidAmount' };
   }
 
   // Only adjustment type can have negative amounts
   if (data.amount < 0 && data.type !== 'adjustment') {
-    return { error: 'errors.negativeAmountOnlyForAdjustment' }
+    return { error: 'errors.negativeAmountOnlyForAdjustment' };
   }
 
-  const paymentId = nanoid()
+  const paymentId = nanoid();
   await db.insert(payments).values({
     id: paymentId,
     reservationId,
@@ -1508,44 +1863,45 @@ export async function recordPayment(
     status: 'completed',
     paidAt: data.paidAt || new Date(),
     notes: data.notes || null,
-  })
+  });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   const typeLabels: Record<PaymentType, string> = {
     rental: 'Location',
     deposit: 'Caution',
     deposit_return: 'Restitution caution',
     damage: 'Dommages',
     adjustment: 'Ajustement',
-  }
-  const formattedAmount = data.amount < 0
-    ? `-${Math.abs(data.amount).toFixed(2)}${currencySymbol}`
-    : `${data.amount.toFixed(2)}${currencySymbol}`
+  };
+  const formattedAmount =
+    data.amount < 0
+      ? `-${Math.abs(data.amount).toFixed(2)}${currencySymbol}`
+      : `${data.amount.toFixed(2)}${currencySymbol}`;
   await logReservationActivity(
     reservationId,
     'payment_added',
     `${typeLabels[data.type]}: ${formattedAmount} (${data.method})`,
-    { paymentId, type: data.type, amount: data.amount, method: data.method }
-  )
+    { paymentId, type: data.type, amount: data.amount, method: data.method },
+  );
 
   // Platform admin notification
   notifyPaymentReceived(
     { id: store.id, name: store.name, slug: store.slug },
     reservation.number,
     data.amount,
-    store.settings?.currency
-  ).catch(() => {})
+    store.settings?.currency,
+  ).catch(() => {});
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true, paymentId }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  return { success: true, paymentId };
 }
 
 export async function deletePayment(paymentId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   // Get payment with reservation to verify ownership
@@ -1554,83 +1910,88 @@ export async function deletePayment(paymentId: string) {
     with: {
       reservation: true,
     },
-  })
+  });
 
   if (!payment || payment.reservation.storeId !== store.id) {
-    return { error: 'errors.paymentNotFound' }
+    return { error: 'errors.paymentNotFound' };
   }
 
   // Cannot delete Stripe payments
   if (payment.method === 'stripe') {
-    return { error: 'errors.cannotDeleteStripePayment' }
+    return { error: 'errors.cannotDeleteStripePayment' };
   }
 
-  await db.delete(payments).where(eq(payments.id, paymentId))
+  await db.delete(payments).where(eq(payments.id, paymentId));
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     payment.reservationId,
     'payment_updated',
     `Paiement supprimé: ${parseFloat(payment.amount).toFixed(2)}${currencySymbol}`,
-    { paymentId, type: payment.type, amount: payment.amount, action: 'deleted' }
-  )
+    {
+      paymentId,
+      type: payment.type,
+      amount: payment.amount,
+      action: 'deleted',
+    },
+  );
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${payment.reservationId}`)
-  return { success: true }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${payment.reservationId}`);
+  return { success: true };
 }
 
 interface ReturnDepositData {
-  amount: number
-  method: PaymentMethod
-  notes?: string
+  amount: number;
+  method: PaymentMethod;
+  notes?: string;
 }
 
 export async function returnDeposit(
   reservationId: string,
-  data: ReturnDepositData
+  data: ReturnDepositData,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       payments: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   if (data.amount <= 0) {
-    return { error: 'errors.invalidAmount' }
+    return { error: 'errors.invalidAmount' };
   }
 
   // Calculate how much deposit was collected
   const depositCollected = reservation.payments
     .filter((p) => p.type === 'deposit' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
   // Calculate how much was already returned
   const depositReturned = reservation.payments
     .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
-    .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+    .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  const maxReturnable = depositCollected - depositReturned
+  const maxReturnable = depositCollected - depositReturned;
 
   if (data.amount > maxReturnable) {
-    return { error: 'errors.amountExceedsDeposit' }
+    return { error: 'errors.amountExceedsDeposit' };
   }
 
-  const paymentId = nanoid()
+  const paymentId = nanoid();
   await db.insert(payments).values({
     id: paymentId,
     reservationId,
@@ -1640,47 +2001,52 @@ export async function returnDeposit(
     status: 'completed',
     paidAt: new Date(),
     notes: data.notes || null,
-  })
+  });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     reservationId,
     'payment_added',
     `Caution restituée: ${data.amount.toFixed(2)}${currencySymbol} (${data.method})`,
-    { paymentId, type: 'deposit_return', amount: data.amount, method: data.method }
-  )
+    {
+      paymentId,
+      type: 'deposit_return',
+      amount: data.amount,
+      method: data.method,
+    },
+  );
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true, paymentId }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  return { success: true, paymentId };
 }
 
 export async function recordDamage(
   reservationId: string,
-  data: { amount: number; method: PaymentMethod; notes: string }
+  data: { amount: number; method: PaymentMethod; notes: string },
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   if (data.amount <= 0) {
-    return { error: 'errors.invalidAmount' }
+    return { error: 'errors.invalidAmount' };
   }
 
-  const paymentId = nanoid()
+  const paymentId = nanoid();
   await db.insert(payments).values({
     id: paymentId,
     reservationId,
@@ -1690,47 +2056,36 @@ export async function recordDamage(
     status: 'completed',
     paidAt: new Date(),
     notes: data.notes,
-  })
+  });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
+  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     reservationId,
     'payment_added',
     `Frais de dommages: ${data.amount.toFixed(2)}${currencySymbol} - ${data.notes}`,
-    { paymentId, type: 'damage', amount: data.amount, method: data.method }
-  )
+    { paymentId, type: 'damage', amount: data.amount, method: data.method },
+  );
 
-  revalidatePath('/dashboard/reservations')
-  revalidatePath(`/dashboard/reservations/${reservationId}`)
-  return { success: true, paymentId }
+  revalidatePath('/dashboard/reservations');
+  revalidatePath(`/dashboard/reservations/${reservationId}`);
+  return { success: true, paymentId };
 }
 
-// ============================================================================
-// Deposit Authorization Hold (Empreinte Bancaire)
-// ============================================================================
-
-import {
-  createRefund,
-  getChargeRefundableAmount,
-  toStripeCents,
-  createDepositAuthorization,
-  captureDeposit,
-  releaseDeposit,
-  getPaymentMethodDetails,
-  createPaymentRequestSession,
-} from '@/lib/stripe'
-
-type DepositActivityType = 'deposit_authorized' | 'deposit_captured' | 'deposit_released' | 'deposit_failed'
+type DepositActivityType =
+  | 'deposit_authorized'
+  | 'deposit_captured'
+  | 'deposit_released'
+  | 'deposit_failed';
 
 async function logDepositActivity(
   reservationId: string,
   activityType: DepositActivityType,
   description?: string,
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
 ) {
-  const session = await auth()
-  const userId = session?.user?.id || null
+  const session = await auth();
+  const userId = session?.user?.id || null;
 
   await db.insert(reservationActivity).values({
     id: nanoid(),
@@ -1739,44 +2094,44 @@ async function logDepositActivity(
     activityType,
     description,
     metadata,
-  })
+  });
 }
 
 /**
  * Create a deposit authorization hold (empreinte bancaire)
  */
 export async function createDepositHold(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
-    return { error: 'errors.noStripeAccount' }
+    return { error: 'errors.noStripeAccount' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   // Check prerequisites
   if (!reservation.stripeCustomerId || !reservation.stripePaymentMethodId) {
-    return { error: 'errors.stripe.noSavedCard' }
+    return { error: 'errors.stripe.noSavedCard' };
   }
 
   if (reservation.depositStatus !== 'card_saved') {
-    return { error: 'errors.stripe.invalidDepositStatus' }
+    return { error: 'errors.stripe.invalidDepositStatus' };
   }
 
-  const depositAmount = parseFloat(reservation.depositAmount)
+  const depositAmount = parseFloat(reservation.depositAmount);
   if (depositAmount <= 0) {
-    return { error: 'errors.stripe.noDepositRequired' }
+    return { error: 'errors.stripe.noDepositRequired' };
   }
 
-  const currency = store.settings?.currency || 'EUR'
+  const currency = store.settings?.currency || 'EUR';
 
   try {
     const result = await createDepositAuthorization({
@@ -1787,7 +2142,7 @@ export async function createDepositHold(reservationId: string) {
       currency,
       reservationId,
       reservationNumber: reservation.number,
-    })
+    });
 
     // Update reservation
     await db
@@ -1798,7 +2153,7 @@ export async function createDepositHold(reservationId: string) {
         depositAuthorizationExpiresAt: result.expiresAt,
         updatedAt: new Date(),
       })
-      .where(eq(reservations.id, reservationId))
+      .where(eq(reservations.id, reservationId));
 
     // Create payment record
     await db.insert(payments).values({
@@ -1814,22 +2169,26 @@ export async function createDepositHold(reservationId: string) {
       currency,
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    });
 
     // Log activity
-    const currencySymbol = getCurrencySymbol(currency)
+    const currencySymbol = getCurrencySymbol(currency);
     await logDepositActivity(
       reservationId,
       'deposit_authorized',
       `Empreinte de ${depositAmount.toFixed(2)}${currencySymbol} créée`,
-      { paymentIntentId: result.paymentIntentId, amount: depositAmount, expiresAt: result.expiresAt.toISOString() }
-    )
+      {
+        paymentIntentId: result.paymentIntentId,
+        amount: depositAmount,
+        expiresAt: result.expiresAt.toISOString(),
+      },
+    );
 
-    revalidatePath('/dashboard/reservations')
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true, paymentIntentId: result.paymentIntentId }
+    revalidatePath('/dashboard/reservations');
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true, paymentIntentId: result.paymentIntentId };
   } catch (error) {
-    console.error('Failed to create deposit hold:', error)
+    console.error('Failed to create deposit hold:', error);
 
     // Update status to failed
     await db
@@ -1838,16 +2197,16 @@ export async function createDepositHold(reservationId: string) {
         depositStatus: 'failed',
         updatedAt: new Date(),
       })
-      .where(eq(reservations.id, reservationId))
+      .where(eq(reservations.id, reservationId));
 
     await logDepositActivity(
       reservationId,
       'deposit_failed',
       `Échec de l'empreinte: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      { error: error instanceof Error ? error.message : 'Unknown error' }
-    )
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+    );
 
-    return { error: 'errors.stripe.authorizationFailed' }
+    return { error: 'errors.stripe.authorizationFailed' };
   }
 }
 
@@ -1856,45 +2215,48 @@ export async function createDepositHold(reservationId: string) {
  */
 export async function captureDepositHold(
   reservationId: string,
-  data: { amount: number; reason: string }
+  data: { amount: number; reason: string },
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
-    return { error: 'errors.noStripeAccount' }
+    return { error: 'errors.noStripeAccount' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
-  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
-    return { error: 'errors.stripe.noActiveAuthorization' }
+  if (
+    reservation.depositStatus !== 'authorized' ||
+    !reservation.depositPaymentIntentId
+  ) {
+    return { error: 'errors.stripe.noActiveAuthorization' };
   }
 
-  const depositAmount = parseFloat(reservation.depositAmount)
+  const depositAmount = parseFloat(reservation.depositAmount);
   if (data.amount <= 0 || data.amount > depositAmount) {
-    return { error: 'errors.invalidAmount' }
+    return { error: 'errors.invalidAmount' };
   }
 
   if (!data.reason.trim()) {
-    return { error: 'errors.reasonRequired' }
+    return { error: 'errors.reasonRequired' };
   }
 
-  const currency = store.settings?.currency || 'EUR'
+  const currency = store.settings?.currency || 'EUR';
 
   try {
     const result = await captureDeposit({
       stripeAccountId: store.stripeAccountId,
       paymentIntentId: reservation.depositPaymentIntentId,
       amountToCapture: toStripeCents(data.amount, currency),
-    })
+    });
 
     // Update reservation
     await db
@@ -1903,16 +2265,16 @@ export async function captureDepositHold(
         depositStatus: 'captured',
         updatedAt: new Date(),
       })
-      .where(eq(reservations.id, reservationId))
+      .where(eq(reservations.id, reservationId));
 
     // Update the deposit_hold payment
     const depositPayment = await db.query.payments.findFirst({
       where: and(
         eq(payments.reservationId, reservationId),
         eq(payments.type, 'deposit_hold'),
-        eq(payments.status, 'authorized')
+        eq(payments.status, 'authorized'),
       ),
-    })
+    });
 
     if (depositPayment) {
       await db
@@ -1924,7 +2286,7 @@ export async function captureDepositHold(
           paidAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(payments.id, depositPayment.id))
+        .where(eq(payments.id, depositPayment.id));
     }
 
     // Create deposit_capture payment record
@@ -1941,23 +2303,27 @@ export async function captureDepositHold(
       paidAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    });
 
     // Log activity
-    const currencySymbol = getCurrencySymbol(currency)
+    const currencySymbol = getCurrencySymbol(currency);
     await logDepositActivity(
       reservationId,
       'deposit_captured',
       `Caution capturée: ${data.amount.toFixed(2)}${currencySymbol} - ${data.reason}`,
-      { paymentIntentId: reservation.depositPaymentIntentId, amount: data.amount, reason: data.reason }
-    )
+      {
+        paymentIntentId: reservation.depositPaymentIntentId,
+        amount: data.amount,
+        reason: data.reason,
+      },
+    );
 
-    revalidatePath('/dashboard/reservations')
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true, amountCaptured: result.amountCaptured }
+    revalidatePath('/dashboard/reservations');
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true, amountCaptured: result.amountCaptured };
   } catch (error) {
-    console.error('Failed to capture deposit:', error)
-    return { error: 'errors.stripe.captureFailed' }
+    console.error('Failed to capture deposit:', error);
+    return { error: 'errors.stripe.captureFailed' };
   }
 }
 
@@ -1965,31 +2331,34 @@ export async function captureDepositHold(
  * Release deposit authorization (no damage)
  */
 export async function releaseDepositHold(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
-    return { error: 'errors.noStripeAccount' }
+    return { error: 'errors.noStripeAccount' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
-  if (reservation.depositStatus !== 'authorized' || !reservation.depositPaymentIntentId) {
-    return { error: 'errors.stripe.noActiveAuthorization' }
+  if (
+    reservation.depositStatus !== 'authorized' ||
+    !reservation.depositPaymentIntentId
+  ) {
+    return { error: 'errors.stripe.noActiveAuthorization' };
   }
 
   try {
     await releaseDeposit({
       stripeAccountId: store.stripeAccountId,
       paymentIntentId: reservation.depositPaymentIntentId,
-    })
+    });
 
     // Update reservation
     await db
@@ -1998,16 +2367,16 @@ export async function releaseDepositHold(reservationId: string) {
         depositStatus: 'released',
         updatedAt: new Date(),
       })
-      .where(eq(reservations.id, reservationId))
+      .where(eq(reservations.id, reservationId));
 
     // Update the deposit_hold payment
     const depositPayment = await db.query.payments.findFirst({
       where: and(
         eq(payments.reservationId, reservationId),
         eq(payments.type, 'deposit_hold'),
-        eq(payments.status, 'authorized')
+        eq(payments.status, 'authorized'),
       ),
-    })
+    });
 
     if (depositPayment) {
       await db
@@ -2016,26 +2385,29 @@ export async function releaseDepositHold(reservationId: string) {
           status: 'cancelled',
           updatedAt: new Date(),
         })
-        .where(eq(payments.id, depositPayment.id))
+        .where(eq(payments.id, depositPayment.id));
     }
 
     // Log activity
-    const currency = store.settings?.currency || 'EUR'
-    const currencySymbol = getCurrencySymbol(currency)
-    const depositAmount = parseFloat(reservation.depositAmount)
+    const currency = store.settings?.currency || 'EUR';
+    const currencySymbol = getCurrencySymbol(currency);
+    const depositAmount = parseFloat(reservation.depositAmount);
     await logDepositActivity(
       reservationId,
       'deposit_released',
       `Caution de ${depositAmount.toFixed(2)}${currencySymbol} libérée`,
-      { paymentIntentId: reservation.depositPaymentIntentId, amount: depositAmount }
-    )
+      {
+        paymentIntentId: reservation.depositPaymentIntentId,
+        amount: depositAmount,
+      },
+    );
 
-    revalidatePath('/dashboard/reservations')
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true }
+    revalidatePath('/dashboard/reservations');
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true };
   } catch (error) {
-    console.error('Failed to release deposit:', error)
-    return { error: 'errors.stripe.releaseFailed' }
+    console.error('Failed to release deposit:', error);
+    return { error: 'errors.stripe.releaseFailed' };
   }
 }
 
@@ -2043,30 +2415,30 @@ export async function releaseDepositHold(reservationId: string) {
  * Get saved payment method details for a reservation
  */
 export async function getReservationPaymentMethod(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
-    return null
+    return null;
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
-  })
+  });
 
   if (!reservation?.stripePaymentMethodId) {
-    return null
+    return null;
   }
 
   try {
     return await getPaymentMethodDetails(
       store.stripeAccountId,
-      reservation.stripePaymentMethodId
-    )
+      reservation.stripePaymentMethodId,
+    );
   } catch (error) {
-    console.error('Failed to get payment method details:', error)
-    return null
+    console.error('Failed to get payment method details:', error);
+    return null;
   }
 }
 
@@ -2075,60 +2447,62 @@ export async function getReservationPaymentMethod(reservationId: string) {
 // ============================================================================
 
 interface ProcessStripeRefundData {
-  type: 'deposit_return' | 'rental_refund'
-  amount: number
-  notes?: string
+  type: 'deposit_return' | 'rental_refund';
+  amount: number;
+  notes?: string;
 }
 
 export async function processStripeRefund(
   reservationId: string,
-  data: ProcessStripeRefundData
+  data: ProcessStripeRefundData,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store || !store.stripeAccountId) {
-    return { error: 'errors.noStripeAccount' }
+    return { error: 'errors.noStripeAccount' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       payments: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   // Find the original Stripe payment with a charge
   const stripePayment = reservation.payments.find(
-    (p) => p.method === 'stripe' && p.status === 'completed' && p.stripeChargeId
-  )
+    (p) =>
+      p.method === 'stripe' && p.status === 'completed' && p.stripeChargeId,
+  );
 
   if (!stripePayment || !stripePayment.stripeChargeId) {
-    return { error: 'errors.stripe.noChargeToRefund' }
+    return { error: 'errors.stripe.noChargeToRefund' };
   }
 
-  const currency = store.settings?.currency || 'EUR'
+  const currency = store.settings?.currency || 'EUR';
 
   try {
     // Check refundable amount
-    const { refundable, amount: maxRefundable } = await getChargeRefundableAmount(
-      store.stripeAccountId,
-      stripePayment.stripeChargeId
-    )
+    const { refundable, amount: maxRefundable } =
+      await getChargeRefundableAmount(
+        store.stripeAccountId,
+        stripePayment.stripeChargeId,
+      );
 
     if (!refundable) {
-      return { error: 'errors.stripe.alreadyRefunded' }
+      return { error: 'errors.stripe.alreadyRefunded' };
     }
 
-    const refundAmountCents = toStripeCents(data.amount, currency)
+    const refundAmountCents = toStripeCents(data.amount, currency);
 
     if (refundAmountCents > maxRefundable) {
-      return { error: 'errors.stripe.refundExceedsCharge' }
+      return { error: 'errors.stripe.refundExceedsCharge' };
     }
 
     // Process refund
@@ -2136,10 +2510,10 @@ export async function processStripeRefund(
       stripeAccountId: store.stripeAccountId,
       chargeId: stripePayment.stripeChargeId,
       amount: refundAmountCents,
-    })
+    });
 
     // Create payment record for the refund (negative amount for display)
-    const paymentId = nanoid()
+    const paymentId = nanoid();
     await db.insert(payments).values({
       id: paymentId,
       reservationId,
@@ -2154,22 +2528,27 @@ export async function processStripeRefund(
       paidAt: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
-    })
+    });
 
     // Log activity
     await logReservationActivity(
       reservationId,
       'payment_updated',
       undefined, // Details in metadata
-      { paymentId, refundId: refund.refundId, amount: data.amount, type: data.type }
-    )
+      {
+        paymentId,
+        refundId: refund.refundId,
+        amount: data.amount,
+        type: data.type,
+      },
+    );
 
-    revalidatePath('/dashboard/reservations')
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true, refundId: refund.refundId }
+    revalidatePath('/dashboard/reservations');
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true, refundId: refund.refundId };
   } catch (error) {
-    console.error('Stripe refund error:', error)
-    return { error: 'errors.stripe.refundFailed' }
+    console.error('Stripe refund error:', error);
+    return { error: 'errors.stripe.refundFailed' };
   }
 }
 
@@ -2178,24 +2557,24 @@ export async function processStripeRefund(
 // ============================================================================
 
 interface SendReservationEmailData {
-  templateId: string
-  customSubject?: string
-  customMessage?: string
+  templateId: string;
+  customSubject?: string;
+  customMessage?: string;
 }
 
 export async function sendReservationEmail(
   reservationId: string,
-  data: SendReservationEmailData
+  data: SendReservationEmailData,
 ) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
@@ -2205,10 +2584,10 @@ export async function sendReservationEmail(
         },
       },
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   const storeData = {
@@ -2221,27 +2600,29 @@ export async function sendReservationEmail(
     address: store.address,
     theme: store.theme,
     emailSettings: store.emailSettings,
-  }
+  };
 
   const customerData = {
     firstName: reservation.customer.firstName,
     lastName: reservation.customer.lastName,
     email: reservation.customer.email,
-  }
+  };
 
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
 
   try {
     // Get button colors based on primary color contrast
-    const primaryColor = store.theme?.primaryColor || '#0066FF'
-    const buttonTextColor = getContrastColorHex(primaryColor)
+    const primaryColor = store.theme?.primaryColor || '#0066FF';
+    const buttonTextColor = getContrastColorHex(primaryColor);
 
     switch (data.templateId) {
       case 'contract': {
         // Send contract email with PDF attachment link
-        const contractUrl = `${env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`
-        const subject = data.customSubject || `Contrat de location #${reservation.number} - ${store.name}`
+        const contractUrl = `${env.NEXT_PUBLIC_APP_URL}/api/reservations/${reservationId}/contract`;
+        const subject =
+          data.customSubject ||
+          `Contrat de location #${reservation.number} - ${store.name}`;
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Bonjour ${customerData.firstName},</h2>
@@ -2250,16 +2631,22 @@ export async function sendReservationEmail(
             <p><a href="${contractUrl}" style="display: inline-block; background: ${primaryColor}; color: ${buttonTextColor}; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Télécharger le contrat</a></p>
             <p>À bientôt,<br/>${store.name}</p>
           </div>
-        `
-        await sendEmail({ to: customerData.email, subject, html })
-        break
+        `;
+        await sendEmail({ to: customerData.email, subject, html });
+        break;
       }
 
       case 'payment_request': {
         // Send payment request email
-        const amountDue = parseFloat(reservation.totalAmount) + parseFloat(reservation.depositAmount)
-        const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR')
-        const subject = data.customSubject || `Demande de paiement - Réservation #${reservation.number}`
+        const amountDue =
+          parseFloat(reservation.totalAmount) +
+          parseFloat(reservation.depositAmount);
+        const currencySymbol = getCurrencySymbol(
+          store.settings?.currency || 'EUR',
+        );
+        const subject =
+          data.customSubject ||
+          `Demande de paiement - Réservation #${reservation.number}`;
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Bonjour ${customerData.firstName},</h2>
@@ -2270,9 +2657,9 @@ export async function sendReservationEmail(
             <p><a href="${reservationUrl}" style="display: inline-block; background: ${primaryColor}; color: ${buttonTextColor}; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Voir ma réservation</a></p>
             <p>À bientôt,<br/>${store.name}</p>
           </div>
-        `
-        await sendEmail({ to: customerData.email, subject, html })
-        break
+        `;
+        await sendEmail({ to: customerData.email, subject, html });
+        break;
       }
 
       case 'reminder_pickup': {
@@ -2288,8 +2675,8 @@ export async function sendReservationEmail(
           },
           reservationUrl,
           locale: getLocaleFromCountry(store.settings?.country),
-        })
-        break
+        });
+        break;
       }
 
       case 'reminder_return': {
@@ -2304,15 +2691,17 @@ export async function sendReservationEmail(
             endDate: reservation.endDate,
           },
           locale: getLocaleFromCountry(store.settings?.country),
-        })
-        break
+        });
+        break;
       }
 
       case 'custom': {
         if (!data.customMessage) {
-          return { error: 'errors.messageRequired' }
+          return { error: 'errors.messageRequired' };
         }
-        const subject = data.customSubject || `À propos de votre réservation #${reservation.number} - ${store.name}`
+        const subject =
+          data.customSubject ||
+          `À propos de votre réservation #${reservation.number} - ${store.name}`;
         const html = `
           <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
             <h2>Bonjour ${customerData.firstName},</h2>
@@ -2320,13 +2709,13 @@ export async function sendReservationEmail(
             <p><a href="${reservationUrl}" style="display: inline-block; background: ${primaryColor}; color: ${buttonTextColor}; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Voir ma réservation</a></p>
             <p>À bientôt,<br/>${store.name}</p>
           </div>
-        `
-        await sendEmail({ to: customerData.email, subject, html })
-        break
+        `;
+        await sendEmail({ to: customerData.email, subject, html });
+        break;
       }
 
       default:
-        return { error: 'errors.invalidEmailTemplate' }
+        return { error: 'errors.invalidEmailTemplate' };
     }
 
     // Log activity
@@ -2334,14 +2723,14 @@ export async function sendReservationEmail(
       reservationId,
       'note_updated',
       `Email envoyé: ${data.templateId}`,
-      { templateId: data.templateId, to: customerData.email }
-    )
+      { templateId: data.templateId, to: customerData.email },
+    );
 
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true }
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true };
   } catch (error) {
-    console.error('Failed to send reservation email:', error)
-    return { error: 'errors.emailSendFailed' }
+    console.error('Failed to send reservation email:', error);
+    return { error: 'errors.emailSendFailed' };
   }
 }
 
@@ -2350,31 +2739,31 @@ export async function sendReservationEmail(
 // ============================================================================
 
 export async function sendAccessLink(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
       items: true,
       payments: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   try {
     // Generate secure 64-char token
-    const token = nanoid(64)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    const token = nanoid(64);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Store token in verificationCodes table
     await db.insert(verificationCodes).values({
@@ -2387,16 +2776,18 @@ export async function sendAccessLink(reservationId: string) {
       reservationId,
       expiresAt,
       createdAt: new Date(),
-    })
+    });
 
     // Build access URL
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-    const protocol = domain.includes('localhost') ? 'http' : 'https'
-    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
 
     // Calculate payment status
-    const isPaid = reservation.payments.some(p => p.type === 'rental' && p.status === 'completed')
-    const isStripeEnabled = store.stripeAccountId && store.stripeChargesEnabled
+    const isPaid = reservation.payments.some(
+      (p) => p.type === 'rental' && p.status === 'completed',
+    );
+    const isStripeEnabled = store.stripeAccountId && store.stripeChargesEnabled;
 
     // Build store and customer data
     const storeData = {
@@ -2409,20 +2800,20 @@ export async function sendAccessLink(reservationId: string) {
       address: store.address,
       theme: store.theme,
       settings: store.settings,
-    }
+    };
 
     const customerData = {
       firstName: reservation.customer.firstName,
       lastName: reservation.customer.lastName,
       email: reservation.customer.email,
-    }
+    };
 
     // Build items data
-    const items = reservation.items.map(item => ({
+    const items = reservation.items.map((item) => ({
       name: item.productSnapshot.name,
       quantity: item.quantity,
       totalPrice: parseFloat(item.totalPrice),
-    }))
+    }));
 
     // Send email
     await sendInstantAccessEmail({
@@ -2440,21 +2831,24 @@ export async function sendAccessLink(reservationId: string) {
       accessUrl,
       showPaymentCta: !isPaid && !!isStripeEnabled,
       locale: getLocaleFromCountry(store.settings?.country),
-    })
+    });
 
     // Log activity
     await logReservationActivity(
       reservationId,
       'access_link_sent',
       `Lien d'accès envoyé à ${reservation.customer.email}`,
-      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString() }
-    )
+      {
+        token: token.substring(0, 8) + '...',
+        expiresAt: expiresAt.toISOString(),
+      },
+    );
 
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true }
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true };
   } catch (error) {
-    console.error('Failed to send access link:', error)
-    return { error: 'errors.accessLinkSendFailed' }
+    console.error('Failed to send access link:', error);
+    return { error: 'errors.accessLinkSendFailed' };
   }
 }
 
@@ -2466,44 +2860,44 @@ export async function sendAccessLink(reservationId: string) {
  * Check if SMS is configured for the system
  */
 export async function checkSmsConfigured(): Promise<boolean> {
-  return isSmsConfigured()
+  return isSmsConfigured();
 }
 
 /**
  * Send access link via SMS to customer
  */
 export async function sendAccessLinkBySms(reservationId: string) {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   if (!isSmsConfigured()) {
-    return { error: 'errors.smsNotConfigured' }
+    return { error: 'errors.smsNotConfigured' };
   }
 
   const reservation = await db.query.reservations.findFirst({
     where: and(
       eq(reservations.id, reservationId),
-      eq(reservations.storeId, store.id)
+      eq(reservations.storeId, store.id),
     ),
     with: {
       customer: true,
     },
-  })
+  });
 
   if (!reservation) {
-    return { error: 'errors.reservationNotFound' }
+    return { error: 'errors.reservationNotFound' };
   }
 
   if (!reservation.customer.phone) {
-    return { error: 'errors.customerNoPhone' }
+    return { error: 'errors.customerNoPhone' };
   }
 
   try {
     // Generate secure 64-char token
-    const token = nanoid(64)
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    const token = nanoid(64);
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
     // Store token in verificationCodes table
     await db.insert(verificationCodes).values({
@@ -2516,12 +2910,12 @@ export async function sendAccessLinkBySms(reservationId: string) {
       reservationId,
       expiresAt,
       createdAt: new Date(),
-    })
+    });
 
     // Build access URL
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-    const protocol = domain.includes('localhost') ? 'http' : 'https'
-    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const accessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
 
     // Send SMS
     const result = await sendAccessLinkSms({
@@ -2540,7 +2934,7 @@ export async function sendAccessLinkBySms(reservationId: string) {
         number: reservation.number,
       },
       accessUrl,
-    })
+    });
 
     if (!result.success) {
       // Return limit info if SMS limit was reached
@@ -2549,9 +2943,9 @@ export async function sendAccessLinkBySms(reservationId: string) {
           error: 'errors.smsLimitReached',
           limitReached: true,
           limitInfo: result.limitInfo,
-        }
+        };
       }
-      return { error: result.error || 'errors.smsSendFailed' }
+      return { error: result.error || 'errors.smsSendFailed' };
     }
 
     // Log activity
@@ -2559,14 +2953,18 @@ export async function sendAccessLinkBySms(reservationId: string) {
       reservationId,
       'access_link_sent',
       `Lien d'accès envoyé par SMS à ${reservation.customer.phone}`,
-      { token: token.substring(0, 8) + '...', expiresAt: expiresAt.toISOString(), method: 'sms' }
-    )
+      {
+        token: token.substring(0, 8) + '...',
+        expiresAt: expiresAt.toISOString(),
+        method: 'sms',
+      },
+    );
 
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
-    return { success: true }
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true };
   } catch (error) {
-    console.error('Failed to send access link via SMS:', error)
-    return { error: 'errors.smsSendFailed' }
+    console.error('Failed to send access link via SMS:', error);
+    return { error: 'errors.smsSendFailed' };
   }
 }
 
@@ -2575,102 +2973,102 @@ export async function sendAccessLinkBySms(reservationId: string) {
 // ============================================================================
 
 export interface RequestPaymentInput {
-  type: 'rental' | 'deposit' | 'custom'
-  amount?: number // Required for custom type
-  channels: { email: boolean; sms: boolean }
-  customMessage?: string
+  type: 'rental' | 'deposit' | 'custom';
+  amount?: number; // Required for custom type
+  channels: { email: boolean; sms: boolean };
+  customMessage?: string;
 }
 
 export async function requestPayment(
   reservationId: string,
-  data: RequestPaymentInput
+  data: RequestPaymentInput,
 ): Promise<{
-  success?: boolean
-  error?: string
-  paymentUrl?: string
+  success?: boolean;
+  error?: string;
+  paymentUrl?: string;
 }> {
   try {
-    const store = await getStoreForUser()
+    const store = await getStoreForUser();
     if (!store) {
-      return { error: 'errors.unauthorized' }
+      return { error: 'errors.unauthorized' };
     }
 
     // Check Stripe is configured
     if (!store.stripeAccountId) {
-      return { error: 'errors.stripeNotConfigured' }
+      return { error: 'errors.stripeNotConfigured' };
     }
 
     // Get reservation with customer and payments
     const reservation = await db.query.reservations.findFirst({
       where: and(
         eq(reservations.id, reservationId),
-        eq(reservations.storeId, store.id)
+        eq(reservations.storeId, store.id),
       ),
       with: {
         customer: true,
         payments: true,
       },
-    })
+    });
 
     if (!reservation) {
-      return { error: 'errors.reservationNotFound' }
+      return { error: 'errors.reservationNotFound' };
     }
 
     // Validate at least one channel is selected
     if (!data.channels.email && !data.channels.sms) {
-      return { error: 'errors.noChannelSelected' }
+      return { error: 'errors.noChannelSelected' };
     }
 
     // Validate SMS - customer must have phone number
     if (data.channels.sms && !reservation.customer.phone) {
-      return { error: 'errors.customerNoPhone' }
+      return { error: 'errors.customerNoPhone' };
     }
 
-    const currency = store.settings?.currency || 'EUR'
-    const locale = getLocaleFromCountry(store.settings?.country)
+    const currency = store.settings?.currency || 'EUR';
+    const locale = getLocaleFromCountry(store.settings?.country);
 
     // Calculate amount based on type
-    let amount: number
-    let description: string
+    let amount: number;
+    let description: string;
 
     if (data.type === 'custom') {
       if (!data.amount || data.amount < 0.5) {
-        return { error: 'errors.invalidAmount' }
+        return { error: 'errors.invalidAmount' };
       }
-      amount = data.amount
-      description = 'Payment'
+      amount = data.amount;
+      description = 'Payment';
     } else if (data.type === 'rental') {
       // Calculate remaining amount for rental from payments
-      const subtotalAmount = parseFloat(reservation.subtotalAmount || '0')
+      const subtotalAmount = parseFloat(reservation.subtotalAmount || '0');
       const paidAmount = reservation.payments
         .filter((p) => p.type === 'rental' && p.status === 'completed')
-        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
-      amount = subtotalAmount - paidAmount
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+      amount = subtotalAmount - paidAmount;
 
       if (amount < 0.5) {
-        return { error: 'errors.noAmountDue' }
+        return { error: 'errors.noAmountDue' };
       }
-      description = 'Rental'
+      description = 'Rental';
     } else {
       // deposit type
-      amount = parseFloat(reservation.depositAmount || '0')
+      amount = parseFloat(reservation.depositAmount || '0');
       if (amount < 0.5) {
-        return { error: 'errors.noDepositRequired' }
+        return { error: 'errors.noDepositRequired' };
       }
-      description = 'Deposit'
+      description = 'Deposit';
     }
 
     // Build URLs
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-    const protocol = domain.includes('localhost') ? 'http' : 'https'
-    const baseUrl = `${protocol}://${store.slug}.${domain}`
+    const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${store.slug}.${domain}`;
 
-    let paymentUrl: string
+    let paymentUrl: string;
 
     if (data.type === 'deposit') {
       // For deposit, create URL to authorize-deposit page with access token
-      const token = nanoid(64)
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      const token = nanoid(64);
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
       // Store token in verificationCodes table
       await db.insert(verificationCodes).values({
@@ -2683,14 +3081,14 @@ export async function requestPayment(
         reservationId,
         expiresAt,
         createdAt: new Date(),
-      })
+      });
 
-      paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`
+      paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`;
     } else {
       // For rental/custom, create Stripe Checkout session
       // Generate instant access token for auto-login after payment
-      const accessToken = nanoid(64)
-      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+      const accessToken = nanoid(64);
+      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
       await db.insert(verificationCodes).values({
         id: nanoid(),
@@ -2702,11 +3100,11 @@ export async function requestPayment(
         reservationId,
         expiresAt: tokenExpiresAt,
         createdAt: new Date(),
-      })
+      });
 
       // Success URL redirects to account with auto-login token
-      const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservationId}`
-      const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`
+      const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservationId}`;
+      const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`;
 
       const session = await createPaymentRequestSession({
         stripeAccountId: store.stripeAccountId!,
@@ -2719,13 +3117,13 @@ export async function requestPayment(
         successUrl,
         cancelUrl,
         locale,
-      })
+      });
 
-      paymentUrl = session.url
+      paymentUrl = session.url;
     }
 
     // Send notifications
-    const notificationResults: { email?: boolean; sms?: boolean } = {}
+    const notificationResults: { email?: boolean; sms?: boolean } = {};
 
     if (data.channels.email) {
       try {
@@ -2755,7 +3153,7 @@ export async function requestPayment(
             authorizationUrl: paymentUrl,
             customMessage: data.customMessage,
             locale,
-          })
+          });
         } else {
           await sendPaymentRequestEmail({
             to: reservation.customer.email,
@@ -2783,12 +3181,12 @@ export async function requestPayment(
             paymentUrl,
             customMessage: data.customMessage,
             locale,
-          })
+          });
         }
-        notificationResults.email = true
+        notificationResults.email = true;
       } catch (error) {
-        console.error('Failed to send payment request email:', error)
-        notificationResults.email = false
+        console.error('Failed to send payment request email:', error);
+        notificationResults.email = false;
       }
     }
 
@@ -2814,7 +3212,7 @@ export async function requestPayment(
             depositAmount: amount,
             authorizationUrl: paymentUrl,
             currency,
-          })
+          });
         } else {
           await sendPaymentRequestSms({
             store: {
@@ -2835,12 +3233,12 @@ export async function requestPayment(
             amount,
             paymentUrl,
             currency,
-          })
+          });
         }
-        notificationResults.sms = true
+        notificationResults.sms = true;
       } catch (error) {
-        console.error('Failed to send payment request SMS:', error)
-        notificationResults.sms = false
+        console.error('Failed to send payment request SMS:', error);
+        notificationResults.sms = false;
       }
     }
 
@@ -2857,18 +3255,18 @@ export async function requestPayment(
         notificationResults,
         paymentUrl,
         isPaymentRequest: true,
-      }
-    )
+      },
+    );
 
-    revalidatePath(`/dashboard/reservations/${reservationId}`)
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
 
     return {
       success: true,
       paymentUrl,
-    }
+    };
   } catch (error) {
-    console.error('Failed to request payment:', error)
-    return { error: 'errors.requestPaymentFailed' }
+    console.error('Failed to request payment:', error);
+    return { error: 'errors.requestPaymentFailed' };
   }
 }
 
@@ -2882,11 +3280,11 @@ export async function requestPayment(
  */
 export async function assignUnitsToReservationItem(
   reservationItemId: string,
-  unitIds: string[]
+  unitIds: string[],
 ): Promise<{ success?: boolean; error?: string }> {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   try {
@@ -2900,21 +3298,24 @@ export async function assignUnitsToReservationItem(
         reservationId: reservationItems.reservationId,
       })
       .from(reservationItems)
-      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .innerJoin(
+        reservations,
+        eq(reservationItems.reservationId, reservations.id),
+      )
       .where(
         and(
           eq(reservationItems.id, reservationItemId),
-          eq(reservations.storeId, store.id)
-        )
-      )
+          eq(reservations.storeId, store.id),
+        ),
+      );
 
     if (!item) {
-      return { error: 'errors.notFound' }
+      return { error: 'errors.notFound' };
     }
 
     // 2. Validate that we're not assigning more units than quantity
     if (unitIds.length > item.quantity) {
-      return { error: 'errors.tooManyUnitsAssigned' }
+      return { error: 'errors.tooManyUnitsAssigned' };
     }
 
     // 3. Verify all units belong to the correct product
@@ -2927,75 +3328,66 @@ export async function assignUnitsToReservationItem(
           identifier: productUnits.identifier,
         })
         .from(productUnits)
-        .where(inArray(productUnits.id, unitIds))
+        .where(inArray(productUnits.id, unitIds));
 
       // Check all units exist and belong to the right product
       if (units.length !== unitIds.length) {
-        return { error: 'errors.invalidUnits' }
+        return { error: 'errors.invalidUnits' };
       }
 
       for (const unit of units) {
         if (unit.productId !== item.productId) {
-          return { error: 'errors.unitProductMismatch' }
+          return { error: 'errors.unitProductMismatch' };
         }
         if (
           item.combinationKey &&
-          (unit.combinationKey || DEFAULT_COMBINATION_KEY) !== item.combinationKey
+          (unit.combinationKey || DEFAULT_COMBINATION_KEY) !==
+            item.combinationKey
         ) {
-          return { error: 'errors.unitCombinationMismatch' }
+          return { error: 'errors.unitCombinationMismatch' };
         }
       }
 
       // 4. Delete existing assignments for this item
       await db
         .delete(reservationItemUnits)
-        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
       // 5. Insert new assignments with identifier snapshots
-      const unitMap = new Map(units.map((u) => [u.id, u.identifier]))
+      const unitMap = new Map(units.map((u) => [u.id, u.identifier]));
       const assignmentsToInsert = unitIds.map((unitId) => ({
         id: nanoid(),
         reservationItemId,
         productUnitId: unitId,
         identifierSnapshot: unitMap.get(unitId) || '',
-      }))
+      }));
 
-      await db.insert(reservationItemUnits).values(assignmentsToInsert)
+      await db.insert(reservationItemUnits).values(assignmentsToInsert);
 
       // 6. Log activity
-      await logReservationActivity(
-        item.reservationId,
-        'modified',
-        undefined,
-        {
-          action: 'units_assigned',
-          reservationItemId,
-          unitIdentifiers: units.map((u) => u.identifier),
-        }
-      )
+      await logReservationActivity(item.reservationId, 'modified', undefined, {
+        action: 'units_assigned',
+        reservationItemId,
+        unitIdentifiers: units.map((u) => u.identifier),
+      });
     } else {
       // Clear assignments if no units provided
       await db
         .delete(reservationItemUnits)
-        .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+        .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
-      await logReservationActivity(
-        item.reservationId,
-        'modified',
-        undefined,
-        {
-          action: 'units_unassigned',
-          reservationItemId,
-        }
-      )
+      await logReservationActivity(item.reservationId, 'modified', undefined, {
+        action: 'units_unassigned',
+        reservationItemId,
+      });
     }
 
-    revalidatePath(`/dashboard/reservations/${item.reservationId}`)
+    revalidatePath(`/dashboard/reservations/${item.reservationId}`);
 
-    return { success: true }
+    return { success: true };
   } catch (error) {
-    console.error('Failed to assign units:', error)
-    return { error: 'errors.assignUnitsFailed' }
+    console.error('Failed to assign units:', error);
+    return { error: 'errors.assignUnitsFailed' };
   }
 }
 
@@ -3003,19 +3395,19 @@ export async function assignUnitsToReservationItem(
  * Get available units for assignment to a reservation item.
  */
 export async function getAvailableUnitsForReservationItem(
-  reservationItemId: string
+  reservationItemId: string,
 ): Promise<{
   units?: Array<{
-    id: string
-    identifier: string
-    notes: string | null
-  }>
-  assigned?: string[]
-  error?: string
+    id: string;
+    identifier: string;
+    notes: string | null;
+  }>;
+  assigned?: string[];
+  error?: string;
 }> {
-  const store = await getStoreForUser()
+  const store = await getStoreForUser();
   if (!store) {
-    return { error: 'errors.unauthorized' }
+    return { error: 'errors.unauthorized' };
   }
 
   try {
@@ -3030,32 +3422,36 @@ export async function getAvailableUnitsForReservationItem(
         endDate: reservations.endDate,
       })
       .from(reservationItems)
-      .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+      .innerJoin(
+        reservations,
+        eq(reservationItems.reservationId, reservations.id),
+      )
       .where(
         and(
           eq(reservationItems.id, reservationItemId),
-          eq(reservations.storeId, store.id)
-        )
-      )
+          eq(reservations.storeId, store.id),
+        ),
+      );
 
     if (!item) {
-      return { error: 'errors.notFound' }
+      return { error: 'errors.notFound' };
     }
 
     // Items without a productId (custom items) cannot have units
     if (!item.productId) {
-      return { units: [], assigned: [] }
+      return { units: [], assigned: [] };
     }
 
     // 2. Get available units using the utility
-    const { getAvailableUnitsForProduct } = await import('@/lib/utils/unit-availability')
+    const { getAvailableUnitsForProduct } =
+      await import('@/lib/utils/unit-availability');
     const availableUnits = await getAvailableUnitsForProduct(
       item.productId,
       item.startDate,
       item.endDate,
       item.reservationId, // Exclude current reservation to allow re-assignment
       item.combinationKey || undefined,
-    )
+    );
 
     // 3. Get currently assigned units for this item
     const assignedUnits = await db
@@ -3063,10 +3459,10 @@ export async function getAvailableUnitsForReservationItem(
         productUnitId: reservationItemUnits.productUnitId,
       })
       .from(reservationItemUnits)
-      .where(eq(reservationItemUnits.reservationItemId, reservationItemId))
+      .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
     // Include currently assigned units in the available list (they're already reserved for this item)
-    const assignedUnitIds = assignedUnits.map((a) => a.productUnitId)
+    const assignedUnitIds = assignedUnits.map((a) => a.productUnitId);
     const currentlyAssignedUnits = await db
       .select({
         id: productUnits.id,
@@ -3076,17 +3472,20 @@ export async function getAvailableUnitsForReservationItem(
       .from(productUnits)
       .where(
         and(
-          inArray(productUnits.id, assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__']),
-          eq(productUnits.status, 'available')
-        )
-      )
+          inArray(
+            productUnits.id,
+            assignedUnitIds.length > 0 ? assignedUnitIds : ['__none__'],
+          ),
+          eq(productUnits.status, 'available'),
+        ),
+      );
 
     // Merge available units with currently assigned (avoiding duplicates)
-    const availableUnitIds = new Set(availableUnits.map((u) => u.id))
+    const availableUnitIds = new Set(availableUnits.map((u) => u.id));
     const allUnits = [
       ...availableUnits,
       ...currentlyAssignedUnits.filter((u) => !availableUnitIds.has(u.id)),
-    ].sort((a, b) => a.identifier.localeCompare(b.identifier, 'en'))
+    ].sort((a, b) => a.identifier.localeCompare(b.identifier, 'en'));
 
     return {
       units: allUnits.map((u) => ({
@@ -3095,9 +3494,9 @@ export async function getAvailableUnitsForReservationItem(
         notes: u.notes,
       })),
       assigned: assignedUnitIds,
-    }
+    };
   } catch (error) {
-    console.error('Failed to get available units:', error)
-    return { error: 'errors.getAvailableUnitsFailed' }
+    console.error('Failed to get available units:', error);
+    return { error: 'errors.getAvailableUnitsFailed' };
   }
 }

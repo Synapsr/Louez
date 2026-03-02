@@ -1,16 +1,11 @@
 'use server'
 
 import { db } from '@louez/db'
-import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity } from '@louez/db'
+import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
 import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
-import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes } from '@louez/types'
-import type {
-  ProductTaxSettings,
-  StoreSettings,
-  TaxSettings,
-  TulipPublicMode,
-} from '@louez/types'
+import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes, PromoCodeSnapshot } from '@louez/types'
+import type { TaxSettings, ProductTaxSettings, StoreSettings, TulipPublicMode } from '@louez/types'
 import type { Rate } from '@louez/types'
 import { sendNewRequestLandlordEmail } from '@/lib/email/send'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
@@ -29,15 +24,13 @@ import {
 } from '@/lib/utils/rental-duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
-  calculateRentalPrice,
-  calculateRentalPriceV2,
-  calculateDurationMinutes as calcDurationMinutes,
+  calculateSeasonalAwarePrice,
   calculateDuration as calcDuration,
-  isRateBasedProduct,
   getDeterministicCombinationSortValue,
   matchesSelectedAttributes,
   DEFAULT_COMBINATION_KEY,
 } from '@louez/utils'
+import type { SeasonalPricingConfig } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
 import { calculateHaversineDistance, calculateDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 import {
@@ -69,6 +62,13 @@ interface DeliveryInput {
   country?: string
   latitude?: number
   longitude?: number
+  // Return address (when different from delivery address)
+  returnAddress?: string
+  returnCity?: string
+  returnPostalCode?: string
+  returnCountry?: string
+  returnLatitude?: number
+  returnLongitude?: number
 }
 
 interface CreateReservationInput {
@@ -92,6 +92,7 @@ interface CreateReservationInput {
   tulipInsuranceOptIn?: boolean
   locale?: 'fr' | 'en'
   delivery?: DeliveryInput
+  promoCode?: string
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
@@ -569,60 +570,107 @@ export async function createReservation(input: CreateReservationInput) {
       // Calculate price from database values (NOT from client input)
       const productPricingMode = product.pricingMode as PricingMode
       const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
-      const durationMinutes = calcDurationMinutes(item.startDate, item.endDate)
 
-      const pricingResult = isRateBasedProduct({
-        basePeriodMinutes: product.basePeriodMinutes,
-      })
-        ? calculateRentalPriceV2(
-            {
-              basePrice: Number(product.price),
-              basePeriodMinutes: product.basePeriodMinutes!,
-              deposit: Number(product.deposit || 0),
-              rates:
-                product.pricingTiers
-                  ?.filter(
-                    (tier): tier is typeof tier & { period: number; price: string } =>
-                      typeof tier.period === 'number' &&
-                      tier.period > 0 &&
-                      typeof tier.price === 'string',
-                  )
-                  .map(
-                    (tier, index): Rate => ({
-                      id: tier.id,
-                      period: tier.period,
-                      price: Number(tier.price),
-                      displayOrder: tier.displayOrder ?? index,
-                    }),
-                  ) || [],
-            },
-            durationMinutes,
-            item.quantity,
-          )
-        : calculateRentalPrice(
-            {
-              basePrice: Number(product.price),
-              deposit: Number(product.deposit || 0),
-              pricingMode: productPricingMode,
-              tiers:
-                product.pricingTiers?.map((tier) => ({
-                  id: tier.id,
-                  minDuration: tier.minDuration ?? 1,
-                  discountPercent: Number(tier.discountPercent ?? 0),
-                  displayOrder: tier.displayOrder || 0,
-                })) || [],
-            },
-            duration,
-            item.quantity,
-          )
+      // Fetch seasonal pricings for this product
+      const seasonalPricingsRaw = await db
+        .select()
+        .from(productSeasonalPricing)
+        .where(eq(productSeasonalPricing.productId, product.id))
+
+      let seasonalPricingConfigs: SeasonalPricingConfig[] = []
+      if (seasonalPricingsRaw.length > 0) {
+        const spIds = seasonalPricingsRaw.map((sp) => sp.id)
+        const spTiersRaw = await db
+          .select()
+          .from(productSeasonalPricingTiers)
+          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds))
+
+        const spTiersByPricingId = new Map<string, typeof spTiersRaw>()
+        for (const tier of spTiersRaw) {
+          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || []
+          tiers.push(tier)
+          spTiersByPricingId.set(tier.seasonalPricingId, tiers)
+        }
+
+        seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
+          const spTiers = spTiersByPricingId.get(sp.id) || []
+          return {
+            id: sp.id,
+            name: sp.name,
+            startDate: sp.startDate,
+            endDate: sp.endDate,
+            basePrice: Number(sp.price),
+            tiers: spTiers
+              .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+              .map((t) => ({
+                id: t.id,
+                minDuration: t.minDuration!,
+                discountPercent: Number(t.discountPercent!),
+                displayOrder: t.displayOrder ?? 0,
+              })),
+            rates: spTiers
+              .filter((t) => t.period !== null && t.price !== null)
+              .map((t) => ({
+                id: t.id,
+                period: t.period!,
+                price: Number(t.price!),
+                displayOrder: t.displayOrder ?? 0,
+              })),
+          }
+        })
+      }
+
+      // Use seasonal-aware pricing (short-circuits to normal pricing when no seasonal configs)
+      const baseTiers = product.pricingTiers?.map((tier) => ({
+        id: tier.id,
+        minDuration: tier.minDuration ?? 1,
+        discountPercent: Number(tier.discountPercent ?? 0),
+        displayOrder: tier.displayOrder || 0,
+      })) || []
+      const baseRates: Rate[] = product.pricingTiers
+        ?.filter(
+          (tier): tier is typeof tier & { period: number; price: string } =>
+            typeof tier.period === 'number' &&
+            tier.period > 0 &&
+            typeof tier.price === 'string',
+        )
+        .map(
+          (tier, index): Rate => ({
+            id: tier.id,
+            period: tier.period,
+            price: Number(tier.price),
+            displayOrder: tier.displayOrder ?? index,
+          }),
+        ) || []
+
+      const seasonalResult = calculateSeasonalAwarePrice(
+        {
+          basePrice: Number(product.price),
+          basePeriodMinutes: product.basePeriodMinutes ?? null,
+          deposit: Number(product.deposit || 0),
+          pricingMode: productPricingMode,
+          enforceStrictTiers: product.enforceStrictTiers ?? false,
+          tiers: baseTiers,
+          rates: baseRates,
+        },
+        seasonalPricingConfigs,
+        item.startDate,
+        item.endDate,
+        item.quantity,
+      )
+
+      const pricingResult = {
+        subtotal: seasonalResult.subtotal,
+        originalSubtotal: seasonalResult.originalSubtotal,
+        savings: seasonalResult.savings,
+        deposit: seasonalResult.deposit,
+        effectivePricePerUnit: seasonalResult.subtotal / Math.max(1, item.quantity),
+      }
 
       serverCalculatedItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        unitPrice:
-          'effectivePricePerUnit' in pricingResult
-            ? pricingResult.effectivePricePerUnit
-            : pricingResult.subtotal / Math.max(1, item.quantity),
+        unitPrice: pricingResult.effectivePricePerUnit,
         depositPerUnit: Number(product.deposit || 0),
         subtotal: pricingResult.subtotal,
         totalDeposit: pricingResult.deposit,
@@ -643,11 +691,10 @@ export async function createReservation(input: CreateReservationInput) {
       }
     }
 
-    const serverTotalAmount = serverSubtotal + serverTotalDeposit
-
     // ===== DELIVERY VALIDATION AND FEE CALCULATION =====
     let deliveryFee = 0
     let deliveryDistanceKm: number | null = null
+    let returnDistanceKm: number | null = null
     const deliverySettings = storeSettings?.delivery
     const deliveryMode = deliverySettings?.mode || 'optional'
     const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
@@ -719,16 +766,48 @@ export async function createReservation(input: CreateReservationInput) {
         }
       }
 
+      // Validate and calculate return distance if a different return address is provided
+      if (
+        input.delivery.returnLatitude != null &&
+        input.delivery.returnLongitude != null &&
+        deliverySettings.allowDifferentReturnAddress
+      ) {
+        // Validate return coordinates range
+        if (
+          input.delivery.returnLatitude < -90 ||
+          input.delivery.returnLatitude > 90 ||
+          input.delivery.returnLongitude < -180 ||
+          input.delivery.returnLongitude > 180
+        ) {
+          return { error: 'errors.returnAddressInvalid' }
+        }
+
+        returnDistanceKm = calculateHaversineDistance(
+          storeLatitude,
+          storeLongitude,
+          input.delivery.returnLatitude,
+          input.delivery.returnLongitude
+        )
+
+        // Validate return distance against maximum
+        const returnValidation = validateDelivery(returnDistanceKm, deliverySettings)
+        if (!returnValidation.valid) {
+          return {
+            error: 'errors.returnAddressTooFar',
+            errorParams: returnValidation.errorParams,
+          }
+        }
+      }
+
       // Calculate delivery fee (server-side, never trust client)
       // If mode is 'included', fee is always 0
       deliveryFee = isDeliveryIncluded
         ? 0
-        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal)
+        : calculateDeliveryFee(deliveryDistanceKm, deliverySettings, serverSubtotal, returnDistanceKm)
     }
 
     // Client `totalAmount` excludes deposit and includes delivery fee.
     const serverClientComparableTotal = serverSubtotal + deliveryFee
-    const serverTotalWithDelivery = serverTotalAmount + deliveryFee
 
     if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
       console.warn('[SECURITY] Subtotal mismatch detected', {
@@ -790,11 +869,87 @@ export async function createReservation(input: CreateReservationInput) {
       return { error: getErrorKey(error, 'errors.tulipQuoteFailed') }
     }
 
+    // ========== Promo code validation ==========
+    let serverDiscountAmount = 0
+    let validatedPromoCodeId: string | null = null
+    let promoCodeSnapshotData: PromoCodeSnapshot | null = null
+
+    if (input.promoCode) {
+      const [promoRow] = await db
+        .select()
+        .from(promoCodes)
+        .where(
+          and(
+            eq(promoCodes.storeId, input.storeId),
+            sql`UPPER(${promoCodes.code}) = UPPER(${input.promoCode})`,
+            eq(promoCodes.isActive, true)
+          )
+        )
+        .for('update')
+
+      if (!promoRow) {
+        return { error: 'errors.promoCodeInvalid' }
+      }
+
+      const now = new Date()
+      if (promoRow.startsAt && promoRow.startsAt > now) {
+        return { error: 'errors.promoCodeNotStarted' }
+      }
+      if (promoRow.expiresAt && promoRow.expiresAt < now) {
+        return { error: 'errors.promoCodeExpired' }
+      }
+      if (
+        promoRow.maxUsageCount !== null &&
+        promoRow.currentUsageCount >= promoRow.maxUsageCount
+      ) {
+        return { error: 'errors.promoCodeExhausted' }
+      }
+
+      const minAmount = promoRow.minimumAmount
+        ? parseFloat(promoRow.minimumAmount)
+        : 0
+      if (minAmount > 0 && serverSubtotal < minAmount) {
+        return {
+          error: 'errors.promoCodeMinimumNotMet',
+          errorParams: {
+            amount: minAmount.toFixed(2),
+          },
+        }
+      }
+
+      const promoValue = parseFloat(promoRow.value)
+      if (promoRow.type === 'percentage') {
+        serverDiscountAmount = Math.min(
+          (serverSubtotal * promoValue) / 100,
+          serverSubtotal
+        )
+      } else {
+        serverDiscountAmount = Math.min(promoValue, serverSubtotal)
+      }
+      serverDiscountAmount = Math.round(serverDiscountAmount * 100) / 100
+
+      await db
+        .update(promoCodes)
+        .set({
+          currentUsageCount: sql`${promoCodes.currentUsageCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(promoCodes.id, promoRow.id))
+
+      validatedPromoCodeId = promoRow.id
+      promoCodeSnapshotData = {
+        code: promoRow.code,
+        type: promoRow.type,
+        value: promoValue,
+      }
+    }
+
     // Use server-calculated values for all monetary operations
     const finalSubtotal = serverSubtotal + tulipInsuranceAmount
+    const finalDiscount = serverDiscountAmount
     const finalDeposit = serverTotalDeposit
     const finalDeliveryFee = deliveryFee
-    const finalTotal = serverTotalWithDelivery + tulipInsuranceAmount
+    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee + finalDeposit
 
     const startDates = input.items.map((item) => new Date(item.startDate))
     const endDates = input.items.map((item) => new Date(item.endDate))
@@ -1077,6 +1232,16 @@ export async function createReservation(input: CreateReservationInput) {
         tulipInsuranceOptIn,
         tulipInsuranceAmount:
           tulipInsuranceAmount > 0 ? tulipInsuranceAmount.toFixed(2) : null,
+        promoCodeId: validatedPromoCodeId,
+        discountAmount: finalDiscount.toFixed(2),
+        promoCodeSnapshot: promoCodeSnapshotData,
+        returnAddress: input.delivery?.option === 'delivery' ? input.delivery.returnAddress ?? null : null,
+        returnCity: input.delivery?.option === 'delivery' ? input.delivery.returnCity ?? null : null,
+        returnPostalCode: input.delivery?.option === 'delivery' ? input.delivery.returnPostalCode ?? null : null,
+        returnCountry: input.delivery?.option === 'delivery' ? input.delivery.returnCountry ?? null : null,
+        returnLatitude: input.delivery?.option === 'delivery' && input.delivery.returnLatitude != null ? input.delivery.returnLatitude.toString() : null,
+        returnLongitude: input.delivery?.option === 'delivery' && input.delivery.returnLongitude != null ? input.delivery.returnLongitude.toString() : null,
+        returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
       })
 
       for (let i = 0; i < input.items.length; i++) {
@@ -1371,17 +1536,18 @@ export async function createReservation(input: CreateReservationInput) {
         const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
         const isPartialPayment = depositPercentage < 100
 
-        // Calculate the amount to charge now
+        // Calculate the amount to charge now (after promo discount)
         // Round to 2 decimal places to avoid floating point issues
+        const subtotalAfterDiscount = finalSubtotal - finalDiscount
         const amountToCharge = isPartialPayment
-          ? Math.round(finalSubtotal * depositPercentage) / 100
-          : finalSubtotal
+          ? Math.round(subtotalAfterDiscount * depositPercentage) / 100
+          : subtotalAfterDiscount
 
         // Ensure minimum Stripe amount (50 cents for most currencies)
         const MINIMUM_STRIPE_AMOUNT = 0.50
         const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
-        // Don't exceed the full amount
-        const finalChargeAmount = Math.min(effectiveChargeAmount, finalSubtotal)
+        // Don't exceed the full amount (after discount)
+        const finalChargeAmount = Math.min(effectiveChargeAmount, subtotalAfterDiscount)
 
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit

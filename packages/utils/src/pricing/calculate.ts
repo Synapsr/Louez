@@ -276,133 +276,21 @@ export function isRateBasedProduct(product: {
   return Boolean(product.basePeriodMinutes && product.basePeriodMinutes > 0)
 }
 
-function gcd(a: number, b: number): number {
-  let x = Math.abs(a)
-  let y = Math.abs(b)
-  while (y !== 0) {
-    const t = y
-    y = x % y
-    x = t
-  }
-  return x || 1
-}
-
-function gcdOfList(values: number[]): number {
-  if (values.length === 0) return 1
-  return values.reduce((acc, value) => gcd(acc, value), values[0] || 1)
-}
-
-export function calculateBestRate(
-  durationMinutes: number,
-  rates: Rate[]
-): {
-  totalCost: number
-  coveredMinutes: number
-  plan: Array<{ rate: Rate; quantity: number }>
-} {
-  const normalizedRates = rates
-    .filter((rate) => rate.period > 0 && rate.price >= 0)
-    .sort((a, b) => a.period - b.period)
-
-  if (normalizedRates.length === 0) {
-    return {
-      totalCost: 0,
-      coveredMinutes: durationMinutes,
-      plan: [],
-    }
-  }
-
-  const targetMinutes = Math.max(1, Math.ceil(durationMinutes))
-  const scale = gcdOfList(normalizedRates.map((rate) => rate.period))
-  const rateSteps = normalizedRates.map((rate) =>
-    Math.max(1, Math.round(rate.period / scale))
-  )
-  const targetSteps = Math.max(1, Math.ceil(targetMinutes / scale))
-  const maxRateStep = Math.max(...rateSteps)
-  const maxSteps = targetSteps + maxRateStep
-
-  const dp = Array<number>(maxSteps + 1).fill(Number.POSITIVE_INFINITY)
-  const segments = Array<number>(maxSteps + 1).fill(Number.POSITIVE_INFINITY)
-  const prevStep = Array<number>(maxSteps + 1).fill(-1)
-  const prevRateIdx = Array<number>(maxSteps + 1).fill(-1)
-
-  dp[0] = 0
-  segments[0] = 0
-
-  for (let step = 1; step <= maxSteps; step += 1) {
-    for (let i = 0; i < normalizedRates.length; i += 1) {
-      const rateStep = rateSteps[i]
-      if (step < rateStep) continue
-      const source = step - rateStep
-      if (!Number.isFinite(dp[source])) continue
-
-      const candidateCost = dp[source] + normalizedRates[i].price
-      const candidateSegments = segments[source] + 1
-
-      const shouldReplace =
-        candidateCost < dp[step] ||
-        (Math.abs(candidateCost - dp[step]) < 1e-9 &&
-          candidateSegments < segments[step])
-
-      if (shouldReplace) {
-        dp[step] = candidateCost
-        segments[step] = candidateSegments
-        prevStep[step] = source
-        prevRateIdx[step] = i
-      }
-    }
-  }
-
-  let bestStep = -1
-  for (let step = targetSteps; step <= maxSteps; step += 1) {
-    if (!Number.isFinite(dp[step])) continue
-    if (bestStep === -1 || dp[step] < dp[bestStep]) {
-      bestStep = step
-      continue
-    }
-
-    if (
-      Math.abs(dp[step] - dp[bestStep]) < 1e-9 &&
-      segments[step] < segments[bestStep]
-    ) {
-      bestStep = step
-    }
-  }
-
-  if (bestStep === -1) {
-    const fallback = normalizedRates[0]
-    const count = Math.ceil(targetMinutes / fallback.period)
-    return {
-      totalCost: roundCurrency(count * fallback.price),
-      coveredMinutes: count * fallback.period,
-      plan: [{ rate: fallback, quantity: count }],
-    }
-  }
-
-  const quantities = Array<number>(normalizedRates.length).fill(0)
-  let cursor = bestStep
-  while (cursor > 0) {
-    const rateIdx = prevRateIdx[cursor]
-    if (rateIdx < 0) break
-    quantities[rateIdx] += 1
-    cursor = prevStep[cursor]
-  }
-
-  const plan = normalizedRates
-    .map((rate, index) => ({
-      rate,
-      quantity: quantities[index],
-    }))
-    .filter((entry) => entry.quantity > 0)
-
-  return {
-    totalCost: roundCurrency(dp[bestStep]),
-    coveredMinutes: bestStep * scale,
-    plan,
-  }
-}
-
-export function calculateRentalPriceV2(
+/**
+ * Calculate rental price for rate-based products.
+ *
+ * Two modes controlled by `pricing.enforceStrictTiers`:
+ *
+ * **Strict (true)**: snap UP to nearest tier period, charge that tier's exact price.
+ * Example: tiers at 4h,1j,2j,3j — rental of 2j2h → snap to 3j → 160€
+ *
+ * **Progressive (false, default)**: linear interpolation between adjacent tiers.
+ * Tiers are anchor points on a price/duration curve; the price transitions
+ * linearly from one tier to the next.
+ * Example: tiers at base(4h,20€),1j(50€) — rental of 12h → 20+(50-20)×(720-240)/(1440-240) = 32€
+ * Beyond the last tier, extrapolate at the last tier's per-minute rate.
+ */
+export function calculateRateBasedPrice(
   pricing: RateBasedPricing,
   durationMinutes: number,
   quantity: number
@@ -414,35 +302,122 @@ export function calculateRentalPriceV2(
     displayOrder: -1,
   }
 
-  const rates = [baseRate, ...(pricing.rates || [])]
-  const best = calculateBestRate(durationMinutes, rates)
-  const perItemSubtotal = best.totalCost
-  const subtotal = perItemSubtotal * quantity
-  const deposit = pricing.deposit * quantity
-  const total = subtotal + deposit
+  // All rates including base, sorted by period ascending
+  const allRates = [baseRate, ...(pricing.rates || [])]
+    .filter((r) => r.period > 0 && r.price >= 0)
+    .sort((a, b) => a.period - b.period)
 
-  const basePeriods = Math.ceil(durationMinutes / pricing.basePeriodMinutes)
-  const originalSubtotal = basePeriods * pricing.basePrice * quantity
-  const savings = originalSubtotal - subtotal
+  const targetMinutes = Math.max(1, Math.ceil(durationMinutes))
+
+  if (allRates.length === 0) {
+    const basePeriods = Math.ceil(targetMinutes / pricing.basePeriodMinutes)
+    const sub = roundCurrency(basePeriods * pricing.basePrice * quantity)
+    const dep = roundCurrency(pricing.deposit * quantity)
+    return {
+      subtotal: sub,
+      deposit: dep,
+      total: roundCurrency(sub + dep),
+      appliedRate: null,
+      periodsUsed: basePeriods,
+      savings: 0,
+      reductionPercent: null,
+      durationMinutes: targetMinutes,
+      quantity,
+      originalSubtotal: sub,
+      plan: [],
+    }
+  }
+
+  const enforceStrict = pricing.enforceStrictTiers ?? false
+
+  let perItemSubtotal: number
+  let appliedRate: Rate
+  let plan: Array<{ rate: Rate; quantity: number }>
+
+  if (enforceStrict) {
+    // STRICT MODE: snap UP to nearest tier period, charge that tier's exact price
+    const snappedRate = allRates.find((r) => r.period >= targetMinutes)
+
+    if (snappedRate) {
+      perItemSubtotal = snappedRate.price
+      appliedRate = snappedRate
+      plan = [{ rate: snappedRate, quantity: 1 }]
+    } else {
+      // Duration exceeds all tiers: fallback to per-minute rate from largest tier
+      const largest = allRates[allRates.length - 1]
+      const perMinuteRate = largest.price / largest.period
+      perItemSubtotal = roundCurrency(perMinuteRate * targetMinutes)
+      appliedRate = largest
+      plan = [{ rate: largest, quantity: 1 }]
+    }
+  } else {
+    // PROGRESSIVE MODE: linear interpolation between adjacent tiers
+    //
+    // Each tier is an anchor point on a price/duration curve. Between two
+    // consecutive tiers, the price transitions in a straight line.
+    // This guarantees: no price cliffs, monotonically non-decreasing prices,
+    // and exact tier prices at tier boundaries.
+
+    // Find the highest tier with period ≤ targetMinutes
+    let floorIdx = -1
+    for (let i = allRates.length - 1; i >= 0; i--) {
+      if (allRates[i].period <= targetMinutes) {
+        floorIdx = i
+        break
+      }
+    }
+
+    if (floorIdx === -1) {
+      // Duration shorter than all tiers: charge 1 base period minimum
+      perItemSubtotal = allRates[0].price
+      appliedRate = allRates[0]
+      plan = [{ rate: allRates[0], quantity: 1 }]
+    } else {
+      const floor = allRates[floorIdx]
+      const ceil = allRates[floorIdx + 1] // undefined if beyond last tier
+
+      if (floor.period === targetMinutes || !ceil) {
+        // Exactly on a tier → exact tier price
+        // Beyond last tier → extrapolate at last tier's per-minute rate
+        perItemSubtotal = floor.period === targetMinutes
+          ? floor.price
+          : roundCurrency((floor.price / floor.period) * targetMinutes)
+      } else {
+        // Between two tiers → linear interpolation
+        const t = (targetMinutes - floor.period) / (ceil.period - floor.period)
+        perItemSubtotal = roundCurrency(floor.price + (ceil.price - floor.price) * t)
+      }
+
+      appliedRate = floor
+      plan = [{ rate: floor, quantity: 1 }]
+    }
+  }
+
+  const subtotal = roundCurrency(perItemSubtotal * quantity)
+  const deposit = roundCurrency(pricing.deposit * quantity)
+  const total = roundCurrency(subtotal + deposit)
+
+  // Original subtotal: base rate × base periods (what it would cost without discounts)
+  const basePeriods = Math.ceil(targetMinutes / pricing.basePeriodMinutes)
+  const originalSubtotal = roundCurrency(basePeriods * pricing.basePrice * quantity)
+  const savings = roundCurrency(Math.max(0, originalSubtotal - subtotal))
   const reductionPercent =
-    originalSubtotal > 0
+    originalSubtotal > 0 && savings > 0
       ? roundCurrency((savings / originalSubtotal) * 100)
       : null
 
-  const dominant =
-    [...best.plan].sort((a, b) => b.quantity - a.quantity)[0]?.rate ?? null
-
   return {
-    subtotal: roundCurrency(subtotal),
-    deposit: roundCurrency(deposit),
-    total: roundCurrency(total),
-    appliedRate: dominant,
-    periodsUsed: best.plan.reduce((sum, entry) => sum + entry.quantity, 0),
-    savings: roundCurrency(savings),
+    subtotal,
+    deposit,
+    total,
+    appliedRate,
+    periodsUsed: plan.reduce((sum, entry) => sum + entry.quantity, 0),
+    savings,
     reductionPercent,
-    durationMinutes: Math.max(1, Math.ceil(durationMinutes)),
+    durationMinutes: targetMinutes,
     quantity,
-    originalSubtotal: roundCurrency(originalSubtotal),
+    originalSubtotal,
+    plan,
   }
 }
 

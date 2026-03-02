@@ -50,7 +50,7 @@ export function ReservationsPageContent({
   const status = searchParams.get('status') || currentStatus || undefined
   const period = searchParams.get('period') || currentPeriod || undefined
   const search = searchParams.get('search') || undefined
-  const view = searchParams.get('view') || 'table'
+  const view = searchParams.get('view') || 'cards'
   const sortParam = searchParams.get('sort') as SortField | null
   const sortDirectionParam = searchParams.get('sortDirection') as SortDirection | null
   const pageParam = searchParams.get('page')

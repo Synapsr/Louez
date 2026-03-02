@@ -250,7 +250,7 @@ export function ReservationsTableView({
 
                     {/* Amount */}
                     <TableCell className="text-right font-medium">
-                      {parseFloat(reservation.totalAmount).toFixed(2)} {currencySymbol}
+                      {parseFloat(reservation.subtotalAmount).toFixed(2)} {currencySymbol}
                     </TableCell>
 
                     {/* Status */}

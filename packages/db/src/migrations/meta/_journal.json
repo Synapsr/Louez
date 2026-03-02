@@ -225,6 +225,27 @@
       "when": 1771422934801,
       "tag": "0031_whole_wraith",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1772019545405,
+      "tag": "0029_add_promo_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1772019562787,
+      "tag": "0030_add_return_address_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1772127063474,
+      "tag": "0031_add_seasonal_pricing",
+      "breakpoints": true
     }
   ]
 }

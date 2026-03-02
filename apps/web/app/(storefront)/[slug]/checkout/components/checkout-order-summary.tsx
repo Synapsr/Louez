@@ -4,7 +4,7 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { ImageIcon, Shield, Truck } from 'lucide-react';
+import { ImageIcon, Shield, Tag, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
@@ -18,18 +18,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui';
-import {
-  type ProductPricing,
-  calculateRentalPrice,
-  formatCurrency,
-} from '@louez/utils';
+import { formatCurrency } from '@louez/utils';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { CartItem } from '@/contexts/cart-context';
 
+import type { ValidatedPromo } from '../promo-actions';
 import type { DeliveryOption, LineResolutionState } from '../types';
-import { calculateDuration } from '../utils';
+import { CheckoutPromoCode } from './checkout-promo-code';
 
 interface CheckoutOrderSummaryProps {
   items: CartItem[];
@@ -67,6 +65,12 @@ interface CheckoutOrderSummaryProps {
     error: string | null;
   };
   lineResolutions?: Record<string, LineResolutionState>;
+  hasActivePromoCodes?: boolean;
+  storeId?: string;
+  appliedPromo: ValidatedPromo | null;
+  discountAmount: number;
+  onApplyPromo: (promo: ValidatedPromo) => void;
+  onRemovePromo: () => void;
 }
 
 export function CheckoutOrderSummary({
@@ -92,6 +96,12 @@ export function CheckoutOrderSummary({
   isTulipQuoteLoading,
   tulipQuotePreview,
   lineResolutions = {},
+  hasActivePromoCodes,
+  storeId,
+  appliedPromo,
+  discountAmount,
+  onApplyPromo,
+  onRemovePromo,
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
@@ -148,38 +158,14 @@ export function CheckoutOrderSummary({
           <div className="space-y-3">
             <TooltipProvider>
               {items.map((item, index) => {
-                const duration = calculateDuration(
-                  item.startDate,
-                  item.endDate,
-                  item.pricingMode,
+                const priceResult = calculateCartItemPrice(
+                  item,
+                  globalStartDate,
+                  globalEndDate,
                 );
-
-                const itemPricingMode = item.productPricingMode || pricingMode;
-                let itemTotal = item.price * item.quantity * duration;
-                let itemSavings = 0;
-                let discountPercent: number | null = null;
-
-                if (item.pricingTiers && item.pricingTiers.length > 0) {
-                  const pricing: ProductPricing = {
-                    basePrice: item.price,
-                    deposit: item.deposit,
-                    pricingMode: itemPricingMode,
-                    tiers: item.pricingTiers.map((tier, index) => ({
-                      ...tier,
-                      displayOrder: index,
-                    })),
-                  };
-
-                  const result = calculateRentalPrice(
-                    pricing,
-                    duration,
-                    item.quantity,
-                  );
-                  itemTotal = result.subtotal;
-                  itemSavings = result.savings;
-                  discountPercent = result.discountPercent;
-                }
-
+                const itemTotal = priceResult.subtotal;
+                const itemSavings = priceResult.savings;
+                const discountPercent = priceResult.discountPercent;
                 const resolutionState = lineResolutions[item.lineId];
                 const requestedAttributes = item.selectedAttributes;
                 const resolvedAttributes =
@@ -259,8 +245,10 @@ export function CheckoutOrderSummary({
                       )}
                       <p className="text-muted-foreground text-xs">
                         {item.quantity} {'\u00d7'}{' '}
-                        {formatCurrency(item.price, currency)} {'\u00d7'}{' '}
-                        {duration}
+                        {formatCurrency(
+                          itemTotal / Math.max(1, item.quantity),
+                          currency,
+                        )}
                       </p>
                       {discountPercent != null && discountPercent > 0 && (
                         <Badge
@@ -305,6 +293,27 @@ export function CheckoutOrderSummary({
                   <span>-{formatCurrency(totalSavings, currency)}</span>
                 </div>
               </>
+            )}
+
+            {hasActivePromoCodes && storeId && (
+              <CheckoutPromoCode
+                storeId={storeId}
+                subtotal={subtotal}
+                currency={currency}
+                appliedPromo={appliedPromo}
+                onApply={onApplyPromo}
+                onRemove={onRemovePromo}
+              />
+            )}
+
+            {discountAmount > 0 && appliedPromo && (
+              <div className="flex justify-between text-sm text-green-600">
+                <span className="flex items-center gap-1.5">
+                  <Tag className="h-3.5 w-3.5" />
+                  {t('promoCode.discount', { code: appliedPromo.code })}
+                </span>
+                <span>-{formatCurrency(discountAmount, currency)}</span>
+              </div>
             )}
 
             {deliveryOption === 'delivery' && deliveryDistance !== null && (
@@ -394,7 +403,8 @@ export function CheckoutOrderSummary({
                   <span className="text-primary">
                     {formatCurrency(
                       Math.round(
-                        subtotalWithEstimatedInsurance * depositPercentage,
+                        (subtotalWithEstimatedInsurance - discountAmount) *
+                          depositPercentage,
                       ) / 100,
                       currency,
                     )}
@@ -404,7 +414,7 @@ export function CheckoutOrderSummary({
                   {t('remainingAtPickup', {
                     amount: formatCurrency(
                       Math.round(
-                        subtotalWithEstimatedInsurance *
+                        (subtotalWithEstimatedInsurance - discountAmount) *
                           (100 - depositPercentage),
                       ) / 100,
                       currency,

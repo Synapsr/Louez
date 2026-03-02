@@ -32,6 +32,7 @@ export interface StorefrontPricingSummary {
   displayPeriodMinutes: number
   showStartingFrom: boolean
   maxReductionPercent: number
+  allReductionPercents: number[]
 }
 
 function parseMoney(value: string | number | null | undefined): number {
@@ -134,67 +135,36 @@ function normalizeRateRows(product: StorefrontPricingProduct): StorefrontRateRow
   })
 }
 
-function findCheapestPerMinuteRate(rows: StorefrontRateRow[]): StorefrontRateRow {
-  if (rows.length === 0) {
-    return {
-      id: '__base__',
-      periodMinutes: 1440,
-      price: 0,
-      reductionPercent: 0,
-    }
-  }
-
-  return rows.reduce((best, current) => {
-    const bestPerMinute = best.price / best.periodMinutes
-    const currentPerMinute = current.price / current.periodMinutes
-    if (currentPerMinute < bestPerMinute) return current
-    if (
-      Math.abs(currentPerMinute - bestPerMinute) < 1e-9 &&
-      current.periodMinutes < best.periodMinutes
-    ) {
-      return current
-    }
-    return best
-  })
-}
-
-function getSmallestPeriodMinutes(rows: StorefrontRateRow[]): number {
-  if (rows.length === 0) return 1440
-  return Math.min(...rows.map((row) => row.periodMinutes))
-}
-
-function normalizePriceToPeriod(
-  price: number,
-  fromPeriodMinutes: number,
-  targetPeriodMinutes: number,
-): number {
-  if (fromPeriodMinutes <= 0 || targetPeriodMinutes <= 0) return 0
-  return (price / fromPeriodMinutes) * targetPeriodMinutes
-}
-
 export function getStorefrontRateRows(
   product: StorefrontPricingProduct,
 ): StorefrontRateRow[] {
   return normalizeRateRows(product)
 }
 
+/**
+ * Returns the pricing summary for a product card in the catalog (no dates selected).
+ *
+ * Always displays the base rate — the actual price a customer pays for
+ * the shortest rental period. The discount badge (maxReductionPercent)
+ * signals that longer-term savings are available.
+ *
+ * Previous behaviour normalised the cheapest per-minute rate to the base
+ * period, producing misleading prices like "3.83 €/4 h" when the real
+ * 4-hour price is 27 €.
+ */
 export function getStorefrontPricingSummary(
   product: StorefrontPricingProduct,
 ): StorefrontPricingSummary {
   const rows = normalizeRateRows(product)
-  const smallestPeriodMinutes = getSmallestPeriodMinutes(rows)
-  const bestRate = findCheapestPerMinuteRate(rows)
-  const normalizedBestPrice = normalizePriceToPeriod(
-    bestRate.price,
-    bestRate.periodMinutes,
-    smallestPeriodMinutes,
-  )
-  const maxReductionPercent = Math.max(...rows.map((row) => row.reductionPercent), 0)
+  const baseRow = rows.find((r) => r.id === '__base__') ?? rows[0]
+  const allReductionPercents = rows.map((row) => row.reductionPercent).filter((p) => p > 0)
+  const maxReductionPercent = Math.max(...allReductionPercents, 0)
 
   return {
-    displayPrice: normalizedBestPrice,
-    displayPeriodMinutes: smallestPeriodMinutes,
-    showStartingFrom: bestRate.id !== '__base__',
+    displayPrice: baseRow.price,
+    displayPeriodMinutes: baseRow.periodMinutes,
+    showStartingFrom: false,
     maxReductionPercent,
+    allReductionPercents,
   }
 }

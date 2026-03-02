@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores } from '@louez/db'
-import { eq } from 'drizzle-orm'
+import { stores, promoCodes } from '@louez/db'
+import { eq, and, or, gt, lt, isNull, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 
 import { CheckoutForm } from './checkout-form'
@@ -72,6 +72,27 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   // fields required avoids checkout flows that later fail contract creation.
   const effectiveRequireCustomerAddress = true
 
+  // Check if store has at least one active promo code
+  const now = new Date()
+  const activePromoCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(promoCodes)
+    .where(
+      and(
+        eq(promoCodes.storeId, store.id),
+        eq(promoCodes.isActive, true),
+        or(isNull(promoCodes.startsAt), lt(promoCodes.startsAt, now)),
+        or(isNull(promoCodes.expiresAt), gt(promoCodes.expiresAt, now)),
+        or(
+          isNull(promoCodes.maxUsageCount),
+          sql`${promoCodes.currentUsageCount} < ${promoCodes.maxUsageCount}`
+        )
+      )
+    )
+    .then((rows) => rows[0]?.count ?? 0)
+
+  const hasActivePromoCodes = activePromoCount > 0
+
   return (
     <>
       <PageTracker page="checkout" />
@@ -104,6 +125,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
             enabled: tulipConnected && tulipMode !== 'no_public',
             mode: tulipMode,
           }}
+          hasActivePromoCodes={hasActivePromoCodes}
         />
       </div>
     </>

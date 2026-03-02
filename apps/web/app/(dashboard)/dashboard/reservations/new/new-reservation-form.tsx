@@ -59,8 +59,10 @@ import { useAppForm } from '@/hooks/form/form'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationList } from '@/lib/orpc/invalidation'
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer'
+import { NewReservationStepDelivery } from './components/new-reservation-step-delivery'
 import { NewReservationStepProducts } from './components/new-reservation-step-products'
 import { NewReservationStepReview } from './components/new-reservation-step-review'
+import { useNewReservationDelivery } from './hooks/use-new-reservation-delivery'
 import { useNewReservationPricing } from './hooks/use-new-reservation-pricing'
 import { useNewReservationStepFlow } from './hooks/use-new-reservation-step-flow'
 import { useNewReservationWarnings } from './hooks/use-new-reservation-warnings'
@@ -95,6 +97,10 @@ export function NewReservationForm({
   businessHours,
   advanceNoticeMinutes = 0,
   existingReservations = [],
+  deliverySettings,
+  storeLatitude,
+  storeLongitude,
+  storeAddress,
 }: NewReservationFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -127,6 +133,10 @@ export function NewReservationForm({
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
     tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
+  )
+
+  const isDeliveryEnabled = Boolean(
+    deliverySettings?.enabled && storeLatitude != null && storeLongitude != null,
   )
 
   // Price override dialog state
@@ -184,9 +194,10 @@ export function NewReservationForm({
 
   function validateCurrentStep(): boolean {
     let isValid = true
+    const stepId = currentStepId
 
-    switch (currentStep) {
-      case 0:
+    switch (stepId) {
+      case 'customer':
         if (watchCustomerType === 'existing') {
           clearStepFieldError('email')
           clearStepFieldError('firstName')
@@ -233,7 +244,7 @@ export function NewReservationForm({
         }
 
         return isValid
-      case 1:
+      case 'period':
         if (!watchStartDate) {
           setStepFieldError('startDate', tValidation('required'))
           isValid = false
@@ -256,13 +267,37 @@ export function NewReservationForm({
         }
 
         return isValid
-      case 2:
+      case 'products':
         if (selectedProducts.length === 0 && customItems.length === 0) {
           toastManager.add({ title: t('addProductError'), type: 'error' })
           return false
         }
         return true
-      case 3:
+      case 'delivery':
+        if (delivery.deliveryOption === 'delivery') {
+          if (
+            delivery.deliveryAddress.latitude === null ||
+            delivery.deliveryAddress.longitude === null
+          ) {
+            toastManager.add({ title: t('deliveryAddressRequired'), type: 'error' })
+            return false
+          }
+          if (delivery.deliveryError) {
+            toastManager.add({ title: t('deliveryHasError'), type: 'error' })
+            return false
+          }
+          if (
+            delivery.hasDifferentReturnAddress &&
+            (delivery.returnAddress.latitude === null ||
+              delivery.returnAddress.longitude === null ||
+              Boolean(delivery.returnError))
+          ) {
+            toastManager.add({ title: t('returnAddressRequired'), type: 'error' })
+            return false
+          }
+        }
+        return true
+      case 'confirm':
         return true
       default:
         return true
@@ -272,12 +307,14 @@ export function NewReservationForm({
   const {
     steps,
     currentStep,
+    currentStepId,
     stepDirection,
     goToNextStep,
     goToPreviousStep,
     goToStep,
   } = useNewReservationStepFlow({
     validateCurrentStep,
+    isDeliveryEnabled,
   })
 
   const form = useAppForm({
@@ -330,6 +367,32 @@ export function NewReservationForm({
               quantity: item.quantity,
               pricingMode: item.pricingMode,
             })),
+            delivery:
+              delivery.deliveryOption === 'delivery' &&
+              delivery.deliveryAddress.latitude !== null &&
+              delivery.deliveryAddress.longitude !== null
+                ? {
+                    option: 'delivery' as const,
+                    address: delivery.deliveryAddress.address,
+                    city: delivery.deliveryAddress.city,
+                    postalCode: delivery.deliveryAddress.postalCode,
+                    country: delivery.deliveryAddress.country,
+                    latitude: delivery.deliveryAddress.latitude,
+                    longitude: delivery.deliveryAddress.longitude,
+                    ...(delivery.hasDifferentReturnAddress &&
+                    delivery.returnAddress.latitude !== null &&
+                    delivery.returnAddress.longitude !== null
+                      ? {
+                          returnAddress: delivery.returnAddress.address,
+                          returnCity: delivery.returnAddress.city,
+                          returnPostalCode: delivery.returnAddress.postalCode,
+                          returnCountry: delivery.returnAddress.country,
+                          returnLatitude: delivery.returnAddress.latitude,
+                          returnLongitude: delivery.returnAddress.longitude,
+                        }
+                      : {}),
+                  }
+                : { option: 'pickup' as const },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
             sendConfirmationEmail,
@@ -380,6 +443,13 @@ export function NewReservationForm({
     selectedProducts,
     customItems,
     products,
+  })
+
+  const delivery = useNewReservationDelivery({
+    deliverySettings,
+    storeLatitude,
+    storeLongitude,
+    subtotal,
   })
 
   const addProduct = (productId: string) => {
@@ -788,8 +858,8 @@ export function NewReservationForm({
           </CardContent>
         </Card>
 
-        {/* Step 1: Customer */}
-        {currentStep === 0 && (
+        {/* Step: Customer */}
+        {currentStepId === 'customer' && (
           <StepContent direction={stepDirection}>
             <NewReservationStepCustomer
               form={form as unknown as NewReservationFormComponentApi}
@@ -801,8 +871,8 @@ export function NewReservationForm({
           </StepContent>
         )}
 
-        {/* Step 2: Period */}
-        {currentStep === 1 && (
+        {/* Step: Period */}
+        {currentStepId === 'period' && (
           <StepContent direction={stepDirection}>
             <Card>
               <CardHeader>
@@ -893,26 +963,19 @@ export function NewReservationForm({
                             {' '}&rarr;{' '}
                             {formatStoreDate(watchEndDate, timezone, "d MMMM yyyy HH:mm")}
                           </p>
-                          {/* Show detailed breakdown for transparency */}
-                          {detailedDuration && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {detailedDuration.days > 0 && detailedDuration.hours > 0
-                                ? `(${detailedDuration.days}j ${detailedDuration.hours}h ${t('exact')})`
-                                : detailedDuration.days === 0
-                                  ? `(${detailedDuration.totalHours}h ${t('exact')})`
-                                  : null}
-                            </p>
-                          )}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-primary">
-                          {duration}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {tCommon('dayUnit', { count: duration })}
-                        </p>
-                      </div>
+                      {detailedDuration && (
+                        <div className="text-right shrink-0">
+                          <p className="text-sm font-bold text-primary">
+                            {[
+                              detailedDuration.days > 0 && `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
+                              detailedDuration.hours > 0 && `${detailedDuration.hours}h`,
+                              detailedDuration.minutes > 0 && `${detailedDuration.minutes} min`,
+                            ].filter(Boolean).join(', ') || `0 min`}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -951,8 +1014,8 @@ export function NewReservationForm({
           </StepContent>
         )}
 
-        {/* Step 3: Products */}
-        {currentStep === 2 && (
+        {/* Step: Products */}
+        {currentStepId === 'products' && (
           <StepContent direction={stepDirection}>
             <NewReservationStepProducts
               products={products}
@@ -984,8 +1047,35 @@ export function NewReservationForm({
           </StepContent>
         )}
 
-        {/* Step 4: Confirmation */}
-        {currentStep === 3 && (
+        {/* Step: Delivery (conditional) */}
+        {currentStepId === 'delivery' && deliverySettings && (
+          <StepContent direction={stepDirection}>
+            <NewReservationStepDelivery
+              deliverySettings={deliverySettings}
+              deliveryOption={delivery.deliveryOption}
+              deliveryAddress={delivery.deliveryAddress}
+              deliveryDistance={delivery.deliveryDistance}
+              deliveryFee={delivery.deliveryFee}
+              deliveryError={delivery.deliveryError}
+              subtotal={subtotal}
+              storeAddress={storeAddress}
+              isDeliveryForced={delivery.isDeliveryForced}
+              isDeliveryIncluded={delivery.isDeliveryIncluded}
+              allowDifferentReturnAddress={delivery.allowDifferentReturnAddress}
+              hasDifferentReturnAddress={delivery.hasDifferentReturnAddress}
+              returnAddress={delivery.returnAddress}
+              returnDistance={delivery.returnDistance}
+              returnError={delivery.returnError}
+              onDeliveryOptionChange={delivery.handleDeliveryOptionChange}
+              onDeliveryAddressChange={delivery.handleDeliveryAddressChange}
+              onDifferentReturnAddressToggle={delivery.handleDifferentReturnAddressToggle}
+              onReturnAddressChange={delivery.handleReturnAddressChange}
+            />
+          </StepContent>
+        )}
+
+        {/* Step: Confirmation */}
+        {currentStepId === 'confirm' && (
           <StepContent direction={stepDirection}>
             <NewReservationStepReview
               form={form as unknown as NewReservationFormComponentApi}
@@ -995,6 +1085,7 @@ export function NewReservationForm({
               startDate={watchStartDate}
               endDate={watchEndDate}
               duration={duration}
+              detailedDuration={detailedDuration}
               locale={locale}
               dateLocale={dateLocale}
               selectedProducts={selectedProducts}
@@ -1006,6 +1097,11 @@ export function NewReservationForm({
               deposit={deposit}
               getProductPricingDetails={getProductPricingDetails}
               getCustomItemTotal={getCustomItemTotal}
+              deliveryOption={delivery.deliveryOption}
+              deliveryAddress={delivery.deliveryAddress}
+              deliveryFee={delivery.deliveryFee}
+              deliveryDistance={delivery.deliveryDistance}
+              isDeliveryIncluded={delivery.isDeliveryIncluded}
             />
           </StepContent>
         )}

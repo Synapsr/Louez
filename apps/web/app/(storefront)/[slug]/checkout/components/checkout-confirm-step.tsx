@@ -38,6 +38,7 @@ interface CheckoutConfirmStepProps {
   };
   isTulipQuoteLoading: boolean;
   canSubmitCheckout: boolean;
+  discountAmount?: number;
   onBack: () => void;
   onEditContact: () => void;
 }
@@ -55,6 +56,7 @@ export function CheckoutConfirmStep({
   tulipQuotePreview,
   isTulipQuoteLoading,
   canSubmitCheckout,
+  discountAmount = 0,
   onBack,
   onEditContact,
 }: CheckoutConfirmStepProps) {
@@ -256,7 +258,7 @@ export function CheckoutConfirmStep({
                     {depositPercentage < 100
                       ? t('payDeposit', {
                           amount: formatCurrency(
-                            Math.round(subtotal * depositPercentage) / 100,
+                            Math.round((subtotal - discountAmount) * depositPercentage) / 100,
                             currency,
                           ),
                         })

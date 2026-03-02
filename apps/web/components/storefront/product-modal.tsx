@@ -5,12 +5,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 import {
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   ImageIcon,
   Minus,
   Play,
   Plus,
+  Layers,
   ShoppingCart,
   TrendingDown,
 } from 'lucide-react';
@@ -41,10 +44,13 @@ import {
 } from '@louez/utils';
 import {
   type ProductPricing,
+  type SeasonalPricingConfig,
   calculateDurationMinutes,
   calculateEffectivePrice,
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
+  findSeasonalPricingForDate,
   isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
@@ -125,6 +131,7 @@ interface ProductModalProps {
     category?: { name: string } | null;
     pricingMode?: PricingMode | null;
     basePeriodMinutes?: number | null;
+    enforceStrictTiers?: boolean;
     pricingTiers?: PricingTier[];
     videoUrl?: string | null;
     accessories?: Accessory[];
@@ -138,6 +145,7 @@ interface ProductModalProps {
       status: 'available' | 'maintenance' | 'retired' | null;
       attributes: Record<string, string> | null;
     }>;
+    seasonalPricings?: SeasonalPricingConfig[];
   };
   isOpen: boolean;
   onClose: () => void;
@@ -180,6 +188,7 @@ export function ProductModal({
   const [selectedAttributes, setSelectedAttributes] = useState<
     Record<string, string>
   >({});
+  const [tiersExpanded, setTiersExpanded] = useState(false);
 
   // Filter available accessories (active with stock and not already in cart)
   const cartProductIds = new Set(cartItems.map((item) => item.productId));
@@ -194,6 +203,7 @@ export function ProductModal({
     if (!isOpening) return;
 
     setSelectedImageIndex(0);
+    setTiersExpanded(false);
     if (cartLines.length === 1) {
       setSelectedAttributes(cartLines[0].selectedAttributes || {});
     } else {
@@ -277,34 +287,87 @@ export function ProductModal({
     basePeriodMinutes: product.basePeriodMinutes,
   });
 
-  const priceResult = isRateBased
-    ? calculateRentalPriceV2(
-        {
-          basePrice: price,
-          basePeriodMinutes: product.basePeriodMinutes!,
-          deposit,
-          rates: rateTiers,
-        },
-        durationMinutes,
-        quantity,
-      )
-    : calculateRentalPrice(
-        {
-          basePrice: price,
-          deposit,
-          pricingMode: effectivePricingMode,
-          tiers: legacyTiers,
-        } as ProductPricing,
-        duration,
-        quantity,
-      );
+  // Use seasonal-aware calculation when seasonal pricings exist
+  const hasSeasonalPricings = (product.seasonalPricings?.length ?? 0) > 0;
+
+  const priceResult = hasSeasonalPricings
+    ? (() => {
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: price,
+            basePeriodMinutes: product.basePeriodMinutes ?? null,
+            deposit,
+            pricingMode: effectivePricingMode,
+            enforceStrictTiers: product.enforceStrictTiers ?? false,
+            tiers: legacyTiers,
+            rates: rateTiers,
+          },
+          product.seasonalPricings!,
+          startDate,
+          endDate,
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: result.savings > 0 && result.originalSubtotal > 0
+            ? Math.round((result.savings / result.originalSubtotal) * 100)
+            : null,
+          isSeasonal: result.isSeasonal,
+        };
+      })()
+    : (() => {
+        const result = isRateBased
+          ? calculateRateBasedPrice(
+              {
+                basePrice: price,
+                basePeriodMinutes: product.basePeriodMinutes!,
+                deposit,
+                rates: rateTiers,
+                enforceStrictTiers: product.enforceStrictTiers ?? false,
+              },
+              durationMinutes,
+              quantity,
+            )
+          : calculateRentalPrice(
+              {
+                basePrice: price,
+                deposit,
+                pricingMode: effectivePricingMode,
+                tiers: legacyTiers,
+              } as ProductPricing,
+              duration,
+              quantity,
+            );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: 'reductionPercent' in result
+            ? result.reductionPercent
+            : result.discountPercent,
+          isSeasonal: false,
+        };
+      })();
   const totalPrice = priceResult.subtotal;
   const originalPrice = priceResult.originalSubtotal;
   const savings = priceResult.savings;
-  const discountPercent =
-    'reductionPercent' in priceResult
-      ? priceResult.reductionPercent
-      : priceResult.discountPercent;
+  const discountPercent = priceResult.discountPercent;
+
+  // Detect which seasonal pricing (if any) applies to the selected dates.
+  // Used to show seasonal-adjusted rates in the Tarifs section so displayed
+  // rates match the calculated total.
+  const activeSeasonalPricing = useMemo(() => {
+    if (!hasSeasonalPricings || !product.seasonalPricings?.length) return null;
+    const startDateKey = new Date(startDate).toISOString().slice(0, 10);
+    return findSeasonalPricingForDate(product.seasonalPricings, startDateKey);
+  }, [hasSeasonalPricings, product.seasonalPricings, startDate]);
+
+  const effectiveBasePrice = activeSeasonalPricing ? activeSeasonalPricing.basePrice : price;
+  const effectiveRateTiers: Rate[] = activeSeasonalPricing?.rates.length
+    ? activeSeasonalPricing.rates
+    : rateTiers;
 
   const maxQuantity = Math.min(availableQuantity, product.quantity);
   const isUnavailable = availableQuantity === 0;
@@ -503,6 +566,7 @@ export function ProductModal({
                   : (tier.price ?? null),
             })),
             productPricingMode: product.pricingMode,
+            seasonalPricings: product.seasonalPricings,
             selectedAttributes: allocation.combination.selectedAttributes,
           },
           storeSlug,
@@ -577,6 +641,7 @@ export function ProductModal({
                 : (tier.price ?? null),
           })),
           productPricingMode: product.pricingMode,
+          seasonalPricings: product.seasonalPricings,
           selectedAttributes,
         },
         storeSlug,
@@ -655,16 +720,16 @@ export function ProductModal({
     const baseRow = {
       id: '__base__',
       periodMinutes: basePeriod,
-      price,
+      price: effectiveBasePrice,
       reductionPercent: 0,
     };
-    const tierRows = rateTiers.map((rate) => ({
+    const tierRows = effectiveRateTiers.map((rate) => ({
       id: rate.id,
       periodMinutes: rate.period,
       price: rate.price,
       reductionPercent: Math.max(
         0,
-        computeReductionPercent(price, basePeriod, rate.price, rate.period),
+        computeReductionPercent(effectiveBasePrice, basePeriod, rate.price, rate.period),
       ),
     }));
     return [baseRow, ...tierRows].sort((a, b) => {
@@ -673,7 +738,7 @@ export function ProductModal({
       }
       return a.price - b.price;
     });
-  }, [isRateBased, price, product.basePeriodMinutes, rateTiers]);
+  }, [isRateBased, effectiveBasePrice, product.basePeriodMinutes, effectiveRateTiers]);
 
   const contextualPeriodMinutes = useMemo(() => {
     if (!isRateBased || rateRows.length === 0) return null;
@@ -706,21 +771,16 @@ export function ProductModal({
       };
     }
 
-    const cheapestPerMinute = [...rateRows].sort(
-      (a, b) => a.price / a.periodMinutes - b.price / b.periodMinutes,
-    )[0];
-
-    if (!cheapestPerMinute) {
-      return null;
-    }
+    // Fallback: show the base rate rather than normalising a
+    // different period's price, which would produce a misleading figure.
+    const baseRow = rateRows.find((r) => r.id === '__base__');
+    if (!baseRow) return null;
 
     return {
-      price:
-        (cheapestPerMinute.price / cheapestPerMinute.periodMinutes) *
-        contextualPeriodMinutes,
-      periodMinutes: contextualPeriodMinutes,
-      isFrom: cheapestPerMinute.id !== '__base__',
-      selectedRateId: cheapestPerMinute.id,
+      price: baseRow.price,
+      periodMinutes: baseRow.periodMinutes,
+      isFrom: false,
+      selectedRateId: baseRow.id,
     };
   }, [contextualPeriodMinutes, isRateBased, rateRows]);
 
@@ -917,7 +977,7 @@ export function ProductModal({
                   )}
                   <span className="text-primary text-2xl font-bold md:text-3xl">
                     {formatCurrency(
-                      contextualDisplay?.price ?? price,
+                      contextualDisplay?.price ?? effectiveBasePrice,
                       currency,
                     )}
                   </span>
@@ -946,157 +1006,371 @@ export function ProductModal({
 
               {/* Pricing tiers section */}
               {isRateBased ? (
-                rateRows.length > 1 && (
-                  <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
-                    <div className="mb-3 flex items-center gap-2">
-                      <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                        <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
+                rateRows.length > 1 && (() => {
+                  const MAX_VISIBLE = 3;
+                  const currentRateIndex = rateRows.findIndex(
+                    (rate) => contextualDisplay?.selectedRateId === rate.id,
+                  );
+                  const shouldAutoExpand = currentRateIndex >= MAX_VISIBLE;
+                  const isExpanded = tiersExpanded || shouldAutoExpand;
+                  const hasHidden = rateRows.length > MAX_VISIBLE;
+                  const hiddenCount = rateRows.length - MAX_VISIBLE;
+                  const visibleRows = rateRows.slice(0, MAX_VISIBLE);
+                  const hiddenRows = rateRows.slice(MAX_VISIBLE);
+
+                  return (
+                    <div className="rounded-xl border bg-primary/5 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
+                        </div>
+                        <span className="text-sm font-semibold">
+                          {tProduct('tieredPricing.ratesTitle')}
+                        </span>
+                        {activeSeasonalPricing && (
+                          <Badge variant="secondary" className="text-xs">
+                            {activeSeasonalPricing.name}
+                          </Badge>
+                        )}
                       </div>
-                      <span className="text-sm font-semibold">
-                        {tProduct('tieredPricing.ratesTitle')}
-                      </span>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      {rateRows.map((rate) => {
-                        const isCurrentRate =
-                          contextualDisplay?.selectedRateId === rate.id;
+                      <div className="space-y-1.5">
+                        {visibleRows.map((rate) => {
+                          const isCurrentRate =
+                            contextualDisplay?.selectedRateId === rate.id;
 
-                        return (
-                          <div
-                            key={rate.id}
-                            className={cn(
-                              'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                              isCurrentRate
-                                ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
-                                : 'bg-background/60',
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={cn(
-                                  'font-medium',
-                                  isCurrentRate &&
-                                    'text-green-700 dark:text-green-300',
-                                )}
-                              >
-                                {formatPeriodLabel(rate.periodMinutes, {
-                                  alwaysShowCount: true,
-                                })}
-                              </span>
-                              {rate.reductionPercent > 0 && (
-                                <Badge
+                          return (
+                            <div
+                              key={rate.id}
+                              className={cn(
+                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                isCurrentRate
+                                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                                  : 'bg-background',
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
                                   className={cn(
-                                    'text-xs font-semibold',
-                                    isCurrentRate
-                                      ? 'bg-green-600 text-white hover:bg-green-600'
-                                      : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
+                                    'font-medium',
+                                    isCurrentRate && 'text-primary',
                                   )}
                                 >
-                                  -{Math.floor(rate.reductionPercent)}%
-                                </Badge>
-                              )}
+                                  {formatPeriodLabel(rate.periodMinutes, {
+                                    alwaysShowCount: true,
+                                  })}
+                                </span>
+                                {rate.reductionPercent > 0 && (
+                                  <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                    -{Math.floor(rate.reductionPercent)}%
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <span
+                                  className={cn(
+                                    'font-semibold',
+                                    isCurrentRate && 'text-primary',
+                                  )}
+                                >
+                                  {formatCurrency(rate.price, currency)}
+                                </span>
+                                {(() => {
+                                  const period = minutesToPriceDuration(rate.periodMinutes);
+                                  if (period.duration <= 1) return null;
+                                  const unitMinutes = rate.periodMinutes / period.duration;
+                                  return (
+                                    <div className={cn(
+                                      'text-xs',
+                                      isCurrentRate
+                                        ? 'text-primary/70'
+                                        : 'text-muted-foreground',
+                                    )}>
+                                      {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
-                            <span
-                              className={cn(
-                                'font-semibold',
-                                isCurrentRate &&
-                                  'text-green-700 dark:text-green-300',
-                              )}
-                            >
-                              {formatCurrency(rate.price, currency)} /{' '}
-                              {formatPeriodLabel(rate.periodMinutes)}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )
-              ) : (
-                sortedLegacyTiers.length > 0 && (
-                <div className="rounded-xl border bg-gradient-to-br from-green-50/50 to-emerald-50/30 p-4 dark:from-green-950/20 dark:to-emerald-950/10">
-                  <div className="mb-3 flex items-center gap-2">
-                    <div className="rounded-lg bg-green-100 p-1.5 dark:bg-green-900/40">
-                      <TrendingDown className="h-4 w-4 text-green-600 dark:text-green-400" />
-                    </div>
-                    <span className="text-sm font-semibold">
-                      {tProduct('tieredPricing.ratesTitle')}
-                    </span>
-                  </div>
+                          );
+                        })}
 
-                  <div className="space-y-1.5">
-                    {/* Base price row */}
-                    <div className="bg-background/60 flex items-center justify-between rounded-lg px-3 py-1.5 text-sm">
-                      <span className="text-muted-foreground">
-                        1 {pricingUnitLabel}
-                      </span>
-                      <span className="font-medium">
-                        {formatCurrency(price, currency)}
-                      </span>
-                    </div>
-
-                    {/* Tier rows */}
-                    {sortedLegacyTiers.map((tier) => {
-                      const effectivePrice = calculateEffectivePrice(
-                        price,
-                        tier,
-                      );
-                      const isCurrentTier =
-                        duration >= tier.minDuration &&
-                        !sortedLegacyTiers.some(
-                          (t) =>
-                            t.minDuration > tier.minDuration &&
-                            duration >= t.minDuration,
-                        );
-
-                      return (
-                        <div
-                          key={tier.id}
-                          className={cn(
-                            'flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors',
-                            isCurrentTier
-                              ? 'bg-green-100 ring-1 ring-green-300 dark:bg-green-900/40 dark:ring-green-700'
-                              : 'bg-background/60',
-                          )}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={cn(
-                                'font-medium',
-                                isCurrentTier &&
-                                  'text-green-700 dark:text-green-300',
-                              )}
-                            >
-                              {tier.minDuration}+ {pricingUnitLabelPlural}
-                            </span>
-                            <Badge
-                              className={cn(
-                                'text-xs font-semibold',
-                                isCurrentTier
-                                  ? 'bg-green-600 text-white hover:bg-green-600'
-                                  : 'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-300',
-                              )}
-                            >
-                              -{Math.floor(tier.discountPercent)}%
-                            </Badge>
-                          </div>
-                          <span
-                            className={cn(
-                              'font-semibold',
-                              isCurrentTier &&
-                                'text-green-700 dark:text-green-300',
-                            )}
+                        {/* Collapsible hidden tiers */}
+                        {hasHidden && (
+                          <div
+                            className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                            style={{
+                              gridTemplateRows: isExpanded ? '1fr' : '0fr',
+                            }}
                           >
-                            {formatCurrency(effectivePrice, currency)}/
-                            {pricingUnitLabel}
+                            <div className="overflow-hidden">
+                              <div className="space-y-1.5">
+                                {hiddenRows.map((rate) => {
+                                  const isCurrentRate =
+                                    contextualDisplay?.selectedRateId === rate.id;
+
+                                  return (
+                                    <div
+                                      key={rate.id}
+                                      className={cn(
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                        isCurrentRate
+                                          ? 'bg-primary/10 ring-1 ring-primary/20'
+                                          : 'bg-background',
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            'font-medium',
+                                            isCurrentRate && 'text-primary',
+                                          )}
+                                        >
+                                          {formatPeriodLabel(rate.periodMinutes, {
+                                            alwaysShowCount: true,
+                                          })}
+                                        </span>
+                                        {rate.reductionPercent > 0 && (
+                                          <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                            -{Math.floor(rate.reductionPercent)}%
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <span
+                                          className={cn(
+                                            'font-semibold',
+                                            isCurrentRate && 'text-primary',
+                                          )}
+                                        >
+                                          {formatCurrency(rate.price, currency)}
+                                        </span>
+                                        {(() => {
+                                          const period = minutesToPriceDuration(rate.periodMinutes);
+                                          if (period.duration <= 1) return null;
+                                          const unitMinutes = rate.periodMinutes / period.duration;
+                                          return (
+                                            <div className={cn(
+                                              'text-xs',
+                                              isCurrentRate
+                                                ? 'text-primary/70'
+                                                : 'text-muted-foreground',
+                                            )}>
+                                              {formatCurrency(rate.price / period.duration, currency)}/{formatPeriodLabel(unitMinutes)}
+                                            </div>
+                                          );
+                                        })()}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Show more / Show less toggle */}
+                      {hasHidden && !shouldAutoExpand && (
+                        <button
+                          type="button"
+                          onClick={() => setTiersExpanded((prev) => !prev)}
+                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                        >
+                          {isExpanded ? (
+                            <>
+                              {tProduct('tieredPricing.showLess')}
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              {tProduct('tieredPricing.showMore', { count: hiddenCount })}
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : (
+                sortedLegacyTiers.length > 0 && (() => {
+                  const MAX_VISIBLE = 3;
+                  const currentTierIndex = sortedLegacyTiers.findIndex(
+                    (tier) =>
+                      duration >= tier.minDuration &&
+                      !sortedLegacyTiers.some(
+                        (t) =>
+                          t.minDuration > tier.minDuration &&
+                          duration >= t.minDuration,
+                      ),
+                  );
+                  const shouldAutoExpand = currentTierIndex >= MAX_VISIBLE;
+                  const isExpanded = tiersExpanded || shouldAutoExpand;
+                  const hasHidden = sortedLegacyTiers.length > MAX_VISIBLE;
+                  const hiddenCount = sortedLegacyTiers.length - MAX_VISIBLE;
+                  const visibleTiers = sortedLegacyTiers.slice(0, MAX_VISIBLE);
+                  const hiddenTiers = sortedLegacyTiers.slice(MAX_VISIBLE);
+
+                  return (
+                    <div className="rounded-xl border bg-primary/5 p-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <div className="rounded-lg bg-primary/10 p-1.5">
+                          <Layers className="h-4 w-4 text-primary" />
+                        </div>
+                        <span className="text-sm font-semibold">
+                          {tProduct('tieredPricing.ratesTitle')}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {/* Base price row */}
+                        <div className="flex items-center justify-between rounded-lg bg-background px-3 py-2 text-sm shadow-xs">
+                          <span className="text-muted-foreground">
+                            1 {pricingUnitLabel}
+                          </span>
+                          <span className="font-medium">
+                            {formatCurrency(price, currency)}
                           </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                )
+
+                        {/* Visible tier rows */}
+                        {visibleTiers.map((tier) => {
+                          const effectivePrice = calculateEffectivePrice(
+                            price,
+                            tier,
+                          );
+                          const isCurrentTier =
+                            duration >= tier.minDuration &&
+                            !sortedLegacyTiers.some(
+                              (t) =>
+                                t.minDuration > tier.minDuration &&
+                                duration >= t.minDuration,
+                            );
+
+                          return (
+                            <div
+                              key={tier.id}
+                              className={cn(
+                                'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                isCurrentTier
+                                  ? 'bg-primary/10 ring-1 ring-primary/20'
+                                  : 'bg-background',
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={cn(
+                                    'font-medium',
+                                    isCurrentTier && 'text-primary',
+                                  )}
+                                >
+                                  {tier.minDuration}+ {pricingUnitLabelPlural}
+                                </span>
+                                <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                  -{Math.floor(tier.discountPercent)}%
+                                </Badge>
+                              </div>
+                              <span
+                                className={cn(
+                                  'font-semibold',
+                                  isCurrentTier && 'text-primary',
+                                )}
+                              >
+                                {formatCurrency(effectivePrice, currency)}/
+                                {pricingUnitLabel}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                        {/* Collapsible hidden tiers */}
+                        {hasHidden && (
+                          <div
+                            className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                            style={{
+                              gridTemplateRows: isExpanded ? '1fr' : '0fr',
+                            }}
+                          >
+                            <div className="overflow-hidden">
+                              <div className="space-y-1.5">
+                                {hiddenTiers.map((tier) => {
+                                  const effectivePrice = calculateEffectivePrice(
+                                    price,
+                                    tier,
+                                  );
+                                  const isCurrentTier =
+                                    duration >= tier.minDuration &&
+                                    !sortedLegacyTiers.some(
+                                      (t) =>
+                                        t.minDuration > tier.minDuration &&
+                                        duration >= t.minDuration,
+                                    );
+
+                                  return (
+                                    <div
+                                      key={tier.id}
+                                      className={cn(
+                                        'flex items-center justify-between rounded-lg px-3 py-2 text-sm shadow-xs transition-colors',
+                                        isCurrentTier
+                                          ? 'bg-primary/10 ring-1 ring-primary/20'
+                                          : 'bg-background',
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className={cn(
+                                            'font-medium',
+                                            isCurrentTier && 'text-primary',
+                                          )}
+                                        >
+                                          {tier.minDuration}+ {pricingUnitLabelPlural}
+                                        </span>
+                                        <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                          -{Math.floor(tier.discountPercent)}%
+                                        </Badge>
+                                      </div>
+                                      <span
+                                        className={cn(
+                                          'font-semibold',
+                                          isCurrentTier && 'text-primary',
+                                        )}
+                                      >
+                                        {formatCurrency(effectivePrice, currency)}/
+                                        {pricingUnitLabel}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Show more / Show less toggle */}
+                      {hasHidden && !shouldAutoExpand && (
+                        <button
+                          type="button"
+                          onClick={() => setTiersExpanded((prev) => !prev)}
+                          className="text-muted-foreground hover:text-foreground mt-3 flex w-full items-center justify-center gap-1.5 text-xs font-medium transition-colors"
+                        >
+                          {isExpanded ? (
+                            <>
+                              {tProduct('tieredPricing.showLess')}
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              {tProduct('tieredPricing.showMore', { count: hiddenCount })}
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()
               )}
 
               {/* Booking attributes */}
@@ -1203,7 +1477,8 @@ export function ProductModal({
               </div>
 
               {savings > 0 && discountPercent && (
-                <Badge className="bg-green-100 px-3 py-1 text-sm font-semibold text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                <Badge className="bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
+                  <TrendingDown className="mr-1 h-3.5 w-3.5" />
                   -{Math.floor(discountPercent)}%
                 </Badge>
               )}

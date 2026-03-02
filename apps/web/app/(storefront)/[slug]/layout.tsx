@@ -99,7 +99,7 @@ export default async function StorefrontLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <PostHogProvider>
-        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone}>
+        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
           <CartProvider>
             <AnalyticsProvider storeSlug={store.slug}>
               <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>

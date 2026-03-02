@@ -30,3 +30,6 @@ export {
   type Permission,
   type MemberRole,
 } from './permissions'
+
+// Business hours
+export { normalizeDaySchedule } from './business-hours'

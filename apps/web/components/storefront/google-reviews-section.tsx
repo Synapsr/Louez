@@ -13,7 +13,13 @@ async function GoogleReviewsContent({
   primaryColor,
 }: GoogleReviewsSectionProps) {
   const t = await getTranslations('storefront.reviews')
-  const details = await getCachedPlaceDetails(placeId)
+  let details = null
+  try {
+    details = await getCachedPlaceDetails(placeId)
+  } catch (error) {
+    console.error('Error loading storefront Google reviews:', error)
+    return null
+  }
 
   if (!details || !details.reviews || details.reviews.length === 0) {
     return null

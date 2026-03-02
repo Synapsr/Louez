@@ -10,7 +10,7 @@ import {
 import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import type { PricingMode } from '@louez/types';
+import type { PricingMode, BusinessHours } from '@louez/types';
 import type { Rate } from '@louez/types';
 import { toastManager } from '@louez/ui';
 import { Button } from '@louez/ui';
@@ -27,11 +27,13 @@ import {
 import { formatCurrency } from '@louez/utils';
 import {
   type ProductPricing,
+  type SeasonalPricingConfig,
   allocateAcrossCombinations,
   buildCombinationKey,
   calculateDurationMinutes,
   calculateRentalPrice,
-  calculateRentalPriceV2,
+  calculateRateBasedPrice,
+  calculateSeasonalAwarePrice,
   getAvailableDurations,
   getAvailableDurationMinutes,
   getDeterministicCombinationSortValue,
@@ -94,6 +96,8 @@ interface AddToCartFormProps {
   enforceStrictTiers?: boolean;
   advanceNotice?: number;
   minRentalMinutes?: number;
+  businessHours?: BusinessHours;
+  timezone?: string;
   accessories?: Accessory[];
   trackUnits?: boolean;
   bookingAttributeAxes?: Array<{
@@ -111,6 +115,7 @@ interface AddToCartFormProps {
     selectedAttributes: Record<string, string>;
     availableQuantity: number;
   }>;
+  seasonalPricings?: SeasonalPricingConfig[];
 }
 
 export function AddToCartForm({
@@ -127,12 +132,15 @@ export function AddToCartForm({
   enforceStrictTiers = false,
   advanceNotice = 0,
   minRentalMinutes = 0,
+  businessHours,
+  timezone,
   accessories = [],
   trackUnits = false,
   bookingAttributeAxes = [],
   bookingAttributeValues = {},
   productUnits = [],
   bookingCombinations = [],
+  seasonalPricings = [],
 }: AddToCartFormProps) {
   const t = useTranslations('storefront.product');
   const currency = useStoreCurrency();
@@ -302,35 +310,71 @@ export function AddToCartForm({
       displayOrder: index,
     }));
 
-  const priceResult = isRateBased
-    ? calculateRentalPriceV2(
-        {
-          basePrice: price,
-          basePeriodMinutes: basePeriodMinutes ?? 1440,
-          deposit,
-          rates: rateTiers,
-          enforceStrictTiers,
-        },
-        Math.max(1, durationMinutes),
-        quantity,
-      )
-    : calculateRentalPrice(
-        {
-          basePrice: price,
-          deposit,
-          pricingMode,
-          tiers: normalizedPricingTiers,
-        } as ProductPricing,
-        duration,
-        quantity,
-      );
+  // Use seasonal-aware calculation when seasonal pricings exist and dates are set
+  const hasSeasonalPricings = seasonalPricings.length > 0;
+
+  const priceResult = hasSeasonalPricings && startDate && endDate
+    ? (() => {
+        const result = calculateSeasonalAwarePrice(
+          {
+            basePrice: price,
+            basePeriodMinutes: basePeriodMinutes ?? null,
+            deposit,
+            pricingMode,
+            enforceStrictTiers,
+            tiers: normalizedPricingTiers,
+            rates: rateTiers,
+          },
+          seasonalPricings,
+          startDate,
+          endDate,
+          quantity,
+        );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: result.savings > 0 && result.originalSubtotal > 0
+            ? Math.round((result.savings / result.originalSubtotal) * 100)
+            : null,
+        };
+      })()
+    : (() => {
+        const result = isRateBased
+          ? calculateRateBasedPrice(
+              {
+                basePrice: price,
+                basePeriodMinutes: basePeriodMinutes ?? 1440,
+                deposit,
+                rates: rateTiers,
+                enforceStrictTiers,
+              },
+              Math.max(1, durationMinutes),
+              quantity,
+            )
+          : calculateRentalPrice(
+              {
+                basePrice: price,
+                deposit,
+                pricingMode,
+                tiers: normalizedPricingTiers,
+              } as ProductPricing,
+              duration,
+              quantity,
+            );
+        return {
+          subtotal: result.subtotal,
+          originalSubtotal: result.originalSubtotal,
+          savings: result.savings,
+          discountPercent: 'reductionPercent' in result
+            ? result.reductionPercent
+            : result.discountPercent,
+        };
+      })();
   const subtotal = priceResult.subtotal;
   const originalSubtotal = priceResult.originalSubtotal;
   const savings = priceResult.savings;
-  const discountPercent =
-    'reductionPercent' in priceResult
-      ? priceResult.reductionPercent
-      : priceResult.discountPercent;
+  const discountPercent = priceResult.discountPercent;
   const totalDeposit = deposit * quantity;
 
   // Filter accessories to only show available ones (in stock, active status is already filtered server-side, and not in cart)
@@ -395,6 +439,7 @@ export function AddToCartForm({
             ),
             pricingMode,
             basePeriodMinutes: basePeriodMinutes ?? null,
+            enforceStrictTiers,
             pricingTiers: normalizedCartTiers.map((tier) => ({
               id: tier.id,
               minDuration: tier.minDuration,
@@ -403,6 +448,7 @@ export function AddToCartForm({
               price: tier.price,
             })),
             productPricingMode: pricingMode,
+            seasonalPricings: seasonalPricings.length > 0 ? seasonalPricings : undefined,
             selectedAttributes: allocation.combination.selectedAttributes,
           },
           storeSlug,
@@ -420,6 +466,7 @@ export function AddToCartForm({
           maxQuantity: Math.max(1, effectiveMaxQuantity),
           pricingMode,
           basePeriodMinutes: basePeriodMinutes ?? null,
+          enforceStrictTiers,
           pricingTiers: normalizedCartTiers.map((tier) => ({
             id: tier.id,
             minDuration: tier.minDuration,
@@ -428,6 +475,7 @@ export function AddToCartForm({
             price: tier.price,
           })),
           productPricingMode: pricingMode,
+          seasonalPricings: seasonalPricings.length > 0 ? seasonalPricings : undefined,
           selectedAttributes,
         },
         storeSlug,
@@ -484,6 +532,8 @@ export function AddToCartForm({
         }}
         pricingMode={pricingMode}
         minDate={getMinStartDate(advanceNotice)}
+        businessHours={businessHours}
+        timezone={timezone}
         translations={{
           startDate: t('startDate'),
           endDate: t('endDate'),

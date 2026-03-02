@@ -4,9 +4,11 @@ import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useMutation } from '@tanstack/react-query'
-import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
+import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2, TrendingDown } from 'lucide-react'
 import { Button } from '@louez/ui'
 import { Label } from '@louez/ui'
+import { Switch } from '@louez/ui'
+import { Slider } from '@louez/ui'
 import { toastManager } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
@@ -92,6 +94,8 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     store.theme?.mode === 'dark' ? 'dark' : 'light'
   )
   const [heroImages, setHeroImages] = useState<string[]>(store.theme?.heroImages || [])
+  const [maxDiscountEnabled, setMaxDiscountEnabled] = useState(store.theme?.maxDiscountPercent != null)
+  const [maxDiscountPercent, setMaxDiscountPercent] = useState(store.theme?.maxDiscountPercent ?? 50)
   const [hexInputValue, setHexInputValue] = useState(primaryColor.replace('#', '').toUpperCase())
 
   const updateAppearanceMutation = useMutation(
@@ -105,7 +109,9 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     primaryColor: store.theme?.primaryColor || '#2563eb',
     themeMode: store.theme?.mode === 'dark' ? 'dark' : 'light',
     heroImages: store.theme?.heroImages || [],
-  }), [store.logoUrl, store.darkLogoUrl, store.theme?.primaryColor, store.theme?.mode, store.theme?.heroImages])
+    maxDiscountEnabled: store.theme?.maxDiscountPercent != null,
+    maxDiscountPercent: store.theme?.maxDiscountPercent ?? 50,
+  }), [store.logoUrl, store.darkLogoUrl, store.theme?.primaryColor, store.theme?.mode, store.theme?.heroImages, store.theme?.maxDiscountPercent])
 
   const isDirty = useMemo(() => {
     return (
@@ -113,9 +119,11 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
       darkLogoPreview !== initialValues.darkLogoUrl ||
       primaryColor !== initialValues.primaryColor ||
       themeMode !== initialValues.themeMode ||
-      JSON.stringify(heroImages) !== JSON.stringify(initialValues.heroImages)
+      JSON.stringify(heroImages) !== JSON.stringify(initialValues.heroImages) ||
+      maxDiscountEnabled !== initialValues.maxDiscountEnabled ||
+      (maxDiscountEnabled && maxDiscountPercent !== initialValues.maxDiscountPercent)
     )
-  }, [logoPreview, darkLogoPreview, primaryColor, themeMode, heroImages, initialValues])
+  }, [logoPreview, darkLogoPreview, primaryColor, themeMode, heroImages, maxDiscountEnabled, maxDiscountPercent, initialValues])
 
   const handleReset = useCallback(() => {
     setLogoPreview(initialValues.logoUrl)
@@ -124,6 +132,8 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     setThemeMode(initialValues.themeMode as 'light' | 'dark')
     setHeroImages(initialValues.heroImages)
     setHexInputValue(initialValues.primaryColor.replace('#', '').toUpperCase())
+    setMaxDiscountEnabled(initialValues.maxDiscountEnabled)
+    setMaxDiscountPercent(initialValues.maxDiscountPercent)
   }, [initialValues])
 
   // Get contrast color for buttons
@@ -313,6 +323,7 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
           mode: themeMode,
           primaryColor,
           heroImages: heroImages.length > 0 ? heroImages : undefined,
+          maxDiscountPercent: maxDiscountEnabled ? maxDiscountPercent : null,
         },
       })
 
@@ -610,6 +621,44 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
               </div>
             )}
             <p className="text-xs text-muted-foreground">{t('heroImagesOptional')}</p>
+          </section>
+
+          {/* Max Discount Percent Section */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-sm font-medium">{t('maxDiscount.title')}</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t('maxDiscount.description')}
+                </p>
+              </div>
+              <Switch
+                checked={maxDiscountEnabled}
+                onCheckedChange={setMaxDiscountEnabled}
+              />
+            </div>
+            {maxDiscountEnabled && (
+              <div className="space-y-3 rounded-lg border p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    {t('maxDiscount.upTo')}
+                  </span>
+                  <span className="text-sm font-medium tabular-nums">
+                    {maxDiscountPercent}%
+                  </span>
+                </div>
+                <Slider
+                  value={[maxDiscountPercent]}
+                  onValueChange={(value) => setMaxDiscountPercent(Array.isArray(value) ? value[0] : value)}
+                  min={5}
+                  max={100}
+                  step={5}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('maxDiscount.hint')}
+                </p>
+              </div>
+            )}
           </section>
 
           <FloatingSaveBar
