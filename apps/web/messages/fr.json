@@ -3798,6 +3798,7 @@
       "insuranceNoInsurableProducts": "Aucun produit assurable dans ce panier.",
       "insurancePartialCoverage": "{insured} produit(s) couvert(s), {uninsured} non couvert(s).",
       "insuranceCoveredProductTooltip": "Ce produit est couvert par la garantie casse/vol.",
+      "insuranceEligibleProductTooltip": "Produit éligible à la garantie casse/vol.",
       "insuranceEstimating": "Calcul de l'estimation de garantie en cours...",
       "insuranceEstimatedAmount": "Montant estimé de la garantie: {amount}",
       "insuranceEstimatedDisclaimer": "Montant estimatif, recalculé automatiquement à la validation.",

@@ -365,9 +365,19 @@ export function ReservationDetailClient({
                             <div>
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span>
-                                    {item.productSnapshot?.name || item.product?.name}
-                                  </span>
+                                  {item.productId ? (
+                                    <Link
+                                      href={`/dashboard/products/${item.productId}`}
+                                      target="_blank"
+                                      className="hover:underline"
+                                    >
+                                      {item.productSnapshot?.name || item.product?.name}
+                                    </Link>
+                                  ) : (
+                                    <span>
+                                      {item.productSnapshot?.name || item.product?.name}
+                                    </span>
+                                  )}
                                   {isTulipInsured && (
                                     <Badge
                                       variant="outline"
