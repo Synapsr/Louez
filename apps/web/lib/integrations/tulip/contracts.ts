@@ -23,6 +23,7 @@ import {
 } from './contracts-payload';
 import { assertTulipContractTypeEnabled } from './contracts-renter';
 import type {
+  TulipContractUpdatePayload,
   TulipCustomerInput,
   TulipItemInput,
   TulipQuotePreviewResult,
@@ -55,6 +56,28 @@ type ReservationItemLike = {
   isCustomItem: boolean;
   quantity: number;
 };
+
+const dashboardTulipContractCreationSources = [
+  'dashboard_reservation_confirmation',
+  'dashboard_manual_reservation_creation',
+  'dashboard_reservation_sync_missing_contract',
+] as const;
+
+type TulipContractCreationSource =
+  (typeof dashboardTulipContractCreationSources)[number];
+
+function assertDashboardTulipContractCreationSource(source: string) {
+  if (
+    !dashboardTulipContractCreationSources.includes(
+      source as TulipContractCreationSource,
+    )
+  ) {
+    console.warn('[tulip][contract-create] blocked non-dashboard source', {
+      source,
+    });
+    throw new Error('errors.forbidden');
+  }
+}
 
 function toTulipCustomerInput(customer: ReservationCustomerLike): TulipCustomerInput {
   return {
@@ -183,8 +206,11 @@ export async function previewTulipQuoteForCheckout(params: {
 
 export async function createTulipContractForReservation(params: {
   reservationId: string;
+  source: TulipContractCreationSource;
   force?: boolean;
 }) {
+  assertDashboardTulipContractCreationSource(params.source);
+
   const reservation = await db.query.reservations.findFirst({
     where: eq(reservations.id, params.reservationId),
     with: {
@@ -201,6 +227,7 @@ export async function createTulipContractForReservation(params: {
   console.info('[tulip][contract-create] start', {
     reservationId: reservation.id,
     storeId: reservation.storeId,
+    source: params.source,
     currentStatus: reservation.tulipContractStatus,
     hasContractId: Boolean(reservation.tulipContractId),
   });
@@ -401,6 +428,7 @@ export async function syncTulipContractForReservation(params: {
   if (!reservation.tulipContractId) {
     const createdResult = await createTulipContractForReservation({
       reservationId: reservation.id,
+      source: 'dashboard_reservation_sync_missing_contract',
       force: true,
     });
 
@@ -490,44 +518,88 @@ export async function syncTulipContractForReservation(params: {
     customer: toTulipCustomerInput(reservation.customer),
     insuredItems: coverage.insuredItems,
   });
-  const updatePayload = toTulipContractUpdatePayload(createPayload);
+  const updatePayloadAttempts: Array<{
+    label: string;
+    payload: TulipContractUpdatePayload;
+  }> = [
+    {
+      label: 'full',
+      payload: toTulipContractUpdatePayload(createPayload, 'full'),
+    },
+    {
+      label: 'without_start_date',
+      payload: toTulipContractUpdatePayload(createPayload, 'without_start_date'),
+    },
+    {
+      label: 'without_start_date_and_identity',
+      payload: toTulipContractUpdatePayload(
+        createPayload,
+        'without_start_date_and_identity',
+      ),
+    },
+    {
+      label: 'end_date_and_products_only',
+      payload: toTulipContractUpdatePayload(
+        createPayload,
+        'end_date_and_products_only',
+      ),
+    },
+    {
+      label: 'end_date_only',
+      payload: toTulipContractUpdatePayload(createPayload, 'end_date_only'),
+    },
+  ];
 
-  try {
-    await tulipUpdateContractWithOptionsFallback({
-      apiKey,
-      contractId,
-      payload: updatePayload,
-      preview: false,
-      storeIdForLog: reservation.storeId,
-      reservationIdForLog: reservation.id,
-    });
-  } catch (error) {
-    console.warn('[tulip][contract-sync] update failed, recreating contract', {
+  let updateError: unknown = null;
+  let updated = false;
+
+  for (let index = 0; index < updatePayloadAttempts.length; index++) {
+    const attempt = updatePayloadAttempts[index];
+    try {
+      await tulipUpdateContractWithOptionsFallback({
+        apiKey,
+        contractId,
+        payload: attempt.payload,
+        preview: false,
+        storeIdForLog: reservation.storeId,
+        reservationIdForLog: reservation.id,
+      });
+
+      if (index > 0) {
+        console.info('[tulip][contract-sync] update recovered with fallback payload', {
+          reservationId: reservation.id,
+          contractId,
+          fallback: attempt.label,
+          attempts: index + 1,
+        });
+      }
+
+      updated = true;
+      break;
+    } catch (error) {
+      updateError = error;
+      const hasNextAttempt = index < updatePayloadAttempts.length - 1;
+      if (!hasNextAttempt) {
+        break;
+      }
+
+      console.info('[tulip][contract-sync] update retry with reduced payload', {
+        reservationId: reservation.id,
+        contractId,
+        failedAttempt: attempt.label,
+        nextAttempt: updatePayloadAttempts[index + 1].label,
+        error: error instanceof Error ? error.message : 'unknown',
+      });
+    }
+  }
+
+  if (!updated) {
+    console.warn('[tulip][contract-sync] update failed, keeping current contract', {
       reservationId: reservation.id,
       contractId,
-      error: error instanceof Error ? error.message : 'unknown',
+      error: updateError instanceof Error ? updateError.message : 'unknown',
     });
-
-    await tulipCancelContract(apiKey, contractId, {}, false);
-    await db
-      .update(reservations)
-      .set({
-        tulipContractId: null,
-        tulipContractStatus: 'cancelled',
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservation.id));
-
-    const recreated = await createTulipContractForReservation({
-      reservationId: reservation.id,
-      force: true,
-    });
-
-    return {
-      synced: true,
-      action: recreated.created ? ('recreated' as const) : ('not_required' as const),
-      contractId: recreated.contractId,
-    };
+    throw toTulipContractError(updateError, 'errors.tulipContractUpdateFailed');
   }
 
   await db

@@ -117,6 +117,7 @@ export default async function EditReservationPage({
         subtotalAmount: reservation.subtotalAmount,
         depositAmount: reservation.depositAmount,
         tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+        tulipInsuranceAmount: reservation.tulipInsuranceAmount,
         items: reservation.items.map((item) => ({
           id: item.id,
           productId: item.productId,

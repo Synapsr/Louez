@@ -72,8 +72,13 @@ import {
 import {
   cancelTulipContractForReservation,
   createTulipContractForReservation,
+  previewTulipQuoteForCheckout,
   syncTulipContractForReservation,
 } from '@/lib/integrations/tulip/contracts';
+import {
+  getReservationInsuranceSelection,
+  isLegacyTulipInsuranceItem,
+} from '@/lib/integrations/tulip/contracts-insurance';
 import { getTulipSettings } from '@/lib/integrations/tulip/settings';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
@@ -366,7 +371,10 @@ export async function updateReservationStatus(
   } | null = null;
   if (status === 'confirmed') {
     try {
-      await createTulipContractForReservation({ reservationId });
+      await createTulipContractForReservation({
+        reservationId,
+        source: 'dashboard_reservation_confirmation',
+      });
     } catch (error) {
       console.error(
         '[tulip] Failed to create contract from dashboard confirmation:',
@@ -1145,7 +1153,10 @@ export async function createManualReservation(data: CreateReservationData) {
   );
 
   try {
-    await createTulipContractForReservation({ reservationId });
+    await createTulipContractForReservation({
+      reservationId,
+      source: 'dashboard_manual_reservation_creation',
+    });
   } catch (error) {
     console.error('[tulip] Failed to create contract for manual reservation:', {
       reservationId,
@@ -1332,6 +1343,7 @@ export async function updateReservation(
     ),
     with: {
       items: true,
+      customer: true,
     },
   });
 
@@ -1364,6 +1376,10 @@ export async function updateReservation(
   // Determine new dates
   const newStartDate = data.startDate || reservation.startDate;
   const newEndDate = data.endDate || reservation.endDate;
+  const previousPeriodMs =
+    reservation.endDate.getTime() - reservation.startDate.getTime();
+  const nextPeriodMs = newEndDate.getTime() - newStartDate.getTime();
+  const isPeriodReduced = nextPeriodMs < previousPeriodMs;
   const tulipMode = getDashboardTulipInsuranceMode(
     store.settings as StoreSettings | null,
   );
@@ -1383,16 +1399,47 @@ export async function updateReservation(
   // Calculate new totals
   let newSubtotalAmount = 0;
   let newDepositAmount = 0;
+  let nextTulipInsuranceAmount: number | null = null;
+  const tulipWarnings: Array<{
+    key: string;
+    params?: Record<string, string | number>;
+  }> = [];
+  const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  const legacyInsuranceItemIds = reservation.items
+    .filter((item) =>
+      isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      }),
+    )
+    .map((item) => item.id);
+  const previousInsuranceSelection = getReservationInsuranceSelection({
+    tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+    tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+    items: reservation.items,
+  });
+  const previousTulipInsuranceAmount =
+    previousInsuranceSelection.amount > 0 ? previousInsuranceSelection.amount : null;
+
+  const INSURANCE_ITEM_NAME = 'Garantie casse/vol';
 
   // Process items
   if (data.items && data.items.length > 0) {
+    const reservationItemsWithoutLegacyInsurance = data.items.filter(
+      (item) =>
+        !isLegacyTulipInsuranceItem({
+          isCustomItem: !item.productId,
+          productSnapshot: item.productSnapshot,
+        }),
+    );
+
     // Delete existing items
     await db
       .delete(reservationItems)
       .where(eq(reservationItems.reservationId, reservationId));
 
     // Insert new items
-    for (const item of data.items) {
+    for (const item of reservationItemsWithoutLegacyInsurance) {
       let pricingBreakdown: PricingBreakdown | null = null;
       let finalUnitPrice = item.unitPrice;
       let itemPricingMode: PricingMode = toPricingMode(item.pricingMode);
@@ -1532,6 +1579,12 @@ export async function updateReservation(
       const itemDeposit = item.depositPerUnit * item.quantity;
       newSubtotalAmount += totalPrice;
       newDepositAmount += itemDeposit;
+      if (item.productId) {
+        insuranceQuoteItems.push({
+          productId: item.productId,
+          quantity: item.quantity,
+        });
+      }
 
       await db.insert(reservationItems).values({
         id: nanoid(),
@@ -1552,7 +1605,15 @@ export async function updateReservation(
     }
   } else {
     // Just recalculate existing items with new duration
-    for (const item of reservation.items) {
+    const existingItemsWithoutLegacyInsurance = reservation.items.filter(
+      (item) =>
+        !isLegacyTulipInsuranceItem({
+          isCustomItem: item.isCustomItem,
+          productSnapshot: item.productSnapshot,
+        }),
+    );
+
+    for (const item of existingItemsWithoutLegacyInsurance) {
       const pricingBreakdown = item.pricingBreakdown as Record<
         string,
         unknown
@@ -1715,7 +1776,146 @@ export async function updateReservation(
 
       newSubtotalAmount += totalPrice;
       newDepositAmount += parseFloat(item.depositPerUnit) * item.quantity;
+      if (item.productId) {
+        insuranceQuoteItems.push({
+          productId: item.productId,
+          quantity: item.quantity,
+        });
+      }
     }
+  }
+
+  if (nextTulipInsuranceOptIn && insuranceQuoteItems.length > 0) {
+    if (!reservation.customer) {
+      tulipWarnings.push({ key: 'errors.customerNotFound' });
+      if (previousTulipInsuranceAmount) {
+        nextTulipInsuranceAmount = previousTulipInsuranceAmount;
+      }
+    } else {
+      try {
+        const quote = await previewTulipQuoteForCheckout({
+          storeId: store.id,
+          storeSettings: store.settings as StoreSettings | null,
+          customer: {
+            customerType: reservation.customer.customerType,
+            companyName: reservation.customer.companyName,
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone || '',
+            address: reservation.customer.address || '',
+            city: reservation.customer.city || '',
+            postalCode: reservation.customer.postalCode || '',
+            country: reservation.customer.country,
+          },
+          items: insuranceQuoteItems,
+          startDate: newStartDate,
+          endDate: newEndDate,
+          optIn: true,
+        });
+
+        if (
+          quote.shouldApply &&
+          quote.inclusionEnabled !== true &&
+          Number.isFinite(quote.amount) &&
+          quote.amount > 0
+        ) {
+          nextTulipInsuranceAmount = Math.round(quote.amount * 100) / 100;
+        }
+      } catch (error) {
+        console.error('[tulip] Failed to recalculate insurance quote after reservation edit:', {
+          reservationId,
+          error,
+        });
+        tulipWarnings.push({ key: getErrorKey(error, 'errors.tulipQuoteFailed') });
+        if (previousTulipInsuranceAmount) {
+          nextTulipInsuranceAmount = previousTulipInsuranceAmount;
+        }
+      }
+    }
+  }
+
+  if (
+    nextTulipInsuranceOptIn &&
+    isPeriodReduced &&
+    previousTulipInsuranceAmount &&
+    (!nextTulipInsuranceAmount ||
+      nextTulipInsuranceAmount < previousTulipInsuranceAmount)
+  ) {
+    nextTulipInsuranceAmount = previousTulipInsuranceAmount;
+  }
+
+  if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
+    newSubtotalAmount += nextTulipInsuranceAmount;
+  }
+
+  if (data.items && data.items.length > 0) {
+    if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
+      await db.insert(reservationItems).values({
+        id: nanoid(),
+        reservationId,
+        productId: null,
+        isCustomItem: true,
+        quantity: 1,
+        unitPrice: nextTulipInsuranceAmount.toFixed(2),
+        depositPerUnit: '0.00',
+        totalPrice: nextTulipInsuranceAmount.toFixed(2),
+        pricingBreakdown: null,
+        productSnapshot: {
+          name: INSURANCE_ITEM_NAME,
+          description: INSURANCE_ITEM_NAME,
+          images: [],
+        },
+      });
+    }
+  } else if (nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0) {
+    const [existingInsuranceItemId, ...extraInsuranceItemIds] =
+      legacyInsuranceItemIds;
+
+    if (existingInsuranceItemId) {
+      await db
+        .update(reservationItems)
+        .set({
+          quantity: 1,
+          unitPrice: nextTulipInsuranceAmount.toFixed(2),
+          depositPerUnit: '0.00',
+          totalPrice: nextTulipInsuranceAmount.toFixed(2),
+          pricingBreakdown: null,
+          productSnapshot: {
+            name: INSURANCE_ITEM_NAME,
+            description: INSURANCE_ITEM_NAME,
+            images: [],
+          },
+        })
+        .where(eq(reservationItems.id, existingInsuranceItemId));
+    } else {
+      await db.insert(reservationItems).values({
+        id: nanoid(),
+        reservationId,
+        productId: null,
+        isCustomItem: true,
+        quantity: 1,
+        unitPrice: nextTulipInsuranceAmount.toFixed(2),
+        depositPerUnit: '0.00',
+        totalPrice: nextTulipInsuranceAmount.toFixed(2),
+        pricingBreakdown: null,
+        productSnapshot: {
+          name: INSURANCE_ITEM_NAME,
+          description: INSURANCE_ITEM_NAME,
+          images: [],
+        },
+      });
+    }
+
+    if (extraInsuranceItemIds.length > 0) {
+      await db
+        .delete(reservationItems)
+        .where(inArray(reservationItems.id, extraInsuranceItemIds));
+    }
+  } else if (legacyInsuranceItemIds.length > 0) {
+    await db
+      .delete(reservationItems)
+      .where(inArray(reservationItems.id, legacyInsuranceItemIds));
   }
 
   // Update reservation
@@ -1728,15 +1928,13 @@ export async function updateReservation(
       depositAmount: newDepositAmount.toFixed(2),
       totalAmount: newSubtotalAmount.toFixed(2),
       tulipInsuranceOptIn: nextTulipInsuranceOptIn,
-      ...(nextTulipInsuranceOptIn ? {} : { tulipInsuranceAmount: null }),
+      tulipInsuranceAmount:
+        nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
+          ? nextTulipInsuranceAmount.toFixed(2)
+          : null,
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId));
-
-  let tulipWarning: {
-    key: string;
-    params?: Record<string, string | number>;
-  } | null = null;
   if (reservation.status === 'confirmed' || reservation.status === 'ongoing') {
     try {
       await syncTulipContractForReservation({ reservationId });
@@ -1746,9 +1944,66 @@ export async function updateReservation(
         error,
       });
 
-      tulipWarning = {
-        key: getErrorKey(error, 'errors.tulipContractUpdateFailed'),
-      };
+      const tulipErrorKey = getErrorKey(error, 'errors.tulipContractUpdateFailed');
+      if (nextTulipInsuranceOptIn) {
+        try {
+          await db.transaction(async (tx) => {
+            await tx
+              .update(reservations)
+              .set({
+                startDate: reservation.startDate,
+                endDate: reservation.endDate,
+                subtotalAmount: reservation.subtotalAmount,
+                depositAmount: reservation.depositAmount,
+                totalAmount: reservation.totalAmount,
+                tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+                tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+                updatedAt: reservation.updatedAt,
+              })
+              .where(eq(reservations.id, reservationId));
+
+            await tx
+              .delete(reservationItems)
+              .where(eq(reservationItems.reservationId, reservationId));
+
+            if (reservation.items.length > 0) {
+              await tx.insert(reservationItems).values(
+                reservation.items.map((item) => ({
+                  id: item.id,
+                  reservationId: item.reservationId,
+                  productId: item.productId,
+                  isCustomItem: item.isCustomItem,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  depositPerUnit: item.depositPerUnit,
+                  totalPrice: item.totalPrice,
+                  taxRate: item.taxRate,
+                  taxAmount: item.taxAmount,
+                  priceExclTax: item.priceExclTax,
+                  totalExclTax: item.totalExclTax,
+                  pricingBreakdown: item.pricingBreakdown,
+                  productSnapshot: item.productSnapshot,
+                  combinationKey: item.combinationKey,
+                  selectedAttributes: item.selectedAttributes,
+                  createdAt: item.createdAt,
+                })),
+              );
+            }
+          });
+        } catch (rollbackError) {
+          console.error('[tulip] Failed to rollback reservation after contract sync failure:', {
+            reservationId,
+            rollbackError,
+          });
+          return { error: 'errors.generic' };
+        }
+
+        return { error: tulipErrorKey };
+      }
+
+      tulipWarnings.push({
+        key: tulipErrorKey,
+      });
     }
   }
 
@@ -1792,7 +2047,7 @@ export async function updateReservation(
       key: warning.key,
       params: warning.params,
     })),
-    ...(tulipWarning ? [tulipWarning] : []),
+    ...tulipWarnings,
   ];
 
   return {

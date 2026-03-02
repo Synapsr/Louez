@@ -21,7 +21,6 @@ import {
   evaluateReservationRules,
   formatReservationWarningsForLog,
 } from '@/lib/utils/reservation-rules'
-import { createTulipContractForReservation } from '@/lib/integrations/tulip/contracts'
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -539,16 +538,6 @@ async function handleCheckoutCompleted(
     console.log(`Reservation ${reservationId} already ${reservation.status}, payment recorded`)
   }
 
-  if (reservation.status === 'pending' || reservation.status === 'confirmed') {
-    try {
-      await createTulipContractForReservation({ reservationId })
-    } catch (error) {
-      console.error('[tulip] Failed to create contract from Stripe webhook confirmation:', {
-        reservationId,
-        error,
-      })
-    }
-  }
 }
 
 async function handleCheckoutExpired(session: Stripe.Checkout.Session) {

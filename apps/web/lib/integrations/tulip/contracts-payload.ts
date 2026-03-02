@@ -193,7 +193,46 @@ export function buildContractPayload(params: {
 
 export function toTulipContractUpdatePayload(
   payload: TulipContractPayload,
+  mode:
+    | 'full'
+    | 'without_start_date'
+    | 'without_start_date_and_identity'
+    | 'end_date_and_products_only'
+    | 'end_date_only' = 'full',
 ): TulipContractUpdatePayload {
+  if (mode === 'end_date_only') {
+    return {
+      end_date: payload.end_date,
+    };
+  }
+
+  if (mode === 'end_date_and_products_only') {
+    return {
+      end_date: payload.end_date,
+      products: payload.products,
+    };
+  }
+
+  if (mode === 'without_start_date_and_identity') {
+    return {
+      end_date: payload.end_date,
+      contract_type: payload.contract_type,
+      options: payload.options,
+      products: payload.products,
+    };
+  }
+
+  if (mode === 'without_start_date') {
+    return {
+      end_date: payload.end_date,
+      contract_type: payload.contract_type,
+      options: payload.options,
+      products: payload.products,
+      ...(payload.company ? { company: payload.company } : {}),
+      ...(payload.individual ? { individual: payload.individual } : {}),
+    };
+  }
+
   return {
     start_date: payload.start_date,
     end_date: payload.end_date,

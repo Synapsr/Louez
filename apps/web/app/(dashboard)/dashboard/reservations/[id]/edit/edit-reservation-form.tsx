@@ -48,6 +48,7 @@ import {
   evaluateReservationRules,
   type ReservationValidationWarning,
 } from '@/lib/utils/reservation-rules'
+import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import type { PricingMode } from '@louez/types'
@@ -87,8 +88,40 @@ export function EditReservationForm({
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
+  const editableReservationItems = reservation.items.filter(
+    (item) =>
+      !isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      })
+  )
+  const legacyInsuranceAmount = reservation.items.reduce((sum, item) => {
+    if (
+      !isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      })
+    ) {
+      return sum
+    }
+
+    const parsed = Number(item.totalPrice)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return sum
+    }
+
+    return sum + parsed
+  }, 0)
+  const initialTulipInsuranceAmount = (() => {
+    const parsedInsuranceAmount = Number(reservation.tulipInsuranceAmount ?? '0')
+    if (Number.isFinite(parsedInsuranceAmount) && parsedInsuranceAmount > 0) {
+      return parsedInsuranceAmount
+    }
+
+    return legacyInsuranceAmount
+  })()
   const [items, setItems] = useState<EditableItem[]>(
-    reservation.items.map((item) => ({
+    editableReservationItems.map((item) => ({
       id: item.id,
       productId: item.productId,
       quantity: item.quantity,
@@ -113,6 +146,7 @@ export function EditReservationForm({
         ? reservation.tulipInsuranceOptIn === true
         : false
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
+  const fixedTulipInsuranceAmount = tulipInsuranceOptIn ? initialTulipInsuranceAmount : 0
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -140,6 +174,7 @@ export function EditReservationForm({
       endDate,
       items,
       originalSubtotal,
+      fixedChargesTotal: fixedTulipInsuranceAmount,
     })
   const { availabilityWarnings } = useEditReservationAvailability({
     startDate,
@@ -422,7 +457,7 @@ export function EditReservationForm({
     (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
     calculations.subtotal !== originalSubtotal ||
     tulipInsuranceOptIn !== initialTulipInsuranceOptIn ||
-    items.length !== reservation.items.length
+    items.length !== editableReservationItems.length
 
   // Products not in the reservation
   const availableToAdd = availableProducts.filter(

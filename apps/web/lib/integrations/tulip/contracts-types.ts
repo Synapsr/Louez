@@ -56,11 +56,11 @@ export type TulipContractPayload = {
 };
 
 export type TulipContractUpdatePayload = {
-  start_date: string;
-  end_date: string;
-  contract_type: TulipContractType;
-  options: string[];
-  products: Array<Record<string, unknown>>;
+  start_date?: string;
+  end_date?: string;
+  contract_type?: TulipContractType;
+  options?: string[];
+  products?: Array<Record<string, unknown>>;
   company?: Record<string, unknown>;
   individual?: Record<string, unknown>;
 };

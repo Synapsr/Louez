@@ -56,6 +56,7 @@ export interface Reservation {
   subtotalAmount: string
   depositAmount: string
   tulipInsuranceOptIn: boolean | null
+  tulipInsuranceAmount: string | null
   items: ReservationItem[]
   customer: {
     firstName: string
