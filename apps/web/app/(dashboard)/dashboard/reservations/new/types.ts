@@ -5,6 +5,7 @@ import type {
   BusinessHours,
   DeliverySettings,
   PricingMode,
+  Rate,
   TulipPublicMode,
   UnitAttributes,
 } from '@louez/types';
