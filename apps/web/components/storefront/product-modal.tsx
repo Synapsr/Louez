@@ -50,6 +50,7 @@ import {
   calculateRentalPrice,
   calculateRateBasedPrice,
   calculateSeasonalAwarePrice,
+  findSeasonalPricingForDate,
   isRateBasedProduct,
   sortTiersByDuration,
 } from '@louez/utils';
@@ -353,6 +354,20 @@ export function ProductModal({
   const originalPrice = priceResult.originalSubtotal;
   const savings = priceResult.savings;
   const discountPercent = priceResult.discountPercent;
+
+  // Detect which seasonal pricing (if any) applies to the selected dates.
+  // Used to show seasonal-adjusted rates in the Tarifs section so displayed
+  // rates match the calculated total.
+  const activeSeasonalPricing = useMemo(() => {
+    if (!hasSeasonalPricings || !product.seasonalPricings?.length) return null;
+    const startDateKey = new Date(startDate).toISOString().slice(0, 10);
+    return findSeasonalPricingForDate(product.seasonalPricings, startDateKey);
+  }, [hasSeasonalPricings, product.seasonalPricings, startDate]);
+
+  const effectiveBasePrice = activeSeasonalPricing ? activeSeasonalPricing.basePrice : price;
+  const effectiveRateTiers: Rate[] = activeSeasonalPricing?.rates.length
+    ? activeSeasonalPricing.rates
+    : rateTiers;
 
   const maxQuantity = Math.min(availableQuantity, product.quantity);
   const isUnavailable = availableQuantity === 0;
@@ -705,16 +720,16 @@ export function ProductModal({
     const baseRow = {
       id: '__base__',
       periodMinutes: basePeriod,
-      price,
+      price: effectiveBasePrice,
       reductionPercent: 0,
     };
-    const tierRows = rateTiers.map((rate) => ({
+    const tierRows = effectiveRateTiers.map((rate) => ({
       id: rate.id,
       periodMinutes: rate.period,
       price: rate.price,
       reductionPercent: Math.max(
         0,
-        computeReductionPercent(price, basePeriod, rate.price, rate.period),
+        computeReductionPercent(effectiveBasePrice, basePeriod, rate.price, rate.period),
       ),
     }));
     return [baseRow, ...tierRows].sort((a, b) => {
@@ -723,7 +738,7 @@ export function ProductModal({
       }
       return a.price - b.price;
     });
-  }, [isRateBased, price, product.basePeriodMinutes, rateTiers]);
+  }, [isRateBased, effectiveBasePrice, product.basePeriodMinutes, effectiveRateTiers]);
 
   const contextualPeriodMinutes = useMemo(() => {
     if (!isRateBased || rateRows.length === 0) return null;
@@ -962,7 +977,7 @@ export function ProductModal({
                   )}
                   <span className="text-primary text-2xl font-bold md:text-3xl">
                     {formatCurrency(
-                      contextualDisplay?.price ?? price,
+                      contextualDisplay?.price ?? effectiveBasePrice,
                       currency,
                     )}
                   </span>
@@ -1012,6 +1027,11 @@ export function ProductModal({
                         <span className="text-sm font-semibold">
                           {tProduct('tieredPricing.ratesTitle')}
                         </span>
+                        {activeSeasonalPricing && (
+                          <Badge variant="secondary" className="text-xs">
+                            {activeSeasonalPricing.name}
+                          </Badge>
+                        )}
                       </div>
 
                       <div className="space-y-1.5">
