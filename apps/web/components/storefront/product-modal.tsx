@@ -63,7 +63,7 @@ import {
 
 import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
-import { useStoreCurrency } from '@/contexts/store-context';
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context';
 
 import { AccessoriesModal } from './accessories-modal';
 
@@ -169,6 +169,7 @@ export function ProductModal({
   const t = useTranslations('storefront.productModal');
   const tProduct = useTranslations('storefront.product');
   const currency = useStoreCurrency();
+  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const {
     addItem,
     updateItemQuantityByLineId,
@@ -176,6 +177,9 @@ export function ProductModal({
     items: cartItems,
   } = useCart();
   const { trackEvent } = useAnalytics();
+
+  const isDiscountVisible = (reductionPercent: number) =>
+    reductionPercent > 0 && (maxDiscountPercent == null || reductionPercent <= maxDiscountPercent);
 
   const cartLines = useMemo(
     () => cartItems.filter((item) => item.productId === product.id),
@@ -1060,7 +1064,7 @@ export function ProductModal({
                                     alwaysShowCount: true,
                                   })}
                                 </span>
-                                {rate.reductionPercent > 0 && (
+                                {isDiscountVisible(rate.reductionPercent) && (
                                   <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                     -{Math.floor(rate.reductionPercent)}%
                                   </Badge>
@@ -1130,7 +1134,7 @@ export function ProductModal({
                                             alwaysShowCount: true,
                                           })}
                                         </span>
-                                        {rate.reductionPercent > 0 && (
+                                        {isDiscountVisible(rate.reductionPercent) && (
                                           <Badge className="bg-primary/10 text-xs font-semibold text-primary">
                                             -{Math.floor(rate.reductionPercent)}%
                                           </Badge>
@@ -1267,9 +1271,11 @@ export function ProductModal({
                                 >
                                   {tier.minDuration}+ {pricingUnitLabelPlural}
                                 </span>
-                                <Badge className="bg-primary/10 text-xs font-semibold text-primary">
-                                  -{Math.floor(tier.discountPercent)}%
-                                </Badge>
+                                {isDiscountVisible(tier.discountPercent) && (
+                                  <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                    -{Math.floor(tier.discountPercent)}%
+                                  </Badge>
+                                )}
                               </div>
                               <span
                                 className={cn(
@@ -1326,9 +1332,11 @@ export function ProductModal({
                                         >
                                           {tier.minDuration}+ {pricingUnitLabelPlural}
                                         </span>
-                                        <Badge className="bg-primary/10 text-xs font-semibold text-primary">
-                                          -{Math.floor(tier.discountPercent)}%
-                                        </Badge>
+                                        {isDiscountVisible(tier.discountPercent) && (
+                                          <Badge className="bg-primary/10 text-xs font-semibold text-primary">
+                                            -{Math.floor(tier.discountPercent)}%
+                                          </Badge>
+                                        )}
                                       </div>
                                       <span
                                         className={cn(
@@ -1476,7 +1484,7 @@ export function ProductModal({
                 </div>
               </div>
 
-              {savings > 0 && discountPercent && (
+              {savings > 0 && discountPercent && isDiscountVisible(discountPercent) && (
                 <Badge className="bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
                   <TrendingDown className="mr-1 h-3.5 w-3.5" />
                   -{Math.floor(discountPercent)}%
