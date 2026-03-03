@@ -1,0 +1,15 @@
+<svg width="1280" height="720" viewBox="0 0 1280 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="720" fill="#020617"/>
+  <rect x="48" y="52" width="1184" height="616" rx="20" fill="#111827" stroke="#1F2937"/>
+  <rect x="88" y="96" width="540" height="48" rx="12" fill="#1E293B"/>
+  <rect x="648" y="96" width="200" height="48" rx="12" fill="#0EA5E9"/>
+  <rect x="88" y="176" width="1120" height="80" rx="12" fill="#1F2937"/>
+  <rect x="88" y="280" width="1120" height="80" rx="12" fill="#1F2937"/>
+  <rect x="88" y="384" width="1120" height="80" rx="12" fill="#1F2937"/>
+  <rect x="88" y="488" width="1120" height="80" rx="12" fill="#1F2937"/>
+  <circle cx="116" cy="216" r="20" fill="#0EA5E9"/>
+  <circle cx="116" cy="320" r="20" fill="#22C55E"/>
+  <circle cx="116" cy="424" r="20" fill="#F59E0B"/>
+  <circle cx="116" cy="528" r="20" fill="#A855F7"/>
+  <text x="164" y="110" fill="#FFFFFF" font-size="22" font-family="Arial, sans-serif">Product Mapping & Sync</text>
+</svg>

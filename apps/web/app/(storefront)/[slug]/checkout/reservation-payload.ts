@@ -21,6 +21,7 @@ interface BuildReservationPayloadInput {
   totalAmount: number;
   deliveryOption: DeliveryOption;
   deliveryAddress: DeliveryAddress;
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public';
   hasDifferentReturnAddress: boolean;
   returnAddress: DeliveryAddress;
   promoCode?: string;
@@ -36,6 +37,7 @@ export function buildReservationPayload({
   totalAmount,
   deliveryOption,
   deliveryAddress,
+  tulipInsuranceMode,
   hasDifferentReturnAddress,
   returnAddress,
   promoCode,
@@ -81,6 +83,12 @@ export function buildReservationPayload({
       };
     }),
     customerNotes: values.notes || undefined,
+    tulipInsuranceOptIn:
+      tulipInsuranceMode === 'required'
+        ? true
+        : tulipInsuranceMode === 'optional'
+          ? values.tulipInsuranceOptIn
+          : undefined,
     subtotalAmount,
     depositAmount,
     totalAmount,

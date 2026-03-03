@@ -21,6 +21,7 @@ import { Input } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { Textarea } from '@louez/ui'
 import { Badge } from '@louez/ui'
+import { Checkbox } from '@louez/ui'
 import {
   Select,
   SelectContent,
@@ -47,6 +48,7 @@ import {
   evaluateReservationRules,
   type ReservationValidationWarning,
 } from '@/lib/utils/reservation-rules'
+import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import type { PricingMode } from '@louez/types'
@@ -61,6 +63,7 @@ export function EditReservationForm({
   availableProducts,
   existingReservations,
   currency,
+  tulipInsuranceMode,
   storeSettings,
 }: EditReservationFormProps) {
   const router = useRouter()
@@ -85,8 +88,40 @@ export function EditReservationForm({
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
+  const editableReservationItems = reservation.items.filter(
+    (item) =>
+      !isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      })
+  )
+  const legacyInsuranceAmount = reservation.items.reduce((sum, item) => {
+    if (
+      !isLegacyTulipInsuranceItem({
+        isCustomItem: item.isCustomItem,
+        productSnapshot: item.productSnapshot,
+      })
+    ) {
+      return sum
+    }
+
+    const parsed = Number(item.totalPrice)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return sum
+    }
+
+    return sum + parsed
+  }, 0)
+  const initialTulipInsuranceAmount = (() => {
+    const parsedInsuranceAmount = Number(reservation.tulipInsuranceAmount ?? '0')
+    if (Number.isFinite(parsedInsuranceAmount) && parsedInsuranceAmount > 0) {
+      return parsedInsuranceAmount
+    }
+
+    return legacyInsuranceAmount
+  })()
   const [items, setItems] = useState<EditableItem[]>(
-    reservation.items.map((item) => ({
+    editableReservationItems.map((item) => ({
       id: item.id,
       productId: item.productId,
       quantity: item.quantity,
@@ -104,6 +139,14 @@ export function EditReservationForm({
     ReservationValidationWarning[]
   >([])
   const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false)
+  const initialTulipInsuranceOptIn =
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? reservation.tulipInsuranceOptIn === true
+        : false
+  const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
+  const fixedTulipInsuranceAmount = tulipInsuranceOptIn ? initialTulipInsuranceAmount : 0
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -131,6 +174,7 @@ export function EditReservationForm({
       endDate,
       items,
       originalSubtotal,
+      fixedChargesTotal: fixedTulipInsuranceAmount,
     })
   const { availabilityWarnings } = useEditReservationAvailability({
     startDate,
@@ -331,11 +375,19 @@ export function EditReservationForm({
     }
     setIsLoading(true)
     try {
+      const effectiveTulipInsuranceOptIn =
+        tulipInsuranceMode === 'required'
+          ? true
+          : tulipInsuranceMode === 'optional'
+            ? tulipInsuranceOptIn
+            : false
+
       const result = await updateReservationMutation.mutateAsync({
         reservationId: reservation.id,
         payload: {
           startDate,
           endDate,
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
           items: items.map((item) => ({
             id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
             productId: item.productId,
@@ -404,7 +456,8 @@ export function EditReservationForm({
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
     (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
     calculations.subtotal !== originalSubtotal ||
-    items.length !== reservation.items.length
+    tulipInsuranceOptIn !== initialTulipInsuranceOptIn ||
+    items.length !== editableReservationItems.length
 
   // Products not in the reservation
   const availableToAdd = availableProducts.filter(
@@ -544,6 +597,39 @@ export function EditReservationForm({
 
             {/* Sidebar */}
             <div className="space-y-6">
+              {tulipInsuranceMode !== 'no_public' && (
+                <Card>
+                  <CardContent className="p-6 space-y-3">
+                    <h2 className="text-sm font-medium">{tForm('tulipInsurance.title')}</h2>
+                    <p className="text-xs text-muted-foreground">
+                      {tForm('tulipInsurance.appliesMappedProducts')}
+                    </p>
+
+                    {tulipInsuranceMode === 'required' ? (
+                      <p className="text-sm font-medium text-emerald-700">
+                        {tForm('tulipInsurance.required')}
+                      </p>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-form-tulip-insurance-opt-in"
+                          checked={tulipInsuranceOptIn}
+                          onCheckedChange={(checked) =>
+                            setTulipInsuranceOptIn(checked === true)
+                          }
+                        />
+                        <label
+                          htmlFor="edit-form-tulip-insurance-opt-in"
+                          className="cursor-pointer text-sm"
+                        >
+                          {tForm('tulipInsurance.optionalLabel')}
+                        </label>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Summary Card */}
               <EditReservationSummarySection
                 originalSubtotal={originalSubtotal}

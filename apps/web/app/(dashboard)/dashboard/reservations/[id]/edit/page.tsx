@@ -4,6 +4,7 @@ import { reservations, products } from '@louez/db'
 import { eq, and, inArray, gte, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import { EditReservationForm } from './edit-reservation-form'
 
 interface EditReservationPageProps {
@@ -58,6 +59,11 @@ export default async function EditReservationPage({
           product: {
             with: {
               pricingTiers: true,
+              tulipMapping: {
+                columns: {
+                  productId: true,
+                },
+              },
             },
           },
         },
@@ -80,6 +86,11 @@ export default async function EditReservationPage({
       where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
       with: {
         pricingTiers: true,
+        tulipMapping: {
+          columns: {
+            productId: true,
+          },
+        },
       },
       orderBy: (products, { asc }) => [asc(products.name)],
     }),
@@ -87,6 +98,13 @@ export default async function EditReservationPage({
   ])
 
   const currency = store.settings?.currency || 'EUR'
+  const tulipSettings = getTulipSettings(store.settings || null)
+  const tulipInsuranceMode =
+    !tulipSettings.enabled
+      ? 'no_public'
+      : tulipSettings.publicMode === 'required'
+        ? 'required'
+        : 'optional'
 
   return (
     <EditReservationForm
@@ -98,6 +116,8 @@ export default async function EditReservationPage({
         endDate: reservation.endDate,
         subtotalAmount: reservation.subtotalAmount,
         depositAmount: reservation.depositAmount,
+        tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+        tulipInsuranceAmount: reservation.tulipInsuranceAmount,
         items: reservation.items.map((item) => ({
           id: item.id,
           productId: item.productId,
@@ -116,6 +136,7 @@ export default async function EditReservationPage({
                 deposit: item.product.deposit ?? '0',
                 quantity: item.product.quantity,
                 pricingMode: item.product.pricingMode,
+                tulipInsurable: Boolean(item.product.tulipMapping?.productId),
                 pricingTiers: item.product.pricingTiers.map((tier) => ({
                   id: tier.id,
                   minDuration: tier.minDuration ?? 1,
@@ -136,6 +157,7 @@ export default async function EditReservationPage({
         deposit: p.deposit || '0',
         quantity: p.quantity,
         pricingMode: p.pricingMode,
+        tulipInsurable: Boolean(p.tulipMapping?.productId),
         pricingTiers: p.pricingTiers.map((tier) => ({
           id: tier.id,
           minDuration: tier.minDuration ?? 1,
@@ -144,6 +166,7 @@ export default async function EditReservationPage({
       }))}
       existingReservations={existingReservations}
       currency={currency}
+      tulipInsuranceMode={tulipInsuranceMode}
       storeSettings={store.settings || null}
     />
   )

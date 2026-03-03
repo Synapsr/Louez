@@ -93,6 +93,7 @@ function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
 export function NewReservationForm({
   customers,
   products,
+  tulipInsuranceMode,
   businessHours,
   advanceNoticeMinutes = 0,
   existingReservations = [],
@@ -130,6 +131,9 @@ export function NewReservationForm({
   })
   const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
+  const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
+    tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
+  )
 
   const isDeliveryEnabled = Boolean(
     deliverySettings?.enabled && storeLatitude != null && storeLongitude != null,
@@ -333,6 +337,13 @@ export function NewReservationForm({
       if (!validateCurrentStep()) return
 
       try {
+        const effectiveTulipInsuranceOptIn =
+          tulipInsuranceMode === 'required'
+            ? true
+            : tulipInsuranceMode === 'optional'
+              ? tulipInsuranceOptIn
+              : false
+
         const result = await createReservationMutation.mutateAsync({
           payload: {
             customerId: value.customerType === 'existing' ? value.customerId : undefined,
@@ -383,6 +394,7 @@ export function NewReservationForm({
                   }
                 : { option: 'pickup' as const },
             internalNotes: value.internalNotes || undefined,
+            tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
             sendConfirmationEmail,
           },
         })
@@ -1009,6 +1021,8 @@ export function NewReservationForm({
               products={products}
               selectedProducts={selectedProducts}
               customItems={customItems}
+              tulipInsuranceMode={tulipInsuranceMode}
+              tulipInsuranceOptIn={tulipInsuranceOptIn}
               startDate={watchStartDate}
               endDate={watchEndDate}
               availabilityWarnings={availabilityWarnings}
@@ -1024,6 +1038,7 @@ export function NewReservationForm({
               onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
               updateCustomItemQuantity={updateCustomItemQuantity}
               removeCustomItem={removeCustomItem}
+              onTulipInsuranceOptInChange={setTulipInsuranceOptIn}
               openPriceOverrideDialog={openPriceOverrideDialog}
               calculateDurationForMode={calculateDurationForMode}
               getProductPricingDetails={getProductPricingDetails}
@@ -1076,6 +1091,8 @@ export function NewReservationForm({
               selectedProducts={selectedProducts}
               customItems={customItems}
               products={products}
+              tulipInsuranceMode={tulipInsuranceMode}
+              tulipInsuranceOptIn={tulipInsuranceOptIn}
               subtotal={subtotal}
               deposit={deposit}
               getProductPricingDetails={getProductPricingDetails}

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "10c4ccde-f226-4af3-9ed5-f88666faf32e",
+  "id": "15da6eea-8bea-4124-8ffe-78142f54e573",
   "prevId": "032288f2-72c6-4501-8f2b-589c286b398c",
   "tables": {
     "accounts": {
@@ -2081,28 +2081,14 @@
           "name": "min_duration",
           "type": "int",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "period": {
-          "name": "period",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "discount_percent": {
           "name": "discount_percent",
           "type": "decimal(10,6)",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "price": {
-          "name": "price",
-          "type": "decimal(10,2)",
-          "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "display_order": {
@@ -2154,13 +2140,6 @@
           "columns": [
             "product_id",
             "min_duration"
-          ]
-        },
-        "product_pricing_tiers_unique_period": {
-          "name": "product_pricing_tiers_unique_period",
-          "columns": [
-            "product_id",
-            "period"
           ]
         }
       },
@@ -2468,13 +2447,6 @@
           "autoincrement": false,
           "default": "'0'"
         },
-        "base_period_minutes": {
-          "name": "base_period_minutes",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
         "pricing_mode": {
           "name": "pricing_mode",
           "type": "enum('hour','day','week')",
@@ -2602,6 +2574,59 @@
         }
       },
       "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "products_tulip": {
+      "name": "products_tulip",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "varchar(21)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tulip_product_id": {
+          "name": "tulip_product_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "products_tulip_tulip_product_idx": {
+          "name": "products_tulip_tulip_product_idx",
+          "columns": [
+            "tulip_product_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "products_tulip_id": {
+          "name": "products_tulip_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "products_tulip_product_idx": {
+          "name": "products_tulip_product_idx",
+          "columns": [
+            "product_id"
+          ]
+        }
+      },
       "checkConstraint": {}
     },
     "reminder_logs": {
@@ -3252,6 +3277,20 @@
           "notNull": false,
           "autoincrement": false,
           "default": "'online'"
+        },
+        "tulip_contract_id": {
+          "name": "tulip_contract_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tulip_contract_status": {
+          "name": "tulip_contract_status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "created_at": {
           "name": "created_at",

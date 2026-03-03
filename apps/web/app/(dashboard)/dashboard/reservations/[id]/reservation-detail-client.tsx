@@ -13,6 +13,7 @@ import {
   Store,
   Tag,
   Truck,
+  Shield,
   User,
 } from 'lucide-react'
 
@@ -158,6 +159,22 @@ export function ReservationDetailClient({
   const hasContract = (reservation.documents || []).some(
     (d: any) => d.type === 'contract',
   )
+  const insuredProductIds = new Set<string>(
+    Array.isArray(reservation.insuredProductIds)
+      ? reservation.insuredProductIds.filter(
+          (productId: unknown): productId is string =>
+            typeof productId === 'string' && productId.trim().length > 0,
+        )
+      : [],
+  )
+  const tulipContractId =
+    typeof reservation.tulipContractId === 'string' &&
+    reservation.tulipContractId.trim().length > 0
+      ? reservation.tulipContractId.trim()
+      : null
+  const tulipContractUrl = tulipContractId
+    ? `https://app.mycolibri.io/fr/contrat/${encodeURIComponent(tulipContractId)}`
+    : null
 
   const formattedDepartureInspection = departureInspection
     ? {
@@ -320,6 +337,11 @@ export function ReservationDetailClient({
                   </TableHeader>
                   <TableBody>
                     {(reservation.items || []).map((item: any) => {
+                      const itemProductId =
+                        typeof item.productId === 'string' ? item.productId : null
+                      const isTulipInsured =
+                        itemProductId !== null &&
+                        insuredProductIds.has(itemProductId)
                       const trackUnits = item.product?.trackUnits || false
                       const assignedUnitIds =
                         item.assignedUnits?.map((au: any) => au.productUnitId) ||
@@ -342,8 +364,29 @@ export function ReservationDetailClient({
                           <TableCell className="font-medium">
                             <div>
                               <div className="space-y-1">
-                                <div>
-                                  {item.productSnapshot?.name || item.product?.name}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  {item.productId ? (
+                                    <Link
+                                      href={`/dashboard/products/${item.productId}`}
+                                      target="_blank"
+                                      className="hover:underline"
+                                    >
+                                      {item.productSnapshot?.name || item.product?.name}
+                                    </Link>
+                                  ) : (
+                                    <span>
+                                      {item.productSnapshot?.name || item.product?.name}
+                                    </span>
+                                  )}
+                                  {isTulipInsured && (
+                                    <Badge
+                                      variant="outline"
+                                      className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                                    >
+                                      <Shield className="mr-1 h-3 w-3" />
+                                      {t('tulipInsuredBadge')}
+                                    </Badge>
+                                  )}
                                 </div>
                                 {displayAttributes &&
                                   Object.keys(displayAttributes).length > 0 && (
@@ -507,6 +550,39 @@ export function ReservationDetailClient({
         </div>
 
         <div className="space-y-4">
+          {tulipContractUrl && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  {t('tulipContractCardTitle')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  {t('tulipContractCardDescription')}
+                </p>
+                <p className="text-xs font-mono text-muted-foreground break-all">
+                  {tulipContractId}
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  render={
+                    <a
+                      href={tulipContractUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    />
+                  }
+                >
+                  {t('actions.viewContract')}
+                  <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <SmartReservationActions
             reservationId={reservation.id}
             status={status}

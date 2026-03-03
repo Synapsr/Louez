@@ -1,4 +1,4 @@
-import type { DeliveryOption, StepId } from './types';
+import type { StepId } from './types';
 
 export function calculateDuration(
   startDate: string,
@@ -21,23 +21,15 @@ export function calculateDuration(
 
 interface StepOptions {
   isDeliveryEnabled: boolean;
-  deliveryOption: DeliveryOption;
-  requireCustomerAddress: boolean;
 }
 
 export function getCheckoutStepIds({
   isDeliveryEnabled,
-  deliveryOption,
-  requireCustomerAddress,
 }: StepOptions): StepId[] {
   const steps: StepId[] = ['contact'];
 
   if (isDeliveryEnabled) {
     steps.push('delivery');
-  }
-
-  if (deliveryOption === 'delivery' || requireCustomerAddress) {
-    steps.push('address');
   }
 
   steps.push('confirm');
@@ -63,4 +55,3 @@ export function sanitizeTranslationParams(
 
   return cleaned;
 }
-

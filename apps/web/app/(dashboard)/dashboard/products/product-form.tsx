@@ -36,6 +36,7 @@ import { ProductFormStepInfo } from './components/product-form-step-info';
 import { ProductFormStepPhotos } from './components/product-form-step-photos';
 import { ProductFormStepPreview } from './components/product-form-step-preview';
 import { ProductFormStepPricing } from './components/product-form-step-pricing';
+import { ProductAssuranceSection } from './components/product-assurance-section';
 import { ProductImageCropDialog } from './components/product-image-crop-dialog';
 import { useProductFormMedia } from './hooks/use-product-form-media';
 import { useProductFormMutations } from './hooks/use-product-form-mutations';
@@ -647,6 +648,12 @@ export function ProductForm({
                     disabled={isSaving}
                   />
                 </div>
+
+                {product?.id ? (
+                  <div id="section-assurance" className="scroll-mt-8">
+                    <ProductAssuranceSection productId={product.id} />
+                  </div>
+                ) : null}
               </div>
             </div>
 

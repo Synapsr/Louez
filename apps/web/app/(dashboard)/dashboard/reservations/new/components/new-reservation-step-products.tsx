@@ -8,6 +8,7 @@ import {
   PackageX,
   PenLine,
   Plus,
+  Shield,
   ShoppingCart,
   Trash2,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -47,6 +49,8 @@ interface NewReservationStepProductsProps {
   products: Product[]
   selectedProducts: SelectedProduct[]
   customItems: CustomItem[]
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public'
+  tulipInsuranceOptIn: boolean
   startDate: Date | undefined
   endDate: Date | undefined
   availabilityWarnings: AvailabilityWarning[]
@@ -62,6 +66,7 @@ interface NewReservationStepProductsProps {
   onOpenCustomItemDialog: () => void
   updateCustomItemQuantity: (id: string, delta: number) => void
   removeCustomItem: (id: string) => void
+  onTulipInsuranceOptInChange: (value: boolean) => void
   openPriceOverrideDialog: (
     lineId: string,
     calculatedPrice: number,
@@ -80,6 +85,8 @@ export function NewReservationStepProducts({
   products,
   selectedProducts,
   customItems,
+  tulipInsuranceMode,
+  tulipInsuranceOptIn,
   startDate,
   endDate,
   availabilityWarnings,
@@ -95,6 +102,7 @@ export function NewReservationStepProducts({
   onOpenCustomItemDialog,
   updateCustomItemQuantity,
   removeCustomItem,
+  onTulipInsuranceOptInChange,
   openPriceOverrideDialog,
   calculateDurationForMode,
   getProductPricingDetails,
@@ -247,7 +255,18 @@ export function NewReservationStepProducts({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium">{product.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-medium">{product.name}</p>
+                        {product.tulipInsurable && (
+                          <Badge
+                            variant="outline"
+                            className="shrink-0 border-emerald-300 bg-emerald-50 text-emerald-700"
+                          >
+                            <Shield className="mr-1 h-3 w-3" />
+                            {t('tulipInsurance.insurableProduct')}
+                          </Badge>
+                        )}
+                      </div>
                       <div className="mt-0.5">
                         {summaryPricing.productDuration > 0 ? (
                           <>
@@ -649,36 +668,69 @@ export function NewReservationStepProducts({
         )}
 
         {hasItems && (
-          <div className="space-y-2 rounded-lg bg-muted/50 p-4">
-            {totalSavings > 0 && (
+          <div className="space-y-3">
+            <div className="space-y-2 rounded-lg bg-muted/50 p-4">
+              {totalSavings > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{t('originalPrice')}</span>
+                  <span className="text-muted-foreground line-through">
+                    {formatCurrency(originalSubtotal)}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">{t('originalPrice')}</span>
-                <span className="text-muted-foreground line-through">
-                  {formatCurrency(originalSubtotal)}
+                <span className="text-muted-foreground">{t('subtotal')}</span>
+                <span className={totalSavings > 0 ? 'font-medium text-green-600' : ''}>
+                  {formatCurrency(subtotal)}
                 </span>
               </div>
-            )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('subtotal')}</span>
-              <span className={totalSavings > 0 ? 'font-medium text-green-600' : ''}>
-                {formatCurrency(subtotal)}
-              </span>
-            </div>
-            {totalSavings > 0 && (
+              {totalSavings > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-green-600">{t('totalSavings')}</span>
+                  <span className="font-medium text-green-600">-{formatCurrency(totalSavings)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
-                <span className="text-green-600">{t('totalSavings')}</span>
-                <span className="font-medium text-green-600">-{formatCurrency(totalSavings)}</span>
+                <span className="text-muted-foreground">{t('deposit')}</span>
+                <span>{formatCurrency(deposit)}</span>
+              </div>
+              <Separator className="my-2" />
+              <div className="flex justify-between font-medium">
+                <span>{t('total')}</span>
+                <span>{formatCurrency(subtotal)}</span>
+              </div>
+            </div>
+
+            {tulipInsuranceMode !== 'no_public' && (
+              <div className="rounded-lg border p-4">
+                <p className="text-sm font-medium">{t('tulipInsurance.title')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t('tulipInsurance.appliesMappedProducts')}
+                </p>
+
+                {tulipInsuranceMode === 'required' ? (
+                  <p className="mt-3 text-sm font-medium text-emerald-700">
+                    {t('tulipInsurance.required')}
+                  </p>
+                ) : (
+                  <div className="mt-3 flex items-center space-x-2">
+                    <Checkbox
+                      id="manual-form-tulip-insurance-opt-in"
+                      checked={tulipInsuranceOptIn}
+                      onCheckedChange={(checked) =>
+                        onTulipInsuranceOptInChange(checked === true)
+                      }
+                    />
+                    <label
+                      htmlFor="manual-form-tulip-insurance-opt-in"
+                      className="cursor-pointer text-sm"
+                    >
+                      {t('tulipInsurance.optionalLabel')}
+                    </label>
+                  </div>
+                )}
               </div>
             )}
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t('deposit')}</span>
-              <span>{formatCurrency(deposit)}</span>
-            </div>
-            <Separator className="my-2" />
-            <div className="flex justify-between font-medium">
-              <span>{t('total')}</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
           </div>
         )}
       </CardContent>

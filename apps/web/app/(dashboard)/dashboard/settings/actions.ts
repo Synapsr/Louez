@@ -74,6 +74,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           timezone: getTimezoneForCountry(data.country),
           currency: data.currency,
           tax: store.settings?.tax,
+          integrationData: store.settings?.integrationData,
           billingAddress: {
             useSameAsStore: data.billingAddressSameAsStore,
             address: data.billingAddressSameAsStore ? undefined : data.billingAddress,

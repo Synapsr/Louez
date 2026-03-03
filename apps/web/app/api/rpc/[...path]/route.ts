@@ -29,6 +29,20 @@ import {
   updateReservation,
   updateReservationStatus,
 } from '@/app/(dashboard)/dashboard/reservations/actions';
+import {
+  createTulipProductAction,
+  connectTulipApiKeyAction,
+  disconnectTulipAction,
+  getIntegrationDetailAction,
+  getTulipProductStateAction,
+  listIntegrationsCatalogAction,
+  listIntegrationsCategoryAction,
+  getTulipIntegrationStateAction,
+  pushTulipProductUpdateAction,
+  setIntegrationEnabledAction,
+  updateTulipConfigurationAction,
+  upsertTulipProductMappingAction,
+} from '@/app/(dashboard)/dashboard/settings/integrations/actions';
 
 const handler = new RPCHandler(appRouter, {
   interceptors: [
@@ -64,6 +78,20 @@ async function handleRequest(request: Request) {
         sendReservationEmail,
         sendAccessLink,
         sendAccessLinkBySms,
+      },
+      dashboardIntegrationActions: {
+        listIntegrationsCatalog: listIntegrationsCatalogAction,
+        listIntegrationsCategory: listIntegrationsCategoryAction,
+        getIntegrationDetail: getIntegrationDetailAction,
+        setIntegrationEnabled: setIntegrationEnabledAction,
+        getTulipIntegrationState: getTulipIntegrationStateAction,
+        getTulipProductState: getTulipProductStateAction,
+        connectTulipApiKey: connectTulipApiKeyAction,
+        updateTulipConfiguration: updateTulipConfigurationAction,
+        upsertTulipProductMapping: upsertTulipProductMappingAction,
+        pushTulipProductUpdate: pushTulipProductUpdateAction,
+        createTulipProduct: createTulipProductAction,
+        disconnectTulip: async () => disconnectTulipAction({}),
       },
       regenerateContract: async (reservationId: string) => {
         await generateContract({ reservationId, regenerate: true });

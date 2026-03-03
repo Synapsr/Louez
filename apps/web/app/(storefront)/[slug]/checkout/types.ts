@@ -1,6 +1,9 @@
 import type { ComponentType, ReactNode } from 'react';
 
-import type { DeliverySettings, TaxSettings } from '@louez/types';
+import type {
+  DeliverySettings,
+  TaxSettings,
+} from '@louez/types';
 
 export interface CheckoutFormProps {
   storeSlug: string;
@@ -15,6 +18,10 @@ export interface CheckoutFormProps {
   storeAddress?: string | null;
   storeLatitude?: number | null;
   storeLongitude?: number | null;
+  tulipInsurance?: {
+    enabled: boolean;
+    mode: 'required' | 'optional' | 'no_public';
+  };
   hasActivePromoCodes?: boolean;
 }
 
@@ -29,6 +36,7 @@ export interface CheckoutFormValues {
   city: string;
   postalCode: string;
   notes: string;
+  tulipInsuranceOptIn: boolean;
   acceptCgv: boolean;
 }
 

@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import type { Locale } from 'date-fns'
-import { Check, MapPin, Truck } from 'lucide-react'
+import { Check, MapPin, Truck, Shield } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
@@ -50,6 +50,8 @@ interface NewReservationStepReviewProps {
   selectedProducts: SelectedProduct[]
   customItems: CustomItem[]
   products: Product[]
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public'
+  tulipInsuranceOptIn: boolean
   subtotal: number
   deposit: number
   getProductPricingDetails: (
@@ -78,6 +80,8 @@ export function NewReservationStepReview({
   selectedProducts,
   customItems,
   products,
+  tulipInsuranceMode,
+  tulipInsuranceOptIn,
   subtotal,
   deposit,
   getProductPricingDetails,
@@ -92,6 +96,9 @@ export function NewReservationStepReview({
 
   const showDeliverySection = deliveryOption === 'delivery'
   const total = subtotal + deliveryFee
+  const isTulipInsuranceEnabledForReservation =
+    tulipInsuranceMode === 'required' ||
+    (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn)
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -214,12 +221,24 @@ export function NewReservationStepReview({
                 if (!product) return null
 
                 const pricing = getProductPricingDetails(product, item)
+                const isProductInsured =
+                  isTulipInsuranceEnabledForReservation &&
+                  product.tulipInsurable === true
 
                 return (
                   <div key={item.lineId} className="flex justify-between p-3 text-sm">
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{product.name}</span>
+                        {isProductInsured && (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                          >
+                            <Shield className="mr-1 h-3 w-3" />
+                            {t('tulipInsurance.assuredProduct')}
+                          </Badge>
+                        )}
                         {pricing.hasPriceOverride && (
                           <Badge
                             variant="secondary"

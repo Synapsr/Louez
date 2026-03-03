@@ -262,6 +262,15 @@ function MyComponent() {
 - `storefrontAuthProcedure` - Requires authenticated customer
 - `requirePermission('write')` - Requires specific permission
 
+### Client Async Data (Required)
+
+- In client components/hooks, all async network/IO flows must use TanStack Query:
+  - reads via `useQuery` (or `prefetchQuery` / `ensureQueryData` when applicable),
+  - writes via `useMutation`.
+- Do not implement request fetching with ad-hoc `useEffect` + local loading/error state when TanStack Query can model it.
+- Keep query keys stable and deterministic; use `staleTime`/`gcTime` intentionally to prevent redundant refetches.
+- Exceptions: server-side data loading in Server Components, Next.js route handlers, and one-off non-network async UI helpers.
+
 ### Components
 
 - Use `cn()` for conditional classes (from `src/lib/utils.ts`)

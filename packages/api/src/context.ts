@@ -62,6 +62,9 @@ export type CustomerData = {
   phone: string | null;
 };
 
+type TulipProductType = string
+type TulipProductSubtype = string
+
 /**
  * Base context provided to all procedures
  */
@@ -199,6 +202,146 @@ export interface BaseContext {
     ) => Promise<{ success?: boolean; error?: string }>
     sendAccessLink?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
     sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
+  };
+  dashboardIntegrationActions?: {
+    listIntegrationsCatalog?: (input: {}) => Promise<
+      | {
+          categories: unknown[]
+          integrations: unknown[]
+        }
+      | { error: string }
+    >
+    listIntegrationsCategory?: (input: { category: string }) => Promise<
+      | {
+          category: string
+          categories: unknown[]
+          integrations: unknown[]
+        }
+      | { error: string }
+    >
+    getIntegrationDetail?: (input: { integrationId: string }) => Promise<
+      | {
+          integration: unknown
+        }
+      | { error: string }
+    >
+    setIntegrationEnabled?: (input: {
+      integrationId: string
+      enabled: boolean
+    }) => Promise<{ success?: boolean; error?: string }>
+    getTulipIntegrationState?: () => Promise<
+      | {
+          connected: boolean
+          enabled: boolean
+          supportsMargin: boolean
+          inclusionEnabled: boolean
+          connectedAt: string | null
+          connectionIssue: string | null
+          calendlyUrl: string
+          settings: {
+            publicMode: 'required' | 'optional' | 'no_public'
+            renterUid: string | null
+          }
+          renters: Array<{ uid: string; enabled: boolean }>
+          tulipCatalog: Array<{
+            type: string
+            label: string
+            subtypes: Array<{
+              type: string
+              label: string
+            }>
+          }>
+          tulipProducts: Array<{
+            id: string
+            title: string
+            louezManaged: boolean
+            margin: number | null
+            productType: string | null
+            productSubtype: string | null
+            purchasedDate: string | null
+            valueExcl: number | null
+            brand: string | null
+            model: string | null
+          }>
+          products: Array<{
+            id: string
+            name: string
+            price: number
+            tulipProductId: string | null
+          }>
+        }
+      | { error: string }
+    >
+    getTulipProductState?: (input: { productId: string }) => Promise<
+      | {
+          connected: boolean
+          supportsMargin: boolean
+          connectedAt: string | null
+          connectionIssue: string | null
+          calendlyUrl: string
+          settings: {
+            publicMode: 'required' | 'optional' | 'no_public'
+          }
+          tulipCatalog: Array<{
+            type: string
+            label: string
+            subtypes: Array<{
+              type: string
+              label: string
+            }>
+          }>
+          tulipProducts: Array<{
+            id: string
+            title: string
+            louezManaged: boolean
+            margin: number | null
+            productType: string | null
+            productSubtype: string | null
+            purchasedDate: string | null
+            valueExcl: number | null
+            brand: string | null
+            model: string | null
+          }>
+          product: {
+            id: string
+            name: string
+            price: number
+            tulipProductId: string | null
+          }
+        }
+      | { error: string }
+    >
+    connectTulipApiKey?: (input: { renterUid: string }) => Promise<{ success?: boolean; error?: string }>
+    updateTulipConfiguration?: (input: {
+      publicMode: 'required' | 'optional' | 'no_public'
+    }) => Promise<{ success?: boolean; error?: string }>
+    upsertTulipProductMapping?: (input: {
+      productId: string
+      tulipProductId: string | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    pushTulipProductUpdate?: (input: {
+      productId: string
+      title?: string | null
+      productType?: TulipProductType | null
+      productSubtype?: TulipProductSubtype | null
+      purchasedDate?: string | null
+      brand?: string | null
+      model?: string | null
+      valueExcl?: number | null
+      margin?: number | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    createTulipProduct?: (input: {
+      productId: string
+      title?: string | null
+      productType?: TulipProductType | null
+      productSubtype?: TulipProductSubtype | null
+      purchasedDate?: string | null
+      brand?: string | null
+      model?: string | null
+      valueExcl?: number | null
+      margin?: number | null
+    }) => Promise<{ success?: boolean; error?: string }>
+    disconnectTulip?: () => Promise<{ success?: boolean; error?: string }>
   };
   notifyStoreCreated?: (store: {
     id: string;

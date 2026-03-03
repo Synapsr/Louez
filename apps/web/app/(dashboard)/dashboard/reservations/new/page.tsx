@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 import { subDays } from 'date-fns'
 
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import { NewReservationForm } from './new-reservation-form'
 
 async function getCustomers(storeId: string) {
@@ -30,12 +31,18 @@ async function getProductsWithTiers(storeId: string) {
           attributes: true,
         },
       },
+      tulipMapping: {
+        columns: {
+          productId: true,
+        },
+      },
     },
     limit: 500,
   })
   return result
     .map((p) => ({
       ...p,
+      tulipInsurable: Boolean(p.tulipMapping?.productId),
       seasonalPricings: p.seasonalPricings.map((sp) => ({
         id: sp.id,
         name: sp.name,
@@ -105,6 +112,13 @@ export default async function NewReservationPage() {
     getProductsWithTiers(store.id),
     getActiveReservations(store.id),
   ])
+  const tulipSettings = getTulipSettings(store.settings || null)
+  const tulipInsuranceMode =
+    !tulipSettings.enabled
+      ? 'no_public'
+      : tulipSettings.publicMode === 'required'
+        ? 'required'
+        : 'optional'
 
   return (
     <div className="space-y-6">
@@ -120,6 +134,7 @@ export default async function NewReservationPage() {
       <NewReservationForm
         customers={customersList}
         products={productsList}
+        tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         existingReservations={activeReservations}

@@ -201,8 +201,29 @@
     {
       "idx": 28,
       "version": "5",
+      "when": 1771323838903,
+      "tag": "0028_swift_luminals",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1771323862949,
+      "tag": "0029_glossy_hercules",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
       "when": 1771338757749,
-      "tag": "0028_overrated_the_initiative",
+      "tag": "0030_overrated_the_initiative",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1771422934801,
+      "tag": "0031_whole_wraith",
       "breakpoints": true
     },
     {

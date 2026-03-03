@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { revalidateLogic, useStore } from '@tanstack/react-form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Check, MapPin, Truck, User } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -17,7 +17,7 @@ import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
 
-import { createReservation } from './actions';
+import { createReservation, getTulipQuotePreview } from './actions';
 import type { ValidatedPromo } from './promo-actions';
 import { buildReservationPayload } from './reservation-payload';
 import type {
@@ -26,9 +26,8 @@ import type {
   CheckoutStep,
   StepId,
 } from './types';
-import { createCheckoutSchema } from './validation';
+import { createCheckoutSchemaWithOptions } from './validation';
 import { sanitizeTranslationParams } from './utils';
-import { CheckoutAddressStep } from './components/checkout-address-step';
 import { CheckoutConfirmStep } from './components/checkout-confirm-step';
 import { CheckoutContactStep } from './components/checkout-contact-step';
 import { CheckoutDeliveryStep } from './components/checkout-delivery-step';
@@ -57,8 +56,32 @@ const DEFAULT_VALUES: CheckoutFormValues = {
   city: '',
   postalCode: '',
   notes: '',
+  tulipInsuranceOptIn: true,
   acceptCgv: false,
 };
+
+const TULIP_CUSTOMER_INCOMPLETE_ERROR = 'errors.tulipCustomerDataIncomplete';
+
+type TulipQuotePreviewState = Awaited<ReturnType<typeof getTulipQuotePreview>>;
+
+function createEmptyTulipQuotePreview(
+  mode: 'required' | 'optional' | 'no_public',
+): TulipQuotePreviewState {
+  return {
+    mode,
+    connected: false,
+    inclusionEnabled: false,
+    quoteUnavailable: false,
+    quoteError: null,
+    requestedOptIn: false,
+    appliedOptIn: false,
+    amount: 0,
+    insuredProductCount: 0,
+    uninsuredProductCount: 0,
+    insuredProductIds: [],
+    error: null,
+  };
+}
 
 class CheckoutSubmitError extends Error {
   readonly params?: Record<string, string | number>;
@@ -83,6 +106,7 @@ export function CheckoutForm({
   storeAddress,
   storeLatitude,
   storeLongitude,
+  tulipInsurance,
   hasActivePromoCodes,
 }: CheckoutFormProps) {
   const router = useRouter();
@@ -163,6 +187,7 @@ export function CheckoutForm({
 
   const totalWithDelivery =
     total - discountAmount + (deliveryOption === 'delivery' ? deliveryFee : 0);
+  const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
 
   const {
     lineResolutions,
@@ -173,16 +198,257 @@ export function CheckoutForm({
   });
 
   const checkoutSchema = useMemo(
-    () => createCheckoutSchema((key, params) => t(key, params)),
-    [t],
+    () =>
+      createCheckoutSchemaWithOptions((key, params) => t(key, params), {
+        requireAddress: requireCustomerAddress,
+      }),
+    [requireCustomerAddress, t],
   );
+
+  const form = useAppForm({
+    defaultValues: DEFAULT_VALUES,
+    validationLogic: revalidateLogic({
+      mode: 'submit',
+      modeAfterSubmission: 'change',
+    }),
+    validators: {
+      onSubmit: checkoutSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        await createReservationMutation.mutateAsync(value);
+      } catch {
+        // Mutation errors are handled in onError callback.
+      }
+    },
+  });
+
+  const formValues = useStore(form.store, (state) => state.values);
+
+  const tulipInsuranceOptIn = formValues.tulipInsuranceOptIn;
+
+  const {
+    currentStep,
+    stepDirection,
+    steps,
+    goToNextStep,
+    goToPreviousStep,
+    goToStep,
+  } = useCheckoutStepFlow({
+    isDeliveryEnabled,
+    stepIcons: STEP_ICONS,
+    validateCurrentStep: useCallback(
+      async (step: StepId): Promise<boolean> => {
+        if (step === 'contact') {
+          const fieldsToValidate: Array<keyof CheckoutFormValues> = [
+            'firstName',
+            'lastName',
+            'email',
+            'phone',
+          ];
+
+          if (requireCustomerAddress) {
+            fieldsToValidate.push('address', 'city', 'postalCode');
+          }
+
+          if (form.getFieldValue('isBusinessCustomer')) {
+            fieldsToValidate.push('companyName');
+          }
+
+          await Promise.all(
+            fieldsToValidate.map((fieldName) =>
+              form.validateField(fieldName, 'submit'),
+            ),
+          );
+
+          return fieldsToValidate.every(
+            (fieldName) =>
+              (form.getFieldMeta(fieldName)?.errors?.length ?? 0) === 0,
+          );
+        }
+
+        if (step === 'confirm') {
+          await form.validateField('acceptCgv', 'submit');
+          return (form.getFieldMeta('acceptCgv')?.errors?.length ?? 0) === 0;
+        }
+
+        return true;
+      },
+      [form, requireCustomerAddress],
+    ),
+  });
+
+  const tulipQuoteCustomer = useMemo(
+    () => {
+      const customerType: 'business' | 'individual' =
+        formValues.isBusinessCustomer ? 'business' : 'individual';
+
+      return {
+        customerType,
+        companyName: formValues.isBusinessCustomer
+          ? formValues.companyName
+          : undefined,
+        firstName: formValues.firstName,
+        lastName: formValues.lastName,
+        email: formValues.email,
+        phone: formValues.phone,
+        address: requireCustomerAddress ? formValues.address : undefined,
+        city: requireCustomerAddress ? formValues.city : undefined,
+        postalCode: requireCustomerAddress ? formValues.postalCode : undefined,
+      };
+    },
+    [
+      formValues.address,
+      formValues.city,
+      formValues.companyName,
+      formValues.email,
+      formValues.firstName,
+      formValues.isBusinessCustomer,
+      formValues.lastName,
+      formValues.phone,
+      formValues.postalCode,
+      requireCustomerAddress,
+    ],
+  );
+
+  const tulipQuoteItems = useMemo(
+    () =>
+      itemsWithResolved
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }))
+        .sort(
+          (left, right) =>
+            left.productId.localeCompare(right.productId) ||
+            left.quantity - right.quantity,
+        ),
+    [itemsWithResolved],
+  );
+
+  const tulipQuoteRequest = useMemo(() => {
+    if (
+      !tulipInsurance?.enabled ||
+      tulipInsuranceMode === 'no_public' ||
+      currentStep !== 'confirm' ||
+      !globalStartDate ||
+      !globalEndDate ||
+      tulipQuoteItems.length === 0
+    ) {
+      return null;
+    }
+
+    return {
+      storeId,
+      customer: tulipQuoteCustomer,
+      items: tulipQuoteItems,
+      startDate: globalStartDate,
+      endDate: globalEndDate,
+      tulipInsuranceOptIn,
+    };
+  }, [
+    currentStep,
+    globalEndDate,
+    globalStartDate,
+    storeId,
+    tulipInsurance?.enabled,
+    tulipInsuranceMode,
+    tulipInsuranceOptIn,
+    tulipQuoteCustomer,
+    tulipQuoteItems,
+  ]);
+
+  const tulipQuoteQuery = useQuery({
+    queryKey: ['checkout', 'tulip-quote-preview', tulipQuoteRequest],
+    enabled: tulipQuoteRequest !== null,
+    staleTime: Infinity,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      if (!tulipQuoteRequest) {
+        return createEmptyTulipQuotePreview(tulipInsuranceMode);
+      }
+
+      return getTulipQuotePreview(tulipQuoteRequest);
+    },
+  });
+
+  const tulipQuotePreview = useMemo(() => {
+    if (!tulipQuoteRequest) {
+      return createEmptyTulipQuotePreview(tulipInsuranceMode);
+    }
+
+    if (tulipQuoteQuery.data) {
+      return tulipQuoteQuery.data;
+    }
+
+    if (tulipQuoteQuery.isError) {
+      return {
+        ...createEmptyTulipQuotePreview(tulipInsuranceMode),
+        mode: tulipInsuranceMode,
+        quoteUnavailable: true,
+        quoteError: 'errors.tulipQuoteFailed',
+        error: 'errors.tulipQuoteFailed',
+      };
+    }
+
+    return createEmptyTulipQuotePreview(tulipInsuranceMode);
+  }, [
+    tulipInsuranceMode,
+    tulipQuoteQuery.data,
+    tulipQuoteQuery.isError,
+    tulipQuoteRequest,
+  ]);
+
+  const isTulipQuoteLoading =
+    tulipQuoteRequest !== null &&
+    (tulipQuoteQuery.isLoading ||
+      (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data));
+
+  const isTulipQuoteFetched =
+    tulipQuoteQuery.data !== undefined || tulipQuoteQuery.isError;
+
+  useEffect(() => {
+    if (
+      tulipQuotePreview.mode === 'optional' &&
+      tulipQuotePreview.quoteUnavailable &&
+      form.getFieldValue('tulipInsuranceOptIn') &&
+      tulipQuotePreview.quoteError !== TULIP_CUSTOMER_INCOMPLETE_ERROR
+    ) {
+      form.setFieldValue('tulipInsuranceOptIn', false);
+    }
+  }, [
+    form,
+    tulipQuotePreview.mode,
+    tulipQuotePreview.quoteError,
+    tulipQuotePreview.quoteUnavailable,
+  ]);
+
+  const estimatedTulipInsuranceAmount =
+    tulipQuotePreview.appliedOptIn && tulipQuotePreview.amount > 0
+      ? tulipQuotePreview.amount
+      : 0;
+
+  const subtotalWithEstimatedInsurance =
+    subtotal + estimatedTulipInsuranceAmount;
+  const totalWithEstimatedInsurance =
+    totalWithDelivery + estimatedTulipInsuranceAmount;
+
+  const canSubmitCheckoutWithTulip =
+    canSubmitCheckout &&
+    !isTulipQuoteLoading &&
+    !(
+      tulipInsurance?.enabled &&
+      tulipQuotePreview.mode === 'required' &&
+      Boolean(tulipQuotePreview.error)
+    );
 
   const createReservationMutation = useMutation({
     mutationFn: async (value: CheckoutFormValues) => {
       if (items.length === 0) {
         throw new CheckoutSubmitError('emptyCart');
       }
-      if (!canSubmitCheckout) {
+      if (!canSubmitCheckoutWithTulip) {
         throw new CheckoutSubmitError('lineNeedsUpdate');
       }
 
@@ -192,11 +458,12 @@ export function CheckoutForm({
         locale,
         values: value,
         items: itemsWithResolved,
-        subtotalAmount: subtotal,
+        subtotalAmount: subtotalWithEstimatedInsurance,
         depositAmount: totalDeposit,
-        totalAmount: totalWithDelivery,
+        totalAmount: totalWithEstimatedInsurance,
         deliveryOption,
         deliveryAddress,
+        tulipInsuranceMode,
         hasDifferentReturnAddress,
         returnAddress,
         promoCode: appliedPromo?.code,
@@ -252,79 +519,7 @@ export function CheckoutForm({
     },
   });
 
-  const form = useAppForm({
-    defaultValues: DEFAULT_VALUES,
-    validationLogic: revalidateLogic({
-      mode: 'submit',
-      modeAfterSubmission: 'change',
-    }),
-    validators: {
-      onSubmit: checkoutSchema,
-    },
-    onSubmit: async ({ value }) => {
-      try {
-        await createReservationMutation.mutateAsync(value);
-      } catch {
-        // Mutation errors are handled in onError callback.
-      }
-    },
-  });
-
-  const isBusinessCustomer = useStore(
-    form.store,
-    (state) => state.values.isBusinessCustomer,
-  );
-
-  const validateCurrentStep = useCallback(
-    async (currentStep: StepId): Promise<boolean> => {
-      if (currentStep === 'contact') {
-        const fieldsToValidate: Array<keyof CheckoutFormValues> = [
-          'firstName',
-          'lastName',
-          'email',
-          'phone',
-        ];
-
-        if (form.getFieldValue('isBusinessCustomer')) {
-          fieldsToValidate.push('companyName');
-        }
-
-        await Promise.all(
-          fieldsToValidate.map((fieldName) =>
-            form.validateField(fieldName, 'submit'),
-          ),
-        );
-
-        return fieldsToValidate.every(
-          (fieldName) =>
-            (form.getFieldMeta(fieldName)?.errors?.length ?? 0) === 0,
-        );
-      }
-
-      if (currentStep === 'confirm') {
-        await form.validateField('acceptCgv', 'submit');
-        return (form.getFieldMeta('acceptCgv')?.errors?.length ?? 0) === 0;
-      }
-
-      return true;
-    },
-    [form],
-  );
-
-  const {
-    currentStep,
-    stepDirection,
-    steps,
-    goToNextStep,
-    goToPreviousStep,
-    goToStep,
-  } = useCheckoutStepFlow({
-    isDeliveryEnabled,
-    deliveryOption,
-    requireCustomerAddress,
-    stepIcons: STEP_ICONS,
-    validateCurrentStep,
-  });
+  const isBusinessCustomer = formValues.isBusinessCustomer;
 
   if (items.length === 0) {
     return <CheckoutEmptyCartState storeSlug={storeSlug} />;
@@ -346,6 +541,7 @@ export function CheckoutForm({
                 {currentStep === 'contact' && (
                   <CheckoutContactStep
                     form={form}
+                    showAddressFields={requireCustomerAddress}
                     isBusinessCustomer={isBusinessCustomer}
                     onBusinessCustomerUnchecked={() =>
                       form.setFieldValue('companyName', '')
@@ -383,14 +579,6 @@ export function CheckoutForm({
                     />
                   )}
 
-                {currentStep === 'address' && (
-                  <CheckoutAddressStep
-                    form={form}
-                    onBack={goToPreviousStep}
-                    onContinue={goToNextStep}
-                  />
-                )}
-
                 {currentStep === 'confirm' && (
                   <CheckoutConfirmStep
                     form={form}
@@ -398,10 +586,11 @@ export function CheckoutForm({
                     deliveryOption={deliveryOption}
                     reservationMode={reservationMode}
                     depositPercentage={depositPercentage}
-                    subtotal={subtotal}
-                    totalWithDelivery={totalWithDelivery}
+                    subtotal={subtotalWithEstimatedInsurance}
+                    totalWithDelivery={totalWithEstimatedInsurance}
                     currency={currency}
-                    canSubmitCheckout={canSubmitCheckout}
+                    tulipInsurance={tulipInsurance}
+                    canSubmitCheckout={canSubmitCheckoutWithTulip}
                     discountAmount={discountAmount}
                     onBack={goToPreviousStep}
                     onEditContact={() => goToStep('contact')}
@@ -430,6 +619,11 @@ export function CheckoutForm({
           deliveryOption={deliveryOption}
           deliveryDistance={deliveryDistance}
           deliveryFee={deliveryFee}
+          tulipInsurance={tulipInsurance}
+          tulipInsuranceOptIn={tulipInsuranceOptIn}
+          isTulipQuoteLoading={isTulipQuoteLoading}
+          isTulipQuoteFetched={isTulipQuoteFetched}
+          tulipQuotePreview={tulipQuotePreview}
           lineResolutions={lineResolutions}
           hasActivePromoCodes={hasActivePromoCodes}
           storeId={storeId}

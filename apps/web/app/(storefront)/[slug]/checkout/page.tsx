@@ -9,6 +9,7 @@ import { CheckoutForm } from './checkout-form'
 import { BackButton } from './back-button'
 import { generateStoreMetadata } from '@/lib/seo'
 import { PageTracker } from '@/components/storefront/page-tracker'
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 
 interface CheckoutPageProps {
@@ -58,13 +59,18 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
 
   const pricingMode = 'day' as const
   const reservationMode = store.settings?.reservationMode || 'payment'
-  const requireCustomerAddress = store.settings?.requireCustomerAddress ?? false
   const taxSettings = store.settings?.tax
   const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
   const deliverySettings = store.settings?.delivery
   const storeAddress = store.address
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
   const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
+  const tulipSettings = getTulipSettings((store.settings as StoreSettings | null) || null)
+  const tulipConnected = tulipSettings.enabled
+  const tulipMode = tulipConnected ? tulipSettings.publicMode : 'no_public'
+  // LMD/LLD customer identity fields are mandatory on Tulip; keeping address
+  // fields required avoids checkout flows that later fail contract creation.
+  const effectiveRequireCustomerAddress = true
 
   // Check if store has at least one active promo code
   const now = new Date()
@@ -107,7 +113,7 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeId={store.id}
           pricingMode={pricingMode}
           reservationMode={reservationMode}
-          requireCustomerAddress={requireCustomerAddress}
+          requireCustomerAddress={effectiveRequireCustomerAddress}
           cgv={store.cgv}
           taxSettings={taxSettings}
           depositPercentage={depositPercentage}
@@ -115,6 +121,10 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeAddress={storeAddress}
           storeLatitude={storeLatitude}
           storeLongitude={storeLongitude}
+          tulipInsurance={{
+            enabled: tulipConnected && tulipMode !== 'no_public',
+            mode: tulipMode,
+          }}
           hasActivePromoCodes={hasActivePromoCodes}
         />
       </div>

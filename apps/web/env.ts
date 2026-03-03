@@ -1,5 +1,6 @@
 import { createEnv } from '@t3-oss/env-nextjs';
 import { z } from 'zod';
+
 import { env as authEnv } from '@louez/auth/env';
 import { env as dbEnv } from '@louez/db/env';
 import { env as emailEnv } from '@louez/email/env';
@@ -90,6 +91,16 @@ export const env = createEnv({
       .url('DISCORD_ADMIN_WEBHOOK_URL must be a valid URL')
       .optional(),
 
+    // ===== Tulip Integrations (Optional) =====
+    TULIP_API_KEY: z.string().optional(),
+    TULIP_API_BASE_URL: z
+      .url('TULIP_API_BASE_URL must be a valid URL')
+      .default('https://api.mytulip.io/v2'),
+    TULIP_CALENDLY_URL: z
+      .string()
+      .url('TULIP_CALENDLY_URL must be a valid URL')
+      .optional(),
+
     // ===== Cron Jobs (Required) =====
     CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
 
@@ -157,6 +168,9 @@ export const env = createEnv({
     GOOGLE_PLACES_CACHE_TTL_HOURS: process.env.GOOGLE_PLACES_CACHE_TTL_HOURS,
     PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS,
     DISCORD_ADMIN_WEBHOOK_URL: process.env.DISCORD_ADMIN_WEBHOOK_URL,
+    TULIP_API_BASE_URL: process.env.TULIP_API_BASE_URL,
+    TULIP_API_KEY: process.env.TULIP_API_KEY,
+    TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
     CRON_SECRET: process.env.CRON_SECRET,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,

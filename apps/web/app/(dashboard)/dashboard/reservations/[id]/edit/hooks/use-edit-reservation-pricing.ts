@@ -75,6 +75,7 @@ interface UseEditReservationPricingParams {
   endDate: Date | undefined
   items: EditableItem[]
   originalSubtotal: number
+  fixedChargesTotal?: number
 }
 
 export function useEditReservationPricing({
@@ -82,6 +83,7 @@ export function useEditReservationPricing({
   endDate,
   items,
   originalSubtotal,
+  fixedChargesTotal = 0,
 }: UseEditReservationPricingParams) {
   const getDurationForMode = useCallback(
     (mode: PricingMode) => {
@@ -120,13 +122,18 @@ export function useEditReservationPricing({
       { items: [], subtotal: 0, deposit: 0 }
     )
 
+    const normalizedFixedCharges = Number.isFinite(fixedChargesTotal)
+      ? fixedChargesTotal
+      : 0
+    const subtotalWithFixedCharges = aggregated.subtotal + normalizedFixedCharges
+
     return {
       items: aggregated.items,
-      subtotal: aggregated.subtotal,
+      subtotal: subtotalWithFixedCharges,
       deposit: aggregated.deposit,
-      difference: aggregated.subtotal - originalSubtotal,
+      difference: subtotalWithFixedCharges - originalSubtotal,
     }
-  }, [items, getDurationForMode, originalSubtotal])
+  }, [items, getDurationForMode, originalSubtotal, fixedChargesTotal])
 
   return {
     getDurationForMode,

@@ -3650,6 +3650,34 @@
           "autoincrement": false,
           "default": "'online'"
         },
+        "tulip_insurance_opt_in": {
+          "name": "tulip_insurance_opt_in",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tulip_insurance_amount": {
+          "name": "tulip_insurance_amount",
+          "type": "decimal(10,2)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tulip_contract_id": {
+          "name": "tulip_contract_id",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tulip_contract_status": {
+          "name": "tulip_contract_status",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",

@@ -4,11 +4,20 @@ import Image from 'next/image';
 
 import { format } from 'date-fns';
 import { enUS, fr } from 'date-fns/locale';
-import { ImageIcon, Tag, Truck } from 'lucide-react';
+import { ImageIcon, Shield, Tag, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { TaxSettings } from '@louez/types';
-import { Badge, Card, CardContent, Separator } from '@louez/ui';
+import {
+  Badge,
+  Card,
+  CardContent,
+  Separator,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 
 import { getDetailedDuration } from '@/lib/utils/duration';
@@ -38,6 +47,24 @@ interface CheckoutOrderSummaryProps {
   deliveryOption: DeliveryOption;
   deliveryDistance: number | null;
   deliveryFee: number;
+  tulipInsurance?: {
+    enabled: boolean;
+    mode: 'required' | 'optional' | 'no_public';
+  };
+  tulipInsuranceOptIn: boolean;
+  isTulipQuoteLoading: boolean;
+  isTulipQuoteFetched: boolean;
+  tulipQuotePreview?: {
+    mode: 'required' | 'optional' | 'no_public';
+    quoteUnavailable: boolean;
+    quoteError: string | null;
+    appliedOptIn: boolean;
+    amount: number;
+    insuredProductCount: number;
+    uninsuredProductCount: number;
+    insuredProductIds: string[];
+    error: string | null;
+  };
   lineResolutions?: Record<string, LineResolutionState>;
   hasActivePromoCodes?: boolean;
   storeId?: string;
@@ -65,6 +92,11 @@ export function CheckoutOrderSummary({
   deliveryOption,
   deliveryDistance,
   deliveryFee,
+  tulipInsurance,
+  tulipInsuranceOptIn,
+  isTulipQuoteLoading,
+  isTulipQuoteFetched,
+  tulipQuotePreview,
   lineResolutions = {},
   hasActivePromoCodes,
   storeId,
@@ -75,7 +107,20 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const showInsuranceUi =
+    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
+  const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading && isTulipQuoteFetched;
+  const insuredProductIdSet = new Set(
+    tulipQuotePreview?.insuredProductIds ?? [],
+  );
   const dateLocale = locale === 'fr' ? fr : enUS;
+  const estimatedInsuranceAmount =
+    tulipQuotePreview?.appliedOptIn && tulipQuotePreview.amount > 0
+      ? tulipQuotePreview.amount
+      : 0;
+  const totalWithEstimatedInsurance =
+    totalWithDelivery + estimatedInsuranceAmount;
+  const subtotalWithEstimatedInsurance = subtotal + estimatedInsuranceAmount;
 
   const durationLabel = (() => {
     if (!globalStartDate || !globalEndDate) return '';
@@ -113,104 +158,123 @@ export function CheckoutOrderSummary({
           )}
 
           <div className="space-y-3">
-            {items.map((item, index) => {
-              const priceResult = calculateCartItemPrice(
-                item,
-                globalStartDate,
-                globalEndDate,
-              );
-              const itemTotal = priceResult.subtotal;
-              const itemSavings = priceResult.savings;
-              const discountPercent = priceResult.discountPercent;
+            <TooltipProvider>
+              {items.map((item, index) => {
+                const priceResult = calculateCartItemPrice(
+                  item,
+                  globalStartDate,
+                  globalEndDate,
+                );
+                const itemTotal = priceResult.subtotal;
+                const itemSavings = priceResult.savings;
+                const discountPercent = priceResult.discountPercent;
+                const resolutionState = lineResolutions[item.lineId];
+                const requestedAttributes = item.selectedAttributes;
+                const resolvedAttributes =
+                  item.resolvedAttributes ||
+                  (resolutionState?.status === 'resolved'
+                    ? resolutionState.selectedAttributes
+                    : undefined);
+                const isInsuredProduct =
+                  showInsuranceSummary && insuredProductIdSet.has(item.productId);
 
-              const resolutionState = lineResolutions[item.lineId];
-              const requestedAttributes = item.selectedAttributes;
-              const resolvedAttributes =
-                item.resolvedAttributes ||
-                (resolutionState?.status === 'resolved'
-                  ? resolutionState.selectedAttributes
-                  : undefined);
-
-              return (
-                <div
-                  key={item.lineId || `${item.productId}-${index}`}
-                  className="flex gap-3"
-                >
-                  <div className="bg-muted relative aspect-4/3 h-14 w-auto shrink-0 overflow-hidden rounded-lg">
-                    {item.productImage ? (
-                      <Image
-                        src={item.productImage}
-                        alt={item.productName}
-                        fill
-                        className="max-h-full max-w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <ImageIcon className="text-muted-foreground h-5 w-5" />
+                return (
+                  <div
+                    key={item.lineId || `${item.productId}-${index}`}
+                    className="flex gap-3"
+                  >
+                    <div className="bg-muted relative aspect-4/3 h-14 w-auto shrink-0 overflow-hidden rounded-lg">
+                      {item.productImage ? (
+                        <Image
+                          src={item.productImage}
+                          alt={item.productName}
+                          fill
+                          className="max-h-full max-w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <ImageIcon className="text-muted-foreground h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.productName}
+                        </p>
+                        {isInsuredProduct && (
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <span className="cursor-help">
+                                  <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                </span>
+                              }
+                            />
+                            <TooltipContent side="top">
+                              <p>{t('insuranceEligibleProductTooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {item.productName}
-                    </p>
-                    {requestedAttributes &&
-                      Object.keys(requestedAttributes).length > 0 && (
+                      {requestedAttributes &&
+                        Object.keys(requestedAttributes).length > 0 && (
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {t('requestedAttributesLabel')}:{' '}
+                            {Object.entries(requestedAttributes)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join(' • ')}
+                          </p>
+                        )}
+                      {resolvedAttributes &&
+                        Object.keys(resolvedAttributes).length > 0 && (
+                          <p className="text-muted-foreground truncate text-[11px]">
+                            {t('resolvedAttributesLabel')}:{' '}
+                            {Object.entries(resolvedAttributes)
+                              .map(([key, value]) => `${key}: ${value}`)
+                              .join(' • ')}
+                          </p>
+                        )}
+                      {resolutionState?.status === 'loading' && (
                         <p className="text-muted-foreground truncate text-[11px]">
-                          {t('requestedAttributesLabel')}:{' '}
-                          {Object.entries(requestedAttributes)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(' • ')}
+                          {t('lineCheckingAvailability')}
                         </p>
                       )}
-                    {resolvedAttributes &&
-                      Object.keys(resolvedAttributes).length > 0 && (
-                        <p className="text-muted-foreground truncate text-[11px]">
-                          {t('resolvedAttributesLabel')}:{' '}
-                          {Object.entries(resolvedAttributes)
-                            .map(([key, value]) => `${key}: ${value}`)
-                            .join(' • ')}
+                      {resolutionState?.status === 'invalid' && (
+                        <p className="text-destructive truncate text-[11px]">
+                          {t('lineNeedsUpdateInline')}
                         </p>
                       )}
-                    {resolutionState?.status === 'loading' && (
-                      <p className="text-muted-foreground truncate text-[11px]">
-                        {t('lineCheckingAvailability')}
+                      <p className="text-muted-foreground text-xs">
+                        {item.quantity} {'\u00d7'}{' '}
+                        {formatCurrency(
+                          itemTotal / Math.max(1, item.quantity),
+                          currency,
+                        )}
                       </p>
-                    )}
-                    {resolutionState?.status === 'invalid' && (
-                      <p className="text-destructive truncate text-[11px]">
-                        {t('lineNeedsUpdateInline')}
-                      </p>
-                    )}
-                    <p className="text-muted-foreground text-xs">
-                      {item.quantity} {'\u00d7'}{' '}
-                      {formatCurrency(
-                        itemTotal / Math.max(1, item.quantity),
-                        currency,
+                      {discountPercent != null && discountPercent > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
+                        >
+                          -{Math.floor(discountPercent)}%
+                        </Badge>
                       )}
-                    </p>
-                    {discountPercent != null && discountPercent > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
-                      >
-                        -{Math.floor(discountPercent)}%
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">
-                      {formatCurrency(itemTotal, currency)}
-                    </p>
-                    {itemSavings > 0 && (
-                      <p className="text-xs text-green-600">
-                        -{formatCurrency(itemSavings, currency)}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium">
+                        {formatCurrency(itemTotal, currency)}
                       </p>
-                    )}
+                      {itemSavings > 0 && (
+                        <p className="text-xs text-green-600">
+                          -{formatCurrency(itemSavings, currency)}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </TooltipProvider>
           </div>
 
           <Separator />
@@ -272,11 +336,70 @@ export function CheckoutOrderSummary({
               </div>
             )}
 
+            {showInsuranceSummary && tulipInsurance?.mode === 'required' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t('insuranceLineLabel')}
+                </span>
+                <span>
+                  {estimatedInsuranceAmount > 0
+                    ? formatCurrency(estimatedInsuranceAmount, currency)
+                    : t('insuranceRequiredBadge')}
+                </span>
+              </div>
+            )}
+
+            {showInsuranceSummary && tulipInsurance?.mode === 'optional' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t('insuranceLineLabel')}
+                </span>
+                <span>
+                  {estimatedInsuranceAmount > 0
+                    ? formatCurrency(estimatedInsuranceAmount, currency)
+                    : tulipQuotePreview?.quoteUnavailable
+                      ? t('insuranceOptionalUnavailableShort')
+                      : tulipInsuranceOptIn
+                        ? t('insuranceOptionalEnabled')
+                        : t('insuranceOptionalDisabled')}
+                </span>
+              </div>
+            )}
+
+            {showInsuranceSummary &&
+              (tulipQuotePreview?.insuredProductCount ?? 0) === 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {t('insuranceNoInsurableProducts')}
+                </p>
+              )}
+
+            {showInsuranceSummary &&
+              (tulipQuotePreview?.insuredProductCount ?? 0) > 0 &&
+              (tulipQuotePreview?.uninsuredProductCount ?? 0) > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {t('insurancePartialCoverage', {
+                    insured: tulipQuotePreview?.insuredProductCount ?? 0,
+                    uninsured: tulipQuotePreview?.uninsuredProductCount ?? 0,
+                  })}
+                </p>
+              )}
+
+            {showInsuranceUi && isTulipQuoteLoading && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {t('insuranceLineLabel')}
+                </span>
+                <span className="text-muted-foreground animate-pulse">
+                  {t('insuranceEstimating')}
+                </span>
+              </div>
+            )}
+
             <Separator />
             <div className="flex justify-between text-lg font-semibold">
               <span>{tCart('total')}</span>
               <span className="text-primary">
-                {formatCurrency(totalWithDelivery, currency)}
+                {formatCurrency(totalWithEstimatedInsurance, currency)}
               </span>
             </div>
 
@@ -286,7 +409,10 @@ export function CheckoutOrderSummary({
                   <span>{t('toPayNow')}</span>
                   <span className="text-primary">
                     {formatCurrency(
-                      Math.round((subtotal - discountAmount) * depositPercentage) / 100,
+                      Math.round(
+                        (subtotalWithEstimatedInsurance - discountAmount) *
+                          depositPercentage,
+                      ) / 100,
                       currency,
                     )}
                   </span>
@@ -294,7 +420,10 @@ export function CheckoutOrderSummary({
                 <p className="text-muted-foreground text-xs">
                   {t('remainingAtPickup', {
                     amount: formatCurrency(
-                      Math.round((subtotal - discountAmount) * (100 - depositPercentage)) / 100,
+                      Math.round(
+                        (subtotalWithEstimatedInsurance - discountAmount) *
+                          (100 - depositPercentage),
+                      ) / 100,
                       currency,
                     ),
                   })}

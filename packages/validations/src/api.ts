@@ -172,6 +172,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
   payload: z.object({
     startDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     endDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+    tulipInsuranceOptIn: z.boolean().optional(),
     items: z
       .array(
         z.object({
@@ -248,6 +249,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
       })
       .optional(),
     internalNotes: z.string().max(100000).optional(),
+    tulipInsuranceOptIn: z.boolean().optional(),
     sendConfirmationEmail: z.boolean().optional(),
   }),
 })
@@ -281,6 +283,74 @@ export const updateStoreAppearanceInputSchema = z.object({
     })
     .optional(),
 })
+
+export const dashboardIntegrationsGetTulipStateInputSchema = z.object({})
+
+export const dashboardIntegrationsGetTulipProductStateInputSchema = z.object({
+  productId: z.string().length(21),
+})
+
+export const dashboardIntegrationsListCatalogInputSchema = z.object({})
+
+export const dashboardIntegrationsListCategoryInputSchema = z.object({
+  category: z.string().trim().min(1).max(60),
+})
+
+export const dashboardIntegrationsGetDetailInputSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+})
+
+export const dashboardIntegrationsSetEnabledInputSchema = z.object({
+  integrationId: z.string().trim().min(1).max(60),
+  enabled: z.boolean(),
+})
+
+export const dashboardIntegrationsConnectTulipInputSchema = z.object({
+  renterUid: z.string().trim().min(1).max(120),
+})
+
+export const dashboardIntegrationsUpdateTulipConfigurationInputSchema = z.object({
+  publicMode: z.enum(['required', 'optional', 'no_public']),
+})
+
+export const dashboardIntegrationsUpsertTulipProductMappingInputSchema = z.object({
+  productId: z.string().length(21),
+  tulipProductId: z.string().trim().min(1).max(50).nullable(),
+})
+
+const tulipProductTypeSchema = z.string().trim().min(1).max(80)
+const tulipProductSubtypeSchema = z.string().trim().min(1).max(80)
+
+const tulipPurchasedDateSchema = z.union([
+  z.string().datetime({ offset: true }),
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+])
+
+export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
+  productId: z.string().length(21),
+  title: z.string().trim().max(255).nullable().optional(),
+  productType: tulipProductTypeSchema.nullable().optional(),
+  productSubtype: tulipProductSubtypeSchema.nullable().optional(),
+  purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
+  brand: z.string().trim().max(120).nullable().optional(),
+  model: z.string().trim().max(120).nullable().optional(),
+  valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
+})
+
+export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
+  productId: z.string().length(21),
+  title: z.string().trim().max(255).nullable().optional(),
+  productType: tulipProductTypeSchema.nullable().optional(),
+  productSubtype: tulipProductSubtypeSchema.nullable().optional(),
+  purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
+  brand: z.string().trim().max(120).nullable().optional(),
+  model: z.string().trim().max(120).nullable().optional(),
+  valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  margin: z.number().min(0).max(1_000_000).nullable().optional(),
+})
+
+export const dashboardIntegrationsDisconnectTulipInputSchema = z.object({})
 
 export const addressAutocompleteInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
@@ -369,6 +439,39 @@ export type DashboardReservationCreateManualReservationInput = z.infer<
 export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>
 export type UpdateStoreAppearanceInput = z.infer<
   typeof updateStoreAppearanceInputSchema
+>
+export type DashboardIntegrationsGetTulipStateInput = z.infer<
+  typeof dashboardIntegrationsGetTulipStateInputSchema
+>
+export type DashboardIntegrationsListCatalogInput = z.infer<
+  typeof dashboardIntegrationsListCatalogInputSchema
+>
+export type DashboardIntegrationsListCategoryInput = z.infer<
+  typeof dashboardIntegrationsListCategoryInputSchema
+>
+export type DashboardIntegrationsGetDetailInput = z.infer<
+  typeof dashboardIntegrationsGetDetailInputSchema
+>
+export type DashboardIntegrationsSetEnabledInput = z.infer<
+  typeof dashboardIntegrationsSetEnabledInputSchema
+>
+export type DashboardIntegrationsConnectTulipInput = z.infer<
+  typeof dashboardIntegrationsConnectTulipInputSchema
+>
+export type DashboardIntegrationsUpdateTulipConfigurationInput = z.infer<
+  typeof dashboardIntegrationsUpdateTulipConfigurationInputSchema
+>
+export type DashboardIntegrationsUpsertTulipProductMappingInput = z.infer<
+  typeof dashboardIntegrationsUpsertTulipProductMappingInputSchema
+>
+export type DashboardIntegrationsPushTulipProductUpdateInput = z.infer<
+  typeof dashboardIntegrationsPushTulipProductUpdateInputSchema
+>
+export type DashboardIntegrationsCreateTulipProductInput = z.infer<
+  typeof dashboardIntegrationsCreateTulipProductInputSchema
+>
+export type DashboardIntegrationsDisconnectTulipInput = z.infer<
+  typeof dashboardIntegrationsDisconnectTulipInputSchema
 >
 export type AddressAutocompleteInput = z.infer<
   typeof addressAutocompleteInputSchema

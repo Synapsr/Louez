@@ -537,6 +537,7 @@ async function handleCheckoutCompleted(
   } else {
     console.log(`Reservation ${reservationId} already ${reservation.status}, payment recorded`)
   }
+
 }
 
 async function handleCheckoutExpired(session: Stripe.Checkout.Session) {

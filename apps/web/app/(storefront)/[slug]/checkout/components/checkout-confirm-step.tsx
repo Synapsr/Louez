@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { Button, Card, CardContent, Checkbox, Label } from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 
+
 import { getFieldError } from '@/hooks/form/form-context';
 
 import type {
@@ -22,6 +23,10 @@ interface CheckoutConfirmStepProps {
   subtotal: number;
   totalWithDelivery: number;
   currency: string;
+  tulipInsurance?: {
+    enabled: boolean;
+    mode: 'required' | 'optional' | 'no_public';
+  };
   canSubmitCheckout: boolean;
   discountAmount?: number;
   onBack: () => void;
@@ -37,12 +42,15 @@ export function CheckoutConfirmStep({
   subtotal,
   totalWithDelivery,
   currency,
+  tulipInsurance,
   canSubmitCheckout,
   discountAmount = 0,
   onBack,
   onEditContact,
 }: CheckoutConfirmStepProps) {
   const t = useTranslations('storefront.checkout');
+  const showInsuranceUi =
+    tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
 
   return (
     <Card>
@@ -85,6 +93,34 @@ export function CheckoutConfirmStep({
         </div>
 
         <div className="space-y-3">
+          {showInsuranceUi && tulipInsurance.mode === 'required' && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+              {t('insuranceRequiredNotice')}
+            </div>
+          )}
+
+          {showInsuranceUi && tulipInsurance.mode === 'optional' && (
+            <form.Field name="tulipInsuranceOptIn">
+              {(field) => (
+                <div className="flex flex-row items-start space-y-0 space-x-3 rounded-lg border p-4">
+                  <Checkbox
+                    id={field.name}
+                    checked={field.state.value}
+                    onCheckedChange={(checked) => field.handleChange(Boolean(checked))}
+                  />
+                  <div className="space-y-1 leading-none">
+                    <Label htmlFor={field.name} className="cursor-pointer">
+                      {t('insuranceOptionalLabel')}
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      {t('insuranceOptionalHelp')}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </form.Field>
+          )}
+
           {cgv && (
             <div className="max-h-32 overflow-y-auto rounded-lg border p-3 text-xs">
               <div

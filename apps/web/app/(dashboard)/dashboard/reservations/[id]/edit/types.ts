@@ -3,6 +3,7 @@ import type {
   PricingMode,
   ProductSnapshot,
   StoreSettings,
+  TulipPublicMode,
 } from '@louez/types'
 
 export interface PricingTier {
@@ -18,6 +19,7 @@ export interface Product {
   name: string
   price: string
   deposit: string
+  tulipInsurable?: boolean
   quantity: number
   pricingMode: string | null
   basePeriodMinutes?: number | null
@@ -53,6 +55,8 @@ export interface Reservation {
   endDate: Date
   subtotalAmount: string
   depositAmount: string
+  tulipInsuranceOptIn: boolean | null
+  tulipInsuranceAmount: string | null
   items: ReservationItem[]
   customer: {
     firstName: string
@@ -85,6 +89,7 @@ export interface EditReservationFormProps {
   availableProducts: Product[]
   existingReservations: ExistingReservation[]
   currency: string
+  tulipInsuranceMode: TulipPublicMode
   storeSettings: StoreSettings | null
 }
 

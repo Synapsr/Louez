@@ -622,6 +622,12 @@ export const reservations = mysqlTable(
     // Source
     source: varchar('source', { length: 20 }).default('online'),
 
+    // Tulip insurance contract
+    tulipInsuranceOptIn: boolean('tulip_insurance_opt_in'),
+    tulipInsuranceAmount: decimal('tulip_insurance_amount', { precision: 10, scale: 2 }),
+    tulipContractId: varchar('tulip_contract_id', { length: 50 }),
+    tulipContractStatus: varchar('tulip_contract_status', { length: 20 }),
+
     // Metadata
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
@@ -632,6 +638,25 @@ export const reservations = mysqlTable(
     statusIdx: index('reservations_status_idx').on(table.status),
     dateIdx: index('reservations_date_idx').on(table.startDate, table.endDate),
   })
+)
+
+// ============================================================================
+// Product Tulip Mapping
+// ============================================================================
+
+export const productsTulip = mysqlTable(
+  'products_tulip',
+  {
+    id: id(),
+    productId: varchar('product_id', { length: 21 })
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    tulipProductId: varchar('tulip_product_id', { length: 50 }).notNull(),
+  },
+  (table) => ({
+    productIdx: unique('products_tulip_product_idx').on(table.productId),
+    tulipProductIdx: index('products_tulip_tulip_product_idx').on(table.tulipProductId),
+  }),
 )
 
 export const reservationItems = mysqlTable(
@@ -1162,6 +1187,17 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   units: many(productUnits),
   accessories: many(productAccessories, { relationName: 'productAccessories' }),
   accessoryOf: many(productAccessories, { relationName: 'accessoryOf' }),
+  tulipMapping: one(productsTulip, {
+    fields: [products.id],
+    references: [productsTulip.productId],
+  }),
+}))
+
+export const productsTulipRelations = relations(productsTulip, ({ one }) => ({
+  product: one(products, {
+    fields: [productsTulip.productId],
+    references: [products.id],
+  }),
 }))
 
 export const productPricingTiersRelations = relations(productPricingTiers, ({ one }) => ({
