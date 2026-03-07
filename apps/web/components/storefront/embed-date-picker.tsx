@@ -446,8 +446,9 @@ export function EmbedDatePicker({
 
             {/* Step content */}
             {(step === 'startDate' || step === 'endDate') && (
-              <div className="flex justify-center">
+              <div className="[&_[data-slot=calendar]]:!w-full">
                 <Calendar
+                  className="w-full p-0 [--cell-size:2rem]"
                   mode="single"
                   selected={
                     step === 'startDate'
