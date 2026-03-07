@@ -229,21 +229,24 @@ const nextConfig: NextConfig = {
         return h
       })
 
+    // Next.js applies headers in order — when multiple rules match the same
+    // path, the LAST matching rule wins for duplicate header keys.
+    // The catch-all must come FIRST so embed-specific rules can override it.
     return [
       {
-        // Embed routes (subdomain routing): ddm.louez.io/embed → path is /embed
+        // Default: all routes get strict security headers
+        source: '/:path*',
+        headers: securityHeaders,
+      },
+      {
+        // Embed (subdomain routing): ddm.louez.io/embed → external path /embed
         source: '/embed',
         headers: embedSecurityHeaders,
       },
       {
-        // Embed routes (path-based routing): localhost:3000/slug/embed
+        // Embed (path-based routing): localhost:3000/slug/embed
         source: '/:slug/embed',
         headers: embedSecurityHeaders,
-      },
-      {
-        // Apply to all other routes
-        source: '/:path*',
-        headers: securityHeaders,
       },
     ]
   },
