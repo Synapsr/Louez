@@ -24,6 +24,7 @@ import { getDetailedDuration } from '@/lib/utils/duration';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { CartItem } from '@/contexts/cart-context';
+import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
 
 import type { ValidatedPromo } from '../promo-actions';
 import type { DeliveryOption, LineResolutionState } from '../types';
@@ -107,6 +108,7 @@ export function CheckoutOrderSummary({
 }: CheckoutOrderSummaryProps) {
   const t = useTranslations('storefront.checkout');
   const tCart = useTranslations('storefront.cart');
+  const maxDiscountPercent = useStoreMaxDiscountPercent();
   const showInsuranceUi =
     tulipInsurance?.enabled && tulipInsurance.mode !== 'no_public';
   const showInsuranceSummary = showInsuranceUi && !isTulipQuoteLoading && isTulipQuoteFetched;
@@ -252,7 +254,8 @@ export function CheckoutOrderSummary({
                           currency,
                         )}
                       </p>
-                      {discountPercent != null && discountPercent > 0 && (
+                      {discountPercent != null && discountPercent > 0 &&
+                        (maxDiscountPercent == null || discountPercent <= maxDiscountPercent) && (
                         <Badge
                           variant="secondary"
                           className="mt-1 bg-green-100 text-xs text-green-700 dark:bg-green-900/50 dark:text-green-300"
