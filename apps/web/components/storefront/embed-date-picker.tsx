@@ -56,7 +56,6 @@ export function EmbedDatePicker({
   const t = useTranslations('storefront.dateSelection')
   const tEmbed = useTranslations('storefront.embed')
   const tHero = useTranslations('storefront.hero')
-  const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
 
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
@@ -133,20 +132,13 @@ export function EmbedDatePicker({
     setEndDate(fromInputDate(dateStr))
   }
 
-  const effectiveStartSlots = startDate
-    ? (startTimeSlots.length > 0 ? startTimeSlots : [])
-    : DEFAULT_TIME_SLOTS
-  const effectiveEndSlots = endDate
-    ? (endTimeSlots.length > 0 ? endTimeSlots : [])
-    : DEFAULT_TIME_SLOTS
-
-  const startClosed = startDate && effectiveStartSlots.length === 0
-  const endClosed = endDate && effectiveEndSlots.length === 0
+  // Always provide time slots - business hours validation happens on the rental page
+  const effectiveStartSlots = startTimeSlots.length > 0 ? startTimeSlots : DEFAULT_TIME_SLOTS
+  const effectiveEndSlots = endTimeSlots.length > 0 ? endTimeSlots : DEFAULT_TIME_SLOTS
 
   const getValidationError = useMemo(() => {
     if (!startDate) return tEmbed('errors.selectStartDate')
     if (!endDate) return tEmbed('errors.selectEndDate')
-    if (startClosed || endClosed) return tBusinessHours('storeClosed')
     if (isSameDay && endTime <= startTime) return tEmbed('errors.endTimeAfterStart')
     if (minRentalMinutes > 0) {
       const { start: fullStart, end: fullEnd } = buildDateTimeRange({
@@ -163,7 +155,7 @@ export function EmbedDatePicker({
       }
     }
     return null
-  }, [startDate, endDate, startTime, endTime, isSameDay, startClosed, endClosed, minRentalMinutes, timezone, t, tEmbed, tBusinessHours])
+  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone, t, tEmbed])
 
   const timezoneCity = useMemo(() => {
     if (!timezone) return null
@@ -229,19 +221,14 @@ export function EmbedDatePicker({
                 <select
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  disabled={effectiveStartSlots.length === 0}
                   className={cn(
-                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors disabled:opacity-40',
+                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors',
                     startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
                   )}
                 >
-                  {effectiveStartSlots.length === 0 ? (
-                    <option disabled>--:--</option>
-                  ) : (
-                    effectiveStartSlots.map((slot) => (
-                      <option key={slot} value={slot}>{slot}</option>
-                    ))
-                  )}
+                  {effectiveStartSlots.map((slot) => (
+                    <option key={slot} value={slot}>{slot}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -273,22 +260,17 @@ export function EmbedDatePicker({
                 <select
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  disabled={effectiveEndSlots.length === 0}
                   className={cn(
-                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors disabled:opacity-40',
+                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors',
                     endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
                   )}
                 >
-                  {effectiveEndSlots.length === 0 ? (
-                    <option disabled>--:--</option>
-                  ) : (
-                    effectiveEndSlots.map((slot) => {
-                      const isDisabled = isSameDay && startTime ? slot <= startTime : false
-                      return (
-                        <option key={slot} value={slot} disabled={isDisabled}>{slot}</option>
-                      )
-                    })
-                  )}
+                  {effectiveEndSlots.map((slot) => {
+                    const isDisabled = isSameDay && startTime ? slot <= startTime : false
+                    return (
+                      <option key={slot} value={slot} disabled={isDisabled}>{slot}</option>
+                    )
+                  })}
                 </select>
               </div>
             </div>
