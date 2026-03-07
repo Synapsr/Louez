@@ -99,6 +99,19 @@ export function EmbedDatePicker({
     }
   }, [endDate, endTimeSlots])
 
+  // Auto-resize: notify parent iframe of content height changes
+  const containerRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const observer = new ResizeObserver(() => {
+      const height = el.scrollHeight
+      window.parent.postMessage({ type: 'louez-embed-resize', height }, '*')
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
   const openRentalPage = useCallback((start: Date, end: Date) => {
     const params = new URLSearchParams()
     params.set('startDate', start.toISOString())
@@ -328,35 +341,35 @@ export function EmbedDatePicker({
   )
 
   return (
-    <div className="w-full">
-      <div className="bg-background rounded-2xl border shadow-sm p-4 sm:p-5">
-        <div className="flex flex-col gap-3">
+    <div className="w-full" ref={containerRef}>
+      <div className="bg-background rounded-2xl border shadow-sm p-3">
+        <div className="flex flex-col gap-2">
           {/* Title */}
-          <h2 className="text-base sm:text-lg font-semibold text-center">
+          <h2 className="text-sm font-semibold text-center">
             {tEmbed('title')}
           </h2>
 
-          {/* Date/Time inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Date/Time inputs - always 2 columns */}
+          <div className="grid grid-cols-2 gap-2">
             {/* Start Date/Time */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
                 {t('startLabel')}
               </label>
-              <div className="flex rounded-xl border bg-background overflow-hidden h-11">
+              <div className="flex rounded-lg border bg-background overflow-hidden h-9">
                 <Popover open={startDateOpen} onOpenChange={handleStartDateOpenChange}>
                   <PopoverTrigger render={<button
                       className={cn(
-                        "flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0",
+                        "flex-1 flex items-center gap-1.5 px-2 text-left hover:bg-muted/50 transition-colors min-w-0",
                         !startDate && "text-muted-foreground"
                       )}
                     />}>
-                      <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="font-medium text-sm truncate">
+                      <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="font-medium text-xs truncate">
                         {startDate ? format(startDate, 'd MMM', { locale: fr }) : t('startDate')}
                       </span>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="start" side="bottom">
                     <Calendar
                       mode="single"
                       selected={startDate}
@@ -368,14 +381,14 @@ export function EmbedDatePicker({
                   </PopoverContent>
                 </Popover>
 
-                <div className="w-px bg-border my-2" />
+                <div className="w-px bg-border my-1.5" />
 
                 <Popover open={startTimeOpen} onOpenChange={handleStartTimeOpenChange}>
-                  <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{startTime}</span>
+                  <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors shrink-0" />}>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-xs">{startTime}</span>
                   </PopoverTrigger>
-                  <PopoverContent className="w-40 p-0" align="start">
+                  <PopoverContent className="w-36 p-0" align="start" side="bottom">
                     <TimeSelector value={startTime} onSelect={handleStartTimeSelect} slots={startTimeSlots} />
                   </PopoverContent>
                 </Popover>
@@ -384,23 +397,23 @@ export function EmbedDatePicker({
 
             {/* End Date/Time */}
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-2 block">
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
                 {t('endLabel')}
               </label>
-              <div className="flex rounded-xl border bg-background overflow-hidden h-11">
+              <div className="flex rounded-lg border bg-background overflow-hidden h-9">
                 <Popover open={endDateOpen} onOpenChange={handleEndDateOpenChange}>
                   <PopoverTrigger render={<button
                       className={cn(
-                        "flex-1 flex items-center gap-2 px-3 text-left hover:bg-muted/50 transition-colors min-w-0",
+                        "flex-1 flex items-center gap-1.5 px-2 text-left hover:bg-muted/50 transition-colors min-w-0",
                         !endDate && "text-muted-foreground"
                       )}
                     />}>
-                      <CalendarIcon className="h-4 w-4 shrink-0 text-primary" />
-                      <span className="font-medium text-sm truncate">
+                      <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="font-medium text-xs truncate">
                         {endDate ? format(endDate, 'd MMM', { locale: fr }) : t('endDate')}
                       </span>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
+                  <PopoverContent className="w-auto p-0" align="end" side="bottom">
                     <Calendar
                       mode="single"
                       selected={hideEndDateSelection ? undefined : endDate}
@@ -413,14 +426,14 @@ export function EmbedDatePicker({
                   </PopoverContent>
                 </Popover>
 
-                <div className="w-px bg-border my-2" />
+                <div className="w-px bg-border my-1.5" />
 
                 <Popover open={endTimeOpen} onOpenChange={handleEndTimeOpenChange}>
-                  <PopoverTrigger render={<button className="flex items-center gap-1.5 px-3 hover:bg-muted/50 transition-colors shrink-0" />}>
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium text-sm">{endTime}</span>
+                  <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors shrink-0" />}>
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="font-medium text-xs">{endTime}</span>
                   </PopoverTrigger>
-                  <PopoverContent className="w-40 p-0" align="end">
+                  <PopoverContent className="w-36 p-0" align="end" side="bottom">
                     <TimeSelector
                       value={endTime}
                       onSelect={handleEndTimeSelect}
@@ -439,8 +452,8 @@ export function EmbedDatePicker({
 
           {/* Validation error */}
           {submitError && (
-            <p className="text-sm text-destructive text-center flex items-center justify-center gap-1.5">
-              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <p className="text-xs text-destructive text-center flex items-center justify-center gap-1">
+              <AlertCircle className="h-3 w-3 shrink-0" />
               {submitError}
             </p>
           )}
@@ -448,35 +461,35 @@ export function EmbedDatePicker({
           {/* CTA Button - always clickable */}
           <Button
             onClick={handleSubmit}
-            size="lg"
-            className="w-full h-11 text-base font-semibold"
+            size="default"
+            className="w-full h-9 text-sm font-semibold"
           >
             {tEmbed('cta')}
-            <ArrowRight className="ml-2 h-5 w-5" />
+            <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
 
           {/* Reassurance badges */}
-          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <CheckCircle className="h-3.5 w-3.5 text-primary" />
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-0.5">
+              <CheckCircle className="h-3 w-3 text-primary" />
               <span>{tHero('instantConfirmation')}</span>
             </div>
             <span className="text-border">·</span>
-            <div className="flex items-center gap-1">
-              <Shield className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-center gap-0.5">
+              <Shield className="h-3 w-3 text-primary" />
               <span>{tHero('securePayment')}</span>
             </div>
             <span className="text-border">·</span>
-            <div className="flex items-center gap-1">
-              <MapPin className="h-3.5 w-3.5 text-primary" />
+            <div className="flex items-center gap-0.5">
+              <MapPin className="h-3 w-3 text-primary" />
               <span>{tHero('localPickup')}</span>
             </div>
           </div>
 
           {/* Timezone notice */}
           {timezoneCity && (
-            <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-              <Globe className="h-3.5 w-3.5 shrink-0" />
+            <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+              <Globe className="h-3 w-3 shrink-0" />
               <span>{t('timezoneNotice', { city: timezoneCity })}</span>
             </div>
           )}

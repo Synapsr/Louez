@@ -1,13 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useTranslations } from 'next-intl'
 import { Copy, Check, ExternalLink, Code, Eye } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Input } from '@louez/ui'
 
 interface EmbedCodeSectionProps {
   embedUrl: string
@@ -17,23 +15,44 @@ interface EmbedCodeSectionProps {
 export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps) {
   const t = useTranslations('dashboard.settings.embed')
   const [copied, setCopied] = useState(false)
-  const [height, setHeight] = useState('220')
+  const previewIframeRef = useRef<HTMLIFrameElement>(null)
 
-  const iframeCode = `<iframe
-  src="${embedUrl}"
-  width="100%"
-  height="${height}"
-  frameborder="0"
-  style="border: none; border-radius: 16px; max-width: 600px;"
-  title="${t('iframeTitle', { storeName })}"
-  allow="popups"
-></iframe>`
+  // Auto-resize preview iframe via postMessage from embed
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'louez-embed-resize' && previewIframeRef.current) {
+        previewIframeRef.current.style.height = `${event.data.height}px`
+      }
+    }
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [])
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(iframeCode)
+  const embedSnippet = `<div id="louez-embed">
+  <iframe
+    src="${embedUrl}"
+    width="100%"
+    height="200"
+    frameborder="0"
+    style="border: none; border-radius: 16px;"
+    title="${t('iframeTitle', { storeName })}"
+    allow="popups"
+  ></iframe>
+</div>
+<script>
+  window.addEventListener("message", function(e) {
+    if (e.data && e.data.type === "louez-embed-resize") {
+      var iframe = document.querySelector("#louez-embed iframe");
+      if (iframe) iframe.style.height = e.data.height + "px";
+    }
+  });
+</script>`
+
+  const handleCopy = useCallback(async () => {
+    await navigator.clipboard.writeText(embedSnippet)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }
+  }, [embedSnippet])
 
   return (
     <div className="space-y-6">
@@ -49,9 +68,10 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
         <CardContent>
           <div className="rounded-xl border bg-muted/30 p-6 flex justify-center">
             <iframe
+              ref={previewIframeRef}
               src={embedUrl}
               width="100%"
-              height={height}
+              height="200"
               style={{ border: 'none', borderRadius: '16px', maxWidth: '600px' }}
               title={t('iframeTitle', { storeName })}
             />
@@ -69,27 +89,10 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
           <CardDescription>{t('codeDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Height setting */}
-          <div className="flex items-center gap-3">
-            <Label htmlFor="embed-height" className="shrink-0">
-              {t('height')}
-            </Label>
-            <Input
-              id="embed-height"
-              type="number"
-              value={height}
-              onChange={(e) => setHeight(e.target.value)}
-              className="w-24"
-              min="180"
-              max="400"
-            />
-            <span className="text-sm text-muted-foreground">px</span>
-          </div>
-
           {/* Code block */}
           <div className="relative">
             <pre className="rounded-lg bg-zinc-950 p-4 text-sm text-zinc-300 overflow-x-auto">
-              <code>{iframeCode}</code>
+              <code>{embedSnippet}</code>
             </pre>
             <Button
               size="sm"
