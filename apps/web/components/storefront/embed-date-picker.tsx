@@ -6,6 +6,7 @@ import { format, addDays } from 'date-fns'
 import { ArrowRight, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
 
 import { Button } from '@louez/ui'
+import { cn } from '@louez/utils'
 import { type PricingMode } from '@/lib/utils/duration'
 import {
   formatDurationFromMinutes,
@@ -77,12 +78,10 @@ export function EmbedDatePicker({
     timezone,
   })
 
-  // Clear error when user changes any field
   useEffect(() => {
     setSubmitError(null)
   }, [startDate, endDate, startTime, endTime])
 
-  // Auto-adjust times when available slots change
   useEffect(() => {
     if (startDate && startTimeSlots.length > 0) {
       setStartTime((prev) => ensureSelectedTime(prev, startTimeSlots, 'first'))
@@ -95,7 +94,6 @@ export function EmbedDatePicker({
     }
   }, [endDate, endTimeSlots])
 
-  // Auto-resize: notify parent iframe of content height changes
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = containerRef.current
@@ -135,7 +133,6 @@ export function EmbedDatePicker({
     setEndDate(fromInputDate(dateStr))
   }
 
-  // Use business hours slots when available, default slots as fallback
   const effectiveStartSlots = startDate
     ? (startTimeSlots.length > 0 ? startTimeSlots : [])
     : DEFAULT_TIME_SLOTS
@@ -192,36 +189,51 @@ export function EmbedDatePicker({
     openRentalPage(finalStart, finalEnd)
   }
 
+  const hasDates = startDate && endDate
+
   return (
     <div className="w-full" ref={containerRef}>
-      <div className="bg-background rounded-2xl border shadow-sm p-3">
-        <div className="flex flex-col gap-2">
+      <div className="bg-background rounded-2xl border border-border/50 shadow-lg p-3.5">
+        <div className="flex flex-col gap-2.5">
           {/* Title */}
-          <h2 className="text-sm font-semibold text-center">
+          <h2 className="text-[13px] font-semibold text-center tracking-tight">
             {tEmbed('title')}
           </h2>
 
-          {/* Date/Time inputs - native controls for iframe compatibility */}
+          {/* Date/Time inputs */}
           <div className="grid grid-cols-2 gap-2">
-            {/* Start Date/Time */}
+            {/* Start */}
             <div>
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
                 {t('startLabel')}
               </label>
-              <div className="flex rounded-lg border bg-background overflow-hidden h-9">
+              <div
+                className={cn(
+                  'flex rounded-xl overflow-hidden h-10 transition-all duration-200',
+                  startDate
+                    ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
+                    : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40 hover:bg-muted/30'
+                )}
+              >
                 <input
                   type="date"
                   value={toInputDate(startDate)}
                   min={today}
                   onChange={(e) => handleStartDateChange(e.target.value)}
-                  className="flex-1 px-2 text-xs bg-transparent outline-none min-w-0 cursor-pointer"
+                  className={cn(
+                    'flex-1 px-2.5 text-xs bg-transparent outline-none min-w-0 cursor-pointer transition-colors',
+                    startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}
                 />
-                <div className="w-px bg-border my-1.5" />
+                <div className="w-px bg-border/50 my-2" />
                 <select
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                   disabled={effectiveStartSlots.length === 0}
-                  className="px-1 text-xs bg-transparent outline-none cursor-pointer shrink-0 disabled:opacity-50"
+                  className={cn(
+                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors disabled:opacity-40',
+                    startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}
                 >
                   {effectiveStartSlots.length === 0 ? (
                     <option disabled>--:--</option>
@@ -234,25 +246,38 @@ export function EmbedDatePicker({
               </div>
             </div>
 
-            {/* End Date/Time */}
+            {/* End */}
             <div>
               <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
                 {t('endLabel')}
               </label>
-              <div className="flex rounded-lg border bg-background overflow-hidden h-9">
+              <div
+                className={cn(
+                  'flex rounded-xl overflow-hidden h-10 transition-all duration-200',
+                  endDate
+                    ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
+                    : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40 hover:bg-muted/30'
+                )}
+              >
                 <input
                   type="date"
                   value={toInputDate(endDate)}
                   min={startDate ? toInputDate(startDate) : today}
                   onChange={(e) => handleEndDateChange(e.target.value)}
-                  className="flex-1 px-2 text-xs bg-transparent outline-none min-w-0 cursor-pointer"
+                  className={cn(
+                    'flex-1 px-2.5 text-xs bg-transparent outline-none min-w-0 cursor-pointer transition-colors',
+                    endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}
                 />
-                <div className="w-px bg-border my-1.5" />
+                <div className="w-px bg-border/50 my-2" />
                 <select
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                   disabled={effectiveEndSlots.length === 0}
-                  className="px-1 text-xs bg-transparent outline-none cursor-pointer shrink-0 disabled:opacity-50"
+                  className={cn(
+                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors disabled:opacity-40',
+                    endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}
                 >
                   {effectiveEndSlots.length === 0 ? (
                     <option disabled>--:--</option>
@@ -271,44 +296,47 @@ export function EmbedDatePicker({
 
           {/* Validation error */}
           {submitError && (
-            <p className="text-xs text-destructive text-center flex items-center justify-center gap-1">
+            <p className="text-[11px] text-destructive text-center flex items-center justify-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
               <AlertCircle className="h-3 w-3 shrink-0" />
               {submitError}
             </p>
           )}
 
-          {/* CTA Button - always clickable */}
+          {/* CTA Button */}
           <Button
             onClick={handleSubmit}
             size="default"
-            className="w-full h-9 text-sm font-semibold"
+            className={cn(
+              'w-full h-10 text-sm font-semibold rounded-xl transition-all duration-200',
+              hasDates && 'shadow-md'
+            )}
           >
             {tEmbed('cta')}
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
 
           {/* Reassurance badges */}
-          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/70">
             <div className="flex items-center gap-0.5">
-              <CheckCircle className="h-3 w-3 text-primary" />
+              <CheckCircle className="h-2.5 w-2.5 text-primary/60" />
               <span>{tHero('instantConfirmation')}</span>
             </div>
             <span className="text-border">·</span>
             <div className="flex items-center gap-0.5">
-              <Shield className="h-3 w-3 text-primary" />
+              <Shield className="h-2.5 w-2.5 text-primary/60" />
               <span>{tHero('securePayment')}</span>
             </div>
             <span className="text-border">·</span>
             <div className="flex items-center gap-0.5">
-              <MapPin className="h-3 w-3 text-primary" />
+              <MapPin className="h-2.5 w-2.5 text-primary/60" />
               <span>{tHero('localPickup')}</span>
             </div>
           </div>
 
           {/* Timezone notice */}
           {timezoneCity && (
-            <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
-              <Globe className="h-3 w-3 shrink-0" />
+            <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground/60">
+              <Globe className="h-2.5 w-2.5 shrink-0" />
               <span>{t('timezoneNotice', { city: timezoneCity })}</span>
             </div>
           )}
