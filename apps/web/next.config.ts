@@ -231,7 +231,12 @@ const nextConfig: NextConfig = {
 
     return [
       {
-        // Embed routes: allow iframe embedding from any domain
+        // Embed routes (subdomain routing): ddm.louez.io/embed → path is /embed
+        source: '/embed',
+        headers: embedSecurityHeaders,
+      },
+      {
+        // Embed routes (path-based routing): localhost:3000/slug/embed
         source: '/:slug/embed',
         headers: embedSecurityHeaders,
       },
