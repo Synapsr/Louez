@@ -213,10 +213,10 @@ export function EmbedDatePicker({
     if (!el) return
 
     const observer = new ResizeObserver(() => {
-      window.parent.postMessage(
-        { type: 'louez-embed-resize', height: el.scrollHeight },
-        '*',
-      )
+      // Use documentElement.scrollHeight to account for page-level padding
+      // (the embed page wraps this component in a div with p-2)
+      const height = document.documentElement.scrollHeight
+      window.parent.postMessage({ type: 'louez-embed-resize', height }, '*')
     })
     observer.observe(el)
     return () => observer.disconnect()
