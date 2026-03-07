@@ -1043,14 +1043,6 @@ export const googlePlacesCache = mysqlTable(
 // Payment Requests
 // ============================================================================
 
-export const paymentRequestStatus = mysqlEnum('payment_request_status', [
-  'pending',
-  'completed',
-  'cancelled',
-])
-
-export const paymentRequestType = mysqlEnum('payment_request_type', ['rental', 'custom'])
-
 export const paymentRequests = mysqlTable(
   'payment_requests',
   {
@@ -1061,8 +1053,8 @@ export const paymentRequests = mysqlTable(
     amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
     currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
     description: varchar('description', { length: 255 }).notNull(),
-    type: paymentRequestType.notNull(),
-    status: paymentRequestStatus.notNull().default('pending'),
+    type: mysqlEnum('type', ['rental', 'custom']).notNull(),
+    status: mysqlEnum('status', ['pending', 'completed', 'cancelled']).notNull().default('pending'),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
     completedAt: timestamp('completed_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
