@@ -3599,6 +3599,28 @@
       "returnAddressLabel": "Endereço de devolução",
       "discountLabel": "Desconto promocional"
     },
+    "pay": {
+      "subtitle": "Reserva #{number}",
+      "amountDue": "Valor a pagar",
+      "greeting": "Olá {name}, {store} solicita um pagamento.",
+      "payButton": "Pagar {amount}",
+      "redirecting": "Redirecionando para o pagamento...",
+      "securePayment": "Pagamento seguro por Stripe",
+      "backToStore": "Voltar à loja",
+      "errors": {
+        "expiredTitle": "Link expirado",
+        "expiredDescription": "Este link de pagamento expirou. Contacte a loja para solicitar um novo.",
+        "alreadyPaidTitle": "Já pago",
+        "alreadyPaidDescription": "Este pagamento já foi efetuado.",
+        "cancelledTitle": "Pagamento cancelado",
+        "cancelledDescription": "Este pedido de pagamento foi cancelado pela loja.",
+        "unavailableTitle": "Pagamento indisponível",
+        "unavailableDescription": "Os pagamentos online não estão disponíveis para esta loja.",
+        "errorTitle": "Erro",
+        "errorDescription": "Ocorreu um erro. Tente novamente.",
+        "generic": "Ocorreu um erro. Tente novamente."
+      }
+    },
     "authorizeDeposit": {
       "title": "Autorização de caução",
       "subtitle": "Reserva #{number}",

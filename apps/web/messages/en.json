@@ -3930,6 +3930,28 @@
       "returnAddressLabel": "Return address",
       "discountLabel": "Promo discount"
     },
+    "pay": {
+      "subtitle": "Reservation #{number}",
+      "amountDue": "Amount due",
+      "greeting": "Hi {name}, {store} is requesting a payment.",
+      "payButton": "Pay {amount}",
+      "redirecting": "Redirecting to payment...",
+      "securePayment": "Secure payment by Stripe",
+      "backToStore": "Back to store",
+      "errors": {
+        "expiredTitle": "Link expired",
+        "expiredDescription": "This payment link has expired. Please contact the store to request a new one.",
+        "alreadyPaidTitle": "Already paid",
+        "alreadyPaidDescription": "This payment has already been completed.",
+        "cancelledTitle": "Payment cancelled",
+        "cancelledDescription": "This payment request has been cancelled by the store.",
+        "unavailableTitle": "Payment unavailable",
+        "unavailableDescription": "Online payments are not available for this store.",
+        "errorTitle": "Error",
+        "errorDescription": "An error occurred. Please try again.",
+        "generic": "An error occurred. Please try again."
+      }
+    },
     "authorizeDeposit": {
       "title": "Deposit authorization",
       "subtitle": "Reservation #{number}",

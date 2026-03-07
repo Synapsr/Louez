@@ -8,6 +8,7 @@ import { nanoid } from 'nanoid';
 import { db } from '@louez/db';
 import {
   customers,
+  paymentRequests,
   payments,
   productSeasonalPricing,
   productSeasonalPricingTiers,
@@ -96,7 +97,6 @@ import { getCurrentStore } from '@/lib/store-context';
 import {
   captureDeposit,
   createDepositAuthorization,
-  createPaymentRequestSession,
   createRefund,
   getChargeRefundableAmount,
   getPaymentMethodDetails,
@@ -3340,41 +3340,27 @@ export async function requestPayment(
 
       paymentUrl = `${baseUrl}/authorize-deposit/${reservationId}?token=${token}`;
     } else {
-      // For rental/custom, create Stripe Checkout session
-      // Generate instant access token for auto-login after payment
-      const accessToken = nanoid(64);
-      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      // For rental/custom, create a persistent payment request.
+      // The customer receives a link to /pay/ which creates a fresh
+      // Stripe Checkout Session on demand (no 24h expiry issue).
+      const token = nanoid(64);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
 
-      await db.insert(verificationCodes).values({
+      await db.insert(paymentRequests).values({
         id: nanoid(),
-        email: reservation.customer.email,
         storeId: store.id,
-        code: '',
-        type: 'instant_access',
-        token: accessToken,
         reservationId,
-        expiresAt: tokenExpiresAt,
+        token,
+        amount: amount.toFixed(2),
+        currency,
+        description,
+        type: data.type as 'rental' | 'custom',
+        status: 'pending',
+        expiresAt,
         createdAt: new Date(),
       });
 
-      // Success URL redirects to account with auto-login token
-      const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservationId}`;
-      const cancelUrl = `${baseUrl}/account/reservations/${reservationId}`;
-
-      const session = await createPaymentRequestSession({
-        stripeAccountId: store.stripeAccountId!,
-        reservationId,
-        reservationNumber: reservation.number,
-        customerEmail: reservation.customer.email,
-        amount: toStripeCents(amount, currency),
-        description: `${description} - Reservation #${reservation.number}`,
-        currency,
-        successUrl,
-        cancelUrl,
-        locale,
-      });
-
-      paymentUrl = session.url;
+      paymentUrl = `${baseUrl}/pay/${reservationId}?token=${token}`;
     }
 
     // Send notifications

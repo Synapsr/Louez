@@ -3598,6 +3598,28 @@
       "returnAddressLabel": "Indirizzo di reso",
       "discountLabel": "Sconto promozionale"
     },
+    "pay": {
+      "subtitle": "Prenotazione #{number}",
+      "amountDue": "Importo dovuto",
+      "greeting": "Ciao {name}, {store} richiede un pagamento.",
+      "payButton": "Paga {amount}",
+      "redirecting": "Reindirizzamento al pagamento...",
+      "securePayment": "Pagamento sicuro con Stripe",
+      "backToStore": "Torna al negozio",
+      "errors": {
+        "expiredTitle": "Link scaduto",
+        "expiredDescription": "Questo link di pagamento è scaduto. Contatta il negozio per richiederne uno nuovo.",
+        "alreadyPaidTitle": "Già pagato",
+        "alreadyPaidDescription": "Questo pagamento è già stato effettuato.",
+        "cancelledTitle": "Pagamento annullato",
+        "cancelledDescription": "Questa richiesta di pagamento è stata annullata dal negozio.",
+        "unavailableTitle": "Pagamento non disponibile",
+        "unavailableDescription": "I pagamenti online non sono disponibili per questo negozio.",
+        "errorTitle": "Errore",
+        "errorDescription": "Si è verificato un errore. Riprova.",
+        "generic": "Si è verificato un errore. Riprova."
+      }
+    },
     "authorizeDeposit": {
       "title": "Autorizzazione cauzione",
       "subtitle": "Prenotazione #{number}",
@@ -3651,7 +3673,7 @@
       "emailAddress": "Indirizzo email",
       "emailPlaceholder": "tua@email.com",
       "enterCode": "Inserisci il tuo codice",
-      "codeDescription": "Un codice a 6 cifre e stato inviato a",
+      "codeDescription": "Un codice a 6 cifre è stato inviato a",
       "codeSent": "Codice inviato via email",
       "codeError": "Il codice deve contenere 6 cifre",
       "sendCode": "Invia codice",

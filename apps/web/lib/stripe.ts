@@ -207,14 +207,15 @@ interface CreatePaymentRequestSessionParams {
   currency: string
   successUrl: string
   cancelUrl: string
+  paymentRequestId: string
   applicationFeeAmount?: number // In cents (platform fee)
   locale?: string
 }
 
 /**
- * Creates a Stripe Checkout session for a payment request sent from the dashboard.
- * This is used when the store owner requests a payment (rental balance or custom amount).
- * Session expires after 24 hours (vs 30 minutes for initial checkout).
+ * Creates a Stripe Checkout session for a payment request.
+ * Called on-demand when the customer visits the /pay/ page and clicks "Pay".
+ * Session expires after 30 minutes (customer is actively on the page).
  */
 export async function createPaymentRequestSession({
   stripeAccountId,
@@ -226,6 +227,7 @@ export async function createPaymentRequestSession({
   currency,
   successUrl,
   cancelUrl,
+  paymentRequestId,
   applicationFeeAmount,
   locale,
 }: CreatePaymentRequestSessionParams) {
@@ -253,23 +255,18 @@ export async function createPaymentRequestSession({
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
-    expires_at: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
-    // Stripe Checkout sessions are limited to 24h max; enable recovery so an expired
-    // link can be reopened as a fresh session without asking the merchant to resend.
-    after_expiration: {
-      recovery: {
-        enabled: true,
-      },
-    },
+    expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     metadata: {
       reservationId,
       reservationNumber,
+      paymentRequestId,
       type: 'payment_request',
     },
     payment_intent_data: {
       metadata: {
         reservationId,
         reservationNumber,
+        paymentRequestId,
         type: 'payment_request',
       },
       ...(applicationFeeAmount && applicationFeeAmount > 0

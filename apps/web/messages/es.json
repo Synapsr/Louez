@@ -3612,6 +3612,28 @@
       "returnAddressLabel": "Direccion de devolucion",
       "discountLabel": "Descuento promocional"
     },
+    "pay": {
+      "subtitle": "Reserva #{number}",
+      "amountDue": "Importe a pagar",
+      "greeting": "Hola {name}, {store} solicita un pago.",
+      "payButton": "Pagar {amount}",
+      "redirecting": "Redirigiendo al pago...",
+      "securePayment": "Pago seguro con Stripe",
+      "backToStore": "Volver a la tienda",
+      "errors": {
+        "expiredTitle": "Enlace caducado",
+        "expiredDescription": "Este enlace de pago ha caducado. Contacte con la tienda para solicitar uno nuevo.",
+        "alreadyPaidTitle": "Ya pagado",
+        "alreadyPaidDescription": "Este pago ya ha sido realizado.",
+        "cancelledTitle": "Pago cancelado",
+        "cancelledDescription": "Esta solicitud de pago ha sido cancelada por la tienda.",
+        "unavailableTitle": "Pago no disponible",
+        "unavailableDescription": "Los pagos en línea no están disponibles para esta tienda.",
+        "errorTitle": "Error",
+        "errorDescription": "Se ha producido un error. Inténtelo de nuevo.",
+        "generic": "Se ha producido un error. Inténtelo de nuevo."
+      }
+    },
     "authorizeDeposit": {
       "title": "Autorización de depósito",
       "subtitle": "Reserva #{number}",

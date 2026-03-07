@@ -3598,6 +3598,28 @@
       "returnAddressLabel": "Adres zwrotu",
       "discountLabel": "Rabat promocyjny"
     },
+    "pay": {
+      "subtitle": "Rezerwacja #{number}",
+      "amountDue": "Kwota do zapłaty",
+      "greeting": "Cześć {name}, {store} prosi o płatność.",
+      "payButton": "Zapłać {amount}",
+      "redirecting": "Przekierowanie do płatności...",
+      "securePayment": "Bezpieczna płatność przez Stripe",
+      "backToStore": "Powrót do sklepu",
+      "errors": {
+        "expiredTitle": "Link wygasł",
+        "expiredDescription": "Ten link do płatności wygasł. Skontaktuj się ze sklepem, aby uzyskać nowy.",
+        "alreadyPaidTitle": "Już zapłacono",
+        "alreadyPaidDescription": "Ta płatność została już zrealizowana.",
+        "cancelledTitle": "Płatność anulowana",
+        "cancelledDescription": "To żądanie płatności zostało anulowane przez sklep.",
+        "unavailableTitle": "Płatność niedostępna",
+        "unavailableDescription": "Płatności online nie są dostępne dla tego sklepu.",
+        "errorTitle": "Błąd",
+        "errorDescription": "Wystąpił błąd. Spróbuj ponownie.",
+        "generic": "Wystąpił błąd. Spróbuj ponownie."
+      }
+    },
     "authorizeDeposit": {
       "title": "Autoryzacja kaucji",
       "subtitle": "Rezerwacja #{number}",

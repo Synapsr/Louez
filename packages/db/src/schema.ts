@@ -1040,6 +1040,41 @@ export const googlePlacesCache = mysqlTable(
 )
 
 // ============================================================================
+// Payment Requests
+// ============================================================================
+
+export const paymentRequestStatus = mysqlEnum('payment_request_status', [
+  'pending',
+  'completed',
+  'cancelled',
+])
+
+export const paymentRequestType = mysqlEnum('payment_request_type', ['rental', 'custom'])
+
+export const paymentRequests = mysqlTable(
+  'payment_requests',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    token: varchar('token', { length: 64 }).notNull().unique(),
+    amount: decimal('amount', { precision: 10, scale: 2 }).notNull(),
+    currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
+    description: varchar('description', { length: 255 }).notNull(),
+    type: paymentRequestType.notNull(),
+    status: paymentRequestStatus.notNull().default('pending'),
+    expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+    completedAt: timestamp('completed_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('payment_requests_store_idx').on(table.storeId),
+    reservationIdx: index('payment_requests_reservation_idx').on(table.reservationId),
+    tokenIdx: index('payment_requests_token_idx').on(table.token),
+  })
+)
+
+// ============================================================================
 // Promo Codes
 // ============================================================================
 

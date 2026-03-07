@@ -3930,6 +3930,28 @@
       "returnAddressLabel": "Adresse de retour",
       "discountLabel": "Réduction promo"
     },
+    "pay": {
+      "subtitle": "Réservation #{number}",
+      "amountDue": "Montant à régler",
+      "greeting": "Bonjour {name}, {store} vous demande un paiement.",
+      "payButton": "Payer {amount}",
+      "redirecting": "Redirection vers le paiement...",
+      "securePayment": "Paiement sécurisé par Stripe",
+      "backToStore": "Retour à la boutique",
+      "errors": {
+        "expiredTitle": "Lien expiré",
+        "expiredDescription": "Ce lien de paiement a expiré. Veuillez contacter le loueur pour en obtenir un nouveau.",
+        "alreadyPaidTitle": "Déjà payé",
+        "alreadyPaidDescription": "Ce paiement a déjà été effectué.",
+        "cancelledTitle": "Paiement annulé",
+        "cancelledDescription": "Cette demande de paiement a été annulée par le loueur.",
+        "unavailableTitle": "Paiement indisponible",
+        "unavailableDescription": "Les paiements en ligne ne sont pas disponibles pour cette boutique.",
+        "errorTitle": "Erreur",
+        "errorDescription": "Une erreur s'est produite. Veuillez réessayer.",
+        "generic": "Une erreur s'est produite. Veuillez réessayer."
+      }
+    },
     "authorizeDeposit": {
       "title": "Autorisation de caution",
       "subtitle": "Réservation #{number}",

@@ -3598,6 +3598,28 @@
       "returnAddressLabel": "Retouradres",
       "discountLabel": "Actiekorting"
     },
+    "pay": {
+      "subtitle": "Reservering #{number}",
+      "amountDue": "Te betalen bedrag",
+      "greeting": "Hallo {name}, {store} vraagt een betaling aan.",
+      "payButton": "{amount} betalen",
+      "redirecting": "Doorverwijzen naar betaling...",
+      "securePayment": "Veilige betaling via Stripe",
+      "backToStore": "Terug naar winkel",
+      "errors": {
+        "expiredTitle": "Link verlopen",
+        "expiredDescription": "Deze betalingslink is verlopen. Neem contact op met de verhuurder voor een nieuwe link.",
+        "alreadyPaidTitle": "Reeds betaald",
+        "alreadyPaidDescription": "Deze betaling is al voltooid.",
+        "cancelledTitle": "Betaling geannuleerd",
+        "cancelledDescription": "Dit betalingsverzoek is geannuleerd door de verhuurder.",
+        "unavailableTitle": "Betaling niet beschikbaar",
+        "unavailableDescription": "Online betalingen zijn niet beschikbaar voor deze winkel.",
+        "errorTitle": "Fout",
+        "errorDescription": "Er is een fout opgetreden. Probeer het opnieuw.",
+        "generic": "Er is een fout opgetreden. Probeer het opnieuw."
+      }
+    },
     "authorizeDeposit": {
       "title": "Borgautorisatie",
       "subtitle": "Reservering #{number}",

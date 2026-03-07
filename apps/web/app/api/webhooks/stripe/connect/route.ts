@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import type Stripe from 'stripe'
 import { stripe } from '@/lib/stripe/client'
 import { db } from '@louez/db'
-import { payments, reservations, stores, reservationActivity, customers } from '@louez/db'
+import { payments, paymentRequests, reservations, stores, reservationActivity, customers } from '@louez/db'
 import { eq } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { fromStripeCents } from '@/lib/stripe'
@@ -338,6 +338,18 @@ async function handleCheckoutCompleted(
       createdAt: new Date(),
       updatedAt: new Date(),
     })
+  }
+
+  // Mark payment request as completed if this session was created from one
+  const paymentRequestId = session.metadata?.paymentRequestId
+  if (paymentRequestId) {
+    await db
+      .update(paymentRequests)
+      .set({
+        status: 'completed',
+        completedAt: paidAt,
+      })
+      .where(eq(paymentRequests.id, paymentRequestId))
   }
 
   // Always log payment received when this session is first processed as completed.

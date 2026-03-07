@@ -3610,6 +3610,28 @@
       "returnAddressLabel": "Ruckgabeadresse",
       "discountLabel": "Aktionsrabatt"
     },
+    "pay": {
+      "subtitle": "Reservierung #{number}",
+      "amountDue": "Zu zahlender Betrag",
+      "greeting": "Hallo {name}, {store} bittet um eine Zahlung.",
+      "payButton": "{amount} bezahlen",
+      "redirecting": "Weiterleitung zur Zahlung...",
+      "securePayment": "Sichere Zahlung über Stripe",
+      "backToStore": "Zurück zum Shop",
+      "errors": {
+        "expiredTitle": "Link abgelaufen",
+        "expiredDescription": "Dieser Zahlungslink ist abgelaufen. Bitte kontaktieren Sie den Vermieter für einen neuen Link.",
+        "alreadyPaidTitle": "Bereits bezahlt",
+        "alreadyPaidDescription": "Diese Zahlung wurde bereits abgeschlossen.",
+        "cancelledTitle": "Zahlung storniert",
+        "cancelledDescription": "Diese Zahlungsanfrage wurde vom Vermieter storniert.",
+        "unavailableTitle": "Zahlung nicht verfügbar",
+        "unavailableDescription": "Online-Zahlungen sind für diesen Shop nicht verfügbar.",
+        "errorTitle": "Fehler",
+        "errorDescription": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+        "generic": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+      }
+    },
     "authorizeDeposit": {
       "title": "Kautionsautorisierung",
       "subtitle": "Reservierung #{number}",
