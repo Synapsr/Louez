@@ -12,7 +12,7 @@ import { Card, CardContent } from '@louez/ui'
 import { Badge } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
-import { useStoreCurrency } from '@/contexts/store-context'
+import { useStoreCurrency, useStoreMaxDiscountPercent } from '@/contexts/store-context'
 import { AvailabilityBadge, type AvailabilityStatus } from './availability-badge'
 import { ProductModal } from './product-modal'
 import { AccessoriesModal } from './accessories-modal'
@@ -103,6 +103,7 @@ export function ProductCardAvailable({
 }: ProductCardAvailableProps) {
   const t = useTranslations('storefront.product')
   const currency = useStoreCurrency()
+  const maxDiscountPercent = useStoreMaxDiscountPercent()
   const {
     addItem,
     getCartLinesByProductId,
@@ -481,10 +482,11 @@ export function ProductCardAvailable({
             </div>
 
             {/* Discount badge or cart indicator */}
-            {hasDiscount && !inCart && (
+            {hasDiscount && !inCart && discountPercent != null &&
+              (maxDiscountPercent == null || discountPercent <= maxDiscountPercent) && (
               <Badge className="bg-primary/10 text-primary text-xs shrink-0">
                 <TrendingDown className="h-3 w-3 mr-0.5" />
-                -{Math.floor(discountPercent!)}%
+                -{Math.floor(discountPercent)}%
               </Badge>
             )}
             {inCart && (
