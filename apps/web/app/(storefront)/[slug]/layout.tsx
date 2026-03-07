@@ -103,12 +103,14 @@ export default async function StorefrontLayout({
     || headersList.get('x-next-url')?.includes('/embed')
     || headersList.get('x-invoke-path')?.includes('/embed')
 
-  // Embed mode: minimal layout without header/footer/analytics
+  // Embed mode: minimal layout without header/footer/analytics.
+  // Transparent background lets the host site's background show through the iframe.
   if (isEmbed) {
     return (
       <NextIntlClientProvider messages={messages}>
         <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
           <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
+            <style>{`html, body { background: transparent !important; }`}</style>
             {children}
           </ThemeWrapper>
         </StoreProvider>
