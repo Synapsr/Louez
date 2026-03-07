@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useTransition, useRef } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import {
@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@louez/ui'
 import { cn, formatDateShort } from '@louez/utils'
+import { fetchReservationsForPeriod } from './actions'
 import { CalendarExportModal } from './calendar-export-modal'
 import { ViewModeToggle, type CalendarViewMode } from './view-mode-toggle'
 import { WeekView } from './week-view'
@@ -86,8 +87,60 @@ export function CalendarView({
   // Filters
   const [selectedProductId, setSelectedProductId] = useState<string>('all')
 
-  // Data
-  const [reservations] = useState(initialReservations)
+  // Data - dynamic fetching on navigation
+  const [reservations, setReservations] = useState(initialReservations)
+  const [isPending, startTransition] = useTransition()
+  const lastFetchedRange = useRef<string>('')
+
+  // Compute the visible date range for the current view
+  const visibleRange = useMemo(() => {
+    const isMonthView =
+      (viewMode === 'calendar' && calendarPeriod === 'month') ||
+      (viewMode === 'products' && productsPeriod === 'month')
+
+    if (isMonthView) {
+      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+      return { start, end }
+    }
+
+    if (viewMode === 'products' && productsPeriod === 'twoWeeks') {
+      const config = createTwoWeekConfig(currentDate)
+      return { start: config.startDate, end: config.endDate }
+    }
+
+    // Week view (default)
+    const weekStart = getWeekStart(currentDate)
+    const weekEnd = getWeekEnd(currentDate)
+    return { start: weekStart, end: weekEnd }
+  }, [currentDate, viewMode, calendarPeriod, productsPeriod])
+
+  // Fetch reservations when the visible range changes
+  // Skip the initial mount since SSR data already covers the initial view
+  const isInitialMount = useRef(true)
+
+  useEffect(() => {
+    const rangeKey = `${visibleRange.start.toISOString()}_${visibleRange.end.toISOString()}`
+
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      lastFetchedRange.current = rangeKey
+      return
+    }
+
+    if (rangeKey === lastFetchedRange.current) return
+    lastFetchedRange.current = rangeKey
+
+    startTransition(async () => {
+      const result = await fetchReservationsForPeriod(
+        visibleRange.start.toISOString(),
+        visibleRange.end.toISOString()
+      )
+      if ('data' in result && result.data) {
+        setReservations(result.data)
+      }
+    })
+  }, [visibleRange])
 
   // Modals
   const [exportModalOpen, setExportModalOpen] = useState(false)
@@ -306,6 +359,7 @@ export function CalendarView({
       </Card>
 
       {/* Main View */}
+      <div className={cn('transition-opacity duration-150', isPending && 'opacity-50 pointer-events-none')}>
       {viewMode === 'calendar' && calendarPeriod === 'week' && (
         <WeekView
           reservations={filteredReservations}
@@ -329,6 +383,7 @@ export function CalendarView({
           config={productsConfig}
         />
       )}
+      </div>
 
       {/* Legend */}
       <Card>
