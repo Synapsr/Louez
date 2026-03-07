@@ -20,6 +20,12 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts')
 
 const isDev = process.env.NODE_ENV === 'development'
 
+// Build storefront wildcard origin for CSP frame-src (dashboard needs to iframe storefront embeds)
+const appDomainBase = (process.env.NEXT_PUBLIC_APP_DOMAIN || '').split(':')[0]
+const storefrontWildcard = appDomainBase && !['localhost', '127.0.0.1'].includes(appDomainBase)
+  ? `https://*.${appDomainBase}`
+  : null
+
 // CSP Directives
 const cspDirectives = {
   // Default: only allow from same origin
@@ -119,8 +125,8 @@ const cspDirectives = {
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
   ],
 
-  // Frames: Stripe for 3D Secure + Gleap
-  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io'],
+  // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)
+  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io', ...(storefrontWildcard ? [storefrontWildcard] : [])],
 
   // Workers: only from self
   'worker-src': ["'self'", 'blob:'],
