@@ -78,8 +78,8 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
     const errorKey = errorKeyMap[data.error as string] || 'error'
 
     return (
-      <div className="min-h-screen bg-gray-50/50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-lg mx-auto">
           {store && (
             <div className="text-center mb-8">
               {store.logoUrl ? (
@@ -91,7 +91,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
                   className="h-10 w-auto mx-auto mb-4 object-contain"
                 />
               ) : (
-                <h1 className="text-xl font-semibold text-gray-900 mb-4">{store.name}</h1>
+                <h1 className="text-2xl font-bold mb-4">{store.name}</h1>
               )}
             </div>
           )}
@@ -118,8 +118,8 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
   const storeTheme = store.theme as StoreTheme | null
 
   return (
-    <div className="min-h-screen bg-gray-50/50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-lg mx-auto">
         <PaymentRequestPage
           store={{
             name: store.name,
