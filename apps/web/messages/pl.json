@@ -434,7 +434,6 @@
     "home": {
       "viewAll": "Zobacz wszystko",
       "products": "Produkty",
-
       "header": {
         "greeting": {
           "morning": "Dzień dobry, {name}",
@@ -457,14 +456,12 @@
           "addReservation": "Nowa rezerwacja"
         }
       },
-
       "alert": {
         "singlePending": "1 oczekujące żądanie",
         "multiplePending": "{count} oczekujących żądań",
         "description": "Twoi klienci czekają na odpowiedź",
         "action": "Obsłuż"
       },
-
       "setup": {
         "title": "Pierwsze kroki",
         "description": "Kilka kroków na początek",
@@ -484,7 +481,6 @@
         "viewStore": "Zobacz mój sklep",
         "createReservation": "Utwórz rezerwację"
       },
-
       "stats": {
         "products": "Produkty",
         "customers": "Klienci",
@@ -500,7 +496,6 @@
         "vsLastMonth": "vs poprzedni miesiąc",
         "completed": "{count, plural, one {# zakończona} few {# zakończone} other {# zakończonych}}"
       },
-
       "activity": {
         "departures": "Dzisiejsze odbiory",
         "departuresDescription": "Rezerwacje do wydania dzisiaj",
@@ -511,13 +506,11 @@
         "noActivityTitle": "Spokojny dzień",
         "noActivityDescription": "Brak operacji zaplanowanych na dziś"
       },
-
       "pending": {
         "title": "Oczekujące żądania",
         "description": "Rezerwacje wymagające Twojej akceptacji",
         "empty": "Brak oczekujących żądań"
       },
-
       "quickActions": {
         "title": "Szybkie akcje",
         "description": "Zarządzaj swoim sklepem efektywnie",
@@ -530,7 +523,6 @@
           "description": "Dodaj rezerwację ręcznie"
         }
       },
-
       "storefront": {
         "title": "Twój sklep",
         "description": "Udostępnij link swoim klientom",
@@ -542,7 +534,6 @@
         "share": "Udostępnij",
         "shareTitle": "Mój sklep z wynajmem"
       },
-
       "share": {
         "title": "Udostępnij swój sklep",
         "description": "Wyślij link do swojego sklepu klientom",
@@ -880,7 +871,51 @@
       "dates": "Daty",
       "items": "Przedmioty",
       "total": "Suma",
-      "deposit": "Kaucja",
+      "deposit": {
+        "title": "Kaucja (Autoryzacja)",
+        "description": "Zarządzaj autoryzacją kaucji dla tej rezerwacji",
+        "amount": "Kwota kaucji",
+        "status": {
+          "none": "Niewymagana",
+          "pending": "Karta niezapisana",
+          "cardSaved": "Gotowa",
+          "authorized": "Blokada aktywna",
+          "captured": "Pobrana",
+          "released": "Zwolniona",
+          "failed": "Niepowodzenie"
+        },
+        "pendingTitle": "Karta niezapisana",
+        "pendingDescription": "Płatność została otrzymana, ale karta nie mogła zostać zapisana dla kaucji. Będziesz musiał pobrać kaucję ręcznie lub poprosić klienta o podanie karty.",
+        "cardSavedTitle": "Karta zapisana",
+        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć blokadę, aby zablokować kwotę kaucji.",
+        "authorizedTitle": "Blokada aktywna",
+        "authorizedDescription": "Kwota kaucji jest zablokowana na karcie klienta. Możesz ją pobrać za szkody lub zwolnić na koniec wynajmu.",
+        "capturedDescription": "Kwota kaucji została pobrana z karty klienta.",
+        "releasedDescription": "Autoryzacja została zwolniona, nie pobrano żadnych opłat.",
+        "failedDescription": "Autoryzacja nie powiodła się. Klient może potrzebować użyć innej karty.",
+        "expiresIn": "Wygasa {time}",
+        "expired": "Autoryzacja wygasła",
+        "createHold": "Utwórz autoryzację",
+        "release": "Zwolnij kaucję",
+        "capture": "Pobierz",
+        "holdCreated": "Autoryzacja utworzona pomyślnie",
+        "released": "Kaucja zwolniona pomyślnie",
+        "captured": "Kaucja pobrana pomyślnie",
+        "captureTitle": "Pobierz kaucję",
+        "captureDescription": "Pobierz całość lub część kaucji, aby pokryć szkody lub straty.",
+        "maxCapturable": "Maksymalna kwota",
+        "captureAmount": "Kwota do pobrania",
+        "captureReason": "Powód pobrania",
+        "captureReasonPlaceholder": "Opisz szkody lub powód pobrania...",
+        "captureReasonHint": "Ten powód zostanie zapisany w historii i będzie widoczny dla klienta.",
+        "confirmCapture": "Potwierdź pobranie",
+        "releaseTitle": "Zwolnij kaucję",
+        "releaseDescription": "Czy na pewno chcesz zwolnić kaucję w wysokości {amount}? Autoryzacja zostanie anulowana i nie zostaną pobrane żadne opłaty.",
+        "confirmRelease": "Zwolnij kaucję",
+        "invalidCaptureAmount": "Nieprawidłowa kwota",
+        "captureExceedsDeposit": "Kwota przekracza kaucję",
+        "reasonRequired": "Proszę podać powód"
+      },
       "subtotal": "Suma częściowa",
       "source": "Źródło",
       "sourceOnline": "Online",
@@ -1415,51 +1450,6 @@
         "cardSavedForDeposit": "Karta zapisana dla kaucji",
         "cardNotSaved": "Nie udało się zapisać karty. Klient będzie musiał podać inną metodę płatności dla kaucji.",
         "transactionId": "Transakcja"
-      },
-      "deposit": {
-        "title": "Kaucja (Autoryzacja)",
-        "description": "Zarządzaj autoryzacją kaucji dla tej rezerwacji",
-        "amount": "Kwota kaucji",
-        "status": {
-          "none": "Niewymagana",
-          "pending": "Karta niezapisana",
-          "cardSaved": "Gotowa",
-          "authorized": "Blokada aktywna",
-          "captured": "Pobrana",
-          "released": "Zwolniona",
-          "failed": "Niepowodzenie"
-        },
-        "pendingTitle": "Karta niezapisana",
-        "pendingDescription": "Płatność została otrzymana, ale karta nie mogła zostać zapisana dla kaucji. Będziesz musiał pobrać kaucję ręcznie lub poprosić klienta o podanie karty.",
-        "cardSavedTitle": "Karta zapisana",
-        "cardSavedDescription": "Karta klienta jest zapisana. Możesz utworzyć blokadę, aby zablokować kwotę kaucji.",
-        "authorizedTitle": "Blokada aktywna",
-        "authorizedDescription": "Kwota kaucji jest zablokowana na karcie klienta. Możesz ją pobrać za szkody lub zwolnić na koniec wynajmu.",
-        "capturedDescription": "Kwota kaucji została pobrana z karty klienta.",
-        "releasedDescription": "Autoryzacja została zwolniona, nie pobrano żadnych opłat.",
-        "failedDescription": "Autoryzacja nie powiodła się. Klient może potrzebować użyć innej karty.",
-        "expiresIn": "Wygasa {time}",
-        "expired": "Autoryzacja wygasła",
-        "createHold": "Utwórz autoryzację",
-        "release": "Zwolnij kaucję",
-        "capture": "Pobierz",
-        "holdCreated": "Autoryzacja utworzona pomyślnie",
-        "released": "Kaucja zwolniona pomyślnie",
-        "captured": "Kaucja pobrana pomyślnie",
-        "captureTitle": "Pobierz kaucję",
-        "captureDescription": "Pobierz całość lub część kaucji, aby pokryć szkody lub straty.",
-        "maxCapturable": "Maksymalna kwota",
-        "captureAmount": "Kwota do pobrania",
-        "captureReason": "Powód pobrania",
-        "captureReasonPlaceholder": "Opisz szkody lub powód pobrania...",
-        "captureReasonHint": "Ten powód zostanie zapisany w historii i będzie widoczny dla klienta.",
-        "confirmCapture": "Potwierdź pobranie",
-        "releaseTitle": "Zwolnij kaucję",
-        "releaseDescription": "Czy na pewno chcesz zwolnić kaucję w wysokości {amount}? Autoryzacja zostanie anulowana i nie zostaną pobrane żadne opłaty.",
-        "confirmRelease": "Zwolnij kaucję",
-        "invalidCaptureAmount": "Nieprawidłowa kwota",
-        "captureExceedsDeposit": "Kwota przekracza kaucję",
-        "reasonRequired": "Proszę podać powód"
       },
       "paymentStatus": {
         "paid": "Opłacone",
@@ -3843,6 +3833,15 @@
         "siteManager": "administratorem strony"
       },
       "contact": "Kontakt"
+    },
+    "embed": {
+      "title": "Zarezerwuj online",
+      "cta": "Sprawdź dostępność",
+      "errors": {
+        "selectStartDate": "Wybierz datę odbioru",
+        "selectEndDate": "Wybierz datę zwrotu",
+        "endTimeAfterStart": "Godzina zwrotu musi być późniejsza niż godzina odbioru"
+      }
     }
   },
   "onboarding": {

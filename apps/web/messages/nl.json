@@ -434,7 +434,6 @@
     "home": {
       "viewAll": "Alles bekijken",
       "products": "Producten",
-
       "header": {
         "greeting": {
           "morning": "Goedemorgen, {name}",
@@ -457,14 +456,12 @@
           "addReservation": "Nieuwe reservering"
         }
       },
-
       "alert": {
         "singlePending": "1 openstaande aanvraag",
         "multiplePending": "{count} openstaande aanvragen",
         "description": "Uw klanten wachten op uw reactie",
         "action": "Afhandelen"
       },
-
       "setup": {
         "title": "Aan de slag",
         "description": "Enkele stappen om te beginnen",
@@ -484,7 +481,6 @@
         "viewStore": "Mijn winkel bekijken",
         "createReservation": "Reservering aanmaken"
       },
-
       "stats": {
         "products": "Producten",
         "customers": "Klanten",
@@ -500,7 +496,6 @@
         "vsLastMonth": "vs vorige maand",
         "completed": "{count, plural, one {# voltooid} other {# voltooid}}"
       },
-
       "activity": {
         "departures": "Vertrekken vandaag",
         "departuresDescription": "Reserveringen om vandaag te overhandigen",
@@ -511,13 +506,11 @@
         "noActivityTitle": "Rustige dag",
         "noActivityDescription": "Geen operaties gepland vandaag"
       },
-
       "pending": {
         "title": "Openstaande aanvragen",
         "description": "Reserveringen die uw goedkeuring nodig hebben",
         "empty": "Geen openstaande aanvragen"
       },
-
       "quickActions": {
         "title": "Snelle acties",
         "description": "Beheer uw winkel efficiënt",
@@ -530,7 +523,6 @@
           "description": "Handmatig een reservering toevoegen"
         }
       },
-
       "storefront": {
         "title": "Uw winkel",
         "description": "Deel uw link met uw klanten",
@@ -542,7 +534,6 @@
         "share": "Delen",
         "shareTitle": "Mijn verhuurwinkel"
       },
-
       "share": {
         "title": "Deel uw winkel",
         "description": "Stuur uw winkellink naar uw klanten",
@@ -880,7 +871,51 @@
       "dates": "Data",
       "items": "Artikelen",
       "total": "Totaal",
-      "deposit": "Borg",
+      "deposit": {
+        "title": "Borg (Autorisatie)",
+        "description": "Beheer de borgautorisatie voor deze reservering",
+        "amount": "Borgbedrag",
+        "status": {
+          "none": "Niet vereist",
+          "pending": "Kaart niet opgeslagen",
+          "cardSaved": "Klaar",
+          "authorized": "Reservering actief",
+          "captured": "Afgeschreven",
+          "released": "Vrijgegeven",
+          "failed": "Mislukt"
+        },
+        "pendingTitle": "Kaart niet opgeslagen",
+        "pendingDescription": "De betaling is ontvangen maar de kaart kon niet worden opgeslagen voor de borg. U moet de borg handmatig innen of de klant vragen een kaart op te geven.",
+        "cardSavedTitle": "Kaart opgeslagen",
+        "cardSavedDescription": "De kaart van de klant is opgeslagen. U kunt een reservering maken om het borgbedrag te blokkeren.",
+        "authorizedTitle": "Reservering actief",
+        "authorizedDescription": "Het borgbedrag is geblokkeerd op de kaart van de klant. U kunt het afschrijven voor schade of vrijgeven aan het einde van de huur.",
+        "capturedDescription": "Het borgbedrag is afgeschreven van de kaart van de klant.",
+        "releasedDescription": "De autorisatie is vrijgegeven, er zijn geen kosten in rekening gebracht.",
+        "failedDescription": "De autorisatie is mislukt. De klant moet mogelijk een andere kaart gebruiken.",
+        "expiresIn": "Verloopt {time}",
+        "expired": "Autorisatie verlopen",
+        "createHold": "Autorisatie aanmaken",
+        "release": "Borg vrijgeven",
+        "capture": "Innen",
+        "holdCreated": "Autorisatie succesvol aangemaakt",
+        "released": "Borg succesvol vrijgegeven",
+        "captured": "Borg succesvol geïnd",
+        "captureTitle": "Borg innen",
+        "captureDescription": "In de borg geheel of gedeeltelijk om schade of verlies te dekken.",
+        "maxCapturable": "Maximumbedrag",
+        "captureAmount": "Te innen bedrag",
+        "captureReason": "Reden voor inning",
+        "captureReasonPlaceholder": "Beschrijf de schade of reden voor inning...",
+        "captureReasonHint": "Deze reden wordt vastgelegd in de geschiedenis en is zichtbaar voor de klant.",
+        "confirmCapture": "Inning bevestigen",
+        "releaseTitle": "Borg vrijgeven",
+        "releaseDescription": "Weet u zeker dat u de borg van {amount} wilt vrijgeven? De autorisatie wordt geannuleerd en er worden geen kosten in rekening gebracht.",
+        "confirmRelease": "Borg vrijgeven",
+        "invalidCaptureAmount": "Ongeldig bedrag",
+        "captureExceedsDeposit": "Bedrag overschrijdt borg",
+        "reasonRequired": "Geef een reden op"
+      },
       "subtotal": "Subtotaal",
       "source": "Bron",
       "sourceOnline": "Online",
@@ -1415,51 +1450,6 @@
         "cardSavedForDeposit": "Kaart opgeslagen voor borg",
         "cardNotSaved": "De kaart kon niet worden opgeslagen. De klant moet een andere betaalmethode voor de borg opgeven.",
         "transactionId": "Transactie"
-      },
-      "deposit": {
-        "title": "Borg (Autorisatie)",
-        "description": "Beheer de borgautorisatie voor deze reservering",
-        "amount": "Borgbedrag",
-        "status": {
-          "none": "Niet vereist",
-          "pending": "Kaart niet opgeslagen",
-          "cardSaved": "Klaar",
-          "authorized": "Reservering actief",
-          "captured": "Afgeschreven",
-          "released": "Vrijgegeven",
-          "failed": "Mislukt"
-        },
-        "pendingTitle": "Kaart niet opgeslagen",
-        "pendingDescription": "De betaling is ontvangen maar de kaart kon niet worden opgeslagen voor de borg. U moet de borg handmatig innen of de klant vragen een kaart op te geven.",
-        "cardSavedTitle": "Kaart opgeslagen",
-        "cardSavedDescription": "De kaart van de klant is opgeslagen. U kunt een reservering maken om het borgbedrag te blokkeren.",
-        "authorizedTitle": "Reservering actief",
-        "authorizedDescription": "Het borgbedrag is geblokkeerd op de kaart van de klant. U kunt het afschrijven voor schade of vrijgeven aan het einde van de huur.",
-        "capturedDescription": "Het borgbedrag is afgeschreven van de kaart van de klant.",
-        "releasedDescription": "De autorisatie is vrijgegeven, er zijn geen kosten in rekening gebracht.",
-        "failedDescription": "De autorisatie is mislukt. De klant moet mogelijk een andere kaart gebruiken.",
-        "expiresIn": "Verloopt {time}",
-        "expired": "Autorisatie verlopen",
-        "createHold": "Autorisatie aanmaken",
-        "release": "Borg vrijgeven",
-        "capture": "Innen",
-        "holdCreated": "Autorisatie succesvol aangemaakt",
-        "released": "Borg succesvol vrijgegeven",
-        "captured": "Borg succesvol geïnd",
-        "captureTitle": "Borg innen",
-        "captureDescription": "In de borg geheel of gedeeltelijk om schade of verlies te dekken.",
-        "maxCapturable": "Maximumbedrag",
-        "captureAmount": "Te innen bedrag",
-        "captureReason": "Reden voor inning",
-        "captureReasonPlaceholder": "Beschrijf de schade of reden voor inning...",
-        "captureReasonHint": "Deze reden wordt vastgelegd in de geschiedenis en is zichtbaar voor de klant.",
-        "confirmCapture": "Inning bevestigen",
-        "releaseTitle": "Borg vrijgeven",
-        "releaseDescription": "Weet u zeker dat u de borg van {amount} wilt vrijgeven? De autorisatie wordt geannuleerd en er worden geen kosten in rekening gebracht.",
-        "confirmRelease": "Borg vrijgeven",
-        "invalidCaptureAmount": "Ongeldig bedrag",
-        "captureExceedsDeposit": "Bedrag overschrijdt borg",
-        "reasonRequired": "Geef een reden op"
       },
       "paymentStatus": {
         "paid": "Betaald",
@@ -3843,6 +3833,15 @@
         "siteManager": "de sitebeheerder"
       },
       "contact": "Contact"
+    },
+    "embed": {
+      "title": "Online reserveren",
+      "cta": "Beschikbaarheid bekijken",
+      "errors": {
+        "selectStartDate": "Selecteer een ophaaldatum",
+        "selectEndDate": "Selecteer een retourdatum",
+        "endTimeAfterStart": "De retourtijd moet na de ophaaltijd liggen"
+      }
     }
   },
   "onboarding": {
@@ -4080,7 +4079,7 @@
     "baseLayout": {
       "sentBy": "Deze e-mail is verzonden door {storeName}",
       "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
-      "poweredBy": "Mogelijk gemaakt door"
+      "poweredBy": "Powered by"
     },
     "instantAccess": {
       "subject": "Toegang tot uw reservering #{number}",
@@ -4158,11 +4157,6 @@
       "authorizeNow": "Borg autoriseren",
       "linkFallback": "Of kopieer deze link naar uw browser:",
       "securePayment": "Deze autorisatie wordt beveiligd door Stripe. Het bedrag wordt niet direct afgeschreven."
-    },
-    "baseLayout": {
-      "sentBy": "Deze e-mail is verzonden door {storeName}",
-      "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
-      "poweredBy": "Powered by"
     }
   },
   "contract": {

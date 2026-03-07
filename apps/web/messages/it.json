@@ -434,7 +434,6 @@
     "home": {
       "viewAll": "Vedi tutto",
       "products": "Prodotti",
-
       "header": {
         "greeting": {
           "morning": "Buongiorno, {name}",
@@ -457,14 +456,12 @@
           "addReservation": "Nuova prenotazione"
         }
       },
-
       "alert": {
         "singlePending": "1 richiesta in attesa",
         "multiplePending": "{count} richieste in attesa",
         "description": "I tuoi clienti attendono una risposta",
         "action": "Gestisci"
       },
-
       "setup": {
         "title": "Primi passi",
         "description": "Alcuni passaggi per iniziare",
@@ -484,7 +481,6 @@
         "viewStore": "Vedi il mio negozio",
         "createReservation": "Crea una prenotazione"
       },
-
       "stats": {
         "products": "Prodotti",
         "customers": "Clienti",
@@ -500,7 +496,6 @@
         "vsLastMonth": "vs mese scorso",
         "completed": "{count, plural, one {# completata} other {# completate}}"
       },
-
       "activity": {
         "departures": "Partenze di oggi",
         "departuresDescription": "Prenotazioni da consegnare oggi",
@@ -511,13 +506,11 @@
         "noActivityTitle": "Giornata tranquilla",
         "noActivityDescription": "Nessuna operazione prevista oggi"
       },
-
       "pending": {
         "title": "Richieste in attesa",
         "description": "Prenotazioni che richiedono la tua approvazione",
         "empty": "Nessuna richiesta in attesa"
       },
-
       "quickActions": {
         "title": "Azioni rapide",
         "description": "Gestisci il tuo negozio in modo efficiente",
@@ -530,7 +523,6 @@
           "description": "Aggiungi manualmente una prenotazione"
         }
       },
-
       "storefront": {
         "title": "Il tuo negozio",
         "description": "Condividi il tuo link con i tuoi clienti",
@@ -542,7 +534,6 @@
         "share": "Condividi",
         "shareTitle": "Il mio negozio di noleggio"
       },
-
       "share": {
         "title": "Condividi il tuo negozio",
         "description": "Invia il link del tuo negozio ai tuoi clienti",
@@ -880,7 +871,51 @@
       "dates": "Date",
       "items": "Articoli",
       "total": "Totale",
-      "deposit": "Deposito",
+      "deposit": {
+        "title": "Deposito (Autorizzazione)",
+        "description": "Gestisci l'autorizzazione del deposito per questa prenotazione",
+        "amount": "Importo deposito",
+        "status": {
+          "none": "Non richiesto",
+          "pending": "Carta non salvata",
+          "cardSaved": "Pronto",
+          "authorized": "Blocco attivo",
+          "captured": "Acquisito",
+          "released": "Rilasciato",
+          "failed": "Fallito"
+        },
+        "pendingTitle": "Carta non salvata",
+        "pendingDescription": "Il pagamento è stato ricevuto ma la carta non è stata salvata per la cauzione. Dovrai riscuotere la cauzione manualmente o chiedere al cliente di fornire una carta.",
+        "cardSavedTitle": "Carta salvata",
+        "cardSavedDescription": "La carta del cliente è salvata. Puoi creare un blocco per trattenere l'importo della cauzione.",
+        "authorizedTitle": "Blocco attivo",
+        "authorizedDescription": "L'importo della cauzione è bloccato sulla carta del cliente. Puoi acquisirlo per danni o rilasciarlo alla fine del noleggio.",
+        "capturedDescription": "L'importo della cauzione è stato acquisito dalla carta del cliente.",
+        "releasedDescription": "L'autorizzazione e stata rilasciata, nessun addebito effettuato.",
+        "failedDescription": "L'autorizzazione e fallita. Il cliente potrebbe dover usare un'altra carta.",
+        "expiresIn": "Scade {time}",
+        "expired": "Autorizzazione scaduta",
+        "createHold": "Crea autorizzazione",
+        "release": "Rilascia deposito",
+        "capture": "Addebita",
+        "holdCreated": "Autorizzazione creata con successo",
+        "released": "Deposito rilasciato con successo",
+        "captured": "Deposito addebitato con successo",
+        "captureTitle": "Addebita deposito",
+        "captureDescription": "Addebita tutto o parte del deposito per coprire danni o perdite.",
+        "maxCapturable": "Importo massimo",
+        "captureAmount": "Importo da addebitare",
+        "captureReason": "Motivo dell'addebito",
+        "captureReasonPlaceholder": "Descrivi i danni o il motivo dell'addebito...",
+        "captureReasonHint": "Questo motivo sara registrato nella cronologia e visibile al cliente.",
+        "confirmCapture": "Conferma addebito",
+        "releaseTitle": "Rilascia deposito",
+        "releaseDescription": "Sei sicuro di voler rilasciare il deposito di {amount}? L'autorizzazione sara annullata e non verranno effettuati addebiti.",
+        "confirmRelease": "Rilascia deposito",
+        "invalidCaptureAmount": "Importo non valido",
+        "captureExceedsDeposit": "L'importo supera il deposito",
+        "reasonRequired": "Fornisci un motivo"
+      },
       "subtotal": "Subtotale",
       "source": "Fonte",
       "sourceOnline": "Online",
@@ -1415,51 +1450,6 @@
         "cardSavedForDeposit": "Carta salvata per la cauzione",
         "cardNotSaved": "Impossibile salvare la carta. Il cliente dovrà fornire un altro metodo di pagamento per la cauzione.",
         "transactionId": "Transazione"
-      },
-      "deposit": {
-        "title": "Deposito (Autorizzazione)",
-        "description": "Gestisci l'autorizzazione del deposito per questa prenotazione",
-        "amount": "Importo deposito",
-        "status": {
-          "none": "Non richiesto",
-          "pending": "Carta non salvata",
-          "cardSaved": "Pronto",
-          "authorized": "Blocco attivo",
-          "captured": "Acquisito",
-          "released": "Rilasciato",
-          "failed": "Fallito"
-        },
-        "pendingTitle": "Carta non salvata",
-        "pendingDescription": "Il pagamento è stato ricevuto ma la carta non è stata salvata per la cauzione. Dovrai riscuotere la cauzione manualmente o chiedere al cliente di fornire una carta.",
-        "cardSavedTitle": "Carta salvata",
-        "cardSavedDescription": "La carta del cliente è salvata. Puoi creare un blocco per trattenere l'importo della cauzione.",
-        "authorizedTitle": "Blocco attivo",
-        "authorizedDescription": "L'importo della cauzione è bloccato sulla carta del cliente. Puoi acquisirlo per danni o rilasciarlo alla fine del noleggio.",
-        "capturedDescription": "L'importo della cauzione è stato acquisito dalla carta del cliente.",
-        "releasedDescription": "L'autorizzazione e stata rilasciata, nessun addebito effettuato.",
-        "failedDescription": "L'autorizzazione e fallita. Il cliente potrebbe dover usare un'altra carta.",
-        "expiresIn": "Scade {time}",
-        "expired": "Autorizzazione scaduta",
-        "createHold": "Crea autorizzazione",
-        "release": "Rilascia deposito",
-        "capture": "Addebita",
-        "holdCreated": "Autorizzazione creata con successo",
-        "released": "Deposito rilasciato con successo",
-        "captured": "Deposito addebitato con successo",
-        "captureTitle": "Addebita deposito",
-        "captureDescription": "Addebita tutto o parte del deposito per coprire danni o perdite.",
-        "maxCapturable": "Importo massimo",
-        "captureAmount": "Importo da addebitare",
-        "captureReason": "Motivo dell'addebito",
-        "captureReasonPlaceholder": "Descrivi i danni o il motivo dell'addebito...",
-        "captureReasonHint": "Questo motivo sara registrato nella cronologia e visibile al cliente.",
-        "confirmCapture": "Conferma addebito",
-        "releaseTitle": "Rilascia deposito",
-        "releaseDescription": "Sei sicuro di voler rilasciare il deposito di {amount}? L'autorizzazione sara annullata e non verranno effettuati addebiti.",
-        "confirmRelease": "Rilascia deposito",
-        "invalidCaptureAmount": "Importo non valido",
-        "captureExceedsDeposit": "L'importo supera il deposito",
-        "reasonRequired": "Fornisci un motivo"
       },
       "paymentStatus": {
         "paid": "Pagato",
@@ -3843,6 +3833,15 @@
         "siteManager": "il responsabile del sito"
       },
       "contact": "Contatto"
+    },
+    "embed": {
+      "title": "Prenota online",
+      "cta": "Verifica disponibilità",
+      "errors": {
+        "selectStartDate": "Seleziona una data di ritiro",
+        "selectEndDate": "Seleziona una data di restituzione",
+        "endTimeAfterStart": "L'orario di restituzione deve essere successivo al ritiro"
+      }
     }
   },
   "onboarding": {

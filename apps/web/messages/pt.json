@@ -434,7 +434,6 @@
     "home": {
       "viewAll": "Ver tudo",
       "products": "Produtos",
-
       "header": {
         "greeting": {
           "morning": "Bom dia, {name}",
@@ -457,14 +456,12 @@
           "addReservation": "Nova reserva"
         }
       },
-
       "alert": {
         "singlePending": "1 solicitacao pendente",
         "multiplePending": "{count} solicitacoes pendentes",
         "description": "Seus clientes aguardam sua resposta",
         "action": "Gerenciar"
       },
-
       "setup": {
         "title": "Primeiros passos",
         "description": "Alguns passos para comecar",
@@ -484,7 +481,6 @@
         "viewStore": "Ver minha loja",
         "createReservation": "Criar uma reserva"
       },
-
       "stats": {
         "products": "Produtos",
         "customers": "Clientes",
@@ -500,7 +496,6 @@
         "vsLastMonth": "vs mes anterior",
         "completed": "{count, plural, one {# concluida} other {# concluidas}}"
       },
-
       "activity": {
         "departures": "Saidas de hoje",
         "departuresDescription": "Reservas para entregar hoje",
@@ -511,13 +506,11 @@
         "noActivityTitle": "Dia tranquilo",
         "noActivityDescription": "Nenhuma operacao agendada para hoje"
       },
-
       "pending": {
         "title": "Solicitacoes pendentes",
         "description": "Reservas aguardando sua aprovacao",
         "empty": "Nenhuma solicitacao pendente"
       },
-
       "quickActions": {
         "title": "Acoes rapidas",
         "description": "Gerencie sua loja de forma eficiente",
@@ -530,7 +523,6 @@
           "description": "Adicionar manualmente uma reserva"
         }
       },
-
       "storefront": {
         "title": "Sua loja",
         "description": "Compartilhe seu link com seus clientes",
@@ -542,7 +534,6 @@
         "share": "Compartilhar",
         "shareTitle": "Minha loja de aluguel"
       },
-
       "share": {
         "title": "Compartilhar sua loja",
         "description": "Envie o link da sua loja para seus clientes",
@@ -880,7 +871,51 @@
       "dates": "Datas",
       "items": "Itens",
       "total": "Total",
-      "deposit": "Caucao",
+      "deposit": {
+        "title": "Caucao (Autorizacao)",
+        "description": "Gerencie a autorizacao de caucao para esta reserva",
+        "amount": "Valor da caucao",
+        "status": {
+          "none": "Não necessário",
+          "pending": "Cartão não guardado",
+          "cardSaved": "Pronto",
+          "authorized": "Retenção ativa",
+          "captured": "Capturado",
+          "released": "Libertado",
+          "failed": "Falhou"
+        },
+        "pendingTitle": "Cartão não guardado",
+        "pendingDescription": "O pagamento foi recebido mas o cartão não pôde ser guardado para a caução. Terá de cobrar a caução manualmente ou pedir ao cliente para fornecer um cartão.",
+        "cardSavedTitle": "Cartão guardado",
+        "cardSavedDescription": "O cartão do cliente está guardado. Pode criar uma retenção para bloquear o montante da caução.",
+        "authorizedTitle": "Retenção ativa",
+        "authorizedDescription": "O montante da caução está bloqueado no cartão do cliente. Pode capturá-lo por danos ou libertá-lo no final do aluguer.",
+        "capturedDescription": "O montante da caução foi capturado do cartão do cliente.",
+        "releasedDescription": "A autorizacao foi liberada, nenhuma cobranca foi feita.",
+        "failedDescription": "A autorizacao falhou. O cliente pode precisar usar outro cartao.",
+        "expiresIn": "Expira {time}",
+        "expired": "Autorizacao expirada",
+        "createHold": "Criar autorizacao",
+        "release": "Liberar caucao",
+        "capture": "Capturar",
+        "holdCreated": "Autorizacao criada com sucesso",
+        "released": "Caucao liberada com sucesso",
+        "captured": "Caucao capturada com sucesso",
+        "captureTitle": "Capturar caucao",
+        "captureDescription": "Capture toda ou parte da caucao para cobrir danos ou perdas.",
+        "maxCapturable": "Valor maximo",
+        "captureAmount": "Valor a capturar",
+        "captureReason": "Motivo da captura",
+        "captureReasonPlaceholder": "Descreva os danos ou motivo da captura...",
+        "captureReasonHint": "Este motivo sera registrado no historico e visivel para o cliente.",
+        "confirmCapture": "Confirmar captura",
+        "releaseTitle": "Liberar caucao",
+        "releaseDescription": "Tem certeza que deseja liberar a caucao de {amount}? A autorizacao sera cancelada e nenhuma cobranca sera feita.",
+        "confirmRelease": "Liberar caucao",
+        "invalidCaptureAmount": "Valor invalido",
+        "captureExceedsDeposit": "O valor excede a caucao",
+        "reasonRequired": "Por favor, forneca um motivo"
+      },
       "subtotal": "Subtotal",
       "source": "Origem",
       "sourceOnline": "Online",
@@ -1415,51 +1450,6 @@
         "cardSavedForDeposit": "Cartão guardado para caução",
         "cardNotSaved": "Não foi possível guardar o cartão. O cliente terá de fornecer outro método de pagamento para a caução.",
         "transactionId": "Transação"
-      },
-      "deposit": {
-        "title": "Caucao (Autorizacao)",
-        "description": "Gerencie a autorizacao de caucao para esta reserva",
-        "amount": "Valor da caucao",
-        "status": {
-          "none": "Não necessário",
-          "pending": "Cartão não guardado",
-          "cardSaved": "Pronto",
-          "authorized": "Retenção ativa",
-          "captured": "Capturado",
-          "released": "Libertado",
-          "failed": "Falhou"
-        },
-        "pendingTitle": "Cartão não guardado",
-        "pendingDescription": "O pagamento foi recebido mas o cartão não pôde ser guardado para a caução. Terá de cobrar a caução manualmente ou pedir ao cliente para fornecer um cartão.",
-        "cardSavedTitle": "Cartão guardado",
-        "cardSavedDescription": "O cartão do cliente está guardado. Pode criar uma retenção para bloquear o montante da caução.",
-        "authorizedTitle": "Retenção ativa",
-        "authorizedDescription": "O montante da caução está bloqueado no cartão do cliente. Pode capturá-lo por danos ou libertá-lo no final do aluguer.",
-        "capturedDescription": "O montante da caução foi capturado do cartão do cliente.",
-        "releasedDescription": "A autorizacao foi liberada, nenhuma cobranca foi feita.",
-        "failedDescription": "A autorizacao falhou. O cliente pode precisar usar outro cartao.",
-        "expiresIn": "Expira {time}",
-        "expired": "Autorizacao expirada",
-        "createHold": "Criar autorizacao",
-        "release": "Liberar caucao",
-        "capture": "Capturar",
-        "holdCreated": "Autorizacao criada com sucesso",
-        "released": "Caucao liberada com sucesso",
-        "captured": "Caucao capturada com sucesso",
-        "captureTitle": "Capturar caucao",
-        "captureDescription": "Capture toda ou parte da caucao para cobrir danos ou perdas.",
-        "maxCapturable": "Valor maximo",
-        "captureAmount": "Valor a capturar",
-        "captureReason": "Motivo da captura",
-        "captureReasonPlaceholder": "Descreva os danos ou motivo da captura...",
-        "captureReasonHint": "Este motivo sera registrado no historico e visivel para o cliente.",
-        "confirmCapture": "Confirmar captura",
-        "releaseTitle": "Liberar caucao",
-        "releaseDescription": "Tem certeza que deseja liberar a caucao de {amount}? A autorizacao sera cancelada e nenhuma cobranca sera feita.",
-        "confirmRelease": "Liberar caucao",
-        "invalidCaptureAmount": "Valor invalido",
-        "captureExceedsDeposit": "O valor excede a caucao",
-        "reasonRequired": "Por favor, forneca um motivo"
       },
       "paymentStatus": {
         "paid": "Pago",
@@ -3844,6 +3834,15 @@
         "siteManager": "o gestor do site"
       },
       "contact": "Contato"
+    },
+    "embed": {
+      "title": "Reserve online",
+      "cta": "Ver disponibilidade",
+      "errors": {
+        "selectStartDate": "Selecione uma data de levantamento",
+        "selectEndDate": "Selecione uma data de devolução",
+        "endTimeAfterStart": "A hora de devolução deve ser posterior à hora de levantamento"
+      }
     }
   },
   "onboarding": {

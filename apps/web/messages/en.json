@@ -981,7 +981,51 @@
       "dates": "Dates",
       "items": "Items",
       "total": "Total",
-      "deposit": "Deposit",
+      "deposit": {
+        "title": "Deposit (Authorization Hold)",
+        "description": "Manage the deposit authorization hold for this reservation",
+        "amount": "Deposit amount",
+        "status": {
+          "none": "Not required",
+          "pending": "Card not saved",
+          "cardSaved": "Ready",
+          "authorized": "Hold active",
+          "captured": "Captured",
+          "released": "Released",
+          "failed": "Failed"
+        },
+        "pendingTitle": "Card not saved",
+        "pendingDescription": "Payment was received but the card could not be saved for the deposit. You will need to collect the deposit manually or ask the customer to provide a card.",
+        "cardSavedTitle": "Card saved",
+        "cardSavedDescription": "The customer's card is saved. You can create a hold to block the deposit amount.",
+        "authorizedTitle": "Hold active",
+        "authorizedDescription": "The deposit amount is held on the customer's card. You can capture it for damages or release it at the end of the rental.",
+        "capturedDescription": "The deposit amount has been captured from the customer's card.",
+        "releasedDescription": "The authorization has been released, no charges were made.",
+        "failedDescription": "The authorization failed. The customer may need to use a different card.",
+        "expiresIn": "Expires {time}",
+        "expired": "Authorization expired",
+        "createHold": "Create authorization",
+        "release": "Release deposit",
+        "capture": "Capture",
+        "holdCreated": "Authorization created successfully",
+        "released": "Deposit released successfully",
+        "captured": "Deposit captured successfully",
+        "captureTitle": "Capture deposit",
+        "captureDescription": "Capture all or part of the deposit to cover damages or losses.",
+        "maxCapturable": "Maximum amount",
+        "captureAmount": "Amount to capture",
+        "captureReason": "Reason for capture",
+        "captureReasonPlaceholder": "Describe the damages or reason for capture...",
+        "captureReasonHint": "This reason will be recorded in the history and visible to the customer.",
+        "confirmCapture": "Confirm capture",
+        "releaseTitle": "Release deposit",
+        "releaseDescription": "Are you sure you want to release the {amount} deposit? The authorization will be cancelled and no charges will be made.",
+        "confirmRelease": "Release deposit",
+        "invalidCaptureAmount": "Invalid amount",
+        "captureExceedsDeposit": "Amount exceeds deposit",
+        "reasonRequired": "Please provide a reason"
+      },
       "subtotal": "Subtotal",
       "source": "Source",
       "sourceOnline": "Online",
@@ -1546,51 +1590,6 @@
         "cardSavedForDeposit": "Card saved for deposit",
         "cardNotSaved": "The card could not be saved. The customer will need to provide another payment method for the deposit.",
         "transactionId": "Transaction"
-      },
-      "deposit": {
-        "title": "Deposit (Authorization Hold)",
-        "description": "Manage the deposit authorization hold for this reservation",
-        "amount": "Deposit amount",
-        "status": {
-          "none": "Not required",
-          "pending": "Card not saved",
-          "cardSaved": "Ready",
-          "authorized": "Hold active",
-          "captured": "Captured",
-          "released": "Released",
-          "failed": "Failed"
-        },
-        "pendingTitle": "Card not saved",
-        "pendingDescription": "Payment was received but the card could not be saved for the deposit. You will need to collect the deposit manually or ask the customer to provide a card.",
-        "cardSavedTitle": "Card saved",
-        "cardSavedDescription": "The customer's card is saved. You can create a hold to block the deposit amount.",
-        "authorizedTitle": "Hold active",
-        "authorizedDescription": "The deposit amount is held on the customer's card. You can capture it for damages or release it at the end of the rental.",
-        "capturedDescription": "The deposit amount has been captured from the customer's card.",
-        "releasedDescription": "The authorization has been released, no charges were made.",
-        "failedDescription": "The authorization failed. The customer may need to use a different card.",
-        "expiresIn": "Expires {time}",
-        "expired": "Authorization expired",
-        "createHold": "Create authorization",
-        "release": "Release deposit",
-        "capture": "Capture",
-        "holdCreated": "Authorization created successfully",
-        "released": "Deposit released successfully",
-        "captured": "Deposit captured successfully",
-        "captureTitle": "Capture deposit",
-        "captureDescription": "Capture all or part of the deposit to cover damages or losses.",
-        "maxCapturable": "Maximum amount",
-        "captureAmount": "Amount to capture",
-        "captureReason": "Reason for capture",
-        "captureReasonPlaceholder": "Describe the damages or reason for capture...",
-        "captureReasonHint": "This reason will be recorded in the history and visible to the customer.",
-        "confirmCapture": "Confirm capture",
-        "releaseTitle": "Release deposit",
-        "releaseDescription": "Are you sure you want to release the {amount} deposit? The authorization will be cancelled and no charges will be made.",
-        "confirmRelease": "Release deposit",
-        "invalidCaptureAmount": "Invalid amount",
-        "captureExceedsDeposit": "Amount exceeds deposit",
-        "reasonRequired": "Please provide a reason"
       },
       "paymentStatus": {
         "paid": "Paid",
@@ -4175,6 +4174,15 @@
         "siteManager": "the site manager"
       },
       "contact": "Contact"
+    },
+    "embed": {
+      "title": "Book online now",
+      "cta": "Check availability",
+      "errors": {
+        "selectStartDate": "Select a pickup date",
+        "selectEndDate": "Select a return date",
+        "endTimeAfterStart": "Return time must be after pickup time"
+      }
     }
   },
   "onboarding": {
@@ -4491,11 +4499,6 @@
       "authorizeNow": "Authorize deposit",
       "linkFallback": "Or copy this link into your browser:",
       "securePayment": "This authorization is secured by Stripe. The amount will not be charged immediately."
-    },
-    "baseLayout": {
-      "sentBy": "This email was sent by {storeName}",
-      "ignoreIfNotYou": "If you did not initiate this action, please ignore this email.",
-      "poweredBy": "Powered by"
     }
   },
   "contract": {
@@ -4778,12 +4781,11 @@
     "deliveryTooFar": "The delivery address is too far (maximum {maxDistance} km)",
     "deliveryRequired": "Delivery is required for this store",
     "storeCoordinatesInvalid": "Store coordinates are invalid",
-        "promoCodeInvalid": "This promo code is invalid or does not exist",
+    "promoCodeInvalid": "This promo code is invalid or does not exist",
     "promoCodeExpired": "This promo code has expired",
     "promoCodeExhausted": "This promo code has reached its usage limit",
     "promoCodeMinimumNotMet": "Minimum amount of {amount} required to use this code",
-    "promoCodeNotStarted": "This promo code is not yet active"
-,
+    "promoCodeNotStarted": "This promo code is not yet active",
     "deliveryAddressInvalid": "Delivery address is invalid",
     "tulipApiKeyInvalid": "The Tulip API key is invalid.",
     "tulipActionForbidden": "Tulip refused this action for the current account configuration.",

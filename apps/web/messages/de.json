@@ -473,7 +473,6 @@
     "home": {
       "viewAll": "Alle ansehen",
       "products": "Produkte",
-
       "header": {
         "greeting": {
           "morning": "Guten Morgen, {name}",
@@ -496,14 +495,12 @@
           "addReservation": "Neue Reservierung"
         }
       },
-
       "alert": {
         "singlePending": "1 ausstehende Anfrage",
         "multiplePending": "{count} ausstehende Anfragen",
         "description": "Ihre Kunden warten auf Ihre Antwort",
         "action": "Bearbeiten"
       },
-
       "setup": {
         "title": "Erste Schritte",
         "description": "Einige Schritte zum Starten",
@@ -523,7 +520,6 @@
         "viewStore": "Meinen Shop ansehen",
         "createReservation": "Reservierung erstellen"
       },
-
       "stats": {
         "products": "Produkte",
         "customers": "Kunden",
@@ -539,7 +535,6 @@
         "vsLastMonth": "vs letzter Monat",
         "completed": "{count, plural, one {# abgeschlossen} other {# abgeschlossen}}"
       },
-
       "activity": {
         "departures": "Heutige Abholungen",
         "departuresDescription": "Heute zu übergebende Reservierungen",
@@ -550,13 +545,11 @@
         "noActivityTitle": "Ruhiger Tag",
         "noActivityDescription": "Heute keine Vorgänge geplant"
       },
-
       "pending": {
         "title": "Ausstehende Anfragen",
         "description": "Reservierungen, die Ihre Genehmigung erfordern",
         "empty": "Keine ausstehenden Anfragen"
       },
-
       "quickActions": {
         "title": "Schnellaktionen",
         "description": "Verwalten Sie Ihren Shop effizient",
@@ -569,7 +562,6 @@
           "description": "Reservierung manuell hinzufügen"
         }
       },
-
       "storefront": {
         "title": "Ihr Shop",
         "description": "Teilen Sie Ihren Link mit Ihren Kunden",
@@ -581,7 +573,6 @@
         "share": "Teilen",
         "shareTitle": "Mein Vermietungsshop"
       },
-
       "share": {
         "title": "Shop teilen",
         "description": "Senden Sie Ihren Shop-Link an Ihre Kunden",
@@ -930,7 +921,51 @@
       "dates": "Daten",
       "items": "Artikel",
       "total": "Gesamt",
-      "deposit": "Kaution",
+      "deposit": {
+        "title": "Kaution (Autorisierung)",
+        "description": "Verwalten Sie die Kautionsautorisierung für diese Reservierung",
+        "amount": "Kautionsbetrag",
+        "status": {
+          "none": "Nicht erforderlich",
+          "pending": "Karte nicht gespeichert",
+          "cardSaved": "Bereit",
+          "authorized": "Vormerkung aktiv",
+          "captured": "Eingezogen",
+          "released": "Freigegeben",
+          "failed": "Fehlgeschlagen"
+        },
+        "pendingTitle": "Karte nicht gespeichert",
+        "pendingDescription": "Die Zahlung wurde empfangen, aber die Karte konnte nicht für die Kaution gespeichert werden. Sie müssen die Kaution manuell einziehen oder den Kunden bitten, eine Karte anzugeben.",
+        "cardSavedTitle": "Karte gespeichert",
+        "cardSavedDescription": "Die Karte des Kunden ist gespeichert. Sie können eine Vormerkung erstellen, um den Kautionsbetrag zu blockieren.",
+        "authorizedTitle": "Vormerkung aktiv",
+        "authorizedDescription": "Der Kautionsbetrag ist auf der Karte des Kunden blockiert. Sie können ihn bei Schäden einziehen oder am Ende der Miete freigeben.",
+        "capturedDescription": "Der Kautionsbetrag wurde von der Karte des Kunden eingezogen.",
+        "releasedDescription": "Die Autorisierung wurde freigegeben, es wurden keine Gebühren erhoben.",
+        "failedDescription": "Die Autorisierung ist fehlgeschlagen. Der Kunde muss möglicherweise eine andere Karte verwenden.",
+        "expiresIn": "Läuft ab {time}",
+        "expired": "Autorisierung abgelaufen",
+        "createHold": "Autorisierung erstellen",
+        "release": "Kaution freigeben",
+        "capture": "Einziehen",
+        "holdCreated": "Autorisierung erfolgreich erstellt",
+        "released": "Kaution erfolgreich freigegeben",
+        "captured": "Kaution erfolgreich eingezogen",
+        "captureTitle": "Kaution einziehen",
+        "captureDescription": "Ziehen Sie die Kaution ganz oder teilweise ein, um Schäden oder Verluste zu decken.",
+        "maxCapturable": "Maximalbetrag",
+        "captureAmount": "Einzuziehender Betrag",
+        "captureReason": "Grund für den Einzug",
+        "captureReasonPlaceholder": "Beschreiben Sie die Schäden oder den Grund für den Einzug...",
+        "captureReasonHint": "Dieser Grund wird im Verlauf gespeichert und ist für den Kunden sichtbar.",
+        "confirmCapture": "Einzug bestätigen",
+        "releaseTitle": "Kaution freigeben",
+        "releaseDescription": "Möchten Sie die Kaution von {amount} wirklich freigeben? Die Autorisierung wird storniert und es werden keine Gebühren erhoben.",
+        "confirmRelease": "Kaution freigeben",
+        "invalidCaptureAmount": "Ungültiger Betrag",
+        "captureExceedsDeposit": "Betrag übersteigt Kaution",
+        "reasonRequired": "Bitte geben Sie einen Grund an"
+      },
       "subtotal": "Zwischensumme",
       "source": "Quelle",
       "sourceOnline": "Online",
@@ -1465,51 +1500,6 @@
         "cardSavedForDeposit": "Karte für Kaution gespeichert",
         "cardNotSaved": "Die Karte konnte nicht gespeichert werden. Der Kunde muss eine andere Zahlungsmethode für die Kaution angeben.",
         "transactionId": "Transaktion"
-      },
-      "deposit": {
-        "title": "Kaution (Autorisierung)",
-        "description": "Verwalten Sie die Kautionsautorisierung für diese Reservierung",
-        "amount": "Kautionsbetrag",
-        "status": {
-          "none": "Nicht erforderlich",
-          "pending": "Karte nicht gespeichert",
-          "cardSaved": "Bereit",
-          "authorized": "Vormerkung aktiv",
-          "captured": "Eingezogen",
-          "released": "Freigegeben",
-          "failed": "Fehlgeschlagen"
-        },
-        "pendingTitle": "Karte nicht gespeichert",
-        "pendingDescription": "Die Zahlung wurde empfangen, aber die Karte konnte nicht für die Kaution gespeichert werden. Sie müssen die Kaution manuell einziehen oder den Kunden bitten, eine Karte anzugeben.",
-        "cardSavedTitle": "Karte gespeichert",
-        "cardSavedDescription": "Die Karte des Kunden ist gespeichert. Sie können eine Vormerkung erstellen, um den Kautionsbetrag zu blockieren.",
-        "authorizedTitle": "Vormerkung aktiv",
-        "authorizedDescription": "Der Kautionsbetrag ist auf der Karte des Kunden blockiert. Sie können ihn bei Schäden einziehen oder am Ende der Miete freigeben.",
-        "capturedDescription": "Der Kautionsbetrag wurde von der Karte des Kunden eingezogen.",
-        "releasedDescription": "Die Autorisierung wurde freigegeben, es wurden keine Gebühren erhoben.",
-        "failedDescription": "Die Autorisierung ist fehlgeschlagen. Der Kunde muss möglicherweise eine andere Karte verwenden.",
-        "expiresIn": "Läuft ab {time}",
-        "expired": "Autorisierung abgelaufen",
-        "createHold": "Autorisierung erstellen",
-        "release": "Kaution freigeben",
-        "capture": "Einziehen",
-        "holdCreated": "Autorisierung erfolgreich erstellt",
-        "released": "Kaution erfolgreich freigegeben",
-        "captured": "Kaution erfolgreich eingezogen",
-        "captureTitle": "Kaution einziehen",
-        "captureDescription": "Ziehen Sie die Kaution ganz oder teilweise ein, um Schäden oder Verluste zu decken.",
-        "maxCapturable": "Maximalbetrag",
-        "captureAmount": "Einzuziehender Betrag",
-        "captureReason": "Grund für den Einzug",
-        "captureReasonPlaceholder": "Beschreiben Sie die Schäden oder den Grund für den Einzug...",
-        "captureReasonHint": "Dieser Grund wird im Verlauf gespeichert und ist für den Kunden sichtbar.",
-        "confirmCapture": "Einzug bestätigen",
-        "releaseTitle": "Kaution freigeben",
-        "releaseDescription": "Möchten Sie die Kaution von {amount} wirklich freigeben? Die Autorisierung wird storniert und es werden keine Gebühren erhoben.",
-        "confirmRelease": "Kaution freigeben",
-        "invalidCaptureAmount": "Ungültiger Betrag",
-        "captureExceedsDeposit": "Betrag übersteigt Kaution",
-        "reasonRequired": "Bitte geben Sie einen Grund an"
       },
       "paymentStatus": {
         "paid": "Bezahlt",
@@ -3855,6 +3845,15 @@
         "siteManager": "den Website-Betreiber"
       },
       "contact": "Kontakt"
+    },
+    "embed": {
+      "title": "Jetzt online buchen",
+      "cta": "Verfügbarkeit prüfen",
+      "errors": {
+        "selectStartDate": "Wählen Sie ein Abholdatum",
+        "selectEndDate": "Wählen Sie ein Rückgabedatum",
+        "endTimeAfterStart": "Die Rückgabezeit muss nach der Abholzeit liegen"
+      }
     }
   },
   "onboarding": {
@@ -4091,8 +4090,8 @@
     },
     "baseLayout": {
       "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
-      "ignoreIfNotYou": "Wenn Sie diese Aktion nicht eingeleitet haben, ignorieren Sie bitte diese E-Mail.",
-      "poweredBy": "Powered by"
+      "ignoreIfNotYou": "Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie diese E-Mail bitte.",
+      "poweredBy": "Bereitgestellt von"
     },
     "instantAccess": {
       "subject": "Zugriff auf Ihre Reservierung #{number}",
@@ -4170,11 +4169,6 @@
       "authorizeNow": "Kaution autorisieren",
       "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
       "securePayment": "Diese Autorisierung wird durch Stripe gesichert. Der Betrag wird nicht sofort belastet."
-    },
-    "baseLayout": {
-      "sentBy": "Diese E-Mail wurde von {storeName} gesendet",
-      "ignoreIfNotYou": "Wenn Sie diese Aktion nicht initiiert haben, ignorieren Sie diese E-Mail bitte.",
-      "poweredBy": "Bereitgestellt von"
     }
   },
   "contract": {

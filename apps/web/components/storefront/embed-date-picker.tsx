@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe } from 'lucide-react'
+import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
 
 import { Button } from '@louez/ui'
 import { Calendar } from '@louez/ui'
@@ -27,7 +27,6 @@ import {
 } from '@/lib/utils/business-hours'
 
 interface EmbedDatePickerProps {
-  /** Absolute URL to the store's rental page (e.g. https://store.louez.io/rental) */
   rentalUrl: string
   pricingMode: PricingMode
   businessHours?: BusinessHours
@@ -47,6 +46,8 @@ export function EmbedDatePicker({
   timezone,
 }: EmbedDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
+  const tEmbed = useTranslations('storefront.embed')
+  const tHero = useTranslations('storefront.hero')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
 
   const isTransitioningRef = useRef(false)
@@ -57,6 +58,7 @@ export function EmbedDatePicker({
   const [startTime, setStartTime] = useState<string>('09:00')
   const [endTime, setEndTime] = useState<string>('18:00')
   const [, setActiveField] = useState<ActiveField>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   const [startDateOpen, setStartDateOpen] = useState(false)
   const [startTimeOpen, setStartTimeOpen] = useState(false)
@@ -79,6 +81,11 @@ export function EmbedDatePicker({
     timezone,
   })
 
+  // Clear error when user changes dates
+  useEffect(() => {
+    setSubmitError(null)
+  }, [startDate, endDate, startTime, endTime])
+
   // Auto-adjust times when slots change
   useEffect(() => {
     if (startDate && startTimeSlots.length > 0) {
@@ -97,7 +104,6 @@ export function EmbedDatePicker({
     params.set('startDate', start.toISOString())
     params.set('endDate', end.toISOString())
     const url = `${rentalUrl}?${params.toString()}`
-    // Open in new tab (works from within iframe)
     window.open(url, '_blank', 'noopener')
   }, [rentalUrl])
 
@@ -219,9 +225,10 @@ export function EmbedDatePicker({
     if (open) setActiveField('endTime')
   }
 
-  const canSubmit = useMemo(() => {
-    if (!startDate || !endDate || !startTime || !endTime) return false
-    if (isSameDay && endTime <= startTime) return false
+  const getValidationError = useMemo(() => {
+    if (!startDate) return tEmbed('errors.selectStartDate')
+    if (!endDate) return tEmbed('errors.selectEndDate')
+    if (isSameDay && endTime <= startTime) return tEmbed('errors.endTimeAfterStart')
     if (minRentalMinutes > 0) {
       const { start: fullStart, end: fullEnd } = buildDateTimeRange({
         startDate: new Date(startDate),
@@ -230,10 +237,16 @@ export function EmbedDatePicker({
         endTime,
         timezone,
       })
-      if (!validateMinRentalDurationMinutes(fullStart, fullEnd, minRentalMinutes).valid) return false
+      if (!validateMinRentalDurationMinutes(fullStart, fullEnd, minRentalMinutes).valid) {
+        return t('minDurationWarning', {
+          duration: formatDurationFromMinutes(minRentalMinutes),
+        })
+      }
     }
-    return true
-  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone])
+    return null
+  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone, t, tEmbed])
+
+  const canSubmit = getValidationError === null
 
   const timezoneCity = useMemo(() => {
     if (!timezone) return null
@@ -243,25 +256,19 @@ export function EmbedDatePicker({
     return city || timezone
   }, [timezone])
 
-  const durationWarning = useMemo(() => {
-    if (!startDate || !endDate || !startTime || !endTime) return null
-    if (minRentalMinutes <= 0) return null
-    const { start: fullStart, end: fullEnd } = buildDateTimeRange({
-      startDate: new Date(startDate),
-      endDate: new Date(endDate),
-      startTime,
-      endTime,
-      timezone,
-    })
-    const check = validateMinRentalDurationMinutes(fullStart, fullEnd, minRentalMinutes)
-    if (check.valid) return null
-    return t('minDurationWarning', {
-      duration: formatDurationFromMinutes(minRentalMinutes),
-    })
-  }, [startDate, endDate, startTime, endTime, minRentalMinutes, timezone, t])
-
   const handleSubmit = () => {
-    if (!canSubmit) return
+    if (!canSubmit) {
+      setSubmitError(getValidationError)
+      // If no start date, open the start date picker to guide the user
+      if (!startDate) {
+        setStartDateOpen(true)
+        setActiveField('startDate')
+      } else if (!endDate) {
+        setEndDateOpen(true)
+        setActiveField('endDate')
+      }
+      return
+    }
 
     const { start: finalStart, end: finalEnd } = buildDateTimeRange({
       startDate: startDate!,
@@ -322,8 +329,13 @@ export function EmbedDatePicker({
 
   return (
     <div className="w-full">
-      <div className="bg-background rounded-2xl border shadow-sm p-4">
+      <div className="bg-background rounded-2xl border shadow-sm p-4 sm:p-5">
         <div className="flex flex-col gap-3">
+          {/* Title */}
+          <h2 className="text-base sm:text-lg font-semibold text-center">
+            {tEmbed('title')}
+          </h2>
+
           {/* Date/Time inputs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Start Date/Time */}
@@ -425,21 +437,41 @@ export function EmbedDatePicker({
             </div>
           </div>
 
-          {/* Duration warning */}
-          {durationWarning && (
-            <p className="text-sm text-destructive text-center">{durationWarning}</p>
+          {/* Validation error */}
+          {submitError && (
+            <p className="text-sm text-destructive text-center flex items-center justify-center gap-1.5">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              {submitError}
+            </p>
           )}
 
-          {/* CTA Button */}
+          {/* CTA Button - always clickable */}
           <Button
             onClick={handleSubmit}
-            disabled={!canSubmit}
             size="lg"
             className="w-full h-11 text-base font-semibold"
           >
-            {t('viewAvailability')}
+            {tEmbed('cta')}
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
+
+          {/* Reassurance badges */}
+          <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <CheckCircle className="h-3.5 w-3.5 text-primary" />
+              <span>{tHero('instantConfirmation')}</span>
+            </div>
+            <span className="text-border">·</span>
+            <div className="flex items-center gap-1">
+              <Shield className="h-3.5 w-3.5 text-primary" />
+              <span>{tHero('securePayment')}</span>
+            </div>
+            <span className="text-border">·</span>
+            <div className="flex items-center gap-1">
+              <MapPin className="h-3.5 w-3.5 text-primary" />
+              <span>{tHero('localPickup')}</span>
+            </div>
+          </div>
 
           {/* Timezone notice */}
           {timezoneCity && (
