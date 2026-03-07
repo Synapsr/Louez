@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays } from 'date-fns'
-import { ArrowRight, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
+import { fr } from 'date-fns/locale'
+import { CalendarIcon, ArrowRight, Clock, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
 
 import { Button } from '@louez/ui'
+import { Calendar } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { type PricingMode } from '@/lib/utils/duration'
 import {
@@ -27,23 +29,58 @@ interface EmbedDatePickerProps {
   timezone?: string
 }
 
-function toInputDate(date: Date | undefined): string {
-  return date ? format(date, 'yyyy-MM-dd') : ''
-}
+type Step = 'idle' | 'startDate' | 'startTime' | 'endDate' | 'endTime'
 
-function fromInputDate(str: string): Date | undefined {
-  return str ? new Date(str + 'T00:00:00') : undefined
-}
-
-const DEFAULT_TIME_SLOTS: string[] = (() => {
-  const slots: string[] = []
-  for (let h = 0; h < 24; h++) {
-    for (let m = 0; m < 60; m += 30) {
-      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`)
-    }
+function TimeGrid({
+  slots,
+  value,
+  onSelect,
+  disabledBefore,
+  emptyMessage,
+}: {
+  slots: string[]
+  value: string
+  onSelect: (time: string) => void
+  disabledBefore?: string
+  emptyMessage: string
+}) {
+  if (slots.length === 0) {
+    return (
+      <div className="py-4 text-center text-xs text-muted-foreground">
+        <AlertCircle className="h-4 w-4 mx-auto mb-1.5" />
+        {emptyMessage}
+      </div>
+    )
   }
-  return slots
-})()
+
+  return (
+    <div className="grid grid-cols-4 gap-1">
+      {slots.map((time) => {
+        const isDisabled = disabledBefore ? time <= disabledBefore : false
+        const isSelected = value === time
+
+        return (
+          <button
+            key={time}
+            type="button"
+            onClick={() => !isDisabled && onSelect(time)}
+            disabled={isDisabled}
+            className={cn(
+              'py-1.5 rounded-lg text-[11px] font-medium transition-colors',
+              isSelected
+                ? 'bg-primary text-primary-foreground'
+                : isDisabled
+                  ? 'text-muted-foreground/30 cursor-not-allowed'
+                  : 'bg-muted/40 hover:bg-muted text-foreground'
+            )}
+          >
+            {time}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export function EmbedDatePicker({
   rentalUrl,
@@ -56,17 +93,21 @@ export function EmbedDatePicker({
   const t = useTranslations('storefront.dateSelection')
   const tEmbed = useTranslations('storefront.embed')
   const tHero = useTranslations('storefront.hero')
+  const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
 
+  const [step, setStep] = useState<Step>('idle')
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [startTime, setStartTime] = useState<string>('09:00')
   const [endTime, setEndTime] = useState<string>('18:00')
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const endDateAutoSetRef = useRef(false)
 
   const {
     isSameDay,
     startTimeSlots,
     endTimeSlots,
+    isDateDisabled,
   } = useRentalDateCore({
     startDate,
     endDate,
@@ -93,6 +134,7 @@ export function EmbedDatePicker({
     }
   }, [endDate, endTimeSlots])
 
+  // Auto-resize iframe
   const containerRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const el = containerRef.current
@@ -111,13 +153,28 @@ export function EmbedDatePicker({
     window.open(`${rentalUrl}?${params.toString()}`, '_blank', 'noopener')
   }, [rentalUrl])
 
-  const today = format(new Date(), 'yyyy-MM-dd')
+  // Step navigation with guided flow
+  const handleFieldClick = (field: Step) => {
+    if (field === 'startTime' && !startDate) {
+      setStep('startDate')
+      return
+    }
+    if ((field === 'endDate' || field === 'endTime') && !startDate) {
+      setStep('startDate')
+      return
+    }
+    if (field === 'endTime' && !endDate) {
+      setStep('endDate')
+      return
+    }
+    setStep((prev) => (prev === field ? 'idle' : field))
+  }
 
-  const handleStartDateChange = (dateStr: string) => {
-    const date = fromInputDate(dateStr)
+  const handleStartDateSelect = (date: Date | undefined) => {
+    if (!date) return
     setStartDate(date)
 
-    if (date && (!endDate || endDate <= date)) {
+    if (!endDate || date >= endDate) {
       if (pricingMode === 'hour') {
         setEndDate(date)
       } else {
@@ -125,16 +182,38 @@ export function EmbedDatePicker({
         const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
         setEndDate(nextAvailable ?? nextDay)
       }
+      endDateAutoSetRef.current = true
     }
+
+    setStep('startTime')
   }
 
-  const handleEndDateChange = (dateStr: string) => {
-    setEndDate(fromInputDate(dateStr))
+  const handleStartTimeSelect = (time: string) => {
+    setStartTime(time)
+    setStep('endDate')
   }
 
-  // Always provide time slots - business hours validation happens on the rental page
-  const effectiveStartSlots = startTimeSlots.length > 0 ? startTimeSlots : DEFAULT_TIME_SLOTS
-  const effectiveEndSlots = endTimeSlots.length > 0 ? endTimeSlots : DEFAULT_TIME_SLOTS
+  const handleEndDateSelect = (date: Date | undefined) => {
+    if (!date) return
+    setEndDate(date)
+    endDateAutoSetRef.current = false
+    setStep('endTime')
+  }
+
+  const handleEndTimeSelect = (time: string) => {
+    setEndTime(time)
+    setStep('idle')
+
+    // Auto-submit after completing the flow
+    const { start: finalStart, end: finalEnd } = buildDateTimeRange({
+      startDate: startDate!,
+      endDate: endDate!,
+      startTime,
+      endTime: time,
+      timezone,
+    })
+    openRentalPage(finalStart, finalEnd)
+  }
 
   const getValidationError = useMemo(() => {
     if (!startDate) return tEmbed('errors.selectStartDate')
@@ -168,6 +247,8 @@ export function EmbedDatePicker({
   const handleSubmit = () => {
     if (getValidationError) {
       setSubmitError(getValidationError)
+      if (!startDate) setStep('startDate')
+      else if (!endDate) setStep('endDate')
       return
     }
 
@@ -182,6 +263,7 @@ export function EmbedDatePicker({
   }
 
   const hasDates = startDate && endDate
+  const isExpanded = step !== 'idle'
 
   return (
     <div className="w-full" ref={containerRef}>
@@ -192,7 +274,7 @@ export function EmbedDatePicker({
             {tEmbed('title')}
           </h2>
 
-          {/* Date/Time inputs */}
+          {/* Date/Time summary - 4 clickable fields */}
           <div className="grid grid-cols-2 gap-2">
             {/* Start */}
             <div>
@@ -202,34 +284,40 @@ export function EmbedDatePicker({
               <div
                 className={cn(
                   'flex rounded-xl overflow-hidden h-10 transition-all duration-200',
-                  startDate
-                    ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
-                    : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40 hover:bg-muted/30'
+                  step === 'startDate' || step === 'startTime'
+                    ? 'border-2 border-primary shadow-sm'
+                    : startDate
+                      ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
+                      : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40'
                 )}
               >
-                <input
-                  type="date"
-                  value={toInputDate(startDate)}
-                  min={today}
-                  onChange={(e) => handleStartDateChange(e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => handleFieldClick('startDate')}
                   className={cn(
-                    'flex-1 px-2.5 text-xs bg-transparent outline-none min-w-0 cursor-pointer transition-colors',
-                    startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
-                  )}
-                />
-                <div className="w-px bg-border/50 my-2" />
-                <select
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className={cn(
-                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors',
-                    startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                    'flex-1 flex items-center gap-1.5 px-2.5 text-left transition-colors min-w-0',
+                    startDate ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
-                  {effectiveStartSlots.map((slot) => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className={cn('text-xs truncate', startDate && 'font-medium')}>
+                    {startDate ? format(startDate, 'd MMM', { locale: fr }) : t('startDate')}
+                  </span>
+                </button>
+                <div className="w-px bg-border/50 my-2" />
+                <button
+                  type="button"
+                  onClick={() => handleFieldClick('startTime')}
+                  className="flex items-center gap-1 px-2 transition-colors shrink-0"
+                >
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className={cn(
+                    'text-xs',
+                    startDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}>
+                    {startTime}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -241,79 +329,135 @@ export function EmbedDatePicker({
               <div
                 className={cn(
                   'flex rounded-xl overflow-hidden h-10 transition-all duration-200',
-                  endDate
-                    ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
-                    : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40 hover:bg-muted/30'
+                  step === 'endDate' || step === 'endTime'
+                    ? 'border-2 border-primary shadow-sm'
+                    : endDate
+                      ? 'border border-primary/25 bg-primary/[0.03] shadow-sm'
+                      : 'border border-dashed border-muted-foreground/25 hover:border-muted-foreground/40'
                 )}
               >
-                <input
-                  type="date"
-                  value={toInputDate(endDate)}
-                  min={startDate ? toInputDate(startDate) : today}
-                  onChange={(e) => handleEndDateChange(e.target.value)}
+                <button
+                  type="button"
+                  onClick={() => handleFieldClick('endDate')}
                   className={cn(
-                    'flex-1 px-2.5 text-xs bg-transparent outline-none min-w-0 cursor-pointer transition-colors',
-                    endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
-                  )}
-                />
-                <div className="w-px bg-border/50 my-2" />
-                <select
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className={cn(
-                    'px-1.5 text-xs bg-transparent outline-none cursor-pointer shrink-0 transition-colors',
-                    endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                    'flex-1 flex items-center gap-1.5 px-2.5 text-left transition-colors min-w-0',
+                    endDate ? 'text-foreground' : 'text-muted-foreground'
                   )}
                 >
-                  {effectiveEndSlots.map((slot) => {
-                    const isDisabled = isSameDay && startTime ? slot <= startTime : false
-                    return (
-                      <option key={slot} value={slot} disabled={isDisabled}>{slot}</option>
-                    )
-                  })}
-                </select>
+                  <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
+                  <span className={cn('text-xs truncate', endDate && 'font-medium')}>
+                    {endDate ? format(endDate, 'd MMM', { locale: fr }) : t('endDate')}
+                  </span>
+                </button>
+                <div className="w-px bg-border/50 my-2" />
+                <button
+                  type="button"
+                  onClick={() => handleFieldClick('endTime')}
+                  className="flex items-center gap-1 px-2 transition-colors shrink-0"
+                >
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className={cn(
+                    'text-xs',
+                    endDate ? 'text-foreground font-medium' : 'text-muted-foreground'
+                  )}>
+                    {endTime}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Validation error */}
-          {submitError && (
-            <p className="text-[11px] text-destructive text-center flex items-center justify-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200">
-              <AlertCircle className="h-3 w-3 shrink-0" />
-              {submitError}
-            </p>
+          {/* Inline expanded section */}
+          {step === 'startDate' && (
+            <div className="flex justify-center rounded-xl bg-muted/20 p-1">
+              <Calendar
+                mode="single"
+                selected={startDate}
+                onSelect={handleStartDateSelect}
+                disabled={isDateDisabled}
+                locale={fr}
+                autoFocus
+              />
+            </div>
           )}
 
-          {/* CTA Button */}
-          <Button
-            onClick={handleSubmit}
-            size="default"
-            className={cn(
-              'w-full h-10 text-sm font-semibold rounded-xl transition-all duration-200',
-              hasDates && 'shadow-md'
-            )}
-          >
-            {tEmbed('cta')}
-            <ArrowRight className="ml-1.5 h-4 w-4" />
-          </Button>
+          {step === 'startTime' && (
+            <div className="rounded-xl bg-muted/20 p-2">
+              <TimeGrid
+                slots={startTimeSlots}
+                value={startTime}
+                onSelect={handleStartTimeSelect}
+                emptyMessage={tBusinessHours('storeClosed')}
+              />
+            </div>
+          )}
 
-          {/* Reassurance badges */}
-          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/70">
-            <div className="flex items-center gap-0.5">
-              <CheckCircle className="h-2.5 w-2.5 text-primary/60" />
-              <span>{tHero('instantConfirmation')}</span>
+          {step === 'endDate' && (
+            <div className="flex justify-center rounded-xl bg-muted/20 p-1">
+              <Calendar
+                mode="single"
+                selected={endDateAutoSetRef.current ? undefined : endDate}
+                defaultMonth={endDate}
+                onSelect={handleEndDateSelect}
+                disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
+                locale={fr}
+                autoFocus
+              />
             </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-0.5">
-              <Shield className="h-2.5 w-2.5 text-primary/60" />
-              <span>{tHero('securePayment')}</span>
+          )}
+
+          {step === 'endTime' && (
+            <div className="rounded-xl bg-muted/20 p-2">
+              <TimeGrid
+                slots={endTimeSlots}
+                value={endTime}
+                onSelect={handleEndTimeSelect}
+                disabledBefore={isSameDay ? startTime : undefined}
+                emptyMessage={tBusinessHours('storeClosed')}
+              />
             </div>
-            <span className="text-border">·</span>
-            <div className="flex items-center gap-0.5">
-              <MapPin className="h-2.5 w-2.5 text-primary/60" />
-              <span>{tHero('localPickup')}</span>
-            </div>
-          </div>
+          )}
+
+          {/* Error + CTA + badges (visible when idle) */}
+          {!isExpanded && (
+            <>
+              {submitError && (
+                <p className="text-[11px] text-destructive text-center flex items-center justify-center gap-1">
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  {submitError}
+                </p>
+              )}
+
+              <Button
+                onClick={handleSubmit}
+                size="default"
+                className={cn(
+                  'w-full h-10 text-sm font-semibold rounded-xl transition-all duration-200',
+                  hasDates && 'shadow-md'
+                )}
+              >
+                {tEmbed('cta')}
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Button>
+
+              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground/70">
+                <div className="flex items-center gap-0.5">
+                  <CheckCircle className="h-2.5 w-2.5 text-primary/60" />
+                  <span>{tHero('instantConfirmation')}</span>
+                </div>
+                <span className="text-border">·</span>
+                <div className="flex items-center gap-0.5">
+                  <Shield className="h-2.5 w-2.5 text-primary/60" />
+                  <span>{tHero('securePayment')}</span>
+                </div>
+                <span className="text-border">·</span>
+                <div className="flex items-center gap-0.5">
+                  <MapPin className="h-2.5 w-2.5 text-primary/60" />
+                  <span>{tHero('localPickup')}</span>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Timezone notice */}
           {timezoneCity && (
