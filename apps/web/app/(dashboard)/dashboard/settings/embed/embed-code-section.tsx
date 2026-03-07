@@ -34,7 +34,7 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
     width="100%"
     height="180"
     frameborder="0"
-    style="border: none; border-radius: 16px;"
+    style="border: none; border-radius: 16px; transition: height 0.3s ease;"
     title="${t('iframeTitle', { storeName })}"
     allow="popups"
   ></iframe>
@@ -72,7 +72,7 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
               src={embedUrl}
               width="100%"
               height="180"
-              style={{ border: 'none', borderRadius: '16px', maxWidth: '600px' }}
+              style={{ border: 'none', borderRadius: '16px', maxWidth: '600px', transition: 'height 0.3s ease' }}
               title={t('iframeTitle', { storeName })}
             />
           </div>
