@@ -2484,6 +2484,19 @@
           "expiresAfterStarts": "De vervaldatum moet na de startdatum liggen"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Voeg een verhuurdatumkiezer toe aan uw website. Uw klanten kunnen datums selecteren en worden doorgestuurd naar uw online winkel.",
+        "preview": "Voorbeeld",
+        "previewDescription": "Zo zal de widget eruitzien op uw website",
+        "code": "Insluitcode",
+        "codeDescription": "Kopieer deze HTML-code en plak deze op uw website",
+        "height": "Hoogte",
+        "copy": "Kopiëren",
+        "copied": "Gekopieerd!",
+        "directLink": "Directe link:",
+        "iframeTitle": "Boeken bij {storeName}"
+      },
       "businessHours": {
         "title": "Openingstijden",
         "description": "Stel de openingstijden van uw winkel in",

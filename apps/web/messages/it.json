@@ -2484,6 +2484,19 @@
           "expiresAfterStarts": "La data di scadenza deve essere successiva alla data di inizio"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Incorpora un selettore di date di noleggio nel tuo sito web. I tuoi clienti possono selezionare le date e verranno reindirizzati al tuo negozio online.",
+        "preview": "Anteprima",
+        "previewDescription": "Ecco come apparirà il widget sul tuo sito web",
+        "code": "Codice di incorporamento",
+        "codeDescription": "Copia questo codice HTML e incollalo nel tuo sito web",
+        "height": "Altezza",
+        "copy": "Copia",
+        "copied": "Copiato!",
+        "directLink": "Link diretto:",
+        "iframeTitle": "Prenota da {storeName}"
+      },
       "businessHours": {
         "title": "Orari di apertura",
         "description": "Imposta gli orari di apertura del tuo negozio",

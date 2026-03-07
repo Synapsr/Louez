@@ -2784,6 +2784,19 @@
           "expiresAfterStarts": "La date d'expiration doit être après la date de début"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Intégrez un sélecteur de dates de location sur votre site web. Vos clients pourront choisir leurs dates et seront redirigés vers votre boutique en ligne.",
+        "preview": "Aperçu",
+        "previewDescription": "Voici comment le widget apparaîtra sur votre site",
+        "code": "Code d'intégration",
+        "codeDescription": "Copiez ce code HTML et collez-le dans votre site web",
+        "height": "Hauteur",
+        "copy": "Copier",
+        "copied": "Copié !",
+        "directLink": "Lien direct :",
+        "iframeTitle": "Réserver chez {storeName}"
+      },
       "businessHours": {
         "title": "Horaires d'ouverture",
         "description": "Définissez les horaires d'ouverture de votre boutique",

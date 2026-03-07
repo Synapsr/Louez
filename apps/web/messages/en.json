@@ -2784,6 +2784,19 @@
           "expiresAfterStarts": "Expiry date must be after start date"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Embed a rental date picker on your website. Your customers can select dates and will be redirected to your online store.",
+        "preview": "Preview",
+        "previewDescription": "This is how the widget will appear on your website",
+        "code": "Embed code",
+        "codeDescription": "Copy this HTML code and paste it into your website",
+        "height": "Height",
+        "copy": "Copy",
+        "copied": "Copied!",
+        "directLink": "Direct link:",
+        "iframeTitle": "Book at {storeName}"
+      },
       "businessHours": {
         "title": "Business hours",
         "description": "Set your store's opening hours",

@@ -2484,6 +2484,19 @@
           "expiresAfterStarts": "Data wygaśnięcia musi być późniejsza niż data rozpoczęcia"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Osadź selektor dat wynajmu na swojej stronie internetowej. Twoi klienci mogą wybrać daty i zostaną przekierowani do Twojego sklepu internetowego.",
+        "preview": "Podgląd",
+        "previewDescription": "Tak widget będzie wyglądał na Twojej stronie internetowej",
+        "code": "Kod osadzenia",
+        "codeDescription": "Skopiuj ten kod HTML i wklej go na swojej stronie internetowej",
+        "height": "Wysokość",
+        "copy": "Kopiuj",
+        "copied": "Skopiowano!",
+        "directLink": "Bezpośredni link:",
+        "iframeTitle": "Zarezerwuj w {storeName}"
+      },
       "businessHours": {
         "title": "Godziny otwarcia",
         "description": "Ustaw godziny otwarcia swojego sklepu",

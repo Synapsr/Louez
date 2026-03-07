@@ -2485,6 +2485,19 @@
           "expiresAfterStarts": "A data de expiração deve ser posterior à data de início"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Incorpore um seletor de datas de aluguer no seu site. Os seus clientes podem selecionar datas e serão redirecionados para a sua loja online.",
+        "preview": "Pré-visualização",
+        "previewDescription": "É assim que o widget aparecerá no seu site",
+        "code": "Código de incorporação",
+        "codeDescription": "Copie este código HTML e cole-o no seu site",
+        "height": "Altura",
+        "copy": "Copiar",
+        "copied": "Copiado!",
+        "directLink": "Link direto:",
+        "iframeTitle": "Reservar em {storeName}"
+      },
       "businessHours": {
         "title": "Horario comercial",
         "description": "Defina os horarios de funcionamento da sua loja",

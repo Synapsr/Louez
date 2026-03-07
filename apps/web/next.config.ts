@@ -207,9 +207,30 @@ const nextConfig: NextConfig = {
   },
   // Security headers for all routes
   async headers() {
+    // Embed routes: allow framing from any origin (for iframe embedding)
+    const embedSecurityHeaders = securityHeaders
+      .filter((h) => h.key !== 'X-Frame-Options')
+      .map((h) => {
+        if (h.key === 'Content-Security-Policy') {
+          return {
+            ...h,
+            value: h.value.replace(
+              /frame-ancestors\s+'self'/,
+              'frame-ancestors *'
+            ),
+          }
+        }
+        return h
+      })
+
     return [
       {
-        // Apply to all routes
+        // Embed routes: allow iframe embedding from any domain
+        source: '/:slug/embed',
+        headers: embedSecurityHeaders,
+      },
+      {
+        // Apply to all other routes
         source: '/:path*',
         headers: securityHeaders,
       },

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { db } from '@louez/db'
@@ -95,6 +96,25 @@ export default async function StorefrontLayout({
   const theme = (store.theme as StoreTheme) || { mode: 'light', primaryColor: '#0066FF' }
   const settings = (store.settings as StoreSettings) || {}
   const currency = settings.currency || 'EUR'
+
+  // Detect embed mode from proxy header or URL path
+  const headersList = await headers()
+  const isEmbed = headersList.get('x-embed-mode') === '1'
+    || headersList.get('x-next-url')?.includes('/embed')
+    || headersList.get('x-invoke-path')?.includes('/embed')
+
+  // Embed mode: minimal layout without header/footer/analytics
+  if (isEmbed) {
+    return (
+      <NextIntlClientProvider messages={messages}>
+        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
+          <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
+            {children}
+          </ThemeWrapper>
+        </StoreProvider>
+      </NextIntlClientProvider>
+    )
+  }
 
   return (
     <NextIntlClientProvider messages={messages}>

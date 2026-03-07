@@ -2496,6 +2496,19 @@
           "expiresAfterStarts": "Das Ablaufdatum muss nach dem Startdatum liegen"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Betten Sie einen Mietdatumsauswähler auf Ihrer Website ein. Ihre Kunden können Daten auswählen und werden zu Ihrem Online-Shop weitergeleitet.",
+        "preview": "Vorschau",
+        "previewDescription": "So wird das Widget auf Ihrer Website angezeigt",
+        "code": "Einbettungscode",
+        "codeDescription": "Kopieren Sie diesen HTML-Code und fügen Sie ihn auf Ihrer Website ein",
+        "height": "Höhe",
+        "copy": "Kopieren",
+        "copied": "Kopiert!",
+        "directLink": "Direktlink:",
+        "iframeTitle": "Buchen bei {storeName}"
+      },
       "businessHours": {
         "title": "Öffnungszeiten",
         "description": "Legen Sie die Öffnungszeiten Ihres Shops fest",

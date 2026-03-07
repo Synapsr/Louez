@@ -2498,6 +2498,19 @@
           "expiresAfterStarts": "La fecha de expiración debe ser posterior a la fecha de inicio"
         }
       },
+      "embed": {
+        "title": "Widget",
+        "description": "Integre un selector de fechas de alquiler en su sitio web. Sus clientes pueden seleccionar fechas y serán redirigidos a su tienda en línea.",
+        "preview": "Vista previa",
+        "previewDescription": "Así es como aparecerá el widget en su sitio web",
+        "code": "Código de integración",
+        "codeDescription": "Copie este código HTML y péguelo en su sitio web",
+        "height": "Altura",
+        "copy": "Copiar",
+        "copied": "¡Copiado!",
+        "directLink": "Enlace directo:",
+        "iframeTitle": "Reservar en {storeName}"
+      },
       "businessHours": {
         "title": "Horario comercial",
         "description": "Establezca los horarios de apertura de su tienda",

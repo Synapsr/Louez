@@ -106,7 +106,14 @@ export function proxy(request: NextRequest) {
   if (isLocalhost && !subdomain && PREVIEW_STORE_SLUG && !isDashboardRoute(pathname)) {
     const url = request.nextUrl.clone()
     url.pathname = `/${PREVIEW_STORE_SLUG}${pathname}`
-    return NextResponse.rewrite(url)
+    const response = NextResponse.rewrite(url)
+
+    // Set embed mode header for embed routes
+    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
+      response.headers.set('x-embed-mode', '1')
+    }
+
+    return response
   }
 
   // -----------------------------------------------------------------------------
@@ -127,7 +134,14 @@ export function proxy(request: NextRequest) {
   if (subdomain && subdomain !== 'www') {
     const url = request.nextUrl.clone()
     url.pathname = `/${subdomain}${pathname}`
-    return NextResponse.rewrite(url)
+    const response = NextResponse.rewrite(url)
+
+    // Set embed mode header for embed routes (used by layout to skip chrome)
+    if (pathname === '/embed' || pathname.startsWith('/embed/')) {
+      response.headers.set('x-embed-mode', '1')
+    }
+
+    return response
   }
 
   // -----------------------------------------------------------------------------
