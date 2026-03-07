@@ -3,18 +3,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
 import { format, addDays } from 'date-fns'
-import { fr } from 'date-fns/locale'
-import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
+import { ArrowRight, AlertCircle, Globe, CheckCircle, Shield, MapPin } from 'lucide-react'
 
 import { Button } from '@louez/ui'
-import { Calendar } from '@louez/ui'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@louez/ui'
-import { ScrollArea } from '@louez/ui'
-import { cn } from '@louez/utils'
 import { type PricingMode } from '@/lib/utils/duration'
 import {
   formatDurationFromMinutes,
@@ -35,7 +26,23 @@ interface EmbedDatePickerProps {
   timezone?: string
 }
 
-type ActiveField = 'startDate' | 'startTime' | 'endDate' | 'endTime' | null
+function toInputDate(date: Date | undefined): string {
+  return date ? format(date, 'yyyy-MM-dd') : ''
+}
+
+function fromInputDate(str: string): Date | undefined {
+  return str ? new Date(str + 'T00:00:00') : undefined
+}
+
+const DEFAULT_TIME_SLOTS: string[] = (() => {
+  const slots: string[] = []
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`)
+    }
+  }
+  return slots
+})()
 
 export function EmbedDatePicker({
   rentalUrl,
@@ -50,27 +57,16 @@ export function EmbedDatePicker({
   const tHero = useTranslations('storefront.hero')
   const tBusinessHours = useTranslations('storefront.dateSelection.businessHours')
 
-  const isTransitioningRef = useRef(false)
-  const endDateAutoSetRef = useRef(false)
-
   const [startDate, setStartDate] = useState<Date | undefined>(undefined)
   const [endDate, setEndDate] = useState<Date | undefined>(undefined)
   const [startTime, setStartTime] = useState<string>('09:00')
   const [endTime, setEndTime] = useState<string>('18:00')
-  const [, setActiveField] = useState<ActiveField>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
-
-  const [startDateOpen, setStartDateOpen] = useState(false)
-  const [startTimeOpen, setStartTimeOpen] = useState(false)
-  const [endDateOpen, setEndDateOpen] = useState(false)
-  const [endTimeOpen, setEndTimeOpen] = useState(false)
-  const [hideEndDateSelection, setHideEndDateSelection] = useState(false)
 
   const {
     isSameDay,
     startTimeSlots,
     endTimeSlots,
-    isDateDisabled,
   } = useRentalDateCore({
     startDate,
     endDate,
@@ -81,12 +77,12 @@ export function EmbedDatePicker({
     timezone,
   })
 
-  // Clear error when user changes dates
+  // Clear error when user changes any field
   useEffect(() => {
     setSubmitError(null)
   }, [startDate, endDate, startTime, endTime])
 
-  // Auto-adjust times when slots change
+  // Auto-adjust times when available slots change
   useEffect(() => {
     if (startDate && startTimeSlots.length > 0) {
       setStartTime((prev) => ensureSelectedTime(prev, startTimeSlots, 'first'))
@@ -105,8 +101,7 @@ export function EmbedDatePicker({
     const el = containerRef.current
     if (!el) return
     const observer = new ResizeObserver(() => {
-      const height = el.scrollHeight
-      window.parent.postMessage({ type: 'louez-embed-resize', height }, '*')
+      window.parent.postMessage({ type: 'louez-embed-resize', height: el.scrollHeight }, '*')
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -116,16 +111,16 @@ export function EmbedDatePicker({
     const params = new URLSearchParams()
     params.set('startDate', start.toISOString())
     params.set('endDate', end.toISOString())
-    const url = `${rentalUrl}?${params.toString()}`
-    window.open(url, '_blank', 'noopener')
+    window.open(`${rentalUrl}?${params.toString()}`, '_blank', 'noopener')
   }, [rentalUrl])
 
-  const handleStartDateSelect = (date: Date | undefined) => {
-    if (!date) return
-    setStartDate(date)
-    setStartDateOpen(false)
+  const today = format(new Date(), 'yyyy-MM-dd')
 
-    if (!endDate || date >= endDate) {
+  const handleStartDateChange = (dateStr: string) => {
+    const date = fromInputDate(dateStr)
+    setStartDate(date)
+
+    if (date && (!endDate || endDate <= date)) {
       if (pricingMode === 'hour') {
         setEndDate(date)
       } else {
@@ -133,114 +128,28 @@ export function EmbedDatePicker({
         const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
         setEndDate(nextAvailable ?? nextDay)
       }
-      endDateAutoSetRef.current = true
-    }
-
-    isTransitioningRef.current = true
-    setTimeout(() => {
-      setStartTimeOpen(true)
-      setActiveField('startTime')
-      isTransitioningRef.current = false
-    }, 250)
-  }
-
-  const handleStartTimeSelect = (time: string) => {
-    setStartTime(time)
-    setStartTimeOpen(false)
-
-    isTransitioningRef.current = true
-    setTimeout(() => {
-      if (endDateAutoSetRef.current) {
-        setHideEndDateSelection(true)
-      }
-      setEndDateOpen(true)
-      setActiveField('endDate')
-      isTransitioningRef.current = false
-    }, 250)
-  }
-
-  const handleEndDateSelect = (date: Date | undefined) => {
-    if (!date) return
-    setEndDate(date)
-    setEndDateOpen(false)
-    endDateAutoSetRef.current = false
-    setHideEndDateSelection(false)
-
-    isTransitioningRef.current = true
-    setTimeout(() => {
-      setEndTimeOpen(true)
-      setActiveField('endTime')
-      isTransitioningRef.current = false
-    }, 250)
-  }
-
-  const handleEndTimeSelect = (time: string) => {
-    setEndTime(time)
-    setEndTimeOpen(false)
-    setActiveField(null)
-
-    const { start: finalStart, end: finalEnd } = buildDateTimeRange({
-      startDate: startDate!,
-      endDate: endDate!,
-      startTime,
-      endTime: time,
-      timezone,
-    })
-
-    openRentalPage(finalStart, finalEnd)
-  }
-
-  const handleStartDateOpenChange = (open: boolean) => {
-    if (isTransitioningRef.current) return
-    setStartDateOpen(open)
-    if (open) setActiveField('startDate')
-  }
-
-  const handleStartTimeOpenChange = (open: boolean) => {
-    if (isTransitioningRef.current) return
-    if (open && !startDate) {
-      setStartDateOpen(true)
-      setActiveField('startDate')
-      return
-    }
-    setStartTimeOpen(open)
-    if (open) setActiveField('startTime')
-  }
-
-  const handleEndDateOpenChange = (open: boolean) => {
-    if (isTransitioningRef.current) return
-    if (open && !startDate) {
-      setStartDateOpen(true)
-      setActiveField('startDate')
-      return
-    }
-    setEndDateOpen(open)
-    if (open) {
-      setActiveField('endDate')
-    } else {
-      setHideEndDateSelection(false)
     }
   }
 
-  const handleEndTimeOpenChange = (open: boolean) => {
-    if (isTransitioningRef.current) return
-    if (open && !endDate) {
-      if (!startDate) {
-        setStartDateOpen(true)
-        setActiveField('startDate')
-      } else {
-        setEndDateOpen(true)
-        setActiveField('endDate')
-      }
-      return
-    }
-    setEndTimeOpen(open)
-    if (open) setActiveField('endTime')
+  const handleEndDateChange = (dateStr: string) => {
+    setEndDate(fromInputDate(dateStr))
   }
+
+  // Use business hours slots when available, default slots as fallback
+  const effectiveStartSlots = startDate
+    ? (startTimeSlots.length > 0 ? startTimeSlots : [])
+    : DEFAULT_TIME_SLOTS
+  const effectiveEndSlots = endDate
+    ? (endTimeSlots.length > 0 ? endTimeSlots : [])
+    : DEFAULT_TIME_SLOTS
+
+  const startClosed = startDate && effectiveStartSlots.length === 0
+  const endClosed = endDate && effectiveEndSlots.length === 0
 
   const getValidationError = useMemo(() => {
     if (!startDate) return tEmbed('errors.selectStartDate')
     if (!endDate) return tEmbed('errors.selectEndDate')
+    if (startClosed || endClosed) return tBusinessHours('storeClosed')
     if (isSameDay && endTime <= startTime) return tEmbed('errors.endTimeAfterStart')
     if (minRentalMinutes > 0) {
       const { start: fullStart, end: fullEnd } = buildDateTimeRange({
@@ -257,9 +166,7 @@ export function EmbedDatePicker({
       }
     }
     return null
-  }, [startDate, endDate, startTime, endTime, isSameDay, minRentalMinutes, timezone, t, tEmbed])
-
-  const canSubmit = getValidationError === null
+  }, [startDate, endDate, startTime, endTime, isSameDay, startClosed, endClosed, minRentalMinutes, timezone, t, tEmbed, tBusinessHours])
 
   const timezoneCity = useMemo(() => {
     if (!timezone) return null
@@ -270,16 +177,8 @@ export function EmbedDatePicker({
   }, [timezone])
 
   const handleSubmit = () => {
-    if (!canSubmit) {
+    if (getValidationError) {
       setSubmitError(getValidationError)
-      // If no start date, open the start date picker to guide the user
-      if (!startDate) {
-        setStartDateOpen(true)
-        setActiveField('startDate')
-      } else if (!endDate) {
-        setEndDateOpen(true)
-        setActiveField('endDate')
-      }
       return
     }
 
@@ -293,53 +192,6 @@ export function EmbedDatePicker({
     openRentalPage(finalStart, finalEnd)
   }
 
-  const TimeSelector = ({
-    value,
-    onSelect,
-    slots,
-    disabledBefore,
-  }: {
-    value: string
-    onSelect: (time: string) => void
-    slots: string[]
-    disabledBefore?: string
-  }) => (
-    <ScrollArea className="h-56">
-      <div className="p-1">
-        {slots.length === 0 ? (
-          <div className="p-4 text-center text-sm text-muted-foreground">
-            <AlertCircle className="h-5 w-5 mx-auto mb-2" />
-            {tBusinessHours('storeClosed')}
-          </div>
-        ) : (
-          slots.map((time) => {
-            const isDisabled = disabledBefore ? time <= disabledBefore : false
-            const isSelected = value === time
-
-            return (
-              <button
-                key={time}
-                onClick={() => !isDisabled && onSelect(time)}
-                disabled={isDisabled}
-                className={cn(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-md text-left transition-colors text-sm",
-                  isSelected
-                    ? "bg-primary text-primary-foreground"
-                    : isDisabled
-                      ? "text-muted-foreground/40 cursor-not-allowed"
-                      : "hover:bg-muted"
-                )}
-              >
-                <span className="font-medium">{time}</span>
-                {isSelected && <Check className="h-3.5 w-3.5" />}
-              </button>
-            )
-          })
-        )}
-      </div>
-    </ScrollArea>
-  )
-
   return (
     <div className="w-full" ref={containerRef}>
       <div className="bg-background rounded-2xl border shadow-sm p-3">
@@ -349,7 +201,7 @@ export function EmbedDatePicker({
             {tEmbed('title')}
           </h2>
 
-          {/* Date/Time inputs - always 2 columns */}
+          {/* Date/Time inputs - native controls for iframe compatibility */}
           <div className="grid grid-cols-2 gap-2">
             {/* Start Date/Time */}
             <div>
@@ -357,41 +209,28 @@ export function EmbedDatePicker({
                 {t('startLabel')}
               </label>
               <div className="flex rounded-lg border bg-background overflow-hidden h-9">
-                <Popover open={startDateOpen} onOpenChange={handleStartDateOpenChange}>
-                  <PopoverTrigger render={<button
-                      className={cn(
-                        "flex-1 flex items-center gap-1.5 px-2 text-left hover:bg-muted/50 transition-colors min-w-0",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    />}>
-                      <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
-                      <span className="font-medium text-xs truncate">
-                        {startDate ? format(startDate, 'd MMM', { locale: fr }) : t('startDate')}
-                      </span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start" side="bottom">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={handleStartDateSelect}
-                      disabled={isDateDisabled}
-                      locale={fr}
-                      autoFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
+                <input
+                  type="date"
+                  value={toInputDate(startDate)}
+                  min={today}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className="flex-1 px-2 text-xs bg-transparent outline-none min-w-0 cursor-pointer"
+                />
                 <div className="w-px bg-border my-1.5" />
-
-                <Popover open={startTimeOpen} onOpenChange={handleStartTimeOpenChange}>
-                  <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors shrink-0" />}>
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-xs">{startTime}</span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-36 p-0" align="start" side="bottom">
-                    <TimeSelector value={startTime} onSelect={handleStartTimeSelect} slots={startTimeSlots} />
-                  </PopoverContent>
-                </Popover>
+                <select
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  disabled={effectiveStartSlots.length === 0}
+                  className="px-1 text-xs bg-transparent outline-none cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {effectiveStartSlots.length === 0 ? (
+                    <option disabled>--:--</option>
+                  ) : (
+                    effectiveStartSlots.map((slot) => (
+                      <option key={slot} value={slot}>{slot}</option>
+                    ))
+                  )}
+                </select>
               </div>
             </div>
 
@@ -401,51 +240,31 @@ export function EmbedDatePicker({
                 {t('endLabel')}
               </label>
               <div className="flex rounded-lg border bg-background overflow-hidden h-9">
-                <Popover open={endDateOpen} onOpenChange={handleEndDateOpenChange}>
-                  <PopoverTrigger render={<button
-                      className={cn(
-                        "flex-1 flex items-center gap-1.5 px-2 text-left hover:bg-muted/50 transition-colors min-w-0",
-                        !endDate && "text-muted-foreground"
-                      )}
-                    />}>
-                      <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-primary" />
-                      <span className="font-medium text-xs truncate">
-                        {endDate ? format(endDate, 'd MMM', { locale: fr }) : t('endDate')}
-                      </span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end" side="bottom">
-                    <Calendar
-                      mode="single"
-                      selected={hideEndDateSelection ? undefined : endDate}
-                      defaultMonth={endDate}
-                      onSelect={handleEndDateSelect}
-                      disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
-                      locale={fr}
-                      autoFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
+                <input
+                  type="date"
+                  value={toInputDate(endDate)}
+                  min={startDate ? toInputDate(startDate) : today}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  className="flex-1 px-2 text-xs bg-transparent outline-none min-w-0 cursor-pointer"
+                />
                 <div className="w-px bg-border my-1.5" />
-
-                <Popover open={endTimeOpen} onOpenChange={handleEndTimeOpenChange}>
-                  <PopoverTrigger render={<button className="flex items-center gap-1 px-2 hover:bg-muted/50 transition-colors shrink-0" />}>
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-medium text-xs">{endTime}</span>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-36 p-0" align="end" side="bottom">
-                    <TimeSelector
-                      value={endTime}
-                      onSelect={handleEndTimeSelect}
-                      slots={endTimeSlots}
-                      disabledBefore={
-                        startDate && endDate && startDate.toDateString() === endDate.toDateString()
-                          ? startTime
-                          : undefined
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
+                <select
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={effectiveEndSlots.length === 0}
+                  className="px-1 text-xs bg-transparent outline-none cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {effectiveEndSlots.length === 0 ? (
+                    <option disabled>--:--</option>
+                  ) : (
+                    effectiveEndSlots.map((slot) => {
+                      const isDisabled = isSameDay && startTime ? slot <= startTime : false
+                      return (
+                        <option key={slot} value={slot} disabled={isDisabled}>{slot}</option>
+                      )
+                    })
+                  )}
+                </select>
               </div>
             </div>
           </div>

@@ -32,7 +32,7 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
   <iframe
     src="${embedUrl}"
     width="100%"
-    height="200"
+    height="180"
     frameborder="0"
     style="border: none; border-radius: 16px;"
     title="${t('iframeTitle', { storeName })}"
@@ -71,7 +71,7 @@ export function EmbedCodeSection({ embedUrl, storeName }: EmbedCodeSectionProps)
               ref={previewIframeRef}
               src={embedUrl}
               width="100%"
-              height="200"
+              height="180"
               style={{ border: 'none', borderRadius: '16px', maxWidth: '600px' }}
               title={t('iframeTitle', { storeName })}
             />
