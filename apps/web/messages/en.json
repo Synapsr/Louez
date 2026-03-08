@@ -3461,6 +3461,7 @@
       "instantConfirmation": "Instant confirmation",
       "securePayment": "Secure payment",
       "localPickup": "Local pickup",
+      "localPickupOrDelivery": "Pickup or delivery",
       "simpleReservation": "Simple reservation",
       "simpleReservationDesc": "Book in a few clicks",
       "securePaymentDesc": "100% secure transactions",

@@ -29,6 +29,7 @@ export default async function EmbedPage({ params }: EmbedPageProps) {
   const timezone = settings.timezone
   const advanceNotice = settings.advanceNoticeMinutes || 0
   const minRentalMinutes = getMinRentalMinutes(settings)
+  const deliveryEnabled = settings.delivery?.enabled ?? false
   const rentalUrl = getStorefrontUrl(slug, '/rental')
 
   return (
@@ -41,6 +42,7 @@ export default async function EmbedPage({ params }: EmbedPageProps) {
           advanceNotice={advanceNotice}
           minRentalMinutes={minRentalMinutes}
           timezone={timezone}
+          deliveryEnabled={deliveryEnabled}
         />
       </Suspense>
     </div>

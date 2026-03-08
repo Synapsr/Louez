@@ -40,6 +40,7 @@ interface EmbedDatePickerProps {
   advanceNotice?: number
   minRentalMinutes?: number
   timezone?: string
+  deliveryEnabled?: boolean
 }
 
 type Step = 'idle' | 'startDate' | 'startTime' | 'endDate' | 'endTime'
@@ -147,6 +148,7 @@ export function EmbedDatePicker({
   businessHours,
   advanceNotice = 0,
   minRentalMinutes = 0,
+  deliveryEnabled = false,
   timezone,
 }: EmbedDatePickerProps) {
   const t = useTranslations('storefront.dateSelection')
@@ -457,7 +459,7 @@ export function EmbedDatePicker({
               <span className="text-border">·</span>
               <span className="inline-flex items-center gap-0.5">
                 <MapPin className="h-2.5 w-2.5 text-primary/60" />
-                {tHero('localPickup')}
+                {deliveryEnabled ? tHero('localPickupOrDelivery') : tHero('localPickup')}
               </span>
             </div>
 

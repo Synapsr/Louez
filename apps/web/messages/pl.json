@@ -3152,6 +3152,7 @@
       "instantConfirmation": "Natychmiastowe potwierdzenie",
       "securePayment": "Bezpieczna płatność",
       "localPickup": "Odbiór lokalny",
+      "localPickupOrDelivery": "Odbiór lub dostawa",
       "simpleReservation": "Prosta rezerwacja",
       "simpleReservationDesc": "Zarezerwuj w kilka kliknięć",
       "securePaymentDesc": "100% bezpieczne transakcje",

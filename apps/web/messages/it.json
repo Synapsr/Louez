@@ -3152,6 +3152,7 @@
       "instantConfirmation": "Conferma immediata",
       "securePayment": "Pagamento sicuro",
       "localPickup": "Ritiro in loco",
+      "localPickupOrDelivery": "Ritiro o consegna",
       "simpleReservation": "Prenotazione semplice",
       "simpleReservationDesc": "Prenota in pochi clic",
       "securePaymentDesc": "Transazioni 100% sicure",

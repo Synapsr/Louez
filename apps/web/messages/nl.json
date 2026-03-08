@@ -3152,6 +3152,7 @@
       "instantConfirmation": "Directe bevestiging",
       "securePayment": "Veilige betaling",
       "localPickup": "Lokaal ophalen",
+      "localPickupOrDelivery": "Ophalen of levering",
       "simpleReservation": "Eenvoudige reservering",
       "simpleReservationDesc": "Boek in een paar klikken",
       "securePaymentDesc": "100% veilige transacties",

@@ -3153,6 +3153,7 @@
       "instantConfirmation": "Confirmacao instantanea",
       "securePayment": "Pagamento seguro",
       "localPickup": "Retirada local",
+      "localPickupOrDelivery": "Retirada ou entrega",
       "simpleReservation": "Reserva simples",
       "simpleReservationDesc": "Reserve em poucos cliques",
       "securePaymentDesc": "Transacoes 100% seguras",
