@@ -24,7 +24,7 @@ type PlanLimits = {
 
 const LIMITS_BY_PLAN: Record<string, PlanLimits> = {
   ultra: { perMinute: 20, perHour: 100, perDay: 500 },
-  pro: { perMinute: 5, perHour: 10, perDay: 25 },
+  pro: { perMinute: 5, perHour: 5, perDay: 5 },
 }
 
 const MAX_MESSAGE_LENGTH = 10_000
