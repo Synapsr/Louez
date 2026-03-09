@@ -22,6 +22,7 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/email/package.json ./packages/email/
 COPY packages/pdf/package.json ./packages/pdf/
+COPY packages/mcp/package.json ./packages/mcp/
 COPY apps/web/package.json ./apps/web/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
@@ -38,6 +39,7 @@ COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY --from=deps /app/packages/email/node_modules ./packages/email/node_modules
 COPY --from=deps /app/packages/pdf/node_modules ./packages/pdf/node_modules
+COPY --from=deps /app/packages/mcp/node_modules ./packages/mcp/node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
