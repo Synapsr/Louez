@@ -64,13 +64,13 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
       const lines = rows.map(
         (p) =>
           `- **${p.name}** (${p.id})\n` +
-          `  Prix: ${formatCurrency(p.price)}/${p.pricingMode} | Caution: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity}\n` +
-          `  Statut: ${p.status}${p.categoryName ? ` | Catégorie: ${p.categoryName}` : ''}`
+          `  Price: ${formatCurrency(p.price)}/${p.pricingMode} | Deposit: ${formatCurrency(p.deposit ?? '0')} | Stock: ${p.quantity}\n` +
+          `  Status: ${p.status}${p.categoryName ? ` | Category: ${p.categoryName}` : ''}`
       )
 
       const total = countResult?.total ?? 0
       return toolResult(
-        `## Produits (${total} résultat${total > 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'Aucun produit trouvé.'}`
+        `## Products (${total} result${total !== 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'No products found.'}`
       )
     }
   )
@@ -94,33 +94,33 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
         },
       })
 
-      if (!product) return toolError('Produit non trouvé.')
+      if (!product) return toolError('Product not found.')
 
       let text =
         `## ${product.name}\n\n` +
         `- **ID**: ${product.id}\n` +
-        `- **Statut**: ${product.status}\n` +
-        `- **Prix**: ${formatCurrency(product.price)}/${product.pricingMode}\n` +
-        `- **Caution**: ${formatCurrency(product.deposit ?? '0')}\n` +
+        `- **Status**: ${product.status}\n` +
+        `- **Price**: ${formatCurrency(product.price)}/${product.pricingMode}\n` +
+        `- **Deposit**: ${formatCurrency(product.deposit ?? '0')}\n` +
         `- **Stock**: ${product.quantity}\n` +
-        `- **Catégorie**: ${product.category?.name ?? '—'}\n` +
-        `- **Suivi des unités**: ${product.trackUnits ? 'Oui' : 'Non'}\n` +
-        `- **Créé le**: ${formatDate(product.createdAt)}\n`
+        `- **Category**: ${product.category?.name ?? '—'}\n` +
+        `- **Unit tracking**: ${product.trackUnits ? 'Yes' : 'No'}\n` +
+        `- **Created**: ${formatDate(product.createdAt)}\n`
 
       if (product.description) {
         text += `\n### Description\n${product.description}\n`
       }
 
       if (product.pricingTiers.length > 0) {
-        text += `\n### Paliers tarifaires\n`
+        text += `\n### Pricing tiers\n`
         for (const tier of product.pricingTiers) {
           const duration = tier.minDuration ?? tier.period ?? '—'
-          text += `- ${duration}+ durée: ${formatCurrency(tier.price ?? '0')}/${product.pricingMode}\n`
+          text += `- ${duration}+ duration: ${formatCurrency(tier.price ?? '0')}/${product.pricingMode}\n`
         }
       }
 
       if (product.units.length > 0) {
-        text += `\n### Unités (${product.units.length})\n`
+        text += `\n### Units (${product.units.length})\n`
         for (const unit of product.units) {
           text += `- ${unit.identifier} — ${unit.status}\n`
         }
@@ -162,10 +162,10 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
         .$returningId()
 
       return toolResult(
-        `Produit créé avec succès.\n\n` +
-          `- **Nom**: ${name}\n` +
+        `Product created successfully.\n\n` +
+          `- **Name**: ${name}\n` +
           `- **ID**: ${created.id}\n` +
-          `- **Prix**: ${formatCurrency(price)}/${pricingMode}\n` +
+          `- **Price**: ${formatCurrency(price)}/${pricingMode}\n` +
           `- **Stock**: ${quantity ?? 1}`
       )
     }
@@ -187,12 +187,11 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
     async ({ productId, ...updates }) => {
       requirePermission(ctx, 'products', 'write')
 
-      // Verify product belongs to store
       const existing = await db.query.products.findFirst({
         where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         columns: { id: true },
       })
-      if (!existing) return toolError('Produit non trouvé.')
+      if (!existing) return toolError('Product not found.')
 
       const updateData: Record<string, unknown> = {}
       if (updates.name !== undefined) updateData.name = updates.name
@@ -203,12 +202,12 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
       if (updates.status !== undefined) updateData.status = updates.status
 
       if (Object.keys(updateData).length === 0) {
-        return toolError('Aucun champ à mettre à jour.')
+        return toolError('No fields to update.')
       }
 
       await db.update(products).set(updateData).where(eq(products.id, productId))
 
-      return toolResult(`Produit ${productId} mis à jour avec succès.`)
+      return toolResult(`Product ${productId} updated successfully.`)
     }
   )
 
@@ -226,9 +225,8 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
         where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
         columns: { id: true, name: true },
       })
-      if (!existing) return toolError('Produit non trouvé.')
+      if (!existing) return toolError('Product not found.')
 
-      // Check for active reservations using this product
       const [activeCount] = await db
         .select({ count: sql<number>`COUNT(*)` })
         .from(reservationItems)
@@ -242,13 +240,13 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
 
       if (activeCount && activeCount.count > 0) {
         return toolError(
-          `Impossible d'archiver "${existing.name}": ${activeCount.count} réservation(s) active(s) utilisent ce produit.`
+          `Cannot archive "${existing.name}": ${activeCount.count} active reservation(s) use this product.`
         )
       }
 
       await db.update(products).set({ status: 'archived' }).where(eq(products.id, productId))
 
-      return toolResult(`Produit "${existing.name}" archivé avec succès.`)
+      return toolResult(`Product "${existing.name}" archived successfully.`)
     }
   )
 }

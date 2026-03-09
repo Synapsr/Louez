@@ -83,13 +83,13 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       const lines = rows.map(
         (r) =>
           `- **#${r.number}** (${r.id}) — ${formatStatus(r.status)}\n` +
-          `  Client: ${r.customerFirstName} ${r.customerLastName}\n` +
-          `  Période: ${formatDate(r.startDate)} → ${formatDate(r.endDate)}\n` +
-          `  Montant: ${formatCurrency(r.totalAmount)}`
+          `  Customer: ${r.customerFirstName} ${r.customerLastName}\n` +
+          `  Period: ${formatDate(r.startDate)} → ${formatDate(r.endDate)}\n` +
+          `  Amount: ${formatCurrency(r.totalAmount)}`
       )
 
       return toolResult(
-        `## Réservations (${total} résultat${total > 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'Aucune réservation trouvée.'}`
+        `## Reservations (${total} result${total !== 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'No reservations found.'}`
       )
     }
   )
@@ -116,49 +116,49 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
         },
       })
 
-      if (!reservation) return toolError('Réservation non trouvée.')
+      if (!reservation) return toolError('Reservation not found.')
 
       let text =
-        `## Réservation #${reservation.number}\n\n` +
+        `## Reservation #${reservation.number}\n\n` +
         `- **ID**: ${reservation.id}\n` +
-        `- **Statut**: ${formatStatus(reservation.status)}\n` +
-        `- **Période**: ${formatDateTime(reservation.startDate)} → ${formatDateTime(reservation.endDate)}\n` +
+        `- **Status**: ${formatStatus(reservation.status)}\n` +
+        `- **Period**: ${formatDateTime(reservation.startDate)} → ${formatDateTime(reservation.endDate)}\n` +
         `- **Source**: ${reservation.source}\n` +
-        `- **Créée le**: ${formatDateTime(reservation.createdAt)}\n`
+        `- **Created**: ${formatDateTime(reservation.createdAt)}\n`
 
       // Customer
       const c = reservation.customer
       if (c) {
         text +=
-          `\n### Client\n` +
+          `\n### Customer\n` +
           `- ${c.firstName} ${c.lastName} (${c.customerType})\n` +
           `- Email: ${c.email}\n` +
-          (c.phone ? `- Tél: ${c.phone}\n` : '')
+          (c.phone ? `- Phone: ${c.phone}\n` : '')
       }
 
       // Items
-      text += `\n### Articles (${reservation.items.length})\n`
+      text += `\n### Items (${reservation.items.length})\n`
       for (const item of reservation.items) {
-        const productName = item.product?.name ?? item.productSnapshot?.name ?? 'Article personnalisé'
-        text += `- ${productName} × ${item.quantity} — ${formatCurrency(item.totalPrice)}\n`
+        const productName = item.product?.name ?? item.productSnapshot?.name ?? 'Custom item'
+        text += `- ${productName} x ${item.quantity} — ${formatCurrency(item.totalPrice)}\n`
       }
 
       // Amounts
       text +=
-        `\n### Montants\n` +
-        `- Sous-total: ${formatCurrency(reservation.subtotalAmount)}\n` +
-        `- Caution: ${formatCurrency(reservation.depositAmount)}\n` +
+        `\n### Amounts\n` +
+        `- Subtotal: ${formatCurrency(reservation.subtotalAmount)}\n` +
+        `- Deposit: ${formatCurrency(reservation.depositAmount)}\n` +
         (reservation.discountAmount && parseFloat(reservation.discountAmount) > 0
-          ? `- Remise: -${formatCurrency(reservation.discountAmount)}\n`
+          ? `- Discount: -${formatCurrency(reservation.discountAmount)}\n`
           : '') +
         (reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0
-          ? `- Livraison: ${formatCurrency(reservation.deliveryFee)}\n`
+          ? `- Delivery: ${formatCurrency(reservation.deliveryFee)}\n`
           : '') +
         `- **Total**: ${formatCurrency(reservation.totalAmount)}\n`
 
       // Payments
       if (reservation.payments.length > 0) {
-        text += `\n### Paiements (${reservation.payments.length})\n`
+        text += `\n### Payments (${reservation.payments.length})\n`
         for (const p of reservation.payments) {
           text += `- ${p.type} — ${formatCurrency(p.amount)} (${p.method}, ${p.status})\n`
         }
@@ -166,15 +166,15 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
 
       // Delivery
       if (reservation.deliveryOption === 'delivery' && reservation.deliveryAddress) {
-        text += `\n### Livraison\n- ${reservation.deliveryAddress}, ${reservation.deliveryCity} ${reservation.deliveryPostalCode}\n`
+        text += `\n### Delivery\n- ${reservation.deliveryAddress}, ${reservation.deliveryCity} ${reservation.deliveryPostalCode}\n`
       }
 
       // Notes
       if (reservation.internalNotes) {
-        text += `\n### Notes internes\n${reservation.internalNotes}\n`
+        text += `\n### Internal notes\n${reservation.internalNotes}\n`
       }
       if (reservation.customerNotes) {
-        text += `\n### Notes client\n${reservation.customerNotes}\n`
+        text += `\n### Customer notes\n${reservation.customerNotes}\n`
       }
 
       return toolResult(text)
@@ -203,9 +203,8 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
         columns: { id: true, number: true, status: true },
       })
 
-      if (!existing) return toolError('Réservation non trouvée.')
+      if (!existing) return toolError('Reservation not found.')
 
-      // Basic status transition validation
       const validTransitions: Record<string, string[]> = {
         pending: ['confirmed', 'rejected', 'cancelled'],
         confirmed: ['ongoing', 'cancelled'],
@@ -214,8 +213,8 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       const allowed = validTransitions[existing.status]
       if (!allowed?.includes(newStatus)) {
         return toolError(
-          `Transition impossible: ${existing.status} → ${newStatus}. ` +
-            `Transitions autorisées: ${allowed?.join(', ') ?? 'aucune'}`
+          `Invalid transition: ${existing.status} → ${newStatus}. ` +
+            `Allowed: ${allowed?.join(', ') ?? 'none'}`
         )
       }
 
@@ -226,7 +225,7 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId))
 
       return toolResult(
-        `Réservation #${existing.number} mise à jour: ${formatStatus(existing.status)} → ${formatStatus(newStatus)}`
+        `Reservation #${existing.number} updated: ${formatStatus(existing.status)} → ${formatStatus(newStatus)}`
       )
     }
   )
@@ -250,14 +249,14 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
         columns: { id: true, number: true },
       })
 
-      if (!existing) return toolError('Réservation non trouvée.')
+      if (!existing) return toolError('Reservation not found.')
 
       await db
         .update(reservations)
         .set({ internalNotes: notes })
         .where(eq(reservations.id, reservationId))
 
-      return toolResult(`Notes mises à jour pour la réservation #${existing.number}.`)
+      return toolResult(`Notes updated for reservation #${existing.number}.`)
     }
   )
 
@@ -289,7 +288,7 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
 
       const total = Object.values(counts).reduce((a, b) => a + b, 0)
 
-      return toolResult(`## Compteurs réservations (${total} total)\n\n${lines}`)
+      return toolResult(`## Reservation counters (${total} total)\n\n${lines}`)
     }
   )
 }

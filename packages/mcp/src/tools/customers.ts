@@ -54,11 +54,11 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         (c) =>
           `- **${c.firstName} ${c.lastName}** (${c.id})\n` +
           `  ${c.email}${c.phone ? ` | ${c.phone}` : ''} | ${c.customerType}\n` +
-          `  Inscrit le ${formatDate(c.createdAt)}`
+          `  Registered: ${formatDate(c.createdAt)}`
       )
 
       return toolResult(
-        `## Clients (${total} résultat${total > 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'Aucun client trouvé.'}`
+        `## Customers (${total} result${total !== 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'No customers found.'}`
       )
     }
   )
@@ -82,24 +82,24 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         },
       })
 
-      if (!customer) return toolError('Client non trouvé.')
+      if (!customer) return toolError('Customer not found.')
 
       let text =
         `## ${customer.firstName} ${customer.lastName}\n\n` +
         `- **ID**: ${customer.id}\n` +
         `- **Type**: ${customer.customerType}\n` +
         `- **Email**: ${customer.email}\n` +
-        (customer.phone ? `- **Tél**: ${customer.phone}\n` : '') +
-        (customer.companyName ? `- **Entreprise**: ${customer.companyName}\n` : '') +
-        (customer.address ? `- **Adresse**: ${customer.address}, ${customer.city} ${customer.postalCode}\n` : '') +
-        `- **Inscrit le**: ${formatDate(customer.createdAt)}\n`
+        (customer.phone ? `- **Phone**: ${customer.phone}\n` : '') +
+        (customer.companyName ? `- **Company**: ${customer.companyName}\n` : '') +
+        (customer.address ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n` : '') +
+        `- **Registered**: ${formatDate(customer.createdAt)}\n`
 
       if (customer.notes) {
         text += `\n### Notes\n${customer.notes}\n`
       }
 
       if (customer.reservations.length > 0) {
-        text += `\n### Dernières réservations (${customer.reservations.length})\n`
+        text += `\n### Recent reservations (${customer.reservations.length})\n`
         for (const r of customer.reservations) {
           text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}\n`
         }
@@ -126,13 +126,12 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
     async ({ email, firstName, lastName, phone, customerType, companyName, address, city, postalCode }) => {
       requirePermission(ctx, 'customers', 'write')
 
-      // Check email uniqueness within store
       const existingEmail = await db.query.customers.findFirst({
         where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, email)),
         columns: { id: true },
       })
       if (existingEmail) {
-        return toolError('Un client avec cet email existe déjà dans ce store.')
+        return toolError('A customer with this email already exists in this store.')
       }
 
       const [created] = await db
@@ -152,8 +151,8 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         .$returningId()
 
       return toolResult(
-        `Client créé avec succès.\n\n` +
-          `- **Nom**: ${firstName} ${lastName}\n` +
+        `Customer created successfully.\n\n` +
+          `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${created.id}\n` +
           `- **Email**: ${email}`
       )
@@ -181,16 +180,15 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
         columns: { id: true, email: true },
       })
-      if (!existing) return toolError('Client non trouvé.')
+      if (!existing) return toolError('Customer not found.')
 
-      // Check email uniqueness if email is being changed
       if (updates.email && updates.email !== existing.email) {
         const emailTaken = await db.query.customers.findFirst({
           where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, updates.email)),
           columns: { id: true },
         })
         if (emailTaken) {
-          return toolError('Un client avec cet email existe déjà dans ce store.')
+          return toolError('A customer with this email already exists in this store.')
         }
       }
 
@@ -200,12 +198,12 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
       }
 
       if (Object.keys(updateData).length === 0) {
-        return toolError('Aucun champ à mettre à jour.')
+        return toolError('No fields to update.')
       }
 
       await db.update(customers).set(updateData).where(eq(customers.id, customerId))
 
-      return toolResult(`Client ${customerId} mis à jour avec succès.`)
+      return toolResult(`Customer ${customerId} updated successfully.`)
     }
   )
 }

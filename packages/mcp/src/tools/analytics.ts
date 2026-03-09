@@ -61,7 +61,6 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
 
       const s = stats[0]
 
-      // Also get current active reservation count
       const [activeCount] = await db
         .select({ count: sql<number>`COUNT(*)` })
         .from(reservations)
@@ -75,14 +74,14 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
       return toolResult(
         `## Dashboard — ${period ?? '30d'}\n` +
           `*${formatDate(start)} → ${formatDate(end)}*\n\n` +
-          `- **Revenus**: ${formatCurrency(s?.totalRevenue ?? '0')}\n` +
-          `- **Réservations créées**: ${s?.totalReservationsCreated ?? 0}\n` +
-          `- **Réservations confirmées**: ${s?.totalReservationsConfirmed ?? 0}\n` +
-          `- **Checkouts complétés**: ${s?.totalCheckoutCompleted ?? 0}\n` +
-          `- **Visiteurs uniques**: ${s?.totalVisitors ?? 0}\n` +
-          `- **Pages vues**: ${s?.totalPageViews ?? 0}\n\n` +
-          `### Réservations actives\n` +
-          `- En attente + confirmées + en cours: ${activeCount?.count ?? 0}`
+          `- **Revenue**: ${formatCurrency(s?.totalRevenue ?? '0')}\n` +
+          `- **Reservations created**: ${s?.totalReservationsCreated ?? 0}\n` +
+          `- **Reservations confirmed**: ${s?.totalReservationsConfirmed ?? 0}\n` +
+          `- **Checkouts completed**: ${s?.totalCheckoutCompleted ?? 0}\n` +
+          `- **Unique visitors**: ${s?.totalVisitors ?? 0}\n` +
+          `- **Page views**: ${s?.totalPageViews ?? 0}\n\n` +
+          `### Active reservations\n` +
+          `- Pending + confirmed + ongoing: ${activeCount?.count ?? 0}`
       )
     }
   )
@@ -121,18 +120,18 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
       const totalReservations = rows.reduce((acc, r) => acc + (r.reservationsCreated ?? 0), 0)
 
       let text =
-        `## Rapport de revenus\n` +
+        `## Revenue report\n` +
         `*${formatDate(start)} → ${formatDate(end)}*\n\n` +
-        `- **Revenus totaux**: ${formatCurrency(totalRevenue)}\n` +
-        `- **Réservations**: ${totalReservations}\n` +
-        `- **Jours avec données**: ${rows.length}\n`
+        `- **Total revenue**: ${formatCurrency(totalRevenue)}\n` +
+        `- **Reservations**: ${totalReservations}\n` +
+        `- **Days with data**: ${rows.length}\n`
 
       if (rows.length > 0) {
-        text += `\n### Détail journalier\n`
+        text += `\n### Daily breakdown\n`
         for (const row of rows) {
           const rev = parseFloat(row.revenue ?? '0')
           if (rev > 0 || (row.reservationsCreated ?? 0) > 0) {
-            text += `- ${formatDate(row.date)}: ${formatCurrency(rev)} (${row.reservationsCreated} rés., ${row.uniqueVisitors} visiteurs)\n`
+            text += `- ${formatDate(row.date)}: ${formatCurrency(rev)} (${row.reservationsCreated} res., ${row.uniqueVisitors} visitors)\n`
           }
         }
       }
@@ -175,17 +174,17 @@ export function registerAnalyticsTools(server: McpServer, ctx: McpSessionContext
         .limit(lim)
 
       if (rows.length === 0) {
-        return toolResult('Aucune donnée de performance produit pour cette période.')
+        return toolResult('No product performance data for this period.')
       }
 
       const lines = rows.map(
         (r, i) =>
           `${i + 1}. **${r.productName}**\n` +
-          `   Vues: ${r.totalViews ?? 0} | Réservations: ${r.totalReservations ?? 0} | Revenus: ${formatCurrency(r.totalRevenue ?? '0')}`
+          `   Views: ${r.totalViews ?? 0} | Reservations: ${r.totalReservations ?? 0} | Revenue: ${formatCurrency(r.totalRevenue ?? '0')}`
       )
 
       return toolResult(
-        `## Top produits — ${period ?? '30d'}\n\n${lines.join('\n')}`
+        `## Top products — ${period ?? '30d'}\n\n${lines.join('\n')}`
       )
     }
   )

@@ -2,6 +2,7 @@ import { stepCountIs, streamText } from 'ai'
 import { db, aiChats, aiChatMessages } from '@louez/db'
 import type { ApiKeyPermissions } from '@louez/db/schema'
 import { and, eq } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { auth } from '@/lib/auth'
 import { getCurrentStore } from '@/lib/store-context'
@@ -11,6 +12,21 @@ import { checkRateLimit, validateMessageLength } from '@/lib/ai/rate-limit'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
 import { createAITools } from '@/lib/ai/tools'
 import type { AIChatContext } from '@/lib/ai/tools'
+
+const chatRequestSchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.string(),
+        content: z.string().optional(),
+        parts: z
+          .array(z.object({ type: z.string(), text: z.string().optional() }).passthrough())
+          .optional(),
+      }),
+    )
+    .min(1),
+  chatId: z.string().max(30).optional(),
+})
 
 // Map dashboard member role to full AI permissions
 function roleToPermissions(role: string): ApiKeyPermissions {
@@ -55,18 +71,12 @@ export async function POST(req: Request) {
     return new Response('No store found', { status: 403 })
   }
 
-  const { messages: rawMessages, chatId } = (await req.json()) as {
-    messages: Array<{
-      role: string
-      content?: string
-      parts?: Array<{ type: string; text?: string }>
-    }>
-    chatId?: string
+  const body = chatRequestSchema.safeParse(await req.json())
+  if (!body.success) {
+    return new Response('Invalid request body', { status: 400 })
   }
 
-  if (!rawMessages || !Array.isArray(rawMessages) || rawMessages.length === 0) {
-    return new Response('Messages required', { status: 400 })
-  }
+  const { messages: rawMessages, chatId } = body.data
 
   // Normalize UIMessage parts to plain content strings
   const messages = rawMessages.map((m) => ({

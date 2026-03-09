@@ -1,4 +1,4 @@
-import { randomUUID } from 'crypto'
+import { randomUUID, timingSafeEqual } from 'crypto'
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
 
 import { resolveApiKeyContext } from '../auth/api-keys'
@@ -16,6 +16,7 @@ interface McpSession {
   server: McpServer
   transport: WebStandardStreamableHTTPServerTransport
   ctx: McpSessionContext
+  rawKey: string
   createdAt: number
 }
 
@@ -39,12 +40,45 @@ function cleanExpiredSessions() {
   }
 }
 
+// ── Rate limiting ─────────────────────────────────────────────────────
+// Simple in-memory sliding window per API key.
+// High limits since MCP tool calls don't consume our tokens.
+
+interface RateLimitEntry {
+  count: number
+  windowStart: number
+}
+
+const rateLimits = new Map<string, RateLimitEntry>()
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 120 // 120 requests per minute
+
+function checkRateLimit(apiKeyId: string): boolean {
+  const now = Date.now()
+  const entry = rateLimits.get(apiKeyId)
+
+  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimits.set(apiKeyId, { count: 1, windowStart: now })
+    return true
+  }
+
+  entry.count++
+  return entry.count <= RATE_LIMIT_MAX_REQUESTS
+}
+
 // ── Auth helpers ───────────────────────────────────────────────────────
 
 function extractBearerToken(request: Request): string | null {
   const authorization = request.headers.get('authorization')
   if (!authorization?.startsWith('Bearer ')) return null
   return authorization.slice(7)
+}
+
+function keysMatch(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, 'utf-8')
+  const bufB = Buffer.from(b, 'utf-8')
+  if (bufA.length !== bufB.length) return false
+  return timingSafeEqual(bufA, bufB)
 }
 
 function jsonResponse(body: Record<string, unknown>, status: number): Response {
@@ -62,8 +96,8 @@ function jsonResponse(body: Record<string, unknown>, status: number): Response {
  * - First request (no session ID): authenticates via API key, creates a
  *   server+transport pair, processes the `initialize` handshake, and stores
  *   the session.
- * - Subsequent requests (with Mcp-Session-Id header): routes to the existing
- *   session's transport for processing.
+ * - Subsequent requests (with Mcp-Session-Id header): verifies the API key
+ *   matches the session, then routes to the existing transport.
  */
 export async function handleMcpRequest(request: Request): Promise<Response> {
   cleanExpiredSessions()
@@ -80,6 +114,17 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
     if (!session) {
       return jsonResponse({ error: 'Session not found or expired. Re-initialize.' }, 404)
     }
+
+    // Verify the API key matches the one used to create the session
+    if (!keysMatch(rawKey, session.rawKey)) {
+      return jsonResponse({ error: 'API key does not match session.' }, 401)
+    }
+
+    // Rate limit check
+    if (!checkRateLimit(session.ctx.apiKeyId)) {
+      return jsonResponse({ error: 'Rate limit exceeded. Max 120 requests per minute.' }, 429)
+    }
+
     return session.transport.handleRequest(request)
   }
 
@@ -87,6 +132,11 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
   const ctx = await resolveApiKeyContext(rawKey)
   if (!ctx) {
     return jsonResponse({ error: 'Invalid API key. It may be expired or revoked.' }, 401)
+  }
+
+  // Rate limit check for new sessions too
+  if (!checkRateLimit(ctx.apiKeyId)) {
+    return jsonResponse({ error: 'Rate limit exceeded. Max 120 requests per minute.' }, 429)
   }
 
   const server = createMcpServer(ctx)
@@ -104,7 +154,7 @@ export async function handleMcpRequest(request: Request): Promise<Response> {
   // The transport includes the session ID in the response header after initialize
   const newSessionId = response.headers.get('mcp-session-id')
   if (newSessionId) {
-    sessions.set(newSessionId, { server, transport, ctx, createdAt: Date.now() })
+    sessions.set(newSessionId, { server, transport, ctx, rawKey, createdAt: Date.now() })
   }
 
   return response
@@ -128,6 +178,11 @@ export async function handleMcpDelete(request: Request): Promise<Response> {
   if (!session) {
     // Already gone — idempotent success
     return new Response(null, { status: 204 })
+  }
+
+  // Verify the API key matches
+  if (!keysMatch(rawKey, session.rawKey)) {
+    return jsonResponse({ error: 'API key does not match session.' }, 401)
   }
 
   const response = await session.transport.handleRequest(request)

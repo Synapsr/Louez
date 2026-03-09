@@ -106,9 +106,9 @@ export async function checkRateLimit(
 
     return { allowed: true }
   } catch (error) {
-    // Fail open
+    // Fail closed — block requests when rate limiting is unavailable
     console.error('[AI Rate Limit] Error checking limits:', error)
-    return { allowed: true }
+    return { allowed: false, code: 'rate_limit:minute', retryAfter: 60 }
   }
 }
 
