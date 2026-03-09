@@ -1,0 +1,30 @@
+{
+  "name": "@louez/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./stdio": "./bin/louez-mcp.ts",
+    "./http": "./src/transports/http.ts"
+  },
+  "bin": {
+    "louez-mcp": "./bin/louez-mcp.ts"
+  },
+  "dependencies": {
+    "@louez/db": "workspace:*",
+    "@louez/api": "workspace:*",
+    "@louez/types": "workspace:*",
+    "@louez/utils": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "drizzle-orm": "^0.45.1",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@louez/config": "workspace:*",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}

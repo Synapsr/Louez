@@ -2072,3 +2072,53 @@ export const inspectionPhotosRelations = relations(inspectionPhotos, ({ one }) =
     references: [inspectionFieldValues.id],
   }),
 }))
+
+// ============================================================================
+// API Keys (for MCP Server & future REST API)
+// ============================================================================
+
+export type ApiKeyPermissions = {
+  reservations: 'none' | 'read' | 'write'
+  products: 'none' | 'read' | 'write'
+  customers: 'none' | 'read' | 'write'
+  categories: 'none' | 'read' | 'write'
+  payments: 'none' | 'read' | 'write'
+  analytics: 'none' | 'read'
+  settings: 'none' | 'read' | 'write'
+}
+
+export const apiKeys = mysqlTable(
+  'api_keys',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    userId: varchar('user_id', { length: 21 }).notNull(),
+
+    name: varchar('name', { length: 100 }).notNull(),
+    keyPrefix: varchar('key_prefix', { length: 12 }).notNull(),
+    keyHash: varchar('key_hash', { length: 64 }).notNull(),
+
+    permissions: json('permissions').$type<ApiKeyPermissions>().notNull(),
+
+    lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('api_keys_store_idx').on(table.storeId),
+    keyHashUnique: unique('api_keys_key_hash_unique').on(table.keyHash),
+    prefixIdx: index('api_keys_prefix_idx').on(table.keyPrefix),
+  })
+)
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  store: one(stores, {
+    fields: [apiKeys.storeId],
+    references: [stores.id],
+  }),
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
+}))

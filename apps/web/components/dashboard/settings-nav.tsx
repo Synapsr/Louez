@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield, Link2, Tag, Code } from 'lucide-react'
+import { Store, Palette, Clock, FileText, CreditCard, Percent, Truck, ClipboardCheck, Wallet, Star, Bell, Shield, Link2, Tag, Code, KeyRound } from 'lucide-react'
 import { cn } from '@louez/utils'
 import { useMemo } from 'react'
 
@@ -78,6 +78,11 @@ const settingsNavItems: SettingsNavItem[] = [
     href: '/dashboard/settings/embed',
     icon: Code,
     labelKey: 'embed.title',
+  },
+  {
+    href: '/dashboard/settings/api',
+    icon: KeyRound,
+    labelKey: 'api.title',
   },
 ]
 

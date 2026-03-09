@@ -19,6 +19,7 @@
     "@louez/config": "workspace:*",
     "@louez/db": "workspace:*",
     "@louez/email": "workspace:*",
+    "@louez/mcp": "workspace:*",
     "@louez/types": "workspace:*",
     "@louez/ui": "workspace:*",
     "@louez/utils": "workspace:*",
