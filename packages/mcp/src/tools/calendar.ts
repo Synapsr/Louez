@@ -23,7 +23,6 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
       const future = new Date()
       future.setDate(future.getDate() + lookAhead)
 
-      // Upcoming pickups (startDate in range, status confirmed)
       const pickups = await db
         .select({
           id: reservations.id,
@@ -46,7 +45,6 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
         .orderBy(reservations.startDate)
         .limit(50)
 
-      // Upcoming returns (endDate in range, status ongoing)
       const returns = await db
         .select({
           id: reservations.id,
@@ -69,20 +67,20 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
         .orderBy(reservations.endDate)
         .limit(50)
 
-      let text = `## Calendrier — ${lookAhead} prochains jours\n\n`
+      let text = `## Calendar — next ${lookAhead} days\n\n`
 
-      text += `### Départs à venir (${pickups.length})\n`
+      text += `### Upcoming pickups (${pickups.length})\n`
       if (pickups.length === 0) {
-        text += 'Aucun départ prévu.\n'
+        text += 'No pickups scheduled.\n'
       } else {
         for (const p of pickups) {
           text += `- ${formatDateTime(p.startDate)} — #${p.number} — ${p.customerFirstName} ${p.customerLastName} — ${formatCurrency(p.totalAmount)}\n`
         }
       }
 
-      text += `\n### Retours à venir (${returns.length})\n`
+      text += `\n### Upcoming returns (${returns.length})\n`
       if (returns.length === 0) {
-        text += 'Aucun retour prévu.\n'
+        text += 'No returns scheduled.\n'
       } else {
         for (const r of returns) {
           text += `- ${formatDateTime(r.endDate)} — #${r.number} — ${r.customerFirstName} ${r.customerLastName} — ${formatCurrency(r.totalAmount)}\n`
@@ -124,16 +122,16 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
         .limit(50)
 
       if (overdue.length === 0) {
-        return toolResult('Aucun retour en retard.')
+        return toolResult('No overdue returns.')
       }
 
       const lines = overdue.map((r) => {
         const daysLate = Math.ceil((now.getTime() - r.endDate!.getTime()) / (1000 * 60 * 60 * 24))
-        return `- **#${r.number}** — ${r.customerFirstName} ${r.customerLastName}\n  Retour prévu le ${formatDate(r.endDate)} (${daysLate}j de retard) — ${formatCurrency(r.totalAmount)}`
+        return `- **#${r.number}** — ${r.customerFirstName} ${r.customerLastName}\n  Due: ${formatDate(r.endDate)} (${daysLate} day${daysLate !== 1 ? 's' : ''} late) — ${formatCurrency(r.totalAmount)}`
       })
 
       return toolResult(
-        `## Retours en retard (${overdue.length})\n\n${lines.join('\n\n')}`
+        `## Overdue returns (${overdue.length})\n\n${lines.join('\n\n')}`
       )
     }
   )
@@ -157,9 +155,8 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
         columns: { id: true, name: true, quantity: true },
       })
 
-      if (!product) return toolResult('Produit non trouvé.')
+      if (!product) return toolResult('Product not found.')
 
-      // Count overlapping confirmed/ongoing reservations
       const [overlap] = await db
         .select({ count: sql<number>`COALESCE(SUM(${reservationItems.quantity}), 0)` })
         .from(reservationItems)
@@ -178,11 +175,11 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
       const available = Math.max(0, product.quantity - reserved)
 
       return toolResult(
-        `## Disponibilité — ${product.name}\n\n` +
-          `- Période: ${formatDate(start)} → ${formatDate(end)}\n` +
-          `- Stock total: ${product.quantity}\n` +
-          `- Réservé: ${reserved}\n` +
-          `- **Disponible: ${available}**`
+        `## Availability — ${product.name}\n\n` +
+          `- Period: ${formatDate(start)} → ${formatDate(end)}\n` +
+          `- Total stock: ${product.quantity}\n` +
+          `- Reserved: ${reserved}\n` +
+          `- **Available: ${available}**`
       )
     }
   )

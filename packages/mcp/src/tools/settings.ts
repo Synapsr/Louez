@@ -19,26 +19,26 @@ export function registerSettingsTools(server: McpServer, ctx: McpSessionContext)
         where: eq(stores.id, ctx.storeId),
       })
 
-      if (!store) return toolError('Boutique non trouvée.')
+      if (!store) return toolError('Store not found.')
 
       return toolResult(
         `## ${store.name}\n\n` +
           `- **Slug**: ${store.slug}\n` +
           `- **Email**: ${store.email ?? '—'}\n` +
-          `- **Téléphone**: ${store.phone ?? '—'}\n` +
-          `- **Adresse**: ${store.address ?? '—'}\n` +
+          `- **Phone**: ${store.phone ?? '—'}\n` +
+          `- **Address**: ${store.address ?? '—'}\n` +
           (store.description ? `- **Description**: ${store.description}\n` : '') +
           `\n### Configuration\n` +
-          `- Mode de réservation: ${store.settings?.reservationMode ?? '—'}\n` +
-          `- Préavis minimum: ${store.settings?.advanceNoticeMinutes ? `${store.settings.advanceNoticeMinutes} min` : '—'}\n` +
-          `- Stripe connecté: ${store.stripeOnboardingComplete ? 'Oui' : 'Non'}\n` +
-          `\n### Apparence\n` +
-          `- Thème: ${store.theme?.mode ?? 'light'}\n` +
-          `- Couleur primaire: ${store.theme?.primaryColor ?? '#0066FF'}\n` +
+          `- Reservation mode: ${store.settings?.reservationMode ?? '—'}\n` +
+          `- Advance notice: ${store.settings?.advanceNoticeMinutes ? `${store.settings.advanceNoticeMinutes} min` : '—'}\n` +
+          `- Stripe connected: ${store.stripeOnboardingComplete ? 'Yes' : 'No'}\n` +
+          `\n### Appearance\n` +
+          `- Theme: ${store.theme?.mode ?? 'light'}\n` +
+          `- Primary color: ${store.theme?.primaryColor ?? '#0066FF'}\n` +
           `\n### Notifications\n` +
-          `- Email de confirmation: ${store.emailSettings?.confirmationEnabled ? 'Activé' : 'Désactivé'}\n` +
-          `- Rappel récupération: ${store.emailSettings?.reminderPickupEnabled ? 'Activé' : 'Désactivé'}\n` +
-          `- Rappel retour: ${store.emailSettings?.reminderReturnEnabled ? 'Activé' : 'Désactivé'}`
+          `- Confirmation email: ${store.emailSettings?.confirmationEnabled ? 'Enabled' : 'Disabled'}\n` +
+          `- Pickup reminder: ${store.emailSettings?.reminderPickupEnabled ? 'Enabled' : 'Disabled'}\n` +
+          `- Return reminder: ${store.emailSettings?.reminderReturnEnabled ? 'Enabled' : 'Disabled'}`
       )
     }
   )
@@ -64,22 +64,22 @@ export function registerSettingsTools(server: McpServer, ctx: McpSessionContext)
       if (updates.description !== undefined) updateData.description = updates.description
 
       if (Object.keys(updateData).length === 0) {
-        return toolError('Aucun champ à mettre à jour.')
+        return toolError('No fields to update.')
       }
 
       await db.update(stores).set(updateData).where(eq(stores.id, ctx.storeId))
 
-      return toolResult('Informations de la boutique mises à jour avec succès.')
+      return toolResult('Store information updated successfully.')
     }
   )
 
   server.tool(
     'update_store_legal',
-    'Update legal documents (CGV, legal notice)',
+    'Update legal documents (terms of service, legal notice)',
     {
       cgv: z.string().optional().describe('General terms and conditions (HTML or text)'),
       legalNotice: z.string().optional().describe('Legal notice text'),
-      includeCgvInContract: z.boolean().optional().describe('Include CGV in rental contracts'),
+      includeCgvInContract: z.boolean().optional().describe('Include terms in rental contracts'),
     },
     async (updates) => {
       requirePermission(ctx, 'settings', 'write')
@@ -91,12 +91,12 @@ export function registerSettingsTools(server: McpServer, ctx: McpSessionContext)
         updateData.includeCgvInContract = updates.includeCgvInContract
 
       if (Object.keys(updateData).length === 0) {
-        return toolError('Aucun champ à mettre à jour.')
+        return toolError('No fields to update.')
       }
 
       await db.update(stores).set(updateData).where(eq(stores.id, ctx.storeId))
 
-      return toolResult('Documents légaux mis à jour avec succès.')
+      return toolResult('Legal documents updated successfully.')
     }
   )
 }

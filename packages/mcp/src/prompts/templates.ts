@@ -161,7 +161,7 @@ export function registerPromptTemplates(server: McpServer, ctx: McpSessionContex
 
       const c = reservation.customer
       const items = reservation.items
-        .map((i) => `  - ${i.product?.name ?? 'Custom item'} × ${i.quantity} — ${formatCurrency(i.totalPrice)}`)
+        .map((i) => `  - ${i.product?.name ?? 'Custom item'} x ${i.quantity} — ${formatCurrency(i.totalPrice)}`)
         .join('\n')
       const paymentLines = reservation.payments
         .map((p) => `  - ${p.type}: ${formatCurrency(p.amount)} (${p.method}, ${p.status})`)
