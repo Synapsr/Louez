@@ -6,6 +6,100 @@
 @import "@louez/ui/styles";
 @import "./styles/dashboard-theme.css";
 
+@keyframes ai-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px -5px color-mix(in srgb, var(--color-primary) 15%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 25px -3px color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+}
+
+/* ── AI Chat – animated gradient mesh ── */
+
+@keyframes ai-mesh-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(8%, -6%) scale(1.08);
+  }
+  50% {
+    transform: translate(-4%, 8%) scale(0.95);
+  }
+  75% {
+    transform: translate(-8%, -4%) scale(1.05);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes ai-mesh-pulse {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.ai-mesh-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  will-change: transform, opacity;
+  animation:
+    ai-mesh-drift 8s ease-in-out infinite,
+    ai-mesh-pulse 6s ease-in-out infinite;
+}
+
+/* Top-left – bright blue */
+.ai-mesh-orb--1 {
+  width: 65%;
+  height: 55%;
+  top: -10%;
+  left: -15%;
+  background: radial-gradient(circle at 40% 40%, oklch(0.55 0.22 264 / 0.18), oklch(0.55 0.22 264 / 0.06) 50%, transparent 75%);
+  animation-duration: 8s, 5s;
+}
+
+/* Bottom-right – deeper blue */
+.ai-mesh-orb--2 {
+  width: 55%;
+  height: 50%;
+  bottom: -8%;
+  right: -12%;
+  background: radial-gradient(circle at 60% 60%, oklch(0.48 0.22 264 / 0.14), oklch(0.48 0.22 264 / 0.04) 50%, transparent 75%);
+  animation-duration: 10s, 7s;
+  animation-delay: -3s, -2s;
+  animation-direction: reverse, normal;
+}
+
+/* Center – lighter blue */
+.ai-mesh-orb--3 {
+  width: 40%;
+  height: 35%;
+  top: 35%;
+  left: 30%;
+  background: radial-gradient(circle, oklch(0.62 0.20 264 / 0.12), transparent 65%);
+  animation-duration: 12s, 8s;
+  animation-delay: -5s, -3s;
+}
+
+/* Dark mode – boost brightness */
+.dark .ai-mesh-orb--1 {
+  background: radial-gradient(circle at 40% 40%, oklch(0.60 0.22 264 / 0.22), oklch(0.60 0.22 264 / 0.08) 50%, transparent 75%);
+}
+
+.dark .ai-mesh-orb--2 {
+  background: radial-gradient(circle at 60% 60%, oklch(0.52 0.22 264 / 0.18), oklch(0.52 0.22 264 / 0.06) 50%, transparent 75%);
+}
+
+.dark .ai-mesh-orb--3 {
+  background: radial-gradient(circle, oklch(0.65 0.18 264 / 0.15), transparent 65%);
+}
+
 .product-image-crop .ReactCrop__crop-selection {
   border: 2px solid rgb(255 255 255 / 94%);
   border-radius: 14px;

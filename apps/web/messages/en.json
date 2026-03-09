@@ -3486,6 +3486,30 @@
         "discountDurationDescription": "Number of months the discount applies. Set to 0 for a permanent discount.",
         "months": "months"
       }
+    },
+    "aiChat": {
+      "open": "AI Assistant",
+      "close": "Close",
+      "title": "AI Assistant",
+      "subtitle": "Ask questions about your store",
+      "emptyState": "How can I help you?",
+      "emptyStateHint": "Try one of these suggestions or ask your own question.",
+      "placeholder": "Ask a question...",
+      "newConversation": "New conversation",
+      "error": "An error occurred. Please try again.",
+      "limits": {
+        "rate_limit_minute": "You're sending messages too fast. Upgrade your plan for higher limits.",
+        "rate_limit_hour": "You've reached your hourly message limit. Upgrade for more conversations.",
+        "rate_limit_day": "You've used all your messages for today. Upgrade to keep the conversation going.",
+        "upgradeRequired": "AI Assistant is available on Pro and Ultra plans. Unlock it to boost your productivity.",
+        "upgrade": "Upgrade"
+      },
+      "suggestions": {
+        "reservations": "Any pickups or returns scheduled today?",
+        "stats": "Show me this month's revenue and top products",
+        "products": "Which products are rented the most?",
+        "customers": "How many new customers this month?"
+      }
     }
   },
   "storefront": {

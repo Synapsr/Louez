@@ -3179,6 +3179,30 @@
         "discountDurationDescription": "Liczba miesięcy, przez które obowiązuje zniżka. Ustaw 0 dla zniżki stałej.",
         "months": "miesiące"
       }
+    },
+    "aiChat": {
+      "open": "Asystent AI",
+      "close": "Zamknij",
+      "title": "Asystent AI",
+      "subtitle": "Zadaj pytania dotyczące sklepu",
+      "emptyState": "Jak mogę Ci pomóc?",
+      "emptyStateHint": "Wypróbuj jedną z sugestii lub zadaj własne pytanie.",
+      "placeholder": "Zadaj pytanie...",
+      "newConversation": "Nowa rozmowa",
+      "error": "Wystąpił błąd. Spróbuj ponownie.",
+      "limits": {
+        "rate_limit_minute": "Wysyłasz wiadomości zbyt szybko. Ulepsz plan, aby uzyskać wyższe limity.",
+        "rate_limit_hour": "Osiągnąłeś godzinowy limit wiadomości. Ulepsz plan, aby kontynuować.",
+        "rate_limit_day": "Wykorzystałeś wszystkie wiadomości na dziś. Ulepsz plan, aby kontynuować rozmowę.",
+        "upgradeRequired": "Asystent AI jest dostępny w planach Pro i Ultra. Odblokuj go, aby zwiększyć swoją produktywność.",
+        "upgrade": "Ulepsz plan"
+      },
+      "suggestions": {
+        "reservations": "Czy są dziś zaplanowane odbiory lub zwroty?",
+        "stats": "Pokaż mi przychody i najlepsze produkty tego miesiąca",
+        "products": "Które produkty są najczęściej wynajmowane?",
+        "customers": "Ilu nowych klientów w tym miesiącu?"
+      }
     }
   },
   "storefront": {

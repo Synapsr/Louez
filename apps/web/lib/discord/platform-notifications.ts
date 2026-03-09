@@ -46,13 +46,16 @@ async function send(message: string): Promise<void> {
   if (!env.DISCORD_ADMIN_WEBHOOK_URL) return
 
   try {
-    await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
+    const res = await fetch(env.DISCORD_ADMIN_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content: message, username: 'Louez', flags: 4 }),
     })
-  } catch {
-    // Best-effort monitoring — never block the calling action
+    if (!res.ok) {
+      console.error(`[Discord] Webhook returned ${res.status}: ${await res.text().catch(() => '')}`)
+    }
+  } catch (error) {
+    console.error('[Discord] Webhook fetch failed:', error)
   }
 }
 
@@ -307,4 +310,36 @@ export async function notifySmsCreditsTopup(
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`📱 ${prefix} purchased ${quantity} SMS credits`)
+}
+
+// ---------------------------------------------------------------------------
+// Tier 6 — AI Chat
+// ---------------------------------------------------------------------------
+
+export async function notifyAiRateLimitHit(
+  storeId: string,
+  userId: string,
+  window: 'minute' | 'hour' | 'day',
+  count: number,
+  limit: number
+): Promise<void> {
+  if (!isEnabled()) return
+
+  try {
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.id, storeId),
+      columns: { id: true, name: true, slug: true },
+    })
+    if (!store) return
+
+    const user = await db.query.storeMembers.findFirst({
+      where: eq(storeMembers.userId, userId),
+      columns: { userId: true },
+    })
+
+    const prefix = await storePrefix(store)
+    await send(`🤖 ${prefix} AI rate limit hit — ${count}/${limit} per ${window} (user ${user?.userId ?? userId})`)
+  } catch (error) {
+    console.error('[Discord] AI rate limit notification failed:', error)
+  }
 }

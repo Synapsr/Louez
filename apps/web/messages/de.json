@@ -3191,6 +3191,30 @@
         "discountDurationDescription": "Anzahl der Monate, für die der Rabatt gilt. 0 für einen dauerhaften Rabatt.",
         "months": "Monate"
       }
+    },
+    "aiChat": {
+      "open": "KI-Assistent",
+      "close": "Schließen",
+      "title": "KI-Assistent",
+      "subtitle": "Stellen Sie Fragen zu Ihrem Shop",
+      "emptyState": "Wie kann ich Ihnen helfen?",
+      "emptyStateHint": "Probieren Sie einen Vorschlag oder stellen Sie Ihre eigene Frage.",
+      "placeholder": "Frage stellen...",
+      "newConversation": "Neues Gespräch",
+      "error": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+      "limits": {
+        "rate_limit_minute": "Sie senden Nachrichten zu schnell. Upgraden Sie für höhere Limits.",
+        "rate_limit_hour": "Sie haben Ihr stündliches Nachrichtenlimit erreicht. Upgraden Sie für mehr Gespräche.",
+        "rate_limit_day": "Sie haben alle Nachrichten für heute verbraucht. Upgraden Sie, um weiterzumachen.",
+        "upgradeRequired": "Der KI-Assistent ist in den Pro- und Ultra-Plänen verfügbar. Schalten Sie ihn frei.",
+        "upgrade": "Upgraden"
+      },
+      "suggestions": {
+        "reservations": "Gibt es heute Abholungen oder Rückgaben?",
+        "stats": "Zeig mir den Umsatz und die Top-Produkte dieses Monats",
+        "products": "Welche Produkte werden am meisten vermietet?",
+        "customers": "Wie viele neue Kunden diesen Monat?"
+      }
     }
   },
   "storefront": {

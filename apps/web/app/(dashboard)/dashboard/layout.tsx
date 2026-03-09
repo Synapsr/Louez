@@ -4,10 +4,12 @@ import { redirect } from 'next/navigation';
 
 import type { StoreSettings } from '@louez/types';
 
+import { ChatBubble } from '@/components/dashboard/ai-chat';
 import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider';
 import { MobileHeader, Sidebar } from '@/components/dashboard/sidebar';
 import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
 
+import { isAIChatConfigured } from '@/lib/ai/provider';
 import { auth } from '@/lib/auth';
 import { getCurrentStore, getUserStores } from '@/lib/store-context';
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
@@ -44,6 +46,7 @@ export default async function DashboardMainLayout({
   // Get current plan for the store
   const planSlug = await getCurrentPlanSlug(store.id);
   const settings = (store.settings as StoreSettings) || {};
+  const showAIChat = isAIChatConfigured();
 
   return (
     <StoreProvider
@@ -76,6 +79,7 @@ export default async function DashboardMainLayout({
           <Suspense fallback={null}>
             <WelcomeOverlay />
           </Suspense>
+          {showAIChat && <ChatBubble />}
         </div>
       </ReservationPollingProvider>
     </StoreProvider>

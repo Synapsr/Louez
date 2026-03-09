@@ -104,6 +104,13 @@ export const env = createEnv({
     // ===== Cron Jobs (Required) =====
     CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
 
+    // ===== AI Chat Assistant (Optional) =====
+    AI_PROVIDER: z
+      .enum(['anthropic', 'openai', 'google'])
+      .optional(),
+    AI_MODEL: z.string().optional(),
+    AI_API_KEY: z.string().optional(),
+
     // ===== Development =====
     AUTO_DB_SETUP: z
       .string()
@@ -172,6 +179,9 @@ export const env = createEnv({
     TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
     CRON_SECRET: process.env.CRON_SECRET,
+    AI_PROVIDER: process.env.AI_PROVIDER,
+    AI_MODEL: process.env.AI_MODEL,
+    AI_API_KEY: process.env.AI_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
 
