@@ -68,14 +68,26 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
     async ({ reservationId, type, amount, method, notes }) => {
       requirePermission(ctx, 'payments', 'write')
 
+      const numAmount = parseFloat(amount)
+      if (isNaN(numAmount) || numAmount === 0) {
+        return toolError('Le montant doit être un nombre différent de zéro.')
+      }
+      if (numAmount < 0 && type !== 'adjustment') {
+        return toolError('Seuls les paiements de type "adjustment" peuvent avoir un montant négatif.')
+      }
+
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
           eq(reservations.id, reservationId)
         ),
-        columns: { id: true, number: true },
+        columns: { id: true, number: true, status: true },
       })
       if (!reservation) return toolError('Réservation non trouvée.')
+
+      if (reservation.status === 'cancelled' || reservation.status === 'rejected') {
+        return toolError(`Impossible d'enregistrer un paiement sur une réservation ${reservation.status}.`)
+      }
 
       await db.insert(payments).values({
         reservationId,
@@ -117,6 +129,10 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
         return toolError('Paiement non trouvé.')
       }
 
+      if (payment.method === 'stripe') {
+        return toolError('Impossible de supprimer un paiement Stripe. Utilisez le dashboard pour gérer les remboursements.')
+      }
+
       await db.delete(payments).where(eq(payments.id, paymentId))
 
       return toolResult(`Paiement supprimé (réservation #${payment.reservation?.number}).`)
@@ -135,14 +151,38 @@ export function registerPaymentTools(server: McpServer, ctx: McpSessionContext) 
     async ({ reservationId, amount, method, notes }) => {
       requirePermission(ctx, 'payments', 'write')
 
+      const numAmount = parseFloat(amount)
+      if (isNaN(numAmount) || numAmount <= 0) {
+        return toolError('Le montant doit être supérieur à zéro.')
+      }
+
       const reservation = await db.query.reservations.findFirst({
         where: and(
           eq(reservations.storeId, ctx.storeId),
           eq(reservations.id, reservationId)
         ),
         columns: { id: true, number: true },
+        with: { payments: true },
       })
       if (!reservation) return toolError('Réservation non trouvée.')
+
+      // Calculate max returnable: deposit collected - deposit already returned
+      const depositCollected = reservation.payments
+        .filter((p) => p.type === 'deposit' && p.status === 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      const depositReturned = reservation.payments
+        .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
+        .reduce((sum, p) => sum + parseFloat(p.amount), 0)
+      const maxReturnable = depositCollected - depositReturned
+
+      if (numAmount > maxReturnable) {
+        return toolError(
+          `Le montant dépasse la caution restituable. ` +
+            `Caution encaissée: ${formatCurrency(String(depositCollected))}, ` +
+            `déjà restituée: ${formatCurrency(String(depositReturned))}, ` +
+            `restituable: ${formatCurrency(String(maxReturnable))}.`
+        )
+      }
 
       await db.insert(payments).values({
         reservationId,

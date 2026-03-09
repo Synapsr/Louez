@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { db, products, categories } from '@louez/db'
-import { and, eq, like, sql, desc } from 'drizzle-orm'
+import { db, products, categories, reservationItems, reservations } from '@louez/db'
+import { and, eq, like, sql, desc, inArray } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import type { McpSessionContext } from '../auth/context'
@@ -227,6 +227,24 @@ export function registerProductTools(server: McpServer, ctx: McpSessionContext) 
         columns: { id: true, name: true },
       })
       if (!existing) return toolError('Produit non trouvé.')
+
+      // Check for active reservations using this product
+      const [activeCount] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(reservationItems)
+        .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+        .where(
+          and(
+            eq(reservationItems.productId, productId),
+            inArray(reservations.status, ['pending', 'confirmed', 'ongoing'] as const)
+          )
+        )
+
+      if (activeCount && activeCount.count > 0) {
+        return toolError(
+          `Impossible d'archiver "${existing.name}": ${activeCount.count} réservation(s) active(s) utilisent ce produit.`
+        )
+      }
 
       await db.update(products).set({ status: 'archived' }).where(eq(products.id, productId))
 

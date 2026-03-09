@@ -126,6 +126,15 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
     async ({ email, firstName, lastName, phone, customerType, companyName, address, city, postalCode }) => {
       requirePermission(ctx, 'customers', 'write')
 
+      // Check email uniqueness within store
+      const existingEmail = await db.query.customers.findFirst({
+        where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, email)),
+        columns: { id: true },
+      })
+      if (existingEmail) {
+        return toolError('Un client avec cet email existe déjà dans ce store.')
+      }
+
       const [created] = await db
         .insert(customers)
         .values({
@@ -170,9 +179,20 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
 
       const existing = await db.query.customers.findFirst({
         where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
-        columns: { id: true },
+        columns: { id: true, email: true },
       })
       if (!existing) return toolError('Client non trouvé.')
+
+      // Check email uniqueness if email is being changed
+      if (updates.email && updates.email !== existing.email) {
+        const emailTaken = await db.query.customers.findFirst({
+          where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, updates.email)),
+          columns: { id: true },
+        })
+        if (emailTaken) {
+          return toolError('Un client avec cet email existe déjà dans ce store.')
+        }
+      }
 
       const updateData: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(updates)) {
