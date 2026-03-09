@@ -7,15 +7,14 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./stdio": "./bin/louez-mcp.ts",
     "./http": "./src/transports/http.ts"
   },
   "bin": {
     "louez-mcp": "./bin/louez-mcp.ts"
   },
   "dependencies": {
-    "@louez/db": "workspace:*",
     "@louez/api": "workspace:*",
+    "@louez/db": "workspace:*",
     "@louez/types": "workspace:*",
     "@louez/utils": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -24,6 +23,7 @@
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
+    "@types/node": "^25.3.5",
     "tsx": "^4.21.0",
     "typescript": "^5"
   }
