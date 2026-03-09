@@ -246,6 +246,27 @@
       "when": 1772127063474,
       "tag": "0031_add_seasonal_pricing",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1773071600000,
+      "tag": "0032_add_payment_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1773071700000,
+      "tag": "0033_add_api_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1773158400000,
+      "tag": "0034_add_ai_chat",
+      "breakpoints": true
     }
   ]
 }

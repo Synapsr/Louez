@@ -3180,6 +3180,30 @@
         "discountDurationDescription": "Número de meses que o desconto se aplica. Defina 0 para um desconto permanente.",
         "months": "meses"
       }
+    },
+    "aiChat": {
+      "open": "Assistente IA",
+      "close": "Fechar",
+      "title": "Assistente IA",
+      "subtitle": "Faça perguntas sobre a sua loja",
+      "emptyState": "Como posso ajudá-lo?",
+      "emptyStateHint": "Experimente uma sugestão ou faça a sua própria pergunta.",
+      "placeholder": "Faça uma pergunta...",
+      "newConversation": "Nova conversa",
+      "error": "Ocorreu um erro. Tente novamente.",
+      "limits": {
+        "rate_limit_minute": "Está a enviar mensagens demasiado rápido. Atualize o seu plano para limites mais altos.",
+        "rate_limit_hour": "Atingiu o seu limite horário de mensagens. Atualize para mais conversas.",
+        "rate_limit_day": "Utilizou todas as suas mensagens de hoje. Atualize para continuar a conversar.",
+        "upgradeRequired": "O Assistente IA está disponível nos planos Pro e Ultra. Desbloqueie-o para aumentar a sua produtividade.",
+        "upgrade": "Atualizar plano"
+      },
+      "suggestions": {
+        "reservations": "Há recolhas ou devoluções previstas para hoje?",
+        "stats": "Mostra-me a receita e os melhores produtos do mês",
+        "products": "Quais são os produtos mais alugados?",
+        "customers": "Quantos novos clientes este mês?"
+      }
     }
   },
   "storefront": {

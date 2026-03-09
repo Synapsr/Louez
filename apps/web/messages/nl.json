@@ -3179,6 +3179,30 @@
         "discountDurationDescription": "Aantal maanden dat de korting van toepassing is. Stel 0 in voor een permanente korting.",
         "months": "maanden"
       }
+    },
+    "aiChat": {
+      "open": "AI-assistent",
+      "close": "Sluiten",
+      "title": "AI-assistent",
+      "subtitle": "Stel vragen over uw winkel",
+      "emptyState": "Hoe kan ik u helpen?",
+      "emptyStateHint": "Probeer een suggestie of stel uw eigen vraag.",
+      "placeholder": "Stel een vraag...",
+      "newConversation": "Nieuw gesprek",
+      "error": "Er is een fout opgetreden. Probeer het opnieuw.",
+      "limits": {
+        "rate_limit_minute": "Je stuurt berichten te snel. Upgrade je plan voor hogere limieten.",
+        "rate_limit_hour": "Je hebt je uurlimiet bereikt. Upgrade voor meer gesprekken.",
+        "rate_limit_day": "Je hebt al je berichten voor vandaag gebruikt. Upgrade om door te gaan.",
+        "upgradeRequired": "AI Assistent is beschikbaar op Pro en Ultra plannen. Ontgrendel het om je productiviteit te verhogen.",
+        "upgrade": "Upgraden"
+      },
+      "suggestions": {
+        "reservations": "Zijn er vandaag ophalingen of retouren gepland?",
+        "stats": "Toon me de omzet en topproducten van deze maand",
+        "products": "Welke producten worden het meest verhuurd?",
+        "customers": "Hoeveel nieuwe klanten deze maand?"
+      }
     }
   },
   "storefront": {

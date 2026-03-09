@@ -2122,3 +2122,56 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     references: [users.id],
   }),
 }))
+
+// ============================================================================
+// AI Chat
+// ============================================================================
+
+export const aiChats = mysqlTable(
+  'ai_chats',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    userId: varchar('user_id', { length: 21 }).notNull(),
+    title: varchar('title', { length: 255 }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeUserIdx: index('ai_chats_store_user_idx').on(table.storeId, table.userId),
+  })
+)
+
+export const aiChatMessages = mysqlTable(
+  'ai_chat_messages',
+  {
+    id: id(),
+    chatId: varchar('chat_id', { length: 21 }).notNull(),
+    role: mysqlEnum('role', ['user', 'assistant', 'system', 'tool']).notNull(),
+    content: longtext('content'),
+    toolInvocations: json('tool_invocations').$type<unknown[]>(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    chatIdx: index('ai_chat_messages_chat_idx').on(table.chatId),
+  })
+)
+
+export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
+  store: one(stores, {
+    fields: [aiChats.storeId],
+    references: [stores.id],
+  }),
+  user: one(users, {
+    fields: [aiChats.userId],
+    references: [users.id],
+  }),
+  messages: many(aiChatMessages),
+}))
+
+export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
+  chat: one(aiChats, {
+    fields: [aiChatMessages.chatId],
+    references: [aiChats.id],
+  }),
+}))
