@@ -2486,6 +2486,30 @@
           "expiresAfterStarts": "Das Ablaufdatum muss nach dem Startdatum liegen"
         }
       },
+      "integrationsHub": {
+        "recommended": "Empfohlen",
+        "comingSoon": "Demnächst",
+        "noIntegrations": "Noch keine Integrationen verfügbar.",
+        "sections": {
+          "byLouez": "Von Louez.io",
+          "insurance": "Versicherung"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Lassen Sie Ihre Kunden die Verfügbarkeit prüfen und direkt über Ihre Website buchen."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Lassen Sie KI-Assistenten wie ChatGPT, Claude oder Gemini Ihre Buchungen verwalten und Fragen beantworten."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Verbinden Sie Ihren Shop mit Ihren bestehenden Tools und automatisieren Sie Ihre täglichen Aufgaben.",
+            "comingSoonDescription": "Die REST-API befindet sich in Entwicklung. Sie können Ihren Shop bald mit jedem Tool oder Service verbinden."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Betten Sie einen Mietdatumsauswähler auf Ihrer Website ein. Ihre Kunden können Daten auswählen und werden zu Ihrem Online-Shop weitergeleitet.",
@@ -2497,11 +2521,13 @@
         "copy": "Kopieren",
         "copied": "Kopiert!",
         "directLink": "Direktlink:",
-        "iframeTitle": "Buchen bei {storeName}"
+        "iframeTitle": "Buchen bei {storeName}",
+        "backToIntegrations": "Integrationen"
       },
       "api": {
         "title": "API",
         "description": "Verwalten Sie API-Schlüssel, um externe Tools, KI-Assistenten oder benutzerdefinierte Integrationen mit Ihrem Shop zu verbinden.",
+        "backToIntegrations": "Integrationen",
         "keysTitle": "API-Schlüssel",
         "keysDescription": "Erstellen und verwalten Sie Schlüssel für den MCP-Server und die zukünftige REST-API.",
         "createKey": "Schlüssel erstellen",

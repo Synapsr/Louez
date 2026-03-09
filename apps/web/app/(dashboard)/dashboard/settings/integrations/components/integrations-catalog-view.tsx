@@ -1,454 +1,220 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import Link from 'next/link'
 
-import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query'
+import { ArrowRight, Braces, Code, Terminal } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
-import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { Badge, Card, Skeleton } from '@louez/ui'
 
-import {
-  Badge,
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  Input,
-} from '@louez/ui';
+import type { IntegrationCatalogItem } from '@/lib/integrations/registry/types'
+import { orpc } from '@/lib/orpc/react'
 
-import type {
-  IntegrationCatalogItem,
-  IntegrationCategorySummary,
-} from '@/lib/integrations/registry/types';
-import { orpc } from '@/lib/orpc/react';
+type BuiltInItem = {
+  id: string
+  href: string
+  icon: React.ElementType
+  nameKey: string
+  descriptionKey: string
+  badge?: {
+    labelKey: string
+    variant: 'default' | 'secondary' | 'outline'
+  }
+}
 
-import { IntegrationCard } from './integration-card';
+const LOUEZ_ITEMS: BuiltInItem[] = [
+  {
+    id: 'widget',
+    href: '/dashboard/settings/integrations/widget',
+    icon: Code,
+    nameKey: 'dashboard.settings.integrationsHub.builtIn.widget.name',
+    descriptionKey:
+      'dashboard.settings.integrationsHub.builtIn.widget.description',
+    badge: {
+      labelKey: 'dashboard.settings.integrationsHub.recommended',
+      variant: 'default',
+    },
+  },
+  {
+    id: 'mcp',
+    href: '/dashboard/settings/integrations/mcp',
+    icon: Terminal,
+    nameKey: 'dashboard.settings.integrationsHub.builtIn.mcp.name',
+    descriptionKey:
+      'dashboard.settings.integrationsHub.builtIn.mcp.description',
+  },
+  {
+    id: 'api',
+    href: '/dashboard/settings/integrations/api',
+    icon: Braces,
+    nameKey: 'dashboard.settings.integrationsHub.builtIn.api.name',
+    descriptionKey:
+      'dashboard.settings.integrationsHub.builtIn.api.description',
+    badge: {
+      labelKey: 'dashboard.settings.integrationsHub.comingSoon',
+      variant: 'secondary',
+    },
+  },
+]
 
-type IntegrationsCatalogViewProps = {
-  category?: string;
-};
+function IntegrationItemCard({
+  href,
+  icon: Icon,
+  logo,
+  name,
+  description,
+  badge,
+}: {
+  href: string
+  icon?: React.ElementType
+  logo?: string
+  name: string
+  description: string
+  badge?: { label: string; variant: 'default' | 'secondary' | 'outline' | 'success' }
+}) {
+  return (
+    <Link href={href}>
+      <Card className="group h-full px-5 py-4 transition hover:border-primary/40 hover:bg-muted/30">
+        <div className="flex items-start gap-4">
+          {Icon ? (
+            <div className="bg-primary/10 text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+              <Icon className="h-5 w-5" />
+            </div>
+          ) : logo ? (
+            <div className="bg-background h-11 w-11 shrink-0 overflow-hidden rounded-xl border p-1.5">
+              <img
+                src={logo}
+                alt={name}
+                className="h-full w-full object-contain"
+              />
+            </div>
+          ) : null}
+          <div className="min-w-0 flex-1 py-0.5">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{name}</span>
+              {badge && (
+                <Badge
+                  variant={badge.variant}
+                  className="px-1.5 py-0 text-[10px]"
+                >
+                  {badge.label}
+                </Badge>
+              )}
+            </div>
+            <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
+              {description}
+            </p>
+          </div>
+          <ArrowRight className="text-muted-foreground mt-1 h-4 w-4 shrink-0 opacity-0 transition group-hover:opacity-100" />
+        </div>
+      </Card>
+    </Link>
+  )
+}
 
-type StatusFilter = 'all' | 'enabled' | 'disabled';
-
-export function IntegrationsCatalogView({
-  category,
-}: IntegrationsCatalogViewProps) {
-  const t = useTranslations();
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+export function IntegrationsCatalogView() {
+  const t = useTranslations()
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
-      const value = t(key as never);
-      if (!value || value === key) {
-        return fallback;
-      }
-
-      return value;
+      const value = t(key as never)
+      if (!value || value === key) return fallback
+      return value
     } catch {
-      return fallback;
+      return fallback
     }
-  };
+  }
 
   const catalogQuery = useQuery({
     ...orpc.dashboard.integrations.listCatalog.queryOptions({ input: {} }),
-    enabled: !category,
-  });
+  })
 
-  const categoryQuery = useQuery({
-    ...orpc.dashboard.integrations.listCategory.queryOptions({
-      input: { category: category || '' },
-    }),
-    enabled: Boolean(category),
-  });
+  const integrations: IntegrationCatalogItem[] =
+    catalogQuery.data && !('error' in catalogQuery.data)
+      ? (catalogQuery.data.integrations as unknown as IntegrationCatalogItem[])
+      : []
 
-  const data = category ? categoryQuery.data : catalogQuery.data;
-  const isLoading = category ? categoryQuery.isLoading : catalogQuery.isLoading;
-  const isError = category ? categoryQuery.isError : catalogQuery.isError;
-
-  const parsedData = data && !('error' in data) ? data : null;
-  const integrations: IntegrationCatalogItem[] = parsedData
-    ? (parsedData.integrations as unknown as IntegrationCatalogItem[])
-    : [];
-  const categories: IntegrationCategorySummary[] = parsedData
-    ? (parsedData.categories as unknown as IntegrationCategorySummary[])
-    : [];
-
-  const normalizedSearch = search.trim().toLowerCase();
-
-  const filteredIntegrations = integrations.filter(
-    (item: IntegrationCatalogItem) => {
-      const statusMatch =
-        statusFilter === 'all' ||
-        (statusFilter === 'enabled' ? item.enabled : !item.enabled);
-
-      if (!statusMatch) {
-        return false;
-      }
-
-      if (!normalizedSearch) {
-        return true;
-      }
-
-      const name = resolveMessage(item.nameKey, item.id).toLowerCase();
-      const description = resolveMessage(
-        item.descriptionKey,
-        item.descriptionKey,
-      ).toLowerCase();
-
-      return (
-        name.includes(normalizedSearch) ||
-        description.includes(normalizedSearch)
-      );
-    },
-  );
-
-  const groupedByCategory = categories
-    .map((currentCategory: IntegrationCategorySummary) => {
-      const items = filteredIntegrations.filter(
-        (item: IntegrationCatalogItem) => item.category === currentCategory.id,
-      );
-
-      return {
-        ...currentCategory,
-        items,
-      };
-    })
-    .filter((group) => group.items.length > 0);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight">
-          {resolveMessage(
-            'dashboard.settings.integrationsHub.title',
-            'Integrations',
-          )}
-        </h2>
-        <p className="text-muted-foreground">
-          {resolveMessage(
-            'dashboard.settings.integrationsHub.loading',
-            'Loading integrations...',
-          )}
-        </p>
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {resolveMessage(
-              'dashboard.settings.integrationsHub.title',
-              'Integrations',
-            )}
-          </CardTitle>
-          <CardDescription>
-            {resolveMessage(
-              'dashboard.settings.integrationsHub.loadError',
-              'Unable to load integrations.',
-            )}
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
+  const insuranceIntegrations = integrations.filter(
+    (i) => i.category === 'insurance',
+  )
 
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-bold tracking-tight">
+    <div className="space-y-10">
+      {/* Built-in by Louez.io */}
+      <section className="space-y-3">
+        <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
           {resolveMessage(
-            'dashboard.settings.integrationsHub.title',
-            'Integrations',
+            'dashboard.settings.integrationsHub.sections.byLouez',
+            'By Louez.io',
           )}
-        </h2>
-        <p className="text-muted-foreground">
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {LOUEZ_ITEMS.map((item) => (
+            <IntegrationItemCard
+              key={item.id}
+              href={item.href}
+              icon={item.icon}
+              name={resolveMessage(item.nameKey, item.id)}
+              description={resolveMessage(item.descriptionKey, '')}
+              badge={
+                item.badge
+                  ? {
+                      label: resolveMessage(item.badge.labelKey, ''),
+                      variant: item.badge.variant,
+                    }
+                  : undefined
+              }
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Insurance */}
+      <section className="space-y-3">
+        <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
           {resolveMessage(
-            'dashboard.settings.integrationsHub.catalogDescription',
-            'Enable and configure integrations by category.',
+            'dashboard.settings.integrationsHub.sections.insurance',
+            'Insurance',
           )}
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant="outline">
-            {resolveMessage(
-              'dashboard.settings.integrationsHub.statusLabels.enabled',
-              'Enabled',
-            )}
-            :{' '}
-            {
-              integrations.filter(
-                (item: IntegrationCatalogItem) => item.enabled,
-              ).length
-            }
-          </Badge>
-          <Badge variant="outline">
-            {resolveMessage(
-              'dashboard.settings.integrationsHub.statusLabels.connected',
-              'Connected',
-            )}
-            :{' '}
-            {
-              integrations.filter(
-                (item: IntegrationCatalogItem) => item.connected,
-              ).length
-            }
-          </Badge>
-        </div>
-      </div>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
-        <div className="relative w-full md:max-w-md">
-          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
-            placeholder={resolveMessage(
-              'dashboard.settings.integrationsHub.searchPlaceholder',
-              'Search integrations',
-            )}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-        </div>
-        {category && (
-          <div className="flex flex-wrap gap-2">
-            {(['all', 'enabled', 'disabled'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                className="rounded-md border px-3 py-1.5 text-sm"
-                onClick={() => setStatusFilter(value)}
-              >
-                <span
-                  className={
-                    statusFilter === value
-                      ? 'text-foreground font-semibold'
-                      : 'text-muted-foreground'
-                  }
-                >
-                  {resolveMessage(
-                    `dashboard.settings.integrationsHub.statusFilters.${value}`,
-                    value,
-                  )}
-                </span>
-              </button>
+        </h3>
+        {catalogQuery.isLoading ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Skeleton className="h-[84px] rounded-lg" />
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {insuranceIntegrations.map((item) => (
+              <IntegrationItemCard
+                key={item.id}
+                href={`/dashboard/settings/integrations/${item.id}`}
+                logo={item.logoPath}
+                name={resolveMessage(item.nameKey, item.id)}
+                description={resolveMessage(item.descriptionKey, '')}
+                badge={
+                  item.enabled
+                    ? {
+                        label: resolveMessage(
+                          'dashboard.settings.integrationsHub.statusLabels.enabled',
+                          'Enabled',
+                        ),
+                        variant: 'success',
+                      }
+                    : undefined
+                }
+              />
             ))}
+            {!catalogQuery.isLoading && insuranceIntegrations.length === 0 && (
+              <p className="text-muted-foreground text-sm">
+                {resolveMessage(
+                  'dashboard.settings.integrationsHub.noIntegrations',
+                  'No integrations available yet.',
+                )}
+              </p>
+            )}
           </div>
         )}
-      </div>
-      {!category && (
-        <section className="space-y-3">
-          <h3 className="text-lg font-semibold">
-            {resolveMessage(
-              'dashboard.settings.integrationsHub.categoriesTitle',
-              'Categories',
-            )}
-          </h3>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {categories.map((item: IntegrationCategorySummary) => {
-              const categoryIntegrations = integrations.filter(
-                (integration: IntegrationCatalogItem) =>
-                  integration.category === item.id,
-              );
-
-              return (
-                <Link
-                  key={item.id}
-                  href={`/dashboard/settings/integrations/categories/${item.id}`}
-                >
-                  <Card className="hover:border-primary/40 hover:bg-muted/40 h-full transition">
-                    <CardHeader>
-                      <CardTitle>
-                        {resolveMessage(
-                          `dashboard.settings.integrationsHub.categories.${item.id}.name`,
-                          item.id,
-                        )}
-                      </CardTitle>
-                      <CardDescription>
-                        {resolveMessage(
-                          `dashboard.settings.integrationsHub.categories.${item.id}.description`,
-                          '',
-                        )}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <p className="text-muted-foreground text-sm">
-                        {resolveMessage(
-                          'dashboard.settings.integrationsHub.categoryCount',
-                          '{count} integrations',
-                        ).replace('{count}', String(item.count))}
-                      </p>
-                      <div className="flex -space-x-2">
-                        {categoryIntegrations
-                          .slice(0, 4)
-                          .map((integration: IntegrationCatalogItem) => (
-                            <div
-                              key={integration.id}
-                              className="bg-background h-8 w-8 overflow-hidden rounded-full border p-1"
-                            >
-                              <img
-                                src={integration.logoPath}
-                                alt={resolveMessage(
-                                  integration.nameKey,
-                                  integration.id,
-                                )}
-                                className="h-full w-full object-contain"
-                              />
-                            </div>
-                          ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-      {category ? (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">
-              {resolveMessage(
-                `dashboard.settings.integrationsHub.categories.${category}.name`,
-                category,
-              )}
-            </h3>
-            <Link
-              href="/dashboard/settings/integrations"
-              className="text-primary text-sm"
-            >
-              {resolveMessage(
-                'dashboard.settings.integrationsHub.backToCatalog',
-                'Back to catalog',
-              )}
-            </Link>
-          </div>
-
-          {filteredIntegrations.length === 0 ? (
-            <Card>
-              <CardContent className="text-muted-foreground pt-6 text-sm">
-                {resolveMessage(
-                  'dashboard.settings.integrationsHub.emptyCategory',
-                  'No integrations match your filters.',
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredIntegrations.map((item: IntegrationCatalogItem) => (
-                <IntegrationCard
-                  key={item.id}
-                  href={`/dashboard/settings/integrations/${item.id}`}
-                  logoPath={item.logoPath}
-                  name={resolveMessage(item.nameKey, item.id)}
-                  description={resolveMessage(
-                    item.descriptionKey,
-                    resolveMessage(
-                      'dashboard.settings.integrationsHub.fallbackDescription',
-                      'Integration details are available on the detail page.',
-                    ),
-                  )}
-                  enabled={item.enabled}
-                  connected={item.connected}
-                  enabledLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.enabled',
-                    'Enabled',
-                  )}
-                  disabledLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.disabled',
-                    'Disabled',
-                  )}
-                  connectedLabel={resolveMessage(
-                    'dashboard.settings.integrationsHub.statusLabels.connected',
-                    'Connected',
-                  )}
-                  showConnectedState={item.id !== 'tulip'}
-                  statusLabel={resolveMessage(
-                    `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
-                    item.status,
-                  )}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      ) : (
-        groupedByCategory.map(
-          (
-            group: IntegrationCategorySummary & {
-              items: IntegrationCatalogItem[];
-            },
-          ) => (
-            <section key={group.id} className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-semibold">
-                    {resolveMessage(
-                      `dashboard.settings.integrationsHub.categories.${group.id}.name`,
-                      group.id,
-                    )}
-                  </h3>
-                  <p className="text-muted-foreground text-sm">
-                    {resolveMessage(
-                      `dashboard.settings.integrationsHub.categories.${group.id}.description`,
-                      '',
-                    )}
-                  </p>
-                </div>
-                <Link
-                  href={`/dashboard/settings/integrations/categories/${group.id}`}
-                  className="text-primary text-sm"
-                >
-                  {resolveMessage(
-                    'dashboard.settings.integrationsHub.viewAll',
-                    'View all',
-                  )}
-                </Link>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {group.items.slice(0, 3).map((item: IntegrationCatalogItem) => (
-                  <IntegrationCard
-                    key={item.id}
-                    href={`/dashboard/settings/integrations/${item.id}`}
-                    logoPath={item.logoPath}
-                    name={resolveMessage(item.nameKey, item.id)}
-                    description={resolveMessage(
-                      item.descriptionKey,
-                      resolveMessage(
-                        'dashboard.settings.integrationsHub.fallbackDescription',
-                        'Integration details are available on the detail page.',
-                      ),
-                    )}
-                    enabled={item.enabled}
-                    connected={item.connected}
-                    enabledLabel={resolveMessage(
-                      'dashboard.settings.integrationsHub.statusLabels.enabled',
-                      'Enabled',
-                    )}
-                    disabledLabel={resolveMessage(
-                      'dashboard.settings.integrationsHub.statusLabels.disabled',
-                      'Disabled',
-                    )}
-                    connectedLabel={resolveMessage(
-                      'dashboard.settings.integrationsHub.statusLabels.connected',
-                      'Connected',
-                    )}
-                    showConnectedState={item.id !== 'tulip'}
-                    statusLabel={resolveMessage(
-                      `dashboard.settings.integrationsHub.lifecycle.${item.status}`,
-                      item.status,
-                    )}
-                  />
-                ))}
-              </div>
-            </section>
-          ),
-        )
-      )}
+      </section>
     </div>
-  );
+  )
 }

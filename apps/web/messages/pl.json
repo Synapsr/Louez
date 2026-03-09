@@ -2474,6 +2474,30 @@
           "expiresAfterStarts": "Data wygaśnięcia musi być późniejsza niż data rozpoczęcia"
         }
       },
+      "integrationsHub": {
+        "recommended": "Zalecane",
+        "comingSoon": "Wkrótce",
+        "noIntegrations": "Brak dostępnych integracji.",
+        "sections": {
+          "byLouez": "Od Louez.io",
+          "insurance": "Ubezpieczenie"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Pozwól swoim klientom sprawdzić dostępność i zarezerwować bezpośrednio z Twojej strony."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Pozwól asystentom AI, takim jak ChatGPT, Claude lub Gemini, zarządzać Twoimi rezerwacjami i odpowiadać na pytania."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Połącz swój sklep z istniejącymi narzędziami i zautomatyzuj codzienne zadania.",
+            "comingSoonDescription": "API REST jest w trakcie rozwoju. Wkrótce będziesz mógł połączyć swój sklep z dowolnym narzędziem lub usługą."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Osadź selektor dat wynajmu na swojej stronie internetowej. Twoi klienci mogą wybrać daty i zostaną przekierowani do Twojego sklepu internetowego.",
@@ -2485,11 +2509,13 @@
         "copy": "Kopiuj",
         "copied": "Skopiowano!",
         "directLink": "Bezpośredni link:",
-        "iframeTitle": "Zarezerwuj w {storeName}"
+        "iframeTitle": "Zarezerwuj w {storeName}",
+        "backToIntegrations": "Integracje"
       },
       "api": {
         "title": "API",
         "description": "Zarządzaj kluczami API, aby połączyć zewnętrzne narzędzia, asystentów AI lub niestandardowe integracje ze swoim sklepem.",
+        "backToIntegrations": "Integracje",
         "keysTitle": "Klucze API",
         "keysDescription": "Twórz i zarządzaj kluczami dla serwera MCP i przyszłego API REST.",
         "createKey": "Utwórz klucz",

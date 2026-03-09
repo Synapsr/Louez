@@ -2183,6 +2183,28 @@
               "support": "Support"
             }
           }
+        },
+        "recommended": "Recommended",
+        "comingSoon": "Coming soon",
+        "noIntegrations": "No integrations available yet.",
+        "sections": {
+          "byLouez": "By Louez.io",
+          "insurance": "Insurance"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Let your customers check availability and book directly from your website."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Let AI assistants like ChatGPT, Claude or Gemini manage your bookings and answer questions."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Connect your store to your existing tools and automate your daily tasks.",
+            "comingSoonDescription": "The REST API is under development. You will soon be able to connect your store to any tool or service."
+          }
         }
       },
       "subscription": {
@@ -2794,11 +2816,13 @@
         "copy": "Copy",
         "copied": "Copied!",
         "directLink": "Direct link:",
-        "iframeTitle": "Book at {storeName}"
+        "iframeTitle": "Book at {storeName}",
+        "backToIntegrations": "Integrations"
       },
       "api": {
         "title": "API",
         "description": "Manage API keys to connect external tools, AI assistants, or custom integrations to your store.",
+        "backToIntegrations": "Integrations",
         "keysTitle": "API Keys",
         "keysDescription": "Create and manage keys for the MCP server and future REST API.",
         "createKey": "Create key",

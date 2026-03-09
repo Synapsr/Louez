@@ -2474,6 +2474,30 @@
           "expiresAfterStarts": "De vervaldatum moet na de startdatum liggen"
         }
       },
+      "integrationsHub": {
+        "recommended": "Aanbevolen",
+        "comingSoon": "Binnenkort",
+        "noIntegrations": "Nog geen integraties beschikbaar.",
+        "sections": {
+          "byLouez": "Door Louez.io",
+          "insurance": "Verzekering"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Laat uw klanten beschikbaarheid controleren en direct boeken vanaf uw website."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Laat AI-assistenten zoals ChatGPT, Claude of Gemini uw boekingen beheren en vragen beantwoorden."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Verbind uw winkel met uw bestaande tools en automatiseer uw dagelijkse taken.",
+            "comingSoonDescription": "De REST-API is in ontwikkeling. U kunt uw winkel binnenkort met elke tool of service verbinden."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Voeg een verhuurdatumkiezer toe aan uw website. Uw klanten kunnen datums selecteren en worden doorgestuurd naar uw online winkel.",
@@ -2485,11 +2509,13 @@
         "copy": "Kopiëren",
         "copied": "Gekopieerd!",
         "directLink": "Directe link:",
-        "iframeTitle": "Boeken bij {storeName}"
+        "iframeTitle": "Boeken bij {storeName}",
+        "backToIntegrations": "Integraties"
       },
       "api": {
         "title": "API",
         "description": "Beheer API-sleutels om externe tools, AI-assistenten of aangepaste integraties met uw winkel te verbinden.",
+        "backToIntegrations": "Integraties",
         "keysTitle": "API-sleutels",
         "keysDescription": "Maak en beheer sleutels voor de MCP-server en toekomstige REST-API.",
         "createKey": "Sleutel aanmaken",

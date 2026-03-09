@@ -2488,6 +2488,30 @@
           "expiresAfterStarts": "La fecha de expiración debe ser posterior a la fecha de inicio"
         }
       },
+      "integrationsHub": {
+        "recommended": "Recomendado",
+        "comingSoon": "Próximamente",
+        "noIntegrations": "No hay integraciones disponibles aún.",
+        "sections": {
+          "byLouez": "Por Louez.io",
+          "insurance": "Seguro"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Permite a tus clientes verificar disponibilidad y reservar directamente desde tu sitio web."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Deja que asistentes IA como ChatGPT, Claude o Gemini gestionen tus reservas y respondan preguntas."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Conecta tu tienda a tus herramientas existentes y automatiza tus tareas diarias.",
+            "comingSoonDescription": "La API REST está en desarrollo. Pronto podrás conectar tu tienda a cualquier herramienta o servicio."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Integre un selector de fechas de alquiler en su sitio web. Sus clientes pueden seleccionar fechas y serán redirigidos a su tienda en línea.",
@@ -2499,11 +2523,13 @@
         "copy": "Copiar",
         "copied": "¡Copiado!",
         "directLink": "Enlace directo:",
-        "iframeTitle": "Reservar en {storeName}"
+        "iframeTitle": "Reservar en {storeName}",
+        "backToIntegrations": "Integraciones"
       },
       "api": {
         "title": "API",
         "description": "Gestiona las claves API para conectar herramientas externas, asistentes IA o integraciones personalizadas a tu tienda.",
+        "backToIntegrations": "Integraciones",
         "keysTitle": "Claves API",
         "keysDescription": "Crea y gestiona claves para el servidor MCP y la futura API REST.",
         "createKey": "Crear clave",

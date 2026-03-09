@@ -2474,6 +2474,30 @@
           "expiresAfterStarts": "La data di scadenza deve essere successiva alla data di inizio"
         }
       },
+      "integrationsHub": {
+        "recommended": "Consigliato",
+        "comingSoon": "In arrivo",
+        "noIntegrations": "Nessuna integrazione disponibile al momento.",
+        "sections": {
+          "byLouez": "Da Louez.io",
+          "insurance": "Assicurazione"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Permetti ai tuoi clienti di verificare la disponibilità e prenotare direttamente dal tuo sito web."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Lascia che assistenti IA come ChatGPT, Claude o Gemini gestiscano le tue prenotazioni e rispondano alle domande."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Collega il tuo negozio ai tuoi strumenti esistenti e automatizza le tue attività quotidiane.",
+            "comingSoonDescription": "L'API REST è in fase di sviluppo. Presto potrai collegare il tuo negozio a qualsiasi strumento o servizio."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Incorpora un selettore di date di noleggio nel tuo sito web. I tuoi clienti possono selezionare le date e verranno reindirizzati al tuo negozio online.",
@@ -2485,11 +2509,13 @@
         "copy": "Copia",
         "copied": "Copiato!",
         "directLink": "Link diretto:",
-        "iframeTitle": "Prenota da {storeName}"
+        "iframeTitle": "Prenota da {storeName}",
+        "backToIntegrations": "Integrazioni"
       },
       "api": {
         "title": "API",
         "description": "Gestisci le chiavi API per connettere strumenti esterni, assistenti IA o integrazioni personalizzate al tuo negozio.",
+        "backToIntegrations": "Integrazioni",
         "keysTitle": "Chiavi API",
         "keysDescription": "Crea e gestisci chiavi per il server MCP e la futura API REST.",
         "createKey": "Crea chiave",

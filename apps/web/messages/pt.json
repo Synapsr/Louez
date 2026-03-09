@@ -2475,6 +2475,30 @@
           "expiresAfterStarts": "A data de expiração deve ser posterior à data de início"
         }
       },
+      "integrationsHub": {
+        "recommended": "Recomendado",
+        "comingSoon": "Em breve",
+        "noIntegrations": "Nenhuma integração disponível ainda.",
+        "sections": {
+          "byLouez": "Por Louez.io",
+          "insurance": "Seguro"
+        },
+        "builtIn": {
+          "widget": {
+            "name": "Widget",
+            "description": "Permita que seus clientes verifiquem a disponibilidade e reservem diretamente do seu site."
+          },
+          "mcp": {
+            "name": "MCP",
+            "description": "Deixe assistentes de IA como ChatGPT, Claude ou Gemini gerir as suas reservas e responder a perguntas."
+          },
+          "api": {
+            "name": "API REST",
+            "description": "Conecte a sua loja às suas ferramentas existentes e automatize as suas tarefas diárias.",
+            "comingSoonDescription": "A API REST está em desenvolvimento. Em breve poderá conectar a sua loja a qualquer ferramenta ou serviço."
+          }
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Incorpore um seletor de datas de aluguer no seu site. Os seus clientes podem selecionar datas e serão redirecionados para a sua loja online.",
@@ -2486,11 +2510,13 @@
         "copy": "Copiar",
         "copied": "Copiado!",
         "directLink": "Link direto:",
-        "iframeTitle": "Reservar em {storeName}"
+        "iframeTitle": "Reservar em {storeName}",
+        "backToIntegrations": "Integrações"
       },
       "api": {
         "title": "API",
         "description": "Gerencie chaves API para conectar ferramentas externas, assistentes IA ou integrações personalizadas à sua loja.",
+        "backToIntegrations": "Integrações",
         "keysTitle": "Chaves API",
         "keysDescription": "Crie e gerencie chaves para o servidor MCP e a futura API REST.",
         "createKey": "Criar chave",
