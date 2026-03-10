@@ -3489,12 +3489,13 @@
     },
     "aiChat": {
       "open": "Assistant IA",
+      "badge": "IA",
       "close": "Fermer",
       "title": "Assistant IA",
       "subtitle": "Posez vos questions sur votre boutique",
       "emptyState": "Comment puis-je vous aider ?",
       "emptyStateHint": "Essayez une de ces suggestions ou posez votre propre question.",
-      "placeholder": "Posez une question...",
+      "placeholder": "Que voulez-vous savoir ou faire ?",
       "newConversation": "Nouvelle conversation",
       "error": "Une erreur est survenue. Veuillez réessayer.",
       "limits": {

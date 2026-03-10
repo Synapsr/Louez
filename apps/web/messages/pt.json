@@ -3183,12 +3183,13 @@
     },
     "aiChat": {
       "open": "Assistente IA",
+      "badge": "IA",
       "close": "Fechar",
       "title": "Assistente IA",
       "subtitle": "Faça perguntas sobre a sua loja",
       "emptyState": "Como posso ajudá-lo?",
       "emptyStateHint": "Experimente uma sugestão ou faça a sua própria pergunta.",
-      "placeholder": "Faça uma pergunta...",
+      "placeholder": "O que deseja saber ou fazer?",
       "newConversation": "Nova conversa",
       "error": "Ocorreu um erro. Tente novamente.",
       "limits": {

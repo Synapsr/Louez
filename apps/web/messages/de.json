@@ -3194,12 +3194,13 @@
     },
     "aiChat": {
       "open": "KI-Assistent",
+      "badge": "KI",
       "close": "Schließen",
       "title": "KI-Assistent",
       "subtitle": "Stellen Sie Fragen zu Ihrem Shop",
       "emptyState": "Wie kann ich Ihnen helfen?",
       "emptyStateHint": "Probieren Sie einen Vorschlag oder stellen Sie Ihre eigene Frage.",
-      "placeholder": "Frage stellen...",
+      "placeholder": "Was möchten Sie wissen oder tun?",
       "newConversation": "Neues Gespräch",
       "error": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
       "limits": {

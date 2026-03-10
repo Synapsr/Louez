@@ -3182,12 +3182,13 @@
     },
     "aiChat": {
       "open": "Asystent AI",
+      "badge": "AI",
       "close": "Zamknij",
       "title": "Asystent AI",
       "subtitle": "Zadaj pytania dotyczące sklepu",
       "emptyState": "Jak mogę Ci pomóc?",
       "emptyStateHint": "Wypróbuj jedną z sugestii lub zadaj własne pytanie.",
-      "placeholder": "Zadaj pytanie...",
+      "placeholder": "Co chcesz wiedzieć lub zrobić?",
       "newConversation": "Nowa rozmowa",
       "error": "Wystąpił błąd. Spróbuj ponownie.",
       "limits": {

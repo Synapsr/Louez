@@ -3489,12 +3489,13 @@
     },
     "aiChat": {
       "open": "AI Assistant",
+      "badge": "AI",
       "close": "Close",
       "title": "AI Assistant",
       "subtitle": "Ask questions about your store",
       "emptyState": "How can I help you?",
       "emptyStateHint": "Try one of these suggestions or ask your own question.",
-      "placeholder": "Ask a question...",
+      "placeholder": "What would you like to know or do?",
       "newConversation": "New conversation",
       "error": "An error occurred. Please try again.",
       "limits": {

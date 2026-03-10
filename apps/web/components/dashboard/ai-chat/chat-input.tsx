@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
-import { ArrowUp } from 'lucide-react'
+import { ArrowUp, Sparkles } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import { Button } from '@louez/ui'
@@ -51,6 +51,7 @@ export function ChatInput({ onSend, isLoading }: ChatInputProps) {
         'focus-within:border-primary/30 focus-within:shadow-[0_0_0_3px] focus-within:shadow-primary/5',
       )}
     >
+      <Sparkles className="h-4 w-4 shrink-0 text-primary/40" />
       <textarea
         ref={textareaRef}
         value={input}

@@ -3182,12 +3182,13 @@
     },
     "aiChat": {
       "open": "AI-assistent",
+      "badge": "AI",
       "close": "Sluiten",
       "title": "AI-assistent",
       "subtitle": "Stel vragen over uw winkel",
       "emptyState": "Hoe kan ik u helpen?",
       "emptyStateHint": "Probeer een suggestie of stel uw eigen vraag.",
-      "placeholder": "Stel een vraag...",
+      "placeholder": "Wat wilt u weten of doen?",
       "newConversation": "Nieuw gesprek",
       "error": "Er is een fout opgetreden. Probeer het opnieuw.",
       "limits": {

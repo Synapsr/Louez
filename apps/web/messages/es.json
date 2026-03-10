@@ -3196,12 +3196,13 @@
     },
     "aiChat": {
       "open": "Asistente IA",
+      "badge": "IA",
       "close": "Cerrar",
       "title": "Asistente IA",
       "subtitle": "Haz preguntas sobre tu tienda",
       "emptyState": "¿Cómo puedo ayudarte?",
       "emptyStateHint": "Prueba una de estas sugerencias o haz tu propia pregunta.",
-      "placeholder": "Haz una pregunta...",
+      "placeholder": "¿Qué quieres saber o hacer?",
       "newConversation": "Nueva conversación",
       "error": "Se produjo un error. Por favor, inténtelo de nuevo.",
       "limits": {

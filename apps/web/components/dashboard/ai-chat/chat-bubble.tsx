@@ -45,7 +45,10 @@ export function ChatBubble() {
           )}
         >
           <Sparkles className="h-4 w-4 text-primary transition-transform group-hover:scale-110" />
-          <span>{t('placeholder')}</span>
+          <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+            {t('badge')}
+          </span>
+          <span className="hidden sm:inline">{t('placeholder')}</span>
           <kbd className="bg-muted text-muted-foreground/70 ml-2 hidden rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium sm:inline-block">
             ⌘K
           </kbd>
