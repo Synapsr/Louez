@@ -30,7 +30,7 @@ export function PendingReservationsAlert({
       onClick={onNavigate}
       className={cn(
         'group flex items-center gap-3 rounded-xl p-2 transition-all duration-200',
-        'border border-orange-500/20 bg-orange-50 hover:bg-orange-100',
+        'border border-orange-500/20 bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/40 dark:hover:bg-orange-950/60',
         'animate-in fade-in slide-in-from-bottom-2 duration-300',
         className,
       )}
