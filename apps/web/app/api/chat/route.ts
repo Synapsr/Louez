@@ -12,6 +12,7 @@ import { checkRateLimit, validateMessageLength } from '@/lib/ai/rate-limit'
 import { buildSystemPrompt } from '@/lib/ai/system-prompt'
 import { createAITools } from '@/lib/ai/tools'
 import type { AIChatContext } from '@/lib/ai/tools'
+import { notifyAiChatStarted } from '@/lib/discord/platform-notifications'
 
 const chatRequestSchema = z.object({
   messages: z
@@ -128,6 +129,12 @@ export async function POST(req: Request) {
       .$returningId()
 
     activeChatId = created.id
+
+    // Fire-and-forget: notify platform admins
+    notifyAiChatStarted(
+      { id: store.id, name: store.name, slug: store.slug },
+      firstMessage,
+    )
   } else {
     // Verify the chat belongs to this user/store
     const existing = await db.query.aiChats.findFirst({

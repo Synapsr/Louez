@@ -316,6 +316,16 @@ export async function notifySmsCreditsTopup(
 // Tier 6 — AI Chat
 // ---------------------------------------------------------------------------
 
+export async function notifyAiChatStarted(
+  store: StoreInfo,
+  prompt: string
+): Promise<void> {
+  if (!isEnabled()) return
+  const prefix = await storePrefix(store)
+  const truncated = prompt.length > 120 ? `${prompt.slice(0, 120)}…` : prompt
+  await send(`🤖 ${prefix} new AI conversation: "${truncated}"`)
+}
+
 export async function notifyAiRateLimitHit(
   storeId: string,
   userId: string,
