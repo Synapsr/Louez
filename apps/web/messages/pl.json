@@ -3190,6 +3190,14 @@
       "emptyStateHint": "Wypróbuj jedną z sugestii lub zadaj własne pytanie.",
       "placeholder": "Co chcesz wiedzieć lub zrobić?",
       "newConversation": "Nowa rozmowa",
+      "history": {
+        "title": "Historia",
+        "empty": "Brak rozmów",
+        "today": "Dzisiaj",
+        "yesterday": "Wczoraj",
+        "week": "Ostatnie 7 dni",
+        "older": "Starsze"
+      },
       "error": "Wystąpił błąd. Spróbuj ponownie.",
       "limits": {
         "rate_limit_minute": "Wysyłasz wiadomości zbyt szybko. Ulepsz plan, aby uzyskać wyższe limity.",

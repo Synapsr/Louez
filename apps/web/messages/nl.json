@@ -3190,6 +3190,14 @@
       "emptyStateHint": "Probeer een suggestie of stel uw eigen vraag.",
       "placeholder": "Wat wilt u weten of doen?",
       "newConversation": "Nieuw gesprek",
+      "history": {
+        "title": "Geschiedenis",
+        "empty": "Geen gesprekken",
+        "today": "Vandaag",
+        "yesterday": "Gisteren",
+        "week": "Afgelopen 7 dagen",
+        "older": "Ouder"
+      },
       "error": "Er is een fout opgetreden. Probeer het opnieuw.",
       "limits": {
         "rate_limit_minute": "Je stuurt berichten te snel. Upgrade je plan voor hogere limieten.",

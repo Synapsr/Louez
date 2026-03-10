@@ -100,18 +100,26 @@ function TextContent({ text }: { text: string }) {
   const lines = text.split('\n')
   const elements: React.ReactNode[] = []
   let listItems: string[] = []
+  let listType: 'ul' | 'ol' = 'ul'
   let listStart = 0
 
   const flushList = () => {
     if (listItems.length === 0) return
+    const Tag = listType
     elements.push(
-      <ul key={`list-${listStart}`} className="my-1.5 ml-4 list-disc space-y-1 marker:text-primary/40">
+      <Tag
+        key={`list-${listStart}`}
+        className={cn(
+          'my-1.5 ml-4 space-y-1 marker:text-primary/40',
+          listType === 'ul' ? 'list-disc' : 'list-decimal',
+        )}
+      >
         {listItems.map((item, j) => (
           <li key={j}>
             <InlineFormat text={item} />
           </li>
         ))}
-      </ul>,
+      </Tag>,
     )
     listItems = []
   }
@@ -150,7 +158,7 @@ function TextContent({ text }: { text: string }) {
     // Unordered list: - item or * item
     const ulMatch = trimmed.match(/^[-*]\s+(.+)$/)
     if (ulMatch) {
-      if (listItems.length === 0) listStart = i
+      if (listItems.length === 0) { listStart = i; listType = 'ul' }
       listItems.push(ulMatch[1])
       continue
     }
@@ -158,7 +166,7 @@ function TextContent({ text }: { text: string }) {
     // Ordered list: 1. item
     const olMatch = trimmed.match(/^\d+\.\s+(.+)$/)
     if (olMatch) {
-      if (listItems.length === 0) listStart = i
+      if (listItems.length === 0) { listStart = i; listType = 'ol' }
       listItems.push(olMatch[1])
       continue
     }

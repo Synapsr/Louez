@@ -3497,6 +3497,14 @@
       "emptyStateHint": "Essayez une de ces suggestions ou posez votre propre question.",
       "placeholder": "Que voulez-vous savoir ou faire ?",
       "newConversation": "Nouvelle conversation",
+      "history": {
+        "title": "Historique",
+        "empty": "Aucune conversation",
+        "today": "Aujourd'hui",
+        "yesterday": "Hier",
+        "week": "7 derniers jours",
+        "older": "Plus ancien"
+      },
       "error": "Une erreur est survenue. Veuillez réessayer.",
       "limits": {
         "rate_limit_minute": "Vous envoyez des messages trop rapidement. Passez au plan supérieur pour des limites plus élevées.",
