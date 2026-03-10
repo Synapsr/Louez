@@ -3190,6 +3190,14 @@
       "emptyStateHint": "Prova uno di questi suggerimenti o fai la tua domanda.",
       "placeholder": "Cosa vuoi sapere o fare?",
       "newConversation": "Nuova conversazione",
+      "history": {
+        "title": "Cronologia",
+        "empty": "Nessuna conversazione",
+        "today": "Oggi",
+        "yesterday": "Ieri",
+        "week": "Ultimi 7 giorni",
+        "older": "Più vecchio"
+      },
       "error": "Si è verificato un errore. Riprova.",
       "limits": {
         "rate_limit_minute": "Stai inviando messaggi troppo velocemente. Aggiorna il tuo piano per limiti più alti.",

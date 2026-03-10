@@ -3202,6 +3202,14 @@
       "emptyStateHint": "Probieren Sie einen Vorschlag oder stellen Sie Ihre eigene Frage.",
       "placeholder": "Was möchten Sie wissen oder tun?",
       "newConversation": "Neues Gespräch",
+      "history": {
+        "title": "Verlauf",
+        "empty": "Keine Gespräche",
+        "today": "Heute",
+        "yesterday": "Gestern",
+        "week": "Letzte 7 Tage",
+        "older": "Älter"
+      },
       "error": "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
       "limits": {
         "rate_limit_minute": "Sie senden Nachrichten zu schnell. Upgraden Sie für höhere Limits.",

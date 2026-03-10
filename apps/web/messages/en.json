@@ -3497,6 +3497,14 @@
       "emptyStateHint": "Try one of these suggestions or ask your own question.",
       "placeholder": "What would you like to know or do?",
       "newConversation": "New conversation",
+      "history": {
+        "title": "History",
+        "empty": "No conversations yet",
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "week": "Last 7 days",
+        "older": "Older"
+      },
       "error": "An error occurred. Please try again.",
       "limits": {
         "rate_limit_minute": "You're sending messages too fast. Upgrade your plan for higher limits.",
