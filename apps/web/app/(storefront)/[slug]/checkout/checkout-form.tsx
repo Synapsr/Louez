@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -14,6 +14,7 @@ import { StepContent, toastManager } from '@louez/ui';
 import { useAppForm } from '@/hooks/form/form';
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
+import { useAnalytics } from '@/contexts/analytics-context';
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
 
@@ -115,6 +116,7 @@ export function CheckoutForm({
   const tErrors = useTranslations('errors');
   const currency = useStoreCurrency();
   const { getUrl } = useStorefrontUrl(storeSlug);
+  const { trackEvent } = useAnalytics();
   const {
     items,
     clearCart,
@@ -142,6 +144,21 @@ export function CheckoutForm({
     }
     return Math.round(Math.min(appliedPromo.value, subtotal) * 100) / 100;
   }, [appliedPromo, subtotal]);
+
+  // Track checkout_started event on mount
+  const checkoutStartedRef = useRef(false);
+  useEffect(() => {
+    if (items.length > 0 && !checkoutStartedRef.current) {
+      checkoutStartedRef.current = true;
+      trackEvent({
+        eventType: 'checkout_started',
+        metadata: {
+          itemCount: items.length,
+          subtotal,
+        },
+      });
+    }
+  }, [items.length, subtotal, trackEvent]);
 
   // Auto-remove promo code if subtotal drops below minimum amount
   useEffect(() => {
@@ -482,9 +499,29 @@ export function CheckoutForm({
       return result;
     },
     onSuccess: (result) => {
+      // Track checkout_completed event
+      trackEvent({
+        eventType: 'checkout_completed',
+        metadata: {
+          reservationId: result.reservationId,
+          itemCount: items.length,
+          subtotal,
+          total: totalWithEstimatedInsurance,
+          reservationMode,
+        },
+      });
+
       clearCart();
 
       if (reservationMode === 'payment' && result.paymentUrl) {
+        // Track payment_initiated for Stripe redirect
+        trackEvent({
+          eventType: 'payment_initiated',
+          metadata: {
+            reservationId: result.reservationId,
+            amount: totalWithEstimatedInsurance,
+          },
+        });
         window.location.href = result.paymentUrl;
         return;
       }
