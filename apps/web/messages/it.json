@@ -1655,9 +1655,9 @@
         "smsSendError": "Errore nell'invio dell'SMS",
         "noPhone": "Il cliente non ha un numero di telefono"
       },
-      "tulipInsuredBadge": "Tulip insured",
-      "tulipContractCardTitle": "Insurance contract",
-      "tulipContractCardDescription": "Open the contract in Colibri."
+      "tulipInsuredBadge": "Assicurato Tulip",
+      "tulipContractCardTitle": "Contratto assicurativo",
+      "tulipContractCardDescription": "Apri il contratto in Colibri."
     },
     "customers": {
       "title": "Clienti",

@@ -833,8 +833,8 @@
           "noUnitsHint": "Fügen Sie einzelne Einheiten hinzu, um zu verfolgen, welche vermietet sind",
           "cancel": "Abbrechen",
           "confirm": "Bestätigen",
-          "manageAttributesExample": "Example: for a kayak rental, add \"Size\" (S, M, L) and \"Color\" (Red, Blue). A customer booking a Medium Red kayak will be assigned a matching available unit.",
-          "manageAttributesMax": "Up to 3 attributes allowed."
+          "manageAttributesExample": "Beispiel: Für eine Kajakvermietung fügen Sie \"Größe\" (S, M, L) und \"Farbe\" (Rot, Blau) hinzu. Ein Kunde, der ein mittleres rotes Kajak bucht, erhält eine passende verfügbare Einheit.",
+          "manageAttributesMax": "Maximal 3 Attribute erlaubt."
         },
         "previewTitle": "Vorschau",
         "previewDescription": "So wird Ihr Produkt im Katalog erscheinen",
@@ -1140,9 +1140,9 @@
         "unlockPrice": "Preis neu berechnen",
         "adjustmentPositive": "Ein Aufpreis von {amount} muss erhoben werden.",
         "adjustmentNegative": "Eine Rückerstattung von {amount} kann gewährt werden.",
-        "warningDialogTitle": "Confirm exceptional change",
-        "warningDialogDescription": "This update does not match the usual reservation rules. Review the warnings before saving.",
-        "confirmWithWarnings": "Save anyway"
+        "warningDialogTitle": "Ausnahmeänderung bestätigen",
+        "warningDialogDescription": "Diese Aktualisierung entspricht nicht den üblichen Reservierungsregeln. Überprüfen Sie die Warnungen vor dem Speichern.",
+        "confirmWithWarnings": "Trotzdem speichern"
       },
       "contract": {
         "title": "Vertrag",
