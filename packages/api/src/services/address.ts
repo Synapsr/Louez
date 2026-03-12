@@ -34,7 +34,15 @@ export async function getAddressAutocomplete(
     },
     body: JSON.stringify({
       input: query,
-      includedPrimaryTypes: ['street_address', 'subpremise', 'premise', 'route'],
+      includedPrimaryTypes: [
+        'street_address',
+        'subpremise',
+        'premise',
+        'route',
+        'locality',
+        'sublocality',
+        'postal_code',
+      ],
     }),
   })
 

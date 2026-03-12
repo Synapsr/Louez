@@ -165,8 +165,18 @@ export function registerReservationTools(server: McpServer, ctx: McpSessionConte
       }
 
       // Delivery
-      if (reservation.deliveryOption === 'delivery' && reservation.deliveryAddress) {
-        text += `\n### Delivery\n- ${reservation.deliveryAddress}, ${reservation.deliveryCity} ${reservation.deliveryPostalCode}\n`
+      if (reservation.outboundMethod === 'address' || reservation.returnMethod === 'address' || reservation.deliveryOption === 'delivery') {
+        text += `\n### Delivery\n`
+        if (reservation.outboundMethod === 'address' && reservation.deliveryAddress) {
+          text += `- Outbound: ${reservation.deliveryAddress}${reservation.deliveryCity ? `, ${reservation.deliveryCity}` : ''}${reservation.deliveryPostalCode ? ` ${reservation.deliveryPostalCode}` : ''}\n`
+        } else {
+          text += `- Outbound: Store pickup\n`
+        }
+        if (reservation.returnMethod === 'address' && reservation.returnAddress) {
+          text += `- Return: ${reservation.returnAddress}${reservation.returnCity ? `, ${reservation.returnCity}` : ''}${reservation.returnPostalCode ? ` ${reservation.returnPostalCode}` : ''}\n`
+        } else {
+          text += `- Return: Store return\n`
+        }
       }
 
       // Notes

@@ -55,7 +55,6 @@ const createDeliverySettingsSchema = (
       .number()
       .min(0, t('minValue', { min: 0 }))
       .max(100, t('maxValue', { max: 100 })),
-    roundTrip: z.boolean(),
     minimumFee: z
       .number()
       .min(0, t('minValue', { min: 0 }))
@@ -70,7 +69,6 @@ const createDeliverySettingsSchema = (
       .min(0, t('minValue', { min: 0 }))
       .max(100000, t('maxValue', { max: 100000 }))
       .nullable(),
-    allowDifferentReturnAddress: z.boolean(),
   })
 
 type DeliverySettingsInput = z.infer<
@@ -106,7 +104,6 @@ export function DeliverySettingsForm({
     enabled: false,
     mode: 'optional',
     pricePerKm: 1.5,
-    roundTrip: false,
     minimumFee: 10,
     maximumDistance: null,
     freeDeliveryThreshold: null,
@@ -118,11 +115,9 @@ export function DeliverySettingsForm({
       enabled: currentDelivery.enabled,
       mode: currentDelivery.mode || 'optional',
       pricePerKm: currentDelivery.pricePerKm,
-      roundTrip: currentDelivery.roundTrip,
       minimumFee: currentDelivery.minimumFee,
       maximumDistance: currentDelivery.maximumDistance,
       freeDeliveryThreshold: currentDelivery.freeDeliveryThreshold,
-    allowDifferentReturnAddress: currentDelivery.allowDifferentReturnAddress ?? false,
     },
     validators: { onSubmit: deliverySettingsSchema },
     onSubmit: async ({ value }) => {
@@ -150,7 +145,6 @@ export function DeliverySettingsForm({
   const isEnabled = useStore(form.store, (s) => s.values.enabled)
   const mode = useStore(form.store, (s) => s.values.mode)
   const pricePerKm = useStore(form.store, (s) => s.values.pricePerKm)
-  const roundTrip = useStore(form.store, (s) => s.values.roundTrip)
   const minimumFee = useStore(form.store, (s) => s.values.minimumFee)
   const maximumDistance = useStore(form.store, (s) => s.values.maximumDistance)
   const freeDeliveryThreshold = useStore(form.store, (s) => s.values.freeDeliveryThreshold)
@@ -168,14 +162,13 @@ export function DeliverySettingsForm({
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
   const storeLongitude = store.longitude ? parseFloat(store.longitude) : null
 
-  // Calculate example delivery cost
+  // Calculate example delivery cost (per leg)
   const getExampleCost = (distance: number) => {
-    const effectiveDistance = roundTrip ? distance * 2 : distance
-    const cost = effectiveDistance * pricePerKm
+    const cost = distance * pricePerKm
     return Math.max(cost, minimumFee)
   }
 
-  // Calculate simulated delivery fee
+  // Calculate simulated delivery fee (per leg)
   const getSimulatedFee = () => {
     // Check if free delivery applies
     if (freeDeliveryThreshold && simOrderTotal >= freeDeliveryThreshold) {
@@ -187,9 +180,8 @@ export function DeliverySettingsForm({
       return { fee: 0, isFree: false, reason: 'tooFar' as const }
     }
 
-    // Calculate fee
-    const effectiveDistance = roundTrip ? simDistance * 2 : simDistance
-    const calculatedFee = effectiveDistance * pricePerKm
+    // Calculate per-leg fee
+    const calculatedFee = simDistance * pricePerKm
     const fee = Math.max(calculatedFee, minimumFee)
 
     return { fee, isFree: false, reason: 'calculated' as const }
@@ -413,60 +405,6 @@ export function DeliverySettingsForm({
                 </div>
               </div>
 
-              {/* Round Trip Option */}
-              <form.Field name="roundTrip">
-                {(field) => (
-                  <div className="grid gap-2">
-                    <Label htmlFor={field.name}>{t('tripType')}</Label>
-                    <RadioGroup
-                      value={String(field.state.value)}
-                      onValueChange={(value) =>
-                        field.handleChange(value === 'true')
-                      }
-                      className="grid gap-2 sm:grid-cols-2"
-                    >
-                      <label
-                        htmlFor="oneWay"
-                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                          !field.state.value
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:bg-muted/50'
-                        }`}
-                      >
-                        <RadioGroupItem value="false" id="oneWay" />
-                        <div className="grid gap-0.5">
-                          <span className="font-medium text-sm">
-                            {t('oneWay')}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {t('oneWayDescription')}
-                          </span>
-                        </div>
-                      </label>
-                      <label
-                        htmlFor="roundTrip"
-                        className={`flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                          field.state.value
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:bg-muted/50'
-                        }`}
-                      >
-                        <RadioGroupItem value="true" id="roundTrip" />
-                        <div className="grid gap-0.5">
-                          <span className="font-medium text-sm">
-                            {t('roundTrip')}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {t('roundTripDescription')}
-                          </span>
-                        </div>
-                      </label>
-                    </RadioGroup>
-                    {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
-                  </div>
-                )}
-              </form.Field>
-
               {/* Example calculation */}
               <div className="flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm">
                 <Info className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
@@ -480,11 +418,6 @@ export function DeliverySettingsForm({
                       fee: formatCurrency(getExampleCost(15), currency),
                     })}
                   </p>
-                  {roundTrip && (
-                    <p className="text-xs mt-1 opacity-75">
-                      {t('roundTripNote', { distance: 15, total: 30 })}
-                    </p>
-                  )}
                 </div>
               </div>
 
@@ -573,17 +506,6 @@ export function DeliverySettingsForm({
                   </form.Field>
                 </div>
 
-                {/* Allow different return address */}
-                <div className="col-span-full">
-                  <form.AppField name="allowDifferentReturnAddress">
-                    {(field) => (
-                      <field.Switch
-                        label={t('allowDifferentReturnAddress')}
-                        description={t('allowDifferentReturnAddressDescription')}
-                      />
-                    )}
-                  </form.AppField>
-                </div>
               </div>
             </div>
           )}
@@ -721,11 +643,11 @@ export function DeliverySettingsForm({
                 <div className="mt-3 pt-3 border-t text-xs text-muted-foreground space-y-1">
                   <div className="flex justify-between">
                     <span>{t('simulator.distanceLabel')}</span>
-                    <span>{simDistance} km {roundTrip ? `× 2 = ${simDistance * 2} km` : ''}</span>
+                    <span>{simDistance} km</span>
                   </div>
                   <div className="flex justify-between">
                     <span>{t('simulator.rateLabel')}</span>
-                    <span>{roundTrip ? simDistance * 2 : simDistance} km × {formatCurrency(pricePerKm, currency)}/km</span>
+                    <span>{simDistance} km × {formatCurrency(pricePerKm, currency)}/km</span>
                   </div>
                   {simResult.fee === minimumFee && (
                     <div className="flex justify-between text-primary">

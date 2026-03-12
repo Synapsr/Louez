@@ -89,10 +89,17 @@ export interface BillingAddress {
 /**
  * Delivery mode determines how delivery is offered to customers:
  * - 'optional': Customer chooses between pickup and delivery (default)
- * - 'required': Delivery is mandatory, no pickup option
- * - 'included': Delivery is mandatory and free (included in price)
+ * - 'required': Outbound delivery is mandatory, return remains selectable
+ * - 'included': Outbound delivery is mandatory and free (included in price)
  */
 export type DeliveryMode = 'optional' | 'required' | 'included'
+
+/**
+ * Method for a single delivery leg (outbound or return).
+ * - 'store': Equipment is handled at the store (pickup/return in person)
+ * - 'address': Equipment is delivered to/collected from a custom address
+ */
+export type LegMethod = 'store' | 'address'
 
 export interface DeliverySettings {
   /** Whether delivery is enabled for this store */
@@ -101,16 +108,12 @@ export interface DeliverySettings {
   mode: DeliveryMode
   /** Price per kilometer in store currency */
   pricePerKm: number
-  /** Whether the price is for round-trip (true) or one-way (false) */
-  roundTrip: boolean
-  /** Minimum delivery fee regardless of distance */
+  /** Minimum delivery fee per leg, regardless of distance */
   minimumFee: number
   /** Maximum delivery distance in km, null = unlimited */
   maximumDistance: number | null
   /** Order subtotal above which delivery is free, null = no free delivery */
   freeDeliveryThreshold: number | null
-  /** Whether customers can specify a different address for equipment return */
-  allowDifferentReturnAddress?: boolean
 }
 
 // ============================================================================

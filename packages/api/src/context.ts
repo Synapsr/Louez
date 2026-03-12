@@ -137,19 +137,24 @@ export interface BaseContext {
         pricingMode: 'hour' | 'day' | 'week'
       }>
       delivery?: {
-        option: 'pickup' | 'delivery'
-        address?: string
-        city?: string
-        postalCode?: string
-        country?: string
-        latitude?: number
-        longitude?: number
-        returnAddress?: string
-        returnCity?: string
-        returnPostalCode?: string
-        returnCountry?: string
-        returnLatitude?: number
-        returnLongitude?: number
+        outbound: {
+          method: 'store' | 'address'
+          address?: string
+          city?: string
+          postalCode?: string
+          country?: string
+          latitude?: number
+          longitude?: number
+        }
+        return: {
+          method: 'store' | 'address'
+          address?: string
+          city?: string
+          postalCode?: string
+          country?: string
+          latitude?: number
+          longitude?: number
+        }
       }
       internalNotes?: string
       sendConfirmationEmail?: boolean

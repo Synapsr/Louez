@@ -9,15 +9,12 @@ import { formatCurrency } from '@louez/utils';
 
 import { getFieldError } from '@/hooks/form/form-context';
 
-import type {
-  CheckoutFormComponentApi,
-  DeliveryOption,
-} from '../types';
+import type { CheckoutFormComponentApi } from '../types';
 
 interface CheckoutConfirmStepProps {
   form: CheckoutFormComponentApi;
   cgv: string | null;
-  deliveryOption: DeliveryOption;
+  hasDeliveryLegs: boolean;
   reservationMode: 'payment' | 'request';
   depositPercentage: number;
   subtotal: number;
@@ -36,7 +33,7 @@ interface CheckoutConfirmStepProps {
 export function CheckoutConfirmStep({
   form,
   cgv,
-  deliveryOption,
+  hasDeliveryLegs,
   reservationMode,
   depositPercentage,
   subtotal,
@@ -87,7 +84,7 @@ export function CheckoutConfirmStep({
               {form.getFieldValue('city')}
             </p>
           )}
-          {deliveryOption === 'delivery' && (
+          {hasDeliveryLegs && (
             <p className="text-muted-foreground text-sm">{t('deliveryOption')}</p>
           )}
         </div>

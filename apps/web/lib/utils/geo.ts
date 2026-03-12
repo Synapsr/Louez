@@ -38,49 +38,66 @@ export function calculateHaversineDistance(
   return R * c
 }
 
+// ---------------------------------------------------------------------------
+// Per-leg fee calculation (new model)
+// ---------------------------------------------------------------------------
+
 /**
- * Calculate delivery fee based on distance and settings
- * @param distanceKm - Delivery distance in kilometers (store → delivery address)
+ * Calculate fee for a single delivery leg (outbound or return).
+ * Minimum fee is applied per leg.
+ *
+ * @param distanceKm - Distance in kilometers for this leg
+ * @param settings - Delivery settings from store
+ * @returns Fee for this leg in store currency
+ */
+export function calculateLegFee(
+  distanceKm: number,
+  settings: DeliverySettings
+): number {
+  const fee = distanceKm * settings.pricePerKm
+  return Math.round(Math.max(fee, settings.minimumFee) * 100) / 100
+}
+
+/**
+ * Calculate total delivery fee for both legs.
+ * Free delivery threshold applies to the total order subtotal.
+ * Each non-zero leg has the minimum fee applied independently.
+ *
+ * @param outboundDistanceKm - Store → outbound address (null if at store)
+ * @param returnDistanceKm - Store → return address (null if at store)
  * @param settings - Delivery settings from store
  * @param orderSubtotal - Order subtotal for free delivery threshold check
- * @param returnDistanceKm - Optional return distance in km (return address → store).
- *   When provided and roundTrip is true, uses actual return distance instead of
- *   doubling the delivery distance.
- * @returns Delivery fee in store currency
+ * @returns Per-leg and total fees
  */
-export function calculateDeliveryFee(
-  distanceKm: number,
+export function calculateTotalDeliveryFee(
+  outboundDistanceKm: number | null,
+  returnDistanceKm: number | null,
   settings: DeliverySettings,
-  orderSubtotal: number,
-  returnDistanceKm?: number | null
-): number {
-  // Check free delivery threshold
+  orderSubtotal: number
+): { outboundFee: number; returnFee: number; totalFee: number } {
+  // Free delivery threshold applies to total order
   if (
     settings.freeDeliveryThreshold !== null &&
     orderSubtotal >= settings.freeDeliveryThreshold
   ) {
-    return 0
+    return { outboundFee: 0, returnFee: 0, totalFee: 0 }
   }
 
-  // Calculate effective distance
-  let effectiveDistance: number
-  if (settings.roundTrip) {
-    // When a different return address is provided, use actual return distance
-    // Otherwise, assume same address and double the delivery distance
-    effectiveDistance =
-      returnDistanceKm != null && returnDistanceKm > 0
-        ? distanceKm + returnDistanceKm
-        : distanceKm * 2
-  } else {
-    effectiveDistance = distanceKm
+  const outboundFee =
+    outboundDistanceKm !== null ? calculateLegFee(outboundDistanceKm, settings) : 0
+  const returnFee =
+    returnDistanceKm !== null ? calculateLegFee(returnDistanceKm, settings) : 0
+
+  return {
+    outboundFee,
+    returnFee,
+    totalFee: Math.round((outboundFee + returnFee) * 100) / 100,
   }
-
-  // Calculate fee based on distance
-  const calculatedFee = effectiveDistance * settings.pricePerKm
-
-  // Apply minimum fee and round to 2 decimal places
-  return Math.round(Math.max(calculatedFee, settings.minimumFee) * 100) / 100
 }
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
 
 /**
  * Validate if delivery is possible for given distance

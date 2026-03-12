@@ -78,8 +78,12 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
 
   const isRequest = store.settings?.reservationMode === 'request'
 
-  // Delivery information
-  const isDelivery = reservation.deliveryOption === 'delivery'
+  // Delivery information — leg-based model
+  const outboundMethod = (reservation.outboundMethod as 'store' | 'address') ?? 'store'
+  const returnMethod = (reservation.returnMethod as 'store' | 'address') ?? 'store'
+  const hasOutboundDelivery = outboundMethod === 'address'
+  const hasReturnDelivery = returnMethod === 'address'
+  const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery
   const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
 
   // Format dates with times in store timezone
@@ -131,23 +135,24 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
               </div>
             </div>
 
-            {/* Delivery or Pickup Option */}
-            <div className="rounded-lg bg-muted/50 p-4">
+            {/* Delivery / Pickup — per-leg display */}
+            <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+              {/* Outbound leg */}
               <div className="flex items-start gap-3">
-                {isDelivery ? (
-                  <>
-                    <Truck className="h-5 w-5 text-primary mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium">{t('deliveryLabel')}</p>
-                        {deliveryFee === 0 && (
-                          <Badge variant="success" className="text-xs">
-                            {t('free')}
-                          </Badge>
-                        )}
-                      </div>
+                {hasOutboundDelivery ? (
+                  <Truck className="h-5 w-5 text-primary mt-0.5" />
+                ) : (
+                  <Store className="h-5 w-5 text-primary mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                    {t('outboundLegLabel')}
+                  </p>
+                  {hasOutboundDelivery ? (
+                    <>
+                      <p className="font-medium">{t('deliveryLabel')}</p>
                       {reservation.deliveryAddress && (
-                        <p className="text-sm text-muted-foreground flex items-start gap-1.5">
+                        <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
                           <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
                           <span>
                             {reservation.deliveryAddress}
@@ -156,38 +161,60 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                           </span>
                         </p>
                       )}
-                      {reservation.returnAddress && (
-                        <div className="mt-3 pt-3 border-t border-border/50">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">
-                            {t('returnAddressLabel')}
-                          </p>
-                          <p className="text-sm text-muted-foreground flex items-start gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                            <span>
-                              {reservation.returnAddress}
-                              {reservation.returnCity && `, ${reservation.returnCity}`}
-                              {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
-                            </span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <Store className="h-5 w-5 text-primary mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{t('pickupLabel')}</p>
-                        <Badge variant="secondary" className="text-xs">{t('free')}</Badge>
-                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">{t('pickupLabel')}</p>
                       {store.address && (
                         <p className="text-sm text-muted-foreground">{store.address}</p>
                       )}
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
+
+              {/* Return leg */}
+              <div className="flex items-start gap-3 border-t border-border/50 pt-3">
+                {hasReturnDelivery ? (
+                  <Truck className="h-5 w-5 text-primary mt-0.5" />
+                ) : (
+                  <Store className="h-5 w-5 text-primary mt-0.5" />
+                )}
+                <div className="flex-1">
+                  <p className="text-xs font-medium text-muted-foreground mb-0.5">
+                    {t('returnLegLabel')}
+                  </p>
+                  {hasReturnDelivery ? (
+                    <>
+                      <p className="font-medium">{t('returnDeliveryLabel')}</p>
+                      {reservation.returnAddress && (
+                        <p className="text-sm text-muted-foreground flex items-start gap-1.5 mt-1">
+                          <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                          <span>
+                            {reservation.returnAddress}
+                            {reservation.returnCity && `, ${reservation.returnCity}`}
+                            {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
+                          </span>
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">{t('storeReturnLabel')}</p>
+                      {store.address && (
+                        <p className="text-sm text-muted-foreground">{store.address}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Fee badge */}
+              {hasAnyDelivery && deliveryFee === 0 && (
+                <div className="pt-1">
+                  <Badge variant="success" className="text-xs">{t('free')}</Badge>
+                </div>
+              )}
             </div>
 
             {/* Customer email */}
