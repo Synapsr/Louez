@@ -60,7 +60,7 @@
     "dayUnit": "{count, plural, one {dag} other {dagen}}",
     "hourUnit": "{count, plural, one {uur} other {uren}}",
     "weekUnit": "{count, plural, one {week} other {weken}}",
-    "minuteUnit": "{count, plural, one {minute} other {minutes}}",
+    "minuteUnit": "{count, plural, one {minuut} other {minuten}}",
     "addressInput": {
       "placeholder": "Zoek een adres...",
       "coordinatesSaved": "Coördinaten opgeslagen",
@@ -225,7 +225,7 @@
       "roles": {
         "owner": "Eigenaar",
         "member": "Teamlid",
-        "platform_admin": "Admin"
+        "platform_admin": "Beheerder"
       }
     },
     "team": {
@@ -692,14 +692,14 @@
         "categoryOptional": "Optioneel - helpt klanten uw product te vinden",
         "noCategories": "Nog geen categorieën",
         "pricingDescription": "Stel de huurprijs en tarieven in",
-        "baseRate": "Base rate",
-        "baseRateDescription": "Most expensive rate per minute used as pricing baseline.",
-        "additionalRates": "Additional rates",
-        "additionalRatesDescription": "Define alternative periods with cheaper effective rates.",
-        "addRate": "Add rate",
-        "rateReduction": "Reduction (%)",
-        "computedReduction": "Computed reduction",
-        "noRatesYet": "No additional rates configured",
+        "baseRate": "Basistarief",
+        "baseRateDescription": "Duurste tarief per minuut, gebruikt als prijsbasis.",
+        "additionalRates": "Extra tarieven",
+        "additionalRatesDescription": "Definieer alternatieve periodes met goedkopere effectieve tarieven.",
+        "addRate": "Tarief toevoegen",
+        "rateReduction": "Korting (%)",
+        "computedReduction": "Berekende korting",
+        "noRatesYet": "Nog geen extra tarieven geconfigureerd",
         "pricingModeLabel": "Prijsmodus",
         "pricingModeHelp": "Kies of dit product andere prijzen gebruikt dan de winkel",
         "pricingModeInherit": "Overnemen van winkel",
@@ -782,7 +782,20 @@
           "noUnitsRegistered": "Geen eenheden geregistreerd",
           "noUnitsHint": "Voeg individuele eenheden toe om bij te houden welke verhuurd zijn",
           "cancel": "Annuleren",
-          "confirm": "Bevestigen"
+          "confirm": "Bevestigen",
+          "bookingAttributesTitle": "Boekingskenmerken",
+          "bookingAttributesDescription": "Voeg maximaal 3 kenmerkassen toe (maat, kleur, spanning...) voor gevolgde combinaties.",
+          "bookingAttributePlaceholder": "Kenmerklabel (bijv. Maat)",
+          "addAttribute": "Kenmerk toevoegen",
+          "bookingAttributesEmpty": "Geen boekingskenmerken geconfigureerd. Alle gevolgde eenheden delen de standaardcombinatie.",
+          "bookingAttributeValuePlaceholder": "{label} waarde",
+          "combinationKey": "Combinatie",
+          "missingAttributesWarning": "{count, plural, one {# actieve eenheid mist ten minste één kenmerkwaarde} other {# actieve eenheden missen ten minste één kenmerkwaarde}}",
+          "manageAttributes": "Kenmerken beheren",
+          "manageAttributesDescription": "Met kenmerken kunnen klanten specifieke eigenschappen kiezen bij het boeken (bijv. maat, kleur). Elke eenheid wordt getagd met kenmerkwaarden en het systeem wijst automatisch een passende eenheid toe bij het afrekenen.",
+          "manageAttributesExample": "Voorbeeld: voor een kajakhuurverhuur voegt u \"Maat\" (S, M, L) en \"Kleur\" (Rood, Blauw) toe. Een klant die een Medium Rode kajak boekt, krijgt een passende beschikbare eenheid toegewezen.",
+          "manageAttributesMax": "Maximaal 3 kenmerken toegestaan.",
+          "pressEnterToCreate": "Druk op Enter om \"{value}\" aan te maken"
         },
         "previewTitle": "Voorbeeld",
         "previewDescription": "Zo verschijnt uw product in de catalogus",
@@ -847,7 +860,65 @@
         "seasonalSettingsHint": "BTW, borg en progressieve kortingen worden geconfigureerd in de basisprijzen.",
         "switchToBasePricing": "Naar basisprijzen gaan",
         "savingPeriod": "Opslaan...",
-        "periodSaved": "Prijzen opgeslagen"
+        "periodSaved": "Prijzen opgeslagen",
+        "assurance": {
+          "title": "Tulip verzekering",
+          "description": "Beheer de verzekeringskoppeling voor dit product zonder de bewerkingspagina te verlaten.",
+          "retry": "Opnieuw proberen",
+          "setupSuccess": "Tulip account opgeslagen en gevalideerd.",
+          "mappingSaved": "Productkoppeling opgeslagen.",
+          "productUpdated": "Tulip product bijgewerkt.",
+          "productCreated": "Tulip product aangemaakt en gekoppeld.",
+          "statusConnected": "Verbonden",
+          "statusNotConnected": "Niet verbonden",
+          "connectedWith": "Tulip account: {renterUid}",
+          "connectedAt": "Verbonden op {date}",
+          "apiKeyLabel": "Tulip accountidentificatie",
+          "apiKeyPlaceholder": "Voer uw accountidentificatie in",
+          "validateButton": "Valideren",
+          "validatingButton": "Valideren...",
+          "bookAppointmentButton": "Afspraak maken",
+          "statusMapped": "Gekoppeld",
+          "statusNotMapped": "Niet gekoppeld",
+          "mappedTo": "Gekoppeld aan {title}",
+          "linkOrCreateHelper": "Koppel een bestaand Tulip product of voeg een nieuw Tulip product toe en koppel het.",
+          "addNewProductButton": "Nieuw product toevoegen",
+          "mappingLabel": "Tulip product",
+          "mappingPlaceholder": "Niet gekoppeld",
+          "mappingSaving": "Opslaan...",
+          "noResults": "Geen Tulip producten gevonden",
+          "dialog": {
+            "description": "Configureer Tulip productdetails en push updates.",
+            "cancel": "Annuleren",
+            "createButton": "Aanmaken in Tulip",
+            "creatingButton": "Aanmaken...",
+            "updateButton": "Update doorsturen",
+            "updatingButton": "Bijwerken...",
+            "categoryPlaceholder": "Selecteer categorie",
+            "productSubtypePlaceholder": "Selecteer productsubtype",
+            "productTitlePlaceholder": "Laat leeg om \"{defaultTitle}\" te behouden",
+            "brandPlaceholder": "Merk",
+            "modelPlaceholder": "Model",
+            "createOption": "Gebruik \"{value}\"",
+            "noResults": "Geen resultaten",
+            "noBrandResults": "Geen merksuggesties",
+            "noModelResults": "Geen modelsuggesties",
+            "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
+            "invalidMargin": "Voer een geldige marge in.",
+            "marginTooltip": "Extra marge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
+            "fields": {
+              "productTitle": "Productnaam (optioneel)",
+              "category": "Categorie",
+              "productSubtype": "Productsubtype",
+              "brand": "Merk",
+              "model": "Model",
+              "purchasedDate": "Aankoopdatum",
+              "purchasePriceHt": "Aankoopprijs (excl. btw)",
+              "margin": "Marge"
+            }
+          }
+        }
       },
       "deleteConfirm": {
         "title": "Dit product verwijderen?",
@@ -945,7 +1016,7 @@
       "sendEmail": "E-mail verzenden",
       "customerInfo": "Klantinformatie",
       "viewCustomer": "Klant bekijken",
-      "periodStart": "Start",
+      "periodStart": "Begin",
       "periodEnd": "Einde",
       "duration": "Duur",
       "subtotalRental": "Subtotaal verhuur",
@@ -1029,7 +1100,10 @@
         "lockPrice": "Prijs vergrendelen",
         "unlockPrice": "Prijs herberekenen",
         "adjustmentPositive": "Er moet een toeslag van {amount} worden geïnd.",
-        "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt."
+        "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt.",
+        "warningDialogTitle": "Uitzonderlijke wijziging bevestigen",
+        "warningDialogDescription": "Deze update komt niet overeen met de gebruikelijke reserveringsregels. Controleer de waarschuwingen voordat u opslaat.",
+        "confirmWithWarnings": "Toch opslaan"
       },
       "contract": {
         "title": "Contract",
@@ -1183,7 +1257,7 @@
           "dialogDescription": "Pas de eenheidsprijs aan voor deze reservering",
           "calculatedPrice": "Berekende prijs",
           "newPrice": "Nieuwe prijs",
-          "newPricePlaceholder": "0.00",
+          "newPricePlaceholder": "0,00",
           "totalForPeriod": "Totaal voor de periode",
           "reset": "Herstellen",
           "apply": "Toepassen",
@@ -1209,7 +1283,26 @@
           "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert.",
           "insufficientStock": "Onvoldoende voorraad"
         },
-        "addItemError": "Voeg minimaal één product of aangepast artikel toe"
+        "addItemError": "Voeg minimaal één product of aangepast artikel toe",
+        "perWeek": "week",
+        "bookingAttributes": "Opties",
+        "bookingAttributeNone": "Willekeurig",
+        "bookingAttributesNoOptions": "Geen beschikbare waarden voor {attribute}",
+        "bookingAttributesHelp": "Selecteer opties (maat, kleur, enz.) om een specifieke combinatie te selecteren.",
+        "addOptionLine": "Optieregel toevoegen",
+        "lineLabel": "Regel {index}",
+        "availableForSelection": "Beschikbaar voor deze optie: {count}",
+        "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optieregel toe.",
+        "quantityPerCombinationHint": "Aantal geldt alleen voor de geselecteerde optie. Voeg een andere optie toe als afzonderlijke regel.",
+        "quantityCanSplitHint": "Zonder volledige optieselectie kan het aantal worden verdeeld over overeenkomende opties.",
+        "tulipInsurance": {
+          "title": "Tulip verzekering",
+          "appliesMappedProducts": "Geldt alleen voor producten die aan Tulip zijn gekoppeld.",
+          "required": "Dekking is vereist voor deze reservering.",
+          "optionalLabel": "Dekking inschakelen voor deze reservering",
+          "insurableProduct": "Verzekerbaar",
+          "assuredProduct": "Verzekerd"
+        }
       },
       "rejectDialog": {
         "title": "Aanvraag afwijzen",
@@ -1252,27 +1345,27 @@
         "showAll": "Alles tonen ({count} gebeurtenissen)",
         "showLess": "Minder tonen",
         "paymentFailure": {
-          "technicalDetail": "Technical detail: {message}",
+          "technicalDetail": "Technisch detail: {message}",
           "payment_failed": {
-            "authenticationRequired": "Payment authentication was not completed. Ask the customer to retry and validate their bank verification (3D Secure).",
-            "cardDeclined": "The card was declined by the bank. Ask the customer to retry or use another card.",
-            "insufficientFunds": "Payment failed due to insufficient funds on the card.",
-            "expiredCard": "The card has expired. Ask the customer to use a valid card.",
-            "incorrectCvc": "The card security code (CVC) is invalid.",
-            "processingError": "The payment failed due to a temporary processing issue. Retry in a few minutes.",
-            "doNotHonor": "The bank refused this payment without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Online payment failed. Ask the customer to retry or use another card.",
-            "recovered": "An earlier attempt failed, but the payment was completed successfully at {date}."
+            "authenticationRequired": "Betalingsauthenticatie is niet voltooid. Vraag de klant opnieuw te betalen en de bankverificatie (3D Secure) te voltooien.",
+            "cardDeclined": "De kaart is geweigerd door de bank. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
+            "insufficientFunds": "Betaling mislukt wegens onvoldoende saldo op de kaart.",
+            "expiredCard": "De kaart is verlopen. Vraag de klant een geldige kaart te gebruiken.",
+            "incorrectCvc": "De beveiligingscode (CVC) van de kaart is ongeldig.",
+            "processingError": "De betaling is mislukt door een tijdelijk verwerkingsprobleem. Probeer het over enkele minuten opnieuw.",
+            "doNotHonor": "De bank heeft deze betaling zonder details geweigerd. Vraag de klant contact op te nemen met de bank of een andere kaart te gebruiken.",
+            "generic": "Online betaling mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken.",
+            "recovered": "Een eerdere poging is mislukt, maar de betaling is succesvol voltooid op {date}."
           },
           "deposit_failed": {
-            "authenticationRequired": "The deposit authorization failed because bank authentication was not completed. Ask the customer to retry and validate 3D Secure.",
-            "cardDeclined": "The deposit authorization was declined by the bank. Ask the customer to use another card.",
-            "insufficientFunds": "The card does not have enough available funds for this deposit authorization.",
-            "expiredCard": "The card used for the deposit authorization has expired.",
-            "incorrectCvc": "The card security code (CVC) is invalid for this deposit authorization.",
-            "processingError": "The deposit authorization failed due to a temporary processing issue. Retry in a few minutes.",
-            "doNotHonor": "The bank refused the deposit authorization without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Deposit authorization failed. Ask the customer to retry or use another card."
+            "authenticationRequired": "De borgautorisatie is mislukt omdat de bankauthenticatie niet is voltooid. Vraag de klant het opnieuw te proberen en 3D Secure te voltooien.",
+            "cardDeclined": "De borgautorisatie is geweigerd door de bank. Vraag de klant een andere kaart te gebruiken.",
+            "insufficientFunds": "De kaart heeft niet genoeg beschikbaar saldo voor deze borgautorisatie.",
+            "expiredCard": "De kaart die voor de borgautorisatie is gebruikt, is verlopen.",
+            "incorrectCvc": "De beveiligingscode (CVC) is ongeldig voor deze borgautorisatie.",
+            "processingError": "De borgautorisatie is mislukt door een tijdelijk verwerkingsprobleem. Probeer het over enkele minuten opnieuw.",
+            "doNotHonor": "De bank heeft de borgautorisatie zonder details geweigerd. Vraag de klant contact op te nemen met de bank of een andere kaart te gebruiken.",
+            "generic": "Borgautorisatie mislukt. Vraag de klant het opnieuw te proberen of een andere kaart te gebruiken."
           }
         }
       },
@@ -1289,7 +1382,10 @@
         "save": "Opslaan",
         "saved": "Eenheden toegewezen",
         "notes": "Notities",
-        "identifiers": "Identificatoren: {identifiers}"
+        "identifiers": "Identificatoren: {identifiers}",
+        "optionsLabel": "Opties",
+        "clearSelection": "Selectie wissen",
+        "autofillHint": "Voorgestelde eenheden geselecteerd. Klik op Opslaan om te bevestigen."
       },
       "smartActions": {
         "paymentIncomplete": "Huur niet betaald ({remaining} resterend)",
@@ -1310,7 +1406,9 @@
         "notCollected": "Niet geïnd",
         "toReturnToCustomer": "Terug te geven aan klant",
         "returnQuestion": "Bevestigen dat het materiaal in goede staat is teruggebracht?",
-        "confirmReturn": "Retour bevestigen"
+        "confirmReturn": "Retour bevestigen",
+        "skipInspectionPickup": "Overslaan en ophaling bevestigen",
+        "skipInspectionReturn": "Overslaan en retour bevestigen"
       },
       "activityBy": "door",
       "activitySystem": "Automatische actie",
@@ -1556,7 +1654,10 @@
         "smsSendSuccess": "Toegangslink via SMS verzonden",
         "smsSendError": "Fout bij verzenden SMS",
         "noPhone": "Klant heeft geen telefoonnummer"
-      }
+      },
+      "tulipInsuredBadge": "Tulip verzekerd",
+      "tulipContractCardTitle": "Verzekeringscontract",
+      "tulipContractCardDescription": "Open het contract in Colibri."
     },
     "customers": {
       "title": "Klanten",
@@ -1662,8 +1763,7 @@
         "MC": "Monaco",
         "CA": "Canada",
         "US": "Verenigde Staten",
-        "GB": "Verenigd Koninkrijk",
-        "NL": "Nederland"
+        "GB": "Verenigd Koninkrijk"
       }
     },
     "calendar": {
@@ -1673,7 +1773,7 @@
         "day": "Dag",
         "week": "Week",
         "month": "Maand",
-        "timeline": "Timeline"
+        "timeline": "Tijdlijn"
       },
       "filterByProduct": "Filteren op product",
       "allProducts": "Alle producten",
@@ -1798,7 +1898,7 @@
       "noRevenueData": "Nog geen omzetgegevens"
     },
     "analytics": {
-      "title": "Analytics",
+      "title": "Analyse",
       "description": "Volg het verkeer en conversies van je winkel",
       "visitors": "Bezoekers",
       "productViews": "Productweergaven",
@@ -2110,7 +2210,7 @@
         "previewDatePicker": {
           "title": "Wanneer wilt u huren?",
           "subtitle": "Selecteer uw data",
-          "startLabel": "Start",
+          "startLabel": "Begin",
           "endLabel": "Einde",
           "startDateExample": "Za 15 jan",
           "endDatePlaceholder": "Einddatum",
@@ -2505,6 +2605,86 @@
             "description": "Verbind uw winkel met uw bestaande tools en automatiseer uw dagelijkse taken.",
             "comingSoonDescription": "De REST-API is in ontwikkeling. U kunt uw winkel binnenkort met elke tool of service verbinden."
           }
+        },
+        "title": "Integraties",
+        "loading": "Integraties laden...",
+        "loadError": "Kan integraties niet laden.",
+        "catalogDescription": "Blader door integraties per categorie, schakel in wat u nodig heeft en configureer elke provider.",
+        "searchPlaceholder": "Integraties zoeken",
+        "fallbackDescription": "Integratiedetails zijn beschikbaar op de detailpagina.",
+        "statusFilters": {
+          "all": "Alle",
+          "enabled": "Ingeschakeld",
+          "disabled": "Uitgeschakeld"
+        },
+        "categoriesTitle": "Categorieën",
+        "categoryCount": "{count} integraties",
+        "backToCatalog": "Terug naar catalogus",
+        "emptyCategory": "Geen integraties komen overeen met uw filters.",
+        "viewAll": "Alles bekijken",
+        "statusLabels": {
+          "enabled": "Ingeschakeld",
+          "disabled": "Uitgeschakeld",
+          "connected": "Verbonden",
+          "notConnected": "Niet verbonden"
+        },
+        "lifecycle": {
+          "stable": "Stabiel",
+          "beta": "Bèta",
+          "coming_soon": "Binnenkort beschikbaar"
+        },
+        "toasts": {
+          "enabled": "Integratie ingeschakeld.",
+          "disabled": "Integratie uitgeschakeld."
+        },
+        "detailNotFoundTitle": "Integratie niet gevonden",
+        "detailNotFoundDescription": "Deze integratie kon niet worden geladen.",
+        "disableAction": "Integratie uitschakelen",
+        "openConfigurationAction": "Configuratie openen",
+        "enableAction": "Integratie inschakelen",
+        "visitWebsite": "Website bezoeken",
+        "tabs": {
+          "features": "Functies",
+          "configuration": "Configuratie",
+          "about": "Over"
+        },
+        "featuresTitle": "Wat het doet",
+        "galleryTitle": "Galerij",
+        "configurationLockedTitle": "Inschakelen om te configureren",
+        "configurationLockedDescription": "Schakel deze integratie eerst in om toegang te krijgen tot de configuratiepagina.",
+        "configurationUnavailableTitle": "Configuratie niet beschikbaar",
+        "configurationUnavailableDescription": "Deze integratie biedt nog geen configuratiescherm.",
+        "dangerZoneTitle": "Gevarenzone",
+        "dangerZoneDescription": "Schakel deze integratie uit om synchronisatie te stoppen en gerelateerd afrekengedrag te verbergen.",
+        "aboutTitle": "Over",
+        "metadataTitle": "Integratiedetails",
+        "metadata": {
+          "provider": "Aanbieder",
+          "pricing": "Prijzen",
+          "category": "Categorie",
+          "resources": "Bronnen"
+        },
+        "categories": {
+          "insurance": {
+            "name": "Verzekering",
+            "description": "Bescherm reserveringen en synchroniseer verzekeringscontracten."
+          }
+        },
+        "providers": {
+          "tulip": {
+            "name": "Tulip Insurance",
+            "description": "Verbind Tulip om offertes op te stellen en huurverzekeringscontracten te genereren.",
+            "about": "Tulip centraliseert verzekeringsactiviteiten voor verhuurders: offertevoorvertoning bij het afrekenen, contractaanmaak en koppeling tussen uw catalogus en verzekerde producten.",
+            "features": {
+              "sync": "Verbind uw Tulip account door uw accountidentificatie te valideren.",
+              "checkout": "Pas verzekering toe bij het afrekenen (vereist, optioneel of verborgen publieke modus).",
+              "mapping": "Koppel Louez producten aan Tulip producten en push updates."
+            },
+            "resources": {
+              "website": "Website",
+              "support": "Ondersteuning"
+            }
+          }
         }
       },
       "embed": {
@@ -2531,7 +2711,7 @@
         "noKeys": "Nog geen API-sleutels. Maak er een aan om te beginnen.",
         "keyRevoked": "API-sleutel ingetrokken.",
         "lastUsed": "Laatst gebruikt",
-        "endpointsTitle": "Endpoints",
+        "endpointsTitle": "Eindpunten",
         "endpointsDescription": "Gebruik deze endpoints om toegang te krijgen tot uw winkelgegevens.",
         "mcpServerTitle": "MCP-server (HTTP)",
         "mcpDescription": "Verbind AI-assistenten zoals Claude Desktop met uw winkel.",
@@ -3172,7 +3352,7 @@
         "comingSoon": "Binnenkort"
       },
       "admin": {
-        "title": "Platform Admin",
+        "title": "Platformbeheer",
         "description": "Platforminstellingen voor deze winkel. Alleen zichtbaar voor platformbeheerders.",
         "trialSection": "Proefperiode abonnement",
         "trialSectionDescription": "Configureer een gratis proefperiode voor het abonnement van deze winkel.",
@@ -3187,6 +3367,133 @@
         "discountDuration": "Duur",
         "discountDurationDescription": "Aantal maanden dat de korting van toepassing is. Stel 0 in voor een permanente korting.",
         "months": "maanden"
+      },
+      "integrations": "Integraties",
+      "integrationsTabs": {
+        "assurance": "Verzekering"
+      },
+      "integrationsPage": {
+        "description": "Verbind externe providers en configureer verzekeringsgedrag.",
+        "assurance": {
+          "title": "Tulip Insurance",
+          "description": "Configureer uw Tulip integratie voor reserveringsverzekering.",
+          "helper": "Voer uw Tulip accountidentificatie in, bepaal hoe de verzekering wordt getoond aan klanten en koppel uw producten.",
+          "loading": "Tulip integratie laden...",
+          "loadError": "Kan Tulip integratiegegevens niet laden.",
+          "retry": "Opnieuw proberen",
+          "setupSuccess": "Tulip account opgeslagen en gevalideerd.",
+          "configurationSaved": "Tulip configuratie opgeslagen.",
+          "mappingSaved": "Productkoppeling opgeslagen.",
+          "productUpdated": "Tulip product bijgewerkt.",
+          "productCreated": "Tulip product aangemaakt en gekoppeld.",
+          "disconnectSuccess": "Tulip integratie ontkoppeld.",
+          "disconnect": {
+            "title": "Integratie verwijderen",
+            "description": "Ontkoppel de Tulip integratie van uw winkel. Productkoppelingen gaan verloren.",
+            "button": "Integratie verwijderen",
+            "confirmTitle": "Tulip integratie verwijderen?",
+            "confirmDescription": "Dit verwijdert uw verbonden Tulip account en alle productkoppelingen. U kunt later opnieuw verbinden.",
+            "cancelButton": "Annuleren",
+            "confirmButton": "Verwijderen",
+            "disconnectingButton": "Verwijderen..."
+          },
+          "setup": {
+            "title": "Verbinding",
+            "description": "Voer uw Tulip accountidentificatie in om de verbinding te verifiëren.",
+            "apiKeyLabel": "Tulip accountidentificatie",
+            "apiKeyPlaceholder": "Voer uw accountidentificatie in",
+            "validateButton": "Valideren",
+            "validatingButton": "Valideren...",
+            "statusConnected": "Verbonden",
+            "statusNotConnected": "Niet verbonden",
+            "connectedWith": "Tulip account: {renterUid}",
+            "connectedAt": "Verbonden op {date}",
+            "bookAppointmentButton": "Afspraak maken"
+          },
+          "configuration": {
+            "title": "Verzekeringsregels",
+            "description": "Kies hoe de verzekering wordt toegepast en getoond aan klanten.",
+            "disabledMessage": "Voer eerst uw Tulip accountidentificatie in en valideer deze.",
+            "modeLabel": "Verzekeringmodus",
+            "modeRequired": "Vereist voor alle producten",
+            "modeOptional": "Optioneel bij afrekenen",
+            "modeNoPublic": "Geen publieke weergave",
+            "includePriceLabel": "Verzekering opnemen in de eindprijs",
+            "includePriceHelp": "Indien ingeschakeld, wordt de verzekering verwerkt in de eindprijs die aan klanten wordt getoond.",
+            "renterLabel": "Tulip verhuurder",
+            "renterPlaceholder": "Voer eerst de accountidentificatie in en valideer deze",
+            "renterNone": "Geen verhuurder geselecteerd",
+            "renterDisabled": "uitgeschakeld",
+            "saveButton": "Configuratie opslaan",
+            "savingButton": "Opslaan..."
+          },
+          "mapping": {
+            "title": "Productkoppeling",
+            "description": "Koppel Louez producten aan Tulip producten en beheer updates.",
+            "disabledMessage": "Voer uw Tulip accountidentificatie in en valideer deze voordat u producten koppelt.",
+            "columns": {
+              "product": "Product",
+              "tulipProduct": "Tulip product",
+              "category": "Categorie",
+              "brand": "Merk",
+              "model": "Model",
+              "purchasePriceHt": "Aankoopprijs (excl. btw)",
+              "actions": "Acties"
+            },
+            "emptyState": "Nog geen productkoppeling. Verbind Tulip en koppel producten vanuit deze sectie.",
+            "noTulipProduct": "Selecteer een Tulip product",
+            "notMapped": "Niet gekoppeld",
+            "categoryPlaceholder": "Selecteer categorie",
+            "productSubtypePlaceholder": "Selecteer productsubtype",
+            "productTitlePlaceholder": "Laat leeg om \"{defaultTitle}\" te behouden",
+            "brandPlaceholder": "Merk",
+            "modelPlaceholder": "Model",
+            "createOption": "Gebruik \"{value}\"",
+            "noBrandResults": "Geen merksuggesties",
+            "noModelResults": "Geen modelsuggesties",
+            "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
+            "invalidMargin": "Voer een geldige marge in.",
+            "marginTooltip": "Extra marge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
+            "createButton": "Aanmaken in Tulip",
+            "creatingButton": "Aanmaken...",
+            "updateButton": "Update doorsturen",
+            "updatingButton": "Bijwerken...",
+            "savingMapping": "Opslaan...",
+            "refreshButton": "Tulip producten vernieuwen",
+            "refreshingButton": "Vernieuwen...",
+            "filters": {
+              "all": "Alle",
+              "mapped": "Gekoppeld",
+              "unmapped": "Niet gekoppeld"
+            },
+            "coverageSummary": "{insured}/{total} producten zijn verzekerbaar met Tulip.",
+            "viewUnmappedCta": "Niet-gekoppelde bekijken ({count})",
+            "searchPlaceholder": "Producten zoeken...",
+            "statusBadge": {
+              "label": "Status",
+              "mapped": "Gekoppeld",
+              "notMapped": "Niet gekoppeld"
+            },
+            "noResults": "Geen Tulip producten gevonden",
+            "noFilterResults": "Geen producten komen overeen met de huidige filters.",
+            "sheet": {
+              "description": "Configureer Tulip productdetails en push updates.",
+              "cancel": "Annuleren"
+            },
+            "fields": {
+              "tulipProduct": "Tulip product",
+              "category": "Categorie",
+              "productTitle": "Productnaam (optioneel)",
+              "productSubtype": "Productsubtype",
+              "brand": "Merk",
+              "model": "Model",
+              "purchasedDate": "Aankoopdatum",
+              "purchasePriceHt": "Aankoopprijs (excl. btw)",
+              "margin": "Marge"
+            }
+          }
+        }
       }
     },
     "aiChat": {
@@ -3381,7 +3688,16 @@
       "breadcrumb": {
         "home": "Home",
         "catalog": "Catalogus"
-      }
+      },
+      "bookingAttributes": "Configuratie",
+      "bookingAttributesHelp": "Optioneel: selecteer specifieke kenmerken. Indien gedeeltelijk ingevuld, kiest het systeem automatisch een passende beschikbare combinatie.",
+      "bookingAttributesNoOptions": "Geen opties beschikbaar voor {attribute} op de geselecteerde datums.",
+      "bookingAttributeNone": "Geen",
+      "availableForSelection": "Beschikbaar voor deze selectie: {count}",
+      "quantityPerCombinationHint": "Aantal geldt alleen voor de geselecteerde optie. Voeg een andere optie toe als afzonderlijke regel.",
+      "quantityCanSplitHint": "Aantal kan worden verdeeld over overeenkomende opties en als afzonderlijke regels worden toegevoegd.",
+      "inCartCount": "Al in winkelwagen: {count}",
+      "selectionUnavailable": "Geen combinatie beschikbaar voor deze selectie."
     },
     "accessories": {
       "productAdded": "Toegevoegd aan winkelwagen",
@@ -3450,7 +3766,8 @@
         "openHours": "Open {hours}"
       },
       "modifyDates": "Datum wijzigen",
-      "applyDates": "Datum toepassen"
+      "applyDates": "Datum toepassen",
+      "timezoneNotice": "Tijden weergegeven in {city} tijd"
     },
     "availability": {
       "title": "Beschikbare producten",
@@ -3539,7 +3856,8 @@
         "description": "Alle artikelen worden uit uw winkelwagen verwijderd.",
         "cancel": "Annuleren",
         "confirm": "Legen"
-      }
+      },
+      "lineMaxReached": "Maximum bereikt voor deze optie. Voeg een andere optie toe als afzonderlijke regel."
     },
     "checkout": {
       "title": "Mijn reservering voltooien",
@@ -3587,8 +3905,6 @@
       "returnAddressPlaceholder": "Voer het retouradres in...",
       "returnDistance": "Retourafstand",
       "returnTooFar": "Sorry, het retouradres is verder dan {maxKm} km",
-      "roundTripNoteDifferentReturn": "{deliveryKm} km + {returnKm} km = {total} km (levering + retour)",
-      "roundTripNote": "{distance} km x 2 = {total} km (retour)",
       "contactDescription": "We hebben deze informatie nodig om contact met u op te nemen",
       "addressDescription": "Optioneel - Vul uw adres in indien nodig",
       "confirmDescription": "Controleer uw gegevens voor bevestiging",
@@ -3680,7 +3996,28 @@
         "promoCodeExhausted": "Deze actiecode is niet meer beschikbaar",
         "promoCodeMinimumNotMet": "Minimumbedrag van {amount} vereist",
         "promoCodeNotStarted": "Deze actiecode is nog niet actief"
-      }
+      },
+      "insuranceRequiredNotice": "Dekking voor breuk/diefstal is vereist voor deze reservering en wordt automatisch toegepast.",
+      "insuranceOptionalLabel": "Breuk-/diefstaldekking toevoegen",
+      "insuranceOptionalHelp": "Schakel deze optie in om breuk-/diefstaldekking toe te voegen aan uw reservering.",
+      "insuranceLineLabel": "Breuk-/diefstaldekking",
+      "insuranceRequiredBadge": "Vereist",
+      "insuranceOptionalEnabled": "Geselecteerd",
+      "insuranceOptionalDisabled": "Niet geselecteerd",
+      "insuranceOptionalUnavailable": "Dekking is tijdelijk niet beschikbaar. Uw reservering wordt verstuurd zonder dekking.",
+      "insuranceOptionalUnavailableShort": "Niet beschikbaar",
+      "insuranceNoInsurableProducts": "Geen verzekerbaar product in deze winkelwagen.",
+      "insurancePartialCoverage": "{insured} gedekt(e) product(en), {uninsured} niet gedekt.",
+      "insuranceCoveredProductTooltip": "Dit product is gedekt door breuk-/diefstaldekking.",
+      "insuranceEligibleProductTooltip": "In aanmerking komend voor breuk-/diefstaldekking.",
+      "insuranceEstimating": "Geschatte dekking berekenen...",
+      "insuranceEstimatedAmount": "Geschat dekkingsbedrag: {amount}",
+      "insuranceEstimatedDisclaimer": "Geschat bedrag, automatisch herberekend bij bevestiging.",
+      "requestedAttributesLabel": "Aangevraagd",
+      "resolvedAttributesLabel": "Definitief",
+      "lineCheckingAvailability": "Beschikbaarheid controleren...",
+      "lineNeedsUpdateInline": "Deze regel is niet meer beschikbaar. Pas het aantal of de kenmerken aan.",
+      "lineNeedsUpdate": "Sommige regels zijn niet meer beschikbaar. Pas uw winkelwagen aan voordat u verstuurt."
     },
     "confirmation": {
       "title": "Reservering bevestigd!",
@@ -4110,7 +4447,8 @@
       "total": "Totaal",
       "totalToPay": "Te betalen totaal",
       "question": "Vragen? Neem contact met ons op:",
-      "summary": "Overzicht"
+      "summary": "Overzicht",
+      "timezone": "Tijdzone: {timezone}"
     },
     "verificationCode": {
       "subject": "Uw inlogcode: {code}",
@@ -4197,7 +4535,7 @@
     "baseLayout": {
       "sentBy": "Deze e-mail is verzonden door {storeName}",
       "ignoreIfNotYou": "Als u deze actie niet heeft geïnitieerd, negeer dan deze e-mail.",
-      "poweredBy": "Powered by"
+      "poweredBy": "Mogelijk gemaakt door"
     },
     "instantAccess": {
       "subject": "Toegang tot uw reservering #{number}",
@@ -4287,7 +4625,8 @@
       "payments": "Betalingen",
       "conditions": "Huurvoorwaarden",
       "signatures": "Acceptatie en handtekeningen",
-      "legalMentions": "Juridische vermeldingen"
+      "legalMentions": "Juridische vermeldingen",
+      "fullCgvAnnex": "Bijlage - Volledige huurvoorwaarden"
     },
     "parties": {
       "landlord": "Verhuurder",
@@ -4295,7 +4634,7 @@
       "contact": "Contact"
     },
     "period": {
-      "start": "Start",
+      "start": "Begin",
       "end": "Einde",
       "at": "om"
     },
@@ -4376,7 +4715,10 @@
     "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
     "invalidYoutubeUrl": "De YouTube URL is niet geldig",
     "invalidImageUrl": "De afbeeldings-URL is niet geldig",
-    "color": "Ongeldig kleurformaat"
+    "color": "Ongeldig kleurformaat",
+    "invalidFormat": "Ongeldig formaat",
+    "maxItems": "Maximaal {max} items",
+    "duplicateValue": "Dubbele waarde"
   },
   "upgradeModal": {
     "upgradeNow": "Nu upgraden",
@@ -4428,7 +4770,7 @@
       "upgradeDescription": "Upgrade naar {plan} om meer klanten te verwelkomen en je bedrijf te laten groeien.",
       "benefit1": "Tot 500 klanten met {plan}",
       "benefit2": "Volledige geschiedenis",
-      "benefit3": "Data export",
+      "benefit3": "Gegevensexport",
       "blurTitle": "Verborgen klanten",
       "blurDescription": "Upgrade naar {plan} om toegang te krijgen tot al je klanten.",
       "bannerAtLimit": "Klantlimiet bereikt",
@@ -4553,7 +4895,31 @@
     "promoCodeExpired": "Deze actiecode is verlopen",
     "promoCodeExhausted": "Deze actiecode heeft de gebruikslimiet bereikt",
     "promoCodeMinimumNotMet": "Minimumbedrag van {amount} vereist om deze code te gebruiken",
-    "promoCodeNotStarted": "Deze actiecode is nog niet actief"
+    "promoCodeNotStarted": "Deze actiecode is nog niet actief",
+    "integrationNotFound": "Integratie niet gevonden",
+    "integrationCategoryNotFound": "Integratiecategorie niet gevonden",
+    "unitCombinationMismatch": "Geselecteerde eenheden komen niet overeen met de gereserveerde combinatie voor dit regelitem",
+    "cannotDisableUnitTrackingWithCombinations": "Kan eenheidtracering niet uitschakelen terwijl actieve reserveringen gevolgde combinaties gebruiken voor dit product.",
+    "unitStatusConflictsWithReservations": "Deze wijziging zou toekomstige reserveringen onmogelijk maken voor ten minste één gevolgde combinatie.",
+    "tulipApiKeyInvalid": "De Tulip API-sleutel is ongeldig.",
+    "tulipActionForbidden": "Tulip heeft deze actie geweigerd voor de huidige accountconfiguratie.",
+    "tulipApiUnavailable": "Tulip is momenteel niet beschikbaar. Probeer het later opnieuw.",
+    "tulipRenterNotFound": "Er is geen Tulip account gevonden voor deze accountidentificatie.",
+    "tulipProductSubtypeInvalid": "Dit subtype is niet geldig voor de geselecteerde Tulip categorie.",
+    "tulipProductPayloadInvalid": "Tulip heeft productgegevens geweigerd. Controleer categorie/subtype en verplichte velden.",
+    "tulipProductNotFound": "Tulip product niet gevonden. Vernieuw Tulip producten en koppel dit item opnieuw.",
+    "tulipNotConfigured": "Tulip is nog niet geconfigureerd.",
+    "tulipProductNotMapped": "Sommige producten zijn niet gekoppeld aan Tulip producten.",
+    "tulipProductAlreadyMapped": "Dit product is al gekoppeld aan een Tulip product.",
+    "tulipInvalidProductResponse": "Tulip heeft een ongeldig productantwoord geretourneerd.",
+    "tulipCustomerDataIncomplete": "Door Tulip vereiste klantgegevens zijn onvolledig.",
+    "tulipInvalidContractResponse": "Tulip heeft een ongeldig contractantwoord geretourneerd.",
+    "tulipContractCreationFailed": "Reservering bevestigd, maar het aanmaken van het Tulip contract is mislukt.",
+    "tulipContractUpdateFailed": "Reservering bijgewerkt, maar Tulip contractsynchronisatie is mislukt.",
+    "tulipQuoteFailed": "Kan breuk-/diefstaldekking niet berekenen voor deze reservering.",
+    "tulipContractPastDate": "Tulip heeft het aanmaken van het contract geweigerd: contractdatums kunnen niet in het verleden liggen.",
+    "tulipContractActionForbidden": "Tulip heeft deze actie geweigerd voor de huidige accountconfiguratie.",
+    "tulipContractTypeDisabled": "Het Tulip contracttype dat vereist is voor deze duur is niet ingeschakeld voor deze winkel."
   },
   "welcome": {
     "greeting": "Welkom bij Louez.io",

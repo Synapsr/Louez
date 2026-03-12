@@ -832,7 +832,9 @@
           "noUnitsRegistered": "No hay unidades registradas",
           "noUnitsHint": "Añada unidades individuales para rastrear cuáles están alquiladas",
           "cancel": "Cancelar",
-          "confirm": "Confirmar"
+          "confirm": "Confirmar",
+          "manageAttributesExample": "Example: for a kayak rental, add \"Size\" (S, M, L) and \"Color\" (Red, Blue). A customer booking a Medium Red kayak will be assigned a matching available unit.",
+          "manageAttributesMax": "Up to 3 attributes allowed."
         },
         "previewTitle": "Vista previa",
         "previewDescription": "Asi es como aparecera su producto en el catalogo",
@@ -897,7 +899,65 @@
         "seasonalSettingsHint": "El IVA, la fianza y los descuentos progresivos se configuran en los precios base.",
         "switchToBasePricing": "Volver a precios base",
         "savingPeriod": "Guardando...",
-        "periodSaved": "Precios guardados"
+        "periodSaved": "Precios guardados",
+        "assurance": {
+          "title": "Seguro Tulip",
+          "description": "Gestione el mapeo del seguro para este producto sin salir de la pagina de edicion.",
+          "retry": "Reintentar",
+          "setupSuccess": "Cuenta Tulip guardada y validada.",
+          "mappingSaved": "Mapeo de producto guardado.",
+          "productUpdated": "Producto Tulip actualizado.",
+          "productCreated": "Producto Tulip creado y mapeado.",
+          "statusConnected": "Conectado",
+          "statusNotConnected": "No conectado",
+          "connectedWith": "Cuenta Tulip: {renterUid}",
+          "connectedAt": "Conectado el {date}",
+          "apiKeyLabel": "Identificador de cuenta Tulip",
+          "apiKeyPlaceholder": "Introduzca su identificador de cuenta",
+          "validateButton": "Validar",
+          "validatingButton": "Validando...",
+          "bookAppointmentButton": "Solicitar una cita",
+          "statusMapped": "Mapeado",
+          "statusNotMapped": "No mapeado",
+          "mappedTo": "Mapeado a {title}",
+          "linkOrCreateHelper": "Vincule un producto Tulip existente o agregue un nuevo producto Tulip y vinculelo.",
+          "addNewProductButton": "Agregar un nuevo producto",
+          "mappingLabel": "Producto Tulip",
+          "mappingPlaceholder": "No mapeado",
+          "mappingSaving": "Guardando...",
+          "noResults": "No se encontraron productos Tulip",
+          "dialog": {
+            "description": "Configure los detalles del producto Tulip y envie actualizaciones.",
+            "cancel": "Cancelar",
+            "createButton": "Crear en Tulip",
+            "creatingButton": "Creando...",
+            "updateButton": "Enviar actualizacion",
+            "updatingButton": "Actualizando...",
+            "categoryPlaceholder": "Seleccionar categoria",
+            "productSubtypePlaceholder": "Seleccionar subtipo de producto",
+            "productTitlePlaceholder": "Dejar vacio para conservar \"{defaultTitle}\"",
+            "brandPlaceholder": "Marca",
+            "modelPlaceholder": "Modelo",
+            "createOption": "Usar \"{value}\"",
+            "noResults": "Sin resultados",
+            "noBrandResults": "No hay sugerencias de marca",
+            "noModelResults": "No hay sugerencias de modelo",
+            "invalidPurchasePrice": "Introduzca un precio de compra valido.",
+            "invalidMargin": "Introduzca un margen valido.",
+            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
+            "fields": {
+              "productTitle": "Nombre del producto (opcional)",
+              "category": "Categoria",
+              "productSubtype": "Subtipo de producto",
+              "brand": "Marca",
+              "model": "Modelo",
+              "purchasedDate": "Fecha de compra",
+              "purchasePriceHt": "Precio de compra (sin IVA)",
+              "margin": "Margen"
+            }
+          }
+        }
       },
       "deleteConfirm": {
         "title": "Eliminar este producto?",
@@ -1079,7 +1139,10 @@
         "lockPrice": "Bloquear precio",
         "unlockPrice": "Recalcular precio",
         "adjustmentPositive": "Se debera cobrar un complemento de {amount}.",
-        "adjustmentNegative": "Se puede emitir un reembolso de {amount}."
+        "adjustmentNegative": "Se puede emitir un reembolso de {amount}.",
+        "warningDialogTitle": "Confirmar cambio excepcional",
+        "warningDialogDescription": "Esta modificacion no cumple con las reglas habituales de reserva. Revise las advertencias antes de guardar.",
+        "confirmWithWarnings": "Guardar de todos modos"
       },
       "contract": {
         "title": "Contrato",
@@ -1259,7 +1322,26 @@
           "conflictCanContinue": "Estos productos ya están reservados durante este período. Puede continuar si gestiona la disponibilidad manualmente.",
           "insufficientStock": "Stock insuficiente"
         },
-        "addItemError": "Por favor agregue al menos un producto o articulo personalizado"
+        "addItemError": "Por favor agregue al menos un producto o articulo personalizado",
+        "perWeek": "semana",
+        "bookingAttributes": "Opciones",
+        "bookingAttributeNone": "Cualquiera",
+        "bookingAttributesNoOptions": "No hay valores disponibles para {attribute}",
+        "bookingAttributesHelp": "Seleccione opciones (talla, color, etc.) para elegir una combinacion especifica.",
+        "addOptionLine": "Agregar linea de opcion",
+        "lineLabel": "Linea {index}",
+        "availableForSelection": "Disponible para esta opcion: {count}",
+        "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra linea de opcion.",
+        "quantityPerCombinationHint": "La cantidad se aplica solo a la opcion seleccionada. Agregue otra opcion como linea separada.",
+        "quantityCanSplitHint": "Sin seleccion completa de opciones, la cantidad puede distribuirse entre las opciones correspondientes.",
+        "tulipInsurance": {
+          "title": "Seguro Tulip",
+          "appliesMappedProducts": "Se aplica solo a los productos mapeados a Tulip.",
+          "required": "La cobertura es obligatoria para esta reserva.",
+          "optionalLabel": "Activar cobertura para esta reserva",
+          "insurableProduct": "Asegurable",
+          "assuredProduct": "Asegurado"
+        }
       },
       "rejectDialog": {
         "title": "Rechazar solicitud",
@@ -1302,27 +1384,27 @@
         "showAll": "Ver todo ({count} eventos)",
         "showLess": "Ver menos",
         "paymentFailure": {
-          "technicalDetail": "Technical detail: {message}",
+          "technicalDetail": "Detalle tecnico: {message}",
           "payment_failed": {
-            "authenticationRequired": "Payment authentication was not completed. Ask the customer to retry and validate their bank verification (3D Secure).",
-            "cardDeclined": "The card was declined by the bank. Ask the customer to retry or use another card.",
-            "insufficientFunds": "Payment failed due to insufficient funds on the card.",
-            "expiredCard": "The card has expired. Ask the customer to use a valid card.",
-            "incorrectCvc": "The card security code (CVC) is invalid.",
-            "processingError": "The payment failed due to a temporary processing issue. Retry in a few minutes.",
-            "doNotHonor": "The bank refused this payment without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Online payment failed. Ask the customer to retry or use another card.",
-            "recovered": "An earlier attempt failed, but the payment was completed successfully at {date}."
+            "authenticationRequired": "La autenticacion del pago no se completo. Pida al cliente que reintente y valide la verificacion bancaria (3D Secure).",
+            "cardDeclined": "La tarjeta fue rechazada por el banco. Pida al cliente que reintente o utilice otra tarjeta.",
+            "insufficientFunds": "El pago fallo por fondos insuficientes en la tarjeta.",
+            "expiredCard": "La tarjeta ha expirado. Pida al cliente que utilice una tarjeta valida.",
+            "incorrectCvc": "El codigo de seguridad de la tarjeta (CVC) es invalido.",
+            "processingError": "El pago fallo por un problema temporal de procesamiento. Reintente en unos minutos.",
+            "doNotHonor": "El banco rechazo este pago sin detalles. Pida al cliente que contacte a su banco o utilice otra tarjeta.",
+            "generic": "El pago en linea fallo. Pida al cliente que reintente o utilice otra tarjeta.",
+            "recovered": "Un intento anterior fallo, pero el pago se completo exitosamente el {date}."
           },
           "deposit_failed": {
-            "authenticationRequired": "The deposit authorization failed because bank authentication was not completed. Ask the customer to retry and validate 3D Secure.",
-            "cardDeclined": "The deposit authorization was declined by the bank. Ask the customer to use another card.",
-            "insufficientFunds": "The card does not have enough available funds for this deposit authorization.",
-            "expiredCard": "The card used for the deposit authorization has expired.",
-            "incorrectCvc": "The card security code (CVC) is invalid for this deposit authorization.",
-            "processingError": "The deposit authorization failed due to a temporary processing issue. Retry in a few minutes.",
-            "doNotHonor": "The bank refused the deposit authorization without details. Ask the customer to contact their bank or use another card.",
-            "generic": "Deposit authorization failed. Ask the customer to retry or use another card."
+            "authenticationRequired": "La autorizacion del deposito fallo porque no se completo la autenticacion bancaria. Pida al cliente que reintente y valide 3D Secure.",
+            "cardDeclined": "La autorizacion del deposito fue rechazada por el banco. Pida al cliente que utilice otra tarjeta.",
+            "insufficientFunds": "La tarjeta no tiene fondos suficientes para esta autorizacion de deposito.",
+            "expiredCard": "La tarjeta utilizada para la autorizacion del deposito ha expirado.",
+            "incorrectCvc": "El codigo de seguridad de la tarjeta (CVC) es invalido para esta autorizacion de deposito.",
+            "processingError": "La autorizacion del deposito fallo por un problema temporal de procesamiento. Reintente en unos minutos.",
+            "doNotHonor": "El banco rechazo la autorizacion del deposito sin detalles. Pida al cliente que contacte a su banco o utilice otra tarjeta.",
+            "generic": "La autorizacion del deposito fallo. Pida al cliente que reintente o utilice otra tarjeta."
           }
         }
       },
@@ -1339,7 +1421,10 @@
         "save": "Guardar",
         "saved": "Unidades asignadas",
         "notes": "Notas",
-        "identifiers": "Identificadores: {identifiers}"
+        "identifiers": "Identificadores: {identifiers}",
+        "optionsLabel": "Opciones",
+        "clearSelection": "Borrar seleccion",
+        "autofillHint": "Unidades sugeridas seleccionadas. Haga clic en Guardar para confirmar."
       },
       "smartActions": {
         "paymentIncomplete": "Alquiler no pagado ({remaining} restante)",
@@ -1360,7 +1445,9 @@
         "notCollected": "No cobrado",
         "toReturnToCustomer": "A devolver al cliente",
         "returnQuestion": "¿Confirma que el equipo fue devuelto en buen estado?",
-        "confirmReturn": "Confirmar devolución"
+        "confirmReturn": "Confirmar devolución",
+        "skipInspectionPickup": "Omitir y confirmar recogida",
+        "skipInspectionReturn": "Omitir y confirmar devolucion"
       },
       "activityBy": "por",
       "activitySystem": "Accion automatica",
@@ -1606,7 +1693,10 @@
         "smsSendSuccess": "Enlace de acceso enviado por SMS",
         "smsSendError": "Error al enviar SMS",
         "noPhone": "El cliente no tiene numero de telefono"
-      }
+      },
+      "tulipInsuredBadge": "Tulip insured",
+      "tulipContractCardTitle": "Insurance contract",
+      "tulipContractCardDescription": "Open the contract in Colibri."
     },
     "customers": {
       "title": "Clientes",
@@ -1712,11 +1802,7 @@
         "MC": "Monaco",
         "CA": "Canada",
         "US": "Estados Unidos",
-        "GB": "Reino Unido",
-        "ES": "Espana",
-        "MX": "Mexico",
-        "AR": "Argentina",
-        "CO": "Colombia"
+        "GB": "Reino Unido"
       }
     },
     "calendar": {
@@ -2519,6 +2605,86 @@
             "description": "Conecta tu tienda a tus herramientas existentes y automatiza tus tareas diarias.",
             "comingSoonDescription": "La API REST está en desarrollo. Pronto podrás conectar tu tienda a cualquier herramienta o servicio."
           }
+        },
+        "title": "Integraciones",
+        "loading": "Cargando integraciones...",
+        "loadError": "No se pudieron cargar las integraciones.",
+        "catalogDescription": "Explore las integraciones por categoria, active las que necesite y configure cada proveedor.",
+        "searchPlaceholder": "Buscar integraciones",
+        "fallbackDescription": "Los detalles de la integracion estan disponibles en la pagina de detalle.",
+        "statusFilters": {
+          "all": "Todas",
+          "enabled": "Activadas",
+          "disabled": "Desactivadas"
+        },
+        "categoriesTitle": "Categorias",
+        "categoryCount": "{count} integraciones",
+        "backToCatalog": "Volver al catalogo",
+        "emptyCategory": "Ninguna integracion coincide con sus filtros.",
+        "viewAll": "Ver todas",
+        "statusLabels": {
+          "enabled": "Activada",
+          "disabled": "Desactivada",
+          "connected": "Conectada",
+          "notConnected": "No conectada"
+        },
+        "lifecycle": {
+          "stable": "Estable",
+          "beta": "Beta",
+          "coming_soon": "Proximamente"
+        },
+        "toasts": {
+          "enabled": "Integracion activada.",
+          "disabled": "Integracion desactivada."
+        },
+        "detailNotFoundTitle": "Integracion no encontrada",
+        "detailNotFoundDescription": "No se pudo cargar esta integracion.",
+        "disableAction": "Desactivar integracion",
+        "openConfigurationAction": "Abrir configuracion",
+        "enableAction": "Activar integracion",
+        "visitWebsite": "Visitar sitio web",
+        "tabs": {
+          "features": "Funcionalidades",
+          "configuration": "Configuracion",
+          "about": "Acerca de"
+        },
+        "featuresTitle": "Que hace",
+        "galleryTitle": "Galeria",
+        "configurationLockedTitle": "Active para configurar",
+        "configurationLockedDescription": "Active esta integracion primero para acceder a su pagina de configuracion.",
+        "configurationUnavailableTitle": "Configuracion no disponible",
+        "configurationUnavailableDescription": "Esta integracion aun no expone un panel de configuracion.",
+        "dangerZoneTitle": "Zona de peligro",
+        "dangerZoneDescription": "Desactive esta integracion para detener la sincronizacion y ocultar el comportamiento relacionado en el pago.",
+        "aboutTitle": "Acerca de",
+        "metadataTitle": "Detalles de la integracion",
+        "metadata": {
+          "provider": "Proveedor",
+          "pricing": "Precios",
+          "category": "Categoria",
+          "resources": "Recursos"
+        },
+        "categories": {
+          "insurance": {
+            "name": "Seguro",
+            "description": "Proteja las reservas y sincronice contratos de seguro."
+          }
+        },
+        "providers": {
+          "tulip": {
+            "name": "Seguro Tulip",
+            "description": "Conecte Tulip para cotizar y generar contratos de seguro de alquiler.",
+            "about": "Tulip centraliza las operaciones de seguro del arrendatario: vista previa de cotizacion en el pago, creacion de contratos y mapeo entre su catalogo y los productos asegurados.",
+            "features": {
+              "sync": "Conecte su cuenta Tulip validando su identificador de cuenta.",
+              "checkout": "Aplique el seguro en el pago (obligatorio, opcional o modo publico oculto).",
+              "mapping": "Mapee productos Louez a productos Tulip y envie actualizaciones."
+            },
+            "resources": {
+              "website": "Sitio web",
+              "support": "Soporte"
+            }
+          }
         }
       },
       "embed": {
@@ -3201,6 +3367,133 @@
         "discountDuration": "Duración",
         "discountDurationDescription": "Número de meses que se aplica el descuento. Establezca 0 para un descuento permanente.",
         "months": "meses"
+      },
+      "integrations": "Integraciones",
+      "integrationsTabs": {
+        "assurance": "Seguro"
+      },
+      "integrationsPage": {
+        "description": "Conecte proveedores externos y configure el comportamiento del seguro.",
+        "assurance": {
+          "title": "Seguro Tulip",
+          "description": "Configure su integracion Tulip para el seguro de reservas.",
+          "helper": "Introduzca su identificador de cuenta Tulip, defina como se muestra el seguro a los clientes y mapee sus productos.",
+          "loading": "Cargando integracion Tulip...",
+          "loadError": "No se pudieron cargar los datos de la integracion Tulip.",
+          "retry": "Reintentar",
+          "setupSuccess": "Cuenta Tulip guardada y validada.",
+          "configurationSaved": "Configuracion Tulip guardada.",
+          "mappingSaved": "Mapeo de producto guardado.",
+          "productUpdated": "Producto Tulip actualizado.",
+          "productCreated": "Producto Tulip creado y mapeado.",
+          "disconnectSuccess": "Integracion Tulip desconectada.",
+          "disconnect": {
+            "title": "Eliminar integracion",
+            "description": "Desconecte la integracion Tulip de su tienda. Los mapeos de productos se perderan.",
+            "button": "Eliminar integracion",
+            "confirmTitle": "Eliminar integracion Tulip?",
+            "confirmDescription": "Esto eliminara su cuenta Tulip conectada y todos los mapeos de productos. Podra reconectarse mas tarde.",
+            "cancelButton": "Cancelar",
+            "confirmButton": "Eliminar",
+            "disconnectingButton": "Eliminando..."
+          },
+          "setup": {
+            "title": "Conexion",
+            "description": "Introduzca su identificador de cuenta Tulip para verificar la conexion.",
+            "apiKeyLabel": "Identificador de cuenta Tulip",
+            "apiKeyPlaceholder": "Introduzca su identificador de cuenta",
+            "validateButton": "Validar",
+            "validatingButton": "Validando...",
+            "statusConnected": "Conectado",
+            "statusNotConnected": "No conectado",
+            "connectedWith": "Cuenta Tulip: {renterUid}",
+            "connectedAt": "Conectado el {date}",
+            "bookAppointmentButton": "Solicitar una cita"
+          },
+          "configuration": {
+            "title": "Reglas del seguro",
+            "description": "Elija como se aplica y muestra el seguro a los clientes.",
+            "disabledMessage": "Introduzca y valide su identificador de cuenta Tulip primero.",
+            "modeLabel": "Modo de seguro",
+            "modeRequired": "Obligatorio para todos los productos",
+            "modeOptional": "Opcional en el pago",
+            "modeNoPublic": "Sin visualizacion publica",
+            "includePriceLabel": "Incluir seguro en el precio final",
+            "includePriceHelp": "Cuando esta activado, el seguro se incluye en el precio final mostrado a los clientes.",
+            "renterLabel": "Arrendatario Tulip",
+            "renterPlaceholder": "Introduzca y valide el identificador de cuenta primero",
+            "renterNone": "Ningun arrendatario seleccionado",
+            "renterDisabled": "desactivado",
+            "saveButton": "Guardar configuracion",
+            "savingButton": "Guardando..."
+          },
+          "mapping": {
+            "title": "Mapeo de productos",
+            "description": "Vincule productos Louez con productos Tulip y gestione actualizaciones.",
+            "disabledMessage": "Introduzca y valide su identificador de cuenta Tulip antes de mapear productos.",
+            "columns": {
+              "product": "Producto",
+              "tulipProduct": "Producto Tulip",
+              "category": "Categoria",
+              "brand": "Marca",
+              "model": "Modelo",
+              "purchasePriceHt": "Precio de compra (sin IVA)",
+              "actions": "Acciones"
+            },
+            "emptyState": "Aun no hay mapeo de productos. Conecte Tulip y mapee productos desde esta seccion.",
+            "noTulipProduct": "Seleccionar un producto Tulip",
+            "notMapped": "No mapeado",
+            "categoryPlaceholder": "Seleccionar categoria",
+            "productSubtypePlaceholder": "Seleccionar subtipo de producto",
+            "productTitlePlaceholder": "Dejar vacio para conservar \"{defaultTitle}\"",
+            "brandPlaceholder": "Marca",
+            "modelPlaceholder": "Modelo",
+            "createOption": "Usar \"{value}\"",
+            "noBrandResults": "No hay sugerencias de marca",
+            "noModelResults": "No hay sugerencias de modelo",
+            "invalidPurchasePrice": "Introduzca un precio de compra valido.",
+            "invalidMargin": "Introduzca un margen valido.",
+            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
+            "createButton": "Crear en Tulip",
+            "creatingButton": "Creando...",
+            "updateButton": "Enviar actualizacion",
+            "updatingButton": "Actualizando...",
+            "savingMapping": "Guardando...",
+            "refreshButton": "Actualizar productos Tulip",
+            "refreshingButton": "Actualizando...",
+            "filters": {
+              "all": "Todos",
+              "mapped": "Mapeados",
+              "unmapped": "No mapeados"
+            },
+            "coverageSummary": "{insured}/{total} productos son asegurables con Tulip.",
+            "viewUnmappedCta": "Ver no mapeados ({count})",
+            "searchPlaceholder": "Buscar productos...",
+            "statusBadge": {
+              "label": "Estado",
+              "mapped": "Mapeado",
+              "notMapped": "No mapeado"
+            },
+            "noResults": "No se encontraron productos Tulip",
+            "noFilterResults": "Ningun producto coincide con los filtros actuales.",
+            "sheet": {
+              "description": "Configure los detalles del producto Tulip y envie actualizaciones.",
+              "cancel": "Cancelar"
+            },
+            "fields": {
+              "tulipProduct": "Producto Tulip",
+              "category": "Categoria",
+              "productTitle": "Nombre del producto (opcional)",
+              "productSubtype": "Subtipo de producto",
+              "brand": "Marca",
+              "model": "Modelo",
+              "purchasedDate": "Fecha de compra",
+              "purchasePriceHt": "Precio de compra (sin IVA)",
+              "margin": "Margen"
+            }
+          }
+        }
       }
     },
     "aiChat": {
@@ -3395,7 +3688,16 @@
       "breadcrumb": {
         "home": "Inicio",
         "catalog": "Catalogo"
-      }
+      },
+      "bookingAttributes": "Configuracion",
+      "bookingAttributesHelp": "Opcional: seleccione atributos especificos. Si se deja parcial, el sistema seleccionara automaticamente una combinacion disponible.",
+      "bookingAttributesNoOptions": "No hay opciones disponibles para {attribute} en las fechas seleccionadas.",
+      "bookingAttributeNone": "Ninguno",
+      "availableForSelection": "Disponible para esta seleccion: {count}",
+      "quantityPerCombinationHint": "La cantidad se aplica solo a la opcion seleccionada. Agregue otra opcion como linea separada.",
+      "quantityCanSplitHint": "La cantidad puede dividirse entre las opciones correspondientes y agregarse como lineas separadas.",
+      "inCartCount": "Ya en el carrito: {count}",
+      "selectionUnavailable": "No hay ninguna combinacion disponible para esta seleccion."
     },
     "accessories": {
       "productAdded": "Añadido al carrito",
@@ -3464,7 +3766,8 @@
         "openHours": "Abierto {hours}"
       },
       "modifyDates": "Cambiar fechas",
-      "applyDates": "Aplicar fechas"
+      "applyDates": "Aplicar fechas",
+      "timezoneNotice": "Horarios en hora de {city}"
     },
     "availability": {
       "title": "Productos disponibles",
@@ -3553,7 +3856,8 @@
         "description": "Todos los articulos seran eliminados de su carrito.",
         "cancel": "Cancelar",
         "confirm": "Vaciar"
-      }
+      },
+      "lineMaxReached": "Maximo alcanzado para esta opcion. Agregue otra opcion como linea separada."
     },
     "checkout": {
       "title": "Completar mi reserva",
@@ -3601,8 +3905,6 @@
       "returnAddressPlaceholder": "Introduzca la dirección de devolución...",
       "returnDistance": "Distancia de devolución",
       "returnTooFar": "Lo sentimos, la dirección de devolución supera los {maxKm} km",
-      "roundTripNoteDifferentReturn": "{deliveryKm} km + {returnKm} km = {total} km (entrega + devolución)",
-      "roundTripNote": "{distance} km x 2 = {total} km (ida y vuelta)",
       "contactDescription": "Necesitamos esta información para contactarle",
       "addressDescription": "Opcional - Ingrese su dirección si es necesario",
       "confirmDescription": "Revise su información antes de confirmar",
@@ -3694,7 +3996,28 @@
         "promoCodeExhausted": "Este código promocional ya no está disponible",
         "promoCodeMinimumNotMet": "Monto mínimo de {amount} requerido",
         "promoCodeNotStarted": "Este código promocional aún no está activo"
-      }
+      },
+      "insuranceRequiredNotice": "La cobertura contra rotura/robo es obligatoria para esta reserva y se aplicara automaticamente.",
+      "insuranceOptionalLabel": "Agregar cobertura contra rotura/robo",
+      "insuranceOptionalHelp": "Active esta opcion para incluir la cobertura contra rotura/robo en su reserva.",
+      "insuranceLineLabel": "Cobertura contra rotura/robo",
+      "insuranceRequiredBadge": "Obligatorio",
+      "insuranceOptionalEnabled": "Seleccionado",
+      "insuranceOptionalDisabled": "No seleccionado",
+      "insuranceOptionalUnavailable": "La cobertura no esta disponible temporalmente. Su reserva se enviara sin cobertura.",
+      "insuranceOptionalUnavailableShort": "No disponible",
+      "insuranceNoInsurableProducts": "No hay productos asegurables en este carrito.",
+      "insurancePartialCoverage": "{insured} producto(s) cubierto(s), {uninsured} no cubierto(s).",
+      "insuranceCoveredProductTooltip": "Este producto esta cubierto por la cobertura contra rotura/robo.",
+      "insuranceEligibleProductTooltip": "Elegible para la cobertura contra rotura/robo.",
+      "insuranceEstimating": "Calculando la cobertura estimada...",
+      "insuranceEstimatedAmount": "Monto estimado de la cobertura: {amount}",
+      "insuranceEstimatedDisclaimer": "Monto estimado, recalculado automaticamente en la confirmacion.",
+      "requestedAttributesLabel": "Solicitado",
+      "resolvedAttributesLabel": "Final",
+      "lineCheckingAvailability": "Verificando disponibilidad...",
+      "lineNeedsUpdateInline": "Esta linea ya no esta disponible. Actualice la cantidad o los atributos.",
+      "lineNeedsUpdate": "Algunas lineas ya no estan disponibles. Actualice su carrito antes de enviar."
     },
     "confirmation": {
       "title": "Reserva confirmada!",
@@ -4124,7 +4447,8 @@
       "total": "Total",
       "totalToPay": "Total a pagar",
       "question": "Preguntas? Contactenos:",
-      "summary": "Resumen"
+      "summary": "Resumen",
+      "timezone": "Zona horaria: {timezone}"
     },
     "verificationCode": {
       "subject": "Su codigo de acceso: {code}",
@@ -4301,7 +4625,8 @@
       "payments": "Pagos",
       "conditions": "Condiciones de Alquiler",
       "signatures": "Aceptacion y Firmas",
-      "legalMentions": "Avisos Legales"
+      "legalMentions": "Avisos Legales",
+      "fullCgvAnnex": "Anexo - Condiciones Generales de Alquiler Completas"
     },
     "parties": {
       "landlord": "Arrendador",
@@ -4390,7 +4715,10 @@
     "endDateBeforeStart": "La fecha de fin debe ser posterior o igual a la de inicio",
     "invalidYoutubeUrl": "La URL de YouTube no es valida",
     "invalidImageUrl": "La URL de la imagen no es válida",
-    "color": "Formato de color inválido"
+    "color": "Formato de color inválido",
+    "invalidFormat": "Formato invalido",
+    "maxItems": "Maximo {max} elementos",
+    "duplicateValue": "Valor duplicado"
   },
   "upgradeModal": {
     "upgradeNow": "Actualizar ahora",
@@ -4567,7 +4895,31 @@
     "promoCodeExpired": "Este código promocional ha expirado",
     "promoCodeExhausted": "Este código promocional ha alcanzado su límite de uso",
     "promoCodeMinimumNotMet": "Monto mínimo de {amount} requerido para usar este código",
-    "promoCodeNotStarted": "Este código promocional aún no está activo"
+    "promoCodeNotStarted": "Este código promocional aún no está activo",
+    "integrationNotFound": "Integracion no encontrada",
+    "integrationCategoryNotFound": "Categoria de integracion no encontrada",
+    "unitCombinationMismatch": "Las unidades seleccionadas no coinciden con la combinacion reservada para este articulo",
+    "cannotDisableUnitTrackingWithCombinations": "No se puede desactivar el seguimiento de unidades mientras haya reservas activas que utilicen combinaciones rastreadas para este producto.",
+    "unitStatusConflictsWithReservations": "Este cambio haria imposibles las reservas futuras para al menos una combinacion rastreada.",
+    "tulipApiKeyInvalid": "La clave API de Tulip es invalida.",
+    "tulipActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
+    "tulipApiUnavailable": "Tulip no esta disponible actualmente. Por favor, intente de nuevo mas tarde.",
+    "tulipRenterNotFound": "No se encontro ninguna cuenta Tulip para este identificador de cuenta.",
+    "tulipProductSubtypeInvalid": "Este subtipo no es valido para la categoria Tulip seleccionada.",
+    "tulipProductPayloadInvalid": "Tulip rechazo los datos del producto. Verifique la categoria/subtipo y los campos obligatorios.",
+    "tulipProductNotFound": "Producto Tulip no encontrado. Actualice los productos Tulip y vuelva a mapear este articulo.",
+    "tulipNotConfigured": "Tulip aun no esta configurado.",
+    "tulipProductNotMapped": "Algunos productos no estan mapeados a productos Tulip.",
+    "tulipProductAlreadyMapped": "Este producto ya esta mapeado a un producto Tulip.",
+    "tulipInvalidProductResponse": "Tulip devolvio una respuesta de producto invalida.",
+    "tulipCustomerDataIncomplete": "Los datos del cliente requeridos por Tulip estan incompletos.",
+    "tulipInvalidContractResponse": "Tulip devolvio una respuesta de contrato invalida.",
+    "tulipContractCreationFailed": "Reserva confirmada, pero fallo la creacion del contrato Tulip.",
+    "tulipContractUpdateFailed": "Reserva actualizada, pero fallo la sincronizacion del contrato Tulip.",
+    "tulipQuoteFailed": "No se pudo calcular la cobertura contra rotura/robo para esta reserva.",
+    "tulipContractPastDate": "Tulip rechazo la creacion del contrato: las fechas del contrato no pueden estar en el pasado.",
+    "tulipContractActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
+    "tulipContractTypeDisabled": "El tipo de contrato Tulip requerido para esta duracion no esta activado para esta tienda."
   },
   "welcome": {
     "greeting": "Bienvenido a Louez.io",

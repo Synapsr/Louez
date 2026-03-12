@@ -3905,8 +3905,6 @@
       "returnAddressPlaceholder": "Entrez l'adresse de retour...",
       "returnDistance": "Distance de retour",
       "returnTooFar": "Désolé, l'adresse de retour dépasse {maxKm} km",
-      "roundTripNoteDifferentReturn": "{deliveryKm} km + {returnKm} km = {total} km (livraison + retour)",
-      "roundTripNote": "{distance} km x 2 = {total} km (aller-retour)",
       "contactDescription": "Nous avons besoin de ces informations pour vous contacter",
       "addressDescription": "Renseignez votre adresse pour continuer",
       "confirmDescription": "Vérifiez vos informations avant de valider",
