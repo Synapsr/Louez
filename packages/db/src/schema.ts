@@ -594,9 +594,11 @@ export const reservations = mysqlTable(
     customerNotes: text('customer_notes'),
     internalNotes: text('internal_notes'),
 
-    // Delivery
-    deliveryOption: varchar('delivery_option', { length: 20 }).default('pickup'), // 'pickup' | 'delivery'
-    deliveryAddress: text('delivery_address'),
+    // Delivery — leg-based model (outbound = receive equipment, return = give back)
+    outboundMethod: varchar('outbound_method', { length: 20 }).notNull().default('store'), // 'store' | 'address'
+    returnMethod: varchar('return_method', { length: 20 }).notNull().default('store'), // 'store' | 'address'
+    deliveryOption: varchar('delivery_option', { length: 20 }).default('pickup'), // Legacy: 'pickup' | 'delivery' — kept for backward compat
+    deliveryAddress: text('delivery_address'), // Outbound leg address (when outboundMethod = 'address')
     deliveryCity: varchar('delivery_city', { length: 255 }),
     deliveryPostalCode: varchar('delivery_postal_code', { length: 20 }),
     deliveryCountry: varchar('delivery_country', { length: 2 }),
@@ -605,7 +607,7 @@ export const reservations = mysqlTable(
     deliveryDistanceKm: decimal('delivery_distance_km', { precision: 8, scale: 2 }),
     deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default('0'),
 
-    // Return address (when different from delivery address)
+    // Return leg address (when returnMethod = 'address')
     returnAddress: text('return_address'),
     returnCity: varchar('return_city', { length: 255 }),
     returnPostalCode: varchar('return_postal_code', { length: 20 }),

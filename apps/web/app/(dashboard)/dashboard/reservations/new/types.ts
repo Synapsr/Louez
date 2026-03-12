@@ -85,7 +85,7 @@ export interface AvailabilityWarning {
   conflictingReservations?: number;
 }
 
-export type DeliveryOption = 'pickup' | 'delivery';
+export type { LegMethod } from '@louez/types';
 
 export interface DeliveryAddress {
   address: string;
@@ -94,6 +94,14 @@ export interface DeliveryAddress {
   country: string;
   latitude: number | null;
   longitude: number | null;
+}
+
+export interface DeliveryLegState {
+  method: import('@louez/types').LegMethod;
+  address: DeliveryAddress;
+  distance: number | null;
+  fee: number;
+  error: string | null;
 }
 
 export interface NewReservationFormProps {

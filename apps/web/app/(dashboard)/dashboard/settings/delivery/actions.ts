@@ -15,11 +15,9 @@ const deliverySettingsSchema = z.object({
   enabled: z.boolean(),
   mode: z.enum(DELIVERY_MODES),
   pricePerKm: z.number().min(0).max(100),
-  roundTrip: z.boolean(),
   minimumFee: z.number().min(0).max(1000),
   maximumDistance: z.number().min(1).max(500).nullable(),
   freeDeliveryThreshold: z.number().min(0).max(100000).nullable(),
-  allowDifferentReturnAddress: z.boolean(),
 })
 
 type DeliverySettingsInput = z.infer<typeof deliverySettingsSchema>
@@ -44,11 +42,9 @@ export async function updateDeliverySettings(data: DeliverySettingsInput) {
     enabled: validated.data.enabled,
     mode: validated.data.mode,
     pricePerKm: validated.data.pricePerKm,
-    roundTrip: validated.data.roundTrip,
     minimumFee: validated.data.minimumFee,
     maximumDistance: validated.data.maximumDistance,
     freeDeliveryThreshold: validated.data.freeDeliveryThreshold,
-    allowDifferentReturnAddress: validated.data.allowDifferentReturnAddress,
   }
 
   const currentSettings = store.settings || {

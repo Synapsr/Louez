@@ -2,8 +2,11 @@ import type { ComponentType, ReactNode } from 'react';
 
 import type {
   DeliverySettings,
+  LegMethod,
   TaxSettings,
 } from '@louez/types';
+
+export type { LegMethod } from '@louez/types';
 
 export interface CheckoutFormProps {
   storeSlug: string;
@@ -42,8 +45,6 @@ export interface CheckoutFormValues {
 
 export type StepId = 'contact' | 'delivery' | 'address' | 'confirm';
 
-export type DeliveryOption = 'pickup' | 'delivery';
-
 export interface CheckoutStep {
   id: StepId;
   icon: ComponentType<{ className?: string }>;
@@ -56,6 +57,17 @@ export interface DeliveryAddress {
   country: string;
   latitude: number | null;
   longitude: number | null;
+}
+
+/**
+ * State for a single delivery leg (outbound or return).
+ */
+export interface DeliveryLegState {
+  method: LegMethod;
+  address: DeliveryAddress;
+  distance: number | null;
+  fee: number;
+  error: string | null;
 }
 
 export type LineResolutionState =

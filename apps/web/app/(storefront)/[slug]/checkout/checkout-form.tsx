@@ -164,20 +164,22 @@ export function CheckoutForm({
     isDeliveryEnabled,
     isDeliveryForced,
     isDeliveryIncluded,
-    allowDifferentReturnAddress,
-    deliveryOption,
-    deliveryAddress,
-    deliveryDistance,
-    deliveryFee,
-    deliveryError,
-    hasDifferentReturnAddress,
+    outboundMethod,
+    outboundAddress,
+    outboundDistance,
+    outboundFee,
+    outboundError,
+    handleOutboundMethodChange,
+    handleOutboundAddressChange,
+    returnMethod,
     returnAddress,
     returnDistance,
+    returnFee,
     returnError,
-    handleDeliveryOptionChange,
-    handleDeliveryAddressChange,
+    handleReturnMethodChange,
     handleReturnAddressChange,
-    handleDifferentReturnAddressToggle,
+    totalFee: deliveryTotalFee,
+    canContinue: deliveryCanContinue,
   } = useCheckoutDelivery({
     deliverySettings,
     storeLatitude,
@@ -185,8 +187,7 @@ export function CheckoutForm({
     subtotal,
   });
 
-  const totalWithDelivery =
-    total - discountAmount + (deliveryOption === 'delivery' ? deliveryFee : 0);
+  const totalWithDelivery = total - discountAmount + deliveryTotalFee;
   const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
 
   const {
@@ -461,11 +462,11 @@ export function CheckoutForm({
         subtotalAmount: subtotalWithEstimatedInsurance,
         depositAmount: totalDeposit,
         totalAmount: totalWithEstimatedInsurance,
-        deliveryOption,
-        deliveryAddress,
-        tulipInsuranceMode,
-        hasDifferentReturnAddress,
+        outboundMethod,
+        outboundAddress,
+        returnMethod,
         returnAddress,
+        tulipInsuranceMode,
         promoCode: appliedPromo?.code,
       });
 
@@ -555,25 +556,27 @@ export function CheckoutForm({
                   deliverySettings && (
                     <CheckoutDeliveryStep
                       deliverySettings={deliverySettings}
-                      deliveryOption={deliveryOption}
-                      deliveryAddress={deliveryAddress}
-                      deliveryDistance={deliveryDistance}
-                      deliveryFee={deliveryFee}
-                      deliveryError={deliveryError}
                       subtotal={subtotal}
                       currency={currency}
                       storeAddress={storeAddress}
                       isDeliveryForced={isDeliveryForced}
                       isDeliveryIncluded={isDeliveryIncluded}
-                      allowDifferentReturnAddress={allowDifferentReturnAddress}
-                      hasDifferentReturnAddress={hasDifferentReturnAddress}
+                      outboundMethod={outboundMethod}
+                      outboundAddress={outboundAddress}
+                      outboundDistance={outboundDistance}
+                      outboundFee={outboundFee}
+                      outboundError={outboundError}
+                      onOutboundMethodChange={handleOutboundMethodChange}
+                      onOutboundAddressChange={handleOutboundAddressChange}
+                      returnMethod={returnMethod}
                       returnAddress={returnAddress}
                       returnDistance={returnDistance}
+                      returnFee={returnFee}
                       returnError={returnError}
-                      onDeliveryOptionChange={handleDeliveryOptionChange}
-                      onDeliveryAddressChange={handleDeliveryAddressChange}
-                      onDifferentReturnAddressToggle={handleDifferentReturnAddressToggle}
+                      onReturnMethodChange={handleReturnMethodChange}
                       onReturnAddressChange={handleReturnAddressChange}
+                      totalFee={deliveryTotalFee}
+                      canContinue={deliveryCanContinue}
                       onBack={goToPreviousStep}
                       onContinue={goToNextStep}
                     />
@@ -583,7 +586,7 @@ export function CheckoutForm({
                   <CheckoutConfirmStep
                     form={form}
                     cgv={cgv}
-                    deliveryOption={deliveryOption}
+                    hasDeliveryLegs={outboundMethod === 'address' || returnMethod === 'address'}
                     reservationMode={reservationMode}
                     depositPercentage={depositPercentage}
                     subtotal={subtotalWithEstimatedInsurance}
@@ -616,9 +619,8 @@ export function CheckoutForm({
           totalSavings={totalSavings}
           totalDeposit={totalDeposit}
           totalWithDelivery={totalWithDelivery}
-          deliveryOption={deliveryOption}
-          deliveryDistance={deliveryDistance}
-          deliveryFee={deliveryFee}
+          hasDeliveryLegs={outboundMethod === 'address' || returnMethod === 'address'}
+          deliveryFee={deliveryTotalFee}
           tulipInsurance={tulipInsurance}
           tulipInsuranceOptIn={tulipInsuranceOptIn}
           isTulipQuoteLoading={isTulipQuoteLoading}

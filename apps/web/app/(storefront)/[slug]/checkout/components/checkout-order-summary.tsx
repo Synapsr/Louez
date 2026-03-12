@@ -27,7 +27,7 @@ import type { CartItem } from '@/contexts/cart-context';
 import { useStoreMaxDiscountPercent } from '@/contexts/store-context';
 
 import type { ValidatedPromo } from '../promo-actions';
-import type { DeliveryOption, LineResolutionState } from '../types';
+import type { LineResolutionState } from '../types';
 import { CheckoutPromoCode } from './checkout-promo-code';
 
 interface CheckoutOrderSummaryProps {
@@ -45,8 +45,7 @@ interface CheckoutOrderSummaryProps {
   totalSavings: number;
   totalDeposit: number;
   totalWithDelivery: number;
-  deliveryOption: DeliveryOption;
-  deliveryDistance: number | null;
+  hasDeliveryLegs: boolean;
   deliveryFee: number;
   tulipInsurance?: {
     enabled: boolean;
@@ -90,8 +89,7 @@ export function CheckoutOrderSummary({
   totalSavings,
   totalDeposit,
   totalWithDelivery,
-  deliveryOption,
-  deliveryDistance,
+  hasDeliveryLegs,
   deliveryFee,
   tulipInsurance,
   tulipInsuranceOptIn,
@@ -321,7 +319,7 @@ export function CheckoutOrderSummary({
               </div>
             )}
 
-            {deliveryOption === 'delivery' && deliveryDistance !== null && (
+            {hasDeliveryLegs && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <Truck className="h-3.5 w-3.5" />

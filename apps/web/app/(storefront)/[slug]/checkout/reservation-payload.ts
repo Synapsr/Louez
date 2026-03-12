@@ -1,12 +1,10 @@
+import type { LegMethod } from '@louez/types';
+
 import type { CartItem } from '@/contexts/cart-context';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { createReservation } from './actions';
-import type {
-  CheckoutFormValues,
-  DeliveryAddress,
-  DeliveryOption,
-} from './types';
+import type { CheckoutFormValues, DeliveryAddress } from './types';
 
 type CreateReservationInput = Parameters<typeof createReservation>[0];
 
@@ -19,12 +17,31 @@ interface BuildReservationPayloadInput {
   subtotalAmount: number;
   depositAmount: number;
   totalAmount: number;
-  deliveryOption: DeliveryOption;
-  deliveryAddress: DeliveryAddress;
-  tulipInsuranceMode: 'required' | 'optional' | 'no_public';
-  hasDifferentReturnAddress: boolean;
+  outboundMethod: LegMethod;
+  outboundAddress: DeliveryAddress;
+  returnMethod: LegMethod;
   returnAddress: DeliveryAddress;
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public';
   promoCode?: string;
+}
+
+function buildDeliveryLeg(
+  method: LegMethod,
+  address: DeliveryAddress,
+): { method: LegMethod; address?: string; city?: string; postalCode?: string; country?: string; latitude?: number; longitude?: number } {
+  if (method === 'store') {
+    return { method: 'store' };
+  }
+
+  return {
+    method: 'address',
+    address: address.address,
+    city: address.city,
+    postalCode: address.postalCode,
+    country: address.country,
+    latitude: address.latitude ?? undefined,
+    longitude: address.longitude ?? undefined,
+  };
 }
 
 export function buildReservationPayload({
@@ -35,11 +52,11 @@ export function buildReservationPayload({
   subtotalAmount,
   depositAmount,
   totalAmount,
-  deliveryOption,
-  deliveryAddress,
-  tulipInsuranceMode,
-  hasDifferentReturnAddress,
+  outboundMethod,
+  outboundAddress,
+  returnMethod,
   returnAddress,
+  tulipInsuranceMode,
   promoCode,
 }: BuildReservationPayloadInput): CreateReservationInput {
   return {
@@ -94,31 +111,9 @@ export function buildReservationPayload({
     totalAmount,
     locale,
     promoCode,
-    delivery:
-      deliveryOption === 'delivery' &&
-      deliveryAddress.latitude !== null &&
-      deliveryAddress.longitude !== null
-        ? {
-            option: 'delivery',
-            address: deliveryAddress.address,
-            city: deliveryAddress.city,
-            postalCode: deliveryAddress.postalCode,
-            country: deliveryAddress.country,
-            latitude: deliveryAddress.latitude,
-            longitude: deliveryAddress.longitude,
-            ...(hasDifferentReturnAddress &&
-            returnAddress.latitude !== null &&
-            returnAddress.longitude !== null
-              ? {
-                  returnAddress: returnAddress.address,
-                  returnCity: returnAddress.city,
-                  returnPostalCode: returnAddress.postalCode,
-                  returnCountry: returnAddress.country,
-                  returnLatitude: returnAddress.latitude,
-                  returnLongitude: returnAddress.longitude,
-                }
-              : {}),
-          }
-        : { option: 'pickup' },
+    delivery: {
+      outbound: buildDeliveryLeg(outboundMethod, outboundAddress),
+      return: buildDeliveryLeg(returnMethod, returnAddress),
+    },
   };
 }

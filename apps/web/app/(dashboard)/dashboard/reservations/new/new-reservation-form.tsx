@@ -274,29 +274,7 @@ export function NewReservationForm({
         }
         return true
       case 'delivery':
-        if (delivery.deliveryOption === 'delivery') {
-          if (
-            delivery.deliveryAddress.latitude === null ||
-            delivery.deliveryAddress.longitude === null
-          ) {
-            toastManager.add({ title: t('deliveryAddressRequired'), type: 'error' })
-            return false
-          }
-          if (delivery.deliveryError) {
-            toastManager.add({ title: t('deliveryHasError'), type: 'error' })
-            return false
-          }
-          if (
-            delivery.hasDifferentReturnAddress &&
-            (delivery.returnAddress.latitude === null ||
-              delivery.returnAddress.longitude === null ||
-              Boolean(delivery.returnError))
-          ) {
-            toastManager.add({ title: t('returnAddressRequired'), type: 'error' })
-            return false
-          }
-        }
-        return true
+        return delivery.canContinue
       case 'confirm':
         return true
       default:
@@ -367,32 +345,30 @@ export function NewReservationForm({
               quantity: item.quantity,
               pricingMode: item.pricingMode,
             })),
-            delivery:
-              delivery.deliveryOption === 'delivery' &&
-              delivery.deliveryAddress.latitude !== null &&
-              delivery.deliveryAddress.longitude !== null
+            delivery: {
+              outbound: delivery.outboundMethod === 'address' && delivery.outboundAddress.latitude !== null && delivery.outboundAddress.longitude !== null
                 ? {
-                    option: 'delivery' as const,
-                    address: delivery.deliveryAddress.address,
-                    city: delivery.deliveryAddress.city,
-                    postalCode: delivery.deliveryAddress.postalCode,
-                    country: delivery.deliveryAddress.country,
-                    latitude: delivery.deliveryAddress.latitude,
-                    longitude: delivery.deliveryAddress.longitude,
-                    ...(delivery.hasDifferentReturnAddress &&
-                    delivery.returnAddress.latitude !== null &&
-                    delivery.returnAddress.longitude !== null
-                      ? {
-                          returnAddress: delivery.returnAddress.address,
-                          returnCity: delivery.returnAddress.city,
-                          returnPostalCode: delivery.returnAddress.postalCode,
-                          returnCountry: delivery.returnAddress.country,
-                          returnLatitude: delivery.returnAddress.latitude,
-                          returnLongitude: delivery.returnAddress.longitude,
-                        }
-                      : {}),
+                    method: 'address' as const,
+                    address: delivery.outboundAddress.address,
+                    city: delivery.outboundAddress.city,
+                    postalCode: delivery.outboundAddress.postalCode,
+                    country: delivery.outboundAddress.country,
+                    latitude: delivery.outboundAddress.latitude,
+                    longitude: delivery.outboundAddress.longitude,
                   }
-                : { option: 'pickup' as const },
+                : { method: 'store' as const },
+              return: delivery.returnMethod === 'address' && delivery.returnAddress.latitude !== null && delivery.returnAddress.longitude !== null
+                ? {
+                    method: 'address' as const,
+                    address: delivery.returnAddress.address,
+                    city: delivery.returnAddress.city,
+                    postalCode: delivery.returnAddress.postalCode,
+                    country: delivery.returnAddress.country,
+                    latitude: delivery.returnAddress.latitude,
+                    longitude: delivery.returnAddress.longitude,
+                  }
+                : { method: 'store' as const },
+            },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
             sendConfirmationEmail,
@@ -1052,24 +1028,26 @@ export function NewReservationForm({
           <StepContent direction={stepDirection}>
             <NewReservationStepDelivery
               deliverySettings={deliverySettings}
-              deliveryOption={delivery.deliveryOption}
-              deliveryAddress={delivery.deliveryAddress}
-              deliveryDistance={delivery.deliveryDistance}
-              deliveryFee={delivery.deliveryFee}
-              deliveryError={delivery.deliveryError}
               subtotal={subtotal}
+              currency="EUR"
               storeAddress={storeAddress}
               isDeliveryForced={delivery.isDeliveryForced}
               isDeliveryIncluded={delivery.isDeliveryIncluded}
-              allowDifferentReturnAddress={delivery.allowDifferentReturnAddress}
-              hasDifferentReturnAddress={delivery.hasDifferentReturnAddress}
+              outboundMethod={delivery.outboundMethod}
+              outboundAddress={delivery.outboundAddress}
+              outboundDistance={delivery.outboundDistance}
+              outboundFee={delivery.outboundFee}
+              outboundError={delivery.outboundError}
+              onOutboundMethodChange={delivery.handleOutboundMethodChange}
+              onOutboundAddressChange={delivery.handleOutboundAddressChange}
+              returnMethod={delivery.returnMethod}
               returnAddress={delivery.returnAddress}
               returnDistance={delivery.returnDistance}
+              returnFee={delivery.returnFee}
               returnError={delivery.returnError}
-              onDeliveryOptionChange={delivery.handleDeliveryOptionChange}
-              onDeliveryAddressChange={delivery.handleDeliveryAddressChange}
-              onDifferentReturnAddressToggle={delivery.handleDifferentReturnAddressToggle}
+              onReturnMethodChange={delivery.handleReturnMethodChange}
               onReturnAddressChange={delivery.handleReturnAddressChange}
+              totalFee={delivery.totalFee}
             />
           </StepContent>
         )}
@@ -1097,11 +1075,16 @@ export function NewReservationForm({
               deposit={deposit}
               getProductPricingDetails={getProductPricingDetails}
               getCustomItemTotal={getCustomItemTotal}
-              deliveryOption={delivery.deliveryOption}
-              deliveryAddress={delivery.deliveryAddress}
-              deliveryFee={delivery.deliveryFee}
-              deliveryDistance={delivery.deliveryDistance}
+              hasDeliveryLegs={delivery.outboundMethod === 'address' || delivery.returnMethod === 'address'}
+              deliveryFee={delivery.totalFee}
               isDeliveryIncluded={delivery.isDeliveryIncluded}
+              outboundMethod={delivery.outboundMethod}
+              outboundAddress={delivery.outboundAddress}
+              outboundDistance={delivery.outboundDistance}
+              returnMethod={delivery.returnMethod}
+              returnAddress={delivery.returnAddress}
+              returnDistance={delivery.returnDistance}
+              storeAddress={storeAddress}
             />
           </StepContent>
         )}

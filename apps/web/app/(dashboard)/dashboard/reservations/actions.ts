@@ -105,7 +105,7 @@ import {
 } from '@/lib/stripe';
 import { getContrastColorHex } from '@/lib/utils/colors';
 import {
-  calculateDeliveryFee,
+  calculateTotalDeliveryFee,
   calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo';
@@ -693,19 +693,24 @@ interface CreateReservationData {
     pricingMode: PricingMode;
   }>;
   delivery?: {
-    option: 'pickup' | 'delivery';
-    address?: string;
-    city?: string;
-    postalCode?: string;
-    country?: string;
-    latitude?: number;
-    longitude?: number;
-    returnAddress?: string;
-    returnCity?: string;
-    returnPostalCode?: string;
-    returnCountry?: string;
-    returnLatitude?: number;
-    returnLongitude?: number;
+    outbound: {
+      method: 'store' | 'address';
+      address?: string;
+      city?: string;
+      postalCode?: string;
+      country?: string;
+      latitude?: number;
+      longitude?: number;
+    };
+    return: {
+      method: 'store' | 'address';
+      address?: string;
+      city?: string;
+      postalCode?: string;
+      country?: string;
+      latitude?: number;
+      longitude?: number;
+    };
   };
   internalNotes?: string;
   tulipInsuranceOptIn?: boolean;
@@ -983,13 +988,15 @@ export async function createManualReservation(data: CreateReservationData) {
   let returnDistanceKm: number | null = null;
   const storeDeliverySettings = store.settings?.delivery;
 
-  if (data.delivery?.option === 'delivery') {
+  const outboundLeg = data.delivery?.outbound;
+  const returnLeg = data.delivery?.return;
+  const hasOutboundDelivery = outboundLeg?.method === 'address';
+  const hasReturnDelivery = returnLeg?.method === 'address';
+  const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery;
+
+  if (hasAnyDelivery) {
     if (!storeDeliverySettings?.enabled) {
       return { error: 'errors.deliveryNotEnabled' };
-    }
-
-    if (!data.delivery.latitude || !data.delivery.longitude) {
-      return { error: 'errors.deliveryAddressRequired' };
     }
 
     if (!store.latitude || !store.longitude) {
@@ -999,38 +1006,35 @@ export async function createManualReservation(data: CreateReservationData) {
     const sLat = parseFloat(store.latitude);
     const sLon = parseFloat(store.longitude);
 
-    deliveryDistanceKm = calculateHaversineDistance(
-      sLat,
-      sLon,
-      data.delivery.latitude,
-      data.delivery.longitude,
-    );
+    // Validate outbound leg
+    if (hasOutboundDelivery) {
+      if (!outboundLeg.latitude || !outboundLeg.longitude) {
+        return { error: 'errors.deliveryAddressRequired' };
+      }
 
-    const validation = validateDelivery(
-      deliveryDistanceKm,
-      storeDeliverySettings,
-    );
-    if (!validation.valid) {
-      return { error: validation.errorKey || 'errors.deliveryTooFar' };
+      deliveryDistanceKm = calculateHaversineDistance(
+        sLat, sLon,
+        outboundLeg.latitude, outboundLeg.longitude,
+      );
+
+      const validation = validateDelivery(deliveryDistanceKm, storeDeliverySettings);
+      if (!validation.valid) {
+        return { error: validation.errorKey || 'errors.deliveryTooFar' };
+      }
     }
 
-    // Validate return address if provided
-    if (
-      data.delivery.returnLatitude != null &&
-      data.delivery.returnLongitude != null &&
-      storeDeliverySettings.allowDifferentReturnAddress
-    ) {
+    // Validate return leg
+    if (hasReturnDelivery) {
+      if (!returnLeg.latitude || !returnLeg.longitude) {
+        return { error: 'errors.returnAddressRequired' };
+      }
+
       returnDistanceKm = calculateHaversineDistance(
-        sLat,
-        sLon,
-        data.delivery.returnLatitude,
-        data.delivery.returnLongitude,
+        sLat, sLon,
+        returnLeg.latitude, returnLeg.longitude,
       );
 
-      const returnValidation = validateDelivery(
-        returnDistanceKm,
-        storeDeliverySettings,
-      );
+      const returnValidation = validateDelivery(returnDistanceKm, storeDeliverySettings);
       if (!returnValidation.valid) {
         return { error: 'errors.returnAddressTooFar' };
       }
@@ -1038,14 +1042,17 @@ export async function createManualReservation(data: CreateReservationData) {
 
     // Calculate delivery fee server-side
     const isIncluded = storeDeliverySettings.mode === 'included';
-    deliveryFeeAmount = isIncluded
-      ? 0
-      : calculateDeliveryFee(
-          deliveryDistanceKm,
-          storeDeliverySettings,
-          subtotalAmount,
-          returnDistanceKm,
-        );
+    if (isIncluded) {
+      deliveryFeeAmount = 0;
+    } else {
+      const feeResult = calculateTotalDeliveryFee(
+        deliveryDistanceKm,
+        returnDistanceKm,
+        storeDeliverySettings,
+        subtotalAmount,
+      );
+      deliveryFeeAmount = feeResult.totalFee;
+    }
   }
 
   // Generate reservation number
@@ -1053,7 +1060,6 @@ export async function createManualReservation(data: CreateReservationData) {
 
   // Create reservation
   const reservationId = nanoid();
-  const isDelivery = data.delivery?.option === 'delivery';
   await db.insert(reservations).values({
     id: reservationId,
     storeId: store.id,
@@ -1069,36 +1075,24 @@ export async function createManualReservation(data: CreateReservationData) {
     source: 'manual',
     tulipInsuranceOptIn,
     tulipInsuranceAmount: null,
-    // Delivery fields
-    deliveryOption: data.delivery?.option || 'pickup',
-    deliveryAddress: isDelivery ? (data.delivery?.address ?? null) : null,
-    deliveryCity: isDelivery ? (data.delivery?.city ?? null) : null,
-    deliveryPostalCode: isDelivery ? (data.delivery?.postalCode ?? null) : null,
-    deliveryCountry: isDelivery ? (data.delivery?.country ?? null) : null,
-    deliveryLatitude:
-      isDelivery && data.delivery?.latitude
-        ? data.delivery.latitude.toString()
-        : null,
-    deliveryLongitude:
-      isDelivery && data.delivery?.longitude
-        ? data.delivery.longitude.toString()
-        : null,
+    // Delivery fields — leg-based model
+    outboundMethod: outboundLeg?.method || 'store',
+    returnMethod: returnLeg?.method || 'store',
+    deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
+    deliveryAddress: hasOutboundDelivery ? (outboundLeg.address ?? null) : null,
+    deliveryCity: hasOutboundDelivery ? (outboundLeg.city ?? null) : null,
+    deliveryPostalCode: hasOutboundDelivery ? (outboundLeg.postalCode ?? null) : null,
+    deliveryCountry: hasOutboundDelivery ? (outboundLeg.country ?? null) : null,
+    deliveryLatitude: hasOutboundDelivery && outboundLeg.latitude ? outboundLeg.latitude.toString() : null,
+    deliveryLongitude: hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
     deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
     deliveryFee: deliveryFeeAmount.toFixed(2),
-    returnAddress: isDelivery ? (data.delivery?.returnAddress ?? null) : null,
-    returnCity: isDelivery ? (data.delivery?.returnCity ?? null) : null,
-    returnPostalCode: isDelivery
-      ? (data.delivery?.returnPostalCode ?? null)
-      : null,
-    returnCountry: isDelivery ? (data.delivery?.returnCountry ?? null) : null,
-    returnLatitude:
-      isDelivery && data.delivery?.returnLatitude != null
-        ? data.delivery.returnLatitude.toString()
-        : null,
-    returnLongitude:
-      isDelivery && data.delivery?.returnLongitude != null
-        ? data.delivery.returnLongitude.toString()
-        : null,
+    returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
+    returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
+    returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
+    returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
+    returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
+    returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
     returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
   });
 

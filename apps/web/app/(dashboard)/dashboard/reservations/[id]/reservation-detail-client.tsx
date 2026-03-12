@@ -602,8 +602,8 @@ export function ReservationDetailClient({
             hasReturnInspection={!!returnInspection}
           />
 
-          {/* Delivery & Return card - only shown for delivery orders */}
-          {reservation.deliveryOption === 'delivery' && (
+          {/* Delivery & Return card — shown when any leg uses address delivery */}
+          {(reservation.outboundMethod === 'address' || reservation.returnMethod === 'address' || reservation.deliveryOption === 'delivery') && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -612,45 +612,57 @@ export function ReservationDetailClient({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {/* Outbound leg */}
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {t('deliveryAddressLabel')}
+                    {t('outboundLegLabel')}
                   </p>
-                  <div className="flex items-start gap-2">
-                    <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                    <p className="text-sm">
-                      {reservation.deliveryAddress}
-                      {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
-                      {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
-                    </p>
-                  </div>
-                  {reservation.deliveryDistanceKm && (
-                    <p className="text-xs text-muted-foreground ml-5.5">
-                      {parseFloat(reservation.deliveryDistanceKm).toFixed(1)} km
-                    </p>
+                  {reservation.outboundMethod === 'address' || (!reservation.outboundMethod && reservation.deliveryAddress) ? (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                        <p className="text-sm">
+                          {reservation.deliveryAddress}
+                          {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
+                          {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
+                        </p>
+                      </div>
+                      {reservation.deliveryDistanceKm && (
+                        <p className="text-xs text-muted-foreground ml-5.5">
+                          {parseFloat(reservation.deliveryDistanceKm).toFixed(1)} km
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('storePickup')}</p>
                   )}
                 </div>
 
-                {reservation.returnAddress && (
-                  <div className="space-y-1.5 border-t pt-3">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      {t('returnAddressLabel')}
-                    </p>
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                      <p className="text-sm">
-                        {reservation.returnAddress}
-                        {reservation.returnCity && `, ${reservation.returnCity}`}
-                        {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
-                      </p>
-                    </div>
-                    {reservation.returnDistanceKm && (
-                      <p className="text-xs text-muted-foreground ml-5.5">
-                        {parseFloat(reservation.returnDistanceKm).toFixed(1)} km
-                      </p>
-                    )}
-                  </div>
-                )}
+                {/* Return leg */}
+                <div className="space-y-1.5 border-t pt-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {t('returnLegLabel')}
+                  </p>
+                  {reservation.returnMethod === 'address' || (!reservation.returnMethod && reservation.returnAddress) ? (
+                    <>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                        <p className="text-sm">
+                          {reservation.returnAddress}
+                          {reservation.returnCity && `, ${reservation.returnCity}`}
+                          {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
+                        </p>
+                      </div>
+                      {reservation.returnDistanceKm && (
+                        <p className="text-xs text-muted-foreground ml-5.5">
+                          {parseFloat(reservation.returnDistanceKm).toFixed(1)} km
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">{t('storeReturn')}</p>
+                  )}
+                </div>
 
                 {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
                   <div className="flex justify-between items-center border-t pt-3 text-sm">

@@ -267,6 +267,13 @@
       "when": 1773158400000,
       "tag": "0034_add_ai_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1773504000000,
+      "tag": "0035_add_delivery_leg_methods",
+      "breakpoints": true
     }
   ]
 }

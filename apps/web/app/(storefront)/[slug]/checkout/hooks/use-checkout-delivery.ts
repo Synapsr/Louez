@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-import type { DeliverySettings } from '@louez/types';
+import type { DeliverySettings, LegMethod } from '@louez/types';
 import {
-  calculateDeliveryFee,
+  calculateTotalDeliveryFee,
   calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo';
 
-import type { DeliveryAddress, DeliveryOption } from '../types';
+import type { DeliveryAddress } from '../types';
 
 const DEFAULT_DELIVERY_ADDRESS: DeliveryAddress = {
   address: '',
@@ -45,71 +45,80 @@ export function useCheckoutDelivery({
   const isDeliveryForced =
     deliveryMode === 'required' || deliveryMode === 'included';
   const isDeliveryIncluded = deliveryMode === 'included';
-  const allowDifferentReturnAddress =
-    deliverySettings?.allowDifferentReturnAddress ?? false;
 
-  // Delivery state
-  const [deliveryOption, setDeliveryOption] = useState<DeliveryOption>(
-    isDeliveryForced ? 'delivery' : 'pickup',
+  // --- Outbound leg state ---
+  const [outboundMethod, setOutboundMethod] = useState<LegMethod>(
+    isDeliveryForced ? 'address' : 'store',
   );
-  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(
+  const [outboundAddress, setOutboundAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   );
-  const [deliveryDistance, setDeliveryDistance] = useState<number | null>(null);
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [outboundDistance, setOutboundDistance] = useState<number | null>(null);
+  const [outboundFee, setOutboundFee] = useState(0);
+  const [outboundError, setOutboundError] = useState<string | null>(null);
 
-  // Return address state
-  const [hasDifferentReturnAddress, setHasDifferentReturnAddress] =
-    useState(false);
+  // --- Return leg state ---
+  const [returnMethod, setReturnMethod] = useState<LegMethod>('store');
   const [returnAddress, setReturnAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   );
   const [returnDistance, setReturnDistance] = useState<number | null>(null);
+  const [returnFee, setReturnFee] = useState(0);
   const [returnError, setReturnError] = useState<string | null>(null);
 
+  const totalFee = outboundFee + returnFee;
+
+  // Force outbound to address when delivery mode requires it
   useEffect(() => {
     if (isDeliveryForced) {
-      setDeliveryOption('delivery');
+      setOutboundMethod('address');
     }
   }, [isDeliveryForced]);
 
-  /**
-   * Compute delivery fee from current delivery + return distances.
-   * Centralised to avoid duplicating the calculation logic.
-   */
-  const computeFee = useCallback(
-    (
-      delDistance: number | null,
-      retDistance: number | null,
-      hasDiffReturn: boolean,
-    ) => {
-      if (
-        delDistance === null ||
-        !deliverySettings ||
-        isDeliveryIncluded
-      ) {
-        return 0;
+  // ---------------------------------------------------------------------------
+  // Fee recalculation helper
+  // ---------------------------------------------------------------------------
+  const recalculateFees = useCallback(
+    (outDist: number | null, retDist: number | null) => {
+      if (!deliverySettings || isDeliveryIncluded) {
+        setOutboundFee(0);
+        setReturnFee(0);
+        return;
       }
-      return calculateDeliveryFee(
-        delDistance,
+
+      const result = calculateTotalDeliveryFee(
+        outDist,
+        retDist,
         deliverySettings,
         subtotal,
-        hasDiffReturn ? retDistance : null,
       );
+      setOutboundFee(result.outboundFee);
+      setReturnFee(result.returnFee);
     },
     [deliverySettings, isDeliveryIncluded, subtotal],
   );
 
-  const handleDeliveryAddressChange = useCallback(
-    (address: string, latitude: number | null, longitude: number | null) => {
-      setDeliveryAddress((prev) => ({
-        ...prev,
-        address,
-        latitude,
-        longitude,
-      }));
-      setDeliveryError(null);
+  // ---------------------------------------------------------------------------
+  // Shared address change handler for a single leg
+  // ---------------------------------------------------------------------------
+  const handleLegAddressChange = useCallback(
+    (
+      leg: 'outbound' | 'return',
+      address: string,
+      latitude: number | null,
+      longitude: number | null,
+      // Current state of the OTHER leg (to avoid stale closure)
+      otherLegDistance: number | null,
+      otherLegMethod: LegMethod,
+    ) => {
+      const setAddress = leg === 'outbound' ? setOutboundAddress : setReturnAddress;
+      const setDistance = leg === 'outbound' ? setOutboundDistance : setReturnDistance;
+      const setError = leg === 'outbound' ? setOutboundError : setReturnError;
+
+      setAddress((prev) => ({ ...prev, address, latitude, longitude }));
+      setError(null);
+
+      const otherDist = otherLegMethod === 'address' ? otherLegDistance : null;
 
       if (
         latitude === null ||
@@ -120,8 +129,12 @@ export function useCheckoutDelivery({
         storeLongitude === undefined ||
         !deliverySettings
       ) {
-        setDeliveryDistance(null);
-        setDeliveryFee(0);
+        setDistance(null);
+        if (leg === 'outbound') {
+          recalculateFees(null, otherDist);
+        } else {
+          recalculateFees(otherDist, null);
+        }
         return;
       }
 
@@ -131,163 +144,170 @@ export function useCheckoutDelivery({
         latitude,
         longitude,
       );
-      setDeliveryDistance(distance);
+      setDistance(distance);
 
       const validation = validateDelivery(distance, deliverySettings);
       if (!validation.valid) {
-        setDeliveryError(
+        setError(
           t('deliveryTooFar', {
             maxKm: deliverySettings.maximumDistance ?? 0,
           }),
         );
-        setDeliveryFee(0);
+        if (leg === 'outbound') {
+          recalculateFees(null, otherDist);
+        } else {
+          recalculateFees(otherDist, null);
+        }
         return;
       }
 
-      setDeliveryFee(
-        computeFee(distance, returnDistance, hasDifferentReturnAddress),
+      if (leg === 'outbound') {
+        recalculateFees(distance, otherDist);
+      } else {
+        recalculateFees(otherDist, distance);
+      }
+    },
+    [deliverySettings, recalculateFees, storeLatitude, storeLongitude, t],
+  );
+
+  // ---------------------------------------------------------------------------
+  // Public handlers
+  // ---------------------------------------------------------------------------
+
+  const handleOutboundMethodChange = useCallback(
+    (method: LegMethod) => {
+      setOutboundMethod(method);
+
+      if (method === 'store') {
+        setOutboundAddress(DEFAULT_DELIVERY_ADDRESS);
+        setOutboundDistance(null);
+        setOutboundError(null);
+        recalculateFees(null, returnMethod === 'address' ? returnDistance : null);
+      }
+    },
+    [recalculateFees, returnDistance, returnMethod],
+  );
+
+  const handleReturnMethodChange = useCallback(
+    (method: LegMethod) => {
+      setReturnMethod(method);
+
+      if (method === 'store') {
+        setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
+        setReturnDistance(null);
+        setReturnError(null);
+        recalculateFees(outboundMethod === 'address' ? outboundDistance : null, null);
+      }
+    },
+    [outboundDistance, outboundMethod, recalculateFees],
+  );
+
+  const handleOutboundAddressChange = useCallback(
+    (address: string, latitude: number | null, longitude: number | null) => {
+      handleLegAddressChange(
+        'outbound',
+        address,
+        latitude,
+        longitude,
+        returnDistance,
+        returnMethod,
       );
     },
-    [
-      computeFee,
-      deliverySettings,
-      hasDifferentReturnAddress,
-      returnDistance,
-      storeLatitude,
-      storeLongitude,
-      t,
-    ],
+    [handleLegAddressChange, returnDistance, returnMethod],
   );
 
   const handleReturnAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      setReturnAddress((prev) => ({
-        ...prev,
+      handleLegAddressChange(
+        'return',
         address,
         latitude,
         longitude,
-      }));
-      setReturnError(null);
-
-      if (
-        latitude === null ||
-        longitude === null ||
-        storeLatitude === null ||
-        storeLatitude === undefined ||
-        storeLongitude === null ||
-        storeLongitude === undefined ||
-        !deliverySettings
-      ) {
-        setReturnDistance(null);
-        // Recalculate fee without return distance
-        setDeliveryFee(computeFee(deliveryDistance, null, false));
-        return;
-      }
-
-      const distance = calculateHaversineDistance(
-        storeLatitude,
-        storeLongitude,
-        latitude,
-        longitude,
+        outboundDistance,
+        outboundMethod,
       );
-      setReturnDistance(distance);
-
-      const validation = validateDelivery(distance, deliverySettings);
-      if (!validation.valid) {
-        setReturnError(
-          t('returnTooFar', {
-            maxKm: deliverySettings.maximumDistance ?? 0,
-          }),
-        );
-        // Keep delivery fee without return distance
-        setDeliveryFee(computeFee(deliveryDistance, null, false));
-        return;
-      }
-
-      setDeliveryFee(computeFee(deliveryDistance, distance, true));
     },
-    [
-      computeFee,
-      deliveryDistance,
-      deliverySettings,
-      storeLatitude,
-      storeLongitude,
-      t,
-    ],
+    [handleLegAddressChange, outboundDistance, outboundMethod],
   );
 
-  const handleDifferentReturnAddressToggle = useCallback(
-    (checked: boolean) => {
-      setHasDifferentReturnAddress(checked);
+  // ---------------------------------------------------------------------------
+  // Backward-compatible computed values
+  // ---------------------------------------------------------------------------
 
-      if (!checked) {
-        // Reset return state
-        setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
-        setReturnDistance(null);
-        setReturnError(null);
-        // Recalculate fee without return distance
-        setDeliveryFee(computeFee(deliveryDistance, null, false));
-      }
-    },
-    [computeFee, deliveryDistance],
-  );
+  /** @deprecated Computed for backward compat. Use outboundMethod/returnMethod. */
+  const deliveryOption =
+    outboundMethod === 'store' && returnMethod === 'store'
+      ? ('pickup' as const)
+      : ('delivery' as const);
 
-  const handleDeliveryOptionChange = useCallback(
-    (option: DeliveryOption) => {
-      setDeliveryOption(option);
+  /** Whether the continue button should be disabled */
+  const hasOutboundAddressError =
+    outboundMethod === 'address' &&
+    (outboundAddress.latitude === null ||
+      outboundAddress.longitude === null ||
+      Boolean(outboundError));
 
-      if (option === 'pickup') {
-        setDeliveryFee(0);
-        setDeliveryDistance(null);
-        setDeliveryError(null);
-        // Also reset return address state
-        setHasDifferentReturnAddress(false);
-        setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
-        setReturnDistance(null);
-        setReturnError(null);
-      }
-    },
-    [],
-  );
+  const hasReturnAddressError =
+    returnMethod === 'address' &&
+    (returnAddress.latitude === null ||
+      returnAddress.longitude === null ||
+      Boolean(returnError));
+
+  const canContinue = !hasOutboundAddressError && !hasReturnAddressError;
 
   return useMemo(
     () => ({
+      // Feature flags
       isDeliveryEnabled,
       isDeliveryForced,
       isDeliveryIncluded,
-      allowDifferentReturnAddress,
-      deliveryOption,
-      deliveryAddress,
-      deliveryDistance,
-      deliveryFee,
-      deliveryError,
-      hasDifferentReturnAddress,
+
+      // Outbound leg
+      outboundMethod,
+      outboundAddress,
+      outboundDistance,
+      outboundFee,
+      outboundError,
+      handleOutboundMethodChange,
+      handleOutboundAddressChange,
+
+      // Return leg
+      returnMethod,
       returnAddress,
       returnDistance,
+      returnFee,
       returnError,
-      handleDeliveryOptionChange,
-      handleDeliveryAddressChange,
+      handleReturnMethodChange,
       handleReturnAddressChange,
-      handleDifferentReturnAddressToggle,
+
+      // Totals
+      totalFee,
+      canContinue,
+
+      // Backward compat
+      deliveryOption,
     }),
     [
-      allowDifferentReturnAddress,
-      deliveryAddress,
-      deliveryDistance,
-      deliveryError,
-      deliveryFee,
+      canContinue,
       deliveryOption,
-      hasDifferentReturnAddress,
-      handleDeliveryAddressChange,
-      handleDeliveryOptionChange,
-      handleDifferentReturnAddressToggle,
+      handleOutboundAddressChange,
+      handleOutboundMethodChange,
       handleReturnAddressChange,
+      handleReturnMethodChange,
       isDeliveryEnabled,
       isDeliveryForced,
       isDeliveryIncluded,
+      outboundAddress,
+      outboundDistance,
+      outboundError,
+      outboundFee,
+      outboundMethod,
       returnAddress,
       returnDistance,
       returnError,
+      returnFee,
+      returnMethod,
+      totalFee,
     ],
   );
 }

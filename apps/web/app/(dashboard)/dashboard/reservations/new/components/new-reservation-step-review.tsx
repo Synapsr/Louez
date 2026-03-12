@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns'
 import type { Locale } from 'date-fns'
-import { Check, MapPin, Truck, Shield } from 'lucide-react'
+import { Check, MapPin, Store, Truck, Shield } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
@@ -16,11 +16,12 @@ import {
 } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 
+import type { LegMethod } from '@louez/types'
+
 import type {
   CustomItem,
   Customer,
   DeliveryAddress,
-  DeliveryOption,
   NewReservationFormComponentApi,
   NewReservationFormValues,
   Product,
@@ -59,11 +60,16 @@ interface NewReservationStepReviewProps {
     selectedItem?: SelectedProduct
   ) => ProductPricingDetails
   getCustomItemTotal: (item: CustomItem) => number
-  deliveryOption?: DeliveryOption
-  deliveryAddress?: DeliveryAddress
+  hasDeliveryLegs?: boolean
   deliveryFee?: number
-  deliveryDistance?: number | null
   isDeliveryIncluded?: boolean
+  outboundMethod?: LegMethod
+  outboundAddress?: DeliveryAddress
+  outboundDistance?: number | null
+  returnMethod?: LegMethod
+  returnAddress?: DeliveryAddress
+  returnDistance?: number | null
+  storeAddress?: string | null
 }
 
 export function NewReservationStepReview({
@@ -86,15 +92,20 @@ export function NewReservationStepReview({
   deposit,
   getProductPricingDetails,
   getCustomItemTotal,
-  deliveryOption,
-  deliveryAddress,
+  hasDeliveryLegs,
   deliveryFee = 0,
-  deliveryDistance,
   isDeliveryIncluded,
+  outboundMethod = 'store',
+  outboundAddress,
+  outboundDistance,
+  returnMethod = 'store',
+  returnAddress,
+  returnDistance,
+  storeAddress,
 }: NewReservationStepReviewProps) {
   const t = useTranslations('dashboard.reservations.manualForm')
 
-  const showDeliverySection = deliveryOption === 'delivery'
+  const showDeliverySection = hasDeliveryLegs === true
   const total = subtotal + deliveryFee
   const isTulipInsuranceEnabledForReservation =
     tulipInsuranceMode === 'required' ||
@@ -176,36 +187,63 @@ export function NewReservationStepReview({
             </div>
           </div>
 
-          {/* Delivery section */}
-          {showDeliverySection && deliveryAddress && (
+          {/* Delivery section — per-leg detail */}
+          {hasDeliveryLegs !== undefined && (
             <div>
               <h4 className="mb-2 text-sm font-medium">{t('deliveryTitle')}</h4>
-              <div className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{t('deliveryOptionLabel')}</span>
+              <div className="divide-y rounded-lg border">
+                {/* Outbound leg */}
+                <div className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                    {t('outboundLeg')}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {outboundMethod === 'address' ? (
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Store className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {outboundMethod === 'address' ? t('deliveryYes') : t('deliveryNo')}
+                    </span>
+                  </div>
+                  {outboundMethod === 'address' && outboundAddress?.address && (
+                    <p className="text-xs text-muted-foreground mt-1 ml-6 flex items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      {outboundAddress.address}
+                      {outboundDistance != null && ` (${outboundDistance.toFixed(1)} km)`}
+                    </p>
+                  )}
+                  {outboundMethod === 'store' && storeAddress && (
+                    <p className="text-xs text-muted-foreground mt-1 ml-6">{storeAddress}</p>
+                  )}
                 </div>
-                {deliveryAddress.address && (
-                  <p className="text-sm text-muted-foreground">
-                    {deliveryAddress.address}
-                  </p>
-                )}
-                {deliveryDistance != null && (
-                  <p className="text-sm text-muted-foreground">
-                    {deliveryDistance.toFixed(1)} km
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
 
-          {deliveryOption === 'pickup' && deliveryOption !== undefined && (
-            <div>
-              <h4 className="mb-2 text-sm font-medium">{t('deliveryTitle')}</h4>
-              <div className="rounded-lg border p-3">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{t('deliveryNo')}</span>
+                {/* Return leg */}
+                <div className="p-3">
+                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                    {t('returnLeg')}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    {returnMethod === 'address' ? (
+                      <Truck className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Store className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm font-medium">
+                      {returnMethod === 'address' ? t('deliveryYes') : t('deliveryNo')}
+                    </span>
+                  </div>
+                  {returnMethod === 'address' && returnAddress?.address && (
+                    <p className="text-xs text-muted-foreground mt-1 ml-6 flex items-center gap-1">
+                      <MapPin className="h-3 w-3 shrink-0" />
+                      {returnAddress.address}
+                      {returnDistance != null && ` (${returnDistance.toFixed(1)} km)`}
+                    </p>
+                  )}
+                  {returnMethod === 'store' && storeAddress && (
+                    <p className="text-xs text-muted-foreground mt-1 ml-6">{storeAddress}</p>
+                  )}
                 </div>
               </div>
             </div>
