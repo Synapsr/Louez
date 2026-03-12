@@ -2814,6 +2814,42 @@
           "expiresAfterStarts": "La date d'expiration doit être après la date de début"
         }
       },
+      "export": {
+        "title": "Export des données",
+        "description": "Exportez les données de votre boutique au format CSV ou JSON pour la comptabilité, l'analyse ou la sauvegarde.",
+        "payments": {
+          "title": "Paiements",
+          "description": "Exportez les enregistrements de paiements incluant les montants, méthodes, statuts et références Stripe.",
+          "button": "Exporter les paiements"
+        },
+        "reservations": {
+          "title": "Réservations",
+          "description": "Exportez les détails des réservations avec les informations clients, articles, dates et montants.",
+          "button": "Exporter les réservations"
+        },
+        "products": {
+          "title": "Produits",
+          "description": "Exportez votre catalogue produits complet avec les prix, catégories et informations de stock.",
+          "button": "Exporter les produits"
+        },
+        "dateRange": {
+          "label": "Période",
+          "startDate": "Date de début",
+          "endDate": "Date de fin"
+        },
+        "format": {
+          "label": "Format",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Export en cours...",
+        "errors": {
+          "invalidDateRange": "La date de fin doit être postérieure à la date de début.",
+          "dateRequired": "Veuillez sélectionner une période.",
+          "maxRange": "La période ne peut pas dépasser un an.",
+          "exportFailed": "L'export a échoué. Veuillez réessayer."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Intégrez un sélecteur de dates de location sur votre site web. Vos clients pourront choisir leurs dates et seront redirigés vers votre boutique en ligne.",

@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Gegevensexport",
+        "description": "Exporteer uw winkelgegevens in CSV- of JSON-formaat voor boekhouding, analyse of back-up.",
+        "payments": {
+          "title": "Betalingen",
+          "description": "Exporteer betalingsgegevens inclusief bedragen, methoden, statussen en Stripe-referenties.",
+          "button": "Betalingen exporteren"
+        },
+        "reservations": {
+          "title": "Reserveringen",
+          "description": "Exporteer reserveringsdetails met klantinformatie, artikelen, data en bedragen.",
+          "button": "Reserveringen exporteren"
+        },
+        "products": {
+          "title": "Producten",
+          "description": "Exporteer uw volledige productcatalogus met prijzen, categorieën en voorraadgegevens.",
+          "button": "Producten exporteren"
+        },
+        "dateRange": {
+          "label": "Periode",
+          "startDate": "Startdatum",
+          "endDate": "Einddatum"
+        },
+        "format": {
+          "label": "Formaat",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Exporteren...",
+        "errors": {
+          "invalidDateRange": "De einddatum moet na de startdatum liggen.",
+          "dateRequired": "Selecteer een periode.",
+          "maxRange": "De periode mag niet langer dan een jaar zijn.",
+          "exportFailed": "Export mislukt. Probeer het opnieuw."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Voeg een verhuurdatumkiezer toe aan uw website. Uw klanten kunnen datums selecteren en worden doorgestuurd naar uw online winkel.",

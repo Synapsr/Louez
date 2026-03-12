@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Datenexport",
+        "description": "Exportieren Sie Ihre Shopdaten im CSV- oder JSON-Format für Buchhaltung, Analyse oder Sicherungszwecke.",
+        "payments": {
+          "title": "Zahlungen",
+          "description": "Exportieren Sie Zahlungsdaten einschließlich Beträge, Methoden, Status und Stripe-Referenzen.",
+          "button": "Zahlungen exportieren"
+        },
+        "reservations": {
+          "title": "Reservierungen",
+          "description": "Exportieren Sie Reservierungsdetails mit Kundeninformationen, Artikeln, Daten und Beträgen.",
+          "button": "Reservierungen exportieren"
+        },
+        "products": {
+          "title": "Produkte",
+          "description": "Exportieren Sie Ihren vollständigen Produktkatalog mit Preisen, Kategorien und Bestandsinformationen.",
+          "button": "Produkte exportieren"
+        },
+        "dateRange": {
+          "label": "Zeitraum",
+          "startDate": "Startdatum",
+          "endDate": "Enddatum"
+        },
+        "format": {
+          "label": "Format",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Wird exportiert...",
+        "errors": {
+          "invalidDateRange": "Das Enddatum muss nach dem Startdatum liegen.",
+          "dateRequired": "Bitte wählen Sie einen Zeitraum aus.",
+          "maxRange": "Der Zeitraum darf ein Jahr nicht überschreiten.",
+          "exportFailed": "Export fehlgeschlagen. Bitte versuchen Sie es erneut."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Betten Sie einen Mietdatumsauswähler auf Ihrer Website ein. Ihre Kunden können Daten auswählen und werden zu Ihrem Online-Shop weitergeleitet.",

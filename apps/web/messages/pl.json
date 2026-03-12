@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Eksport danych",
+        "description": "Eksportuj dane sklepu w formacie CSV lub JSON do celów księgowych, analitycznych lub jako kopię zapasową.",
+        "payments": {
+          "title": "Płatności",
+          "description": "Eksportuj rekordy płatności zawierające kwoty, metody, statusy i referencje Stripe.",
+          "button": "Eksportuj płatności"
+        },
+        "reservations": {
+          "title": "Rezerwacje",
+          "description": "Eksportuj szczegóły rezerwacji z informacjami o klientach, artykuły, daty i kwoty.",
+          "button": "Eksportuj rezerwacje"
+        },
+        "products": {
+          "title": "Produkty",
+          "description": "Eksportuj pełny katalog produktów z cenami, kategoriami i informacjami o stanach magazynowych.",
+          "button": "Eksportuj produkty"
+        },
+        "dateRange": {
+          "label": "Okres",
+          "startDate": "Data początkowa",
+          "endDate": "Data końcowa"
+        },
+        "format": {
+          "label": "Format",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Eksportowanie...",
+        "errors": {
+          "invalidDateRange": "Data końcowa musi być późniejsza niż data początkowa.",
+          "dateRequired": "Wybierz okres.",
+          "maxRange": "Okres nie może przekraczać jednego roku.",
+          "exportFailed": "Eksport nie powiódł się. Spróbuj ponownie."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Osadź selektor dat wynajmu na swojej stronie internetowej. Twoi klienci mogą wybrać daty i zostaną przekierowani do Twojego sklepu internetowego.",

@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Exportação de dados",
+        "description": "Exporte os dados da sua loja em formato CSV ou JSON para contabilidade, análise ou backup.",
+        "payments": {
+          "title": "Pagamentos",
+          "description": "Exporte os registros de pagamentos incluindo valores, métodos, estados e referências Stripe.",
+          "button": "Exportar pagamentos"
+        },
+        "reservations": {
+          "title": "Reservas",
+          "description": "Exporte os detalhes das reservas com informações do cliente, artigos, datas e valores.",
+          "button": "Exportar reservas"
+        },
+        "products": {
+          "title": "Produtos",
+          "description": "Exporte o catálogo completo de produtos com preços, categorias e informações de stock.",
+          "button": "Exportar produtos"
+        },
+        "dateRange": {
+          "label": "Período",
+          "startDate": "Data de início",
+          "endDate": "Data de fim"
+        },
+        "format": {
+          "label": "Formato",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Exportando...",
+        "errors": {
+          "invalidDateRange": "A data de fim deve ser posterior à data de início.",
+          "dateRequired": "Por favor selecione um período.",
+          "maxRange": "O período não pode exceder um ano.",
+          "exportFailed": "Falha na exportação. Por favor, tente novamente."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Incorpore um seletor de datas de aluguer no seu site. Os seus clientes podem selecionar datas e serão redirecionados para a sua loja online.",

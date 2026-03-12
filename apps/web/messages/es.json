@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Exportación de datos",
+        "description": "Exporte los datos de su tienda en formato CSV o JSON para contabilidad, análisis o copias de seguridad.",
+        "payments": {
+          "title": "Pagos",
+          "description": "Exporte los registros de pagos incluyendo importes, métodos, estados y referencias de Stripe.",
+          "button": "Exportar pagos"
+        },
+        "reservations": {
+          "title": "Reservas",
+          "description": "Exporte los detalles de las reservas con información del cliente, artículos, fechas e importes.",
+          "button": "Exportar reservas"
+        },
+        "products": {
+          "title": "Productos",
+          "description": "Exporte su catálogo completo de productos con precios, categorías e información de stock.",
+          "button": "Exportar productos"
+        },
+        "dateRange": {
+          "label": "Período",
+          "startDate": "Fecha de inicio",
+          "endDate": "Fecha de fin"
+        },
+        "format": {
+          "label": "Formato",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Exportando...",
+        "errors": {
+          "invalidDateRange": "La fecha de fin debe ser posterior a la fecha de inicio.",
+          "dateRequired": "Por favor seleccione un período.",
+          "maxRange": "El período no puede superar un año.",
+          "exportFailed": "Error en la exportación. Por favor, inténtelo de nuevo."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Integre un selector de fechas de alquiler en su sitio web. Sus clientes pueden seleccionar fechas y serán redirigidos a su tienda en línea.",

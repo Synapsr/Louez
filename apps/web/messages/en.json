@@ -2814,6 +2814,42 @@
           "expiresAfterStarts": "Expiry date must be after start date"
         }
       },
+      "export": {
+        "title": "Data export",
+        "description": "Export your store data in CSV or JSON format for accounting, analysis, or backup purposes.",
+        "payments": {
+          "title": "Payments",
+          "description": "Export payment records including amounts, methods, statuses, and Stripe references.",
+          "button": "Export payments"
+        },
+        "reservations": {
+          "title": "Reservations",
+          "description": "Export reservation details with customer information, items, dates, and amounts.",
+          "button": "Export reservations"
+        },
+        "products": {
+          "title": "Products",
+          "description": "Export your full product catalog with prices, categories, and stock information.",
+          "button": "Export products"
+        },
+        "dateRange": {
+          "label": "Date range",
+          "startDate": "Start date",
+          "endDate": "End date"
+        },
+        "format": {
+          "label": "Format",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Exporting...",
+        "errors": {
+          "invalidDateRange": "End date must be after start date.",
+          "dateRequired": "Please select a date range.",
+          "maxRange": "Date range cannot exceed one year.",
+          "exportFailed": "Export failed. Please try again."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Embed a rental date picker on your website. Your customers can select dates and will be redirected to your online store.",

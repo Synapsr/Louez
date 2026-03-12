@@ -2687,6 +2687,42 @@
           }
         }
       },
+      "export": {
+        "title": "Esportazione dati",
+        "description": "Esporta i dati del tuo negozio in formato CSV o JSON per contabilità, analisi o backup.",
+        "payments": {
+          "title": "Pagamenti",
+          "description": "Esporta i record dei pagamenti inclusi importi, metodi, stati e riferimenti Stripe.",
+          "button": "Esporta pagamenti"
+        },
+        "reservations": {
+          "title": "Prenotazioni",
+          "description": "Esporta i dettagli delle prenotazioni con informazioni sui clienti, articoli, date e importi.",
+          "button": "Esporta prenotazioni"
+        },
+        "products": {
+          "title": "Prodotti",
+          "description": "Esporta il catalogo prodotti completo con prezzi, categorie e informazioni sullo stock.",
+          "button": "Esporta prodotti"
+        },
+        "dateRange": {
+          "label": "Periodo",
+          "startDate": "Data di inizio",
+          "endDate": "Data di fine"
+        },
+        "format": {
+          "label": "Formato",
+          "csv": "CSV (Excel, Sheets)",
+          "json": "JSON"
+        },
+        "exporting": "Esportazione in corso...",
+        "errors": {
+          "invalidDateRange": "La data di fine deve essere successiva alla data di inizio.",
+          "dateRequired": "Seleziona un periodo.",
+          "maxRange": "Il periodo non può superare un anno.",
+          "exportFailed": "Esportazione fallita. Riprova."
+        }
+      },
       "embed": {
         "title": "Widget",
         "description": "Incorpora un selettore di date di noleggio nel tuo sito web. I tuoi clienti possono selezionare le date e verranno reindirizzati al tuo negozio online.",
