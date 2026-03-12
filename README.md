@@ -18,13 +18,7 @@
 
 [☁️ Cloud](https://louez.io) • [🚀 Self-Host](#-deploy-in-30-seconds) • [✨ Features](#-features) • [🗺️ Roadmap](ROADMAP.md) • [📋 Changelog](CHANGELOG.md)
 
-</div>
-
----
-
-## 🎬 Demo
-
-<div align="center">
+<br>
 
 <video src="demo.mp4" width="100%" autoplay loop muted playsinline></video>
 
@@ -47,6 +41,25 @@ Whether you rent cameras, tools, party equipment, or vehicles — **Louez** give
 | ⚡ **Deploy in Minutes** | 🌍 **Multi-language** | 📱 **Mobile Ready** |
 |:-----------------------:|:---------------------:|:-------------------:|
 | One Docker command and you're live. | French & English built-in. Add more easily. | Responsive design for all devices. |
+
+---
+
+## 📊 How Louez Compares
+
+| | **Louez** | **Shelf.nu** | **BookCars** | **leihs** |
+|---|---|---|---|---|
+| **Focus** | Equipment rental business | Asset tracking & inventory | Car rental only | University equipment lending |
+| **Stack** | Next.js 16, TypeScript, MySQL | React Router, Prisma, PostgreSQL | MERN (MongoDB) | Ruby, Shell |
+| **Docker one-liner** | `docker run synapsr/louez` | No | Yes | No |
+| **Online storefront** | Built-in per-business | No | Customer-facing app | Borrower portal |
+| **Multi-tenant** | Yes | Yes (workspaces) | Yes (suppliers) | Yes |
+| **PDF contracts** | Auto-generated | No | No | No |
+| **Payments** | Coming soon | Stripe | Stripe, PayPal | No |
+| **Mobile app** | Responsive web | Responsive web | Native (React Native) | Responsive web |
+| **License** | Apache 2.0 | AGPL-3.0 | MIT | GPL-3.0 |
+| **Self-hostable** | Yes, free forever | Yes | Yes | Yes |
+
+> Louez is purpose-built for **rental businesses** — not just asset tracking or car-only platforms. If you rent cameras, tools, party equipment, or anything else, Louez is the most complete open-source option.
 
 ---
 
