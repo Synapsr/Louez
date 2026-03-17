@@ -24,6 +24,7 @@ COPY packages/db/package.json ./packages/db/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/email/package.json ./packages/email/
 COPY packages/pdf/package.json ./packages/pdf/
+COPY packages/mcp/package.json ./packages/mcp/
 COPY apps/web/package.json ./apps/web/
 
 RUN corepack enable pnpm && \
@@ -64,12 +65,12 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Keep pnpm virtual store + workspace links so migrate.mjs can resolve mysql2 deps
-COPY --from=deps /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
+# Copy node_modules needed by migrate.mjs (drizzle-orm, mysql2, and their deps)
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
 
-# Place migration script under apps/web so module resolution uses apps/web/node_modules
-COPY --from=builder /app/docker/migrate.mjs ./apps/web/docker/migrate.mjs
+# Copy migration script and migration files
+COPY --from=builder /app/docker/migrate.mjs ./docker/migrate.mjs
 COPY --from=builder /app/packages/db/src/migrations ./migrations
 
-CMD ["node", "apps/web/docker/migrate.mjs"]
+CMD ["node", "docker/migrate.mjs"]

@@ -15,6 +15,7 @@ import {
   Crown,
   ExternalLink,
   Gift,
+  HelpCircle,
   Home,
   LogOut,
   Menu,
@@ -48,6 +49,7 @@ import { ThemeToggle } from '@/components/dashboard/theme-toggle';
 import { LanguageSwitcher } from '@/components/ui/language-switcher';
 
 import { env } from '@/env';
+import Gleap from 'gleap';
 
 interface StoreWithRole {
   id: string;
@@ -351,6 +353,19 @@ function StoreHeader({
   );
 }
 
+function HelpButton() {
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="text-muted-foreground hover:text-foreground h-8 w-8"
+      onClick={() => Gleap.open()}
+    >
+      <HelpCircle className="h-4 w-4" />
+    </Button>
+  );
+}
+
 function NewReservationLabel() {
   const t = useTranslations('dashboard.sidebar');
   return <>{t('newReservation')}</>;
@@ -398,12 +413,13 @@ export function Sidebar({
 
           <Separator className="opacity-50" />
 
-          {/* Theme/Language + User Menu */}
+          {/* Theme/Language/Help + User Menu */}
           <div className="flex items-center justify-between px-3 py-2">
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <LanguageSwitcher variant="compact" />
             </div>
+            <HelpButton />
           </div>
           <div className="px-1 pb-2">
             <UserMenu userEmail={userEmail} userImage={userImage} />
@@ -479,12 +495,13 @@ export function MobileHeader({
                   </Button>
                 </div>
                 <Separator className="opacity-50" />
-                {/* Theme/Language + User Menu */}
+                {/* Theme/Language/Help + User Menu */}
                 <div className="flex items-center justify-between px-3 py-2">
                   <div className="flex items-center gap-2">
                     <ThemeToggle />
                     <LanguageSwitcher variant="compact" />
                   </div>
+                  <HelpButton />
                 </div>
                 <div className="px-1 pb-2">
                   <UserMenu userEmail={userEmail} userImage={userImage} />

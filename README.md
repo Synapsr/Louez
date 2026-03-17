@@ -201,8 +201,9 @@ cd louez
 # Install dependencies
 pnpm install
 
-# Configure environment
+# Configure environment (creates .env.local at root and in apps/web)
 cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
 
 # Setup database
 pnpm db:push

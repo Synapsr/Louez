@@ -201,6 +201,7 @@ pnpm install
 
 # Configurer l'environnement
 cp .env.example .env.local
+cp apps/web/.env.example apps/web/.env.local
 
 # Initialiser la base de données
 pnpm db:push

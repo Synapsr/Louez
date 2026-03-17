@@ -21,6 +21,7 @@ export function GleapProvider({ children, user, store }: GleapProviderProps) {
   useEffect(() => {
     if (env.NEXT_PUBLIC_GLEAP_API_KEY && process.env.NODE_ENV === 'production') {
       Gleap.initialize(env.NEXT_PUBLIC_GLEAP_API_KEY);
+      Gleap.showFeedbackButton(false);
 
       if (user) {
         Gleap.identify(user.id, {
