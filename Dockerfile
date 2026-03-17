@@ -44,17 +44,17 @@ COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-ENV SKIP_ENV_VALIDATION=1
-RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web
+ENV SKIP_ENV_VALIDATION=true
+RUN corepack enable pnpm && pnpm turbo run build --filter=@louez/web --env-mode=loose
 
 FROM node:20-alpine AS migrator
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=deps /app/node_modules/.pnpm ./node_modules/.pnpm
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=builder /app/docker/migrate.mjs ./apps/web/docker/migrate.mjs
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/db/node_modules ./packages/db/node_modules
+COPY --from=builder /app/docker/migrate.mjs ./docker/migrate.mjs
 COPY --from=builder /app/packages/db/src/migrations ./migrations
-CMD ["node", "apps/web/docker/migrate.mjs"]
+CMD ["node", "docker/migrate.mjs"]
 
 FROM node:20-alpine AS app
 WORKDIR /app
