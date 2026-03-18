@@ -11,6 +11,7 @@ import { getTranslations } from 'next-intl/server'
 import { Button } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { generateStoreMetadata } from '@/lib/seo'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { getPaymentRequestData } from './actions'
 import { PaymentRequestPage } from './payment-request-page'
 import type { StoreSettings, StoreTheme } from '@louez/types'
@@ -104,7 +105,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
           </Alert>
 
           <div className="mt-6 text-center">
-            <Button variant="outline" render={<Link href={`/${slug}`} />}>
+            <Button variant="outline" render={<Link href={getStorefrontUrl(slug, '/')} />}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('backToStore')}
             </Button>
@@ -141,7 +142,7 @@ export default async function PayPage({ params, searchParams }: PayPageProps) {
         />
 
         <div className="mt-6 text-center">
-          <Button variant="ghost" render={<Link href={`/${slug}`} />}>
+          <Button variant="ghost" render={<Link href={getStorefrontUrl(slug, '/')} />}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             {t('backToStore')}
           </Button>

@@ -11,6 +11,7 @@ import { getTranslations } from 'next-intl/server'
 import { Button } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { generateStoreMetadata } from '@/lib/seo'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { getDepositAuthorizationData } from './actions'
 import { DepositForm } from './deposit-form'
 import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
@@ -112,7 +113,7 @@ export default async function AuthorizeDepositPage({
           </Alert>
 
           <div className="mt-6 text-center">
-            <Button variant="outline" render={<Link href={`/${slug}`} />}>
+            <Button variant="outline" render={<Link href={getStorefrontUrl(slug, '/')} />}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 {t('backToStore')}
             </Button>
@@ -174,7 +175,7 @@ export default async function AuthorizeDepositPage({
 
         {/* Back link */}
         <div className="mt-6 text-center">
-          <Button variant="ghost" render={<Link href={`/${slug}`} />}>
+          <Button variant="ghost" render={<Link href={getStorefrontUrl(slug, '/')} />}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('backToStore')}
           </Button>

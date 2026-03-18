@@ -11,6 +11,7 @@ import { getTranslations } from 'next-intl/server'
 import { Button } from '@louez/ui'
 import { Card, CardContent } from '@louez/ui'
 import { generateStoreMetadata } from '@/lib/seo'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 
@@ -131,10 +132,10 @@ export default async function DepositSuccessPage({ params }: SuccessPageProps) {
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button render={<Link href={`/${slug}/account`} />}>
+              <Button render={<Link href={getStorefrontUrl(slug, '/account')} />}>
                   {t('success.viewReservations')}
               </Button>
-              <Button variant="outline" render={<Link href={`/${slug}`} />}>
+              <Button variant="outline" render={<Link href={getStorefrontUrl(slug, '/')} />}>
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   {t('backToStore')}
               </Button>
