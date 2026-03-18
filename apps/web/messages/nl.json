@@ -214,7 +214,8 @@
       "manage": "Beheren",
       "dashboard": "Dashboard",
       "viewStore": "Winkel bekijken",
-      "newReservation": "Nieuwe reservering"
+      "newReservation": "Nieuwe reservering",
+      "help": "Hulp"
     },
     "storeSwitcher": {
       "selectStore": "Selecteer een winkel",

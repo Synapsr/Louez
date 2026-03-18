@@ -19,7 +19,7 @@ interface GleapProviderProps {
 
 export function GleapProvider({ children, user, store }: GleapProviderProps) {
   useEffect(() => {
-    if (env.NEXT_PUBLIC_GLEAP_API_KEY && process.env.NODE_ENV === 'production') {
+    if (env.NEXT_PUBLIC_GLEAP_API_KEY) {
       Gleap.initialize(env.NEXT_PUBLIC_GLEAP_API_KEY);
       Gleap.showFeedbackButton(false);
 

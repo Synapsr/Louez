@@ -214,7 +214,8 @@
       "manage": "Manage",
       "dashboard": "Dashboard",
       "viewStore": "View store",
-      "newReservation": "New reservation"
+      "newReservation": "New reservation",
+      "help": "Help"
     },
     "storeSwitcher": {
       "selectStore": "Select a store",
