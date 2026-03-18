@@ -1320,7 +1320,7 @@ export async function createReservation(input: CreateReservationInput) {
         id: nanoid(),
         reservationId,
         activityType: 'created',
-        description: `${input.customer.firstName} ${input.customer.lastName}`,
+        description: null,
         metadata: {
           source: 'online',
           status: 'pending',
@@ -1531,18 +1531,18 @@ export async function createReservation(input: CreateReservationInput) {
         const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
         const isPartialPayment = depositPercentage < 100
 
-        // Calculate the amount to charge now (after promo discount)
+        // Calculate the amount to charge now (after promo discount, including delivery)
         // Round to 2 decimal places to avoid floating point issues
-        const subtotalAfterDiscount = finalSubtotal - finalDiscount
+        const chargeableTotal = finalSubtotal - finalDiscount + finalDeliveryFee
         const amountToCharge = isPartialPayment
-          ? Math.round(subtotalAfterDiscount * depositPercentage) / 100
-          : subtotalAfterDiscount
+          ? Math.round(chargeableTotal * depositPercentage) / 100
+          : chargeableTotal
 
         // Ensure minimum Stripe amount (50 cents for most currencies)
         const MINIMUM_STRIPE_AMOUNT = 0.50
         const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
         // Don't exceed the full amount (after discount)
-        const finalChargeAmount = Math.min(effectiveChargeAmount, subtotalAfterDiscount)
+        const finalChargeAmount = Math.min(effectiveChargeAmount, chargeableTotal)
 
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit
@@ -1570,6 +1570,13 @@ export async function createReservation(input: CreateReservationInput) {
                     description: `Garantie casse/vol - réservation ${reservationNumber}`,
                     quantity: 1,
                     unitAmount: toStripeCents(tulipInsuranceAmount, currency),
+                  }]
+                : []),
+              ...(finalDeliveryFee > 0
+                ? [{
+                    name: 'Livraison',
+                    quantity: 1,
+                    unitAmount: toStripeCents(finalDeliveryFee, currency),
                   }]
                 : []),
             ]

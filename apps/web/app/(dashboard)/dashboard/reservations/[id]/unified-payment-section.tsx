@@ -205,8 +205,8 @@ export function UnifiedPaymentSection({
     { value: 'other', label: t('payment.methods.other') },
   ]
 
-  // Calculate totals
-  const rental = parseFloat(subtotalAmount)
+  // Calculate totals — rental tracks totalAmount (includes delivery fee)
+  const rental = parseFloat(totalAmount)
   const deposit = parseFloat(depositAmount)
   const depositStatusVal = depositStatusProp || 'none'
 

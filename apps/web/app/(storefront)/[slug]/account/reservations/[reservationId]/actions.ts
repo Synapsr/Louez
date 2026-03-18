@@ -70,12 +70,22 @@ export async function createReservationPaymentSession(
     const currency = store.settings?.currency || 'EUR'
 
     // Build line items from reservation items
-    const lineItems = reservation.items.map((item) => ({
+    const lineItems: { name: string; description?: string; quantity: number; unitAmount: number }[] = reservation.items.map((item) => ({
       name: item.productSnapshot.name,
       description: item.productSnapshot.description || undefined,
       quantity: 1,
       unitAmount: toStripeCents(parseFloat(item.totalPrice), currency),
     }))
+
+    // Add delivery fee as a line item if present
+    const deliveryFee = parseFloat(reservation.deliveryFee || '0')
+    if (deliveryFee > 0) {
+      lineItems.push({
+        name: 'Delivery',
+        quantity: 1,
+        unitAmount: toStripeCents(deliveryFee, currency),
+      })
+    }
 
     // Create checkout session
     const { url, sessionId } = await createCheckoutSession({
@@ -94,7 +104,7 @@ export async function createReservationPaymentSession(
     await db.insert(payments).values({
       id: nanoid(),
       reservationId,
-      amount: reservation.subtotalAmount,
+      amount: reservation.totalAmount,
       type: 'rental',
       method: 'stripe',
       status: 'pending',
@@ -109,7 +119,6 @@ export async function createReservationPaymentSession(
       id: nanoid(),
       reservationId,
       activityType: 'payment_initiated',
-      description: 'Customer initiated payment from account',
       metadata: { checkoutSessionId: sessionId, source: 'account_page' },
       createdAt: new Date(),
     })
