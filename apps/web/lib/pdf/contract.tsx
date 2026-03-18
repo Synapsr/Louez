@@ -42,6 +42,8 @@ export interface ContractTranslations {
     start: string
     end: string
     at: string
+    delivery: string
+    pickup: string
   }
   table: {
     designation: string
@@ -53,6 +55,7 @@ export interface ContractTranslations {
   totals: {
     subtotalHT: string
     tax: string
+    deliveryFee: string
     totalTTC: string
     deposit: string
   }
@@ -164,6 +167,7 @@ interface Reservation {
   subtotalAmount: string
   depositAmount: string
   totalAmount: string
+  deliveryFee?: string | null
   // Tax fields
   subtotalExclTax?: string | null
   taxAmount?: string | null
@@ -174,6 +178,15 @@ interface Reservation {
   customer: Customer
   items: ReservationItem[]
   payments: Payment[]
+  // Delivery info
+  outboundMethod?: string | null
+  returnMethod?: string | null
+  deliveryAddress?: string | null
+  deliveryCity?: string | null
+  deliveryPostalCode?: string | null
+  returnAddress?: string | null
+  returnCity?: string | null
+  returnPostalCode?: string | null
 }
 
 interface ContractDocumentProps {
@@ -352,6 +365,15 @@ export function ContractDocument({
                 <Text style={styles.periodTime}>
                   {t.period.at} {formatTime(reservation.startDate)}
                 </Text>
+                {reservation.outboundMethod === 'address' && reservation.deliveryAddress ? (
+                  <Text style={styles.periodDeliveryInfo}>
+                    {t.period.delivery} : {reservation.deliveryAddress}
+                    {reservation.deliveryCity && `, ${reservation.deliveryCity}`}
+                    {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
+                  </Text>
+                ) : (
+                  <Text style={styles.periodDeliveryInfo}>{t.period.pickup}</Text>
+                )}
               </View>
             </View>
             <View style={styles.periodCard}>
@@ -363,6 +385,15 @@ export function ContractDocument({
                 <Text style={styles.periodTime}>
                   {t.period.at} {formatTime(reservation.endDate)}
                 </Text>
+                {reservation.returnMethod === 'address' && reservation.returnAddress ? (
+                  <Text style={styles.periodDeliveryInfo}>
+                    {t.period.delivery} : {reservation.returnAddress}
+                    {reservation.returnCity && `, ${reservation.returnCity}`}
+                    {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
+                  </Text>
+                ) : (
+                  <Text style={styles.periodDeliveryInfo}>{t.period.pickup}</Text>
+                )}
               </View>
             </View>
           </View>
@@ -431,6 +462,13 @@ export function ContractDocument({
                     {t.totals.tax.replace('{rate}', reservation.taxRate || '0')}
                   </Text>
                   <Text style={styles.totalValue}>{formatCurrency(reservation.taxAmount)}</Text>
+                </View>
+              )}
+              {/* Delivery fee line */}
+              {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>{t.totals.deliveryFee}</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(reservation.deliveryFee)}</Text>
                 </View>
               )}
               <View style={[styles.totalRow, styles.totalRowMain]}>

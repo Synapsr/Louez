@@ -213,6 +213,12 @@ export function createContractStyles(primaryColor: string = '#0066FF') {
       fontSize: 8,
       color: '#555555',
     },
+    periodDeliveryInfo: {
+      fontSize: 7.5,
+      color: '#777777',
+      marginTop: 2,
+      fontStyle: 'italic' as const,
+    },
 
     // Table section
     tableSection: {
