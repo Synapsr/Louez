@@ -13,6 +13,7 @@ import {
   Check,
   AlertCircle,
   MessageSquare,
+  LinkIcon,
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { useTranslations } from 'next-intl'
@@ -33,7 +34,7 @@ import { Textarea } from '@louez/ui'
 import { cn } from '@louez/utils'
 
 import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { invalidateReservationAll, invalidateReservationDetail } from '@/lib/orpc/invalidation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -75,6 +76,12 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
     icon: <ArrowDownRight className="h-4 w-4" />,
     iconBg: 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400',
     available: (status) => status === 'ongoing',
+  },
+  {
+    id: 'access_link',
+    icon: <LinkIcon className="h-4 w-4" />,
+    iconBg: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400',
+    available: (status) => !['cancelled', 'rejected'].includes(status),
   },
   {
     id: 'custom',
@@ -122,6 +129,14 @@ export function SendEmailModal({
     }),
   )
 
+  const sendAccessLinkMutation = useMutation(
+    orpc.dashboard.reservations.sendAccessLink.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationDetail(queryClient, reservationId)
+      },
+    }),
+  )
+
   const availableTemplates = EMAIL_TEMPLATES.filter((template) =>
     template.available(status, isFullyPaid)
   )
@@ -139,14 +154,18 @@ export function SendEmailModal({
 
     setIsLoading(true)
     try {
-      await sendEmailMutation.mutateAsync({
-        reservationId,
-        payload: {
-          templateId: selectedTemplate,
-          customSubject: customSubject || undefined,
-          customMessage: customMessage || undefined,
-        },
-      })
+      if (selectedTemplate === 'access_link') {
+        await sendAccessLinkMutation.mutateAsync({ reservationId })
+      } else {
+        await sendEmailMutation.mutateAsync({
+          reservationId,
+          payload: {
+            templateId: selectedTemplate,
+            customSubject: customSubject || undefined,
+            customMessage: customMessage || undefined,
+          },
+        })
+      }
 
       toastManager.add({ title: t('sendSuccess'), type: 'success' })
       onOpenChange(false)
