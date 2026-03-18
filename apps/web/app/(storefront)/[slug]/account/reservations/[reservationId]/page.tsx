@@ -168,9 +168,9 @@ export default async function ReservationDetailPage({
 
   // Check if payment button should be shown
   // Only allow payment for confirmed or ongoing reservations (not pending - store must accept first)
-  const hasPendingPayment = reservation.payments.some((p) => p.type === 'rental' && p.status === 'pending')
+  // Pending payments no longer block retry — the action cancels stale sessions automatically
   const isAccepted = reservation.status === 'confirmed' || reservation.status === 'ongoing'
-  const canPay = isAccepted && !isPaid && !hasPendingPayment && store.stripeAccountId && store.stripeChargesEnabled
+  const canPay = isAccepted && !isPaid && store.stripeAccountId && store.stripeChargesEnabled
 
   // Show payment required warning when confirmed but not paid
   const showPaymentRequired = reservation.status === 'confirmed' && !isPaid && canPay
@@ -429,16 +429,6 @@ export default async function ReservationDetailPage({
               {canPay && (
                 <div className="pt-4 mt-2">
                   <PayNowButton storeSlug={slug} reservationId={reservationId} />
-                </div>
-              )}
-
-              {/* Payment in progress indicator */}
-              {hasPendingPayment && (
-                <div className="flex justify-between text-sm text-amber-600 dark:text-amber-400 pt-2">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    {t('paymentInProgress')}
-                  </span>
                 </div>
               )}
             </div>

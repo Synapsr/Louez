@@ -5,6 +5,7 @@ import { stores, reservations, payments, reservationActivity } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
 import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
+import { getStripe } from '@/lib/stripe/client'
 import { getCustomerSession } from '../../actions'
 import { getStorefrontUrl } from '@/lib/storefront-url'
 
@@ -59,12 +60,26 @@ export async function createReservationPaymentSession(
       return { error: 'errors.alreadyPaid' }
     }
 
-    // Check for pending payment
-    const hasPendingPayment = reservation.payments.some(
+    // Cancel any stale pending payments so the customer can retry
+    const pendingPayments = reservation.payments.filter(
       (p) => p.type === 'rental' && p.status === 'pending'
     )
-    if (hasPendingPayment) {
-      return { error: 'errors.paymentInProgress' }
+    for (const pending of pendingPayments) {
+      // Expire the Stripe checkout session if it exists
+      if (pending.stripeCheckoutSessionId) {
+        try {
+          await getStripe().checkout.sessions.expire(
+            pending.stripeCheckoutSessionId,
+            { stripeAccount: store.stripeAccountId! },
+          )
+        } catch {
+          // Session may already be expired or completed — safe to ignore
+        }
+      }
+      await db
+        .update(payments)
+        .set({ status: 'cancelled', updatedAt: new Date() })
+        .where(eq(payments.id, pending.id))
     }
 
     const currency = store.settings?.currency || 'EUR'
