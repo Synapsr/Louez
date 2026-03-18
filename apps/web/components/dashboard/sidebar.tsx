@@ -40,6 +40,12 @@ import {
   DropdownMenuTrigger,
 } from '@louez/ui';
 import { Sheet, SheetContent, SheetTrigger } from '@louez/ui';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@louez/ui';
 import { Separator } from '@louez/ui';
 import { cn } from '@louez/utils';
 
@@ -354,15 +360,28 @@ function StoreHeader({
 }
 
 function HelpButton() {
+  const t = useTranslations('dashboard.sidebar');
+
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="text-muted-foreground hover:text-foreground h-8 w-8"
-      onClick={() => Gleap.open()}
-    >
-      <HelpCircle className="h-4 w-4" />
-    </Button>
+    <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground h-8 w-8"
+            onClick={() => Gleap.open()}
+          />
+        }
+      >
+        <HelpCircle className="h-4 w-4" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="text-xs">
+        {t('help')}
+      </TooltipContent>
+    </Tooltip>
+    </TooltipProvider>
   );
 }
 

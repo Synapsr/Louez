@@ -214,7 +214,8 @@
       "manage": "Verwalten",
       "dashboard": "Dashboard",
       "viewStore": "Shop ansehen",
-      "newReservation": "Neue Reservierung"
+      "newReservation": "Neue Reservierung",
+      "help": "Hilfe"
     },
     "storeSwitcher": {
       "selectStore": "Shop auswählen",

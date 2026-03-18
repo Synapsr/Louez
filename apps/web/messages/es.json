@@ -214,7 +214,8 @@
       "manage": "Gestionar",
       "dashboard": "Panel",
       "viewStore": "Ver tienda",
-      "newReservation": "Nueva reserva"
+      "newReservation": "Nueva reserva",
+      "help": "Ayuda"
     },
     "storeSwitcher": {
       "selectStore": "Seleccionar una tienda",
