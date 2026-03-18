@@ -56,6 +56,7 @@
     "days": "{count, plural, one {# jour} other {# jours}}",
     "hours": "{count, plural, one {# heure} other {# heures}}",
     "minutes": "{count, plural, one {# minute} other {# minutes}}",
+    "and": "et",
     "weeks": "{count, plural, one {# semaine} other {# semaines}}",
     "dayUnit": "{count, plural, one {jour} other {jours}}",
     "hourUnit": "{count, plural, one {heure} other {heures}}",
@@ -1694,6 +1695,10 @@
           "custom": {
             "name": "Email personnalisé",
             "description": "Rédiger un email libre au client"
+          },
+          "access_link": {
+            "name": "Lien d'accès client",
+            "description": "Envoyer un email avec le lien de suivi de la réservation"
           }
         }
       },

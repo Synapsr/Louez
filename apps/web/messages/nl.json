@@ -56,6 +56,7 @@
     "days": "{count, plural, one {# dag} other {# dagen}}",
     "hours": "{count, plural, one {# uur} other {# uren}}",
     "minutes": "{count, plural, one {# minuut} other {# minuten}}",
+    "and": "en",
     "weeks": "{count, plural, one {# week} other {# weken}}",
     "dayUnit": "{count, plural, one {dag} other {dagen}}",
     "hourUnit": "{count, plural, one {uur} other {uren}}",
@@ -1643,6 +1644,10 @@
           "custom": {
             "name": "Aangepaste e-mail",
             "description": "Schrijf een aangepaste e-mail naar de klant"
+          },
+          "access_link": {
+            "name": "Klanttoegangslink",
+            "description": "Stuur een e-mail met de reserveringstrackinglink"
           }
         }
       },

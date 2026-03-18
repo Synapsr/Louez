@@ -56,6 +56,7 @@
     "days": "{count, plural, one {# Tag} other {# Tage}}",
     "hours": "{count, plural, one {# Stunde} other {# Stunden}}",
     "minutes": "{count, plural, one {# Minute} other {# Minuten}}",
+    "and": "und",
     "weeks": "{count, plural, one {# Woche} other {# Wochen}}",
     "dayUnit": "{count, plural, one {Tag} other {Tage}}",
     "hourUnit": "{count, plural, one {Stunde} other {Stunden}}",
@@ -1682,6 +1683,10 @@
           "custom": {
             "name": "Benutzerdefinierte E-Mail",
             "description": "Benutzerdefinierte E-Mail an den Kunden schreiben"
+          },
+          "access_link": {
+            "name": "Kundenzugangslink",
+            "description": "E-Mail mit dem Reservierungsverfolgungslink senden"
           }
         }
       },
