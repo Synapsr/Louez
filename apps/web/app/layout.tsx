@@ -56,7 +56,7 @@ export default function RootLayout({
         </head>
         <body className={`${inter.variable} font-sans antialiased`}>
           <ORPCProvider>
-            <ToastProvider position="bottom-right">
+            <ToastProvider position="top-center">
               <AnchoredToastProvider>{children}</AnchoredToastProvider>
             </ToastProvider>
           </ORPCProvider>

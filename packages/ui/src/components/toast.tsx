@@ -68,7 +68,7 @@ function Toasts({ position = "bottom-right" }: { position: ToastPosition }) {
     <Toast.Portal data-slot="toast-portal">
       <Toast.Viewport
         className={cn(
-          "fixed z-50 flex w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] max-w-90 [--toast-inset:1rem] sm:[--toast-inset:2rem]",
+          "fixed z-[99999] flex w-[calc(100vw-2rem)] sm:w-[calc(100vw-4rem)] max-w-90 [--toast-inset:1rem] sm:[--toast-inset:2rem]",
           VIEWPORT_POSITION_CLASSES[position],
         )}
         data-position={position}
