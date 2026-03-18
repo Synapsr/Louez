@@ -26,7 +26,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
@@ -133,11 +132,13 @@ export function ReservationDetailClient({
 
   const startDate = toDate(reservation.startDate) || new Date()
   const endDate = toDate(reservation.endDate) || new Date()
-  const days = Math.ceil(
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-  )
+  // Precise duration in days and hours
+  const diffMs = endDate.getTime() - startDate.getTime()
+  const totalHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const durationDays = Math.floor(totalHours / 24)
+  const durationHours = totalHours % 24
 
-  const rental = parseFloat(reservation.subtotalAmount || '0')
+  const rental = parseFloat(reservation.totalAmount || '0')
   const deposit = parseFloat(reservation.depositAmount || '0')
 
   const rentalPaid = (reservation.payments || [])
@@ -206,9 +207,6 @@ export function ReservationDetailClient({
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
           email: reservation.customer.email,
-          phone: reservation.customer.phone,
-          customerType: reservation.customer.customerType,
-          companyName: reservation.customer.companyName,
         }}
         storeSlug={storeSlug}
         rentalAmount={rental}
@@ -217,9 +215,7 @@ export function ReservationDetailClient({
         depositCollected={depositCollected}
         depositReturned={depositReturned}
         totalAmount={parseFloat(reservation.totalAmount)}
-        hasContract={hasContract}
         currency={currency}
-        smsConfigured={smsConfigured}
         sentEmails={reservation.sentEmails || []}
       />
 
@@ -314,7 +310,9 @@ export function ReservationDetailClient({
                     {formatStoreDate(endDate, storeTimezone, 'SHORT_DATETIME')}
                   </span>
                   <span className="text-muted-foreground">
-                    ({tCommon('days', { count: days })})
+                    ({durationDays > 0 && tCommon('days', { count: durationDays })}
+                    {durationDays > 0 && durationHours > 0 && ` ${tCommon('and')} `}
+                    {durationHours > 0 && tCommon('hours', { count: durationHours })})
                   </span>
                 </div>
               </div>
@@ -445,97 +443,78 @@ export function ReservationDetailClient({
                       )
                     })}
                   </TableBody>
-                  <TableFooter>
-                    {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
-                      <>
-                        <TableRow>
-                          <TableCell
-                            colSpan={3}
-                            className="text-right text-muted-foreground"
-                          >
-                            {t('subtotalExclTax')}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {parseFloat(
-                              reservation.subtotalExclTax || reservation.subtotalAmount,
-                            ).toFixed(2)}
-                            {currencySymbol}
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell
-                            colSpan={3}
-                            className="text-right text-muted-foreground"
-                          >
-                            {t('taxLine', { rate: reservation.taxRate || '0' })}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {parseFloat(reservation.taxAmount).toFixed(2)}
-                            {currencySymbol}
-                          </TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-right">
-                            {t('subtotalInclTax')}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {parseFloat(reservation.subtotalAmount).toFixed(2)}
-                            {currencySymbol}
-                          </TableCell>
-                        </TableRow>
-                      </>
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-right">
-                          {t('subtotalRental')}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {parseFloat(reservation.subtotalAmount).toFixed(2)}
-                          {currencySymbol}
-                        </TableCell>
-                      </TableRow>
-                    )}
-
-                    {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3}
-                          className="text-right text-green-600"
-                        >
-                          <span className="inline-flex items-center gap-1.5">
-                            <Tag className="h-3.5 w-3.5" />
-                            {t('promoDiscount')}
-                            {reservation.promoCodeSnapshot && (
-                              <Badge variant="secondary" className="ml-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
-                                {(reservation.promoCodeSnapshot as { code: string }).code}
-                              </Badge>
-                            )}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right text-green-600">
-                          -{parseFloat(reservation.discountAmount).toFixed(2)}
-                          {currencySymbol}
-                        </TableCell>
-                      </TableRow>
-                    )}
-
-                    {parseFloat(reservation.depositAmount) > 0 && (
-                      <TableRow>
-                        <TableCell
-                          colSpan={3}
-                          className="text-right text-muted-foreground"
-                        >
-                          {t('totalDeposit')}
-                        </TableCell>
-                        <TableCell className="text-right text-muted-foreground">
-                          {parseFloat(reservation.depositAmount).toFixed(2)}
-                          {currencySymbol}
-                        </TableCell>
-                      </TableRow>
-                    )}
-
-                  </TableFooter>
                 </Table>
+              </div>
+
+              {/* Pricing summary */}
+              <div className="flex justify-end pt-4">
+                <div className="w-64 space-y-2 text-sm">
+                  {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
+                    <>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>{t('subtotalExclTax')}</span>
+                        <span>
+                          {parseFloat(reservation.subtotalExclTax || reservation.subtotalAmount).toFixed(2)}
+                          {currencySymbol}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>{t('taxLine', { rate: reservation.taxRate || '0' })}</span>
+                        <span>{parseFloat(reservation.taxAmount).toFixed(2)}{currencySymbol}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t('subtotalInclTax')}</span>
+                        <span className="font-medium">
+                          {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t('subtotalRental')}</span>
+                      <span className="font-medium">
+                        {parseFloat(reservation.subtotalAmount).toFixed(2)}{currencySymbol}
+                      </span>
+                    </div>
+                  )}
+
+                  {reservation.discountAmount && parseFloat(reservation.discountAmount) > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span className="flex items-center gap-1.5">
+                        <Tag className="h-3.5 w-3.5" />
+                        {t('promoDiscount')}
+                        {reservation.promoCodeSnapshot && (
+                          <Badge variant="secondary" className="ml-1 text-xs bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300">
+                            {(reservation.promoCodeSnapshot as { code: string }).code}
+                          </Badge>
+                        )}
+                      </span>
+                      <span>-{parseFloat(reservation.discountAmount).toFixed(2)}{currencySymbol}</span>
+                    </div>
+                  )}
+
+                  {reservation.deliveryFee && parseFloat(reservation.deliveryFee) > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span className="flex items-center gap-1.5">
+                        <Truck className="h-3.5 w-3.5" />
+                        {t('deliveryFeeLabel')}
+                      </span>
+                      <span>{parseFloat(reservation.deliveryFee).toFixed(2)}{currencySymbol}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between border-t pt-2 font-semibold">
+                    <span>{t('totalAmount')}</span>
+                    <span>{parseFloat(reservation.totalAmount).toFixed(2)}{currencySymbol}</span>
+                  </div>
+
+                  {parseFloat(reservation.depositAmount) > 0 && (
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>{t('totalDeposit')}</span>
+                      <span>{parseFloat(reservation.depositAmount).toFixed(2)}{currencySymbol}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -634,7 +613,10 @@ export function ReservationDetailClient({
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground">{t('storePickup')}</p>
+                    <div className="flex items-center gap-2">
+                      <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">{t('storePickup')}</p>
+                    </div>
                   )}
                 </div>
 
@@ -660,7 +642,10 @@ export function ReservationDetailClient({
                       )}
                     </>
                   ) : (
-                    <p className="text-sm text-muted-foreground">{t('storeReturn')}</p>
+                    <div className="flex items-center gap-2">
+                      <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">{t('storeReturn')}</p>
+                    </div>
                   )}
                 </div>
 
