@@ -1024,6 +1024,7 @@
       "taxLine": "BTW ({rate}%)",
       "subtotalInclTax": "Subtotaal incl. BTW",
       "totalDeposit": "Totale borg",
+      "totalAmount": "Totaal",
       "productName": "Product",
       "productQty": "Aantal",
       "productUnitPrice": "Eenheidsprijs",
@@ -3536,6 +3537,7 @@
       "open": "AI-assistent",
       "badge": "AI",
       "close": "Sluiten",
+      "dismiss": "AI-balk verbergen",
       "title": "AI-assistent",
       "subtitle": "Stel vragen over uw winkel",
       "emptyState": "Hoe kan ik u helpen?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Begin",
       "end": "Einde",
-      "at": "om"
+      "at": "om",
+      "delivery": "Bezorging",
+      "pickup": "Ophalen in winkel"
     },
     "table": {
       "designation": "Omschrijving",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Subtotaal (excl. BTW)",
       "tax": "BTW ({rate}%)",
+      "deliveryFee": "Bezorgkosten",
       "totalTTC": "Totaal (incl. BTW)",
       "deposit": "Borg"
     },

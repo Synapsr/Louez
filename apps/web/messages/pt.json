@@ -1024,6 +1024,7 @@
       "taxLine": "IVA ({rate}%)",
       "subtotalInclTax": "Subtotal com IVA",
       "totalDeposit": "Caucao total",
+      "totalAmount": "Total",
       "productName": "Produto",
       "productQty": "Qtd",
       "productUnitPrice": "Preco unit.",
@@ -3536,6 +3537,7 @@
       "open": "Assistente IA",
       "badge": "IA",
       "close": "Fechar",
+      "dismiss": "Ocultar barra IA",
       "title": "Assistente IA",
       "subtitle": "Faça perguntas sobre a sua loja",
       "emptyState": "Como posso ajudá-lo?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Inicio",
       "end": "Fim",
-      "at": "as"
+      "at": "as",
+      "delivery": "Entrega",
+      "pickup": "Retirada na loja"
     },
     "table": {
       "designation": "Descricao",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Subtotal (sem IVA)",
       "tax": "IVA ({rate}%)",
+      "deliveryFee": "Taxa de entrega",
       "totalTTC": "Total (com IVA)",
       "deposit": "Caucao"
     },

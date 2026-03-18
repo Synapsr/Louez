@@ -1063,6 +1063,7 @@
       "taxLine": "VAT ({rate}%)",
       "subtotalInclTax": "Subtotal incl. tax",
       "totalDeposit": "Total deposit",
+      "totalAmount": "Total",
       "productName": "Product",
       "productQty": "Qty",
       "productUnitPrice": "Unit price",
@@ -3536,6 +3537,7 @@
       "open": "AI Assistant",
       "badge": "AI",
       "close": "Close",
+      "dismiss": "Hide AI bar",
       "title": "AI Assistant",
       "subtitle": "Ask questions about your store",
       "emptyState": "How can I help you?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Start",
       "end": "End",
-      "at": "at"
+      "at": "at",
+      "delivery": "Delivery",
+      "pickup": "Store pickup"
     },
     "table": {
       "designation": "Description",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Subtotal (excl. VAT)",
       "tax": "VAT ({rate}%)",
+      "deliveryFee": "Delivery fee",
       "totalTTC": "Total (incl. VAT)",
       "deposit": "Deposit"
     },

@@ -1063,6 +1063,7 @@
       "taxLine": "TVA ({rate}%)",
       "subtotalInclTax": "Sous-total TTC",
       "totalDeposit": "Caution totale",
+      "totalAmount": "Total",
       "productName": "Produit",
       "productQty": "Qté",
       "productUnitPrice": "Prix unit.",
@@ -3536,6 +3537,7 @@
       "open": "Assistant IA",
       "badge": "IA",
       "close": "Fermer",
+      "dismiss": "Masquer la barre IA",
       "title": "Assistant IA",
       "subtitle": "Posez vos questions sur votre boutique",
       "emptyState": "Comment puis-je vous aider ?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Début",
       "end": "Fin",
-      "at": "à"
+      "at": "à",
+      "delivery": "Livraison",
+      "pickup": "Retrait en magasin"
     },
     "table": {
       "designation": "Désignation",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Sous-total HT",
       "tax": "TVA ({rate}%)",
+      "deliveryFee": "Frais de livraison",
       "totalTTC": "Total TTC",
       "deposit": "Caution"
     },
