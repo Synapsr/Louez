@@ -2952,6 +2952,47 @@ export async function sendReservationEmail(
 // Access Link Actions
 // ============================================================================
 
+export async function generateAccessUrl(reservationId: string) {
+  const store = await getStoreForUser();
+  if (!store) {
+    return { error: 'errors.unauthorized' as const };
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id),
+    ),
+    columns: { id: true },
+    with: { customer: { columns: { email: true } } },
+  });
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' as const };
+  }
+
+  const token = nanoid(64);
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  await db.insert(verificationCodes).values({
+    id: nanoid(),
+    email: reservation.customer.email,
+    storeId: store.id,
+    code: '',
+    type: 'instant_access',
+    token,
+    reservationId,
+    expiresAt,
+    createdAt: new Date(),
+  });
+
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const protocol = domain.includes('localhost') ? 'http' : 'https';
+  const url = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+
+  return { url };
+}
+
 export async function sendAccessLink(reservationId: string) {
   const store = await getStoreForUser();
   if (!store) {

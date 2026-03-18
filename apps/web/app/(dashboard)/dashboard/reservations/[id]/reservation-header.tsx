@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
-import { env } from '@/env'
 import {
   ArrowLeft,
   Mail,
@@ -14,6 +13,7 @@ import {
   ExternalLink,
   Check,
   Pencil,
+  Loader2,
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 import { useRouter } from 'next/navigation'
@@ -31,6 +31,7 @@ import { cn } from '@louez/utils'
 
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
+import { generateAccessUrl } from '@/app/(dashboard)/dashboard/reservations/actions'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
 
@@ -96,17 +97,41 @@ export function ReservationHeader({
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
   const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
 
-  const handleCopyLink = () => {
-    const domain = env.NEXT_PUBLIC_APP_DOMAIN
-    const url = `https://${storeSlug}.${domain}/account/reservations/${reservationId}`
-    navigator.clipboard.writeText(url)
-    setCopiedLink(true)
-    toastManager.add({ title: t('linkCopied'), type: 'success' })
-    setTimeout(() => setCopiedLink(false), 2000)
+  const handleGenerateAccessUrl = async () => {
+    setIsGeneratingLink(true)
+    try {
+      const result = await generateAccessUrl(reservationId)
+      if ('error' in result) {
+        toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
+        return null
+      }
+      return result.url
+    } catch {
+      toastManager.add({ title: t('accessLink.sendError'), type: 'error' })
+      return null
+    } finally {
+      setIsGeneratingLink(false)
+    }
+  }
+
+  const handleViewAsCustomer = async () => {
+    const url = await handleGenerateAccessUrl()
+    if (url) window.open(url, '_blank')
+  }
+
+  const handleCopyLink = async () => {
+    const url = await handleGenerateAccessUrl()
+    if (url) {
+      navigator.clipboard.writeText(url)
+      setCopiedLink(true)
+      toastManager.add({ title: t('linkCopied'), type: 'success' })
+      setTimeout(() => setCopiedLink(false), 2000)
+    }
   }
 
   const handleDownloadContract = () => {
@@ -221,12 +246,12 @@ export function ReservationHeader({
                   )}
                   {t('actions.copyLink')}
                 </DropdownMenuItem>
-                <DropdownMenuItem render={<a
-                    href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}/account/reservations/${reservationId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  />}>
-                  <ExternalLink className="h-4 w-4 mr-2" />
+                <DropdownMenuItem onClick={handleViewAsCustomer} disabled={isGeneratingLink}>
+                  {isGeneratingLink ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
                   {t('actions.viewAsCustomer')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
