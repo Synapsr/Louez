@@ -1559,7 +1559,6 @@ export async function createReservation(input: CreateReservationInput) {
                 const serverItem = serverCalculatedItems[idx]
                 return {
                   name: item.productSnapshot.name,
-                  description: item.productSnapshot.description || undefined,
                   quantity: item.quantity,
                   unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
                 }

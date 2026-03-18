@@ -87,7 +87,6 @@ export async function createReservationPaymentSession(
     // Build line items from reservation items
     const lineItems: { name: string; description?: string; quantity: number; unitAmount: number }[] = reservation.items.map((item) => ({
       name: item.productSnapshot.name,
-      description: item.productSnapshot.description || undefined,
       quantity: 1,
       unitAmount: toStripeCents(parseFloat(item.totalPrice), currency),
     }))
