@@ -1024,6 +1024,7 @@
       "taxLine": "VAT ({rate}%)",
       "subtotalInclTax": "Suma brutto",
       "totalDeposit": "Całkowita kaucja",
+      "totalAmount": "Razem",
       "productName": "Produkt",
       "productQty": "Ilość",
       "productUnitPrice": "Cena jedn.",
@@ -3536,6 +3537,7 @@
       "open": "Asystent AI",
       "badge": "AI",
       "close": "Zamknij",
+      "dismiss": "Ukryj pasek AI",
       "title": "Asystent AI",
       "subtitle": "Zadaj pytania dotyczące sklepu",
       "emptyState": "Jak mogę Ci pomóc?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Początek",
       "end": "Koniec",
-      "at": "o"
+      "at": "o",
+      "delivery": "Dostawa",
+      "pickup": "Odbiór w sklepie"
     },
     "table": {
       "designation": "Opis",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Suma netto",
       "tax": "VAT ({rate}%)",
+      "deliveryFee": "Koszt dostawy",
       "totalTTC": "Suma brutto",
       "deposit": "Kaucja"
     },

@@ -1063,6 +1063,7 @@
       "taxLine": "IVA ({rate}%)",
       "subtotalInclTax": "Subtotal con IVA",
       "totalDeposit": "Deposito total",
+      "totalAmount": "Total",
       "productName": "Producto",
       "productQty": "Cant",
       "productUnitPrice": "Precio unit.",
@@ -3536,6 +3537,7 @@
       "open": "Asistente IA",
       "badge": "IA",
       "close": "Cerrar",
+      "dismiss": "Ocultar barra IA",
       "title": "Asistente IA",
       "subtitle": "Haz preguntas sobre tu tienda",
       "emptyState": "¿Cómo puedo ayudarte?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Inicio",
       "end": "Fin",
-      "at": "a las"
+      "at": "a las",
+      "delivery": "Entrega",
+      "pickup": "Recogida en tienda"
     },
     "table": {
       "designation": "Descripcion",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Subtotal (sin IVA)",
       "tax": "IVA ({rate}%)",
+      "deliveryFee": "Gastos de envío",
       "totalTTC": "Total (con IVA)",
       "deposit": "Deposito"
     },

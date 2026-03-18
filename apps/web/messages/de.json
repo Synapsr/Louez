@@ -1063,6 +1063,7 @@
       "taxLine": "MwSt ({rate}%)",
       "subtotalInclTax": "Zwischensumme brutto",
       "totalDeposit": "Gesamtkaution",
+      "totalAmount": "Gesamt",
       "productName": "Produkt",
       "productQty": "Menge",
       "productUnitPrice": "Stückpreis",
@@ -3536,6 +3537,7 @@
       "open": "KI-Assistent",
       "badge": "KI",
       "close": "Schließen",
+      "dismiss": "KI-Leiste ausblenden",
       "title": "KI-Assistent",
       "subtitle": "Stellen Sie Fragen zu Ihrem Shop",
       "emptyState": "Wie kann ich Ihnen helfen?",
@@ -4672,7 +4674,9 @@
     "period": {
       "start": "Beginn",
       "end": "Ende",
-      "at": "um"
+      "at": "um",
+      "delivery": "Lieferung",
+      "pickup": "Abholung im Geschäft"
     },
     "table": {
       "designation": "Bezeichnung",
@@ -4684,6 +4688,7 @@
     "totals": {
       "subtotalHT": "Zwischensumme (netto)",
       "tax": "MwSt ({rate}%)",
+      "deliveryFee": "Liefergebühr",
       "totalTTC": "Gesamt (brutto)",
       "deposit": "Kaution"
     },
