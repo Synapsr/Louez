@@ -13,10 +13,7 @@ import { formatCurrency, formatDate } from '@louez/utils'
 import { getCheckoutSession, fromStripeCents } from '@/lib/stripe'
 import { stripe } from '@/lib/stripe/client'
 import { nanoid } from 'nanoid'
-import {
-  evaluateReservationRules,
-  formatReservationWarningsForLog,
-} from '@/lib/utils/reservation-rules'
+import { evaluateReservationRules } from '@/lib/utils/reservation-rules'
 
 interface SuccessPageProps {
   params: Promise<{ slug: string }>
@@ -185,10 +182,6 @@ async function verifyAndUpdatePayment(
       id: nanoid(),
       reservationId,
       activityType: 'confirmed',
-      description:
-        validationWarnings.length > 0
-          ? formatReservationWarningsForLog(validationWarnings)
-          : null,
       metadata: {
         source: 'online_payment',
         depositAmount,

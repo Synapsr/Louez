@@ -110,12 +110,17 @@ export function formatPaymentFailureDescription({
   metadata,
   t,
 }: FormatFailureDescriptionParams): FormattedActivityDescription | null {
-  if (!description) return null
+  // Show rejection reason from metadata
+  if (activityType === 'rejected' && metadata?.rejectionReason) {
+    return { message: metadata.rejectionReason as string }
+  }
 
   if (activityType !== 'payment_failed' && activityType !== 'deposit_failed') {
+    if (!description) return null
     return { message: description }
   }
 
+  // For payment/deposit failures, use metadata error instead of raw description
   const failureType = activityType as FailureActivityType
   const rawErrorMessage = getRawErrorMessage(description, metadata)
   const errorCode = getStripeErrorCode(metadata)
@@ -127,6 +132,7 @@ export function formatPaymentFailureDescription({
     looksLikeStripeTechnicalError(rawErrorMessage)
 
   if (!hasStripeSignal || !rawErrorMessage) {
+    if (!description) return null
     return { message: description }
   }
 

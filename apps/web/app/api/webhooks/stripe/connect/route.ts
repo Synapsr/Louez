@@ -17,10 +17,7 @@ import {
   notifyStripeConnected,
 } from '@/lib/discord/platform-notifications'
 import { env } from '@/env'
-import {
-  evaluateReservationRules,
-  formatReservationWarningsForLog,
-} from '@/lib/utils/reservation-rules'
+import { evaluateReservationRules } from '@/lib/utils/reservation-rules'
 
 // ===== TYPE DEFINITIONS =====
 // Define explicit type for reservation with relations to ensure proper typing
@@ -442,10 +439,6 @@ async function handleCheckoutCompleted(
       id: nanoid(),
       reservationId,
       activityType: 'confirmed',
-      description:
-        validationWarnings.length > 0
-          ? formatReservationWarningsForLog(validationWarnings)
-          : null,
       metadata: {
         source: 'online_payment',
         depositAmount,
@@ -672,7 +665,6 @@ async function handleDepositAuthorized(
     id: nanoid(),
     reservationId,
     activityType: 'deposit_authorized',
-    description: `Deposit authorization of ${amount.toFixed(2)} ${currency} created`,
     metadata: {
       paymentIntentId: paymentIntent.id,
       amount,
@@ -743,7 +735,6 @@ async function handleDepositReleased(
     id: nanoid(),
     reservationId,
     activityType: 'deposit_released',
-    description: `Deposit of ${amount.toFixed(2)} ${currency} released`,
     metadata: {
       paymentIntentId: paymentIntent.id,
       amount,
@@ -834,7 +825,6 @@ async function handleDepositCaptured(
     id: nanoid(),
     reservationId,
     activityType: 'deposit_captured',
-    description: `Deposit of ${capturedAmount.toFixed(2)} ${currency} captured (original: ${originalAmount.toFixed(2)} ${currency})`,
     metadata: {
       paymentIntentId: paymentIntent.id,
       capturedAmount,
@@ -893,7 +883,6 @@ async function handleDepositFailed(
       id: nanoid(),
       reservationId,
       activityType: 'deposit_failed',
-      description: `Deposit authorization of ${amount.toFixed(2)} ${currency} failed`,
       metadata: {
         paymentIntentId: paymentIntent.id,
         amount,
@@ -933,7 +922,6 @@ async function handleDepositFailed(
       id: nanoid(),
       reservationId,
       activityType: 'payment_failed',
-      description: errorMessage,
       metadata: {
         paymentIntentId: paymentIntent.id,
         amount,
@@ -1024,7 +1012,6 @@ async function handleChargeRefunded(
     id: nanoid(),
     reservationId: payment.reservationId,
     activityType: 'payment_updated',
-    description: `Refund of ${refundAmount.toFixed(2)} ${currency} processed`,
     metadata: {
       chargeId: charge.id,
       refundAmount,

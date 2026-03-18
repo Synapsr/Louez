@@ -109,10 +109,7 @@ import {
   calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo';
-import {
-  evaluateReservationRules,
-  formatReservationWarningsForLog,
-} from '@/lib/utils/reservation-rules';
+import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
 import { env } from '@/env';
 
@@ -248,7 +245,6 @@ function getDashboardTulipInsuranceMode(
 async function logReservationActivity(
   reservationId: string,
   activityType: ActivityType,
-  description?: string,
   metadata?: Record<string, unknown>,
 ) {
   const session = await auth();
@@ -259,7 +255,6 @@ async function logReservationActivity(
     reservationId,
     userId,
     activityType,
-    description,
     metadata,
   });
 }
@@ -345,18 +340,13 @@ export async function updateReservationStatus(
   };
 
   if (activityMap[status]) {
-    const warningDescription =
-      status === 'confirmed' && validationWarnings.length > 0
-        ? formatReservationWarningsForLog(validationWarnings)
-        : undefined;
-
     await logReservationActivity(
       reservationId,
       activityMap[status],
-      status === 'rejected' ? rejectionReason : warningDescription,
       {
         previousStatus,
         newStatus: status,
+        ...(status === 'rejected' && rejectionReason && { rejectionReason }),
         ...(validationWarnings.length > 0 && {
           validationWarnings,
           validationWarningsCount: validationWarnings.length,
@@ -576,7 +566,7 @@ export async function cancelReservation(reservationId: string) {
     .where(eq(reservations.id, reservationId));
 
   // Log activity
-  await logReservationActivity(reservationId, 'cancelled', undefined, {
+  await logReservationActivity(reservationId, 'cancelled', {
     previousStatus: reservation.status,
   });
 
@@ -1142,7 +1132,6 @@ export async function createManualReservation(data: CreateReservationData) {
   await logReservationActivity(
     reservationId,
     'created',
-    'Manual reservation created',
     { source: 'manual', status: 'confirmed' },
   );
 
@@ -2008,9 +1997,6 @@ export async function updateReservation(
   await logReservationActivity(
     reservationId,
     'modified',
-    validationWarnings.length > 0
-      ? formatReservationWarningsForLog(validationWarnings)
-      : undefined,
     {
       previous: {
         startDate: previousState.startDate,
@@ -2115,22 +2101,9 @@ export async function recordPayment(
   });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
-  const typeLabels: Record<PaymentType, string> = {
-    rental: 'Location',
-    deposit: 'Caution',
-    deposit_return: 'Restitution caution',
-    damage: 'Dommages',
-    adjustment: 'Ajustement',
-  };
-  const formattedAmount =
-    data.amount < 0
-      ? `-${Math.abs(data.amount).toFixed(2)}${currencySymbol}`
-      : `${data.amount.toFixed(2)}${currencySymbol}`;
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `${typeLabels[data.type]}: ${formattedAmount} (${data.method})`,
     { paymentId, type: data.type, amount: data.amount, method: data.method },
   );
 
@@ -2173,11 +2146,9 @@ export async function deletePayment(paymentId: string) {
   await db.delete(payments).where(eq(payments.id, paymentId));
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     payment.reservationId,
     'payment_updated',
-    `Paiement supprimé: ${parseFloat(payment.amount).toFixed(2)}${currencySymbol}`,
     {
       paymentId,
       type: payment.type,
@@ -2253,11 +2224,9 @@ export async function returnDeposit(
   });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `Caution restituée: ${data.amount.toFixed(2)}${currencySymbol} (${data.method})`,
     {
       paymentId,
       type: 'deposit_return',
@@ -2308,12 +2277,10 @@ export async function recordDamage(
   });
 
   // Log activity
-  const currencySymbol = getCurrencySymbol(store.settings?.currency || 'EUR');
   await logReservationActivity(
     reservationId,
     'payment_added',
-    `Frais de dommages: ${data.amount.toFixed(2)}${currencySymbol} - ${data.notes}`,
-    { paymentId, type: 'damage', amount: data.amount, method: data.method },
+    { paymentId, type: 'damage', amount: data.amount, method: data.method, notes: data.notes },
   );
 
   revalidatePath('/dashboard/reservations');
@@ -2783,7 +2750,6 @@ export async function processStripeRefund(
     await logReservationActivity(
       reservationId,
       'payment_updated',
-      undefined, // Details in metadata
       {
         paymentId,
         refundId: refund.refundId,
@@ -2971,7 +2937,6 @@ export async function sendReservationEmail(
     await logReservationActivity(
       reservationId,
       'note_updated',
-      `Email envoyé: ${data.templateId}`,
       { templateId: data.templateId, to: customerData.email },
     );
 
@@ -3086,10 +3051,10 @@ export async function sendAccessLink(reservationId: string) {
     await logReservationActivity(
       reservationId,
       'access_link_sent',
-      `Lien d'accès envoyé à ${reservation.customer.email}`,
       {
         token: token.substring(0, 8) + '...',
         expiresAt: expiresAt.toISOString(),
+        method: 'email',
       },
     );
 
@@ -3201,7 +3166,6 @@ export async function sendAccessLinkBySms(reservationId: string) {
     await logReservationActivity(
       reservationId,
       'access_link_sent',
-      `Lien d'accès envoyé par SMS à ${reservation.customer.phone}`,
       {
         token: token.substring(0, 8) + '...',
         expiresAt: expiresAt.toISOString(),
@@ -3481,7 +3445,6 @@ export async function requestPayment(
     await logReservationActivity(
       reservationId,
       'payment_added',
-      undefined, // Description rendered from metadata in activity timeline
       {
         type: data.type,
         amount,
@@ -3600,7 +3563,7 @@ export async function assignUnitsToReservationItem(
       await db.insert(reservationItemUnits).values(assignmentsToInsert);
 
       // 6. Log activity
-      await logReservationActivity(item.reservationId, 'modified', undefined, {
+      await logReservationActivity(item.reservationId, 'modified', {
         action: 'units_assigned',
         reservationItemId,
         unitIdentifiers: units.map((u) => u.identifier),
@@ -3611,7 +3574,7 @@ export async function assignUnitsToReservationItem(
         .delete(reservationItemUnits)
         .where(eq(reservationItemUnits.reservationItemId, reservationItemId));
 
-      await logReservationActivity(item.reservationId, 'modified', undefined, {
+      await logReservationActivity(item.reservationId, 'modified', {
         action: 'units_unassigned',
         reservationItemId,
       });
