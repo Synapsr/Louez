@@ -85,6 +85,7 @@ interface Payment {
   type: 'rental' | 'deposit' | 'deposit_return' | 'damage' | 'deposit_hold' | 'deposit_capture' | 'adjustment'
   method: 'stripe' | 'cash' | 'card' | 'transfer' | 'check' | 'other'
   status: 'pending' | 'completed' | 'failed' | 'refunded' | 'authorized' | 'cancelled'
+  createdAt: Date
   paidAt: Date | null
   notes: string | null
   stripeChargeId?: string | null
@@ -240,8 +241,13 @@ export function UnifiedPaymentSection({
   const stripeRentalPayment = payments.find(
     (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'completed'
   )
+  const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000 // 30 minutes (matches Stripe expires_at)
   const stripePendingPayment = payments.find(
-    (p) => p.method === 'stripe' && p.type === 'rental' && p.status === 'pending'
+    (p) =>
+      p.method === 'stripe' &&
+      p.type === 'rental' &&
+      p.status === 'pending' &&
+      new Date(p.createdAt).getTime() + CHECKOUT_SESSION_TTL_MS > Date.now()
   )
 
   // Authorization expiration
