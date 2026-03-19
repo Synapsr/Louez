@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -120,15 +120,15 @@ export function NewReservationForm({
 
   const [endDatePickerOpen, setEndDatePickerOpen] = useState(false)
 
-  // Compute a scroll-to time: current hour rounded to next 30min slot
-  const scrollToCurrentTime = React.useMemo(() => {
+  // Default time for new date selections: current time rounded up to next 30min slot
+  const defaultTimeSlot = useMemo(() => {
     const now = new Date()
-    const h = now.getHours()
-    const m = now.getMinutes()
-    const roundedMin = m < 30 ? 30 : 0
-    const roundedHour = m < 30 ? h : h + 1
-    if (roundedHour >= 24) return '23:30'
-    return `${roundedHour.toString().padStart(2, '0')}:${roundedMin.toString().padStart(2, '0')}`
+    const totalMinutes = now.getHours() * 60 + now.getMinutes()
+    const rounded = Math.ceil(totalMinutes / 30) * 30
+    const h = Math.floor(rounded / 60)
+    const m = rounded % 60
+    if (h >= 24) return '23:30'
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
   }, [])
 
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
@@ -898,7 +898,7 @@ export function NewReservationForm({
                               // Small delay to let the start popover close before opening end
                               setTimeout(() => setEndDatePickerOpen(true), 150)
                             }}
-                            defaultTime={scrollToCurrentTime}
+                            defaultTime={defaultTimeSlot}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
@@ -935,9 +935,10 @@ export function NewReservationForm({
                             minTime={timeSlots.minTime}
                             maxTime={timeSlots.maxTime}
                             timezone={timezone}
+                            autoCloseOnTimeSelect
                             open={endDatePickerOpen}
                             onOpenChange={setEndDatePickerOpen}
-                            defaultTime={scrollToCurrentTime}
+                            defaultTime={defaultTimeSlot}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">

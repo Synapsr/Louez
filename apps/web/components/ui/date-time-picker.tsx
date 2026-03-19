@@ -37,6 +37,16 @@ interface DateTimePickerProps {
   timeStep?: number // minutes
   className?: string
   timezone?: string
+  /** When true, selecting a time auto-closes the popover (no confirm button) */
+  autoCloseOnTimeSelect?: boolean
+  /** Called after the popover auto-closes from time selection */
+  onAutoClose?: () => void
+  /** Controlled open state */
+  open?: boolean
+  /** Controlled open state change handler */
+  onOpenChange?: (open: boolean) => void
+  /** Default time to use when a date is first selected (e.g. "14:00"). Defaults to first available slot. */
+  defaultTime?: string
 }
 
 // Generate time options
@@ -77,13 +87,30 @@ export function DateTimePicker({
   timeStep = 30,
   className,
   timezone,
+  autoCloseOnTimeSelect = false,
+  onAutoClose,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  defaultTime,
 }: DateTimePickerProps) {
   const t = useTranslations('common.dateTimePicker')
   const locale = useLocale()
   const dateLocale = locale === 'fr' ? fr : enUS
   const resolvedTimezone = timezone?.trim() || undefined
 
-  const [isOpen, setIsOpen] = React.useState(false)
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const isControlled = controlledOpen !== undefined
+  const isOpen = isControlled ? controlledOpen : internalOpen
+  const setIsOpen = React.useCallback(
+    (value: boolean) => {
+      if (isControlled) {
+        controlledOnOpenChange?.(value)
+      } else {
+        setInternalOpen(value)
+      }
+    },
+    [isControlled, controlledOnOpenChange]
+  )
   const timeOptions = React.useMemo(
     () => generateTimeOptions(timeStep, minTime, maxTime),
     [timeStep, minTime, maxTime]
@@ -119,13 +146,40 @@ export function DateTimePicker({
     ? getTimeFromDate(date)
     : timeOptions[0]?.value || '08:00'
 
+  // Find the closest available time slot to a target time
+  const findClosestTimeSlot = React.useCallback(
+    (target: string) => {
+      const [th, tm] = target.split(':').map(Number)
+      const targetMin = th * 60 + tm
+      let closest = timeOptions[0]?.value || '08:00'
+      let closestDiff = Infinity
+      for (const opt of timeOptions) {
+        const [oh, om] = opt.value.split(':').map(Number)
+        const diff = Math.abs(oh * 60 + om - targetMin)
+        if (diff < closestDiff) {
+          closestDiff = diff
+          closest = opt.value
+        }
+      }
+      return closest
+    },
+    [timeOptions]
+  )
+
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!selectedDate) {
       setDate(undefined)
       return
     }
 
-    const time = date ? getTimeFromDate(date) : timeOptions[0]?.value || '08:00'
+    let time: string
+    if (date) {
+      time = getTimeFromDate(date)
+    } else if (defaultTime) {
+      time = findClosestTimeSlot(defaultTime)
+    } else {
+      time = timeOptions[0]?.value || '08:00'
+    }
     setDate(buildStoreDate(selectedDate, time, resolvedTimezone))
   }
 
@@ -136,6 +190,11 @@ export function DateTimePicker({
     const pickerDateForTime = getDateInPickerTimezone(date)
     const normalizedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     setDate(buildStoreDate(pickerDateForTime, normalizedTime, resolvedTimezone))
+
+    if (autoCloseOnTimeSelect) {
+      setIsOpen(false)
+      onAutoClose?.()
+    }
   }
 
   const formatDateTime = (d: Date) => {
@@ -195,14 +254,16 @@ export function DateTimePicker({
             </div>
           </div>
         )}
-        <div className="border-t p-2 flex justify-end">
-          <Button
-            onClick={() => setIsOpen(false)}
-            disabled={!date}
-          >
-            {t('confirm')}
-          </Button>
-        </div>
+        {!autoCloseOnTimeSelect && (
+          <div className="border-t p-2 flex justify-end">
+            <Button
+              onClick={() => setIsOpen(false)}
+              disabled={!date}
+            >
+              {t('confirm')}
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   )
