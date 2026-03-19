@@ -1056,7 +1056,9 @@
         "ongoing": "W trakcie",
         "completed": "Zakończona",
         "cancelled": "Anulowana",
-        "rejected": "Odrzucona"
+        "rejected": "Odrzucona",
+        "quote": "Wycena",
+        "declined": "Wycena odrzucona"
       },
       "filters": {
         "all": "Wszystkie",
@@ -1173,6 +1175,8 @@
         "durationHours": "{count, plural, one {# godzina} few {# godziny} many {# godzin} other {# godzin}}",
         "durationWeeks": "{count, plural, one {# tydzień} few {# tygodnie} many {# tygodni} other {# tygodni}}",
         "reservationCreated": "Rezerwacja utworzona",
+        "sendAsQuote": "Wyślij jako wycenę",
+        "quoteSent": "Wycena wysłana do klienta",
         "selectDatesError": "Proszę wybrać daty",
         "addProductError": "Proszę dodać co najmniej jeden produkt",
         "selectCustomerError": "Proszę wybrać klienta",
@@ -1313,6 +1317,15 @@
         "reasonLabel": "Powód odrzucenia (opcjonalnie)",
         "reasonPlaceholder": "Sprzęt niedostępny, niezgodne daty...",
         "reasonHint": "Ten powód zostanie załączony do emaila wysłanego do klienta"
+      },
+      "quoteCard": {
+        "title": "Wycena wysłana",
+        "description": "Klient otrzymał tę wycenę. Oczekiwanie na odpowiedź.",
+        "confirm": "Potwierdź bezpośrednio"
+      },
+      "declinedCard": {
+        "title": "Wycena odrzucona",
+        "description": "Klient odrzucił tę wycenę"
       },
       "awaitingResponse": "Oczekiwanie na odpowiedź",
       "itemsCount": "{count, plural, one {# przedmiot} few {# przedmioty} many {# przedmiotów} other {# przedmiotów}}",
@@ -4231,7 +4244,11 @@
         "cancelled": "Anulowana",
         "cancelledDescription": "Ta rezerwacja została anulowana",
         "rejected": "Odrzucona",
-        "rejectedDescription": "To żądanie zostało odrzucone"
+        "rejectedDescription": "To żądanie zostało odrzucone",
+        "quote": "Wycena",
+        "quoteDescription": "Wysłano do Ciebie wycenę. Zaakceptuj ją lub odrzuć.",
+        "declined": "Odrzucono",
+        "declinedDescription": "Odrzuciłeś tę wycenę"
       },
       "signContract": "Podpisz umowę",
       "contractSigned": "Umowa podpisana",
@@ -4277,6 +4294,14 @@
         "title": "Jak przebiegło Twoje wypożyczenie?",
         "description": "Twoja opinia pomaga {name} się rozwijać",
         "leaveReview": "Zostaw opinię"
+      },
+      "quote": {
+        "accept": "Zaakceptuj wycenę",
+        "decline": "Odrzuć wycenę",
+        "declineTitle": "Odrzucić tę wycenę?",
+        "declineDescription": "Zamierzasz odrzucić tę wycenę. Wynajmujący zostanie o tym poinformowany.",
+        "cancel": "Anuluj",
+        "confirmDecline": "Odrzuć wycenę"
       },
       "successToast": {
         "payment": "Płatność zakończona pomyślnie",
@@ -4657,6 +4682,15 @@
       "authorizeNow": "Autoryzuj kaucję",
       "linkFallback": "Lub skopiuj ten link do przeglądarki:",
       "securePayment": "Ta autoryzacja jest zabezpieczona przez Stripe. Kwota nie zostanie natychmiast pobrana."
+    },
+    "quoteSent": {
+      "subject": "Wycena #{number}",
+      "title": "Otrzymałeś wycenę",
+      "body": "{store} wysłał Ci wycenę dla rezerwacji #{number}.",
+      "rentalPeriod": "Okres wynajmu",
+      "yourQuote": "Twoja wycena",
+      "viewQuote": "Zobacz wycenę",
+      "expiry": "Możesz zaakceptować lub odrzucić tę wycenę ze swojego konta."
     }
   },
   "contract": {

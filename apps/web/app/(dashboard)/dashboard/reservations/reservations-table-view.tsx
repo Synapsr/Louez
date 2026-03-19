@@ -34,6 +34,7 @@ import {
   Package,
   Ban,
   XCircle,
+  FileText,
   MoreHorizontal,
   Loader2,
 } from 'lucide-react'
@@ -63,6 +64,8 @@ const STATUS_ICON_MAP: Record<ReservationStatus, typeof Clock> = {
   completed: CheckCircle,
   cancelled: Ban,
   rejected: XCircle,
+  quote: FileText,
+  declined: XCircle,
 }
 
 function SortableHead({
@@ -166,7 +169,7 @@ export function ReservationsTableView({
                 const statusConfig = STATUS_CONFIG[status]
                 const StatusIcon = STATUS_ICON_MAP[status]
                 const paymentInfo = getPaymentStatus(reservation)
-                const showPaymentStatus = !['cancelled', 'rejected'].includes(status)
+                const showPaymentStatus = !['cancelled', 'rejected', 'declined', 'quote'].includes(status)
                 const hasPendingOnlinePayment = reservation.payments.some(
                   (p) => p.method === 'stripe' && p.status === 'pending' && p.type === 'rental'
                 )

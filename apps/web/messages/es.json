@@ -1095,7 +1095,9 @@
         "ongoing": "En curso",
         "completed": "Completada",
         "cancelled": "Cancelada",
-        "rejected": "Rechazada"
+        "rejected": "Rechazada",
+        "quote": "Presupuesto",
+        "declined": "Presupuesto rechazado"
       },
       "filters": {
         "all": "Todas",
@@ -1212,6 +1214,8 @@
         "durationHours": "{count, plural, one {# hora} other {# horas}}",
         "durationWeeks": "{count, plural, one {# semana} other {# semanas}}",
         "reservationCreated": "Reserva creada",
+        "sendAsQuote": "Enviar como presupuesto",
+        "quoteSent": "Presupuesto enviado al cliente",
         "selectDatesError": "Por favor seleccione fechas",
         "addProductError": "Por favor agregue al menos un producto",
         "selectCustomerError": "Por favor seleccione un cliente",
@@ -1646,6 +1650,15 @@
       "rejectedCard": {
         "title": "Solicitud rechazada",
         "description": "Esta solicitud ha sido rechazada"
+      },
+      "quoteCard": {
+        "title": "Presupuesto enviado",
+        "description": "El cliente ha recibido este presupuesto. Esperando su respuesta.",
+        "confirm": "Confirmar directamente"
+      },
+      "declinedCard": {
+        "title": "Presupuesto rechazado",
+        "description": "El cliente ha rechazado este presupuesto"
       },
       "emailModal": {
         "title": "Enviar un correo",
@@ -4231,7 +4244,19 @@
         "cancelled": "Cancelada",
         "cancelledDescription": "Esta reserva ha sido cancelada",
         "rejected": "Rechazada",
-        "rejectedDescription": "Esta solicitud ha sido rechazada"
+        "rejectedDescription": "Esta solicitud ha sido rechazada",
+        "quote": "Presupuesto",
+        "quoteDescription": "Se le ha enviado un presupuesto. Acéptelo o rechácelo.",
+        "declined": "Rechazado",
+        "declinedDescription": "Ha rechazado este presupuesto"
+      },
+      "quote": {
+        "accept": "Aceptar presupuesto",
+        "decline": "Rechazar presupuesto",
+        "declineTitle": "¿Rechazar este presupuesto?",
+        "declineDescription": "Está a punto de rechazar este presupuesto. El arrendador será notificado.",
+        "cancel": "Cancelar",
+        "confirmDecline": "Rechazar presupuesto"
       },
       "signContract": "Firmar contrato",
       "contractSigned": "Contrato firmado",
@@ -4528,6 +4553,15 @@
       "title": "Solicitud no aceptada",
       "body": "Lo sentimos, su solicitud de reserva #{number} no pudo ser aceptada.",
       "contactForAlternative": "Por favor contactenos para mas informacion o para encontrar una alternativa que pueda convenirle."
+    },
+    "quoteSent": {
+      "subject": "Presupuesto #{number}",
+      "title": "Ha recibido un presupuesto",
+      "body": "{store} le ha enviado un presupuesto para la reserva #{number}.",
+      "rentalPeriod": "Período de alquiler",
+      "yourQuote": "Su presupuesto",
+      "viewQuote": "Ver presupuesto",
+      "expiry": "Puede aceptar o rechazar este presupuesto desde su cuenta."
     },
     "reminderPickup": {
       "subject": "Recordatorio: su alquiler comienza manana!",

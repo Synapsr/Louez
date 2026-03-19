@@ -36,7 +36,7 @@ import { cn } from '@louez/utils'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll, invalidateReservationDetail } from '@/lib/orpc/invalidation'
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
 interface Customer {
   id: string
@@ -63,7 +63,7 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: 'payment_request',
     icon: <CreditCard className="h-4 w-4" />,
     iconBg: 'bg-amber-100 text-amber-600 dark:bg-amber-900/50 dark:text-amber-400',
-    available: (status, isFullyPaid) => !isFullyPaid && !['cancelled', 'rejected'].includes(status),
+    available: (status, isFullyPaid) => !isFullyPaid && !['cancelled', 'rejected', 'declined', 'quote'].includes(status),
   },
   {
     id: 'reminder_pickup',
@@ -81,7 +81,7 @@ const EMAIL_TEMPLATES: EmailTemplate[] = [
     id: 'access_link',
     icon: <LinkIcon className="h-4 w-4" />,
     iconBg: 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400',
-    available: (status) => !['cancelled', 'rejected'].includes(status),
+    available: (status) => !['cancelled', 'rejected', 'declined', 'quote'].includes(status),
   },
   {
     id: 'custom',

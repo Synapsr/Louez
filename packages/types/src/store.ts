@@ -483,6 +483,8 @@ export type CustomerNotificationEventType =
   | 'customer_reminder_return'
   | 'customer_payment_requested'
   | 'customer_deposit_authorization_requested'
+  | 'customer_quote_sent'
+  | 'customer_quote_accepted'
 
 export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] = [
   'customer_request_received',
@@ -493,6 +495,8 @@ export const CUSTOMER_NOTIFICATION_EVENT_TYPES: CustomerNotificationEventType[] 
   'customer_reminder_return',
   'customer_payment_requested',
   'customer_deposit_authorization_requested',
+  'customer_quote_sent',
+  'customer_quote_accepted',
 ]
 
 export interface CustomerNotificationChannelConfig {
@@ -517,6 +521,8 @@ export interface CustomerNotificationSettings {
   customer_reminder_return: CustomerNotificationChannelConfig
   customer_payment_requested: CustomerNotificationChannelConfig
   customer_deposit_authorization_requested: CustomerNotificationChannelConfig
+  customer_quote_sent: CustomerNotificationChannelConfig
+  customer_quote_accepted: CustomerNotificationChannelConfig
 
   // Custom templates
   templates: {
@@ -528,6 +534,8 @@ export interface CustomerNotificationSettings {
     customer_reminder_return?: CustomerNotificationTemplate
     customer_payment_requested?: CustomerNotificationTemplate
     customer_deposit_authorization_requested?: CustomerNotificationTemplate
+    customer_quote_sent?: CustomerNotificationTemplate
+    customer_quote_accepted?: CustomerNotificationTemplate
   }
 
   // Automatic reminder settings
@@ -553,6 +561,10 @@ export const DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS: CustomerNotificationSetting
   // Payment requests - email enabled by default
   customer_payment_requested: { enabled: true, email: true, sms: false },
   customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
+
+  // Quotes - email enabled by default
+  customer_quote_sent: { enabled: true, email: true, sms: false },
+  customer_quote_accepted: { enabled: true, email: true, sms: false },
 
   // No custom templates by default
   templates: {},

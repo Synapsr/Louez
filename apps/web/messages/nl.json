@@ -1056,7 +1056,9 @@
         "ongoing": "Lopend",
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
-        "rejected": "Afgewezen"
+        "rejected": "Afgewezen",
+        "quote": "Offerte",
+        "declined": "Offerte geweigerd"
       },
       "filters": {
         "all": "Alle",
@@ -1172,6 +1174,8 @@
         "durationDays": "{count, plural, one {# dag} other {# dagen}}",
         "durationHours": "{count, plural, one {# uur} other {# uren}}",
         "durationWeeks": "{count, plural, one {# week} other {# weken}}",
+        "sendAsQuote": "Verstuur als offerte",
+        "quoteSent": "Offerte naar de klant verzonden",
         "reservationCreated": "Reservering aangemaakt",
         "selectDatesError": "Selecteer data",
         "addProductError": "Voeg minimaal één product toe",
@@ -1306,6 +1310,15 @@
           "insurableProduct": "Verzekerbaar",
           "assuredProduct": "Verzekerd"
         }
+      },
+      "quoteCard": {
+        "title": "Offerte verzonden",
+        "description": "De klant heeft deze offerte ontvangen. Wachten op antwoord.",
+        "confirm": "Direct bevestigen"
+      },
+      "declinedCard": {
+        "title": "Offerte geweigerd",
+        "description": "De klant heeft deze offerte geweigerd"
       },
       "rejectDialog": {
         "title": "Aanvraag afwijzen",
@@ -4231,7 +4244,19 @@
         "cancelled": "Geannuleerd",
         "cancelledDescription": "Deze reservering is geannuleerd",
         "rejected": "Afgewezen",
-        "rejectedDescription": "Deze aanvraag is afgewezen"
+        "rejectedDescription": "Deze aanvraag is afgewezen",
+        "quote": "Offerte",
+        "quoteDescription": "Er is een offerte naar u verzonden. Accepteer of weiger deze.",
+        "declined": "Geweigerd",
+        "declinedDescription": "U heeft deze offerte geweigerd"
+      },
+      "quote": {
+        "accept": "Offerte accepteren",
+        "decline": "Offerte weigeren",
+        "declineTitle": "Deze offerte weigeren?",
+        "declineDescription": "U staat op het punt deze offerte te weigeren. De verhuurder wordt op de hoogte gebracht.",
+        "cancel": "Annuleren",
+        "confirmDecline": "Offerte weigeren"
       },
       "signContract": "Contract ondertekenen",
       "contractSigned": "Contract ondertekend",
@@ -4528,6 +4553,15 @@
       "title": "Aanvraag niet geaccepteerd",
       "body": "Het spijt ons, uw reserveringsaanvraag #{number} kon niet worden geaccepteerd.",
       "contactForAlternative": "Neem contact met ons op voor meer informatie of om een alternatief te vinden dat bij u past."
+    },
+    "quoteSent": {
+      "subject": "Offerte #{number}",
+      "title": "U heeft een offerte ontvangen",
+      "body": "{store} heeft u een offerte gestuurd voor reservering #{number}.",
+      "rentalPeriod": "Huurperiode",
+      "yourQuote": "Uw offerte",
+      "viewQuote": "Offerte bekijken",
+      "expiry": "U kunt deze offerte accepteren of weigeren vanuit uw account."
     },
     "reminderPickup": {
       "subject": "Herinnering: uw verhuur begint morgen!",

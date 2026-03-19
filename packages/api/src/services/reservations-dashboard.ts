@@ -15,6 +15,8 @@ type ReservationStatus =
   | 'completed'
   | 'cancelled'
   | 'rejected'
+  | 'quote'
+  | 'declined'
 
 export async function getDashboardReservationsList(params: {
   storeId: string
@@ -32,21 +34,23 @@ export async function getDashboardReservationsList(params: {
 
   if (status && status !== 'all') {
     if (status === 'cancelled') {
-      // "Cancelled" tab groups both cancelled and rejected
+      // "Cancelled" tab groups cancelled, rejected, and declined
       conditions.push(
         or(
           eq(reservations.status, 'cancelled'),
           eq(reservations.status, 'rejected'),
+          eq(reservations.status, 'declined'),
         )!
       )
     } else {
       conditions.push(eq(reservations.status, status))
     }
   } else {
-    // Default "all" view excludes cancelled and rejected
+    // Default "all" view excludes cancelled, rejected, and declined
     conditions.push(
       not(eq(reservations.status, 'cancelled')),
       not(eq(reservations.status, 'rejected')),
+      not(eq(reservations.status, 'declined')),
     )
   }
 
@@ -189,12 +193,13 @@ export async function getDashboardReservationsList(params: {
     counts[row.status] = row.count
   }
 
-  const cancelledCount = (counts['cancelled'] || 0) + (counts['rejected'] || 0)
+  const cancelledCount = (counts['cancelled'] || 0) + (counts['rejected'] || 0) + (counts['declined'] || 0)
   const activeTotal =
     (counts['pending'] || 0) +
     (counts['confirmed'] || 0) +
     (counts['ongoing'] || 0) +
-    (counts['completed'] || 0)
+    (counts['completed'] || 0) +
+    (counts['quote'] || 0)
 
   return {
     reservations: reservationsList,
@@ -205,6 +210,7 @@ export async function getDashboardReservationsList(params: {
       ongoing: counts['ongoing'] || 0,
       completed: counts['completed'] || 0,
       cancelled: cancelledCount,
+      quote: counts['quote'] || 0,
     },
     totalCount: totalCountResult,
   }

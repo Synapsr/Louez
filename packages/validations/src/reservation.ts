@@ -7,6 +7,8 @@ export const reservationStatusSchema = z.enum([
   'completed',
   'cancelled',
   'rejected',
+  'quote',
+  'declined',
 ])
 
 // Schema factories that accept translation function

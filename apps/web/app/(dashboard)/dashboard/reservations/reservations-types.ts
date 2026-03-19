@@ -1,4 +1,4 @@
-export type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+export type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
 export interface ReservationItem {
   id: string
@@ -48,6 +48,7 @@ export interface ReservationCounts {
   ongoing: number
   completed: number
   cancelled: number
+  quote: number
 }
 
 export type PaymentStatusType = 'paid' | 'partial' | 'unpaid'

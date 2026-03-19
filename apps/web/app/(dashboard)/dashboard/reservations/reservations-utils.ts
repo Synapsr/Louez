@@ -35,6 +35,16 @@ export const STATUS_CONFIG: Record<ReservationStatus, {
     bgClass: 'bg-red-50 dark:bg-red-950/30',
     borderClass: 'border-l-red-500',
   },
+  quote: {
+    className: 'text-violet-600 dark:text-violet-400',
+    bgClass: 'bg-violet-50 dark:bg-violet-950/30',
+    borderClass: 'border-l-violet-500',
+  },
+  declined: {
+    className: 'text-slate-600 dark:text-slate-400',
+    bgClass: 'bg-slate-50 dark:bg-slate-900/30',
+    borderClass: 'border-l-slate-400',
+  },
 }
 
 export function getPaymentStatus(reservation: Reservation): {

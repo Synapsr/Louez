@@ -536,6 +536,8 @@ export const reservationStatus = mysqlEnum('reservation_status', [
   'completed',
   'cancelled',
   'rejected',
+  'quote',
+  'declined',
 ])
 
 export const depositStatus = mysqlEnum('deposit_status', [
@@ -809,6 +811,8 @@ export const activityType = mysqlEnum('activity_type', [
   'inspection_return_completed', // Return inspection completed
   'inspection_damage_detected', // Damage found during inspection
   'inspection_signed', // Customer signed the inspection
+  'quote_accepted', // Customer accepted a quote
+  'quote_declined', // Customer declined a quote
 ])
 
 export const reservationActivity = mysqlTable(

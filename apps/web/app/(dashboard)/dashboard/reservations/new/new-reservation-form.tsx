@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -15,6 +15,7 @@ import {
   Calendar,
   Check,
   Clock,
+  FileText,
   Loader2,
   Plus,
   PenLine,
@@ -117,6 +118,19 @@ export function NewReservationForm({
     return { minTime: '00:00', maxTime: '23:30' }
   }
 
+  const [endDatePickerOpen, setEndDatePickerOpen] = useState(false)
+
+  // Compute a scroll-to time: current hour rounded to next 30min slot
+  const scrollToCurrentTime = React.useMemo(() => {
+    const now = new Date()
+    const h = now.getHours()
+    const m = now.getMinutes()
+    const roundedMin = m < 30 ? 30 : 0
+    const roundedHour = m < 30 ? h : h + 1
+    if (roundedHour >= 24) return '23:30'
+    return `${roundedHour.toString().padStart(2, '0')}:${roundedMin.toString().padStart(2, '0')}`
+  }, [])
+
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
   const [customItems, setCustomItems] = useState<CustomItem[]>([])
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -131,6 +145,7 @@ export function NewReservationForm({
   })
   const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
+  const sendAsQuoteRef = useRef(false)
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
     tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
   )
@@ -371,11 +386,12 @@ export function NewReservationForm({
             },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
-            sendConfirmationEmail,
+            sendConfirmationEmail: sendAsQuoteRef.current ? true : sendConfirmationEmail,
+            sendAsQuote: sendAsQuoteRef.current,
           },
         })
 
-        toastManager.add({ title: t('reservationCreated'), type: 'success' })
+        toastManager.add({ title: sendAsQuoteRef.current ? t('quoteSent') : t('reservationCreated'), type: 'success' })
         router.push(`/dashboard/reservations/${result.reservationId}`)
       } catch (error) {
         toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
@@ -877,6 +893,12 @@ export function NewReservationForm({
                             minTime={timeSlots.minTime}
                             maxTime={timeSlots.maxTime}
                             timezone={timezone}
+                            autoCloseOnTimeSelect
+                            onAutoClose={() => {
+                              // Small delay to let the start popover close before opening end
+                              setTimeout(() => setEndDatePickerOpen(true), 150)
+                            }}
+                            defaultTime={scrollToCurrentTime}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
@@ -913,6 +935,9 @@ export function NewReservationForm({
                             minTime={timeSlots.minTime}
                             maxTime={timeSlots.maxTime}
                             timezone={timezone}
+                            open={endDatePickerOpen}
+                            onOpenChange={setEndDatePickerOpen}
+                            defaultTime={scrollToCurrentTime}
                           />
                           {field.state.meta.errors.length > 0 && (
                             <p className="text-sm font-medium text-destructive">
@@ -1129,9 +1154,30 @@ export function NewReservationForm({
                     {t('sendConfirmationEmail')}
                   </label>
                 </div>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  <Check className="mr-2 h-4 w-4" />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={isSaving}
+                  onClick={() => { sendAsQuoteRef.current = true }}
+                  className=""
+                >
+                  {isSaving && sendAsQuoteRef.current ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileText className="mr-2 h-4 w-4" />
+                  )}
+                  {t('sendAsQuote')}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  onClick={() => { sendAsQuoteRef.current = false }}
+                >
+                  {isSaving && !sendAsQuoteRef.current ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 h-4 w-4" />
+                  )}
                   {t('create')}
                 </Button>
               </>

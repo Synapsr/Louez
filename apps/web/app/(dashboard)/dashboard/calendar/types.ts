@@ -16,6 +16,8 @@ export type ReservationStatus =
   | 'completed'
   | 'cancelled'
   | 'rejected'
+  | 'quote'
+  | 'declined'
 
 export type ViewMode = 'week' | 'month' | 'timeline'
 
@@ -188,6 +190,8 @@ export const STATUS_COLORS: Record<ReservationStatus, string> = {
   completed: 'bg-gray-400',
   cancelled: 'bg-red-300',
   rejected: 'bg-red-400',
+  quote: 'bg-violet-500',
+  declined: 'bg-slate-400',
 } as const
 
 export const STATUS_COLORS_LIGHT: Record<ReservationStatus, string> = {
@@ -197,4 +201,6 @@ export const STATUS_COLORS_LIGHT: Record<ReservationStatus, string> = {
   completed: 'bg-gray-100 border-gray-300 text-gray-600',
   cancelled: 'bg-red-50 border-red-200 text-red-600',
   rejected: 'bg-red-100 border-red-300 text-red-700',
+  quote: 'bg-violet-100 border-violet-300 text-violet-800',
+  declined: 'bg-slate-100 border-slate-300 text-slate-600',
 } as const
