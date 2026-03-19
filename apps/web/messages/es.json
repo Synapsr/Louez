@@ -1859,7 +1859,9 @@
         "ongoing": "En curso",
         "completed": "Completada",
         "cancelled": "Cancelada",
-        "rejected": "Rechazada"
+        "rejected": "Rechazada",
+        "quote": "Presupuesto",
+        "declined": "Presupuesto rechazado"
       },
       "viewMode": {
         "label": "Modo de vista",

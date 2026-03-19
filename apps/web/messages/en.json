@@ -1859,7 +1859,9 @@
         "ongoing": "Ongoing",
         "completed": "Completed",
         "cancelled": "Cancelled",
-        "rejected": "Rejected"
+        "rejected": "Rejected",
+        "quote": "Quote",
+        "declined": "Quote declined"
       },
       "viewMode": {
         "label": "View mode",

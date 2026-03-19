@@ -1820,7 +1820,9 @@
         "ongoing": "In corso",
         "completed": "Completata",
         "cancelled": "Annullata",
-        "rejected": "Rifiutata"
+        "rejected": "Rifiutata",
+        "quote": "Preventivo",
+        "declined": "Preventivo rifiutato"
       },
       "viewMode": {
         "label": "Modalità di visualizzazione",
