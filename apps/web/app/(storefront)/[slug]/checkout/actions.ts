@@ -942,7 +942,8 @@ export async function createReservation(input: CreateReservationInput) {
     const finalDiscount = serverDiscountAmount
     const finalDeposit = serverTotalDeposit
     const finalDeliveryFee = deliveryFee
-    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee + finalDeposit
+    // totalAmount excludes deposit — deposit is tracked separately in depositAmount
+    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee
 
     const startDates = input.items.map((item) => new Date(item.startDate))
     const endDates = input.items.map((item) => new Date(item.endDate))
