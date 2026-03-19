@@ -1197,9 +1197,25 @@ export async function createManualReservation(data: CreateReservationData) {
     ];
 
     const domain = env.NEXT_PUBLIC_APP_DOMAIN;
-    const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
 
     if (data.sendAsQuote) {
+      // Generate authenticated access token for the quote URL
+      const token = nanoid(64);
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: customer.email,
+        storeId: store.id,
+        code: '',
+        type: 'instant_access',
+        token,
+        reservationId,
+        expiresAt,
+        createdAt: new Date(),
+      });
+      const quoteAccessUrl = `${protocol}://${store.slug}.${domain}/r/${reservationId}?token=${token}`;
+
       // Send quote email via dispatcher
       dispatchCustomerNotification('customer_quote_sent', {
         store: storeData,
@@ -1214,12 +1230,13 @@ export async function createManualReservation(data: CreateReservationData) {
           depositAmount,
         },
         items: emailItems,
-        reservationUrl,
+        reservationUrl: quoteAccessUrl,
       }).catch((error) => {
         console.error('Failed to send quote email:', error);
       });
     } else {
       // Send confirmation email
+      const reservationUrl = `${protocol}://${store.slug}.${domain}/account/reservations/${reservationId}`;
       sendReservationConfirmationEmail({
         to: customer.email,
         store: storeData,

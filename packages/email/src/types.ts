@@ -11,4 +11,5 @@ export interface SendEmailOptions {
   subject: string
   html: string
   attachments?: EmailAttachment[]
+  fromName?: string
 }

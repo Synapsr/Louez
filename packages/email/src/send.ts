@@ -32,8 +32,19 @@ export async function sendEmail({
   subject,
   html,
   attachments,
+  fromName,
 }: SendEmailOptions) {
+  // Build from address: use store name if provided, otherwise use SMTP_FROM as-is
+  let from = env.SMTP_FROM
+  if (fromName) {
+    // Extract email address from SMTP_FROM (e.g. "Louez.io <noreply@lumy.agency>" → "noreply@lumy.agency")
+    const emailMatch = env.SMTP_FROM.match(/<(.+)>/)
+    const emailAddress = emailMatch ? emailMatch[1] : env.SMTP_FROM
+    from = `"${fromName.replace(/"/g, '')}" <${emailAddress}>`
+  }
+
   if (process.env.NODE_ENV === 'development') {
+    console.log('[DEV] Email from:', from)
     console.log('[DEV] Email to:', to)
     console.log('[DEV] Subject:', subject)
     console.log('[DEV] HTML:', html)
@@ -44,7 +55,7 @@ export async function sendEmail({
   }
 
   const result = await transporter.sendMail({
-    from: env.SMTP_FROM,
+    from,
     to,
     subject,
     html,

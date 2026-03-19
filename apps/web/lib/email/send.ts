@@ -162,7 +162,7 @@ export async function sendVerificationCodeEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       to,
@@ -257,7 +257,7 @@ export async function sendReservationConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -328,7 +328,7 @@ export async function sendRequestReceivedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -424,7 +424,7 @@ export async function sendRequestAcceptedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -492,7 +492,7 @@ export async function sendRequestRejectedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -562,7 +562,7 @@ export async function sendReminderPickupEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -629,7 +629,7 @@ export async function sendReminderReturnEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -700,7 +700,7 @@ export async function sendNewRequestLandlordEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -755,7 +755,7 @@ export async function sendTeamInvitationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: storeName })
     return { success: true, messageId: result.messageId }
   } catch (error) {
     console.error('Failed to send team invitation email:', error)
@@ -817,7 +817,7 @@ export async function sendInstantAccessEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -900,7 +900,7 @@ export async function sendThankYouReviewEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -973,7 +973,7 @@ export async function sendReservationCancelledEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1050,7 +1050,7 @@ export async function sendReservationCompletedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1126,7 +1126,7 @@ export async function sendPaymentConfirmationEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1197,7 +1197,7 @@ export async function sendPaymentFailedEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1271,7 +1271,7 @@ export async function sendPaymentRequestEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1342,7 +1342,7 @@ export async function sendDepositAuthorizationRequestEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
@@ -1418,7 +1418,7 @@ export async function sendQuoteSentEmail({
   )
 
   try {
-    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
     await logEmail({
       storeId: store.id,
       reservationId: reservation.id,
