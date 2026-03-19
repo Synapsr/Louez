@@ -190,7 +190,15 @@
     "loginHint": "Jeśli nie masz konta, możesz je utworzyć podczas logowania.",
     "logout": "Wyloguj się",
     "backToHome": "Powrót do strony głównej",
-    "joinedTeam": "Dołączyłeś do zespołu!"
+    "joinedTeam": "Dołączyłeś do zespołu!",
+    "nameLabel": "Twoje imię",
+    "namePlaceholder": "Wpisz swoje imię",
+    "errors": {
+      "invalid": "To zaproszenie nie jest już ważne.",
+      "expired": "To zaproszenie wygasło.",
+      "emailMismatch": "To zaproszenie jest przeznaczone dla innego adresu email.",
+      "alreadyMember": "Jesteś już członkiem tego sklepu."
+    }
   },
   "dashboard": {
     "title": "Panel",

@@ -190,7 +190,15 @@
     "loginHint": "Wenn Sie kein Konto haben, können Sie während der Anmeldung eines erstellen.",
     "logout": "Abmelden",
     "backToHome": "Zurück zur Startseite",
-    "joinedTeam": "Sie sind dem Team beigetreten!"
+    "joinedTeam": "Sie sind dem Team beigetreten!",
+    "nameLabel": "Ihr Vorname",
+    "namePlaceholder": "Geben Sie Ihren Vornamen ein",
+    "errors": {
+      "invalid": "Diese Einladung ist nicht mehr gültig.",
+      "expired": "Diese Einladung ist abgelaufen.",
+      "emailMismatch": "Diese Einladung ist für eine andere E-Mail-Adresse bestimmt.",
+      "alreadyMember": "Sie sind bereits Mitglied dieses Shops."
+    }
   },
   "dashboard": {
     "title": "Dashboard",

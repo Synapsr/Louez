@@ -190,7 +190,15 @@
     "loginHint": "Se non hai un account, puoi crearne uno durante l'accesso.",
     "logout": "Esci",
     "backToHome": "Torna alla home",
-    "joinedTeam": "Ti sei unito al team!"
+    "joinedTeam": "Ti sei unito al team!",
+    "nameLabel": "Il tuo nome",
+    "namePlaceholder": "Inserisci il tuo nome",
+    "errors": {
+      "invalid": "Questo invito non è più valido.",
+      "expired": "Questo invito è scaduto.",
+      "emailMismatch": "Questo invito è destinato a un altro indirizzo email.",
+      "alreadyMember": "Sei già membro di questo negozio."
+    }
   },
   "dashboard": {
     "title": "Dashboard",

@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { CheckCircle, XCircle, Clock, Mail, AlertTriangle, LogIn, UserPlus } from 'lucide-react'
@@ -17,6 +17,8 @@ import {
   CardTitle,
 } from '@louez/ui'
 import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui'
+import { Input } from '@louez/ui'
+import { Label } from '@louez/ui'
 import { authClient } from '@louez/auth/client'
 import { acceptInvitation } from './actions'
 
@@ -30,6 +32,7 @@ interface InvitationContentProps {
   invitedEmail?: string
   currentEmail?: string
   token?: string
+  needsName?: boolean
 }
 
 export function InvitationContent({
@@ -40,19 +43,21 @@ export function InvitationContent({
   invitedEmail,
   currentEmail,
   token,
+  needsName,
 }: InvitationContentProps) {
   const router = useRouter()
   const t = useTranslations('invitation')
   const [isPending, startTransition] = useTransition()
+  const [name, setName] = useState('')
 
   const handleAccept = () => {
     if (!token) return
 
     startTransition(async () => {
-      const result = await acceptInvitation(token)
+      const result = await acceptInvitation(token, name || undefined)
 
       if (result.error) {
-        toastManager.add({ title: result.error, type: 'error' })
+        toastManager.add({ title: t(result.error), type: 'error' })
       } else {
         toastManager.add({ title: t('joinedTeam'), type: 'success' })
         router.push('/dashboard')
@@ -60,7 +65,7 @@ export function InvitationContent({
     })
   }
 
-  const getInitial = (name: string) => name.charAt(0).toUpperCase()
+  const getInitial = (value: string) => value.charAt(0).toUpperCase()
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 p-4">
@@ -75,12 +80,7 @@ export function InvitationContent({
             </Avatar>
           </div>
           <CardTitle className="text-xl">{storeName}</CardTitle>
-          {type === 'ready' && (
-            <CardDescription>
-              {t('inviteToJoin', { name: inviterName || '' })}
-            </CardDescription>
-          )}
-          {type === 'login_required' && (
+          {(type === 'ready' || type === 'login_required') && (
             <CardDescription>
               {t('inviteToJoin', { name: inviterName || '' })}
             </CardDescription>
@@ -89,14 +89,27 @@ export function InvitationContent({
 
         <CardContent className="space-y-4">
           {type === 'ready' && (
-            <div className="text-center space-y-4">
-              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30">
+            <div className="space-y-4">
+              <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/30 text-center">
                 <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
                   {t('readyToJoin', { storeName })}
                 </p>
               </div>
-              <p className="text-sm text-muted-foreground">
+              {needsName && (
+                <div className="space-y-2">
+                  <Label htmlFor="name">{t('nameLabel')}</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('namePlaceholder')}
+                    disabled={isPending}
+                    autoFocus
+                  />
+                </div>
+              )}
+              <p className="text-sm text-muted-foreground text-center">
                 {t('accessDescription')}
               </p>
             </div>
@@ -158,7 +171,7 @@ export function InvitationContent({
           {type === 'ready' && (
             <Button
               onClick={handleAccept}
-              disabled={isPending}
+              disabled={isPending || (needsName && !name.trim())}
               className="w-full"
               size="lg"
             >

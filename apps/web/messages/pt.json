@@ -190,7 +190,15 @@
     "loginHint": "Se voce nao tem uma conta, podera criar uma durante o login.",
     "logout": "Sair",
     "backToHome": "Voltar ao inicio",
-    "joinedTeam": "Voce se juntou a equipe!"
+    "joinedTeam": "Voce se juntou a equipe!",
+    "nameLabel": "Seu nome",
+    "namePlaceholder": "Digite seu nome",
+    "errors": {
+      "invalid": "Este convite não é mais válido.",
+      "expired": "Este convite expirou.",
+      "emailMismatch": "Este convite é para outro endereço de email.",
+      "alreadyMember": "Você já é membro desta loja."
+    }
   },
   "dashboard": {
     "title": "Painel",

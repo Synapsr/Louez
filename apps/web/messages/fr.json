@@ -190,7 +190,15 @@
     "loginHint": "Si vous n'avez pas de compte, vous pourrez en créer un lors de la connexion.",
     "logout": "Se déconnecter",
     "backToHome": "Retour à l'accueil",
-    "joinedTeam": "Vous avez rejoint l'équipe !"
+    "joinedTeam": "Vous avez rejoint l'équipe !",
+    "nameLabel": "Votre prénom",
+    "namePlaceholder": "Entrez votre prénom",
+    "errors": {
+      "invalid": "Cette invitation n'est plus valide.",
+      "expired": "Cette invitation a expiré.",
+      "emailMismatch": "Cette invitation est destinée à une autre adresse email.",
+      "alreadyMember": "Vous êtes déjà membre de cette boutique."
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",

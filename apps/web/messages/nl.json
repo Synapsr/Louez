@@ -190,7 +190,15 @@
     "loginHint": "Als u geen account heeft, kunt u er een aanmaken tijdens het inloggen.",
     "logout": "Uitloggen",
     "backToHome": "Terug naar home",
-    "joinedTeam": "U bent lid geworden van het team!"
+    "joinedTeam": "U bent lid geworden van het team!",
+    "nameLabel": "Uw voornaam",
+    "namePlaceholder": "Voer uw voornaam in",
+    "errors": {
+      "invalid": "Deze uitnodiging is niet meer geldig.",
+      "expired": "Deze uitnodiging is verlopen.",
+      "emailMismatch": "Deze uitnodiging is voor een ander e-mailadres.",
+      "alreadyMember": "U bent al lid van deze winkel."
+    }
   },
   "dashboard": {
     "title": "Dashboard",

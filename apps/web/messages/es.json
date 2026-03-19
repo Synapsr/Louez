@@ -190,7 +190,15 @@
     "loginHint": "Si no tiene una cuenta, puede crear una durante el inicio de sesion.",
     "logout": "Cerrar sesion",
     "backToHome": "Volver al inicio",
-    "joinedTeam": "Se ha unido al equipo!"
+    "joinedTeam": "Se ha unido al equipo!",
+    "nameLabel": "Tu nombre",
+    "namePlaceholder": "Ingresa tu nombre",
+    "errors": {
+      "invalid": "Esta invitación ya no es válida.",
+      "expired": "Esta invitación ha expirado.",
+      "emailMismatch": "Esta invitación es para otra dirección de correo electrónico.",
+      "alreadyMember": "Ya eres miembro de esta tienda."
+    }
   },
   "dashboard": {
     "title": "Panel de control",

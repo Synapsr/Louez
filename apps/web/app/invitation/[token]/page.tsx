@@ -111,6 +111,7 @@ export default async function InvitationPage({ params }: InvitationPageProps) {
       storeLogoUrl={invitation.store.logoUrl}
       inviterName={invitation.invitedByUser?.name || invitation.invitedByUser?.email || 'Un membre'}
       token={token}
+      needsName={!user.name}
     />
   )
 }

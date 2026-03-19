@@ -6,13 +6,12 @@ import { storeInvitations, storeMembers, users } from '@louez/db'
 import { eq, and } from 'drizzle-orm'
 import { setActiveStoreId } from '@/lib/store-context'
 
-export async function acceptInvitation(token: string) {
+export async function acceptInvitation(token: string, name?: string) {
   const session = await auth()
   if (!session?.user?.id) {
-    return { error: 'Vous devez être connecté pour accepter cette invitation' }
+    return { error: 'errors.unauthorized' }
   }
 
-  // Find the invitation
   const invitation = await db.query.storeInvitations.findFirst({
     where: and(
       eq(storeInvitations.token, token),
@@ -21,29 +20,25 @@ export async function acceptInvitation(token: string) {
   })
 
   if (!invitation) {
-    return { error: 'Cette invitation n\'est plus valide' }
+    return { error: 'errors.invalid' }
   }
 
-  // Check if expired
   if (new Date() > new Date(invitation.expiresAt)) {
-    return { error: 'Cette invitation a expiré' }
+    return { error: 'errors.expired' }
   }
 
-  // Get user email
   const user = await db.query.users.findFirst({
     where: eq(users.id, session.user.id),
   })
 
   if (!user) {
-    return { error: 'Utilisateur non trouvé' }
+    return { error: 'errors.unauthorized' }
   }
 
-  // Check email match
   if (user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-    return { error: 'Cette invitation est destinée à une autre adresse email' }
+    return { error: 'errors.emailMismatch' }
   }
 
-  // Check if already a member
   const existingMember = await db.query.storeMembers.findFirst({
     where: and(
       eq(storeMembers.storeId, invitation.storeId),
@@ -52,10 +47,18 @@ export async function acceptInvitation(token: string) {
   })
 
   if (existingMember) {
-    return { error: 'Vous êtes déjà membre de cette boutique' }
+    return { error: 'errors.alreadyMember' }
   }
 
-  // Add as member
+  // Update user name if provided and not already set
+  const trimmedName = name?.trim()
+  if (trimmedName && !user.name) {
+    await db
+      .update(users)
+      .set({ name: trimmedName })
+      .where(eq(users.id, session.user.id))
+  }
+
   await db.insert(storeMembers).values({
     storeId: invitation.storeId,
     userId: session.user.id,
@@ -63,7 +66,6 @@ export async function acceptInvitation(token: string) {
     addedBy: invitation.invitedBy,
   })
 
-  // Mark invitation as accepted
   await db
     .update(storeInvitations)
     .set({
@@ -72,10 +74,8 @@ export async function acceptInvitation(token: string) {
     })
     .where(eq(storeInvitations.id, invitation.id))
 
-  // Set as active store (will succeed since we just added membership above)
   const setStoreResult = await setActiveStoreId(invitation.storeId)
   if (!setStoreResult.success) {
-    // This should not happen since we just added the membership
     console.error('[SECURITY] Failed to set active store after accepting invitation:', setStoreResult.error)
   }
 
