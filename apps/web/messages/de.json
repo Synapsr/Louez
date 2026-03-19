@@ -1859,7 +1859,9 @@
         "ongoing": "Laufend",
         "completed": "Abgeschlossen",
         "cancelled": "Storniert",
-        "rejected": "Abgelehnt"
+        "rejected": "Abgelehnt",
+        "quote": "Angebot",
+        "declined": "Angebot abgelehnt"
       },
       "viewMode": {
         "label": "Ansichtsmodus",

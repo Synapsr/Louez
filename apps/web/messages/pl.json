@@ -1820,7 +1820,9 @@
         "ongoing": "W trakcie",
         "completed": "Zakończona",
         "cancelled": "Anulowana",
-        "rejected": "Odrzucona"
+        "rejected": "Odrzucona",
+        "quote": "Wycena",
+        "declined": "Wycena odrzucona"
       },
       "viewMode": {
         "label": "Tryb widoku",

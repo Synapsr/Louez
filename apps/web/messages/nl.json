@@ -1820,7 +1820,9 @@
         "ongoing": "Lopend",
         "completed": "Voltooid",
         "cancelled": "Geannuleerd",
-        "rejected": "Afgewezen"
+        "rejected": "Afgewezen",
+        "quote": "Offerte",
+        "declined": "Offerte geweigerd"
       },
       "viewMode": {
         "label": "Weergavemodus",
