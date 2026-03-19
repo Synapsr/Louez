@@ -1098,7 +1098,9 @@
         "ongoing": "En cours",
         "completed": "Terminée",
         "cancelled": "Annulée",
-        "rejected": "Refusée"
+        "rejected": "Refusée",
+        "quote": "Devis",
+        "declined": "Devis refusé"
       },
       "filters": {
         "all": "Toutes",
@@ -1356,7 +1358,9 @@
           "conflictCanContinue": "Ces produits sont déjà réservés sur cette période. Vous pouvez continuer si vous gérez manuellement la disponibilité.",
           "insufficientStock": "Stock insuffisant"
         },
-        "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé"
+        "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé",
+        "sendAsQuote": "Envoyer comme devis",
+        "quoteSent": "Devis envoyé au client"
       },
       "rejectDialog": {
         "title": "Refuser la demande",
@@ -1658,6 +1662,15 @@
       "rejectedCard": {
         "title": "Demande refusée",
         "description": "Cette demande a été refusée"
+      },
+      "quoteCard": {
+        "title": "Devis envoyé",
+        "description": "Le client a reçu ce devis. En attente de sa réponse.",
+        "confirm": "Confirmer directement"
+      },
+      "declinedCard": {
+        "title": "Devis refusé",
+        "description": "Le client a refusé ce devis"
       },
       "emailModal": {
         "title": "Envoyer un email",
@@ -4231,7 +4244,11 @@
         "cancelled": "Annulée",
         "cancelledDescription": "Cette réservation a été annulée",
         "rejected": "Refusée",
-        "rejectedDescription": "Cette demande a été refusée"
+        "rejectedDescription": "Cette demande a été refusée",
+        "quote": "Devis",
+        "quoteDescription": "Un devis vous a été envoyé. Acceptez-le ou refusez-le.",
+        "declined": "Refusé",
+        "declinedDescription": "Vous avez refusé ce devis"
       },
       "signContract": "Signer le contrat",
       "contractSigned": "Contrat signé",
@@ -4283,6 +4300,14 @@
         "paymentDescription": "Votre paiement a bien été enregistré.",
         "deposit": "Caution autorisée avec succès",
         "depositDescription": "Le montant a été bloqué temporairement sur votre carte."
+      },
+      "quote": {
+        "accept": "Accepter le devis",
+        "decline": "Refuser le devis",
+        "declineTitle": "Refuser ce devis ?",
+        "declineDescription": "Vous êtes sur le point de refuser ce devis. Le loueur en sera informé.",
+        "cancel": "Annuler",
+        "confirmDecline": "Refuser le devis"
       }
     },
     "footer": {
@@ -4528,6 +4553,15 @@
       "title": "Demande non acceptée",
       "body": "Nous sommes désolés, votre demande de réservation #{number} n'a pas pu être acceptée.",
       "contactForAlternative": "N'hésitez pas à nous contacter pour plus d'informations ou pour trouver une alternative qui pourrait vous convenir."
+    },
+    "quoteSent": {
+      "subject": "Devis #{number}",
+      "title": "Vous avez reçu un devis",
+      "body": "{store} vous a envoyé un devis pour la réservation #{number}.",
+      "rentalPeriod": "Période de location",
+      "yourQuote": "Votre devis",
+      "viewQuote": "Voir le devis",
+      "expiry": "Vous pouvez accepter ou refuser ce devis depuis votre espace client."
     },
     "reminderPickup": {
       "subject": "Rappel : votre location commence demain !",

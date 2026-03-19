@@ -38,6 +38,7 @@ export const dashboardReservationsListInputSchema = z.object({
       'completed',
       'cancelled',
       'rejected',
+      'quote',
     ])
     .optional(),
   period: z.enum(['today', 'week', 'month']).optional(),
@@ -67,6 +68,8 @@ export const dashboardReservationUpdateStatusInputSchema = z.object({
     'completed',
     'cancelled',
     'rejected',
+    'quote',
+    'declined',
   ]),
   rejectionReason: z.string().max(2000).optional(),
 })
@@ -256,6 +259,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     internalNotes: z.string().max(100000).optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
     sendConfirmationEmail: z.boolean().optional(),
+    sendAsQuote: z.boolean().optional(),
   }),
 })
 

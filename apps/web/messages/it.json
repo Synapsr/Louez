@@ -1056,7 +1056,9 @@
         "ongoing": "In corso",
         "completed": "Completata",
         "cancelled": "Annullata",
-        "rejected": "Rifiutata"
+        "rejected": "Rifiutata",
+        "quote": "Preventivo",
+        "declined": "Preventivo rifiutato"
       },
       "filters": {
         "all": "Tutte",
@@ -1173,6 +1175,8 @@
         "durationHours": "{count, plural, one {# ora} other {# ore}}",
         "durationWeeks": "{count, plural, one {# settimana} other {# settimane}}",
         "reservationCreated": "Prenotazione creata",
+        "sendAsQuote": "Invia come preventivo",
+        "quoteSent": "Preventivo inviato al cliente",
         "selectDatesError": "Seleziona le date",
         "addProductError": "Aggiungi almeno un prodotto",
         "selectCustomerError": "Seleziona un cliente",
@@ -1306,6 +1310,15 @@
           "insurableProduct": "Assicurabile",
           "assuredProduct": "Assicurato"
         }
+      },
+      "quoteCard": {
+        "title": "Preventivo inviato",
+        "description": "Il cliente ha ricevuto questo preventivo. In attesa di risposta.",
+        "confirm": "Conferma direttamente"
+      },
+      "declinedCard": {
+        "title": "Preventivo rifiutato",
+        "description": "Il cliente ha rifiutato questo preventivo"
       },
       "rejectDialog": {
         "title": "Rifiuta richiesta",
@@ -4231,7 +4244,11 @@
         "cancelled": "Annullata",
         "cancelledDescription": "Questa prenotazione e stata annullata",
         "rejected": "Rifiutata",
-        "rejectedDescription": "Questa richiesta e stata rifiutata"
+        "rejectedDescription": "Questa richiesta e stata rifiutata",
+        "quote": "Preventivo",
+        "quoteDescription": "Le è stato inviato un preventivo. Lo accetti o lo rifiuti.",
+        "declined": "Rifiutato",
+        "declinedDescription": "Ha rifiutato questo preventivo"
       },
       "signContract": "Firma contratto",
       "contractSigned": "Contratto firmato",
@@ -4277,6 +4294,14 @@
         "title": "Come e stato il tuo noleggio?",
         "description": "Il tuo feedback aiuta {name} a migliorare",
         "leaveReview": "Lascia una recensione"
+      },
+      "quote": {
+        "accept": "Accetta preventivo",
+        "decline": "Rifiuta preventivo",
+        "declineTitle": "Rifiutare questo preventivo?",
+        "declineDescription": "Sta per rifiutare questo preventivo. Il noleggiatore verrà informato.",
+        "cancel": "Annulla",
+        "confirmDecline": "Rifiuta preventivo"
       },
       "successToast": {
         "payment": "Pagamento effettuato con successo",
@@ -4657,6 +4682,15 @@
       "authorizeNow": "Autorizza cauzione",
       "linkFallback": "Oppure copia questo link nel tuo browser:",
       "securePayment": "Questa autorizzazione è protetta da Stripe. L'importo non verrà addebitato immediatamente."
+    },
+    "quoteSent": {
+      "subject": "Preventivo #{number}",
+      "title": "Ha ricevuto un preventivo",
+      "body": "{store} le ha inviato un preventivo per la prenotazione #{number}.",
+      "rentalPeriod": "Periodo di noleggio",
+      "yourQuote": "Il suo preventivo",
+      "viewQuote": "Vedi preventivo",
+      "expiry": "Può accettare o rifiutare questo preventivo dal suo account."
     }
   },
   "contract": {

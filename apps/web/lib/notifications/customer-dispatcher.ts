@@ -15,6 +15,7 @@ import {
   sendReminderReturnEmail,
   sendPaymentRequestEmail,
   sendDepositAuthorizationRequestEmail,
+  sendQuoteSentEmail,
 } from '@/lib/email/send'
 import {
   sendReservationConfirmationSms,
@@ -125,6 +126,8 @@ function mergeTemplateWithLegacy(
     customer_reminder_return: 'returnReminderContent',
     customer_payment_requested: null, // No legacy mapping
     customer_deposit_authorization_requested: null, // No legacy mapping
+    customer_quote_sent: null, // No legacy mapping
+    customer_quote_accepted: null, // No legacy mapping
   }
 
   const legacyKey = legacyKeyMap[eventType]
@@ -157,12 +160,12 @@ export async function dispatchCustomerNotification(
   // Import defaults dynamically to avoid circular dependency
   const { DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS } = await import('@louez/types')
 
-  // Get preferences (use defaults if not set)
+  // Get preferences (use defaults if not set, with per-key fallback for new event types)
   const settings = ctx.store.customerNotificationSettings || DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS
-  const prefs = settings[eventType]
+  const prefs = settings[eventType] ?? DEFAULT_CUSTOMER_NOTIFICATION_SETTINGS[eventType]
 
   // Skip if notification type is disabled
-  if (!prefs.enabled) {
+  if (!prefs?.enabled) {
     result.email.skipped = true
     result.sms.skipped = true
     return result
@@ -307,6 +310,36 @@ async function sendCustomerEmail(
         locale,
       })
 
+    case 'customer_quote_sent':
+      return sendQuoteSentEmail({
+        to: ctx.customer.email,
+        store: ctx.store,
+        customer: ctx.customer,
+        reservation: {
+          id: ctx.reservation.id,
+          number: ctx.reservation.number,
+          startDate: ctx.reservation.startDate,
+          endDate: ctx.reservation.endDate,
+          totalAmount: ctx.reservation.totalAmount,
+        },
+        items: (ctx.items || []).map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          totalPrice: item.totalPrice,
+        })),
+        reservationUrl: ctx.reservationUrl || '',
+        locale,
+      })
+
+    case 'customer_quote_accepted':
+      // Re-use request accepted email for quote accepted (same content: confirmed reservation)
+      return sendRequestAcceptedEmail({
+        ...emailParams,
+        items: ctx.items || [],
+        reservationUrl: ctx.reservationUrl || '',
+        paymentUrl: ctx.paymentUrl,
+      })
+
     default:
       throw new Error(`Unknown customer notification event type: ${eventType}`)
   }
@@ -388,6 +421,11 @@ async function sendCustomerSms(
         currency: ctx.store.settings?.currency,
       })
 
+    case 'customer_quote_sent':
+    case 'customer_quote_accepted':
+      // SMS not implemented for quote events
+      return
+
     default:
       throw new Error(`Unknown customer notification event type: ${eventType}`)
   }
@@ -412,6 +450,8 @@ export function shouldSendCustomerNotification(
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },
     customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
+    customer_quote_sent: { enabled: true, email: true, sms: false },
+    customer_quote_accepted: { enabled: true, email: true, sms: false },
     templates: {},
   }
 

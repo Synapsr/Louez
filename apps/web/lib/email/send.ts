@@ -23,6 +23,7 @@ import {
   PaymentFailedEmail,
   PaymentRequestEmail,
   DepositAuthorizationRequestEmail,
+  QuoteSentEmail,
 } from './templates'
 
 interface Store {
@@ -1342,6 +1343,82 @@ export async function sendDepositAuthorizationRequestEmail({
       to,
       subject,
       templateType: 'deposit_authorization_request',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Quote Sent Email
+export async function sendQuoteSentEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  items,
+  reservationUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  items: { name: string; quantity: number; totalPrice: number }[]
+  reservationUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = `${t.quoteSent.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    QuoteSentEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      items,
+      total: reservation.totalAmount,
+      reservationUrl,
+      locale,
+      currency: store.settings?.currency || 'EUR',
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'quote_sent',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'quote_sent',
       status: 'failed',
       error: String(error),
     })

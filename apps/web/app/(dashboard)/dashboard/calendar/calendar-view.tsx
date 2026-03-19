@@ -47,6 +47,8 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
   completed: 'bg-gray-400',
   cancelled: 'bg-red-300',
   rejected: 'bg-red-400',
+  quote: 'bg-violet-500',
+  declined: 'bg-slate-400',
 }
 
 // Calendar sub-view options
@@ -154,6 +156,8 @@ export function CalendarView({
       completed: t('status.completed'),
       cancelled: t('status.cancelled'),
       rejected: t('status.rejected'),
+      quote: t('status.quote'),
+      declined: t('status.declined'),
     }),
     [t]
   )

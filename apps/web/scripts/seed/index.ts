@@ -214,6 +214,8 @@ function generateCustomerNotificationSettings(): CustomerNotificationSettings {
     customer_reminder_return: { enabled: true, email: true, sms: false },
     customer_payment_requested: { enabled: true, email: true, sms: false },
     customer_deposit_authorization_requested: { enabled: true, email: true, sms: false },
+    customer_quote_sent: { enabled: true, email: true, sms: false },
+    customer_quote_accepted: { enabled: true, email: true, sms: false },
     templates: {},
     reminderSettings: {
       pickupReminderHours: 24,

@@ -33,7 +33,7 @@ import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
 import { generateAccessUrl } from '@/app/(dashboard)/dashboard/reservations/actions'
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
 interface Customer {
   id: string
@@ -70,6 +70,8 @@ const STATUS_CLASSES: Record<ReservationStatus, string> = {
   completed: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700',
   cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800',
+  quote: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 border-violet-200 dark:border-violet-800',
+  declined: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400 border-slate-200 dark:border-slate-700',
 }
 
 export function ReservationHeader({
@@ -100,7 +102,7 @@ export function ReservationHeader({
   const [isGeneratingLink, setIsGeneratingLink] = useState(false)
 
   const isFullyPaid = rentalPaid >= rentalAmount && (depositAmount === 0 || depositCollected >= depositAmount)
-  const canEdit = !['completed', 'cancelled', 'rejected'].includes(status)
+  const canEdit = !['completed', 'cancelled', 'rejected', 'declined'].includes(status)
 
   const handleGenerateAccessUrl = async () => {
     setIsGeneratingLink(true)

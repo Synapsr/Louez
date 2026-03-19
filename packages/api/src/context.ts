@@ -85,7 +85,9 @@ export interface BaseContext {
         | 'ongoing'
         | 'completed'
         | 'cancelled'
-        | 'rejected',
+        | 'rejected'
+        | 'quote'
+        | 'declined',
       rejectionReason?: string,
     ) => Promise<
       | { success?: boolean; error?: string }

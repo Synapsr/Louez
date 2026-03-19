@@ -31,6 +31,8 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
   completed: 'bg-slate-400/90 border-slate-500',
   cancelled: 'bg-rose-400/90 border-rose-500',
   rejected: 'bg-slate-300/90 border-slate-400',
+  quote: 'bg-violet-500/90 border-violet-600',
+  declined: 'bg-slate-300/90 border-slate-400',
 }
 
 // =============================================================================

@@ -37,6 +37,7 @@ import type { StoreSettings, ReviewBoosterSettings } from '@louez/types'
 import { getCustomerSession } from '../../actions'
 import { DownloadContractButton } from './download-contract-button'
 import { PayNowButton } from './pay-now-button'
+import { QuoteActions } from './quote-actions'
 import { ReviewPromptCard } from '@/components/storefront/review-prompt-card'
 import { buildReviewUrl } from '@/lib/google-places'
 import { formatStoreDate } from '@/lib/utils/store-date'
@@ -71,7 +72,7 @@ export default async function ReservationDetailPage({
     storefrontRedirect(slug, '/account/login')
   }
 
-  type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+  type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
   const statusConfig: Record<ReservationStatus, {
     label: string
@@ -136,6 +137,24 @@ export default async function ReservationDetailPage({
       bgColor: 'bg-red-100 dark:bg-red-950/50',
       borderColor: 'border-red-200 dark:border-red-800',
     },
+    quote: {
+      label: t('status.quote'),
+      description: t('status.quoteDescription'),
+      variant: 'secondary',
+      icon: FileText,
+      color: 'text-violet-600 dark:text-violet-400',
+      bgColor: 'bg-violet-100 dark:bg-violet-950/50',
+      borderColor: 'border-violet-200 dark:border-violet-800',
+    },
+    declined: {
+      label: t('status.declined'),
+      description: t('status.declinedDescription'),
+      variant: 'outline',
+      icon: XCircle,
+      color: 'text-slate-600 dark:text-slate-400',
+      bgColor: 'bg-slate-100 dark:bg-slate-950/50',
+      borderColor: 'border-slate-200 dark:border-slate-700',
+    },
   }
 
   const reservation = await db.query.reservations.findFirst({
@@ -177,6 +196,9 @@ export default async function ReservationDetailPage({
 
   // When confirmed and paid, show a positive message
   const isConfirmedAndPaid = reservation.status === 'confirmed' && isPaid
+
+  // Quote state
+  const isQuote = reservation.status === 'quote'
 
   return (
     <div className="min-h-[calc(100vh-200px)] bg-gradient-to-b from-muted/30 to-background">
@@ -248,6 +270,12 @@ export default async function ReservationDetailPage({
               {showPaymentRequired && (
                 <div className="sm:flex-shrink-0">
                   <PayNowButton storeSlug={slug} reservationId={reservationId} />
+                </div>
+              )}
+              {/* Quote accept/decline buttons */}
+              {isQuote && (
+                <div className="sm:flex-shrink-0">
+                  <QuoteActions storeSlug={slug} reservationId={reservationId} />
                 </div>
               )}
             </div>

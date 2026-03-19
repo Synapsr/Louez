@@ -13,6 +13,7 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  FileText,
   Sparkles,
   CreditCard,
   History,
@@ -85,7 +86,7 @@ export default async function AccountPage({ params }: AccountPageProps) {
     storefrontRedirect(slug, '/account/login')
   }
 
-  type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+  type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
   const statusConfig: Record<ReservationStatus, {
     label: string
@@ -136,6 +137,20 @@ export default async function AccountPage({ params }: AccountPageProps) {
       color: 'text-red-600 dark:text-red-400',
       bgColor: 'bg-red-50 dark:bg-red-950/30',
     },
+    quote: {
+      label: t('status.quote'),
+      variant: 'secondary',
+      icon: FileText,
+      color: 'text-violet-600 dark:text-violet-400',
+      bgColor: 'bg-violet-50 dark:bg-violet-950/30',
+    },
+    declined: {
+      label: t('status.declined'),
+      variant: 'outline',
+      icon: XCircle,
+      color: 'text-slate-500',
+      bgColor: 'bg-slate-50 dark:bg-slate-950/30',
+    },
   }
 
   const customerReservations = await db.query.reservations.findMany({
@@ -150,14 +165,14 @@ export default async function AccountPage({ params }: AccountPageProps) {
     },
   })
 
-  // Current reservations: pending, confirmed, ongoing (active)
+  // Current reservations: pending, confirmed, ongoing, quote (active)
   const currentReservations = customerReservations.filter(
-    (r) => r.status === 'pending' || r.status === 'confirmed' || r.status === 'ongoing'
+    (r) => r.status === 'pending' || r.status === 'confirmed' || r.status === 'ongoing' || r.status === 'quote'
   )
 
-  // History: completed, cancelled, rejected (closed)
+  // History: completed, cancelled, rejected, declined (closed)
   const historyReservations = customerReservations.filter(
-    (r) => r.status === 'completed' || r.status === 'cancelled' || r.status === 'rejected'
+    (r) => r.status === 'completed' || r.status === 'cancelled' || r.status === 'rejected' || r.status === 'declined'
   )
 
   const pendingReservations = customerReservations.filter(

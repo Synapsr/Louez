@@ -19,6 +19,7 @@ import {
   Package,
   User,
   XCircle,
+  FileText,
 } from 'lucide-react'
 
 import {
@@ -42,6 +43,8 @@ const STATUS_ICON_MAP: Record<ReservationStatus, typeof Clock> = {
   completed: CheckCircle,
   cancelled: Ban,
   rejected: XCircle,
+  quote: FileText,
+  declined: XCircle,
 }
 
 interface ReservationsCardViewProps {
@@ -86,7 +89,7 @@ export function ReservationsCardView({
           const isLoading = loadingAction?.startsWith(reservation.id)
 
           const paymentInfo = getPaymentStatus(reservation)
-          const showPaymentStatus = !['cancelled', 'rejected'].includes(status)
+          const showPaymentStatus = !['cancelled', 'rejected', 'declined', 'quote'].includes(status)
 
           const hasPendingOnlinePayment = reservation.payments.some(
             (p) => p.method === 'stripe' && p.status === 'pending' && p.type === 'rental'

@@ -98,7 +98,8 @@ export function ReservationsPageContent({
           status === 'ongoing' ||
           status === 'completed' ||
           status === 'cancelled' ||
-          status === 'rejected'
+          status === 'rejected' ||
+          status === 'quote'
             ? status
             : undefined,
         period: period === 'today' || period === 'week' || period === 'month' ? period : undefined,
@@ -121,6 +122,7 @@ export function ReservationsPageContent({
     ongoing: 0,
     completed: 0,
     cancelled: 0,
+    quote: 0,
   }
   const totalCount = (reservationsQuery.data as any)?.totalCount ?? null
 

@@ -39,7 +39,7 @@ import { formatStoreDate } from '@/lib/utils/store-date'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import { orpc } from '@/lib/orpc/react'
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 type InspectionMode = 'optional' | 'recommended' | 'required'
 type ActionWarning = {
   key: string
@@ -304,7 +304,7 @@ export function SmartReservationActions({
     setReturnConfirmOpen(false)
   }
 
-  const canCancel = !['cancelled', 'completed', 'rejected'].includes(status)
+  const canCancel = !['cancelled', 'completed', 'rejected', 'declined'].includes(status)
 
   // Render based on status
   const renderContent = () => {
@@ -567,6 +567,66 @@ export function SmartReservationActions({
                 <div>
                   <p className="text-sm font-medium">{t('rejectedCard.title')}</p>
                   <p className="text-xs text-muted-foreground">{t('rejectedCard.description')}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )
+
+      case 'quote':
+        return (
+          <Card className="border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/50">
+                  <Clock className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t('quoteCard.title')}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('quoteCard.description')}</p>
+              <div className="space-y-2">
+                <Button
+                  variant="success"
+                  className="w-full"
+                  onClick={() => handleStatusChange('confirmed')}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  {t('quoteCard.confirm')}
+                </Button>
+              </div>
+              {canCancel && (
+                <div className="pt-2 border-t mt-3">
+                  <button
+                    className="w-full text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={() => setCancelDialogOpen(true)}
+                    disabled={isLoading}
+                  >
+                    {t('cancelReservation')}
+                  </button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )
+
+      case 'declined':
+        return (
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                  <XCircle className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t('declinedCard.title')}</p>
+                  <p className="text-xs text-muted-foreground">{t('declinedCard.description')}</p>
                 </div>
               </div>
             </CardContent>

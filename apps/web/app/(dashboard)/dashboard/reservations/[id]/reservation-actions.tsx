@@ -35,7 +35,7 @@ import { formatStoreDate } from '@/lib/utils/store-date'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import { orpc } from '@/lib/orpc/react'
 
-type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected'
+type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 type ActionWarning = {
   key: string
   params?: Record<string, string | number>
@@ -244,7 +244,7 @@ export function ReservationActions({
     }
   }
 
-  const canCancel = !['cancelled', 'completed', 'rejected'].includes(status)
+  const canCancel = !['cancelled', 'completed', 'rejected', 'declined'].includes(status)
 
   // Render different card based on status
   const renderContent = () => {

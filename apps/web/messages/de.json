@@ -1095,7 +1095,9 @@
         "ongoing": "Laufend",
         "completed": "Abgeschlossen",
         "cancelled": "Storniert",
-        "rejected": "Abgelehnt"
+        "rejected": "Abgelehnt",
+        "quote": "Angebot",
+        "declined": "Angebot abgelehnt"
       },
       "filters": {
         "all": "Alle",
@@ -1211,6 +1213,8 @@
         "durationDays": "{count, plural, one {# Tag} other {# Tage}}",
         "durationHours": "{count, plural, one {# Stunde} other {# Stunden}}",
         "durationWeeks": "{count, plural, one {# Woche} other {# Wochen}}",
+        "sendAsQuote": "Als Angebot senden",
+        "quoteSent": "Angebot an den Kunden gesendet",
         "reservationCreated": "Reservierung erstellt",
         "selectDatesError": "Bitte wählen Sie Daten aus",
         "addProductError": "Bitte fügen Sie mindestens ein Produkt hinzu",
@@ -1646,6 +1650,15 @@
       "rejectedCard": {
         "title": "Abgelehnte Anfrage",
         "description": "Diese Anfrage wurde abgelehnt"
+      },
+      "quoteCard": {
+        "title": "Angebot gesendet",
+        "description": "Der Kunde hat dieses Angebot erhalten. Warten auf Antwort.",
+        "confirm": "Direkt bestätigen"
+      },
+      "declinedCard": {
+        "title": "Angebot abgelehnt",
+        "description": "Der Kunde hat dieses Angebot abgelehnt"
       },
       "emailModal": {
         "title": "E-Mail senden",
@@ -4231,7 +4244,11 @@
         "cancelled": "Storniert",
         "cancelledDescription": "Diese Reservierung wurde storniert",
         "rejected": "Abgelehnt",
-        "rejectedDescription": "Diese Anfrage wurde abgelehnt"
+        "rejectedDescription": "Diese Anfrage wurde abgelehnt",
+        "quote": "Angebot",
+        "quoteDescription": "Ein Angebot wurde Ihnen gesendet. Nehmen Sie es an oder lehnen Sie es ab.",
+        "declined": "Abgelehnt",
+        "declinedDescription": "Sie haben dieses Angebot abgelehnt"
       },
       "signContract": "Vertrag unterschreiben",
       "contractSigned": "Vertrag unterschrieben",
@@ -4244,6 +4261,14 @@
       "paymentInProgress": "Zahlung wird verarbeitet",
       "paymentRequired": "Zahlung erforderlich",
       "confirmedAwaitingPayment": "Warten auf Zahlung",
+      "quote": {
+        "accept": "Angebot annehmen",
+        "decline": "Angebot ablehnen",
+        "declineTitle": "Dieses Angebot ablehnen?",
+        "declineDescription": "Sie sind dabei, dieses Angebot abzulehnen. Der Vermieter wird benachrichtigt.",
+        "cancel": "Abbrechen",
+        "confirmDecline": "Angebot ablehnen"
+      },
       "paymentHistory": {
         "title": "Zahlungsverlauf",
         "noPayments": "Keine Zahlungen verzeichnet",
@@ -4657,6 +4682,15 @@
       "authorizeNow": "Kaution autorisieren",
       "linkFallback": "Oder kopieren Sie diesen Link in Ihren Browser:",
       "securePayment": "Diese Autorisierung wird durch Stripe gesichert. Der Betrag wird nicht sofort belastet."
+    },
+    "quoteSent": {
+      "subject": "Angebot #{number}",
+      "title": "Sie haben ein Angebot erhalten",
+      "body": "{store} hat Ihnen ein Angebot für die Reservierung #{number} gesendet.",
+      "rentalPeriod": "Mietzeitraum",
+      "yourQuote": "Ihr Angebot",
+      "viewQuote": "Angebot ansehen",
+      "expiry": "Sie können dieses Angebot in Ihrem Kundenkonto annehmen oder ablehnen."
     }
   },
   "contract": {

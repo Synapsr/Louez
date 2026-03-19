@@ -1056,7 +1056,9 @@
         "ongoing": "Em andamento",
         "completed": "Concluida",
         "cancelled": "Cancelada",
-        "rejected": "Rejeitada"
+        "rejected": "Rejeitada",
+        "quote": "Orçamento",
+        "declined": "Orçamento recusado"
       },
       "filters": {
         "all": "Todas",
@@ -1135,6 +1137,8 @@
         "addProduct": "Adicionar um produto",
         "create": "Criar reserva",
         "sendConfirmationEmail": "Enviar confirmacao ao cliente",
+        "sendAsQuote": "Enviar como orçamento",
+        "quoteSent": "Orçamento enviado ao cliente",
         "customer": "Cliente",
         "customerStepDescription": "Selecione um cliente existente ou crie um novo",
         "chooseCustomer": "Escolher um cliente",
@@ -1581,6 +1585,15 @@
       "pendingCard": {
         "title": "Solicitacao pendente",
         "description": "Este cliente quer reservar. Aceite ou rejeite a solicitacao."
+      },
+      "quoteCard": {
+        "title": "Orçamento enviado",
+        "description": "O cliente recebeu este orçamento. Aguardando resposta.",
+        "confirm": "Confirmar diretamente"
+      },
+      "declinedCard": {
+        "title": "Orçamento recusado",
+        "description": "O cliente recusou este orçamento"
       },
       "paymentPendingCard": {
         "title": "Pagamento em curso",
@@ -4231,7 +4244,11 @@
         "cancelled": "Cancelada",
         "cancelledDescription": "Esta reserva foi cancelada",
         "rejected": "Rejeitada",
-        "rejectedDescription": "Esta solicitacao foi rejeitada"
+        "rejectedDescription": "Esta solicitacao foi rejeitada",
+        "quote": "Orçamento",
+        "quoteDescription": "Um orçamento foi enviado para você. Aceite ou recuse.",
+        "declined": "Recusado",
+        "declinedDescription": "Você recusou este orçamento"
       },
       "signContract": "Assinar contrato",
       "contractSigned": "Contrato assinado",
@@ -4283,6 +4300,14 @@
         "paymentDescription": "O seu pagamento foi registado.",
         "deposit": "Depósito autorizado com sucesso",
         "depositDescription": "O valor foi temporariamente bloqueado no seu cartão."
+      },
+      "quote": {
+        "accept": "Aceitar orçamento",
+        "decline": "Recusar orçamento",
+        "declineTitle": "Recusar este orçamento?",
+        "declineDescription": "Você está prestes a recusar este orçamento. O locador será notificado.",
+        "cancel": "Cancelar",
+        "confirmDecline": "Recusar orçamento"
       }
     },
     "footer": {
@@ -4657,6 +4682,15 @@
       "authorizeNow": "Autorizar caução",
       "linkFallback": "Ou copie este link no seu navegador:",
       "securePayment": "Esta autorização é protegida pelo Stripe. O valor não será cobrado imediatamente."
+    },
+    "quoteSent": {
+      "subject": "Orçamento #{number}",
+      "title": "Você recebeu um orçamento",
+      "body": "{store} enviou um orçamento para a reserva #{number}.",
+      "rentalPeriod": "Período de locação",
+      "yourQuote": "Seu orçamento",
+      "viewQuote": "Ver orçamento",
+      "expiry": "Você pode aceitar ou recusar este orçamento na sua conta."
     }
   },
   "contract": {

@@ -22,6 +22,8 @@ const statusColors: Record<ReservationStatus, string> = {
   completed: 'bg-gray-400 hover:bg-gray-500',
   cancelled: 'bg-red-300 hover:bg-red-400',
   rejected: 'bg-red-400 hover:bg-red-500',
+  quote: 'bg-violet-500 hover:bg-violet-600',
+  declined: 'bg-slate-400 hover:bg-slate-500',
 }
 
 const statusColorsDark: Record<ReservationStatus, string> = {
@@ -31,6 +33,8 @@ const statusColorsDark: Record<ReservationStatus, string> = {
   completed: 'dark:bg-gray-500 dark:hover:bg-gray-600',
   cancelled: 'dark:bg-red-400 dark:hover:bg-red-500',
   rejected: 'dark:bg-red-500 dark:hover:bg-red-600',
+  quote: 'dark:bg-violet-600 dark:hover:bg-violet-700',
+  declined: 'dark:bg-slate-500 dark:hover:bg-slate-600',
 }
 
 // =============================================================================

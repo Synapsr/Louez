@@ -192,7 +192,9 @@ type ActivityType =
   | 'inspection_return_started'
   | 'inspection_return_completed'
   | 'inspection_damage_detected'
-  | 'inspection_signed';
+  | 'inspection_signed'
+  | 'quote_accepted'
+  | 'quote_declined';
 
 function getErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith('errors.')) {
@@ -427,8 +429,8 @@ export async function updateReservationStatus(
   };
 
   // Dispatch customer notification based on status change
-  if (previousStatus === 'pending' && status === 'confirmed') {
-    // Request accepted - build items for email
+  if ((previousStatus === 'pending' || previousStatus === 'quote') && status === 'confirmed') {
+    // Request/quote accepted - build items for email
     const emailItems = reservation.items.map((item) => ({
       name: item.productSnapshot?.name || 'Product',
       quantity: item.quantity,
@@ -552,7 +554,7 @@ export async function cancelReservation(reservationId: string) {
   }
 
   if (
-    ['cancelled', 'completed', 'rejected'].includes(reservation.status || '')
+    ['cancelled', 'completed', 'rejected', 'declined'].includes(reservation.status || '')
   ) {
     return { error: 'errors.cannotCancelReservation' };
   }
@@ -705,6 +707,7 @@ interface CreateReservationData {
   internalNotes?: string;
   tulipInsuranceOptIn?: boolean;
   sendConfirmationEmail?: boolean;
+  sendAsQuote?: boolean;
 }
 
 export async function createManualReservation(data: CreateReservationData) {
@@ -1055,7 +1058,7 @@ export async function createManualReservation(data: CreateReservationData) {
     storeId: store.id,
     customerId,
     number: reservationNumber,
-    status: 'confirmed', // Manual reservations are auto-confirmed
+    status: data.sendAsQuote ? 'quote' : 'confirmed',
     startDate: data.startDate,
     endDate: data.endDate,
     subtotalAmount: subtotalAmount.toFixed(2),
@@ -1128,11 +1131,11 @@ export async function createManualReservation(data: CreateReservationData) {
     });
   }
 
-  // Log activity for manual reservation creation (auto-confirmed)
+  // Log activity for manual reservation creation
   await logReservationActivity(
     reservationId,
     'created',
-    { source: 'manual', status: 'confirmed' },
+    { source: 'manual', status: data.sendAsQuote ? 'quote' : 'confirmed' },
   );
 
   try {
@@ -1152,7 +1155,7 @@ export async function createManualReservation(data: CreateReservationData) {
     where: eq(customers.id, customerId),
   });
 
-  // Send confirmation email for manual reservations (if enabled)
+  // Send email for manual reservations (if enabled)
   const shouldSendEmail = data.sendConfirmationEmail !== false;
   if (customer && shouldSendEmail) {
     const storeData = {
@@ -1164,12 +1167,17 @@ export async function createManualReservation(data: CreateReservationData) {
       phone: store.phone,
       address: store.address,
       theme: store.theme,
+      settings: store.settings,
+      emailSettings: store.emailSettings,
+      customerNotificationSettings: store.customerNotificationSettings,
     };
 
     const customerData = {
+      id: customer.id,
       firstName: customer.firstName,
       lastName: customer.lastName,
       email: customer.email,
+      phone: customer.phone,
     };
 
     // Combine catalog products and custom items for email
@@ -1191,26 +1199,47 @@ export async function createManualReservation(data: CreateReservationData) {
     const domain = env.NEXT_PUBLIC_APP_DOMAIN;
     const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
 
-    // TODO: Use customer's stored locale preference when available
-    sendReservationConfirmationEmail({
-      to: customer.email,
-      store: storeData,
-      customer: customerData,
-      reservation: {
-        id: reservationId,
-        number: reservationNumber,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        subtotalAmount,
-        depositAmount,
-        totalAmount: subtotalAmount,
-      },
-      items: emailItems,
-      reservationUrl,
-      locale: getLocaleFromCountry(store.settings?.country),
-    }).catch((error) => {
-      console.error('Failed to send reservation confirmation email:', error);
-    });
+    if (data.sendAsQuote) {
+      // Send quote email via dispatcher
+      dispatchCustomerNotification('customer_quote_sent', {
+        store: storeData,
+        customer: customerData,
+        reservation: {
+          id: reservationId,
+          number: reservationNumber,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          totalAmount: subtotalAmount,
+          subtotalAmount,
+          depositAmount,
+        },
+        items: emailItems,
+        reservationUrl,
+      }).catch((error) => {
+        console.error('Failed to send quote email:', error);
+      });
+    } else {
+      // Send confirmation email
+      sendReservationConfirmationEmail({
+        to: customer.email,
+        store: storeData,
+        customer: customerData,
+        reservation: {
+          id: reservationId,
+          number: reservationNumber,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          subtotalAmount,
+          depositAmount,
+          totalAmount: subtotalAmount,
+        },
+        items: emailItems,
+        reservationUrl,
+        locale: getLocaleFromCountry(store.settings?.country),
+      }).catch((error) => {
+        console.error('Failed to send reservation confirmation email:', error);
+      });
+    }
   }
 
   // Platform admin notification
