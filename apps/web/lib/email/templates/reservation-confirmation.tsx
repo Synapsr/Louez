@@ -231,24 +231,24 @@ export function ReservationConfirmationEmail({
             </Column>
           </Row>
         )}
-        {deposit > 0 && (
-          <Row style={tableRow}>
-            <Column>
-              <Text style={paragraph}>{tc.deposit}</Text>
-            </Column>
-            <Column align="right">
-              <Text style={paragraph}>{formatCurrency(deposit)}</Text>
-            </Column>
-          </Row>
-        )}
         <Row style={tableRow}>
           <Column>
-            <Text style={paragraphBold}>{tc.total}</Text>
+            <Text style={paragraphBold}>{tc.totalToPay}</Text>
           </Column>
           <Column align="right">
             <Text style={paragraphBold}>{formatCurrency(total)}</Text>
           </Column>
         </Row>
+        {deposit > 0 && (
+          <Row style={tableRow}>
+            <Column>
+              <Text style={depositText}>{tc.deposit}</Text>
+            </Column>
+            <Column align="right">
+              <Text style={depositText}>{formatCurrency(deposit)}</Text>
+            </Column>
+          </Row>
+        )}
       </Section>
 
       {/* CTA */}
@@ -278,6 +278,14 @@ const paragraph = {
 const paragraphBold = {
   ...paragraph,
   fontWeight: 'bold' as const,
+}
+
+const depositText = {
+  fontSize: '13px',
+  lineHeight: '20px',
+  color: '#8898aa',
+  margin: '4px 0 0 0',
+  fontStyle: 'italic' as const,
 }
 
 const section = {

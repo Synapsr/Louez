@@ -240,7 +240,11 @@ export async function sendReservationConfirmationEmail({
       items,
       subtotal: reservation.subtotalAmount,
       deposit: reservation.depositAmount,
-      total: reservation.totalAmount,
+      // totalAmount may or may not include deposit depending on source (storefront vs manual)
+      // If totalAmount >= subtotal + deposit, deposit is included — subtract it for the rental-only total
+      total: reservation.depositAmount > 0 && reservation.totalAmount >= reservation.subtotalAmount + reservation.depositAmount
+        ? reservation.totalAmount - reservation.depositAmount
+        : reservation.totalAmount,
       reservationUrl,
       customContent,
       locale,
@@ -369,6 +373,8 @@ export async function sendRequestAcceptedEmail({
     startDate: Date
     endDate: Date
     totalAmount: number
+    subtotalAmount?: number
+    depositAmount?: number
   }
   items: { name: string; quantity: number; totalPrice: number }[]
   reservationUrl: string
@@ -380,6 +386,16 @@ export async function sendRequestAcceptedEmail({
   const subject = customContent?.subject
     ? customContent.subject.replace('{number}', reservation.number)
     : `${t.requestAccepted.subject.replace('{number}', reservation.number)} - ${store.name}`
+
+  const depositAmount = reservation.depositAmount ?? 0
+  const subtotalAmount = reservation.subtotalAmount ?? 0
+  // totalAmount may or may not include deposit depending on source (storefront vs manual)
+  // If totalAmount >= subtotal + deposit, deposit is included — subtract it for the rental-only total
+  const depositIncludedInTotal = depositAmount > 0 && subtotalAmount > 0
+    && reservation.totalAmount >= subtotalAmount + depositAmount
+  const rentalTotal = depositIncludedInTotal
+    ? reservation.totalAmount - depositAmount
+    : reservation.totalAmount
 
   const logo = await resolveEmailLogo(getLogoForLightBackground(store))
   const html = await render(
@@ -397,7 +413,8 @@ export async function sendRequestAcceptedEmail({
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       items,
-      total: reservation.totalAmount,
+      total: rentalTotal,
+      deposit: depositAmount,
       reservationUrl,
       paymentUrl,
       customContent,

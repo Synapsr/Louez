@@ -42,6 +42,7 @@ interface RequestAcceptedEmailProps {
   endDate: Date
   items: ReservationItem[]
   total: number
+  deposit?: number
   reservationUrl: string
   paymentUrl?: string | null
   customContent?: EmailCustomContent
@@ -64,6 +65,7 @@ export function RequestAcceptedEmail({
   endDate,
   items,
   total,
+  deposit = 0,
   reservationUrl,
   paymentUrl,
   customContent,
@@ -189,6 +191,16 @@ export function RequestAcceptedEmail({
             <Text style={paragraphBold}>{formatCurrency(total)}</Text>
           </Column>
         </Row>
+        {deposit > 0 && (
+          <Row style={tableRow}>
+            <Column>
+              <Text style={depositText}>{tc.deposit}</Text>
+            </Column>
+            <Column align="right">
+              <Text style={depositText}>{formatCurrency(deposit)}</Text>
+            </Column>
+          </Row>
+        )}
       </Section>
 
       {/* CTA */}
@@ -228,6 +240,14 @@ const paragraph = {
 const paragraphBold = {
   ...paragraph,
   fontWeight: 'bold' as const,
+}
+
+const depositText = {
+  fontSize: '13px',
+  lineHeight: '20px',
+  color: '#8898aa',
+  margin: '4px 0 0 0',
+  fontStyle: 'italic' as const,
 }
 
 const section = {
