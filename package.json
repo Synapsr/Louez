@@ -38,7 +38,7 @@
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --ui tui",
+    "dev": "turbo run dev",
     "dev:web": "turbo dev --filter=@louez/web",
     "lint": "turbo run lint && pnpm audit:duplicates",
     "audit:duplicates": "node scripts/audit-duplicates.mjs",
@@ -63,6 +63,6 @@
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "turbo": "^2.8.3"
+    "turbo": "^2.8.17"
   }
 }
