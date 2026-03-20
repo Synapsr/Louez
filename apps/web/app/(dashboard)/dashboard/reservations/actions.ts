@@ -1349,10 +1349,24 @@ interface UpdateReservationItem {
   };
 }
 
+interface UpdateDeliveryLeg {
+  method: 'store' | 'address';
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 interface UpdateReservationData {
   startDate?: Date;
   endDate?: Date;
   tulipInsuranceOptIn?: boolean;
+  delivery?: {
+    outbound: UpdateDeliveryLeg;
+    return: UpdateDeliveryLeg;
+  };
   items?: UpdateReservationItem[];
 }
 
@@ -1947,6 +1961,112 @@ export async function updateReservation(
       .where(inArray(reservationItems.id, legacyInsuranceItemIds));
   }
 
+  // Process delivery changes
+  let deliveryFee = parseFloat(reservation.deliveryFee || '0');
+  const deliveryUpdateFields: Record<string, unknown> = {};
+
+  if (data.delivery) {
+    const deliverySettings = (store.settings as Record<string, unknown> | null)
+      ?.delivery as { enabled: boolean; pricePerKm: number; minimumFee: number; maximumDistance: number | null; freeDeliveryThreshold: number | null; mode: string } | undefined;
+
+    const storeLat = store.latitude ? parseFloat(store.latitude) : null;
+    const storeLon = store.longitude ? parseFloat(store.longitude) : null;
+
+    // Outbound leg
+    deliveryUpdateFields.outboundMethod = data.delivery.outbound.method;
+    if (data.delivery.outbound.method === 'address') {
+      deliveryUpdateFields.deliveryAddress = data.delivery.outbound.address ?? null;
+      deliveryUpdateFields.deliveryCity = data.delivery.outbound.city ?? null;
+      deliveryUpdateFields.deliveryPostalCode = data.delivery.outbound.postalCode ?? null;
+      deliveryUpdateFields.deliveryCountry = data.delivery.outbound.country ?? null;
+      deliveryUpdateFields.deliveryLatitude = data.delivery.outbound.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.deliveryLongitude = data.delivery.outbound.longitude?.toFixed(7) ?? null;
+
+      if (storeLat && storeLon && data.delivery.outbound.latitude && data.delivery.outbound.longitude) {
+        const dist = calculateHaversineDistance(
+          storeLat, storeLon,
+          data.delivery.outbound.latitude, data.delivery.outbound.longitude,
+        );
+        deliveryUpdateFields.deliveryDistanceKm = dist.toFixed(2);
+      } else {
+        deliveryUpdateFields.deliveryDistanceKm = null;
+      }
+    } else {
+      deliveryUpdateFields.deliveryAddress = null;
+      deliveryUpdateFields.deliveryCity = null;
+      deliveryUpdateFields.deliveryPostalCode = null;
+      deliveryUpdateFields.deliveryCountry = null;
+      deliveryUpdateFields.deliveryLatitude = null;
+      deliveryUpdateFields.deliveryLongitude = null;
+      deliveryUpdateFields.deliveryDistanceKm = null;
+    }
+
+    // Return leg
+    deliveryUpdateFields.returnMethod = data.delivery.return.method;
+    if (data.delivery.return.method === 'address') {
+      deliveryUpdateFields.returnAddress = data.delivery.return.address ?? null;
+      deliveryUpdateFields.returnCity = data.delivery.return.city ?? null;
+      deliveryUpdateFields.returnPostalCode = data.delivery.return.postalCode ?? null;
+      deliveryUpdateFields.returnCountry = data.delivery.return.country ?? null;
+      deliveryUpdateFields.returnLatitude = data.delivery.return.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.returnLongitude = data.delivery.return.longitude?.toFixed(7) ?? null;
+
+      if (storeLat && storeLon && data.delivery.return.latitude && data.delivery.return.longitude) {
+        const dist = calculateHaversineDistance(
+          storeLat, storeLon,
+          data.delivery.return.latitude, data.delivery.return.longitude,
+        );
+        deliveryUpdateFields.returnDistanceKm = dist.toFixed(2);
+      } else {
+        deliveryUpdateFields.returnDistanceKm = null;
+      }
+    } else {
+      deliveryUpdateFields.returnAddress = null;
+      deliveryUpdateFields.returnCity = null;
+      deliveryUpdateFields.returnPostalCode = null;
+      deliveryUpdateFields.returnCountry = null;
+      deliveryUpdateFields.returnLatitude = null;
+      deliveryUpdateFields.returnLongitude = null;
+      deliveryUpdateFields.returnDistanceKm = null;
+    }
+
+    // Calculate delivery fee
+    if (deliverySettings?.enabled) {
+      const outDist = deliveryUpdateFields.deliveryDistanceKm
+        ? parseFloat(deliveryUpdateFields.deliveryDistanceKm as string)
+        : null;
+      const retDist = deliveryUpdateFields.returnDistanceKm
+        ? parseFloat(deliveryUpdateFields.returnDistanceKm as string)
+        : null;
+
+      if (deliverySettings.mode === 'included') {
+        deliveryFee = 0;
+      } else {
+        const feeResult = calculateTotalDeliveryFee(
+          outDist,
+          retDist,
+          deliverySettings as Parameters<typeof calculateTotalDeliveryFee>[2],
+          newSubtotalAmount,
+        );
+        deliveryFee = feeResult.totalFee;
+      }
+    } else {
+      deliveryFee = 0;
+    }
+
+    deliveryUpdateFields.deliveryFee = deliveryFee.toFixed(2);
+
+    // Update legacy field for backward compatibility
+    const hasAddressLeg =
+      data.delivery.outbound.method === 'address' ||
+      data.delivery.return.method === 'address';
+    deliveryUpdateFields.deliveryOption = hasAddressLeg ? 'delivery' : 'pickup';
+  }
+
+  // Calculate total: subtotal + delivery fee - discount
+  const existingDiscount = parseFloat(reservation.discountAmount || '0');
+  const newTotalAmount = newSubtotalAmount + deliveryFee - existingDiscount;
+
   // Update reservation
   await db
     .update(reservations)
@@ -1955,12 +2075,13 @@ export async function updateReservation(
       endDate: newEndDate,
       subtotalAmount: newSubtotalAmount.toFixed(2),
       depositAmount: newDepositAmount.toFixed(2),
-      totalAmount: newSubtotalAmount.toFixed(2),
+      totalAmount: newTotalAmount.toFixed(2),
       tulipInsuranceOptIn: nextTulipInsuranceOptIn,
       tulipInsuranceAmount:
         nextTulipInsuranceAmount && nextTulipInsuranceAmount > 0
           ? nextTulipInsuranceAmount.toFixed(2)
           : null,
+      ...deliveryUpdateFields,
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId));
@@ -2037,7 +2158,7 @@ export async function updateReservation(
   }
 
   // Calculate difference for activity log
-  const difference = newSubtotalAmount - previousState.subtotalAmount;
+  const difference = newTotalAmount - previousState.totalAmount;
 
   // Log activity
   await logReservationActivity(
@@ -2079,8 +2200,8 @@ export async function updateReservation(
   return {
     success: true,
     difference,
-    newTotal: newSubtotalAmount,
-    previousTotal: previousState.subtotalAmount,
+    newTotal: newTotalAmount,
+    previousTotal: previousState.totalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
   };
 }

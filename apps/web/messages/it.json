@@ -1116,7 +1116,25 @@
         "adjustmentNegative": "Puo essere emesso un rimborso di {amount}.",
         "warningDialogTitle": "Conferma modifica eccezionale",
         "warningDialogDescription": "Questo aggiornamento non rispetta le regole abituali di prenotazione. Verifichi gli avvisi prima di salvare.",
-        "confirmWithWarnings": "Salva comunque"
+        "confirmWithWarnings": "Salva comunque",
+        "delivery": {
+          "title": "Consegna",
+          "outboundTitle": "Ricevi attrezzature",
+          "returnTitle": "Restituisci attrezzature",
+          "storePickup": "Ritiro in negozio",
+          "storeReturn": "Reso in negozio",
+          "deliverToAddress": "Consegna all'indirizzo",
+          "collectFromAddress": "Ritiro dall'indirizzo",
+          "addressPlaceholder": "Inserisci l'indirizzo...",
+          "distance": "Distanza",
+          "fee": "Tariffa",
+          "free": "Gratuito",
+          "included": "Incluso",
+          "totalFee": "Tariffa di consegna totale",
+          "tooFar": "L'indirizzo supera la distanza massima ({maxDistance} km)",
+          "savings": "Risparmio",
+          "deliveryFee": "Spese di consegna"
+        }
       },
       "contract": {
         "title": "Contratto",

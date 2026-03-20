@@ -176,6 +176,28 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
     startDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     endDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
+    delivery: z
+      .object({
+        outbound: z.object({
+          method: z.enum(['store', 'address']),
+          address: z.string().max(1000).optional(),
+          city: z.string().max(255).optional(),
+          postalCode: z.string().max(20).optional(),
+          country: z.string().max(2).optional(),
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+        }),
+        return: z.object({
+          method: z.enum(['store', 'address']),
+          address: z.string().max(1000).optional(),
+          city: z.string().max(255).optional(),
+          postalCode: z.string().max(20).optional(),
+          country: z.string().max(2).optional(),
+          latitude: z.number().optional(),
+          longitude: z.number().optional(),
+        }),
+      })
+      .optional(),
     items: z
       .array(
         z.object({

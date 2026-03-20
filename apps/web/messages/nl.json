@@ -1116,7 +1116,25 @@
         "adjustmentNegative": "Er kan een terugbetaling van {amount} worden verstrekt.",
         "warningDialogTitle": "Uitzonderlijke wijziging bevestigen",
         "warningDialogDescription": "Deze update komt niet overeen met de gebruikelijke reserveringsregels. Controleer de waarschuwingen voordat u opslaat.",
-        "confirmWithWarnings": "Toch opslaan"
+        "confirmWithWarnings": "Toch opslaan",
+        "delivery": {
+          "title": "Bezorging",
+          "outboundTitle": "Apparatuur ontvangen",
+          "returnTitle": "Apparatuur retourneren",
+          "storePickup": "Ophalen in winkel",
+          "storeReturn": "Retour in winkel",
+          "deliverToAddress": "Bezorgen op adres",
+          "collectFromAddress": "Ophalen op adres",
+          "addressPlaceholder": "Voer het adres in...",
+          "distance": "Afstand",
+          "fee": "Tarief",
+          "free": "Gratis",
+          "included": "Inbegrepen",
+          "totalFee": "Totale bezorgkosten",
+          "tooFar": "Adres overschrijdt maximale afstand ({maxDistance} km)",
+          "savings": "Besparing",
+          "deliveryFee": "Bezorgkosten"
+        }
       },
       "contract": {
         "title": "Contract",

@@ -304,11 +304,16 @@ export function EditReservationItemsSection({
                     )}
                   </div>
 
-                  <div className="w-24 text-right">
+                  <div className="w-28 text-right">
                     <p className="font-semibold">
                       {item.totalPrice.toFixed(2)}
                       {currencySymbol}
                     </p>
+                    {item.savings > 0 && !item.isManualPrice && (
+                      <p className="text-[10px] text-emerald-600">
+                        -{item.savings.toFixed(2)}{currencySymbol}
+                      </p>
+                    )}
                   </div>
 
                   <Tooltip>

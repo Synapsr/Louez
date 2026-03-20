@@ -1155,7 +1155,25 @@
         "adjustmentNegative": "Eine Rückerstattung von {amount} kann gewährt werden.",
         "warningDialogTitle": "Ausnahmeänderung bestätigen",
         "warningDialogDescription": "Diese Aktualisierung entspricht nicht den üblichen Reservierungsregeln. Überprüfen Sie die Warnungen vor dem Speichern.",
-        "confirmWithWarnings": "Trotzdem speichern"
+        "confirmWithWarnings": "Trotzdem speichern",
+        "delivery": {
+          "title": "Lieferung",
+          "outboundTitle": "Geräte empfangen",
+          "returnTitle": "Geräte zurückgeben",
+          "storePickup": "Abholung im Geschäft",
+          "storeReturn": "Rückgabe im Geschäft",
+          "deliverToAddress": "An Adresse liefern",
+          "collectFromAddress": "Von Adresse abholen",
+          "addressPlaceholder": "Adresse eingeben...",
+          "distance": "Entfernung",
+          "fee": "Gebühr",
+          "free": "Kostenlos",
+          "included": "Inklusive",
+          "totalFee": "Gesamtliefergebühr",
+          "tooFar": "Adresse überschreitet maximale Entfernung ({maxDistance} km)",
+          "savings": "Ersparnis",
+          "deliveryFee": "Liefergebühr"
+        }
       },
       "contract": {
         "title": "Vertrag",

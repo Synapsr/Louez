@@ -11,7 +11,9 @@ import type { ReservationCalculations } from '../types'
 interface EditReservationSummarySectionProps {
   originalSubtotal: number
   originalDeposit: number
+  originalDeliveryFee: number
   calculations: ReservationCalculations
+  deliveryFee: number
   currencySymbol: string
   isLoading: boolean
   hasChanges: boolean
@@ -21,13 +23,19 @@ interface EditReservationSummarySectionProps {
 export function EditReservationSummarySection({
   originalSubtotal,
   originalDeposit,
+  originalDeliveryFee,
   calculations,
+  deliveryFee,
   currencySymbol,
   isLoading,
   hasChanges,
   onSave,
 }: EditReservationSummarySectionProps) {
   const t = useTranslations('dashboard.reservations')
+
+  const newTotal = calculations.subtotal + deliveryFee
+  const originalTotal = originalSubtotal + originalDeliveryFee
+  const difference = newTotal - originalTotal
 
   return (
     <Card className="sticky top-24">
@@ -50,6 +58,38 @@ export function EditReservationSummarySection({
             </span>
           </div>
 
+          {calculations.totalSavings > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-emerald-600">{t('edit.delivery.savings')}</span>
+              <span className="text-emerald-600">
+                -{calculations.totalSavings.toFixed(2)}
+                {currencySymbol}
+              </span>
+            </div>
+          )}
+
+          {(deliveryFee > 0 || originalDeliveryFee > 0) && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{t('edit.delivery.deliveryFee')}</span>
+              <span>
+                {originalDeliveryFee !== deliveryFee && originalDeliveryFee > 0 ? (
+                  <>
+                    <span className="mr-2 text-muted-foreground line-through">
+                      {originalDeliveryFee.toFixed(2)}
+                    </span>
+                    {deliveryFee.toFixed(2)}
+                    {currencySymbol}
+                  </>
+                ) : (
+                  <>
+                    {deliveryFee.toFixed(2)}
+                    {currencySymbol}
+                  </>
+                )}
+              </span>
+            </div>
+          )}
+
           <Separator />
 
           <div className="flex justify-between">
@@ -57,24 +97,24 @@ export function EditReservationSummarySection({
             <span
               className={cn(
                 'text-lg font-bold',
-                calculations.difference > 0 && 'text-emerald-600',
-                calculations.difference < 0 && 'text-red-600'
+                difference > 0 && 'text-emerald-600',
+                difference < 0 && 'text-red-600'
               )}
             >
-              {calculations.difference >= 0 ? '+' : ''}
-              {calculations.difference.toFixed(2)}
+              {difference >= 0 ? '+' : ''}
+              {difference.toFixed(2)}
               {currencySymbol}
             </span>
           </div>
 
-          {calculations.difference !== 0 && (
+          {difference !== 0 && (
             <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-              {calculations.difference > 0
+              {difference > 0
                 ? t('edit.adjustmentPositive', {
-                    amount: `${calculations.difference.toFixed(2)}${currencySymbol}`,
+                    amount: `${difference.toFixed(2)}${currencySymbol}`,
                   })
                 : t('edit.adjustmentNegative', {
-                    amount: `${Math.abs(calculations.difference).toFixed(2)}${currencySymbol}`,
+                    amount: `${Math.abs(difference).toFixed(2)}${currencySymbol}`,
                   })}
             </p>
           )}

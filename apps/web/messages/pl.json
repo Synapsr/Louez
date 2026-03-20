@@ -1116,7 +1116,25 @@
         "adjustmentNegative": "Można dokonać zwrotu w wysokości {amount}.",
         "warningDialogTitle": "Potwierdź wyjątkową zmianę",
         "warningDialogDescription": "Ta aktualizacja nie odpowiada standardowym zasadom rezerwacji. Przejrzyj ostrzeżenia przed zapisaniem.",
-        "confirmWithWarnings": "Zapisz mimo to"
+        "confirmWithWarnings": "Zapisz mimo to",
+        "delivery": {
+          "title": "Dostawa",
+          "outboundTitle": "Odbiór sprzętu",
+          "returnTitle": "Zwrot sprzętu",
+          "storePickup": "Odbiór w sklepie",
+          "storeReturn": "Zwrot w sklepie",
+          "deliverToAddress": "Dostawa pod adres",
+          "collectFromAddress": "Odbiór z adresu",
+          "addressPlaceholder": "Wprowadź adres...",
+          "distance": "Odległość",
+          "fee": "Opłata",
+          "free": "Bezpłatnie",
+          "included": "W cenie",
+          "totalFee": "Całkowity koszt dostawy",
+          "tooFar": "Adres przekracza maksymalną odległość ({maxDistance} km)",
+          "savings": "Oszczędności",
+          "deliveryFee": "Koszt dostawy"
+        }
       },
       "contract": {
         "title": "Umowa",

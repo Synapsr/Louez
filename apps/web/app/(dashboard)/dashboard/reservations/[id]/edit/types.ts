@@ -1,17 +1,21 @@
 import type {
+  DeliverySettings,
+  LegMethod,
   PricingBreakdown,
   PricingMode,
   ProductSnapshot,
   StoreSettings,
   TulipPublicMode,
 } from '@louez/types'
+import type { SeasonalPricingConfig } from '@louez/utils'
 
 export interface PricingTier {
   id: string
-  minDuration: number | null
-  discountPercent: string | null
+  minDuration: number
+  discountPercent: number
   period?: number | null
-  price?: string | null
+  price?: number | null
+  displayOrder?: number
 }
 
 export interface Product {
@@ -23,7 +27,9 @@ export interface Product {
   quantity: number
   pricingMode: string | null
   basePeriodMinutes?: number | null
+  enforceStrictTiers?: boolean
   pricingTiers: PricingTier[]
+  seasonalPricings?: SeasonalPricingConfig[]
 }
 
 export interface ReservationItem {
@@ -47,6 +53,26 @@ export interface ExistingReservation {
   items: { productId: string | null; quantity: number }[]
 }
 
+export interface ReservationDelivery {
+  outboundMethod: LegMethod
+  returnMethod: LegMethod
+  deliveryAddress: string | null
+  deliveryCity: string | null
+  deliveryPostalCode: string | null
+  deliveryCountry: string | null
+  deliveryLatitude: string | null
+  deliveryLongitude: string | null
+  deliveryDistanceKm: string | null
+  deliveryFee: string | null
+  returnAddress: string | null
+  returnCity: string | null
+  returnPostalCode: string | null
+  returnCountry: string | null
+  returnLatitude: string | null
+  returnLongitude: string | null
+  returnDistanceKm: string | null
+}
+
 export interface Reservation {
   id: string
   number: string
@@ -55,8 +81,12 @@ export interface Reservation {
   endDate: Date
   subtotalAmount: string
   depositAmount: string
+  totalAmount: string
+  deliveryFee: string | null
+  discountAmount: string | null
   tulipInsuranceOptIn: boolean | null
   tulipInsuranceAmount: string | null
+  delivery: ReservationDelivery
   items: ReservationItem[]
   customer: {
     firstName: string
@@ -72,7 +102,8 @@ export interface EditableItem {
   depositPerUnit: number
   isManualPrice: boolean
   pricingMode: PricingMode
-  basePeriodMinutes?: number
+  basePeriodMinutes?: number | null
+  enforceStrictTiers?: boolean
   productSnapshot: ProductSnapshot
   product: Product | null
 }
@@ -84,6 +115,13 @@ export interface AvailabilityWarning {
   availableQuantity: number
 }
 
+export interface StoreDeliveryInfo {
+  settings: DeliverySettings
+  latitude: number | null
+  longitude: number | null
+  address: string | null
+}
+
 export interface EditReservationFormProps {
   reservation: Reservation
   availableProducts: Product[]
@@ -91,6 +129,7 @@ export interface EditReservationFormProps {
   currency: string
   tulipInsuranceMode: TulipPublicMode
   storeSettings: StoreSettings | null
+  storeDelivery: StoreDeliveryInfo | null
 }
 
 export interface CalculatedEditableItem extends EditableItem {
@@ -98,6 +137,9 @@ export interface CalculatedEditableItem extends EditableItem {
   duration: number
   tierLabel: string | null
   discount: number
+  originalSubtotal: number
+  savings: number
+  discountPercent: number | null
 }
 
 export interface ReservationCalculations {
@@ -105,4 +147,5 @@ export interface ReservationCalculations {
   subtotal: number
   deposit: number
   difference: number
+  totalSavings: number
 }

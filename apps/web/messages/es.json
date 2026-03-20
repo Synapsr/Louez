@@ -1155,7 +1155,25 @@
         "adjustmentNegative": "Se puede emitir un reembolso de {amount}.",
         "warningDialogTitle": "Confirmar cambio excepcional",
         "warningDialogDescription": "Esta modificacion no cumple con las reglas habituales de reserva. Revise las advertencias antes de guardar.",
-        "confirmWithWarnings": "Guardar de todos modos"
+        "confirmWithWarnings": "Guardar de todos modos",
+        "delivery": {
+          "title": "Entrega",
+          "outboundTitle": "Recibir equipos",
+          "returnTitle": "Devolver equipos",
+          "storePickup": "Recogida en tienda",
+          "storeReturn": "Devolución en tienda",
+          "deliverToAddress": "Entregar en dirección",
+          "collectFromAddress": "Recoger en dirección",
+          "addressPlaceholder": "Introducir dirección...",
+          "distance": "Distancia",
+          "fee": "Tarifa",
+          "free": "Gratis",
+          "included": "Incluido",
+          "totalFee": "Tarifa total de entrega",
+          "tooFar": "La dirección supera la distancia máxima ({maxDistance} km)",
+          "savings": "Ahorro",
+          "deliveryFee": "Gastos de envío"
+        }
       },
       "contract": {
         "title": "Contrato",

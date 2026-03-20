@@ -54,8 +54,10 @@ import { invalidateReservationAll } from '@/lib/orpc/invalidation'
 import type { PricingMode } from '@louez/types'
 import { EditReservationItemsSection } from './components/edit-reservation-items-section'
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
+import { EditReservationDeliverySection } from './components/edit-reservation-delivery-section'
 import { useEditReservationAvailability } from './hooks/use-edit-reservation-availability'
 import { useEditReservationPricing } from './hooks/use-edit-reservation-pricing'
+import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
 import type { EditReservationFormProps, EditableItem } from './types'
 
 export function EditReservationForm({
@@ -65,10 +67,10 @@ export function EditReservationForm({
   currency,
   tulipInsuranceMode,
   storeSettings,
+  storeDelivery,
 }: EditReservationFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
-  // Use separate translators for different namespaces
   const t = useTranslations('dashboard.reservations')
   const tForm = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
@@ -131,6 +133,8 @@ export function EditReservationForm({
       pricingMode: ((item.product?.pricingMode ??
         (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
         'day') as PricingMode),
+      basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
+      enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
       productSnapshot: item.productSnapshot,
       product: item.product,
     }))
@@ -163,6 +167,7 @@ export function EditReservationForm({
   // Original values for comparison
   const originalSubtotal = parseFloat(reservation.subtotalAmount)
   const originalDeposit = parseFloat(reservation.depositAmount)
+  const originalDeliveryFee = parseFloat(reservation.deliveryFee ?? '0')
   const originalDuration = calculateDuration(
     new Date(reservation.startDate),
     new Date(reservation.endDate),
@@ -181,6 +186,13 @@ export function EditReservationForm({
     endDate,
     items,
     existingReservations,
+  })
+
+  // Delivery state
+  const delivery = useEditReservationDelivery({
+    storeDelivery,
+    initialDelivery: reservation.delivery,
+    subtotal: calculations.subtotal,
   })
 
   // Handlers
@@ -244,6 +256,8 @@ export function EditReservationForm({
       },
       product,
       pricingMode: (product.pricingMode ?? 'day') as PricingMode,
+      basePeriodMinutes: product.basePeriodMinutes ?? null,
+      enforceStrictTiers: product.enforceStrictTiers ?? false,
     }
 
     setItems((prev) => [...prev, newItem])
@@ -382,12 +396,45 @@ export function EditReservationForm({
             ? tulipInsuranceOptIn
             : false
 
+      // Build delivery payload when delivery is available
+      const deliveryPayload = storeDelivery
+        ? {
+            outbound: {
+              method: delivery.outbound.method as 'store' | 'address',
+              ...(delivery.outbound.method === 'address'
+                ? {
+                    address: delivery.outbound.address.address,
+                    city: delivery.outbound.address.city,
+                    postalCode: delivery.outbound.address.postalCode,
+                    country: delivery.outbound.address.country,
+                    latitude: delivery.outbound.address.latitude ?? undefined,
+                    longitude: delivery.outbound.address.longitude ?? undefined,
+                  }
+                : {}),
+            },
+            return: {
+              method: delivery.inbound.method as 'store' | 'address',
+              ...(delivery.inbound.method === 'address'
+                ? {
+                    address: delivery.inbound.address.address,
+                    city: delivery.inbound.address.city,
+                    postalCode: delivery.inbound.address.postalCode,
+                    country: delivery.inbound.address.country,
+                    latitude: delivery.inbound.address.latitude ?? undefined,
+                    longitude: delivery.inbound.address.longitude ?? undefined,
+                  }
+                : {}),
+            },
+          }
+        : undefined
+
       const result = await updateReservationMutation.mutateAsync({
         reservationId: reservation.id,
         payload: {
           startDate,
           endDate,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+          delivery: deliveryPayload,
           items: items.map((item) => ({
             id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
             productId: item.productId,
@@ -437,6 +484,11 @@ export function EditReservationForm({
       return
     }
 
+    // Check for delivery errors
+    if (delivery.hasErrors) {
+      return
+    }
+
     const warnings = getRuleWarnings()
     if (warnings.length > 0) {
       setValidationWarningsToConfirm(warnings)
@@ -457,7 +509,10 @@ export function EditReservationForm({
     (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
     calculations.subtotal !== originalSubtotal ||
     tulipInsuranceOptIn !== initialTulipInsuranceOptIn ||
-    items.length !== editableReservationItems.length
+    items.length !== editableReservationItems.length ||
+    delivery.totalFee !== originalDeliveryFee ||
+    delivery.outbound.method !== reservation.delivery.outboundMethod ||
+    delivery.inbound.method !== reservation.delivery.returnMethod
 
   // Products not in the reservation
   const availableToAdd = availableProducts.filter(
@@ -593,6 +648,22 @@ export function EditReservationForm({
                 onToggleManualPrice={handleToggleManualPrice}
                 onRemoveItem={handleRemoveItem}
               />
+
+              {/* Delivery Card */}
+              {storeDelivery && (
+                <EditReservationDeliverySection
+                  outbound={delivery.outbound}
+                  inbound={delivery.inbound}
+                  totalFee={delivery.totalFee}
+                  isDeliveryIncluded={delivery.isDeliveryIncluded}
+                  storeAddress={storeDelivery.address}
+                  currencySymbol={currencySymbol}
+                  onOutboundMethodChange={delivery.setOutboundMethod}
+                  onInboundMethodChange={delivery.setInboundMethod}
+                  onOutboundAddressChange={delivery.setOutboundAddress}
+                  onInboundAddressChange={delivery.setInboundAddress}
+                />
+              )}
             </div>
 
             {/* Sidebar */}
@@ -634,7 +705,9 @@ export function EditReservationForm({
               <EditReservationSummarySection
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
+                originalDeliveryFee={originalDeliveryFee}
                 calculations={calculations}
+                deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}
                 isLoading={isLoading}
                 hasChanges={hasChanges}

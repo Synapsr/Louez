@@ -1,72 +1,138 @@
-import { useCallback, useMemo } from 'react'
+import { useMemo } from 'react'
 
 import type { PricingMode } from '@louez/types'
+import { isRateBasedProduct } from '@louez/utils'
+
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing'
+import { calculateDuration } from '@/lib/utils/duration'
 
 import type {
+  CalculatedEditableItem,
   EditableItem,
-  PricingTier,
   ReservationCalculations,
 } from '../types'
 
-function calculateDuration(startDate: Date, endDate: Date, pricingMode: PricingMode): number {
-  const diffMs = endDate.getTime() - startDate.getTime()
+/**
+ * Build a human-readable label for the applied pricing discount.
+ *
+ * For rate-based products we show the percentage saved.
+ * For tier-based products we show the tier threshold (e.g. "-20% (7+ j)").
+ */
+function buildTierLabel(
+  item: EditableItem,
+  discountPercent: number | null,
+  duration: number,
+): string | null {
+  if (!discountPercent || discountPercent <= 0) return null
 
-  if (pricingMode === 'hour') {
-    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)))
+  // Rate-based: just show the percentage
+  if (isRateBasedProduct({ basePeriodMinutes: item.basePeriodMinutes })) {
+    return `-${Math.round(discountPercent)}%`
   }
 
-  if (pricingMode === 'week') {
-    return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 7)))
-  }
+  // Tier-based: find which tier was applied and show threshold
+  const tiers = item.product?.pricingTiers
+  if (!tiers?.length) return `-${Math.round(discountPercent)}%`
 
-  return Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
-}
+  const mode = item.pricingMode
+  const unit = mode === 'hour' ? 'h' : mode === 'week' ? 'sem' : 'j'
 
-function findApplicableTier(tiers: PricingTier[], duration: number): PricingTier | null {
-  if (!tiers.length) return null
-
-  const normalized = tiers
-    .map((tier) => ({
-      ...tier,
-      minDuration: tier.minDuration ?? 1,
-      discountPercent: tier.discountPercent ?? '0',
-    }))
+  // Find the highest tier that applies to this duration
+  const applicableTier = [...tiers]
     .sort((a, b) => b.minDuration - a.minDuration)
+    .find((t) => duration >= t.minDuration)
 
-  return normalized.find((tier) => duration >= tier.minDuration) || null
+  if (applicableTier && applicableTier.discountPercent > 0) {
+    return `-${Math.round(applicableTier.discountPercent)}% (${applicableTier.minDuration}+ ${unit})`
+  }
+
+  return `-${Math.round(discountPercent)}%`
 }
 
-function calculateItemPrice(item: EditableItem, duration: number) {
+/**
+ * Calculate the price for a single editable item using the shared pricing
+ * utilities. Manual-price items use the user-set unit price directly.
+ * Product-based items delegate to `calculateCartItemPrice` which handles
+ * all pricing modes: seasonal, rate-based, tier-based, and fixed.
+ */
+function calculateEditableItemPrice(
+  item: EditableItem,
+  startDate: Date,
+  endDate: Date,
+): {
+  totalPrice: number
+  effectiveUnitPrice: number
+  tierLabel: string | null
+  discount: number
+  originalSubtotal: number
+  savings: number
+  discountPercent: number | null
+  duration: number
+} {
+  const mode = item.pricingMode
+  const duration = calculateDuration(startDate, endDate, mode)
+
+  // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
+    const totalPrice = item.unitPrice * duration * item.quantity
     return {
-      unitPrice: item.unitPrice,
-      totalPrice: item.unitPrice * duration * item.quantity,
+      totalPrice,
+      effectiveUnitPrice: item.unitPrice,
       tierLabel: null,
       discount: 0,
+      originalSubtotal: totalPrice,
+      savings: 0,
+      discountPercent: null,
+      duration,
     }
   }
 
-  const basePrice = parseFloat(item.product.price)
-  const tier = findApplicableTier(item.product.pricingTiers, duration)
+  const product = item.product
+  const startIso = startDate.toISOString()
+  const endIso = endDate.toISOString()
 
-  if (tier) {
-    const discount = parseFloat(tier.discountPercent ?? '0')
-    const effectivePrice = basePrice * (1 - discount / 100)
-    const unit = item.pricingMode === 'day' ? 'j' : item.pricingMode === 'hour' ? 'h' : 'sem'
+  // Delegate to the shared pricing utility — same logic as the storefront
+  const result = calculateCartItemPrice(
+    {
+      price: parseFloat(product.price),
+      deposit: parseFloat(product.deposit),
+      quantity: item.quantity,
+      startDate: startIso,
+      endDate: endIso,
+      pricingMode: mode,
+      productPricingMode: (product.pricingMode as PricingMode) ?? mode,
+      basePeriodMinutes: product.basePeriodMinutes ?? null,
+      enforceStrictTiers: product.enforceStrictTiers ?? false,
+      pricingTiers: product.pricingTiers.map((t) => ({
+        id: t.id,
+        minDuration: t.minDuration,
+        discountPercent: t.discountPercent,
+        period: t.period ?? null,
+        price: t.price ?? null,
+      })),
+      seasonalPricings: product.seasonalPricings,
+    },
+    null,
+    null,
+  )
 
-    return {
-      unitPrice: effectivePrice,
-      totalPrice: effectivePrice * duration * item.quantity,
-      tierLabel: `-${discount}% (${tier.minDuration}+ ${unit})`,
-      discount,
-    }
-  }
+  const tierLabel = buildTierLabel(item, result.discountPercent, duration)
+
+  // Derive an effective unit price for display (total / duration / quantity)
+  const effectiveUnitPrice =
+    duration > 0 && item.quantity > 0
+      ? result.subtotal / duration / item.quantity
+      : parseFloat(product.price)
 
   return {
-    unitPrice: basePrice,
-    totalPrice: basePrice * duration * item.quantity,
-    tierLabel: null,
-    discount: 0,
+    totalPrice: result.subtotal,
+    effectiveUnitPrice,
+    tierLabel,
+    discount: result.discountPercent ?? 0,
+    originalSubtotal: result.originalSubtotal,
+    savings: result.savings,
+    discountPercent: result.discountPercent,
+    duration,
   }
 }
 
@@ -85,55 +151,75 @@ export function useEditReservationPricing({
   originalSubtotal,
   fixedChargesTotal = 0,
 }: UseEditReservationPricingParams) {
-  const getDurationForMode = useCallback(
-    (mode: PricingMode) => {
-      if (!startDate || !endDate) return 0
-      return calculateDuration(startDate, endDate, mode)
-    },
-    [startDate, endDate]
-  )
+  const getDurationForMode = (mode: PricingMode) => {
+    if (!startDate || !endDate) return 0
+    return calculateDuration(startDate, endDate, mode)
+  }
 
-  const newDuration = useMemo(() => getDurationForMode('day'), [getDurationForMode])
+  const getDurationUnit = (mode: PricingMode) =>
+    mode === 'hour' ? 'h' : mode === 'week' ? 'sem' : 'j'
 
-  const getDurationUnit = useCallback(
-    (mode: PricingMode) => (mode === 'hour' ? 'h' : mode === 'week' ? 'sem' : 'j'),
-    []
-  )
+  const newDuration = startDate && endDate
+    ? calculateDuration(startDate, endDate, 'day')
+    : 0
 
   const calculations = useMemo<ReservationCalculations>(() => {
-    const aggregated = items.reduce<{
-      items: ReservationCalculations['items']
-      subtotal: number
-      deposit: number
-    }>(
-      (accumulator, item) => {
-        const itemDuration = getDurationForMode(item.pricingMode)
-        const itemPrice = calculateItemPrice(item, itemDuration)
-
-        accumulator.items.push({
+    if (!startDate || !endDate) {
+      return {
+        items: items.map((item) => ({
           ...item,
-          ...itemPrice,
-          duration: itemDuration,
-        })
-        accumulator.subtotal += itemPrice.totalPrice
-        accumulator.deposit += item.depositPerUnit * item.quantity
-        return accumulator
-      },
-      { items: [], subtotal: 0, deposit: 0 }
-    )
+          totalPrice: 0,
+          duration: 0,
+          tierLabel: null,
+          discount: 0,
+          originalSubtotal: 0,
+          savings: 0,
+          discountPercent: null,
+        })),
+        subtotal: 0,
+        deposit: 0,
+        difference: -originalSubtotal,
+        totalSavings: 0,
+      }
+    }
+
+    const calculatedItems: CalculatedEditableItem[] = []
+    let subtotal = 0
+    let deposit = 0
+    let totalSavings = 0
+
+    for (const item of items) {
+      const priceResult = calculateEditableItemPrice(item, startDate, endDate)
+
+      calculatedItems.push({
+        ...item,
+        totalPrice: priceResult.totalPrice,
+        duration: priceResult.duration,
+        tierLabel: priceResult.tierLabel,
+        discount: priceResult.discount,
+        originalSubtotal: priceResult.originalSubtotal,
+        savings: priceResult.savings,
+        discountPercent: priceResult.discountPercent,
+      })
+
+      subtotal += priceResult.totalPrice
+      deposit += item.depositPerUnit * item.quantity
+      totalSavings += priceResult.savings
+    }
 
     const normalizedFixedCharges = Number.isFinite(fixedChargesTotal)
       ? fixedChargesTotal
       : 0
-    const subtotalWithFixedCharges = aggregated.subtotal + normalizedFixedCharges
+    const subtotalWithFixedCharges = subtotal + normalizedFixedCharges
 
     return {
-      items: aggregated.items,
+      items: calculatedItems,
       subtotal: subtotalWithFixedCharges,
-      deposit: aggregated.deposit,
+      deposit,
       difference: subtotalWithFixedCharges - originalSubtotal,
+      totalSavings,
     }
-  }, [items, getDurationForMode, originalSubtotal, fixedChargesTotal])
+  }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal])
 
   return {
     getDurationForMode,

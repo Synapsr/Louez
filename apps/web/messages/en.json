@@ -1158,7 +1158,25 @@
         "adjustmentNegative": "A refund of {amount} can be issued.",
         "warningDialogTitle": "Confirm exceptional change",
         "warningDialogDescription": "This update does not match the usual reservation rules. Review the warnings before saving.",
-        "confirmWithWarnings": "Save anyway"
+        "confirmWithWarnings": "Save anyway",
+        "delivery": {
+          "title": "Delivery",
+          "outboundTitle": "Receive equipment",
+          "returnTitle": "Return equipment",
+          "storePickup": "Store pickup",
+          "storeReturn": "Return at store",
+          "deliverToAddress": "Deliver to address",
+          "collectFromAddress": "Collect from address",
+          "addressPlaceholder": "Enter the address...",
+          "distance": "Distance",
+          "fee": "Fee",
+          "free": "Free",
+          "included": "Included",
+          "totalFee": "Total delivery fee",
+          "tooFar": "Address exceeds maximum distance ({maxDistance} km)",
+          "savings": "Savings",
+          "deliveryFee": "Delivery fee"
+        }
       },
       "contract": {
         "title": "Contract",
