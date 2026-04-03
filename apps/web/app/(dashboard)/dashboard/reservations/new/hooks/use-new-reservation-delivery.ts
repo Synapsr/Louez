@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslations } from 'next-intl'
 
 import type { DeliverySettings, LegMethod } from '@louez/types'
@@ -7,6 +8,7 @@ import {
   calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo'
+import { fetchDeliveryDistanceKm } from '@/lib/utils/delivery-distance'
 
 import type { DeliveryAddress } from '../types'
 
@@ -33,6 +35,7 @@ export function useNewReservationDelivery({
   subtotal,
 }: UseNewReservationDeliveryParams) {
   const t = useTranslations('dashboard.reservations.manualForm')
+  const queryClient = useQueryClient()
 
   const hasStoreCoordinates =
     storeLatitude != null && storeLongitude != null
@@ -52,6 +55,7 @@ export function useNewReservationDelivery({
   const [outboundDistance, setOutboundDistance] = useState<number | null>(null)
   const [outboundFee, setOutboundFee] = useState(0)
   const [outboundError, setOutboundError] = useState<string | null>(null)
+  const [outboundIsCalculating, setOutboundIsCalculating] = useState(false)
 
   // --- Return leg state ---
   const [returnMethod, setReturnMethod] = useState<LegMethod>('store')
@@ -61,6 +65,9 @@ export function useNewReservationDelivery({
   const [returnDistance, setReturnDistance] = useState<number | null>(null)
   const [returnFee, setReturnFee] = useState(0)
   const [returnError, setReturnError] = useState<string | null>(null)
+  const [returnIsCalculating, setReturnIsCalculating] = useState(false)
+  const outboundRequestIdRef = useRef(0)
+  const returnRequestIdRef = useRef(0)
 
   const totalFee = outboundFee + returnFee
 
@@ -85,7 +92,7 @@ export function useNewReservationDelivery({
   )
 
   const handleLegAddressChange = useCallback(
-    (
+    async (
       leg: 'outbound' | 'return',
       address: string,
       latitude: number | null,
@@ -96,9 +103,14 @@ export function useNewReservationDelivery({
       const setAddress = leg === 'outbound' ? setOutboundAddress : setReturnAddress
       const setDistance = leg === 'outbound' ? setOutboundDistance : setReturnDistance
       const setError = leg === 'outbound' ? setOutboundError : setReturnError
+      const setIsCalculating =
+        leg === 'outbound' ? setOutboundIsCalculating : setReturnIsCalculating
+      const requestIdRef =
+        leg === 'outbound' ? outboundRequestIdRef : returnRequestIdRef
 
       setAddress((prev) => ({ ...prev, address, latitude, longitude }))
       setError(null)
+      const requestId = ++requestIdRef.current
 
       const otherDist = otherLegMethod === 'address' ? otherLegDistance : null
 
@@ -109,6 +121,7 @@ export function useNewReservationDelivery({
         storeLongitude == null ||
         !deliverySettings
       ) {
+        setIsCalculating(false)
         setDistance(null)
         if (leg === 'outbound') {
           recalculateFees(null, otherDist)
@@ -118,13 +131,31 @@ export function useNewReservationDelivery({
         return
       }
 
-      const distance = calculateHaversineDistance(
-        storeLatitude,
-        storeLongitude,
-        latitude,
-        longitude,
-      )
+      setIsCalculating(true)
+
+      let distance: number
+      try {
+        distance = await fetchDeliveryDistanceKm(queryClient, {
+          originLatitude: storeLatitude,
+          originLongitude: storeLongitude,
+          destinationLatitude: latitude,
+          destinationLongitude: longitude,
+        })
+      } catch {
+        distance = calculateHaversineDistance(
+          storeLatitude,
+          storeLongitude,
+          latitude,
+          longitude,
+        )
+      }
+
       setDistance(distance)
+      setIsCalculating(false)
+
+      if (requestId !== requestIdRef.current) {
+        return
+      }
 
       const validation = validateDelivery(distance, deliverySettings)
       if (!validation.valid) {
@@ -145,16 +176,18 @@ export function useNewReservationDelivery({
         recalculateFees(otherDist, distance)
       }
     },
-    [deliverySettings, recalculateFees, storeLatitude, storeLongitude, t],
+    [deliverySettings, queryClient, recalculateFees, storeLatitude, storeLongitude, t],
   )
 
   const handleOutboundMethodChange = useCallback(
     (method: LegMethod) => {
       setOutboundMethod(method)
       if (method === 'store') {
+        outboundRequestIdRef.current += 1
         setOutboundAddress(DEFAULT_DELIVERY_ADDRESS)
         setOutboundDistance(null)
         setOutboundError(null)
+        setOutboundIsCalculating(false)
         recalculateFees(null, returnMethod === 'address' ? returnDistance : null)
       }
     },
@@ -165,9 +198,11 @@ export function useNewReservationDelivery({
     (method: LegMethod) => {
       setReturnMethod(method)
       if (method === 'store') {
+        returnRequestIdRef.current += 1
         setReturnAddress(DEFAULT_DELIVERY_ADDRESS)
         setReturnDistance(null)
         setReturnError(null)
+        setReturnIsCalculating(false)
         recalculateFees(outboundMethod === 'address' ? outboundDistance : null, null)
       }
     },
@@ -176,14 +211,14 @@ export function useNewReservationDelivery({
 
   const handleOutboundAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      handleLegAddressChange('outbound', address, latitude, longitude, returnDistance, returnMethod)
+      void handleLegAddressChange('outbound', address, latitude, longitude, returnDistance, returnMethod)
     },
     [handleLegAddressChange, returnDistance, returnMethod],
   )
 
   const handleReturnAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      handleLegAddressChange('return', address, latitude, longitude, outboundDistance, outboundMethod)
+      void handleLegAddressChange('return', address, latitude, longitude, outboundDistance, outboundMethod)
     },
     [handleLegAddressChange, outboundDistance, outboundMethod],
   )
@@ -205,7 +240,11 @@ export function useNewReservationDelivery({
       returnAddress.longitude === null ||
       Boolean(returnError))
 
-  const canContinue = !hasOutboundAddressError && !hasReturnAddressError
+  const canContinue =
+    !hasOutboundAddressError &&
+    !hasReturnAddressError &&
+    !outboundIsCalculating &&
+    !returnIsCalculating
 
   return useMemo(
     () => ({
@@ -218,6 +257,7 @@ export function useNewReservationDelivery({
       outboundDistance,
       outboundFee,
       outboundError,
+      outboundIsCalculating,
       handleOutboundMethodChange,
       handleOutboundAddressChange,
 
@@ -226,6 +266,7 @@ export function useNewReservationDelivery({
       returnDistance,
       returnFee,
       returnError,
+      returnIsCalculating,
       handleReturnMethodChange,
       handleReturnAddressChange,
 
@@ -247,11 +288,13 @@ export function useNewReservationDelivery({
       outboundDistance,
       outboundError,
       outboundFee,
+      outboundIsCalculating,
       outboundMethod,
       returnAddress,
       returnDistance,
       returnError,
       returnFee,
+      returnIsCalculating,
       returnMethod,
       totalFee,
     ],

@@ -11,6 +11,16 @@ interface GetAddressDetailsParams {
   googlePlacesApiKey?: string
 }
 
+interface ResolveAddressQueryParams {
+  query: string
+  googlePlacesApiKey?: string
+}
+
+interface ReverseGeocodeParams {
+  latitude: number
+  longitude: number
+}
+
 function getGoogleApiKey(apiKey?: string): string {
   const resolved = apiKey ?? process.env.GOOGLE_PLACES_API_KEY
   if (!resolved) {
@@ -36,11 +46,9 @@ export async function getAddressAutocomplete(
       input: query,
       includedPrimaryTypes: [
         'street_address',
-        'subpremise',
         'premise',
         'route',
         'locality',
-        'sublocality',
         'postal_code',
       ],
     }),
@@ -72,6 +80,68 @@ export async function getAddressAutocomplete(
     }))
 
   return { suggestions }
+}
+
+export async function resolveAddressQuery(
+  params: ResolveAddressQueryParams,
+): Promise<{ details: AddressDetails | null }> {
+  const { query, googlePlacesApiKey } = params
+  const apiKey = getGoogleApiKey(googlePlacesApiKey)
+
+  const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Goog-Api-Key': apiKey,
+      'X-Goog-FieldMask': 'places.id,places.formattedAddress,places.location,places.addressComponents',
+    },
+    body: JSON.stringify({
+      textQuery: query,
+      maxResultCount: 1,
+    }),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok || data.error) {
+    throw new ApiServiceError('INTERNAL_SERVER_ERROR', 'errors.addressLookupFailed', data.error)
+  }
+
+  const place = data.places?.[0]
+  if (!place) {
+    return { details: null }
+  }
+
+  const addressComponents = place.addressComponents || []
+
+  const getComponent = (types: string[]): string | undefined => {
+    const component = addressComponents.find((entry: { types: string[] }) =>
+      types.some((type) => entry.types.includes(type)),
+    )
+    return component?.longText
+  }
+
+  const getComponentShort = (types: string[]): string | undefined => {
+    const component = addressComponents.find((entry: { types: string[] }) =>
+      types.some((type) => entry.types.includes(type)),
+    )
+    return component?.shortText
+  }
+
+  return {
+    details: {
+      placeId: place.id,
+      formattedAddress: place.formattedAddress,
+      latitude: place.location?.latitude,
+      longitude: place.location?.longitude,
+      streetNumber: getComponent(['street_number']),
+      street: getComponent(['route']),
+      city: getComponent(['locality', 'administrative_area_level_2']),
+      postalCode: getComponent(['postal_code']),
+      country: getComponent(['country']),
+      countryCode: getComponentShort(['country']),
+    },
+  }
 }
 
 export async function getAddressDetails(
@@ -123,5 +193,44 @@ export async function getAddressDetails(
       country: getComponent(['country']),
       countryCode: getComponentShort(['country']),
     },
+  }
+}
+
+export async function reverseGeocode(
+  params: ReverseGeocodeParams,
+): Promise<{ details: AddressDetails | null }> {
+  const { latitude, longitude } = params
+
+  try {
+    // Use OpenStreetMap Nominatim for reverse geocoding (free, no API key needed)
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+      { headers: { 'User-Agent': 'Louez/1.0' } },
+    )
+
+    const data = await response.json()
+
+    if (data.error || !data.display_name) {
+      return { details: null }
+    }
+
+    const addr = data.address || {}
+
+    return {
+      details: {
+        placeId: String(data.place_id || ''),
+        formattedAddress: data.display_name,
+        latitude,
+        longitude,
+        streetNumber: addr.house_number,
+        street: addr.road,
+        city: addr.city || addr.town || addr.village || addr.municipality,
+        postalCode: addr.postcode,
+        country: addr.country,
+        countryCode: addr.country_code?.toUpperCase(),
+      },
+    }
+  } catch {
+    return { details: null }
   }
 }

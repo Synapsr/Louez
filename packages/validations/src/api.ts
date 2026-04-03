@@ -387,8 +387,24 @@ export const addressAutocompleteInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
 })
 
+export const addressResolveInputSchema = z.object({
+  query: z.string().trim().min(3).max(200),
+})
+
 export const addressDetailsInputSchema = z.object({
   placeId: z.string().trim().min(1).max(255),
+})
+
+export const addressReverseGeocodeInputSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+})
+
+export const routeDistanceInputSchema = z.object({
+  originLatitude: z.number().min(-90).max(90),
+  originLongitude: z.number().min(-180).max(180),
+  destinationLatitude: z.number().min(-90).max(90),
+  destinationLongitude: z.number().min(-180).max(180),
 })
 
 export const reservationSignInputSchema = z.object({
@@ -507,5 +523,8 @@ export type DashboardIntegrationsDisconnectTulipInput = z.infer<
 export type AddressAutocompleteInput = z.infer<
   typeof addressAutocompleteInputSchema
 >
+export type AddressResolveInput = z.infer<typeof addressResolveInputSchema>
 export type AddressDetailsInput = z.infer<typeof addressDetailsInputSchema>
+export type AddressReverseGeocodeInput = z.infer<typeof addressReverseGeocodeInputSchema>
+export type RouteDistanceInput = z.infer<typeof routeDistanceInputSchema>
 export type ReservationSignInput = z.infer<typeof reservationSignInputSchema>

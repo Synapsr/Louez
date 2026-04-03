@@ -60,6 +60,10 @@ import { useEditReservationPricing } from './hooks/use-edit-reservation-pricing'
 import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
 import type { EditReservationFormProps, EditableItem } from './types'
 
+function parseCoordinate(value: string | null): number | null {
+  return value ? parseFloat(value) : null
+}
+
 export function EditReservationForm({
   reservation,
   availableProducts,
@@ -484,6 +488,11 @@ export function EditReservationForm({
       return
     }
 
+    if (delivery.isCalculating) {
+      toastManager.add({ title: tForm('loading'), type: 'error' })
+      return
+    }
+
     // Check for delivery errors
     if (delivery.hasErrors) {
       return
@@ -504,6 +513,26 @@ export function EditReservationForm({
     await saveReservation()
   }
 
+  const hasDeliveryAddressChanges =
+    (
+      (delivery.outbound.method === 'address' ||
+        reservation.delivery.outboundMethod === 'address') &&
+      (
+        delivery.outbound.address.address !== (reservation.delivery.deliveryAddress ?? '') ||
+        delivery.outbound.address.latitude !== parseCoordinate(reservation.delivery.deliveryLatitude) ||
+        delivery.outbound.address.longitude !== parseCoordinate(reservation.delivery.deliveryLongitude)
+      )
+    ) ||
+    (
+      (delivery.inbound.method === 'address' ||
+        reservation.delivery.returnMethod === 'address') &&
+      (
+        delivery.inbound.address.address !== (reservation.delivery.returnAddress ?? '') ||
+        delivery.inbound.address.latitude !== parseCoordinate(reservation.delivery.returnLatitude) ||
+        delivery.inbound.address.longitude !== parseCoordinate(reservation.delivery.returnLongitude)
+      )
+    )
+
   const hasChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
     (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
@@ -512,7 +541,8 @@ export function EditReservationForm({
     items.length !== editableReservationItems.length ||
     delivery.totalFee !== originalDeliveryFee ||
     delivery.outbound.method !== reservation.delivery.outboundMethod ||
-    delivery.inbound.method !== reservation.delivery.returnMethod
+    delivery.inbound.method !== reservation.delivery.returnMethod ||
+    hasDeliveryAddressChanges
 
   // Products not in the reservation
   const availableToAdd = availableProducts.filter(
@@ -546,7 +576,7 @@ export function EditReservationForm({
                 <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="outline">
                   {tCommon('cancel')}
                 </Button>
-                <Button onClick={handleSave} disabled={isLoading || !hasChanges}>
+                <Button onClick={handleSave} disabled={isLoading || delivery.isCalculating || !hasChanges}>
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -710,6 +740,7 @@ export function EditReservationForm({
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}
                 isLoading={isLoading}
+                isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}
                 onSave={handleSave}
               />

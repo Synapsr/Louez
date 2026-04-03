@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Loader2, MapPin, Search, X } from 'lucide-react';
@@ -54,6 +55,9 @@ export function AddressInput({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const shouldSkipBlurResolveRef = useRef(false);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   // Sync with external value
   useEffect(() => {
@@ -65,7 +69,9 @@ export function AddressInput({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        !containerRef.current.contains(event.target as Node) &&
+        (!dropdownRef.current ||
+          !dropdownRef.current.contains(event.target as Node))
       ) {
         setIsOpen(false);
       }
@@ -73,6 +79,32 @@ export function AddressInput({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Position the portal dropdown relative to the input
+  useEffect(() => {
+    if (!isOpen || suggestions.length === 0 || !containerRef.current) return;
+
+    const updatePosition = () => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    };
+
+    updatePosition();
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [isOpen, suggestions.length]);
 
   const searchAddresses = useCallback(async (query: string) => {
     if (query.length < 3) {
@@ -99,6 +131,54 @@ export function AddressInput({
   }, [queryClient]);
 
   const debouncedSearch = useDebouncedCallback(searchAddresses, 300);
+
+  const resolveTypedAddress = useCallback(async () => {
+    const query = inputValue.trim();
+    const hasCoordinates =
+      latitude !== null &&
+      latitude !== undefined &&
+      longitude !== null &&
+      longitude !== undefined;
+
+    if (query.length < 3 || (hasCoordinates && query === displayAddress) || disabled) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data = await queryClient.fetchQuery(
+        orpc.public.address.resolve.queryOptions({
+          input: { query },
+        }),
+      );
+
+      if (!data.details) {
+        return;
+      }
+
+      const {
+        formattedAddress,
+        latitude: lat,
+        longitude: lng,
+      } = data.details;
+
+      setInputValue(formattedAddress);
+      onChange(formattedAddress, lat, lng, formattedAddress, additionalInfo);
+    } catch (error) {
+      console.error('Address resolve error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    additionalInfo,
+    disabled,
+    displayAddress,
+    inputValue,
+    latitude,
+    longitude,
+    onChange,
+    queryClient,
+  ]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -159,7 +239,13 @@ export function AddressInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        void resolveTypedAddress();
+      }
+      return;
+    }
 
     switch (e.key) {
       case 'ArrowDown':
@@ -183,6 +269,18 @@ export function AddressInput({
         setSelectedIndex(-1);
         break;
     }
+  };
+
+  const handleBlur = () => {
+    window.setTimeout(() => {
+      if (shouldSkipBlurResolveRef.current) {
+        shouldSkipBlurResolveRef.current = false;
+        return;
+      }
+
+      setIsOpen(false);
+      void resolveTypedAddress();
+    }, 120);
   };
 
   const handleModalSave = (data: {
@@ -219,6 +317,7 @@ export function AddressInput({
             value={inputValue}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
             onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
@@ -265,13 +364,24 @@ export function AddressInput({
           </div>
         </div>
 
-        {/* Suggestions dropdown */}
-        {isOpen && suggestions.length > 0 && (
-          <div className="bg-popover absolute z-50 mt-1 w-full rounded-md border p-1 shadow-md">
+      </div>
+
+      {/* Suggestions dropdown (portal to escape overflow clipping) */}
+      {isOpen &&
+        suggestions.length > 0 &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={dropdownStyle}
+            className="bg-popover rounded-md border p-1 shadow-md"
+          >
             {suggestions.map((suggestion, index) => (
               <button
                 key={suggestion.placeId}
                 type="button"
+                onMouseDown={() => {
+                  shouldSkipBlurResolveRef.current = true;
+                }}
                 onClick={() => handleSelect(suggestion)}
                 className={cn(
                   'flex w-full items-start gap-2 rounded-sm px-2 py-2 text-left text-sm transition-colors',
@@ -282,7 +392,9 @@ export function AddressInput({
               >
                 <Search className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{suggestion.mainText}</p>
+                  <p className="truncate font-medium">
+                    {suggestion.mainText}
+                  </p>
                   {suggestion.secondaryText && (
                     <p className="text-muted-foreground truncate text-xs">
                       {suggestion.secondaryText}
@@ -291,9 +403,9 @@ export function AddressInput({
                 </div>
               </button>
             ))}
-          </div>
+          </div>,
+          document.body,
         )}
-      </div>
 
       {/* Address detail modal */}
       <AddressMapModal

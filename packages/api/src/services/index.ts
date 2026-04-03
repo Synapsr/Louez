@@ -1,6 +1,7 @@
 export * from './address';
 export * from './availability';
 export * from './combination-resolver';
+export * from './distance';
 export * from './errors';
 export * from './onboarding';
 export * from './reservation-poll';

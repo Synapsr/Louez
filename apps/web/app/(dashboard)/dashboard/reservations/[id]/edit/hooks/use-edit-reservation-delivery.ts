@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 
 import type { LegMethod } from '@louez/types'
 
@@ -7,6 +8,7 @@ import {
   calculateTotalDeliveryFee,
   validateDelivery,
 } from '@/lib/utils/geo'
+import { fetchDeliveryDistanceKm } from '@/lib/utils/delivery-distance'
 
 import type { ReservationDelivery, StoreDeliveryInfo } from '../types'
 
@@ -32,6 +34,7 @@ export interface EditDeliveryState {
   inbound: DeliveryLegState
   totalFee: number
   hasDeliveryLegs: boolean
+  isCalculating: boolean
   isDeliveryIncluded: boolean
 }
 
@@ -73,7 +76,10 @@ export function useEditReservationDelivery({
   initialDelivery,
   subtotal,
 }: UseEditReservationDeliveryParams) {
+  const queryClient = useQueryClient()
   const initialDeliveryFee = parseFloat(initialDelivery.deliveryFee ?? '0')
+  const outboundRequestIdRef = useRef(0)
+  const inboundRequestIdRef = useRef(0)
 
   // Split original fee proportionally between legs for initialization
   const [outbound, setOutbound] = useState<DeliveryLegState>(() =>
@@ -105,6 +111,8 @@ export function useEditReservationDelivery({
   )
 
   const isDeliveryIncluded = storeDelivery?.settings.mode === 'included'
+  const [outboundIsCalculating, setOutboundIsCalculating] = useState(false)
+  const [inboundIsCalculating, setInboundIsCalculating] = useState(false)
 
   // Recalculate fees when distances or subtotal change
   const fees = useMemo(() => {
@@ -129,37 +137,51 @@ export function useEditReservationDelivery({
 
   const recalculateDistance = useCallback(
     (
-      leg: 'outbound' | 'inbound',
+      _leg: 'outbound' | 'inbound',
       address: DeliveryLegAddress,
-    ): { distance: number | null; error: string | null } => {
+    ): Promise<{ distance: number | null; error: string | null }> => {
       if (!storeDelivery?.latitude || !storeDelivery?.longitude) {
-        return { distance: null, error: null }
+        return Promise.resolve({ distance: null, error: null })
       }
 
       if (!address.latitude || !address.longitude) {
-        return { distance: null, error: null }
+        return Promise.resolve({ distance: null, error: null })
       }
 
-      const distance = calculateHaversineDistance(
-        storeDelivery.latitude,
-        storeDelivery.longitude,
-        address.latitude,
-        address.longitude,
+      const storeLatitude = storeDelivery.latitude
+      const storeLongitude = storeDelivery.longitude
+
+      const distancePromise = fetchDeliveryDistanceKm(queryClient, {
+        originLatitude: storeLatitude,
+        originLongitude: storeLongitude,
+        destinationLatitude: address.latitude,
+        destinationLongitude: address.longitude,
+      }).catch(() =>
+        calculateHaversineDistance(
+          storeLatitude,
+          storeLongitude,
+          address.latitude!,
+          address.longitude!,
+        ),
       )
 
-      const validation = validateDelivery(distance, storeDelivery.settings)
-      if (!validation.valid) {
-        return { distance, error: validation.errorKey ?? null }
-      }
+      return distancePromise.then((distance) => {
+        const validation = validateDelivery(distance, storeDelivery.settings)
+        if (!validation.valid) {
+          return { distance, error: validation.errorKey ?? null }
+        }
 
-      return { distance, error: null }
+        return { distance, error: null }
+      })
     },
-    [storeDelivery],
+    [queryClient, storeDelivery],
   )
 
   const setOutboundMethod = useCallback(
     (method: LegMethod) => {
       if (method === 'store') {
+        outboundRequestIdRef.current += 1
+        setOutboundIsCalculating(false)
         setOutbound((prev) => ({
           ...prev,
           method: 'store',
@@ -168,18 +190,24 @@ export function useEditReservationDelivery({
           error: null,
         }))
       } else {
-        setOutbound((prev) => {
-          const { distance, error } = recalculateDistance('outbound', prev.address)
-          return { ...prev, method: 'address', distance, error }
+        setOutbound((prev) => ({ ...prev, method: 'address' }))
+        setOutboundIsCalculating(true)
+        const requestId = ++outboundRequestIdRef.current
+        void recalculateDistance('outbound', outbound.address).then(({ distance, error }) => {
+          if (requestId !== outboundRequestIdRef.current) return
+          setOutboundIsCalculating(false)
+          setOutbound((prev) => ({ ...prev, distance, error }))
         })
       }
     },
-    [recalculateDistance],
+    [outbound.address, recalculateDistance],
   )
 
   const setInboundMethod = useCallback(
     (method: LegMethod) => {
       if (method === 'store') {
+        inboundRequestIdRef.current += 1
+        setInboundIsCalculating(false)
         setInbound((prev) => ({
           ...prev,
           method: 'store',
@@ -188,37 +216,63 @@ export function useEditReservationDelivery({
           error: null,
         }))
       } else {
-        setInbound((prev) => {
-          const { distance, error } = recalculateDistance('inbound', prev.address)
-          return { ...prev, method: 'address', distance, error }
+        setInbound((prev) => ({ ...prev, method: 'address' }))
+        setInboundIsCalculating(true)
+        const requestId = ++inboundRequestIdRef.current
+        void recalculateDistance('inbound', inbound.address).then(({ distance, error }) => {
+          if (requestId !== inboundRequestIdRef.current) return
+          setInboundIsCalculating(false)
+          setInbound((prev) => ({ ...prev, distance, error }))
         })
       }
     },
-    [recalculateDistance],
+    [inbound.address, recalculateDistance],
   )
 
   const setOutboundAddress = useCallback(
     (address: DeliveryLegAddress) => {
-      const { distance, error } = recalculateDistance('outbound', address)
+      const requestId = ++outboundRequestIdRef.current
+      setOutboundIsCalculating(true)
       setOutbound((prev) => ({
         ...prev,
         address,
-        distance,
-        error,
+        distance: null,
+        error: null,
       }))
+      void recalculateDistance('outbound', address).then(({ distance, error }) => {
+        if (requestId !== outboundRequestIdRef.current) return
+        setOutboundIsCalculating(false)
+        setOutbound((prev) => ({
+          ...prev,
+          address,
+          distance,
+          error,
+        }))
+      })
     },
     [recalculateDistance],
   )
 
   const setInboundAddress = useCallback(
     (address: DeliveryLegAddress) => {
-      const { distance, error } = recalculateDistance('inbound', address)
+      const requestId = ++inboundRequestIdRef.current
+      setInboundIsCalculating(true)
       setInbound((prev) => ({
         ...prev,
         address,
-        distance,
-        error,
+        distance: null,
+        error: null,
       }))
+      void recalculateDistance('inbound', address).then(({ distance, error }) => {
+        if (requestId !== inboundRequestIdRef.current) return
+        setInboundIsCalculating(false)
+        setInbound((prev) => ({
+          ...prev,
+          address,
+          distance,
+          error,
+        }))
+      })
     },
     [recalculateDistance],
   )
@@ -227,6 +281,7 @@ export function useEditReservationDelivery({
     outbound.method === 'address' || inbound.method === 'address'
 
   const hasErrors = outbound.error !== null || inbound.error !== null
+  const isCalculating = outboundIsCalculating || inboundIsCalculating
 
   return {
     outbound: { ...outbound, fee: fees.outboundFee },
@@ -234,6 +289,7 @@ export function useEditReservationDelivery({
     totalFee: fees.totalFee,
     hasDeliveryLegs,
     hasErrors,
+    isCalculating,
     isDeliveryIncluded,
     setOutboundMethod,
     setInboundMethod,

@@ -16,6 +16,7 @@ interface EditReservationSummarySectionProps {
   deliveryFee: number
   currencySymbol: string
   isLoading: boolean
+  isDeliveryCalculating: boolean
   hasChanges: boolean
   onSave: () => void
 }
@@ -28,6 +29,7 @@ export function EditReservationSummarySection({
   deliveryFee,
   currencySymbol,
   isLoading,
+  isDeliveryCalculating,
   hasChanges,
   onSave,
 }: EditReservationSummarySectionProps) {
@@ -146,7 +148,7 @@ export function EditReservationSummarySection({
           className="mt-6 w-full"
           size="lg"
           onClick={onSave}
-          disabled={isLoading || !hasChanges}
+          disabled={isLoading || isDeliveryCalculating || !hasChanges}
         >
           {isLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />

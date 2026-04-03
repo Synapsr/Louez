@@ -1,6 +1,7 @@
 'use server'
 
 import { db } from '@louez/db'
+import { getRouteDistance } from '@louez/api/services'
 import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
 import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
 import { nanoid } from 'nanoid'
@@ -32,7 +33,7 @@ import {
 } from '@louez/utils'
 import type { SeasonalPricingConfig } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
-import { calculateHaversineDistance, calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo'
+import { calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo'
 import {
   getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
@@ -744,10 +745,13 @@ export async function createReservation(input: CreateReservationInput) {
           return { error: 'errors.deliveryAddressInvalid' }
         }
 
-        deliveryDistanceKm = calculateHaversineDistance(
-          storeLatitude, storeLongitude,
-          outboundLeg.latitude, outboundLeg.longitude,
-        )
+        const outboundDistance = await getRouteDistance({
+          originLatitude: storeLatitude,
+          originLongitude: storeLongitude,
+          destinationLatitude: outboundLeg.latitude,
+          destinationLongitude: outboundLeg.longitude,
+        })
+        deliveryDistanceKm = outboundDistance.distanceKm
 
         const outboundValidation = validateDelivery(deliveryDistanceKm, deliverySettings)
         if (!outboundValidation.valid) {
@@ -771,10 +775,13 @@ export async function createReservation(input: CreateReservationInput) {
           return { error: 'errors.returnAddressInvalid' }
         }
 
-        returnDistanceKm = calculateHaversineDistance(
-          storeLatitude, storeLongitude,
-          returnLeg.latitude, returnLeg.longitude,
-        )
+        const inboundDistance = await getRouteDistance({
+          originLatitude: storeLatitude,
+          originLongitude: storeLongitude,
+          destinationLatitude: returnLeg.latitude,
+          destinationLongitude: returnLeg.longitude,
+        })
+        returnDistanceKm = inboundDistance.distanceKm
 
         const returnValidation = validateDelivery(returnDistanceKm, deliverySettings)
         if (!returnValidation.valid) {

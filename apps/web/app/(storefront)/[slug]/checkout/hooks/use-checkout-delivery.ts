@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
 import type { DeliverySettings, LegMethod } from '@louez/types';
@@ -7,6 +8,7 @@ import {
   calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo';
+import { fetchDeliveryDistanceKm } from '@/lib/utils/delivery-distance';
 
 import type { DeliveryAddress } from '../types';
 
@@ -33,6 +35,7 @@ export function useCheckoutDelivery({
   subtotal,
 }: UseCheckoutDeliveryParams) {
   const t = useTranslations('storefront.checkout');
+  const queryClient = useQueryClient();
 
   const hasStoreCoordinates =
     storeLatitude !== null &&
@@ -56,6 +59,7 @@ export function useCheckoutDelivery({
   const [outboundDistance, setOutboundDistance] = useState<number | null>(null);
   const [outboundFee, setOutboundFee] = useState(0);
   const [outboundError, setOutboundError] = useState<string | null>(null);
+  const [outboundIsCalculating, setOutboundIsCalculating] = useState(false);
 
   // --- Return leg state ---
   const [returnMethod, setReturnMethod] = useState<LegMethod>('store');
@@ -65,6 +69,9 @@ export function useCheckoutDelivery({
   const [returnDistance, setReturnDistance] = useState<number | null>(null);
   const [returnFee, setReturnFee] = useState(0);
   const [returnError, setReturnError] = useState<string | null>(null);
+  const [returnIsCalculating, setReturnIsCalculating] = useState(false);
+  const outboundRequestIdRef = useRef(0);
+  const returnRequestIdRef = useRef(0);
 
   const totalFee = outboundFee + returnFee;
 
@@ -102,7 +109,7 @@ export function useCheckoutDelivery({
   // Shared address change handler for a single leg
   // ---------------------------------------------------------------------------
   const handleLegAddressChange = useCallback(
-    (
+    async (
       leg: 'outbound' | 'return',
       address: string,
       latitude: number | null,
@@ -114,9 +121,14 @@ export function useCheckoutDelivery({
       const setAddress = leg === 'outbound' ? setOutboundAddress : setReturnAddress;
       const setDistance = leg === 'outbound' ? setOutboundDistance : setReturnDistance;
       const setError = leg === 'outbound' ? setOutboundError : setReturnError;
+      const setIsCalculating =
+        leg === 'outbound' ? setOutboundIsCalculating : setReturnIsCalculating;
+      const requestIdRef =
+        leg === 'outbound' ? outboundRequestIdRef : returnRequestIdRef;
 
       setAddress((prev) => ({ ...prev, address, latitude, longitude }));
       setError(null);
+      const requestId = ++requestIdRef.current;
 
       const otherDist = otherLegMethod === 'address' ? otherLegDistance : null;
 
@@ -129,6 +141,7 @@ export function useCheckoutDelivery({
         storeLongitude === undefined ||
         !deliverySettings
       ) {
+        setIsCalculating(false);
         setDistance(null);
         if (leg === 'outbound') {
           recalculateFees(null, otherDist);
@@ -138,13 +151,31 @@ export function useCheckoutDelivery({
         return;
       }
 
-      const distance = calculateHaversineDistance(
-        storeLatitude,
-        storeLongitude,
-        latitude,
-        longitude,
-      );
+      setIsCalculating(true);
+
+      let distance: number;
+      try {
+        distance = await fetchDeliveryDistanceKm(queryClient, {
+          originLatitude: storeLatitude,
+          originLongitude: storeLongitude,
+          destinationLatitude: latitude,
+          destinationLongitude: longitude,
+        });
+      } catch {
+        distance = calculateHaversineDistance(
+          storeLatitude,
+          storeLongitude,
+          latitude,
+          longitude,
+        );
+      }
+
       setDistance(distance);
+      setIsCalculating(false);
+
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
 
       const validation = validateDelivery(distance, deliverySettings);
       if (!validation.valid) {
@@ -167,7 +198,7 @@ export function useCheckoutDelivery({
         recalculateFees(otherDist, distance);
       }
     },
-    [deliverySettings, recalculateFees, storeLatitude, storeLongitude, t],
+    [deliverySettings, queryClient, recalculateFees, storeLatitude, storeLongitude, t],
   );
 
   // ---------------------------------------------------------------------------
@@ -179,9 +210,11 @@ export function useCheckoutDelivery({
       setOutboundMethod(method);
 
       if (method === 'store') {
+        outboundRequestIdRef.current += 1;
         setOutboundAddress(DEFAULT_DELIVERY_ADDRESS);
         setOutboundDistance(null);
         setOutboundError(null);
+        setOutboundIsCalculating(false);
         recalculateFees(null, returnMethod === 'address' ? returnDistance : null);
       }
     },
@@ -193,9 +226,11 @@ export function useCheckoutDelivery({
       setReturnMethod(method);
 
       if (method === 'store') {
+        returnRequestIdRef.current += 1;
         setReturnAddress(DEFAULT_DELIVERY_ADDRESS);
         setReturnDistance(null);
         setReturnError(null);
+        setReturnIsCalculating(false);
         recalculateFees(outboundMethod === 'address' ? outboundDistance : null, null);
       }
     },
@@ -204,7 +239,7 @@ export function useCheckoutDelivery({
 
   const handleOutboundAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      handleLegAddressChange(
+      void handleLegAddressChange(
         'outbound',
         address,
         latitude,
@@ -218,7 +253,7 @@ export function useCheckoutDelivery({
 
   const handleReturnAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
-      handleLegAddressChange(
+      void handleLegAddressChange(
         'return',
         address,
         latitude,
@@ -253,7 +288,11 @@ export function useCheckoutDelivery({
       returnAddress.longitude === null ||
       Boolean(returnError));
 
-  const canContinue = !hasOutboundAddressError && !hasReturnAddressError;
+  const canContinue =
+    !hasOutboundAddressError &&
+    !hasReturnAddressError &&
+    !outboundIsCalculating &&
+    !returnIsCalculating;
 
   return useMemo(
     () => ({
@@ -268,6 +307,7 @@ export function useCheckoutDelivery({
       outboundDistance,
       outboundFee,
       outboundError,
+      outboundIsCalculating,
       handleOutboundMethodChange,
       handleOutboundAddressChange,
 
@@ -277,6 +317,7 @@ export function useCheckoutDelivery({
       returnDistance,
       returnFee,
       returnError,
+      returnIsCalculating,
       handleReturnMethodChange,
       handleReturnAddressChange,
 
@@ -301,11 +342,13 @@ export function useCheckoutDelivery({
       outboundDistance,
       outboundError,
       outboundFee,
+      outboundIsCalculating,
       outboundMethod,
       returnAddress,
       returnDistance,
       returnError,
       returnFee,
+      returnIsCalculating,
       returnMethod,
       totalFee,
     ],

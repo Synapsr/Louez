@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
+import { getRouteDistance } from '@louez/api/services';
 import { db } from '@louez/db';
 import {
   customers,
@@ -42,11 +43,7 @@ import {
   type SeasonalPricingConfig,
   calculateDuration,
   calculateDurationMinutes,
-  calculateRateBasedPrice,
-  calculateRentalPrice,
   calculateSeasonalAwarePrice,
-  generatePricingBreakdown,
-  isRateBasedProduct,
 } from '@louez/utils';
 import type { ReservationStatus } from '@louez/validations';
 
@@ -106,7 +103,6 @@ import {
 import { getContrastColorHex } from '@/lib/utils/colors';
 import {
   calculateTotalDeliveryFee,
-  calculateHaversineDistance,
   validateDelivery,
 } from '@/lib/utils/geo';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
@@ -1005,10 +1001,13 @@ export async function createManualReservation(data: CreateReservationData) {
         return { error: 'errors.deliveryAddressRequired' };
       }
 
-      deliveryDistanceKm = calculateHaversineDistance(
-        sLat, sLon,
-        outboundLeg.latitude, outboundLeg.longitude,
-      );
+      const outboundDistance = await getRouteDistance({
+        originLatitude: sLat,
+        originLongitude: sLon,
+        destinationLatitude: outboundLeg.latitude,
+        destinationLongitude: outboundLeg.longitude,
+      });
+      deliveryDistanceKm = outboundDistance.distanceKm;
 
       const validation = validateDelivery(deliveryDistanceKm, storeDeliverySettings);
       if (!validation.valid) {
@@ -1022,10 +1021,13 @@ export async function createManualReservation(data: CreateReservationData) {
         return { error: 'errors.returnAddressRequired' };
       }
 
-      returnDistanceKm = calculateHaversineDistance(
-        sLat, sLon,
-        returnLeg.latitude, returnLeg.longitude,
-      );
+      const inboundDistance = await getRouteDistance({
+        originLatitude: sLat,
+        originLongitude: sLon,
+        destinationLatitude: returnLeg.latitude,
+        destinationLongitude: returnLeg.longitude,
+      });
+      returnDistanceKm = inboundDistance.distanceKm;
 
       const returnValidation = validateDelivery(returnDistanceKm, storeDeliverySettings);
       if (!returnValidation.valid) {
@@ -1675,11 +1677,6 @@ export async function updateReservation(
 
         if (product) {
           const effectivePricingMode = toPricingMode(product.pricingMode);
-          const itemDuration = calculateDuration(
-            newStartDate,
-            newEndDate,
-            effectivePricingMode,
-          );
           const itemDurationMinutes = calculateDurationMinutes(
             newStartDate,
             newEndDate,
@@ -1983,11 +1980,13 @@ export async function updateReservation(
       deliveryUpdateFields.deliveryLongitude = data.delivery.outbound.longitude?.toFixed(7) ?? null;
 
       if (storeLat && storeLon && data.delivery.outbound.latitude && data.delivery.outbound.longitude) {
-        const dist = calculateHaversineDistance(
-          storeLat, storeLon,
-          data.delivery.outbound.latitude, data.delivery.outbound.longitude,
-        );
-        deliveryUpdateFields.deliveryDistanceKm = dist.toFixed(2);
+        const outboundDistance = await getRouteDistance({
+          originLatitude: storeLat,
+          originLongitude: storeLon,
+          destinationLatitude: data.delivery.outbound.latitude,
+          destinationLongitude: data.delivery.outbound.longitude,
+        });
+        deliveryUpdateFields.deliveryDistanceKm = outboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.deliveryDistanceKm = null;
       }
@@ -2012,11 +2011,13 @@ export async function updateReservation(
       deliveryUpdateFields.returnLongitude = data.delivery.return.longitude?.toFixed(7) ?? null;
 
       if (storeLat && storeLon && data.delivery.return.latitude && data.delivery.return.longitude) {
-        const dist = calculateHaversineDistance(
-          storeLat, storeLon,
-          data.delivery.return.latitude, data.delivery.return.longitude,
-        );
-        deliveryUpdateFields.returnDistanceKm = dist.toFixed(2);
+        const inboundDistance = await getRouteDistance({
+          originLatitude: storeLat,
+          originLongitude: storeLon,
+          destinationLatitude: data.delivery.return.latitude,
+          destinationLongitude: data.delivery.return.longitude,
+        });
+        deliveryUpdateFields.returnDistanceKm = inboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.returnDistanceKm = null;
       }
