@@ -3036,7 +3036,9 @@
           "testAddress": "Testa un indirizzo",
           "testAddressTitle": "Testa un indirizzo",
           "testAddressDescription": "Inserisci un indirizzo cliente per calcolare la distanza reale",
-          "testAddressPlaceholder": "Cerca un indirizzo..."
+          "testAddressPlaceholder": "Cerca un indirizzo...",
+          "calculatedDistance": "Distanza calcolata",
+          "applyDistance": "Applica al simulatore"
         }
       },
       "inspection": {

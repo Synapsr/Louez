@@ -3036,7 +3036,9 @@
           "testAddress": "Adresse testen",
           "testAddressTitle": "Adresse testen",
           "testAddressDescription": "Geben Sie eine Kundenadresse ein, um die tatsächliche Entfernung zu berechnen",
-          "testAddressPlaceholder": "Adresse suchen..."
+          "testAddressPlaceholder": "Adresse suchen...",
+          "calculatedDistance": "Berechnete Entfernung",
+          "applyDistance": "Im Simulator anwenden"
         }
       },
       "inspection": {

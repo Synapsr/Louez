@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTransition } from 'react'
 import { useTranslations } from 'next-intl'
@@ -24,6 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogPanel,
+  DialogFooter,
 } from '@louez/ui'
 import { AddressInput } from '@/components/ui/address-input'
 import { calculateHaversineDistance } from '@/lib/utils/geo'
@@ -157,6 +158,14 @@ export function DeliverySettingsForm({
   const [simOrderTotal, setSimOrderTotal] = useState(100)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)
   const [testAddress, setTestAddress] = useState('')
+  const [testLatitude, setTestLatitude] = useState<number | null>(null)
+  const [testLongitude, setTestLongitude] = useState<number | null>(null)
+  const [testDistance, setTestDistance] = useState<number | null>(null)
+
+  const testMapRef = useRef<HTMLDivElement>(null)
+  const testMapInstanceRef = useRef<unknown>(null)
+  const testStoreMarkerRef = useRef<unknown>(null)
+  const testAddressMarkerRef = useRef<unknown>(null)
 
   // Store coordinates for distance calculation
   const storeLatitude = store.latitude ? parseFloat(store.latitude) : null
@@ -196,6 +205,8 @@ export function DeliverySettingsForm({
     longitude: number | null
   ) => {
     setTestAddress(address)
+    setTestLatitude(latitude)
+    setTestLongitude(longitude)
 
     if (latitude && longitude && storeLatitude && storeLongitude) {
       const distance = calculateHaversineDistance(
@@ -204,10 +215,163 @@ export function DeliverySettingsForm({
         latitude,
         longitude
       )
-      setSimDistance(Math.round(distance * 10) / 10)
-      setIsAddressDialogOpen(false)
+      setTestDistance(Math.round(distance * 10) / 10)
+    } else {
+      setTestDistance(null)
     }
   }
+
+  const handleApplyTestDistance = () => {
+    if (testDistance !== null) {
+      setSimDistance(testDistance)
+    }
+    setIsAddressDialogOpen(false)
+  }
+
+  // Initialize test map when dialog opens
+  useEffect(() => {
+    if (!isAddressDialogOpen) return
+
+    // Load Leaflet CSS
+    if (!document.getElementById('leaflet-css')) {
+      const link = document.createElement('link')
+      link.id = 'leaflet-css'
+      link.rel = 'stylesheet'
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+      link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+      link.crossOrigin = ''
+      document.head.appendChild(link)
+    }
+
+    const loadAndInit = async () => {
+      if (typeof window !== 'undefined' && !window.L) {
+        await new Promise<void>((resolve) => {
+          const script = document.createElement('script')
+          script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+          script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
+          script.crossOrigin = ''
+          script.onload = () => resolve()
+          document.head.appendChild(script)
+        })
+      }
+      setTimeout(initMap, 100)
+    }
+
+    const initMap = () => {
+      if (!testMapRef.current || !window.L) return
+
+      if (testMapInstanceRef.current) {
+        (testMapInstanceRef.current as { remove: () => void }).remove()
+        testMapInstanceRef.current = null
+        testStoreMarkerRef.current = null
+        testAddressMarkerRef.current = null
+      }
+
+      const L = window.L as typeof import('leaflet')
+      const lat = storeLatitude ?? 48.8566
+      const lng = storeLongitude ?? 2.3522
+
+      const map = L.map(testMapRef.current, {
+        zoomControl: true,
+        scrollWheelZoom: false,
+      }).setView([lat, lng], 12)
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20,
+      }).addTo(map)
+
+      // Store marker (green)
+      if (storeLatitude && storeLongitude) {
+        const storeIcon = L.divIcon({
+          className: 'store-marker',
+          html: `<div style="
+            background-color: #16a34a;
+            width: 32px;
+            height: 32px;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+            border: 2px solid white;
+          ">
+            <svg style="transform: rotate(45deg); width: 14px; height: 14px;" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 32],
+        })
+
+        L.marker([storeLatitude, storeLongitude], { icon: storeIcon }).addTo(map)
+        testStoreMarkerRef.current = true
+      }
+
+      testMapInstanceRef.current = map
+    }
+
+    loadAndInit()
+
+    return () => {
+      if (testMapInstanceRef.current) {
+        (testMapInstanceRef.current as { remove: () => void }).remove()
+        testMapInstanceRef.current = null
+        testStoreMarkerRef.current = null
+        testAddressMarkerRef.current = null
+      }
+    }
+  }, [isAddressDialogOpen, storeLatitude, storeLongitude])
+
+  // Update test address marker when coordinates change
+  useEffect(() => {
+    if (!testMapInstanceRef.current || !window.L || testLatitude === null || testLongitude === null) return
+
+    const L = window.L as typeof import('leaflet')
+    const map = testMapInstanceRef.current as import('leaflet').Map
+
+    if (testAddressMarkerRef.current) {
+      (testAddressMarkerRef.current as { setLatLng: (latlng: [number, number]) => void }).setLatLng([testLatitude, testLongitude])
+    } else {
+      const addressIcon = L.divIcon({
+        className: 'test-address-marker',
+        html: `<div style="
+          background-color: #2563eb;
+          width: 32px;
+          height: 32px;
+          border-radius: 50% 50% 50% 0;
+          transform: rotate(-45deg);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 3px 12px rgba(0,0,0,0.3);
+          border: 2px solid white;
+        ">
+          <svg style="transform: rotate(45deg); width: 14px; height: 14px;" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="1">
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 32],
+      })
+
+      const marker = L.marker([testLatitude, testLongitude], { icon: addressIcon }).addTo(map)
+      testAddressMarkerRef.current = marker
+    }
+
+    // Fit bounds to show both markers
+    if (storeLatitude && storeLongitude) {
+      const bounds = L.latLngBounds(
+        [storeLatitude, storeLongitude],
+        [testLatitude, testLongitude]
+      )
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 })
+    } else {
+      map.setView([testLatitude, testLongitude], 14)
+    }
+  }, [testLatitude, testLongitude, storeLatitude, storeLongitude])
 
   return (
     <form.AppForm>
@@ -525,12 +689,23 @@ export function DeliverySettingsForm({
                 <CardDescription>{t('simulator.description')}</CardDescription>
               </div>
               {hasCoordinates && (
-                <Dialog open={isAddressDialogOpen} onOpenChange={setIsAddressDialogOpen}>
+                <Dialog
+                  open={isAddressDialogOpen}
+                  onOpenChange={(open) => {
+                    setIsAddressDialogOpen(open)
+                    if (open) {
+                      setTestAddress('')
+                      setTestLatitude(null)
+                      setTestLongitude(null)
+                      setTestDistance(null)
+                    }
+                  }}
+                >
                   <DialogTrigger render={<Button variant="outline" className="shrink-0" />}>
                       <Search className="h-4 w-4 mr-2" />
                       {t('simulator.testAddress')}
                   </DialogTrigger>
-                  <DialogPopup className="sm:max-w-md">
+                  <DialogPopup className="sm:max-w-lg">
                     <DialogHeader>
                       <DialogTitle>{t('simulator.testAddressTitle')}</DialogTitle>
                       <DialogDescription>
@@ -538,12 +713,43 @@ export function DeliverySettingsForm({
                       </DialogDescription>
                     </DialogHeader>
                     <DialogPanel>
-                      <AddressInput
-                        value={testAddress}
-                        onChange={handleTestAddressChange}
-                        placeholder={t('simulator.testAddressPlaceholder')}
-                      />
+                      <div className="space-y-4">
+                        <AddressInput
+                          value={testAddress}
+                          onChange={handleTestAddressChange}
+                          placeholder={t('simulator.testAddressPlaceholder')}
+                        />
+
+                        {/* Map preview */}
+                        <div
+                          ref={testMapRef}
+                          className="h-[200px] rounded-lg border bg-muted"
+                          style={{ zIndex: 0 }}
+                        />
+
+                        {/* Distance result */}
+                        {testDistance !== null && (
+                          <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <MapPin className="h-4 w-4 text-muted-foreground" />
+                              <span>{t('simulator.calculatedDistance')}</span>
+                            </div>
+                            <span className="text-lg font-semibold">{testDistance} km</span>
+                          </div>
+                        )}
+                      </div>
                     </DialogPanel>
+                    <DialogFooter className="border-t pt-4">
+                      <Button variant="outline" onClick={() => setIsAddressDialogOpen(false)}>
+                        {tCommon('cancel')}
+                      </Button>
+                      <Button
+                        onClick={handleApplyTestDistance}
+                        disabled={testDistance === null}
+                      >
+                        {t('simulator.applyDistance')}
+                      </Button>
+                    </DialogFooter>
                   </DialogPopup>
                 </Dialog>
               )}

@@ -3163,7 +3163,9 @@
           "testAddress": "Test an address",
           "testAddressTitle": "Test an address",
           "testAddressDescription": "Enter a customer address to calculate the actual distance",
-          "testAddressPlaceholder": "Search for an address..."
+          "testAddressPlaceholder": "Search for an address...",
+          "calculatedDistance": "Calculated distance",
+          "applyDistance": "Apply to simulator"
         }
       },
       "inspection": {

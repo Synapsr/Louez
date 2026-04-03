@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { Loader2, MapPin, Navigation, Search } from 'lucide-react';
@@ -71,6 +72,8 @@ export function AddressMapModal({
   const mapInstanceRef = useRef<unknown>(null);
   const markerRef = useRef<unknown>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   // Reset state when modal opens
   useEffect(() => {
@@ -96,7 +99,9 @@ export function AddressMapModal({
     const handleClickOutside = (event: MouseEvent) => {
       if (
         searchContainerRef.current &&
-        !searchContainerRef.current.contains(event.target as Node)
+        !searchContainerRef.current.contains(event.target as Node) &&
+        (!dropdownRef.current ||
+          !dropdownRef.current.contains(event.target as Node))
       ) {
         setShowSuggestions(false);
       }
@@ -104,6 +109,32 @@ export function AddressMapModal({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Position the portal dropdown relative to the search input
+  useEffect(() => {
+    if (!showSuggestions || suggestions.length === 0 || !searchContainerRef.current) return;
+
+    const updatePosition = () => {
+      if (!searchContainerRef.current) return;
+      const rect = searchContainerRef.current.getBoundingClientRect();
+      setDropdownStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    };
+
+    updatePosition();
+
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [showSuggestions, suggestions.length]);
 
   // Initialize map
   useEffect(() => {
@@ -203,6 +234,7 @@ export function AddressMapModal({
           const pos = marker.getLatLng();
           setLatitude(pos.lat);
           setLongitude(pos.lng);
+          void reverseGeocodeRef.current(pos.lat, pos.lng);
         });
 
         markerRef.current = marker;
@@ -213,6 +245,7 @@ export function AddressMapModal({
         const { lat, lng } = e.latlng;
         setLatitude(lat);
         setLongitude(lng);
+        void reverseGeocodeRef.current(lat, lng);
 
         if (markerRef.current) {
           (
@@ -230,6 +263,7 @@ export function AddressMapModal({
             const pos = marker.getLatLng();
             setLatitude(pos.lat);
             setLongitude(pos.lng);
+            void reverseGeocodeRef.current(pos.lat, pos.lng);
           });
 
           markerRef.current = marker;
@@ -306,6 +340,7 @@ export function AddressMapModal({
         const pos = marker.getLatLng();
         setLatitude(pos.lat);
         setLongitude(pos.lng);
+        void reverseGeocodeRef.current(pos.lat, pos.lng);
       });
 
       markerRef.current = marker;
@@ -370,6 +405,32 @@ export function AddressMapModal({
     }
   };
 
+  // Reverse geocode coordinates to get the address
+  const reverseGeocodeCoords = useCallback(
+    async (lat: number, lng: number) => {
+      try {
+        const data = await queryClient.fetchQuery(
+          orpc.public.address.reverseGeocode.queryOptions({
+            input: { latitude: lat, longitude: lng },
+          }),
+        );
+
+        if (data.details) {
+          setDisplayAddress(data.details.formattedAddress);
+        }
+      } catch (error) {
+        console.error('Reverse geocode error:', error);
+      }
+    },
+    [queryClient],
+  );
+
+  // Ref so map event handlers always call the latest version
+  const reverseGeocodeRef = useRef(reverseGeocodeCoords);
+  useEffect(() => {
+    reverseGeocodeRef.current = reverseGeocodeCoords;
+  }, [reverseGeocodeCoords]);
+
   const handleSave = () => {
     onSave({
       address: displayAddress,
@@ -417,9 +478,17 @@ export function AddressMapModal({
                 )}
               </div>
 
-              {/* Suggestions dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="bg-popover absolute z-50 mt-1 w-full rounded-md border p-1 shadow-md">
+            </div>
+
+            {/* Suggestions dropdown (portal to escape overflow clipping) */}
+            {showSuggestions &&
+              suggestions.length > 0 &&
+              createPortal(
+                <div
+                  ref={dropdownRef}
+                  style={dropdownStyle}
+                  className="bg-popover rounded-md border p-1 shadow-md"
+                >
                   {suggestions.map((suggestion) => (
                     <button
                       key={suggestion.placeId}
@@ -440,9 +509,9 @@ export function AddressMapModal({
                       </div>
                     </button>
                   ))}
-                </div>
+                </div>,
+                document.body,
               )}
-            </div>
 
             {/* Map */}
             <div className="space-y-1.5">

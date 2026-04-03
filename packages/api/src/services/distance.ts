@@ -8,6 +8,13 @@ interface GetRouteDistanceParams {
   googlePlacesApiKey?: string
 }
 
+interface RouteDistanceLogContext {
+  originLatitude: number
+  originLongitude: number
+  destinationLatitude: number
+  destinationLongitude: number
+}
+
 function getGoogleApiKey(apiKey?: string): string {
   const resolved = apiKey ?? process.env.GOOGLE_PLACES_API_KEY
   if (!resolved) {
@@ -47,6 +54,35 @@ function roundDistance(distanceKm: number): number {
   return Math.round(distanceKm * 100) / 100
 }
 
+function roundCoordinate(value: number): number {
+  return Math.round(value * 100000) / 100000
+}
+
+function buildLogContext(context: RouteDistanceLogContext) {
+  return {
+    origin: {
+      latitude: roundCoordinate(context.originLatitude),
+      longitude: roundCoordinate(context.originLongitude),
+    },
+    destination: {
+      latitude: roundCoordinate(context.destinationLatitude),
+      longitude: roundCoordinate(context.destinationLongitude),
+    },
+  }
+}
+
+function logRouteDistanceFallback(
+  reason: string,
+  context: RouteDistanceLogContext,
+  details?: unknown,
+): void {
+  console.warn('[delivery-distance] Falling back to haversine', {
+    reason,
+    ...buildLogContext(context),
+    details,
+  })
+}
+
 export async function getRouteDistance(
   params: GetRouteDistanceParams,
 ): Promise<{ distanceKm: number; source: 'route' | 'haversine' }> {
@@ -71,6 +107,7 @@ export async function getRouteDistance(
   try {
     apiKey = getGoogleApiKey(googlePlacesApiKey)
   } catch {
+    logRouteDistanceFallback('missing_google_api_key', params)
     return { distanceKm: fallbackDistanceKm, source: 'haversine' }
   }
 
@@ -109,6 +146,13 @@ export async function getRouteDistance(
     const distanceMeters = data.routes?.[0]?.distanceMeters
 
     if (!response.ok || data.error || typeof distanceMeters !== 'number') {
+      logRouteDistanceFallback('routes_api_invalid_response', params, {
+        status: response.status,
+        statusText: response.statusText,
+        error: data.error,
+        hasRoutes: Array.isArray(data.routes) ? data.routes.length > 0 : false,
+        distanceMetersType: typeof distanceMeters,
+      })
       return { distanceKm: fallbackDistanceKm, source: 'haversine' }
     }
 
@@ -116,7 +160,8 @@ export async function getRouteDistance(
       distanceKm: roundDistance(distanceMeters / 1000),
       source: 'route',
     }
-  } catch {
+  } catch (error) {
+    logRouteDistanceFallback('routes_api_fetch_failed', params, error)
     return { distanceKm: fallbackDistanceKm, source: 'haversine' }
   }
 }

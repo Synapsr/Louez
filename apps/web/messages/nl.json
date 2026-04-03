@@ -3036,7 +3036,9 @@
           "testAddress": "Test een adres",
           "testAddressTitle": "Test een adres",
           "testAddressDescription": "Voer een klantadres in om de werkelijke afstand te berekenen",
-          "testAddressPlaceholder": "Zoek een adres..."
+          "testAddressPlaceholder": "Zoek een adres...",
+          "calculatedDistance": "Berekende afstand",
+          "applyDistance": "Toepassen op simulator"
         }
       },
       "inspection": {
