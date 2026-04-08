@@ -57,7 +57,42 @@ export async function updateStoreAppearance(params: UpdateStoreAppearanceParams)
   }
 
   if (theme) {
-    updateData.theme = theme
+    const currentStore = await db.query.stores.findFirst({
+      where: eq(stores.id, storeId),
+      columns: {
+        theme: true,
+      },
+    })
+
+    const existingTheme = currentStore?.theme ?? null
+
+    const mergedTheme: {
+      mode: 'light' | 'dark'
+      primaryColor: string
+      heroImages?: string[]
+      maxDiscountPercent?: number | null
+    } = {
+      mode: theme.mode,
+      primaryColor: theme.primaryColor,
+    }
+
+    if (existingTheme?.heroImages !== undefined) {
+      mergedTheme.heroImages = existingTheme.heroImages
+    }
+
+    if (existingTheme?.maxDiscountPercent !== undefined) {
+      mergedTheme.maxDiscountPercent = existingTheme.maxDiscountPercent
+    }
+
+    if (theme.heroImages !== undefined) {
+      mergedTheme.heroImages = theme.heroImages
+    }
+
+    if (theme.maxDiscountPercent !== undefined) {
+      mergedTheme.maxDiscountPercent = theme.maxDiscountPercent
+    }
+
+    updateData.theme = mergedTheme
   }
 
   await db.update(stores).set(updateData).where(eq(stores.id, storeId))

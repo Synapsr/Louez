@@ -159,11 +159,9 @@ export const authInstance = betterAuth({
  * need zero changes: `const session = await auth()`
  */
 export async function auth(): Promise<AuthSession | null> {
-  const session = await authInstance.api.getSession({
-    headers: await headers(),
-  })
-  if (!session) return null
-  return {
+  const requestHeaders = await headers()
+
+  const mapSession = (session: NonNullable<Awaited<ReturnType<typeof authInstance.api.getSession>>>) => ({
     user: {
       id: session.user.id,
       name: session.user.name ?? null,
@@ -171,6 +169,27 @@ export async function auth(): Promise<AuthSession | null> {
       image: session.user.image ?? null,
     },
     expires: session.session.expiresAt.toISOString(),
+  })
+
+  try {
+    const session = await authInstance.api.getSession({
+      headers: requestHeaders,
+    })
+    if (!session) return null
+    return mapSession(session)
+  } catch (error) {
+    console.error('[auth] getSession failed, retrying once', error)
+  }
+
+  try {
+    const retrySession = await authInstance.api.getSession({
+      headers: requestHeaders,
+    })
+    if (!retrySession) return null
+    return mapSession(retrySession)
+  } catch (error) {
+    console.error('[auth] getSession retry failed', error)
+    return null
   }
 }
 

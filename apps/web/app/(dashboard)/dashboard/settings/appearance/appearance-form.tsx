@@ -4,7 +4,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useMutation } from '@tanstack/react-query'
-import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2, TrendingDown } from 'lucide-react'
+import { Upload, X, Check, Sun, Moon, Plus, ImageIcon, Sparkles, ArrowRight, CalendarIcon, Clock, Loader2 } from 'lucide-react'
 import { Button } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { Switch } from '@louez/ui'
@@ -66,6 +66,10 @@ function parseHexInput(input: string): string | null {
   }
 
   return null
+}
+
+function isDataUri(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.startsWith('data:')
 }
 
 export function AppearanceForm({ store }: AppearanceFormProps) {
@@ -316,16 +320,66 @@ export function AppearanceForm({ store }: AppearanceFormProps) {
     e.preventDefault()
 
     try {
-      await updateAppearanceMutation.mutateAsync({
-        logoUrl: logoPreview,
-        darkLogoUrl: themeMode === 'dark' ? darkLogoPreview : null,
-        theme: {
-          mode: themeMode,
-          primaryColor,
-          heroImages: heroImages.length > 0 ? heroImages : undefined,
-          maxDiscountPercent: maxDiscountEnabled ? maxDiscountPercent : null,
-        },
-      })
+      const hasUnchangedLegacyLogo =
+        isDataUri(logoPreview) && logoPreview === initialValues.logoUrl
+
+      const hasUnchangedLegacyDarkLogo =
+        themeMode === 'dark' &&
+        isDataUri(darkLogoPreview) &&
+        darkLogoPreview === initialValues.darkLogoUrl
+
+      const hasLegacyHeroImages = heroImages.some((image) => isDataUri(image))
+      const hasUnchangedLegacyHeroImages =
+        hasLegacyHeroImages &&
+        JSON.stringify(heroImages) === JSON.stringify(initialValues.heroImages)
+
+      if (
+        (isDataUri(logoPreview) && !hasUnchangedLegacyLogo) ||
+        (themeMode === 'dark' &&
+          isDataUri(darkLogoPreview) &&
+          !hasUnchangedLegacyDarkLogo) ||
+        (hasLegacyHeroImages && !hasUnchangedLegacyHeroImages)
+      ) {
+        toastManager.add({ title: tErrors('invalidData'), type: 'error' })
+        return
+      }
+
+      const themePayload: {
+        mode: 'light' | 'dark'
+        primaryColor: string
+        maxDiscountPercent: number | null
+        heroImages?: string[]
+      } = {
+        mode: themeMode,
+        primaryColor,
+        maxDiscountPercent: maxDiscountEnabled ? maxDiscountPercent : null,
+      }
+
+      if (!hasUnchangedLegacyHeroImages) {
+        themePayload.heroImages = heroImages
+      }
+
+      const payload: {
+        logoUrl?: string | null
+        darkLogoUrl?: string | null
+        theme: typeof themePayload
+      } = {
+        theme: themePayload,
+      }
+
+      if (!hasUnchangedLegacyLogo) {
+        payload.logoUrl = logoPreview
+      }
+
+      if (themeMode === 'dark') {
+        if (!hasUnchangedLegacyDarkLogo) {
+          payload.darkLogoUrl = darkLogoPreview
+        }
+      } else {
+        payload.darkLogoUrl = null
+      }
+
+      await updateAppearanceMutation.mutateAsync(payload)
 
       toastManager.add({ title: t('updated'), type: 'success' })
       router.refresh()
