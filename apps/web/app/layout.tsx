@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 
 import { Agentation } from 'agentation';
 
@@ -8,6 +9,8 @@ import { AnchoredToastProvider, ToastProvider } from '@louez/ui';
 import { UmamiAnalytics } from '@/components/umami-analytics';
 
 import { ORPCProvider } from '@/lib/orpc/provider';
+
+import { env } from '@/env';
 
 // Import translations directly since this is a root layout without NextIntlProvider
 import messages from '@/messages/fr.json';
@@ -47,6 +50,13 @@ export default function RootLayout({
 
       <html lang="fr" suppressHydrationWarning>
         <UmamiAnalytics />
+        {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
+          <Script
+            src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL}/api/t.js`}
+            data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
+            strategy="afterInteractive"
+          />
+        )}
 
         <head>
           <link
