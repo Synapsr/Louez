@@ -79,7 +79,7 @@ function buildRateTierRows(
   minDuration: number | null
   discountPercent: string | null
 }> {
-  if (input.rateTiers && input.rateTiers.length > 0) {
+  if (Array.isArray(input.rateTiers)) {
     const rows = input.rateTiers.map((tier) => {
       const period = priceDurationToMinutes(tier.duration, tier.unit)
       const tierPrice = normalizePriceInput(tier.price)
@@ -164,7 +164,7 @@ export async function createProduct(data: ProductInput) {
 
   // Validate legacy pricing tiers if provided (fallback compatibility only)
   const pricingTiers = validated.data.pricingTiers || []
-  if (!validated.data.rateTiers?.length && pricingTiers.length > 0) {
+  if (validated.data.rateTiers == null && pricingTiers.length > 0) {
     const tierValidation = validatePricingTiers(pricingTiers)
     if (!tierValidation.valid) {
       return { error: tierValidation.error }
@@ -296,7 +296,7 @@ export async function updateProduct(productId: string, data: ProductInput) {
 
   // Validate legacy pricing tiers only when V2 rates are not provided.
   const pricingTiers = validated.data.pricingTiers || []
-  if (!validated.data.rateTiers?.length && pricingTiers.length > 0) {
+  if (validated.data.rateTiers == null && pricingTiers.length > 0) {
     const tierValidation = validatePricingTiers(pricingTiers)
     if (!tierValidation.valid) {
       return { error: tierValidation.error }
