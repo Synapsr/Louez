@@ -334,7 +334,14 @@ export function calculateRateBasedPrice(
   let appliedRate: Rate
   let plan: Array<{ rate: Rate; quantity: number }>
 
-  if (enforceStrict) {
+  if (enforceStrict && allRates.length === 1) {
+    // With only a base rate defined, fixed-tier mode means "bill full base
+    // periods", while progressive mode still uses proportional pricing.
+    const basePeriods = Math.ceil(targetMinutes / pricing.basePeriodMinutes)
+    perItemSubtotal = roundCurrency(basePeriods * pricing.basePrice)
+    appliedRate = baseRate
+    plan = [{ rate: baseRate, quantity: basePeriods }]
+  } else if (enforceStrict) {
     // STRICT MODE: snap UP to nearest tier period, charge that tier's exact price
     const snappedRate = allRates.find((r) => r.period >= targetMinutes)
 

@@ -189,6 +189,7 @@ function nextTierDuration(params: {
 
 // Standard step sizes (minutes) for chart interpolation.
 const CLEAN_STEPS = [15, 30, 60, 120, 240, 360, 720, 1440, 2880, 4320, 10080];
+const ONE_WEEK_MINUTES = 10080;
 
 function pickStep(range: number): number {
   for (const s of CLEAN_STEPS) {
@@ -204,12 +205,13 @@ export function buildChartData(
   chartRates: Rate[],
   tCommon: (key: string, opts: { count: number }) => string,
 ): ChartDataPoint[] {
-  if (!chartBasePrice || !basePeriod || chartRates.length === 0) return [];
+  if (!chartBasePrice || !basePeriod) return [];
 
   const anchors = [basePeriod, ...chartRates.map((r) => r.period)].sort(
     (a, b) => a - b,
   );
   const anchorSet = new Set(anchors);
+  const hasAdditionalRates = chartRates.length > 0;
 
   const sampleSet = new Set<number>();
   for (const a of anchors) sampleSet.add(a);
@@ -226,9 +228,23 @@ export function buildChartData(
 
   const last = anchors[anchors.length - 1];
   const prevAnchor = anchors.length > 1 ? anchors[anchors.length - 2] : 0;
-  const extraStep = pickStep(last - prevAnchor || last);
-  for (let i = 1; i <= 3; i++) {
-    sampleSet.add(last + extraStep * i);
+
+  if (!hasAdditionalRates) {
+    const fallbackMax = Math.max(basePeriod * 2, ONE_WEEK_MINUTES);
+    const fallbackStep = pickStep(fallbackMax - basePeriod);
+    const start = Math.ceil((basePeriod + 1) / fallbackStep) * fallbackStep;
+
+    for (let v = start; v < fallbackMax; v += fallbackStep) {
+      sampleSet.add(v);
+    }
+
+    sampleSet.add(fallbackMax);
+    anchorSet.add(fallbackMax);
+  } else {
+    const extraStep = pickStep(last - prevAnchor || last);
+    for (let i = 1; i <= 3; i++) {
+      sampleSet.add(last + extraStep * i);
+    }
   }
 
   const pricingBase = {
@@ -304,20 +320,6 @@ export function RatesEditor({
   );
 
   const hasBaseRate = basePrice > 0 && basePeriod > 0;
-  const hasMultipleDistinctPrices = useMemo(() => {
-    if (!hasBaseRate) return false;
-
-    const perMinuteKeys = new Set<string>();
-    perMinuteKeys.add((basePrice / basePeriod).toFixed(6));
-
-    for (const rate of validRates) {
-      perMinuteKeys.add((rate.price / rate.period).toFixed(6));
-      if (perMinuteKeys.size >= 2) return true;
-    }
-
-    return false;
-  }, [basePeriod, basePrice, hasBaseRate, validRates]);
-
   const emitRatesChange = (nextRates: RateEditorRow[]) => {
     onChange(sortRatesByDuration(nextRates));
   };
@@ -537,7 +539,7 @@ export function RatesEditor({
         </Button>
       </div>
 
-      {hasMultipleDistinctPrices && !hideProgressiveToggle && (
+      {hasBaseRate && !hideProgressiveToggle && (
         <div className="rounded-lg border p-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 space-y-0.5">
@@ -722,7 +724,6 @@ export function PricingChart({
   const inactiveType = isProgressive ? 'linear' : 'monotone';
 
   const renderTooltip = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ({ active, payload }: any) => {
       if (!active || !payload?.length) return null;
       const point = payload[0].payload as ChartDataPoint;
@@ -871,4 +872,3 @@ export function PricingChart({
     </div>
   );
 }
-
