@@ -30,6 +30,11 @@ import {
   DialogFooter,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
 } from '@louez/ui';
 import {
@@ -190,6 +195,22 @@ function nextTierDuration(params: {
 // Standard step sizes (minutes) for chart interpolation.
 const CLEAN_STEPS = [15, 30, 60, 120, 240, 360, 720, 1440, 2880, 4320, 10080];
 const ONE_WEEK_MINUTES = 10080;
+const THREE_MONTHS_MINUTES = 60 * 24 * 90;
+export const SHOW_DEV_CHART_RANGE_SELECTOR = process.env.NODE_ENV !== 'production';
+
+export type ChartRangePreset = 'auto' | '1w' | '2w' | '1m' | '3m';
+
+export const CHART_RANGE_PRESETS: Array<{
+  value: ChartRangePreset;
+  label: string;
+  minutes: number | null;
+}> = [
+  { value: 'auto', label: 'Auto', minutes: null },
+  { value: '1w', label: '1w', minutes: ONE_WEEK_MINUTES },
+  { value: '2w', label: '2w', minutes: ONE_WEEK_MINUTES * 2 },
+  { value: '1m', label: '1m', minutes: 60 * 24 * 30 },
+  { value: '3m', label: '3m', minutes: THREE_MONTHS_MINUTES },
+];
 
 function pickStep(range: number): number {
   for (const s of CLEAN_STEPS) {
@@ -204,6 +225,7 @@ export function buildChartData(
   basePeriod: number,
   chartRates: Rate[],
   tCommon: (key: string, opts: { count: number }) => string,
+  chartMaxMinutes?: number | null,
 ): ChartDataPoint[] {
   if (!chartBasePrice || !basePeriod) return [];
 
@@ -228,24 +250,18 @@ export function buildChartData(
 
   const last = anchors[anchors.length - 1];
   const prevAnchor = anchors.length > 1 ? anchors[anchors.length - 2] : 0;
+  const defaultChartMax = !hasAdditionalRates
+    ? Math.max(basePeriod * 2, ONE_WEEK_MINUTES)
+    : last + pickStep(last - prevAnchor || last) * 3;
+  const targetChartMax = Math.max(defaultChartMax, chartMaxMinutes ?? 0);
+  const extensionStep = pickStep(targetChartMax - last || last);
+  const extensionStart = Math.ceil((last + 1) / extensionStep) * extensionStep;
 
-  if (!hasAdditionalRates) {
-    const fallbackMax = Math.max(basePeriod * 2, ONE_WEEK_MINUTES);
-    const fallbackStep = pickStep(fallbackMax - basePeriod);
-    const start = Math.ceil((basePeriod + 1) / fallbackStep) * fallbackStep;
-
-    for (let v = start; v < fallbackMax; v += fallbackStep) {
-      sampleSet.add(v);
-    }
-
-    sampleSet.add(fallbackMax);
-    anchorSet.add(fallbackMax);
-  } else {
-    const extraStep = pickStep(last - prevAnchor || last);
-    for (let i = 1; i <= 3; i++) {
-      sampleSet.add(last + extraStep * i);
-    }
+  for (let v = extensionStart; v < targetChartMax; v += extensionStep) {
+    sampleSet.add(v);
   }
+
+  sampleSet.add(targetChartMax);
 
   const pricingBase = {
     basePrice: chartBasePrice,
@@ -273,6 +289,27 @@ export function buildChartData(
     }));
 }
 
+export function buildChartTicks(data: ChartDataPoint[]): number[] {
+  if (data.length === 0) return [];
+
+  const ticks = data
+    .filter((point) => point.isTierAnchor)
+    .map((point) => point.durationMinutes);
+  const lastTick = data[data.length - 1]?.durationMinutes;
+
+  if (lastTick && ticks[ticks.length - 1] !== lastTick) {
+    ticks.push(lastTick);
+  }
+
+  return ticks;
+}
+
+export function resolveChartMaxMinutes(
+  preset: ChartRangePreset,
+): number | null {
+  return CHART_RANGE_PRESETS.find((option) => option.value === preset)?.minutes ?? null;
+}
+
 export function RatesEditor({
   basePriceDuration,
   rates,
@@ -287,6 +324,8 @@ export function RatesEditor({
 }: RatesEditorProps) {
   const t = useTranslations('dashboard.products.form');
   const tCommon = useTranslations('common');
+  const [chartRangePreset, setChartRangePreset] =
+    useState<ChartRangePreset>('auto');
   const invalidIndexes = useMemo(
     () => new Set(invalidRateIndexes),
     [invalidRateIndexes],
@@ -309,15 +348,24 @@ export function RatesEditor({
     [rates],
   );
 
-  const chartData = useMemo(
-    () => buildChartData(basePrice, basePeriod, validRates, tCommon),
-    [basePeriod, basePrice, validRates, tCommon],
+  const chartMaxMinutes = useMemo(
+    () => resolveChartMaxMinutes(chartRangePreset),
+    [chartRangePreset],
   );
 
-  const chartAnchorTicks = useMemo(
-    () => chartData.filter((p) => p.isTierAnchor).map((p) => p.durationMinutes),
-    [chartData],
+  const chartData = useMemo(
+    () =>
+      buildChartData(
+        basePrice,
+        basePeriod,
+        validRates,
+        tCommon,
+        chartMaxMinutes,
+      ),
+    [basePeriod, basePrice, validRates, tCommon, chartMaxMinutes],
   );
+
+  const chartAnchorTicks = useMemo(() => buildChartTicks(chartData), [chartData]);
 
   const hasBaseRate = basePrice > 0 && basePeriod > 0;
   const emitRatesChange = (nextRates: RateEditorRow[]) => {
@@ -621,6 +669,27 @@ export function RatesEditor({
           {/* Base pricing chart */}
           {chartData.length > 0 && (
             <div className="mt-4">
+              {SHOW_DEV_CHART_RANGE_SELECTOR && (
+                <div className="mb-3 flex justify-end">
+                  <Select
+                    value={chartRangePreset}
+                    onValueChange={(value) =>
+                      setChartRangePreset(value as ChartRangePreset)
+                    }
+                  >
+                    <SelectTrigger className="w-[110px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CHART_RANGE_PRESETS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <PricingChart
                 data={chartData}
                 anchorTicks={chartAnchorTicks}

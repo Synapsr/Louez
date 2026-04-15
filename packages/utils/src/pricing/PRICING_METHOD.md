@@ -30,7 +30,7 @@ Only exact tier durations are valid rental periods. If the rental duration falls
 - Smallest ≥ 3000 → 4320 (3j)
 - Price = 160€
 
-**Edge case**: Duration > all tiers → extrapolate at the largest tier's per-minute rate.
+**Edge case**: Duration > all tiers → bill whole multiples of the largest tier.
 
 ### Mode 2: Progressive (enforceStrictTiers = false) — DEFAULT for legacy products
 

@@ -282,6 +282,7 @@ export function isRateBasedProduct(product: {
  * Two modes controlled by `pricing.enforceStrictTiers`:
  *
  * **Strict (true)**: snap UP to nearest tier period, charge that tier's exact price.
+ * Beyond the last tier, bill whole multiples of the largest tier.
  * Example: tiers at 4h,1j,2j,3j — rental of 2j2h → snap to 3j → 160€
  *
  * **Progressive (false, default)**: linear interpolation between adjacent tiers.
@@ -350,12 +351,12 @@ export function calculateRateBasedPrice(
       appliedRate = snappedRate
       plan = [{ rate: snappedRate, quantity: 1 }]
     } else {
-      // Duration exceeds all tiers: fallback to per-minute rate from largest tier
+      // Duration exceeds all tiers: bill whole multiples of the largest tier
       const largest = allRates[allRates.length - 1]
-      const perMinuteRate = largest.price / largest.period
-      perItemSubtotal = roundCurrency(perMinuteRate * targetMinutes)
+      const largestTierPeriods = Math.ceil(targetMinutes / largest.period)
+      perItemSubtotal = roundCurrency(largestTierPeriods * largest.price)
       appliedRate = largest
-      plan = [{ rate: largest, quantity: 1 }]
+      plan = [{ rate: largest, quantity: largestTierPeriods }]
     }
   } else {
     // PROGRESSIVE MODE: linear interpolation between adjacent tiers
