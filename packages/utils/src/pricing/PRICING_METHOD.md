@@ -59,6 +59,11 @@ Linear interpolation between adjacent tiers. Each tier is an anchor point on a p
 
 **Edge case**: Duration < smallest period (including base) → charge 1 full base period.
 
+**Single-rate behavior**:
+If only the base rate is defined:
+- strict mode bills whole base periods,
+- progressive mode bills proportionally using the base rate per minute.
+
 **Guarantees**:
 - Tier prices are respected exactly at tier boundaries
 - Continuous curve (no price cliffs)
