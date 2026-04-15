@@ -19,7 +19,7 @@ import {
 import { useTranslations, useLocale } from 'next-intl';
 
 import type { PricingMode, Rate, TaxSettings } from '@louez/types';
-import { cn, minutesToPriceDuration, priceDurationToMinutes } from '@louez/utils';
+import { minutesToPriceDuration, priceDurationToMinutes } from '@louez/utils';
 import {
   AlertDialog,
   AlertDialogClose,
@@ -41,12 +41,26 @@ import {
   DropdownMenuTrigger,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Separator,
   toastManager,
 } from '@louez/ui';
 
 import { AccessoriesSelector } from '@/components/dashboard/accessories-selector';
-import { RatesEditor, buildChartData, PricingChart } from '@/components/dashboard/rates-editor';
+import {
+  CHART_RANGE_PRESETS,
+  type ChartRangePreset,
+  buildChartData,
+  buildChartTicks,
+  PricingChart,
+  RatesEditor,
+  resolveChartMaxMinutes,
+  SHOW_DEV_CHART_RANGE_SELECTOR,
+} from '@/components/dashboard/rates-editor';
 import { UnitTrackingEditor } from '@/components/dashboard/unit-tracking-editor';
 import {
   PriceDurationInput,
@@ -153,6 +167,8 @@ export function ProductFormStepPricing({
   const [seasonalRateTiers, setSeasonalRateTiers] = useState<RateTierInput[]>([]);
   const [seasonalDirty, setSeasonalDirty] = useState(false);
   const [isSavingSeasonal, startSeasonalTransition] = useTransition();
+  const [seasonalChartRangePreset, setSeasonalChartRangePreset] =
+    useState<ChartRangePreset>('auto');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingMetadata, setEditingMetadata] = useState<{
     id: string; name: string; startDate: string; endDate: string;
@@ -385,14 +401,31 @@ export function ProductFormStepPricing({
   const seasonalBasePrice = seasonalPriceDuration
     ? Number.parseFloat(seasonalPriceDuration.price.replace(',', '.')) || 0
     : 0;
+  const seasonalChartMaxMinutes = useMemo(
+    () => resolveChartMaxMinutes(seasonalChartRangePreset),
+    [seasonalChartRangePreset],
+  );
 
   const seasonalChartData = useMemo(
-    () => buildChartData(seasonalBasePrice, seasonalBasePeriod, seasonalValidRates, tCommon),
-    [seasonalBasePrice, seasonalBasePeriod, seasonalValidRates, tCommon],
+    () =>
+      buildChartData(
+        seasonalBasePrice,
+        seasonalBasePeriod,
+        seasonalValidRates,
+        tCommon,
+        seasonalChartMaxMinutes,
+      ),
+    [
+      seasonalBasePrice,
+      seasonalBasePeriod,
+      seasonalValidRates,
+      tCommon,
+      seasonalChartMaxMinutes,
+    ],
   );
 
   const seasonalChartAnchorTicks = useMemo(
-    () => seasonalChartData.filter((p) => p.isTierAnchor).map((p) => p.durationMinutes),
+    () => buildChartTicks(seasonalChartData),
     [seasonalChartData],
   );
 
@@ -521,6 +554,27 @@ export function ProductFormStepPricing({
             {/* Seasonal pricing curve preview */}
             {seasonalChartData.length > 0 && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                {SHOW_DEV_CHART_RANGE_SELECTOR && (
+                  <div className="mb-3 flex justify-end">
+                    <Select
+                      value={seasonalChartRangePreset}
+                      onValueChange={(value) =>
+                        setSeasonalChartRangePreset(value as ChartRangePreset)
+                      }
+                    >
+                      <SelectTrigger className="w-[110px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CHART_RANGE_PRESETS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <PricingChart
                   data={seasonalChartData}
                   anchorTicks={seasonalChartAnchorTicks}
