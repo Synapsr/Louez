@@ -48,8 +48,16 @@ interface EditReservationItemsSectionProps {
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
   onQuantityChange: (itemId: string, quantity: number) => void;
-  onPriceChange: (itemId: string, price: number) => void;
-  onToggleManualPrice: (itemId: string) => void;
+  onPriceChange: (
+    itemId: string,
+    price: number,
+    pricingMode?: PricingMode,
+  ) => void;
+  onToggleManualPrice: (
+    itemId: string,
+    effectiveUnitPrice?: number,
+    pricingMode?: PricingMode,
+  ) => void;
   onRemoveItem: (itemId: string) => void;
 }
 
@@ -271,10 +279,16 @@ export function EditReservationItemsSection({
 
                   <div className="flex items-center gap-1">
                     <PriceInput
-                      value={item.unitPrice}
-                      onChange={(price) => onPriceChange(item.id, price)}
+                      value={
+                        item.isManualPrice
+                          ? item.unitPrice
+                          : item.effectiveUnitPrice
+                      }
+                      onChange={(price) =>
+                        onPriceChange(item.id, price, item.displayPricingMode)
+                      }
                       isManual={item.isManualPrice}
-                      suffix={`${currencySymbol}/${getDurationUnit(item.pricingMode)}`}
+                      suffix={`${currencySymbol}/${getDurationUnit(item.displayPricingMode)}`}
                       ariaLabel={`${t('edit.unitPrice')}, ${item.productSnapshot.name}`}
                     />
                     {item.product && (
@@ -285,7 +299,13 @@ export function EditReservationItemsSection({
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() => onToggleManualPrice(item.id)}
+                              onClick={() =>
+                                onToggleManualPrice(
+                                  item.id,
+                                  item.effectiveUnitPrice,
+                                  item.displayPricingMode,
+                                )
+                              }
                             />
                           }
                         >

@@ -135,6 +135,8 @@ export interface EditReservationFormProps {
 export interface CalculatedEditableItem extends EditableItem {
   totalPrice: number
   duration: number
+  effectiveUnitPrice: number
+  displayPricingMode: PricingMode
   tierLabel: string | null
   discount: number
   originalSubtotal: number

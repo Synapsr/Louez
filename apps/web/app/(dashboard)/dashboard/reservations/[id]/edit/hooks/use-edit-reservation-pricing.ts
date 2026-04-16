@@ -1,7 +1,11 @@
 import { useMemo } from 'react'
 
 import type { PricingMode } from '@louez/types'
-import { isRateBasedProduct } from '@louez/utils'
+import {
+  calculateDurationMinutes,
+  isRateBasedProduct,
+  minutesToPriceDuration,
+} from '@louez/utils'
 
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing'
 import { calculateDuration } from '@/lib/utils/duration'
@@ -11,6 +15,10 @@ import type {
   EditableItem,
   ReservationCalculations,
 } from '../types'
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100
+}
 
 /**
  * Build a human-readable label for the applied pricing discount.
@@ -62,6 +70,7 @@ function calculateEditableItemPrice(
 ): {
   totalPrice: number
   effectiveUnitPrice: number
+  displayPricingMode: PricingMode
   tierLabel: string | null
   discount: number
   originalSubtotal: number
@@ -69,15 +78,51 @@ function calculateEditableItemPrice(
   discountPercent: number | null
   duration: number
 } {
+  const resolvePricingModeFromMinutes = (
+    periodMinutes: number | null | undefined,
+    fallback: PricingMode,
+  ): PricingMode => {
+    if (!periodMinutes || periodMinutes <= 0) {
+      return fallback
+    }
+
+    const period = minutesToPriceDuration(periodMinutes)
+    if (period.unit === 'week') return 'week'
+    if (period.unit === 'day') return 'day'
+    return 'hour'
+  }
+
+  const resolveRateDisplayPricingMode = (
+    targetMinutes: number,
+    fallback: PricingMode,
+  ): PricingMode => {
+    const periods = [
+      item.product?.basePeriodMinutes ?? null,
+      ...(item.product?.pricingTiers ?? []).map((tier) => tier.period ?? null),
+    ]
+      .filter((period): period is number => typeof period === 'number' && period > 0)
+      .sort((a, b) => a - b)
+
+    if (periods.length === 0) {
+      return fallback
+    }
+
+    const applicablePeriod =
+      [...periods].reverse().find((period) => period <= targetMinutes) ?? periods[0]
+
+    return resolvePricingModeFromMinutes(applicablePeriod, fallback)
+  }
+
   const mode = item.pricingMode
   const duration = calculateDuration(startDate, endDate, mode)
 
   // Manual price or custom item (no product): simple multiplication
   if (item.isManualPrice || !item.product) {
-    const totalPrice = item.unitPrice * duration * item.quantity
+    const totalPrice = roundCurrency(item.unitPrice * duration * item.quantity)
     return {
       totalPrice,
       effectiveUnitPrice: item.unitPrice,
+      displayPricingMode: item.pricingMode,
       tierLabel: null,
       discount: 0,
       originalSubtotal: totalPrice,
@@ -90,6 +135,7 @@ function calculateEditableItemPrice(
   const product = item.product
   const startIso = startDate.toISOString()
   const endIso = endDate.toISOString()
+  const durationMinutes = calculateDurationMinutes(startDate, endDate)
 
   // Delegate to the shared pricing utility — same logic as the storefront
   const result = calculateCartItemPrice(
@@ -118,15 +164,23 @@ function calculateEditableItemPrice(
 
   const tierLabel = buildTierLabel(item, result.discountPercent, duration)
 
+  const displayPricingMode = isRateBasedProduct({
+    basePeriodMinutes: product.basePeriodMinutes,
+  })
+    ? resolveRateDisplayPricingMode(durationMinutes, mode)
+    : mode
+  const displayDuration = calculateDuration(startDate, endDate, displayPricingMode)
+
   // Derive an effective unit price for display (total / duration / quantity)
   const effectiveUnitPrice =
-    duration > 0 && item.quantity > 0
-      ? result.subtotal / duration / item.quantity
+    displayDuration > 0 && item.quantity > 0
+      ? result.subtotal / displayDuration / item.quantity
       : parseFloat(product.price)
 
   return {
     totalPrice: result.subtotal,
     effectiveUnitPrice,
+    displayPricingMode,
     tierLabel,
     discount: result.discountPercent ?? 0,
     originalSubtotal: result.originalSubtotal,
@@ -170,6 +224,8 @@ export function useEditReservationPricing({
           ...item,
           totalPrice: 0,
           duration: 0,
+          effectiveUnitPrice: item.unitPrice,
+          displayPricingMode: item.pricingMode,
           tierLabel: null,
           discount: 0,
           originalSubtotal: 0,
@@ -195,6 +251,8 @@ export function useEditReservationPricing({
         ...item,
         totalPrice: priceResult.totalPrice,
         duration: priceResult.duration,
+        effectiveUnitPrice: priceResult.effectiveUnitPrice,
+        displayPricingMode: priceResult.displayPricingMode,
         tierLabel: priceResult.tierLabel,
         discount: priceResult.discount,
         originalSubtotal: priceResult.originalSubtotal,
@@ -202,21 +260,21 @@ export function useEditReservationPricing({
         discountPercent: priceResult.discountPercent,
       })
 
-      subtotal += priceResult.totalPrice
-      deposit += item.depositPerUnit * item.quantity
-      totalSavings += priceResult.savings
+      subtotal = roundCurrency(subtotal + priceResult.totalPrice)
+      deposit = roundCurrency(deposit + item.depositPerUnit * item.quantity)
+      totalSavings = roundCurrency(totalSavings + priceResult.savings)
     }
 
     const normalizedFixedCharges = Number.isFinite(fixedChargesTotal)
       ? fixedChargesTotal
       : 0
-    const subtotalWithFixedCharges = subtotal + normalizedFixedCharges
+    const subtotalWithFixedCharges = roundCurrency(subtotal + normalizedFixedCharges)
 
     return {
       items: calculatedItems,
       subtotal: subtotalWithFixedCharges,
       deposit,
-      difference: subtotalWithFixedCharges - originalSubtotal,
+      difference: roundCurrency(subtotalWithFixedCharges - originalSubtotal),
       totalSavings,
     }
   }, [items, startDate, endDate, originalSubtotal, fixedChargesTotal])

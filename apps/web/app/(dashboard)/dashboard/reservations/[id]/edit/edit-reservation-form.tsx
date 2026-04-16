@@ -41,7 +41,7 @@ import {
 import { TooltipProvider } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
-import { getCurrencySymbol } from '@louez/utils'
+import { getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
 import { calculateDuration } from '@/lib/utils/duration'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
@@ -62,6 +62,51 @@ import type { EditReservationFormProps, EditableItem } from './types'
 
 function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null
+}
+
+function resolvePricingModeFromMinutes(
+  periodMinutes: number | null | undefined,
+  fallback: PricingMode,
+): PricingMode {
+  if (!periodMinutes || periodMinutes <= 0) {
+    return fallback
+  }
+
+  const period = minutesToPriceDuration(periodMinutes)
+  if (period.unit === 'week') return 'week'
+  if (period.unit === 'day') return 'day'
+  return 'hour'
+}
+
+function resolveInitialManualPricingMode(
+  product: EditableItem['product'],
+  fallback: PricingMode,
+  startDate: Date,
+  endDate: Date,
+): PricingMode {
+  if (!product?.basePeriodMinutes || product.basePeriodMinutes <= 0) {
+    return fallback
+  }
+
+  const durationMinutes = Math.max(
+    1,
+    Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60)),
+  )
+  const periods = [
+    product.basePeriodMinutes,
+    ...product.pricingTiers.map((tier) => tier.period ?? null),
+  ]
+    .filter((period): period is number => typeof period === 'number' && period > 0)
+    .sort((a, b) => a - b)
+
+  if (periods.length === 0) {
+    return fallback
+  }
+
+  const applicablePeriod =
+    [...periods].reverse().find((period) => period <= durationMinutes) ?? periods[0]
+
+  return resolvePricingModeFromMinutes(applicablePeriod, fallback)
 }
 
 export function EditReservationForm({
@@ -127,21 +172,45 @@ export function EditReservationForm({
     return legacyInsuranceAmount
   })()
   const [items, setItems] = useState<EditableItem[]>(
-    editableReservationItems.map((item) => ({
-      id: item.id,
-      productId: item.productId,
-      quantity: item.quantity,
-      unitPrice: parseFloat(item.unitPrice),
-      depositPerUnit: parseFloat(item.depositPerUnit),
-      isManualPrice: (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride === true,
-      pricingMode: ((item.product?.pricingMode ??
+    editableReservationItems.map((item) => {
+      const isManualPrice =
+        (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride ===
+        true
+      const fallbackPricingMode = ((item.product?.pricingMode ??
         (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
-        'day') as PricingMode),
-      basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
-      enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
-      productSnapshot: item.productSnapshot,
-      product: item.product,
-    }))
+        'day') as PricingMode)
+      const pricingMode = isManualPrice
+        ? resolveInitialManualPricingMode(
+            item.product,
+            fallbackPricingMode,
+            new Date(reservation.startDate),
+            new Date(reservation.endDate),
+          )
+        : fallbackPricingMode
+      const duration = calculateDuration(
+        new Date(reservation.startDate),
+        new Date(reservation.endDate),
+        pricingMode,
+      )
+      const preciseManualUnitPrice =
+        isManualPrice && item.quantity > 0 && duration > 0
+          ? Number(item.totalPrice) / (duration * item.quantity)
+          : Number(item.unitPrice)
+
+      return {
+        id: item.id,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: preciseManualUnitPrice,
+        depositPerUnit: parseFloat(item.depositPerUnit),
+        isManualPrice,
+        pricingMode,
+        basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
+        enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
+        productSnapshot: item.productSnapshot,
+        product: item.product,
+      }
+    })
   )
   const [validationWarningsToConfirm, setValidationWarningsToConfirm] = useState<
     ReservationValidationWarning[]
@@ -208,22 +277,42 @@ export function EditReservationForm({
     )
   }
 
-  const handlePriceChange = (itemId: string, price: number) => {
+  const handlePriceChange = (
+    itemId: string,
+    price: number,
+    pricingMode?: PricingMode,
+  ) => {
     setItems((prev) =>
       prev.map((item) =>
-        item.id === itemId ? { ...item, unitPrice: price, isManualPrice: true } : item
+        item.id === itemId
+          ? {
+              ...item,
+              unitPrice: price,
+              isManualPrice: true,
+              pricingMode: pricingMode ?? item.pricingMode,
+            }
+          : item
       )
     )
   }
 
-  const handleToggleManualPrice = (itemId: string) => {
+  const handleToggleManualPrice = (
+    itemId: string,
+    effectiveUnitPrice?: number,
+    pricingMode?: PricingMode,
+  ) => {
     setItems((prev) =>
       prev.map((item) => {
         if (item.id !== itemId) return item
         if (item.isManualPrice && item.product) {
           return { ...item, isManualPrice: false, unitPrice: parseFloat(item.product.price) }
         }
-        return { ...item, isManualPrice: true }
+        return {
+          ...item,
+          isManualPrice: true,
+          unitPrice: effectiveUnitPrice ?? item.unitPrice,
+          pricingMode: pricingMode ?? item.pricingMode,
+        }
       })
     )
   }
