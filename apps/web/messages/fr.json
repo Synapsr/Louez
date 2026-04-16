@@ -5011,6 +5011,7 @@
     "tulipActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
     "tulipApiUnavailable": "Tulip est indisponible pour le moment. Veuillez réessayer plus tard.",
     "tulipRenterNotFound": "Aucun compte Tulip trouvé pour cet identifiant.",
+    "tulipRenterAttachFailed": "Impossible de rattacher ce compte Tulip à la clé API configurée. Vérifiez l'identifiant du loueur et les droits de la clé.",
     "tulipProductSubtypeInvalid": "Ce sous-type n'est pas valide pour la catégorie Tulip sélectionnée.",
     "tulipProductPayloadInvalid": "Tulip a refusé les données produit. Vérifiez la catégorie/sous-type et les champs requis.",
     "tulipProductNotFound": "Produit Tulip introuvable. Actualisez les produits Tulip puis remappez cet élément.",

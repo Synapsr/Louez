@@ -168,6 +168,16 @@ export async function tulipGetRenter(
   };
 }
 
+export async function tulipAddRenter(
+  apiKey: string,
+  renterUid: string,
+): Promise<void> {
+  await request<unknown>('/renters', apiKey, {
+    method: 'POST',
+    body: renterUid,
+  });
+}
+
 export async function tulipListProducts(
   apiKey: string,
   options?: {
