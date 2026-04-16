@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne, or } from 'drizzle-orm';
 
 import { db, reservations } from '@louez/db';
 
@@ -176,7 +176,7 @@ export async function previewTulipQuoteForCheckout(params: {
     const contract = await tulipCreateContractWithOptionsFallback({
       apiKey,
       payload,
-      preview: false,
+      preview: true,
       storeIdForLog: params.storeId,
     });
 
@@ -247,6 +247,18 @@ export async function createTulipContractForReservation(params: {
     };
   }
 
+  if (reservation.status !== 'confirmed' && reservation.status !== 'ongoing') {
+    console.info('[tulip][contract-create] skipped: reservation not accepted yet', {
+      reservationId: reservation.id,
+      status: reservation.status,
+      source: params.source,
+    });
+    return {
+      contractId: null,
+      created: false,
+    };
+  }
+
   if (reservation.tulipContractStatus === 'not_required' && !params.force) {
     console.info('[tulip][contract-create] skipped: not required', {
       reservationId: reservation.id,
@@ -267,6 +279,53 @@ export async function createTulipContractForReservation(params: {
       .where(eq(reservations.id, reservation.id));
 
     throw new Error('errors.tulipContractPastDate');
+  }
+
+  const creationLockResult = await db
+    .update(reservations)
+    .set({
+      tulipContractStatus: 'creating',
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(reservations.id, reservation.id),
+        isNull(reservations.tulipContractId),
+        or(
+          isNull(reservations.tulipContractStatus),
+          ne(reservations.tulipContractStatus, 'creating'),
+        ),
+      ),
+    );
+
+  if (creationLockResult[0]?.affectedRows === 0) {
+    const lockedReservation = await db.query.reservations.findFirst({
+      where: eq(reservations.id, reservation.id),
+      columns: {
+        tulipContractId: true,
+        tulipContractStatus: true,
+      },
+    });
+
+    if (lockedReservation?.tulipContractId) {
+      console.info('[tulip][contract-create] skipped: contract already attached', {
+        reservationId: reservation.id,
+        contractId: lockedReservation.tulipContractId,
+      });
+      return {
+        contractId: lockedReservation.tulipContractId,
+        created: false,
+      };
+    }
+
+    console.info('[tulip][contract-create] skipped: creation already in progress', {
+      reservationId: reservation.id,
+      status: lockedReservation?.tulipContractStatus ?? null,
+    });
+    return {
+      contractId: null,
+      created: false,
+    };
   }
 
   const insuranceSelection = getReservationInsuranceSelection({
@@ -386,14 +445,40 @@ export async function createTulipContractForReservation(params: {
       request: summarizeContractPayloadForLogs(payload),
       error: error instanceof Error ? error.message : 'unknown',
     });
+    await db
+      .update(reservations)
+      .set({
+        tulipContractStatus: reservation.tulipContractStatus ?? null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(reservations.id, reservation.id),
+          isNull(reservations.tulipContractId),
+          eq(reservations.tulipContractStatus, 'creating'),
+        ),
+      );
     throw toTulipContractError(error, 'errors.tulipContractCreationFailed');
   }
 
   if (!contractId) {
+    await db
+      .update(reservations)
+      .set({
+        tulipContractStatus: reservation.tulipContractStatus ?? null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(reservations.id, reservation.id),
+          isNull(reservations.tulipContractId),
+          eq(reservations.tulipContractStatus, 'creating'),
+        ),
+      );
     throw new Error('errors.tulipInvalidContractResponse');
   }
 
-  await db
+  const attachResult = await db
     .update(reservations)
     .set({
       tulipContractId: contractId,

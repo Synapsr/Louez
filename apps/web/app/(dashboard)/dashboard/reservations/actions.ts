@@ -1140,16 +1140,18 @@ export async function createManualReservation(data: CreateReservationData) {
     { source: 'manual', status: data.sendAsQuote ? 'quote' : 'confirmed' },
   );
 
-  try {
-    await createTulipContractForReservation({
-      reservationId,
-      source: 'dashboard_manual_reservation_creation',
-    });
-  } catch (error) {
-    console.error('[tulip] Failed to create contract for manual reservation:', {
-      reservationId,
-      error,
-    });
+  if (!data.sendAsQuote) {
+    try {
+      await createTulipContractForReservation({
+        reservationId,
+        source: 'dashboard_manual_reservation_creation',
+      });
+    } catch (error) {
+      console.error('[tulip] Failed to create contract for manual reservation:', {
+        reservationId,
+        error,
+      });
+    }
   }
 
   // Get customer info for email
