@@ -132,6 +132,7 @@ export default async function NewReservationPage() {
       </div>
 
       <NewReservationForm
+        storeId={store.id}
         customers={customersList}
         products={productsList}
         tulipInsuranceMode={tulipInsuranceMode}

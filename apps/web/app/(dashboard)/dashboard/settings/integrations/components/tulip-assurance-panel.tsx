@@ -37,7 +37,7 @@ const FALLBACK_STATE = {
   connectionIssue: null,
   calendlyUrl: 'https://calendly.com/',
   settings: {
-    publicMode: 'required' as const,
+    publicMode: 'optional' as const,
     renterUid: null,
   },
   renters: [],

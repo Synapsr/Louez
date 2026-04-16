@@ -1260,7 +1260,8 @@
           "title": "Tulip insurance",
           "appliesMappedProducts": "Applies only to products mapped to Tulip.",
           "required": "Breakage/theft coverage is included in this reservation and will be applied automatically.",
-          "optionalLabel": "Enable coverage for this reservation",
+          "optionalLabel": "Protect this reservation with Tulip",
+          "optionalHelp": "Protect the bike or equipment against breakage or theft with Tulip coverage.",
           "insurableProduct": "Insurable",
           "assuredProduct": "Insured",
           "pastStartWarning": "This reservation starts in the past: no Tulip contract can be created unless the rental period is moved back into the future."
@@ -4011,7 +4012,7 @@
       "confirmDescription": "Review your information before confirming",
       "insuranceRequiredNotice": "Breakage/theft coverage is included in your reservation and will be applied automatically.",
       "insuranceOptionalLabel": "Add breakage/theft coverage",
-      "insuranceOptionalHelp": "Enable this option to include breakage/theft coverage in your reservation.",
+      "insuranceOptionalHelp": "Protect the bike or equipment against breakage or theft with Tulip coverage.",
       "insuranceLineLabel": "Breakage/theft coverage",
       "insuranceRequiredBadge": "Included",
       "insuranceOptionalEnabled": "Selected",

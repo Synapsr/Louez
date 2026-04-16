@@ -14,7 +14,7 @@ export interface TulipResolvedSettings {
 }
 
 export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'connectedAt' | 'renterUid'> = {
-  publicMode: 'required',
+  publicMode: 'optional',
 }
 
 export function getTulipSettings(settings: StoreSettings | null | undefined): TulipResolvedSettings {

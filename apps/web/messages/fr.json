@@ -1269,7 +1269,8 @@
           "title": "Assurance Tulip",
           "appliesMappedProducts": "S'applique uniquement aux produits mappés vers Tulip.",
           "required": "Une garantie casse/vol est intégrée à cette réservation et sera appliquée automatiquement.",
-          "optionalLabel": "Activer la garantie pour cette réservation",
+          "optionalLabel": "Protéger cette réservation avec Tulip",
+          "optionalHelp": "Protégez le vélo ou le matériel contre la casse ou le vol grâce à la garantie Tulip.",
           "insurableProduct": "Assurable",
           "assuredProduct": "Assuré",
           "pastStartWarning": "La réservation démarre dans le passé : aucun contrat Tulip ne pourra être créé tant que cette période n'est pas future."
@@ -4011,7 +4012,7 @@
       "confirmDescription": "Vérifiez vos informations avant de valider",
       "insuranceRequiredNotice": "Une garantie casse/vol est intégrée à votre réservation et sera appliquée automatiquement.",
       "insuranceOptionalLabel": "Ajouter la garantie casse/vol",
-      "insuranceOptionalHelp": "Activez cette option pour inclure la garantie casse/vol à votre réservation.",
+      "insuranceOptionalHelp": "Protégez le vélo ou le matériel contre la casse ou le vol grâce à la garantie Tulip.",
       "insuranceLineLabel": "Garantie casse/vol",
       "insuranceRequiredBadge": "Intégrée",
       "insuranceOptionalEnabled": "Sélectionnée",
