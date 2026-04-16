@@ -5041,7 +5041,15 @@
     "tulipContractUpdateFailed": "Reservation updated, but Tulip contract synchronization failed.",
     "tulipQuoteFailed": "Unable to calculate breakage/theft coverage for this reservation.",
     "tulipContractPastDate": "Tulip refused contract creation: contract dates cannot be in the past.",
+    "tulipContractDatesInvalid": "Tulip refused the contract: the start and end dates are inconsistent for this contract type.",
     "tulipContractActionForbidden": "Tulip refused this action for the current account configuration.",
+    "tulipContractOptionsInvalid": "Tulip rejected the contract options. Check breakage/theft options and the insured type.",
+    "tulipContractUpdateWindowExpired": "Tulip rejected the update: the contract started more than 4 hours ago and its dates can no longer be changed.",
+    "tulipContractNotFound": "Tulip could not find this contract. Check synchronization before trying again.",
+    "tulipContractNotOpen": "Tulip rejected the update: only open contracts can be modified.",
+    "tulipContractIdentityFrozen": "Tulip rejected the update: customer identity data is now frozen for this contract.",
+    "tulipContractPayloadInvalid": "Tulip rejected the contract payload. Check the insured products and required fields being sent.",
+    "tulipContractValidationFailed": "Tulip rejected this action because of a contract validation error.",
     "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store."
   },
   "welcome": {

@@ -1,17 +1,61 @@
 import { TulipApiError } from './client';
 
-export function getTulipErrorCode(payload: unknown): number | null {
-  if (!payload || typeof payload !== 'object') {
+function getTulipEnvelope(payload: unknown): Record<string, unknown> | null {
+  const source = Array.isArray(payload) ? payload[0] : payload;
+  if (!source || typeof source !== 'object') {
     return null;
   }
 
-  const nestedError = (payload as { error?: unknown }).error;
+  return source as Record<string, unknown>;
+}
+
+export function getTulipErrorCode(payload: unknown): number | null {
+  const envelope = getTulipEnvelope(payload);
+  if (!envelope) {
+    return null;
+  }
+
+  const nestedError = envelope.error;
   if (!nestedError || typeof nestedError !== 'object') {
     return null;
   }
 
   const code = (nestedError as { code?: unknown }).code;
   return typeof code === 'number' ? code : null;
+}
+
+export function getTulipErrorMessage(payload: unknown): string | null {
+  const envelope = getTulipEnvelope(payload);
+  if (!envelope) {
+    return null;
+  }
+
+  const nestedError = envelope.error;
+  if (nestedError && typeof nestedError === 'object') {
+    const message = (nestedError as { message?: unknown }).message;
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message.trim();
+    }
+  }
+
+  const message = envelope.message;
+  if (typeof message === 'string' && message.trim().length > 0) {
+    return message.trim();
+  }
+
+  return null;
+}
+
+export function getTulipExecutionId(payload: unknown): string | null {
+  const envelope = getTulipEnvelope(payload);
+  if (!envelope) {
+    return null;
+  }
+
+  const executionId = envelope.execution_id;
+  return typeof executionId === 'string' && executionId.trim().length > 0
+    ? executionId.trim()
+    : null;
 }
 
 export function summarizeContractPayloadForLogs(payload: Record<string, unknown>) {
@@ -95,8 +139,60 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
   }
 
   if (error instanceof TulipApiError) {
+    const code = getTulipErrorCode(error.payload);
+    const payloadMessage = getTulipErrorMessage(error.payload)?.toLowerCase() ?? '';
     const payload = JSON.stringify(error.payload ?? {}).toLowerCase();
-    const message = `${error.message} ${payload}`.toLowerCase();
+    const message = `${error.message} ${payloadMessage} ${payload}`.toLowerCase();
+
+    switch (code) {
+      case 1000:
+      case 1021:
+        return new Error('errors.tulipContractPastDate');
+      case 1001:
+      case 1002:
+        return new Error('errors.tulipContractDatesInvalid');
+      case 1003:
+      case 1202:
+        return new Error('errors.tulipContractActionForbidden');
+      case 1010:
+        return new Error('errors.tulipContractOptionsInvalid');
+      case 1013:
+      case 1014:
+      case 1100:
+      case 1101:
+      case 1102:
+      case 1103:
+      case 1104:
+      case 1105:
+      case 1106:
+      case 1107:
+      case 1108:
+      case 1109:
+        return new Error('errors.tulipCustomerDataIncomplete');
+      case 1050:
+        return new Error('errors.tulipContractUpdateWindowExpired');
+      case 1051:
+        return new Error('errors.tulipContractNotFound');
+      case 1052:
+        return new Error('errors.tulipContractNotOpen');
+      case 1150:
+      case 1151:
+        return new Error('errors.tulipContractIdentityFrozen');
+      case 1200:
+      case 1201:
+      case 1220:
+      case 1221:
+      case 1222:
+      case 1223:
+      case 1224:
+      case 1225:
+      case 1226:
+      case 1227:
+      case 1228:
+      case 1229:
+      case 1230:
+        return new Error('errors.tulipContractPayloadInvalid');
+    }
 
     if (message.includes('past') || message.includes('retro') || message.includes('date')) {
       return new Error('errors.tulipContractPastDate');
@@ -113,6 +209,10 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
 
     if (error.status === 401) {
       return new Error('errors.tulipApiKeyInvalid');
+    }
+
+    if (error.status === 400) {
+      return new Error('errors.tulipContractValidationFailed');
     }
 
     if (error.status >= 500) {
