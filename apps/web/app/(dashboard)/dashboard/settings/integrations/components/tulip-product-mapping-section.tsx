@@ -187,6 +187,9 @@ export function TulipProductMappingSection({
     !sheetDraft ||
     validation.hasMissingProductType ||
     validation.hasMissingSubtype ||
+    validation.hasMissingBrand ||
+    validation.hasMissingModel ||
+    validation.hasMissingValueExcl ||
     validation.hasInvalidValueExcl ||
     validation.hasInvalidMargin ||
     validation.hasInvalidPurchasedDate ||
@@ -200,7 +203,7 @@ export function TulipProductMappingSection({
       ? (tulipProductById.get(product.tulipProductId) ?? null)
       : null;
 
-    setSheetDraft(initDraftFromTulipProduct(resolvedCatalog, tp, product.price));
+    setSheetDraft(initDraftFromTulipProduct(resolvedCatalog, tp));
     setEditingProductId(productId);
     setSheetOpen(true);
   };
