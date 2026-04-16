@@ -1094,6 +1094,7 @@
       "promoDiscount": "Promo discount",
       "pickupAtStore": "Store pickup",
       "tulipInsuredBadge": "Tulip insured",
+      "tulipPastStartWarning": "This reservation has already started: no Tulip contract was created. Adjust the rental period if insurance coverage still needs to be created.",
       "tulipContractCardTitle": "Insurance contract",
       "tulipContractCardDescription": "Open the contract in Colibri.",
       "manageStatus": "Manage reservation status",
@@ -1150,6 +1151,8 @@
         "summary": "Summary",
         "before": "Before",
         "after": "After",
+        "insuranceLine": "Breakage/theft coverage",
+        "insuranceEstimating": "Calculating...",
         "difference": "Difference",
         "deposit": "Deposit",
         "save": "Save",
@@ -1259,7 +1262,8 @@
           "required": "Coverage is required for this reservation.",
           "optionalLabel": "Enable coverage for this reservation",
           "insurableProduct": "Insurable",
-          "assuredProduct": "Insured"
+          "assuredProduct": "Insured",
+          "pastStartWarning": "This reservation starts in the past: no Tulip contract can be created unless the rental period is moved back into the future."
         },
         "duration": "Duration",
         "exact": "exact",

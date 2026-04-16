@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Loader2,
@@ -51,6 +51,7 @@ import {
 import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { getTulipQuotePreview } from '@/app/(storefront)/[slug]/checkout/actions'
 import type { PricingMode } from '@louez/types'
 import { EditReservationItemsSection } from './components/edit-reservation-items-section'
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
@@ -110,6 +111,7 @@ function resolveInitialManualPricingMode(
 }
 
 export function EditReservationForm({
+  storeId,
   reservation,
   availableProducts,
   existingReservations,
@@ -223,7 +225,85 @@ export function EditReservationForm({
         ? reservation.tulipInsuranceOptIn === true
         : false
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
-  const fixedTulipInsuranceAmount = tulipInsuranceOptIn ? initialTulipInsuranceAmount : 0
+  const effectiveTulipInsuranceOptIn =
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceOptIn
+        : false
+  const showTulipPastStartWarning =
+    effectiveTulipInsuranceOptIn &&
+    startDate instanceof Date &&
+    startDate.getTime() < Date.now()
+  const tulipQuoteItems = useMemo(
+    () =>
+      items
+        .filter(
+          (item): item is EditableItem & { productId: string } =>
+            typeof item.productId === 'string' && item.productId.length > 0,
+        )
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+    [items],
+  )
+  const tulipQuoteRequest =
+    !effectiveTulipInsuranceOptIn ||
+    showTulipPastStartWarning ||
+    tulipInsuranceMode === 'no_public' ||
+    !startDate ||
+    !endDate ||
+    tulipQuoteItems.length === 0
+      ? null
+      : {
+          storeId,
+          customer: {
+            customerType: reservation.customer.customerType,
+            companyName: reservation.customer.companyName ?? undefined,
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone ?? undefined,
+            address: reservation.customer.address ?? undefined,
+            city: reservation.customer.city ?? undefined,
+            postalCode: reservation.customer.postalCode ?? undefined,
+          },
+          items: tulipQuoteItems,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+        }
+  const tulipQuoteQuery = useQuery({
+    queryKey: ['dashboard-reservation-edit-tulip-quote', reservation.id, tulipQuoteRequest],
+    enabled: tulipQuoteRequest !== null,
+    queryFn: async () => {
+      if (!tulipQuoteRequest) {
+        return null
+      }
+
+      return getTulipQuotePreview(tulipQuoteRequest)
+    },
+    staleTime: 30_000,
+  })
+  const liveTulipInsuranceAmount =
+    tulipQuoteQuery.data?.appliedOptIn && (tulipQuoteQuery.data.amount ?? 0) > 0
+      ? Math.round((tulipQuoteQuery.data.amount ?? 0) * 100) / 100
+      : 0
+  const showTulipInsurancePreview =
+    tulipInsuranceMode !== 'no_public' &&
+    effectiveTulipInsuranceOptIn &&
+    !showTulipPastStartWarning
+  const isTulipInsuranceLoading =
+    tulipQuoteRequest !== null &&
+    (tulipQuoteQuery.isLoading || (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data))
+  const fixedTulipInsuranceAmount = showTulipInsurancePreview
+    ? tulipQuoteRequest === null
+      ? initialTulipInsuranceAmount
+      : isTulipInsuranceLoading && initialTulipInsuranceAmount > 0
+        ? initialTulipInsuranceAmount
+        : liveTulipInsuranceAmount
+    : 0
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -482,13 +562,6 @@ export function EditReservationForm({
     }
     setIsLoading(true)
     try {
-      const effectiveTulipInsuranceOptIn =
-        tulipInsuranceMode === 'required'
-          ? true
-          : tulipInsuranceMode === 'optional'
-            ? tulipInsuranceOptIn
-            : false
-
       // Build delivery payload when delivery is available
       const deliveryPayload = storeDelivery
         ? {
@@ -749,6 +822,13 @@ export function EditReservationForm({
                       )}
                     </div>
                   )}
+                  {showTulipPastStartWarning && (
+                    <Alert variant="warning" className="mt-4">
+                      <AlertDescription>
+                        {tForm('tulipInsurance.pastStartWarning')}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
 
@@ -759,6 +839,9 @@ export function EditReservationForm({
                 availableToAdd={availableToAdd}
                 itemsCount={items.length}
                 currencySymbol={currencySymbol}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceRow={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
                 getDurationUnit={getDurationUnit}
                 onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
                 onAddProduct={handleAddProduct}
@@ -796,9 +879,15 @@ export function EditReservationForm({
                     </p>
 
                     {tulipInsuranceMode === 'required' ? (
-                      <p className="text-sm font-medium text-emerald-700">
-                        {tForm('tulipInsurance.required')}
-                      </p>
+                      showTulipPastStartWarning ? (
+                        <p className="text-sm font-medium text-amber-700">
+                          {tForm('tulipInsurance.pastStartWarning')}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-medium text-emerald-700">
+                          {tForm('tulipInsurance.required')}
+                        </p>
+                      )
                     ) : (
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -825,9 +914,13 @@ export function EditReservationForm({
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
+                originalTulipInsuranceAmount={initialTulipInsuranceAmount}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceSummary={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
                 isLoading={isLoading}
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}

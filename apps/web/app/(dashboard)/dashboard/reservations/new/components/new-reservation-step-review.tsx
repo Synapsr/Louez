@@ -6,6 +6,8 @@ import { Check, MapPin, Store, Truck, Shield } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
+  Alert,
+  AlertDescription,
   Badge,
   Card,
   CardContent,
@@ -110,6 +112,15 @@ export function NewReservationStepReview({
   const isTulipInsuranceEnabledForReservation =
     tulipInsuranceMode === 'required' ||
     (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn)
+  const hasTulipEligibleProducts = selectedProducts.some((item) => {
+    const product = products.find((candidate) => candidate.id === item.productId)
+    return product?.tulipInsurable === true
+  })
+  const showTulipPastStartWarning =
+    isTulipInsuranceEnabledForReservation &&
+    hasTulipEligibleProducts &&
+    startDate instanceof Date &&
+    startDate.getTime() < Date.now()
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -185,6 +196,13 @@ export function NewReservationStepReview({
                 </span>
               </div>
             </div>
+            {showTulipPastStartWarning && (
+              <Alert variant="warning" className="mt-3">
+                <AlertDescription>
+                  {t('tulipInsurance.pastStartWarning')}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           {/* Delivery section — per-leg detail */}
@@ -259,7 +277,7 @@ export function NewReservationStepReview({
                 if (!product) return null
 
                 const pricing = getProductPricingDetails(product, item)
-                const isProductInsured =
+                const isProductTulipEligible =
                   isTulipInsuranceEnabledForReservation &&
                   product.tulipInsurable === true
 
@@ -268,13 +286,17 @@ export function NewReservationStepReview({
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{product.name}</span>
-                        {isProductInsured && (
+                        {isProductTulipEligible && (
                           <Badge
                             variant="outline"
-                            className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                            className={
+                              showTulipPastStartWarning
+                                ? 'border-amber-300 bg-amber-50 text-amber-700'
+                                : 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                            }
                           >
                             <Shield className="mr-1 h-3 w-3" />
-                            {t('tulipInsurance.assuredProduct')}
+                            {t('tulipInsurance.insurableProduct')}
                           </Badge>
                         )}
                         {pricing.hasPriceOverride && (
