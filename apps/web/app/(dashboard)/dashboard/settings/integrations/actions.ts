@@ -661,6 +661,9 @@ function toActionError(error: unknown): ActionError {
       if (code === 4005) {
         return { error: 'errors.tulipProductPayloadInvalid' };
       }
+      if (code === 4004 || code === 4006 || code === 4007) {
+        return { error: 'errors.tulipProductRequiredFieldsMissing' };
+      }
       if (code === 4999) {
         return { error: 'errors.tulipProductNotFound' };
       }
@@ -1708,7 +1711,21 @@ export async function createTulipProductAction(
 
     const requestedProductType = normalizeTulipOptionalText(validated.productType);
     const requestedSubtype = normalizeTulipOptionalText(validated.productSubtype);
-    const resolvedProductType = requestedProductType || 'event';
+    const resolvedBrand = validated.brand?.trim() || null;
+    const resolvedModel = validated.model?.trim() || null;
+    const resolvedValueExcl = validated.valueExcl ?? null;
+
+    if (
+      !requestedProductType ||
+      !requestedSubtype ||
+      !resolvedBrand ||
+      !resolvedModel ||
+      resolvedValueExcl == null
+    ) {
+      return { error: 'errors.tulipProductRequiredFieldsMissing' };
+    }
+
+    const resolvedProductType = requestedProductType;
     let resolvedSubtype = requestedSubtype;
 
     if (!resolvedSubtype && isKnownTulipProductType(resolvedProductType)) {
@@ -1733,8 +1750,6 @@ export async function createTulipProductAction(
     }
 
     const resolvedTitle = validated.title?.trim() || product.name;
-    const resolvedBrand = validated.brand?.trim() || null;
-    const resolvedModel = validated.model?.trim() || null;
     const resolvedMargin = validated.margin ?? null;
     const resolvedPurchasedDate = validated.purchasedDate
       ? new Date(validated.purchasedDate).toISOString()
@@ -1754,7 +1769,7 @@ export async function createTulipProductAction(
       ...(resolvedPurchasedDate
         ? { purchased_date: resolvedPurchasedDate }
         : {}),
-      value_excl: validated.valueExcl ?? Number(product.price),
+      value_excl: resolvedValueExcl,
     };
 
     console.info('[tulip][create-product] sending create request', {

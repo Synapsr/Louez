@@ -197,6 +197,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       hasInvalidPurchasedDate: false,
       hasMissingProductType: true,
       hasMissingSubtype: true,
+      hasMissingBrand: true,
+      hasMissingModel: true,
+      hasMissingValueExcl: true,
     }
   }
 
@@ -217,6 +220,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       : false,
     hasMissingProductType: !normalizeCatalogValue(draft.productType),
     hasMissingSubtype: !normalizeCatalogValue(draft.productSubtype),
+    hasMissingBrand: draft.brand.trim().length === 0,
+    hasMissingModel: draft.model.trim().length === 0,
+    hasMissingValueExcl: normalizedValueExcl.length === 0,
   }
 }
 
@@ -235,7 +241,6 @@ export function initDraftFromTulipProduct(
     valueExcl: number | null
     margin: number | null
   } | null,
-  fallbackPrice: number,
 ): TulipProductDraft {
   const resolvedType = resolveProductType(resolvedCatalog, tulipProduct?.productType)
 
@@ -255,7 +260,7 @@ export function initDraftFromTulipProduct(
     valueExcl:
       tulipProduct?.valueExcl != null
         ? tulipProduct.valueExcl.toFixed(2)
-        : fallbackPrice.toFixed(2),
+        : '',
     margin:
       tulipProduct?.margin != null ? tulipProduct.margin.toFixed(2) : '',
   }

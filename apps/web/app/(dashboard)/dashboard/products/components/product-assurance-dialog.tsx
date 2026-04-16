@@ -99,7 +99,7 @@ export function ProductAssuranceDialog({
       : null
 
     setDraft(
-      initDraftFromTulipProduct(resolvedCatalog, mappedTulipProduct, product.price),
+      initDraftFromTulipProduct(resolvedCatalog, mappedTulipProduct),
     )
   }, [open, product.price, product.tulipProductId, resolvedCatalog, tulipProductById])
 
@@ -114,6 +114,9 @@ export function ProductAssuranceDialog({
     !draft ||
     validation.hasMissingProductType ||
     validation.hasMissingSubtype ||
+    validation.hasMissingBrand ||
+    validation.hasMissingModel ||
+    validation.hasMissingValueExcl ||
     validation.hasInvalidValueExcl ||
     validation.hasInvalidMargin ||
     validation.hasInvalidPurchasedDate ||
