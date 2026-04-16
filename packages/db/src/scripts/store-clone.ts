@@ -22,6 +22,7 @@ type CliOptions = {
 
 type CloneTable =
   | 'stores'
+  | 'subscriptions'
   | 'store_members'
   | 'categories'
   | 'products'
@@ -78,6 +79,7 @@ const MAX_SKIP_DETAILS = 30
 
 const CATALOG_TABLE_ORDER: CloneTable[] = [
   'stores',
+  'subscriptions',
   'store_members',
   'categories',
   'products',
@@ -136,6 +138,7 @@ Notes:
   - IDs are regenerated for cloned rows so reruns don't collide with prior clones.
   - "full" scope intentionally skips auth/session token tables (customer_sessions, verification_codes).
   - Stripe and webhook integration fields are reset on the cloned store for safety.
+  - Subscription plan state is copied, but Stripe subscription/customer ids are cleared.
 `)
 }
 
@@ -345,6 +348,12 @@ async function collectDataset(
     [sourceStoreId],
   )
   dataset.stores = sourceStoreRows
+
+  dataset.subscriptions = await fetchRows(
+    sourceConnection,
+    'SELECT * FROM subscriptions WHERE store_id = ? LIMIT 1',
+    [sourceStoreId],
+  )
 
   dataset.categories = await fetchRows(
     sourceConnection,
@@ -710,6 +719,14 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
       }
 
       if (table === 'categories') {
+        transformedRows.push(row)
+        continue
+      }
+
+      if (table === 'subscriptions') {
+        row.store_id = context.targetStoreId
+        row.stripe_subscription_id = null
+        row.stripe_customer_id = null
         transformedRows.push(row)
         continue
       }
