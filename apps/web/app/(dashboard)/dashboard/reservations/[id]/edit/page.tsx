@@ -259,6 +259,7 @@ export default async function EditReservationPage({
 
   return (
     <EditReservationForm
+      storeId={store.id}
       reservation={{
         id: reservation.id,
         number: reservation.number,
@@ -306,8 +307,16 @@ export default async function EditReservationPage({
             : null,
         })),
         customer: {
+          customerType: reservation.customer.customerType,
+          companyName: reservation.customer.companyName,
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+          address: reservation.customer.address,
+          city: reservation.customer.city,
+          postalCode: reservation.customer.postalCode,
+          country: reservation.customer.country,
         },
       }}
       availableProducts={availableProducts.map(mapProduct)}

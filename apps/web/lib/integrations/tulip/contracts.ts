@@ -142,6 +142,10 @@ export async function previewTulipQuoteForCheckout(params: {
     };
   }
 
+  if (params.startDate.getTime() < Date.now()) {
+    throw new Error('errors.tulipContractPastDate');
+  }
+
   const apiKey = getTulipApiKey(params.storeSettings);
   if (!apiKey || !tulipSettings.renterUid) {
     throw new Error('errors.tulipNotConfigured');
@@ -251,6 +255,18 @@ export async function createTulipContractForReservation(params: {
       contractId: null,
       created: false,
     };
+  }
+
+  if (reservation.startDate.getTime() < Date.now()) {
+    await db
+      .update(reservations)
+      .set({
+        tulipContractStatus: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(reservations.id, reservation.id));
+
+    throw new Error('errors.tulipContractPastDate');
   }
 
   const insuranceSelection = getReservationInsuranceSelection({

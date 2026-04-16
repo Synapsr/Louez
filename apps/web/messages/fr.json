@@ -1084,6 +1084,7 @@
       "productUnitPrice": "Prix unit.",
       "productTotal": "Total",
       "tulipInsuredBadge": "Assuré Tulip",
+      "tulipPastStartWarning": "La réservation a déjà commencé : aucun contrat Tulip n'a été créé. Ajustez la période si vous devez créer une couverture assurance.",
       "tulipContractCardTitle": "Contrat assurance",
       "tulipContractCardDescription": "Ouvrir le contrat dans Colibri.",
       "deliveryAndReturn": "Livraison & retour",
@@ -1150,6 +1151,8 @@
         "summary": "Récapitulatif",
         "before": "Avant",
         "after": "Après",
+        "insuranceLine": "Garantie casse/vol",
+        "insuranceEstimating": "Calcul...",
         "difference": "Différence",
         "deposit": "Caution",
         "save": "Enregistrer",
@@ -1268,7 +1271,8 @@
           "required": "La garantie est obligatoire pour cette réservation.",
           "optionalLabel": "Activer la garantie pour cette réservation",
           "insurableProduct": "Assurable",
-          "assuredProduct": "Assuré"
+          "assuredProduct": "Assuré",
+          "pastStartWarning": "La réservation démarre dans le passé : aucun contrat Tulip ne pourra être créé tant que cette période n'est pas future."
         },
         "duration": "Durée",
         "exact": "exact",
