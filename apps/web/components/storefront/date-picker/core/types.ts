@@ -5,6 +5,7 @@ export interface RentalDateCoreOptions {
   endDate?: Date;
   startTime: string;
   endTime: string;
+  minRentalMinutes?: number;
   businessHours?: BusinessHours;
   advanceNotice?: number;
   timezone?: string;

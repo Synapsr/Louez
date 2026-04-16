@@ -16,7 +16,13 @@ import {
 } from '@louez/ui'
 import { Label } from '@louez/ui'
 import type { BusinessHours } from '@louez/types'
-import { applyTimeToDate, createTimeSlots, getTimeFromDate } from '@/components/storefront/date-picker/core/use-rental-date-core'
+import {
+  applyTimeToDate,
+  createTimeSlots,
+  getTimeFromDate,
+  isCalendarDateBeforeSelectedDate,
+  isSameDayEndTimeSlotAllowed,
+} from '@/components/storefront/date-picker/core/use-rental-date-core'
 import { getAvailableTimeSlots, isDateAvailable } from '@/lib/utils/business-hours'
 
 interface RentalDatePickerProps {
@@ -26,6 +32,7 @@ interface RentalDatePickerProps {
   onEndDateChange: (date: Date | undefined) => void
   pricingMode: 'day' | 'hour' | 'week'
   minDate?: Date
+  minRentalMinutes?: number
   businessHours?: BusinessHours
   timezone?: string
   className?: string
@@ -82,6 +89,7 @@ export function RentalDatePicker({
   onEndDateChange,
   pricingMode,
   minDate = new Date(),
+  minRentalMinutes = 0,
   businessHours,
   timezone,
   className,
@@ -110,8 +118,26 @@ export function RentalDatePicker({
 
   const endSlots = React.useMemo(() => {
     if (!endDate) return DEFAULT_TIME_SLOTS
-    return getAvailableTimeSlots(endDate, businessHours, 30, timezone)
-  }, [endDate, businessHours, timezone])
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30, timezone)
+
+    if (startDate && endDate && startDate.toDateString() === endDate.toDateString()) {
+      const startTime = getTimeFromDate(startDate)
+      if (!startTime) return slots
+
+      return slots.filter((slot) =>
+        isSameDayEndTimeSlotAllowed({
+          startDate,
+          startTime,
+          endDate,
+          endTime: slot,
+          minRentalMinutes,
+          timezone,
+        }),
+      )
+    }
+
+    return slots
+  }, [endDate, businessHours, timezone, startDate, minRentalMinutes])
 
   const isDateDisabledByBusinessHours = React.useCallback(
     (date: Date): boolean => {
@@ -270,7 +296,9 @@ export function RentalDatePicker({
               selected={endDate}
               onSelect={handleEndDateSelect}
               disabled={(date) =>
-                date < effectiveMinDate || (startDate ? date < startDate : false) || isDateDisabledByBusinessHours(date)
+                date < effectiveMinDate ||
+                isCalendarDateBeforeSelectedDate(date, startDate) ||
+                isDateDisabledByBusinessHours(date)
               }
               locale={fr}
             />

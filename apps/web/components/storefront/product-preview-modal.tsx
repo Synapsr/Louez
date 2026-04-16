@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
-import { addDays, format, setHours, setMinutes } from 'date-fns';
+import { format, setHours, setMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import {
   AlertCircle,
@@ -43,6 +43,11 @@ import {
   getMinStartDate,
   isTimeSlotAvailable,
 } from '@/lib/utils/duration';
+import {
+  getDefaultEndDateForStartDate,
+  isCalendarDateBeforeSelectedDate,
+  isSameDayEndTimeSlotAllowed,
+} from '@/components/storefront/date-picker/core/use-rental-date-core';
 
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 import {
@@ -94,6 +99,7 @@ interface ProductPreviewModalProps {
   storeSlug: string;
   businessHours?: BusinessHours;
   advanceNotice?: number;
+  minRentalMinutes?: number;
   timezone?: string;
 }
 
@@ -106,6 +112,7 @@ export function ProductPreviewModal({
   storeSlug,
   businessHours,
   advanceNotice = 0,
+  minRentalMinutes = 0,
   timezone,
 }: ProductPreviewModalProps) {
   const tProduct = useTranslations('storefront.product');
@@ -254,8 +261,23 @@ export function ProductPreviewModal({
 
   const endTimeSlots = useMemo(() => {
     if (!endDate) return defaultTimeSlots;
-    return getAvailableTimeSlots(endDate, businessHours, 30, timezone);
-  }, [endDate, businessHours, timezone]);
+    const slots = getAvailableTimeSlots(endDate, businessHours, 30, timezone);
+
+    if (startDate && startTime && startDate.toDateString() === endDate.toDateString()) {
+      return slots.filter((slot) =>
+        isSameDayEndTimeSlotAllowed({
+          startDate,
+          startTime,
+          endDate,
+          endTime: slot,
+          minRentalMinutes,
+          timezone,
+        }),
+      );
+    }
+
+    return slots;
+  }, [endDate, businessHours, timezone, startDate, startTime, minRentalMinutes]);
 
   const isDateDisabled = useCallback(
     (date: Date): boolean => {
@@ -289,7 +311,15 @@ export function ProductPreviewModal({
     setStartDateOpen(false);
 
     if (!endDate || date >= endDate) {
-      setEndDate(addDays(date, 1));
+      setEndDate(
+        getDefaultEndDateForStartDate({
+          startDate: date,
+          pricingMode: product.pricingMode || 'day',
+          minRentalMinutes,
+          businessHours,
+          timezone,
+        }),
+      );
     }
 
     setTimeout(() => setStartTimeOpen(true), 200);
@@ -787,7 +817,7 @@ export function ProductPreviewModal({
                         onSelect={handleEndDateSelect}
                         disabled={(date) =>
                           isDateDisabled(date) ||
-                          (startDate ? date < startDate : false)
+                          isCalendarDateBeforeSelectedDate(date, startDate)
                         }
                         locale={fr}
                         initialFocus

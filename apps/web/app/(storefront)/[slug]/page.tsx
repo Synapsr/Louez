@@ -436,6 +436,7 @@ export default async function StorefrontPage({ params }: StorefrontPageProps) {
               storeSlug={slug}
               businessHours={businessHours}
               advanceNotice={advanceNotice}
+              minRentalMinutes={minRentalMinutes}
               timezone={timezone}
             />
           ) : (

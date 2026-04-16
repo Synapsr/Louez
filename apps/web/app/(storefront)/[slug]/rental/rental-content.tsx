@@ -124,6 +124,7 @@ interface Store {
   settings?: {
     businessHours?: BusinessHours;
     advanceNotice?: number;
+    minRentalMinutes?: number;
     timezone?: string;
   } | null;
 }
@@ -612,6 +613,7 @@ export function RentalContent({
         pricingMode={pricingMode}
         businessHours={store.settings?.businessHours}
         advanceNotice={store.settings?.advanceNotice}
+        minRentalMinutes={store.settings?.minRentalMinutes}
         timezone={store.settings?.timezone}
         isOpen={isDateModalOpen}
         onClose={() => setIsDateModalOpen(false)}

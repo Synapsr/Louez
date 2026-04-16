@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays } from 'date-fns'
+import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { CalendarIcon, ArrowRight, Clock, Check, AlertCircle } from 'lucide-react'
 
@@ -24,10 +24,13 @@ import {
   validateMinRentalDurationMinutes,
 } from '@/lib/utils/rental-duration'
 import type { BusinessHours } from '@louez/types'
-import { buildDateTimeRange, ensureSelectedTime, useRentalDateCore } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import {
-  getNextAvailableDate,
-} from '@/lib/utils/business-hours'
+  buildDateTimeRange,
+  ensureSelectedTime,
+  getDefaultEndDateForStartDate,
+  isCalendarDateBeforeSelectedDate,
+  useRentalDateCore,
+} from '@/components/storefront/date-picker/core/use-rental-date-core'
 
 interface CatalogDatePickerProps {
   storeSlug: string
@@ -86,6 +89,7 @@ export function CatalogDatePicker({
     endDate,
     startTime,
     endTime,
+    minRentalMinutes,
     businessHours,
     advanceNotice,
     timezone,
@@ -124,15 +128,15 @@ export function CatalogDatePicker({
     setStartDateOpen(false)
 
     if (!endDate || date >= endDate) {
-      // For hourly pricing: default to same day (allows same-day rentals)
-      // For day/week pricing: default to next day
-      if (pricingMode === 'hour') {
-        setEndDate(date)
-      } else {
-        const nextDay = addDays(date, 1)
-        const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
-        setEndDate(nextAvailable ?? nextDay)
-      }
+      setEndDate(
+        getDefaultEndDateForStartDate({
+          startDate: date,
+          pricingMode,
+          minRentalMinutes,
+          businessHours,
+          timezone,
+        })
+      )
       // Mark that end date was auto-set (so we can clear selection when opening picker)
       endDateAutoSetRef.current = true
     }
@@ -387,7 +391,9 @@ export function CatalogDatePicker({
               selected={hideEndDateSelection ? undefined : endDate}
               defaultMonth={endDate}
               onSelect={handleEndDateSelect}
-              disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
+              disabled={(date) =>
+                isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
+              }
               locale={fr}
               autoFocus
             />

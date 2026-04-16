@@ -44,6 +44,7 @@ interface ProductGridWithPreviewProps {
   storeSlug: string
   businessHours?: BusinessHours
   advanceNotice?: number
+  minRentalMinutes?: number
   timezone?: string
   initialProductId?: string
 }
@@ -160,6 +161,7 @@ export function ProductGridWithPreview({
   storeSlug,
   businessHours,
   advanceNotice,
+  minRentalMinutes = 0,
   timezone,
   initialProductId,
 }: ProductGridWithPreviewProps) {
@@ -213,6 +215,7 @@ export function ProductGridWithPreview({
           storeSlug={storeSlug}
           businessHours={businessHours}
           advanceNotice={advanceNotice}
+          minRentalMinutes={minRentalMinutes}
           timezone={timezone}
         />
       )}

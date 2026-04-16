@@ -26,14 +26,15 @@ import { cn } from '@louez/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { getMinStartDate, isTimeSlotAvailable, type PricingMode } from '@/lib/utils/duration'
+import { isCalendarDateBeforeSelectedDate } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import type { BusinessHours } from '@louez/types'
 import {
   isDateAvailable,
   getAvailableTimeSlots,
   generateTimeSlots,
-  getNextAvailableDate,
   buildStoreDate,
 } from '@/lib/utils/business-hours'
+import { getDefaultEndDateForStartDate } from '@/components/storefront/date-picker/core/use-rental-date-core'
 
 interface DateSelectionHeroProps {
   storeSlug: string
@@ -41,6 +42,7 @@ interface DateSelectionHeroProps {
   primaryColor?: string
   businessHours?: BusinessHours
   advanceNotice?: number
+  minRentalMinutes?: number
   timezone?: string
 }
 
@@ -55,6 +57,7 @@ export function DateSelectionHero({
   primaryColor = '#0066FF',
   businessHours,
   advanceNotice = 0,
+  minRentalMinutes = 0,
   timezone,
 }: DateSelectionHeroProps) {
   const t = useTranslations('storefront.dateSelection')
@@ -169,9 +172,15 @@ export function DateSelectionHero({
 
     // Auto-set end date if not set or before start
     if (!endDate || date >= endDate) {
-      const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
-      setEndDate(nextAvailable ?? nextDay)
+      setEndDate(
+        getDefaultEndDateForStartDate({
+          startDate: date,
+          pricingMode,
+          minRentalMinutes,
+          businessHours,
+          timezone,
+        })
+      )
     }
 
     // Auto-progress to start time with lock
@@ -560,7 +569,9 @@ export function DateSelectionHero({
                     mode="single"
                     selected={endDate}
                     onSelect={handleEndDateSelect}
-                    disabled={(date) => isDateDisabled(date) || (startDate ? date < startDate : false)}
+                    disabled={(date) =>
+                      isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
+                    }
                     locale={fr}
                     initialFocus
                   />

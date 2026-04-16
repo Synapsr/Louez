@@ -365,6 +365,7 @@ export default async function CatalogPage({
             storeSlug={slug}
             businessHours={businessHours}
             advanceNotice={advanceNotice}
+            minRentalMinutes={minRentalMinutes}
             timezone={timezone}
             initialProductId={initialProductId}
           />

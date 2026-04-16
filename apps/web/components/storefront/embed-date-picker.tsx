@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useTranslations } from 'next-intl'
-import { format, addDays } from 'date-fns'
+import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import {
   CalendarIcon,
@@ -27,9 +27,10 @@ import type { BusinessHours } from '@louez/types'
 import {
   buildDateTimeRange,
   ensureSelectedTime,
+  getDefaultEndDateForStartDate,
+  isCalendarDateBeforeSelectedDate,
   useRentalDateCore,
 } from '@/components/storefront/date-picker/core/use-rental-date-core'
-import { getNextAvailableDate } from '@/lib/utils/business-hours'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -179,6 +180,7 @@ export function EmbedDatePicker({
       endDate,
       startTime,
       endTime,
+      minRentalMinutes,
       businessHours,
       advanceNotice,
       timezone,
@@ -265,18 +267,15 @@ export function EmbedDatePicker({
 
     // Auto-set end date if needed
     if (!endDate || date >= endDate) {
-      if (pricingMode === 'hour') {
-        setEndDate(date)
-      } else {
-        const nextDay = addDays(date, 1)
-        const nextAvailable = getNextAvailableDate(
-          nextDay,
+      setEndDate(
+        getDefaultEndDateForStartDate({
+          startDate: date,
+          pricingMode,
+          minRentalMinutes,
           businessHours,
-          365,
           timezone,
-        )
-        setEndDate(nextAvailable ?? nextDay)
-      }
+        }),
+      )
       endDateAutoSetRef.current = true
     }
 
@@ -532,7 +531,7 @@ export function EmbedDatePicker({
                       ? isDateDisabled
                       : (date) =>
                           isDateDisabled(date) ||
-                          (startDate ? date < startDate : false)
+                          isCalendarDateBeforeSelectedDate(date, startDate)
                   }
                   locale={fr}
                   autoFocus

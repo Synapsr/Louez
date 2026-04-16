@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { format, addDays } from 'date-fns'
+import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { CalendarIcon, Clock, Check, AlertCircle, ArrowRight } from 'lucide-react'
 
@@ -27,16 +27,20 @@ import { useCart } from '@/contexts/cart-context'
 import { useStorefrontUrl } from '@/hooks/use-storefront-url'
 import { type PricingMode } from '@/lib/utils/duration'
 import type { BusinessHours } from '@louez/types'
-import { buildDateTimeRange, ensureSelectedTime, useRentalDateCore } from '@/components/storefront/date-picker/core/use-rental-date-core'
 import {
-  getNextAvailableDate,
-} from '@/lib/utils/business-hours'
+  buildDateTimeRange,
+  ensureSelectedTime,
+  getDefaultEndDateForStartDate,
+  isCalendarDateBeforeSelectedDate,
+  useRentalDateCore,
+} from '@/components/storefront/date-picker/core/use-rental-date-core'
 
 interface DatePickerModalProps {
   storeSlug: string
   pricingMode: PricingMode
   businessHours?: BusinessHours
   advanceNotice?: number
+  minRentalMinutes?: number
   timezone?: string
   isOpen: boolean
   onClose: () => void
@@ -49,6 +53,7 @@ export function DatePickerModal({
   pricingMode,
   businessHours,
   advanceNotice = 0,
+  minRentalMinutes = 0,
   timezone,
   isOpen,
   onClose,
@@ -107,6 +112,7 @@ export function DatePickerModal({
     endDate,
     startTime,
     endTime,
+    minRentalMinutes,
     businessHours,
     advanceNotice,
     timezone,
@@ -133,9 +139,15 @@ export function DatePickerModal({
     setStartDate(date)
 
     if (!endDate || date >= endDate) {
-      const nextDay = addDays(date, 1)
-      const nextAvailable = getNextAvailableDate(nextDay, businessHours, 365, timezone)
-      setEndDate(nextAvailable ?? nextDay)
+      setEndDate(
+        getDefaultEndDateForStartDate({
+          startDate: date,
+          pricingMode,
+          minRentalMinutes,
+          businessHours,
+          timezone,
+        })
+      )
     }
   }
 
@@ -297,7 +309,7 @@ export function DatePickerModal({
                     selected={endDate}
                     onSelect={handleEndDateSelect}
                     disabled={(date) =>
-                      isDateDisabled(date) || (startDate ? date < startDate : false)
+                      isDateDisabled(date) || isCalendarDateBeforeSelectedDate(date, startDate)
                     }
                     locale={fr}
                     initialFocus
