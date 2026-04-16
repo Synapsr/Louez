@@ -26,6 +26,8 @@ type CloneTable =
   | 'store_members'
   | 'categories'
   | 'products'
+  | 'product_seasonal_pricing'
+  | 'product_seasonal_pricing_tiers'
   | 'product_pricing_tiers'
   | 'product_units'
   | 'product_accessories'
@@ -83,6 +85,8 @@ const CATALOG_TABLE_ORDER: CloneTable[] = [
   'store_members',
   'categories',
   'products',
+  'product_seasonal_pricing',
+  'product_seasonal_pricing_tiers',
   'product_pricing_tiers',
   'product_units',
   'product_accessories',
@@ -368,6 +372,21 @@ async function collectDataset(
   )
 
   const productIds = uniqueIds(dataset.products.map((row) => asId(row.id)))
+  dataset.product_seasonal_pricing = await fetchByIds(
+    sourceConnection,
+    'product_seasonal_pricing',
+    'product_id',
+    productIds,
+  )
+  const seasonalPricingIds = uniqueIds(
+    dataset.product_seasonal_pricing.map((row) => asId(row.id)),
+  )
+  dataset.product_seasonal_pricing_tiers = await fetchByIds(
+    sourceConnection,
+    'product_seasonal_pricing_tiers',
+    'seasonal_pricing_id',
+    seasonalPricingIds,
+  )
   dataset.product_pricing_tiers = await fetchByIds(
     sourceConnection,
     'product_pricing_tiers',
@@ -733,6 +752,38 @@ function transformDataset(dataset: Dataset, context: TransformContext): Transfor
 
       if (table === 'products') {
         row.category_id = mapOptionalRef('categories', row.category_id)
+        transformedRows.push(row)
+        continue
+      }
+
+      if (table === 'product_seasonal_pricing') {
+        const mappedProductId = mapRequiredRef(
+          table,
+          sourceRowId,
+          'product_id',
+          'products',
+          row.product_id,
+        )
+        if (!mappedProductId) {
+          continue
+        }
+        row.product_id = mappedProductId
+        transformedRows.push(row)
+        continue
+      }
+
+      if (table === 'product_seasonal_pricing_tiers') {
+        const mappedSeasonalPricingId = mapRequiredRef(
+          table,
+          sourceRowId,
+          'seasonal_pricing_id',
+          'product_seasonal_pricing',
+          row.seasonal_pricing_id,
+        )
+        if (!mappedSeasonalPricingId) {
+          continue
+        }
+        row.seasonal_pricing_id = mappedSeasonalPricingId
         transformedRows.push(row)
         continue
       }
