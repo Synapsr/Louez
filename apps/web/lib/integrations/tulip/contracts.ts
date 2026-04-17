@@ -288,9 +288,7 @@ function toTargetTulipContractProductEntries(
     const louezProductIdValue =
       typeof dataObj?.louez_product_ID === 'string'
         ? dataObj.louez_product_ID.trim()
-        : typeof dataObj?.internal_id === 'string'
-          ? dataObj.internal_id.trim()
-          : '';
+        : '';
 
     if (!tulipProductId || !productMarked) {
       continue;
@@ -338,6 +336,7 @@ function toCurrentTulipContractProductEntries(
     const louezProductId =
       typeof dataObj?.louez_product_ID === 'string'
         ? dataObj.louez_product_ID.trim()
+        // Legacy fallback: older Tulip contracts stored the Louez id in internal_id.
         : typeof dataObj?.internal_id === 'string'
           ? dataObj.internal_id.trim()
           : '';
@@ -1108,7 +1107,6 @@ export async function syncTulipContractForReservation(params: {
           product_id: target.tulipProductId,
           product_marked: target.productMarked,
           user_name: target.userName,
-          internal_id: target.louezProductId,
           louez_product_ID: target.louezProductId,
         },
       ]),
@@ -1202,7 +1200,6 @@ export async function syncTulipContractForReservation(params: {
         data: {
           user_name: product.userName,
           product_marked: product.productMarked,
-          internal_id: product.louezProductId,
           louez_product_ID: product.louezProductId,
         },
       })),

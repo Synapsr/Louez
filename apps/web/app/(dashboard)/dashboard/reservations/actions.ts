@@ -364,6 +364,7 @@ export async function updateReservationStatus(
   let tulipWarning: {
     key: string;
     params?: Record<string, string | number>;
+    details?: string;
   } | null = null;
   if (status === 'confirmed') {
     try {
@@ -382,6 +383,32 @@ export async function updateReservationStatus(
 
       tulipWarning = {
         key: getErrorKey(error, 'errors.tulipContractCreationFailed'),
+        ...(getErrorDetails(error)
+          ? { details: getErrorDetails(error)! }
+          : {}),
+      };
+    }
+  }
+
+  if (
+    status === 'ongoing' &&
+    reservation.tulipContractId &&
+    reservation.tulipContractStatus !== 'cancelled' &&
+    reservation.tulipContractStatus !== 'not_required'
+  ) {
+    try {
+      await syncTulipContractForReservation({ reservationId });
+    } catch (error) {
+      console.error('[tulip] Failed to sync contract on pickup:', {
+        reservationId,
+        error,
+      });
+
+      tulipWarning = {
+        key: getErrorKey(error, 'errors.tulipContractUpdateFailed'),
+        ...(getErrorDetails(error)
+          ? { details: getErrorDetails(error)! }
+          : {}),
       };
     }
   }
@@ -3823,7 +3850,15 @@ export async function requestPayment(
 export async function assignUnitsToReservationItem(
   reservationItemId: string,
   unitIds: string[],
-): Promise<{ success?: boolean; error?: string }> {
+): Promise<{
+  success?: boolean;
+  error?: string;
+  warnings?: Array<{
+    key: string;
+    params?: Record<string, string | number>;
+    details?: string;
+  }>;
+}> {
   const store = await getStoreForUser();
   if (!store) {
     return { error: 'errors.unauthorized' };
@@ -3838,6 +3873,9 @@ export async function assignUnitsToReservationItem(
         combinationKey: reservationItems.combinationKey,
         quantity: reservationItems.quantity,
         reservationId: reservationItems.reservationId,
+        reservationStatus: reservations.status,
+        tulipContractId: reservations.tulipContractId,
+        tulipContractStatus: reservations.tulipContractStatus,
       })
       .from(reservationItems)
       .innerJoin(
@@ -3854,6 +3892,12 @@ export async function assignUnitsToReservationItem(
     if (!item) {
       return { error: 'errors.notFound' };
     }
+
+    const tulipWarnings: Array<{
+      key: string;
+      params?: Record<string, string | number>;
+      details?: string;
+    }> = [];
 
     // 2. Validate that we're not assigning more units than quantity
     if (unitIds.length > item.quantity) {
@@ -3924,9 +3968,35 @@ export async function assignUnitsToReservationItem(
       });
     }
 
+    if (
+      item.tulipContractId &&
+      item.tulipContractStatus !== 'cancelled' &&
+      item.tulipContractStatus !== 'not_required' &&
+      (item.reservationStatus === 'confirmed' || item.reservationStatus === 'ongoing')
+    ) {
+      try {
+        await syncTulipContractForReservation({ reservationId: item.reservationId });
+      } catch (error) {
+        console.error('[tulip] Failed to sync contract after unit assignment:', {
+          reservationId: item.reservationId,
+          reservationItemId,
+          error,
+        });
+        tulipWarnings.push({
+          key: getErrorKey(error, 'errors.tulipContractUpdateFailed'),
+          ...(getErrorDetails(error)
+            ? { details: getErrorDetails(error)! }
+            : {}),
+        });
+      }
+    }
+
     revalidatePath(`/dashboard/reservations/${item.reservationId}`);
 
-    return { success: true };
+    return {
+      success: true,
+      ...(tulipWarnings.length > 0 ? { warnings: tulipWarnings } : {}),
+    };
   } catch (error) {
     console.error('Failed to assign units:', error);
     return { error: 'errors.assignUnitsFailed' };

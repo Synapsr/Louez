@@ -20,6 +20,10 @@ function addMonths(baseDate: Date, months: number): Date {
   return date;
 }
 
+function isLmdAtLeastSixMonths(startDate: Date, endDate: Date): boolean {
+  return endDate >= addMonths(startDate, 6);
+}
+
 export function resolveTulipContractTypeFromDates(
   startDate: Date,
   endDate: Date,
@@ -35,15 +39,31 @@ export function resolveTulipContractTypeFromDates(
   return 'LCD';
 }
 
-function requiresContractIdentityOption(contractType: TulipContractType): boolean {
-  return contractType === 'LMD' || contractType === 'LLD';
+function requiresContractIdentityOption(params: {
+  contractType: TulipContractType;
+  startDate: Date;
+  endDate: Date;
+}): boolean {
+  if (params.contractType === 'LLD') {
+    return true;
+  }
+
+  if (params.contractType !== 'LMD') {
+    return false;
+  }
+
+  return isLmdAtLeastSixMonths(params.startDate, params.endDate);
 }
 
 function assertRequiredIdentityFields(
   customer: TulipCustomerInput,
-  contractType: TulipContractType,
+  params: {
+    contractType: TulipContractType;
+    startDate: Date;
+    endDate: Date;
+  },
 ) {
-  if (!requiresContractIdentityOption(contractType)) {
+  if (!requiresContractIdentityOption(params)) {
     return;
   }
 
@@ -73,14 +93,18 @@ function assertRequiredIdentityFields(
 
 function buildCustomerPayload(
   customer: TulipCustomerInput,
-  contractType: TulipContractType,
+  params: {
+    contractType: TulipContractType;
+    startDate: Date;
+    endDate: Date;
+  },
 ): {
   options: string[];
   company?: Record<string, unknown>;
   individual?: Record<string, unknown>;
 } {
-  const requireIdentityOption = requiresContractIdentityOption(contractType);
-  assertRequiredIdentityFields(customer, contractType);
+  const requireIdentityOption = requiresContractIdentityOption(params);
+  assertRequiredIdentityFields(customer, params);
 
   const options = ['break', 'theft'];
   const companyName = customer.companyName?.trim() || '';
@@ -139,15 +163,25 @@ function buildProductPayload(
   const productOccurrenceById = new Map<string, number>();
 
   for (const item of items) {
+    const resolvedProductMarkedValues = Array.isArray(item.productMarkedValues)
+      ? item.productMarkedValues
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0)
+      : [];
+
     let remainingQuantity = item.quantity;
+    let nextMarkedIndex = 0;
     while (remainingQuantity > 0) {
       const nextOccurrence = (productOccurrenceById.get(item.productId) ?? 0) + 1;
       productOccurrenceById.set(item.productId, nextOccurrence);
 
-      const serialLikeIdentifier = `${item.productId}-${nextOccurrence}`.trim();
+      const assignedProductMarked = resolvedProductMarkedValues[nextMarkedIndex] ?? null;
+      const serialLikeIdentifier = `unassigned-${item.productId}-${nextOccurrence}`.trim();
       const safeProductMarked =
-        serialLikeIdentifier.length > 0
-          ? serialLikeIdentifier
+        assignedProductMarked && assignedProductMarked.length > 0
+          ? assignedProductMarked
+          : serialLikeIdentifier.length > 0
+            ? serialLikeIdentifier
           : `product-${productsPayload.length + 1}`;
 
       productsPayload.push({
@@ -155,10 +189,11 @@ function buildProductPayload(
         data: {
           user_name: userName,
           product_marked: safeProductMarked,
-          internal_id: safeProductMarked,
+          louez_product_ID: item.productId,
         },
       });
 
+      nextMarkedIndex += 1;
       remainingQuantity -= 1;
     }
   }
@@ -176,7 +211,11 @@ export function buildContractPayload(params: {
 }): TulipContractPayload {
   const userName = `${params.customer.firstName} ${params.customer.lastName}`.trim();
   const productsPayload = buildProductPayload(params.insuredItems, userName);
-  const customerPayload = buildCustomerPayload(params.customer, params.contractType);
+  const customerPayload = buildCustomerPayload(params.customer, {
+    contractType: params.contractType,
+    startDate: params.startDate,
+    endDate: params.endDate,
+  });
 
   return {
     uid: params.renterUid,

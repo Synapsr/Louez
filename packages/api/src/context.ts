@@ -167,7 +167,15 @@ export interface BaseContext {
     assignUnitsToReservationItem?: (
       reservationItemId: string,
       unitIds: string[],
-    ) => Promise<{ success?: boolean; error?: string }>
+    ) => Promise<{
+      success?: boolean
+      error?: string
+      warnings?: Array<{
+        key: string
+        params?: Record<string, string | number>
+        details?: string
+      }>
+    }>
     requestPayment?: (
       reservationId: string,
       data: {

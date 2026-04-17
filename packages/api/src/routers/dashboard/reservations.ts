@@ -395,7 +395,10 @@ const assignUnitsToItem = requirePermission('write')
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error })
       }
-      return { success: true as const }
+      return {
+        success: true as const,
+        ...(result.warnings ? { warnings: result.warnings } : {}),
+      }
     } catch (error) {
       throw toORPCError(error)
     }

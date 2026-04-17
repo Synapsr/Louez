@@ -41,6 +41,12 @@ interface AvailableUnit {
   notes: string | null;
 }
 
+type ActionWarning = {
+  key: string
+  params?: Record<string, string | number>
+  details?: string
+}
+
 interface UnitAssignmentSelectorProps {
   reservationId: string;
   reservationItemId: string;
@@ -65,6 +71,12 @@ export function UnitAssignmentSelector({
   const t = useTranslations('dashboard.reservations.unitAssignment');
   const tErrors = useTranslations('errors');
   const queryClient = useQueryClient()
+
+  const formatWarning = (warning: ActionWarning) => {
+    const key = warning.key.replace('errors.', '')
+    const translated = tErrors(key, warning.params || {})
+    return warning.details ? `${translated} Cause: ${warning.details}` : translated
+  }
 
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
@@ -233,8 +245,31 @@ export function UnitAssignmentSelector({
         toastManager.add({ title: tErrors('generic'), type: 'error' })
         void error
       },
-      onSuccess: async () => {
+      onSuccess: async (result) => {
         toastManager.add({ title: t('saved'), type: 'success' })
+
+        const warnings =
+          result && typeof result === 'object' && 'warnings' in result
+            ? (result as { warnings?: unknown }).warnings
+            : undefined
+
+        if (Array.isArray(warnings) && warnings.length > 0) {
+          const parsedWarnings: ActionWarning[] = warnings.filter(
+            (warning): warning is ActionWarning =>
+              Boolean(warning) &&
+              typeof warning === 'object' &&
+              'key' in warning &&
+              typeof (warning as { key?: unknown }).key === 'string',
+          )
+
+          if (parsedWarnings.length > 0) {
+            toastManager.add({
+              title: parsedWarnings.map(formatWarning).join(' • '),
+              type: 'warning',
+            })
+          }
+        }
+
         await queryClient.invalidateQueries({
           queryKey: orpc.dashboard.reservations.getAvailableUnitsForItem.key({
             input: { reservationItemId },
