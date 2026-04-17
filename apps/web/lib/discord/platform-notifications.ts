@@ -1,12 +1,13 @@
 /**
- * Platform Admin Discord Notifications
+ * Platform Admin Notifications
  *
- * Sends single-line, real-time notifications to a platform-wide Discord channel.
- * Activated by setting the DISCORD_ADMIN_WEBHOOK_URL environment variable at runtime.
+ * Sends real-time notifications to:
+ * - Discord: single-line messages to a platform-wide channel (DISCORD_ADMIN_WEBHOOK_URL)
+ * - fromHello: engagement events for user analytics and automation (FROMHELLO_API_URL)
  *
+ * Both channels are optional and activated independently via environment variables.
  * This is separate from per-store Discord notifications (rich embeds configured
- * per store via discordWebhookUrl in the database). This system provides a global
- * activity feed for the platform operator.
+ * per store via discordWebhookUrl in the database).
  *
  * All functions are fire-and-forget: they never throw and never block the caller.
  */
@@ -59,6 +60,80 @@ async function send(message: string): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// fromHello event tracking (server-side, fire-and-forget)
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve the owner userId for a store. Returns undefined if not found.
+ */
+async function resolveStoreOwner(storeId: string): Promise<string | undefined> {
+  try {
+    const store = await db.query.stores.findFirst({
+      where: eq(stores.id, storeId),
+      columns: { userId: true },
+    })
+    return store?.userId
+  } catch {
+    return undefined
+  }
+}
+
+async function trackFromHello(
+  eventName: string,
+  properties: Record<string, unknown> = {},
+  options?: { profileId?: string; storeId?: string }
+): Promise<void> {
+  if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return
+
+  try {
+    // Resolve profileId: use explicit value, or look up store owner
+    let profileId = options?.profileId
+    if (!profileId && options?.storeId) {
+      profileId = await resolveStoreOwner(options.storeId)
+    }
+
+    await fetch(`${env.FROMHELLO_API_URL}/api/events`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.FROMHELLO_API_KEY,
+      },
+      body: JSON.stringify({
+        name: eventName,
+        source: 'api',
+        properties,
+        ...(profileId && { profileId }),
+      }),
+    })
+  } catch {
+    // Fire-and-forget: never block the caller
+  }
+}
+
+/**
+ * Update profile attributes on fromHello. Fire-and-forget.
+ */
+async function setFromHelloProfile(
+  profileId: string,
+  attributes: Record<string, unknown>
+): Promise<void> {
+  if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return
+
+  try {
+    await fetch(`${env.FROMHELLO_API_URL}/api/profiles/${profileId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.FROMHELLO_API_KEY,
+      },
+      body: JSON.stringify(attributes),
+    })
+  } catch {
+    // Fire-and-forget
+  }
+}
+
 /**
  * Get the current plan slug for a store.
  * Returns 'start' if no subscription exists.
@@ -96,11 +171,13 @@ async function storePrefix(store: StoreInfo): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export async function notifyVerificationEmailSent(email: string): Promise<void> {
+  trackFromHello('verification_email_sent', { email }).catch(() => {})
   if (!isEnabled()) return
   await send(`📧 Verification email sent to ${email}`)
 }
 
 export async function notifyStoreCreated(store: StoreInfo): Promise<void> {
+  trackFromHello('store_created', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`🏪 ${prefix} completed onboarding`)
@@ -111,6 +188,7 @@ export async function notifyUserSignedIn(
   email: string,
   method: 'magic link' | 'google'
 ): Promise<void> {
+  trackFromHello('user_signed_in', { email, method }, { profileId: userId }).catch(() => {})
   if (!isEnabled()) return
 
   // Resolve the user's primary store for context
@@ -142,12 +220,20 @@ export async function notifySubscriptionActivated(
   planSlug: string,
   interval: 'monthly' | 'yearly'
 ): Promise<void> {
+  trackFromHello('subscription_activated', { storeName: store.name, plan: planSlug, interval }, { storeId: store.id }).catch(() => {})
+  resolveStoreOwner(store.id).then((userId) => {
+    if (userId) setFromHelloProfile(userId, { plan: planSlug, planInterval: interval })
+  }).catch(() => {})
   if (!isEnabled()) return
   const link = storeLink(store.name, store.slug)
   await send(`⬆️ ${link} [${planLabel(planSlug)}] subscribed to ${planLabel(planSlug)} (${interval})`)
 }
 
 export async function notifySubscriptionCancelled(store: StoreInfo): Promise<void> {
+  trackFromHello('subscription_cancelled', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
+  resolveStoreOwner(store.id).then((userId) => {
+    if (userId) setFromHelloProfile(userId, { plan: 'cancelled', planInterval: null })
+  }).catch(() => {})
   if (!isEnabled()) return
   const link = storeLink(store.name, store.slug)
   await send(`⬇️ ${link} [Start] subscription cancelled — downgraded to Start`)
@@ -161,6 +247,13 @@ export async function notifyNewReservation(
   store: StoreInfo,
   reservation: { number: string; customerName: string; totalAmount: number; currency?: string }
 ): Promise<void> {
+  trackFromHello('reservation_created', {
+    storeName: store.name,
+    reservationNumber: reservation.number,
+    customerName: reservation.customerName,
+    totalAmount: reservation.totalAmount,
+    currency: reservation.currency || 'EUR',
+  }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   const amount = reservation.totalAmount.toFixed(2)
@@ -174,6 +267,7 @@ export async function notifyReservationConfirmed(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  trackFromHello('reservation_confirmed', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`✅ ${prefix} reservation #${reservationNumber} confirmed`)
@@ -183,6 +277,7 @@ export async function notifyReservationRejected(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  trackFromHello('reservation_rejected', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`🚫 ${prefix} reservation #${reservationNumber} rejected`)
@@ -192,6 +287,7 @@ export async function notifyReservationCancelled(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  trackFromHello('reservation_cancelled', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`❌ ${prefix} reservation #${reservationNumber} cancelled`)
@@ -201,6 +297,7 @@ export async function notifyEquipmentPickedUp(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  trackFromHello('equipment_picked_up', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`📤 ${prefix} equipment picked up for #${reservationNumber}`)
@@ -212,6 +309,12 @@ export async function notifyReservationCompleted(
   totalAmount: number,
   currency?: string
 ): Promise<void> {
+  trackFromHello('reservation_completed', {
+    storeName: store.name,
+    reservationNumber,
+    totalAmount,
+    currency: (currency || 'EUR').toUpperCase(),
+  }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   const amount = totalAmount.toFixed(2)
@@ -229,6 +332,12 @@ export async function notifyPaymentReceived(
   amount: number,
   currency?: string
 ): Promise<void> {
+  trackFromHello('payment_received', {
+    storeName: store.name,
+    reservationNumber,
+    amount,
+    currency: (currency || 'EUR').toUpperCase(),
+  }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   const formatted = amount.toFixed(2)
@@ -240,6 +349,7 @@ export async function notifyPaymentFailed(
   store: StoreInfo,
   reservationNumber: string
 ): Promise<void> {
+  trackFromHello('payment_failed', { storeName: store.name, reservationNumber }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`⚠️ ${prefix} payment failed for #${reservationNumber}`)
@@ -253,6 +363,7 @@ export async function notifyProductCreated(
   store: StoreInfo,
   productName: string
 ): Promise<void> {
+  trackFromHello('product_created', { storeName: store.name, productName }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`🏷️ ${prefix} new product: ${productName}`)
@@ -262,6 +373,7 @@ export async function notifyProductUpdated(
   store: StoreInfo,
   productName: string
 ): Promise<void> {
+  trackFromHello('product_updated', { storeName: store.name, productName }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`📝 ${prefix} updated product: ${productName}`)
@@ -271,6 +383,11 @@ export async function notifyCustomerCreated(
   store: StoreInfo,
   customer: { firstName: string; lastName: string; email: string }
 ): Promise<void> {
+  trackFromHello('customer_created', {
+    storeName: store.name,
+    customerName: `${customer.firstName} ${customer.lastName}`,
+    customerEmail: customer.email,
+  }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`👤 ${prefix} new customer: ${customer.firstName} ${customer.lastName} (${customer.email})`)
@@ -280,24 +397,28 @@ export async function notifyTeamMemberInvited(
   store: StoreInfo,
   invitedEmail: string
 ): Promise<void> {
+  trackFromHello('team_member_invited', { storeName: store.name, invitedEmail }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`👥 ${prefix} invited ${invitedEmail} to the team`)
 }
 
 export async function notifyStripeConnected(store: StoreInfo): Promise<void> {
+  trackFromHello('stripe_connected', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`💳 ${prefix} connected Stripe account`)
 }
 
 export async function notifyStoreSettingsUpdated(store: StoreInfo): Promise<void> {
+  trackFromHello('settings_updated', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`⚙️ ${prefix} updated store settings`)
 }
 
 export async function notifyNotificationSettingsUpdated(store: StoreInfo): Promise<void> {
+  trackFromHello('notification_settings_updated', { storeName: store.name, storeSlug: store.slug }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`🔔 ${prefix} updated notification settings`)
@@ -307,6 +428,7 @@ export async function notifySmsCreditsTopup(
   store: StoreInfo,
   quantity: number
 ): Promise<void> {
+  trackFromHello('sms_credits_purchased', { storeName: store.name, quantity }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   await send(`📱 ${prefix} purchased ${quantity} SMS credits`)
@@ -320,6 +442,7 @@ export async function notifyAiChatStarted(
   store: StoreInfo,
   prompt: string
 ): Promise<void> {
+  trackFromHello('ai_chat_started', { storeName: store.name }, { storeId: store.id }).catch(() => {})
   if (!isEnabled()) return
   const prefix = await storePrefix(store)
   const truncated = prompt.length > 120 ? `${prompt.slice(0, 120)}…` : prompt
@@ -333,6 +456,7 @@ export async function notifyAiRateLimitHit(
   count: number,
   limit: number
 ): Promise<void> {
+  trackFromHello('ai_rate_limit_hit', { window, count, limit }, { profileId: userId, storeId }).catch(() => {})
   if (!isEnabled()) return
 
   try {

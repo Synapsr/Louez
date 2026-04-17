@@ -111,6 +111,10 @@ export const env = createEnv({
     AI_MODEL: z.string().optional(),
     AI_API_KEY: z.string().optional(),
 
+    // ===== fromHello (Optional — engagement & growth) =====
+    FROMHELLO_API_URL: z.url().optional(),
+    FROMHELLO_API_KEY: z.string().optional(),
+
     // ===== Development =====
     AUTO_DB_SETUP: z
       .string()
@@ -146,6 +150,10 @@ export const env = createEnv({
 
     // ===== Gleap (Required for feedback) =====
     NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
+
+    // ===== fromHello (Optional — engagement & growth) =====
+    NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
+    NEXT_PUBLIC_FROMHELLO_KEY: z.string().optional(),
   },
 
   runtimeEnv: {
@@ -182,6 +190,8 @@ export const env = createEnv({
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
     AI_API_KEY: process.env.AI_API_KEY,
+    FROMHELLO_API_URL: process.env.FROMHELLO_API_URL,
+    FROMHELLO_API_KEY: process.env.FROMHELLO_API_KEY,
     AUTO_DB_SETUP: process.env.AUTO_DB_SETUP,
     PREVIEW_STORE_SLUG: process.env.PREVIEW_STORE_SLUG,
 
@@ -197,6 +207,8 @@ export const env = createEnv({
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
     NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
     NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,
+    NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,
+    NEXT_PUBLIC_FROMHELLO_KEY: process.env.NEXT_PUBLIC_FROMHELLO_KEY,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
