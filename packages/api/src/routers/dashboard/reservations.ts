@@ -166,7 +166,13 @@ const updateReservation = requirePermission('write')
       })
 
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string })
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error as string,
+          data:
+            'errorDetails' in result && result.errorDetails
+              ? { details: result.errorDetails }
+              : undefined,
+        })
       }
       return result
     } catch (error) {
