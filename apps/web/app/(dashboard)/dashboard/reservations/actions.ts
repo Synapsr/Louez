@@ -77,7 +77,11 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
-import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import {
+  getDashboardTulipInsuranceDefaultOptIn,
+  getDashboardTulipInsuranceMode,
+  getTulipSettings,
+} from '@/lib/integrations/tulip/settings';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import {
@@ -112,6 +116,8 @@ import { env } from '@/env';
 async function getStoreForUser() {
   return getCurrentStore();
 }
+
+const INSURANCE_ITEM_NAME = 'Garantie casse/vol';
 
 function toPricingMode(value: unknown): PricingMode {
   if (value === 'hour' || value === 'day' || value === 'week') {
@@ -223,21 +229,6 @@ function resolveTulipInsuranceOptIn(params: {
   }
 
   return params.defaultOptional ?? true;
-}
-
-function getDashboardTulipInsuranceMode(
-  settings: StoreSettings | null | undefined,
-): TulipPublicMode {
-  const tulipSettings = getTulipSettings(settings || null);
-  if (!tulipSettings.enabled) {
-    return 'no_public';
-  }
-
-  if (tulipSettings.publicMode === 'required') {
-    return 'required';
-  }
-
-  return 'optional';
 }
 
 async function logReservationActivity(
@@ -744,13 +735,23 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: 'errors.customerRequired' };
   }
 
+  const customer = await db.query.customers.findFirst({
+    where: and(eq(customers.id, customerId), eq(customers.storeId, store.id)),
+  });
+
+  if (!customer) {
+    return { error: 'errors.customerNotFound' };
+  }
+
   const tulipMode = getDashboardTulipInsuranceMode(
     store.settings as StoreSettings | null,
   );
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
-    defaultOptional: true,
+    defaultOptional: getDashboardTulipInsuranceDefaultOptIn(
+      store.settings as StoreSettings | null,
+    ),
   });
 
   // Calculate totals
@@ -971,6 +972,53 @@ export async function createManualReservation(data: CreateReservationData) {
     };
   });
 
+  let tulipInsuranceAmount: number | null = null;
+  const insuranceQuoteItems = productDetails.map((detail) => ({
+    productId: detail.product.id,
+    quantity: detail.quantity,
+  }));
+
+  if (tulipInsuranceOptIn && insuranceQuoteItems.length > 0) {
+    try {
+      const quote = await previewTulipQuoteForCheckout({
+        storeId: store.id,
+        storeSettings: store.settings as StoreSettings | null,
+        modeOverride: tulipMode,
+        customer: {
+          customerType: customer.customerType,
+          companyName: customer.companyName,
+          firstName: customer.firstName,
+          lastName: customer.lastName,
+          email: customer.email,
+          phone: customer.phone || '',
+          address: customer.address || '',
+          city: customer.city || '',
+          postalCode: customer.postalCode || '',
+          country: customer.country,
+        },
+        items: insuranceQuoteItems,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        optIn: true,
+      });
+
+      if (
+        quote.shouldApply &&
+        quote.inclusionEnabled !== true &&
+        Number.isFinite(quote.amount) &&
+        quote.amount > 0
+      ) {
+        tulipInsuranceAmount = Math.round(quote.amount * 100) / 100;
+        subtotalAmount += tulipInsuranceAmount;
+      }
+    } catch (error) {
+      console.error('[tulip] Failed to calculate insurance quote for manual reservation:', {
+        customerId,
+        error,
+      });
+    }
+  }
+
   // Delivery validation and fee calculation
   let deliveryFeeAmount = 0;
   let deliveryDistanceKm: number | null = null;
@@ -1069,7 +1117,10 @@ export async function createManualReservation(data: CreateReservationData) {
     internalNotes: data.internalNotes || null,
     source: 'manual',
     tulipInsuranceOptIn,
-    tulipInsuranceAmount: null,
+    tulipInsuranceAmount:
+      tulipInsuranceAmount && tulipInsuranceAmount > 0
+        ? tulipInsuranceAmount.toFixed(2)
+        : null,
     // Delivery fields — leg-based model
     outboundMethod: outboundLeg?.method || 'store',
     returnMethod: returnLeg?.method || 'store',
@@ -1133,6 +1184,24 @@ export async function createManualReservation(data: CreateReservationData) {
     });
   }
 
+  if (tulipInsuranceAmount && tulipInsuranceAmount > 0) {
+    await db.insert(reservationItems).values({
+      reservationId,
+      productId: null,
+      isCustomItem: true,
+      quantity: 1,
+      unitPrice: tulipInsuranceAmount.toFixed(2),
+      depositPerUnit: '0.00',
+      totalPrice: tulipInsuranceAmount.toFixed(2),
+      pricingBreakdown: null,
+      productSnapshot: {
+        name: INSURANCE_ITEM_NAME,
+        description: INSURANCE_ITEM_NAME,
+        images: [],
+      },
+    });
+  }
+
   // Log activity for manual reservation creation
   await logReservationActivity(
     reservationId,
@@ -1153,11 +1222,6 @@ export async function createManualReservation(data: CreateReservationData) {
       });
     }
   }
-
-  // Get customer info for email
-  const customer = await db.query.customers.findFirst({
-    where: eq(customers.id, customerId),
-  });
 
   // Send email for manual reservations (if enabled)
   const shouldSendEmail = data.sendConfirmationEmail !== false;
@@ -1198,6 +1262,16 @@ export async function createManualReservation(data: CreateReservationData) {
         unitPrice: parseFloat(item.unitPrice),
         totalPrice: parseFloat(item.totalPrice),
       })),
+      ...(tulipInsuranceAmount && tulipInsuranceAmount > 0
+        ? [
+            {
+              name: INSURANCE_ITEM_NAME,
+              quantity: 1,
+              unitPrice: tulipInsuranceAmount,
+              totalPrice: tulipInsuranceAmount,
+            },
+          ]
+        : []),
     ];
 
     const domain = env.NEXT_PUBLIC_APP_DOMAIN;
@@ -1434,7 +1508,9 @@ export async function updateReservation(
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
     current: reservation.tulipInsuranceOptIn,
-    defaultOptional: true,
+    defaultOptional: getDashboardTulipInsuranceDefaultOptIn(
+      store.settings as StoreSettings | null,
+    ),
   });
 
   const validationWarnings = evaluateReservationRules({
@@ -1838,6 +1914,7 @@ export async function updateReservation(
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
           storeSettings: store.settings as StoreSettings | null,
+          modeOverride: tulipMode,
           customer: {
             customerType: reservation.customer.customerType,
             companyName: reservation.customer.companyName,

@@ -97,6 +97,7 @@ export function NewReservationForm({
   customers,
   products,
   tulipInsuranceMode,
+  tulipInsuranceDefaultOptIn,
   businessHours,
   advanceNoticeMinutes = 0,
   existingReservations = [],
@@ -149,7 +150,11 @@ export function NewReservationForm({
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
   const sendAsQuoteRef = useRef(false)
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
-    tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceDefaultOptIn
+        : false,
   )
 
   const isDeliveryEnabled = Boolean(
@@ -453,6 +458,7 @@ export function NewReservationForm({
       ? null
       : {
           storeId,
+          modeOverride: tulipInsuranceMode,
           customer: tulipQuoteCustomer,
           items: tulipQuoteItems,
           startDate: watchStartDate.toISOString(),

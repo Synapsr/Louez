@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, or } from 'drizzle-orm';
 
 import { db, reservations } from '@louez/db';
+import type { TulipPublicMode } from '@louez/types';
 
 import { TulipApiError, tulipCancelContract } from './client';
 import {
@@ -23,6 +24,7 @@ import {
 } from './contracts-payload';
 import { assertTulipContractTypeEnabled } from './contracts-renter';
 import type {
+  ResolvedTulipItemInput,
   TulipContractUpdatePayload,
   TulipCustomerInput,
   TulipItemInput,
@@ -55,6 +57,9 @@ type ReservationItemLike = {
   productId: string | null;
   isCustomItem: boolean;
   quantity: number;
+  assignedUnits?: Array<{
+    identifierSnapshot: string;
+  }>;
 };
 
 const dashboardTulipContractCreationSources = [
@@ -103,9 +108,54 @@ function toInsuranceCandidateItems(items: ReservationItemLike[]): TulipItemInput
     }));
 }
 
+function applyReservationUnitIdentifiersToCoverage(
+  reservationItems: ReservationItemLike[],
+  insuredItems: ResolvedTulipItemInput[],
+): ResolvedTulipItemInput[] {
+  if (insuredItems.length === 0) {
+    return insuredItems;
+  }
+
+  const candidateItems = reservationItems
+    .filter((item): item is ReservationItemLike & { productId: string } => {
+      return Boolean(item.productId) && !item.isCustomItem;
+    })
+    .map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      productMarkedValues:
+        item.assignedUnits
+          ?.map((assignedUnit) => assignedUnit.identifierSnapshot.trim())
+          .filter((identifier) => identifier.length > 0) ?? [],
+    }));
+
+  const insuredItemsWithProductMarkedValues: ResolvedTulipItemInput[] = [];
+  let insuredIndex = 0;
+
+  for (const candidateItem of candidateItems) {
+    const insuredItem = insuredItems[insuredIndex];
+    if (
+      !insuredItem ||
+      insuredItem.productId !== candidateItem.productId ||
+      insuredItem.quantity !== candidateItem.quantity
+    ) {
+      continue;
+    }
+
+    insuredItemsWithProductMarkedValues.push({
+      ...insuredItem,
+      productMarkedValues: candidateItem.productMarkedValues,
+    });
+    insuredIndex += 1;
+  }
+
+  return insuredItemsWithProductMarkedValues;
+}
+
 export async function previewTulipQuoteForCheckout(params: {
   storeId: string;
   storeSettings: any;
+  modeOverride?: TulipPublicMode;
   customer: TulipCustomerInput;
   items: TulipItemInput[];
   startDate: Date;
@@ -115,6 +165,7 @@ export async function previewTulipQuoteForCheckout(params: {
   const coverage = await resolveTulipCoverage(params.items);
 
   const tulipSettings = getTulipSettings(params.storeSettings);
+  const effectiveMode = params.modeOverride ?? tulipSettings.publicMode;
   if (!tulipSettings.enabled) {
     return {
       shouldApply: false as const,
@@ -127,7 +178,7 @@ export async function previewTulipQuoteForCheckout(params: {
   }
 
   const shouldApply = shouldApplyTulipInsurance(
-    tulipSettings.publicMode,
+    effectiveMode,
     params.optIn,
   );
 
@@ -220,7 +271,15 @@ export async function createTulipContractForReservation(params: {
     with: {
       store: true,
       customer: true,
-      items: true,
+      items: {
+        with: {
+          assignedUnits: {
+            columns: {
+              identifierSnapshot: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -392,6 +451,10 @@ export async function createTulipContractForReservation(params: {
   const coverage = await resolveTulipCoverage(
     toInsuranceCandidateItems(reservation.items),
   );
+  const insuredItems = applyReservationUnitIdentifiersToCoverage(
+    reservation.items,
+    coverage.insuredItems,
+  );
 
   console.info('[tulip][contract-create] coverage resolved', {
     reservationId: reservation.id,
@@ -426,7 +489,7 @@ export async function createTulipContractForReservation(params: {
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     customer: toTulipCustomerInput(reservation.customer),
-    insuredItems: coverage.insuredItems,
+    insuredItems,
   });
 
   let contractId: string | null = null;
@@ -489,8 +552,27 @@ export async function createTulipContractForReservation(params: {
       and(
         eq(reservations.id, reservation.id),
         isNull(reservations.tulipContractId),
+        eq(reservations.tulipContractStatus, 'creating'),
       ),
     );
+
+  if (attachResult[0]?.affectedRows === 0) {
+    const attachedReservation = await db.query.reservations.findFirst({
+      where: eq(reservations.id, reservation.id),
+      columns: {
+        tulipContractId: true,
+      },
+    });
+
+    if (attachedReservation?.tulipContractId) {
+      return {
+        contractId: attachedReservation.tulipContractId,
+        created: false,
+      };
+    }
+
+    throw new Error('errors.tulipContractCreationFailed');
+  }
 
   console.info('[tulip][contract-create] success', {
     reservationId: reservation.id,
@@ -511,7 +593,15 @@ export async function syncTulipContractForReservation(params: {
     with: {
       store: true,
       customer: true,
-      items: true,
+      items: {
+        with: {
+          assignedUnits: {
+            columns: {
+              identifierSnapshot: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -592,6 +682,10 @@ export async function syncTulipContractForReservation(params: {
   const coverage = await resolveTulipCoverage(
     toInsuranceCandidateItems(reservation.items),
   );
+  const insuredItems = applyReservationUnitIdentifiersToCoverage(
+    reservation.items,
+    coverage.insuredItems,
+  );
 
   if (coverage.insuredProductCount === 0) {
     await tulipCancelContract(apiKey, contractId, {}, false);
@@ -617,7 +711,7 @@ export async function syncTulipContractForReservation(params: {
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     customer: toTulipCustomerInput(reservation.customer),
-    insuredItems: coverage.insuredItems,
+    insuredItems,
   });
   const updatePayloadAttempts: Array<{
     label: string;

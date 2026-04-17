@@ -171,6 +171,8 @@ export function NewReservationStepProducts({
 
   const totalWithInsurance =
     subtotal + (showTulipInsuranceSummary && tulipInsuranceOptIn ? tulipInsuranceAmount : 0)
+  const showTulipInsuranceAmountLine =
+    showTulipInsuranceSummary && (isTulipInsuranceLoading || tulipInsuranceAmount > 0)
 
   return (
     <Card>
@@ -708,13 +710,13 @@ export function NewReservationStepProducts({
                 <span className="text-muted-foreground">{t('deposit')}</span>
                 <span>{formatCurrency(deposit)}</span>
               </div>
-              {showTulipInsuranceSummary && tulipInsuranceMode === 'optional' && (
+              {showTulipInsuranceAmountLine && tulipInsuranceMode === 'optional' && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{tCheckout('insuranceLineLabel')}</span>
                   <span>
                     {tulipInsuranceOptIn
                       ? isTulipInsuranceLoading
-                        ? t('insuranceEstimating')
+                        ? tCheckout('insuranceEstimating')
                         : formatCurrency(tulipInsuranceAmount)
                       : tCheckout('insuranceOptionalDisabled')}
                   </span>
@@ -758,7 +760,9 @@ export function NewReservationStepProducts({
                     <p className="text-xs text-muted-foreground">
                       {t('tulipInsurance.optionalHelp')}
                     </p>
-                    {hasTulipEligibleProducts && !showTulipPastStartWarning && (
+                    {hasTulipEligibleProducts &&
+                      !showTulipPastStartWarning &&
+                      showTulipInsuranceAmountLine && (
                       <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
                         <span className="text-muted-foreground">
                           {tCheckout('insuranceLineLabel')}
@@ -766,7 +770,7 @@ export function NewReservationStepProducts({
                         <span className="font-medium">
                           {tulipInsuranceOptIn
                             ? isTulipInsuranceLoading
-                              ? t('insuranceEstimating')
+                              ? tCheckout('insuranceEstimating')
                               : formatCurrency(tulipInsuranceAmount)
                             : tCheckout('insuranceOptionalDisabled')}
                         </span>

@@ -6,7 +6,7 @@ import { redirect, notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
 import type { DeliverySettings, LegMethod } from '@louez/types'
 import type { SeasonalPricingConfig } from '@louez/utils'
-import { getTulipSettings } from '@/lib/integrations/tulip/settings'
+import { getDashboardTulipInsuranceMode } from '@/lib/integrations/tulip/settings'
 import { EditReservationForm } from './edit-reservation-form'
 import type { PricingTier, Product, StoreDeliveryInfo } from './types'
 
@@ -237,13 +237,7 @@ export default async function EditReservationPage({
   ])
 
   const currency = store.settings?.currency || 'EUR'
-  const tulipSettings = getTulipSettings(store.settings || null)
-  const tulipInsuranceMode =
-    !tulipSettings.enabled
-      ? 'no_public'
-      : tulipSettings.publicMode === 'required'
-        ? 'required'
-        : 'optional'
+  const tulipInsuranceMode = getDashboardTulipInsuranceMode(store.settings || null)
 
   // Build delivery info from store settings
   const deliverySettings = (store.settings as Record<string, unknown> | null)

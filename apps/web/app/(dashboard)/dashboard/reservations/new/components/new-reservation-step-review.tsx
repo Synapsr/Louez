@@ -145,6 +145,12 @@ export function NewReservationStepReview({
       tulipQuoteUnavailable ||
       isTulipInsuranceLoading ||
       tulipInsuranceOptIn)
+  const showOptionalTulipInsuranceAmountLine =
+    showOptionalTulipInsuranceDetails &&
+    (tulipQuoteUnavailable ||
+      isTulipInsuranceLoading ||
+      (insuredProductCount ?? 0) > 0 ||
+      tulipInsuranceAmount > 0)
   const insuranceStatusLabel = tulipQuoteUnavailable
     ? tCheckout('insuranceOptionalUnavailableShort')
     : tulipInsuranceOptIn
@@ -455,7 +461,7 @@ export function NewReservationStepReview({
                       {insuranceStatusLabel}
                     </Badge>
                   </div>
-                  {showOptionalTulipInsuranceDetails && (
+                  {showOptionalTulipInsuranceAmountLine && (
                     <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
                       <span className="text-muted-foreground">{tCheckout('insuranceLineLabel')}</span>
                       <span className="font-medium">
@@ -463,7 +469,7 @@ export function NewReservationStepReview({
                           ? tCheckout('insuranceOptionalUnavailableShort')
                           : tulipInsuranceOptIn
                             ? isTulipInsuranceLoading
-                              ? t('insuranceEstimating')
+                              ? tCheckout('insuranceEstimating')
                               : formatCurrency(tulipInsuranceAmount)
                             : tCheckout('insuranceOptionalDisabled')}
                       </span>
@@ -523,7 +529,7 @@ export function NewReservationStepReview({
                 </span>
               </div>
             )}
-            {showOptionalTulipInsuranceDetails && (
+            {showOptionalTulipInsuranceAmountLine && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">{tCheckout('insuranceLineLabel')}</span>
                 <span>
@@ -531,7 +537,7 @@ export function NewReservationStepReview({
                     ? tCheckout('insuranceOptionalUnavailableShort')
                     : tulipInsuranceOptIn
                     ? isTulipInsuranceLoading
-                      ? t('insuranceEstimating')
+                      ? tCheckout('insuranceEstimating')
                       : formatCurrency(tulipInsuranceAmount)
                     : tCheckout('insuranceOptionalDisabled')}
                 </span>
