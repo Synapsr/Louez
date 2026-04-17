@@ -173,6 +173,17 @@ export function EditReservationForm({
 
     return legacyInsuranceAmount
   })()
+  const originalItemsSubtotal = editableReservationItems.reduce((sum, item) => {
+    const parsed = Number(item.totalPrice)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return sum
+    }
+
+    return sum + parsed
+  }, 0)
+  const originalComparableSubtotal = Math.round(
+    (originalItemsSubtotal + initialTulipInsuranceAmount) * 100,
+  ) / 100
   const [items, setItems] = useState<EditableItem[]>(
     editableReservationItems.map((item) => {
       const isManualPrice =
@@ -258,6 +269,7 @@ export function EditReservationForm({
       ? null
       : {
           storeId,
+          modeOverride: tulipInsuranceMode,
           customer: {
             customerType: reservation.customer.customerType,
             companyName: reservation.customer.companyName ?? undefined,
@@ -318,7 +330,7 @@ export function EditReservationForm({
   })
 
   // Original values for comparison
-  const originalSubtotal = parseFloat(reservation.subtotalAmount)
+  const originalSubtotal = originalComparableSubtotal
   const originalDeposit = parseFloat(reservation.depositAmount)
   const originalDeliveryFee = parseFloat(reservation.deliveryFee ?? '0')
   const originalDuration = calculateDuration(

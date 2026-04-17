@@ -109,6 +109,7 @@ export interface NewReservationFormProps {
   customers: Customer[];
   products: Product[];
   tulipInsuranceMode: TulipPublicMode;
+  tulipInsuranceDefaultOptIn: boolean;
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
   existingReservations?: Array<{
