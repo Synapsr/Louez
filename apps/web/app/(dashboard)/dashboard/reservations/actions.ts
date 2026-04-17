@@ -206,6 +206,23 @@ function getErrorKey(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function getErrorDetails(error: unknown): string | null {
+  if (error instanceof Error) {
+    return error.message.startsWith('errors.') ? null : error.message;
+  }
+
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof error.message === 'string'
+  ) {
+    return error.message.startsWith('errors.') ? null : error.message;
+  }
+
+  return null;
+}
+
 function resolveTulipInsuranceOptIn(params: {
   mode: TulipPublicMode;
   requested?: boolean;
@@ -1484,6 +1501,28 @@ export async function updateReservation(
     subtotalAmount: parseFloat(reservation.subtotalAmount),
     depositAmount: parseFloat(reservation.depositAmount),
     totalAmount: parseFloat(reservation.totalAmount),
+    tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+    tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+    deliveryFields: {
+      outboundMethod: reservation.outboundMethod,
+      returnMethod: reservation.returnMethod,
+      deliveryOption: reservation.deliveryOption,
+      deliveryAddress: reservation.deliveryAddress,
+      deliveryCity: reservation.deliveryCity,
+      deliveryPostalCode: reservation.deliveryPostalCode,
+      deliveryCountry: reservation.deliveryCountry,
+      deliveryLatitude: reservation.deliveryLatitude,
+      deliveryLongitude: reservation.deliveryLongitude,
+      deliveryDistanceKm: reservation.deliveryDistanceKm,
+      deliveryFee: reservation.deliveryFee,
+      returnAddress: reservation.returnAddress,
+      returnCity: reservation.returnCity,
+      returnPostalCode: reservation.returnPostalCode,
+      returnCountry: reservation.returnCountry,
+      returnLatitude: reservation.returnLatitude,
+      returnLongitude: reservation.returnLongitude,
+      returnDistanceKm: reservation.returnDistanceKm,
+    },
     items: reservation.items.map((item) => ({
       id: item.id,
       productId: item.productId,
@@ -1526,6 +1565,7 @@ export async function updateReservation(
   const tulipWarnings: Array<{
     key: string;
     params?: Record<string, string | number>;
+    details?: string;
   }> = [];
   const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
   const legacyInsuranceItemIds = reservation.items
@@ -2175,65 +2215,81 @@ export async function updateReservation(
       });
 
       const tulipErrorKey = getErrorKey(error, 'errors.tulipContractUpdateFailed');
-      if (nextTulipInsuranceOptIn) {
-        try {
-          await db.transaction(async (tx) => {
-            await tx
-              .update(reservations)
-              .set({
-                startDate: reservation.startDate,
-                endDate: reservation.endDate,
-                subtotalAmount: reservation.subtotalAmount,
-                depositAmount: reservation.depositAmount,
-                totalAmount: reservation.totalAmount,
-                tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
-                tulipInsuranceAmount: reservation.tulipInsuranceAmount,
-                updatedAt: reservation.updatedAt,
-              })
-              .where(eq(reservations.id, reservationId));
+      const tulipErrorDetails = getErrorDetails(error);
+      try {
+        await db.transaction(async (tx) => {
+          await tx
+            .update(reservations)
+            .set({
+              startDate: previousState.startDate,
+              endDate: previousState.endDate,
+              subtotalAmount: reservation.subtotalAmount,
+              depositAmount: reservation.depositAmount,
+              totalAmount: reservation.totalAmount,
+              tulipInsuranceOptIn: previousState.tulipInsuranceOptIn,
+              tulipInsuranceAmount: previousState.tulipInsuranceAmount,
+              outboundMethod: previousState.deliveryFields.outboundMethod,
+              returnMethod: previousState.deliveryFields.returnMethod,
+              deliveryOption: previousState.deliveryFields.deliveryOption,
+              deliveryAddress: previousState.deliveryFields.deliveryAddress,
+              deliveryCity: previousState.deliveryFields.deliveryCity,
+              deliveryPostalCode: previousState.deliveryFields.deliveryPostalCode,
+              deliveryCountry: previousState.deliveryFields.deliveryCountry,
+              deliveryLatitude: previousState.deliveryFields.deliveryLatitude,
+              deliveryLongitude: previousState.deliveryFields.deliveryLongitude,
+              deliveryDistanceKm: previousState.deliveryFields.deliveryDistanceKm,
+              deliveryFee: previousState.deliveryFields.deliveryFee,
+              returnAddress: previousState.deliveryFields.returnAddress,
+              returnCity: previousState.deliveryFields.returnCity,
+              returnPostalCode: previousState.deliveryFields.returnPostalCode,
+              returnCountry: previousState.deliveryFields.returnCountry,
+              returnLatitude: previousState.deliveryFields.returnLatitude,
+              returnLongitude: previousState.deliveryFields.returnLongitude,
+              returnDistanceKm: previousState.deliveryFields.returnDistanceKm,
+              updatedAt: reservation.updatedAt,
+            })
+            .where(eq(reservations.id, reservationId));
 
-            await tx
-              .delete(reservationItems)
-              .where(eq(reservationItems.reservationId, reservationId));
+          await tx
+            .delete(reservationItems)
+            .where(eq(reservationItems.reservationId, reservationId));
 
-            if (reservation.items.length > 0) {
-              await tx.insert(reservationItems).values(
-                reservation.items.map((item) => ({
-                  id: item.id,
-                  reservationId: item.reservationId,
-                  productId: item.productId,
-                  isCustomItem: item.isCustomItem,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                  depositPerUnit: item.depositPerUnit,
-                  totalPrice: item.totalPrice,
-                  taxRate: item.taxRate,
-                  taxAmount: item.taxAmount,
-                  priceExclTax: item.priceExclTax,
-                  totalExclTax: item.totalExclTax,
-                  pricingBreakdown: item.pricingBreakdown,
-                  productSnapshot: item.productSnapshot,
-                  combinationKey: item.combinationKey,
-                  selectedAttributes: item.selectedAttributes,
-                  createdAt: item.createdAt,
-                })),
-              );
-            }
-          });
-        } catch (rollbackError) {
-          console.error('[tulip] Failed to rollback reservation after contract sync failure:', {
-            reservationId,
-            rollbackError,
-          });
-          return { error: 'errors.generic' };
-        }
-
-        return { error: tulipErrorKey };
+          if (reservation.items.length > 0) {
+            await tx.insert(reservationItems).values(
+              reservation.items.map((item) => ({
+                id: item.id,
+                reservationId: item.reservationId,
+                productId: item.productId,
+                isCustomItem: item.isCustomItem,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                depositPerUnit: item.depositPerUnit,
+                totalPrice: item.totalPrice,
+                taxRate: item.taxRate,
+                taxAmount: item.taxAmount,
+                priceExclTax: item.priceExclTax,
+                totalExclTax: item.totalExclTax,
+                pricingBreakdown: item.pricingBreakdown,
+                productSnapshot: item.productSnapshot,
+                combinationKey: item.combinationKey,
+                selectedAttributes: item.selectedAttributes,
+                createdAt: item.createdAt,
+              })),
+            );
+          }
+        });
+      } catch (rollbackError) {
+        console.error('[tulip] Failed to rollback reservation after contract sync failure:', {
+          reservationId,
+          rollbackError,
+        });
+        return { error: 'errors.generic' };
       }
 
-      tulipWarnings.push({
-        key: tulipErrorKey,
-      });
+      return {
+        error: tulipErrorKey,
+        ...(tulipErrorDetails ? { errorDetails: tulipErrorDetails } : {}),
+      };
     }
   }
 
