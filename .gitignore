@@ -68,3 +68,5 @@ CLAUDE.md
 
 # Internal scripts (root level only)
 /scripts/
+
+.agents/
