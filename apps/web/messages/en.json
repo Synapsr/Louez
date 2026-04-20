@@ -5044,6 +5044,7 @@
     "tulipInvalidContractResponse": "Tulip returned an invalid contract response.",
     "tulipContractCreationFailed": "Reservation confirmed, but Tulip contract creation failed.",
     "tulipContractUpdateFailed": "Reservation updated, but Tulip contract synchronization failed.",
+    "tulipContractCancellationFailed": "Reservation cancellation failed because Tulip contract termination did not succeed.",
     "tulipQuoteFailed": "Unable to calculate breakage/theft coverage for this reservation.",
     "tulipContractPastDate": "Tulip refused contract creation: contract dates cannot be in the past.",
     "tulipContractDatesInvalid": "Tulip refused the contract: the start and end dates are inconsistent for this contract type.",

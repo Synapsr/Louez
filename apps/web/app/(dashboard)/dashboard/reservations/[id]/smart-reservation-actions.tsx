@@ -274,6 +274,45 @@ export function SmartReservationActions({
     }
   }
 
+  const getActionErrorMessage = (error: unknown) => {
+    const errorDetails =
+      typeof error === 'object' &&
+      error !== null &&
+      'data' in error &&
+      typeof error.data === 'object' &&
+      error.data !== null &&
+      'details' in error.data &&
+      typeof error.data.details === 'string' &&
+      error.data.details.trim().length > 0
+        ? error.data.details.trim()
+        : null
+
+    if (error instanceof Error) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof error.message === 'string'
+    ) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    return tErrors('generic')
+  }
+
   const handleReject = async () => {
     await handleStatusChange('rejected', rejectionReason || undefined)
     setRejectDialogOpen(false)
@@ -286,8 +325,8 @@ export function SmartReservationActions({
       await cancelMutation.mutateAsync({ reservationId })
       toastManager.add({ title: t('reservationCancelled'), type: 'success' })
       await invalidateReservationAll(queryClient, reservationId)
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
     } finally {
       setIsLoading(false)
       setCancelDialogOpen(false)

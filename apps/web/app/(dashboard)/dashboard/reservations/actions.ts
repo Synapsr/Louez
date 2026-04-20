@@ -590,19 +590,6 @@ export async function cancelReservation(reservationId: string) {
     return { error: 'errors.cannotCancelReservation' };
   }
 
-  await db
-    .update(reservations)
-    .set({
-      status: 'cancelled',
-      updatedAt: new Date(),
-    })
-    .where(eq(reservations.id, reservationId));
-
-  // Log activity
-  await logReservationActivity(reservationId, 'cancelled', {
-    previousStatus: reservation.status,
-  });
-
   if (reservation.tulipContractId) {
     try {
       await cancelTulipContractForReservation({ reservationId });
@@ -615,8 +602,26 @@ export async function cancelReservation(reservationId: string) {
           error,
         },
       );
+
+      return {
+        error: getErrorKey(error, 'errors.tulipContractCancellationFailed'),
+        errorDetails: getErrorDetails(error),
+      };
     }
   }
+
+  await db
+    .update(reservations)
+    .set({
+      status: 'cancelled',
+      updatedAt: new Date(),
+    })
+    .where(eq(reservations.id, reservationId));
+
+  // Log activity
+  await logReservationActivity(reservationId, 'cancelled', {
+    previousStatus: reservation.status,
+  });
 
   // Dispatch admin notifications (SMS, Discord) based on preferences
   dispatchNotification('reservation_cancelled', {

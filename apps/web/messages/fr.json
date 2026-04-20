@@ -5039,6 +5039,7 @@
     "tulipInvalidContractResponse": "Tulip a renvoyé une réponse de contrat invalide.",
     "tulipContractCreationFailed": "Réservation confirmée, mais la création du contrat Tulip a échoué.",
     "tulipContractUpdateFailed": "Réservation modifiée, mais la synchronisation du contrat Tulip a échoué.",
+    "tulipContractCancellationFailed": "L'annulation de la réservation a échoué car la résiliation du contrat Tulip n'a pas abouti.",
     "tulipQuoteFailed": "Impossible de calculer la garantie casse/vol pour cette réservation.",
     "tulipContractPastDate": "Tulip a refusé la création du contrat : les dates ne peuvent pas être dans le passé.",
     "tulipContractDatesInvalid": "Tulip a refusé le contrat : les dates de début et de fin sont incohérentes pour ce type de contrat.",
