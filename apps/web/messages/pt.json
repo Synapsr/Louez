@@ -1375,6 +1375,8 @@
         "deposit_failed": "Autorizacao falhou",
         "access_link_sent": "Link de acesso enviado",
         "modified": "Reserva modificada",
+        "quote_accepted": "Orçamento aceite",
+        "quote_declined": "Orçamento recusado",
         "showAll": "Mostrar tudo ({count} eventos)",
         "showLess": "Mostrar menos",
         "paymentFailure": {

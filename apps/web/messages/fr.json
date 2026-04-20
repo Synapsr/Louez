@@ -1426,6 +1426,8 @@
         "deposit_failed": "Échec de l'empreinte",
         "access_link_sent": "Lien d'accès envoyé",
         "modified": "Réservation modifiée",
+        "quote_accepted": "Devis accepté",
+        "quote_declined": "Devis refusé",
         "showAll": "Voir tout ({count} événements)",
         "showLess": "Voir moins",
         "paymentFailure": {

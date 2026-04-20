@@ -1384,6 +1384,8 @@
         "deposit_failed": "Autorisatie mislukt",
         "access_link_sent": "Toegangslink verzonden",
         "modified": "Reservering gewijzigd",
+        "quote_accepted": "Offerte geaccepteerd",
+        "quote_declined": "Offerte afgewezen",
         "showAll": "Alles tonen ({count} gebeurtenissen)",
         "showLess": "Minder tonen",
         "paymentFailure": {

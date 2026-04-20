@@ -1414,6 +1414,8 @@
         "deposit_failed": "Autorisierung fehlgeschlagen",
         "access_link_sent": "Zugriffslink gesendet",
         "modified": "Reservierung geändert",
+        "quote_accepted": "Angebot angenommen",
+        "quote_declined": "Angebot abgelehnt",
         "showAll": "Alle anzeigen ({count} Ereignisse)",
         "showLess": "Weniger anzeigen",
         "paymentFailure": {

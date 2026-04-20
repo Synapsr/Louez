@@ -6,7 +6,6 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  Package,
   ArrowUpRight,
   ArrowDownRight,
   FileText,
@@ -67,6 +66,8 @@ type ActivityType =
   | 'inspection_return_completed'
   | 'inspection_damage_detected'
   | 'inspection_signed'
+  | 'quote_accepted'
+  | 'quote_declined'
 
 interface Activity {
   id: string
@@ -234,6 +235,16 @@ const ACTIVITY_CONFIG: Record<
     icon: PenLine,
     bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  quote_accepted: {
+    icon: CheckCircle,
+    bgColor: 'bg-emerald-100 dark:bg-emerald-950/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  quote_declined: {
+    icon: XCircle,
+    bgColor: 'bg-red-100 dark:bg-red-950/50',
+    iconColor: 'text-red-600 dark:text-red-400',
   },
 }
 

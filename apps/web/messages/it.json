@@ -1384,6 +1384,8 @@
         "deposit_failed": "Autorizzazione fallita",
         "access_link_sent": "Link di accesso inviato",
         "modified": "Prenotazione modificata",
+        "quote_accepted": "Preventivo accettato",
+        "quote_declined": "Preventivo rifiutato",
         "showAll": "Mostra tutto ({count} eventi)",
         "showLess": "Mostra meno",
         "paymentFailure": {
