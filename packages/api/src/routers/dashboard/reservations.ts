@@ -230,7 +230,10 @@ const cancel = requirePermission('write')
       }
       const result = await fn(input.reservationId)
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error,
+          data: result.errorDetails ? { details: result.errorDetails } : undefined,
+        })
       }
       return { success: true as const }
     } catch (error) {

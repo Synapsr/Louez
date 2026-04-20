@@ -76,7 +76,9 @@ export interface BaseContext {
   ) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
   dashboardReservationActions?: {
-    cancelReservation?: (reservationId: string) => Promise<{ success?: boolean; error?: string }>
+    cancelReservation?: (
+      reservationId: string,
+    ) => Promise<{ success?: boolean; error?: string; errorDetails?: string | null }>
     updateReservationStatus?: (
       reservationId: string,
       status:
