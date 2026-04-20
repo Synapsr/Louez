@@ -91,19 +91,35 @@ export const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
       'phone',
       'computer',
       'tablet',
+      'small-appliance',
+      'large-appliance',
+      'other-electronic-equipment',
     ].map((value) => ({ type: value, label: value })),
   },
   {
     type: 'small-tools',
     label: 'small-tools',
     subtypes: [
-      'small-appliance',
-      'large-appliance',
       'construction-equipment',
       'diy-tools',
       'electric-diy-tools',
       'gardening-tools',
       'electric-gardening-tools',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'sports',
+    label: 'sports',
+    subtypes: [
+      'running-hiking',
+      'fishing',
+      'golf',
+      'racket-sports',
+      'horseriding',
+      'ball-sports',
+      'fitness',
+      'water-sports',
+      'other',
     ].map((value) => ({ type: value, label: value })),
   },
 ]
@@ -211,7 +227,8 @@ export function validateDraft(draft: TulipProductDraft | null) {
 
   return {
     hasInvalidValueExcl:
-      normalizedValueExcl.length > 0 && !Number.isFinite(parsedValueExcl),
+      normalizedValueExcl.length > 0 &&
+      (!Number.isFinite(parsedValueExcl) || Number(parsedValueExcl) > 15_000),
     hasInvalidMargin:
       normalizedMargin.length > 0 &&
       (!Number.isFinite(parsedMargin) || Number(parsedMargin) < 0),

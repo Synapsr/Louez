@@ -125,9 +125,9 @@ export function summarizeContractPayloadForLogs(payload: Record<string, unknown>
           hasProductMarked:
             typeof firstProductData?.product_marked === 'string' &&
             firstProductData.product_marked.trim().length > 0,
-          hasInternalId:
-            typeof firstProductData?.internal_id === 'string' &&
-            firstProductData.internal_id.trim().length > 0,
+          hasLouezProductId:
+            typeof firstProductData?.louez_product_ID === 'string' &&
+            firstProductData.louez_product_ID.trim().length > 0,
         }
       : null,
   };
@@ -140,7 +140,8 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
 
   if (error instanceof TulipApiError) {
     const code = getTulipErrorCode(error.payload);
-    const payloadMessage = getTulipErrorMessage(error.payload)?.toLowerCase() ?? '';
+    const rawPayloadMessage = getTulipErrorMessage(error.payload)?.trim() ?? '';
+    const payloadMessage = rawPayloadMessage.toLowerCase();
     const payload = JSON.stringify(error.payload ?? {}).toLowerCase();
     const message = `${error.message} ${payloadMessage} ${payload}`.toLowerCase();
 
@@ -153,7 +154,9 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
         return new Error('errors.tulipContractDatesInvalid');
       case 1003:
       case 1202:
-        return new Error('errors.tulipContractActionForbidden');
+        return new Error(
+          rawPayloadMessage || 'errors.tulipContractActionForbidden',
+        );
       case 1010:
         return new Error('errors.tulipContractOptionsInvalid');
       case 1013:
@@ -204,7 +207,9 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
       message.includes('not allowed') ||
       message.includes('permission')
     ) {
-      return new Error('errors.tulipContractActionForbidden');
+      return new Error(
+        rawPayloadMessage || 'errors.tulipContractActionForbidden',
+      );
     }
 
     if (error.status === 401) {
@@ -212,7 +217,9 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
     }
 
     if (error.status === 400) {
-      return new Error('errors.tulipContractValidationFailed');
+      return new Error(
+        rawPayloadMessage || 'errors.tulipContractValidationFailed',
+      );
     }
 
     if (error.status >= 500) {

@@ -76,6 +76,7 @@ const TULIP_PRODUCT_TYPES = [
   'event',
   'high-tech',
   'small-tools',
+  'sports',
 ] as const;
 
 const TULIP_PRODUCT_SUBTYPES = [
@@ -98,11 +99,21 @@ const TULIP_PRODUCT_SUBTYPES = [
   'tablet',
   'small-appliance',
   'large-appliance',
+  'other-electronic-equipment',
   'construction-equipment',
   'diy-tools',
   'electric-diy-tools',
   'gardening-tools',
   'electric-gardening-tools',
+  'running-hiking',
+  'fishing',
+  'golf',
+  'racket-sports',
+  'horseriding',
+  'ball-sports',
+  'fitness',
+  'water-sports',
+  'other',
   'kitesurf',
   'foil',
   'windsurf',
@@ -158,15 +169,27 @@ const TULIP_SUBTYPES_BY_TYPE: Record<
     'phone',
     'computer',
     'tablet',
-  ],
-  'small-tools': [
     'small-appliance',
     'large-appliance',
+    'other-electronic-equipment',
+  ],
+  'small-tools': [
     'construction-equipment',
     'diy-tools',
     'electric-diy-tools',
     'gardening-tools',
     'electric-gardening-tools',
+  ],
+  sports: [
+    'running-hiking',
+    'fishing',
+    'golf',
+    'racket-sports',
+    'horseriding',
+    'ball-sports',
+    'fitness',
+    'water-sports',
+    'other',
   ],
 };
 
@@ -181,25 +204,6 @@ function getDefaultSubtypeForType(
   productType: TulipProductTypeValue,
 ): TulipProductSubtypeValue {
   return TULIP_SUBTYPES_BY_TYPE[productType][0] ?? 'standard';
-}
-
-function getTulipProductId(value: { product_id?: string | null }): string | null {
-  const id =
-    typeof value.product_id === 'string' ? value.product_id.trim() : '';
-  return id || null;
-}
-
-function getTulipLegacyUid(value: {
-  uuid?: string | null;
-  uid?: string | null;
-}): string | null {
-  const uuid = typeof value.uuid === 'string' ? value.uuid.trim() : '';
-  if (uuid) {
-    return uuid;
-  }
-
-  const uid = typeof value.uid === 'string' ? value.uid.trim() : '';
-  return uid || null;
 }
 
 function isKnownTulipProductType(
@@ -347,20 +351,20 @@ function isLouezManagedTulipProduct(product: TulipProduct): boolean {
 
 async function resolveCreatedTulipProductId({
   apiKey,
-  renterUid,
   createdProduct,
+  expectedLouezProductId,
   expectedTitle,
   expectedBrand,
   expectedModel,
 }: {
   apiKey: string;
-  renterUid: string;
   createdProduct: TulipProduct | null;
+  expectedLouezProductId: string;
   expectedTitle: string;
   expectedBrand: string | null;
   expectedModel: string | null;
 }): Promise<string | null> {
-  const directProductId = getTulipProductId(createdProduct ?? {});
+  const directProductId = createdProduct?.id?.trim() || null;
   if (directProductId) {
     return directProductId;
   }
@@ -370,25 +374,18 @@ async function resolveCreatedTulipProductId({
     return null;
   }
 
-  const createResponseUid = getTulipLegacyUid(createdProduct ?? {});
-  const catalog = await tulipListProducts(apiKey, { renterUid });
+  const catalog = await tulipListProducts(apiKey);
 
   const candidates = catalog
     .map((candidate) => {
-      const id = getTulipProductId(candidate);
+      const id = candidate.id?.trim();
       if (!id) return null;
       return {
         id,
-        uid: getTulipLegacyUid(candidate),
         title: candidate.title || id,
-        brand:
-          candidate.data?.brand && typeof candidate.data.brand === 'string'
-            ? candidate.data.brand
-            : null,
-        model:
-          candidate.data?.model && typeof candidate.data.model === 'string'
-            ? candidate.data.model
-            : null,
+        louezProductId: candidate.data?.louezProductId ?? null,
+        brand: candidate.data?.brand ?? null,
+        model: candidate.data?.model ?? null,
       };
     })
     .filter(
@@ -396,17 +393,17 @@ async function resolveCreatedTulipProductId({
         candidate,
       ): candidate is {
         id: string;
-        uid: string | null;
         title: string;
+        louezProductId: string | null;
         brand: string | null;
         model: string | null;
       } => candidate !== null,
     )
     .filter((candidate) => {
+      if (candidate.louezProductId !== expectedLouezProductId) return false;
       if (candidate.title !== normalizedExpectedTitle) return false;
       if (expectedBrand && candidate.brand !== expectedBrand) return false;
       if (expectedModel && candidate.model !== expectedModel) return false;
-      if (createResponseUid && candidate.uid !== createResponseUid) return false;
       return true;
     });
 
@@ -597,7 +594,7 @@ const pushTulipProductUpdateSchema = z.object({
   purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
-  valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  valueExcl: z.number().min(0).max(15_000).nullable().optional(),
   margin: z.number().min(0).max(1_000_000).nullable().optional(),
 });
 
@@ -609,7 +606,7 @@ const createTulipProductSchema = z.object({
   purchasedDate: tulipPurchasedDateSchema.nullable().optional(),
   brand: z.string().trim().max(120).nullable().optional(),
   model: z.string().trim().max(120).nullable().optional(),
-  valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
+  valueExcl: z.number().min(0).max(15_000).nullable().optional(),
   margin: z.number().min(0).max(1_000_000).nullable().optional(),
 });
 
@@ -746,7 +743,7 @@ function normalizeTulipProducts(
 ) {
   return rawProducts
     .map((product) => {
-      const id = getTulipProductId(product);
+      const id = product.id?.trim();
       if (!id) return null;
 
       return {
@@ -754,26 +751,15 @@ function normalizeTulipProducts(
         title: product.title || id,
         louezManaged: isLouezManagedTulipProduct(product),
         margin: parseTulipMargin(product.data?.margin),
-        productType: product.product_type || null,
-        productSubtype: product.data?.product_subtype || null,
-        purchasedDate:
-          typeof product.purchased_date === 'string' &&
-          product.purchased_date.trim()
-            ? product.purchased_date
-            : null,
+        productType: product.productType || null,
+        productSubtype: product.data?.productSubtype || null,
+        purchasedDate: product.purchasedDate?.trim() ? product.purchasedDate : null,
         valueExcl:
-          typeof product.value_excl === 'number' &&
-          Number.isFinite(product.value_excl)
-            ? product.value_excl
+          typeof product.valueExcl === 'number' && Number.isFinite(product.valueExcl)
+            ? product.valueExcl
             : null,
-        brand:
-          product.data?.brand && typeof product.data.brand === 'string'
-            ? product.data.brand
-            : null,
-        model:
-          product.data?.model && typeof product.data.model === 'string'
-            ? product.data.model
-            : null,
+        brand: product.data?.brand ?? null,
+        model: product.data?.model ?? null,
       };
     })
     .filter(
@@ -930,7 +916,7 @@ export async function getTulipIntegrationStateAction(): Promise<
     if (apiKey && renterUid) {
       const [renterResult, tulipProductsResult] = await Promise.allSettled([
         tulipGetRenter(apiKey, renterUid),
-        tulipListProducts(apiKey, { renterUid }),
+        tulipListProducts(apiKey),
       ]);
 
       if (renterResult.status === 'fulfilled' && renterResult.value?.uid) {
@@ -1080,7 +1066,7 @@ export async function getTulipProductStateAction(
 
     if (connected && apiKey) {
       try {
-        const rawProducts = await tulipListProducts(apiKey, { renterUid });
+        const rawProducts = await tulipListProducts(apiKey);
         tulipProducts = normalizeTulipProducts(rawProducts);
       } catch (error) {
         if (
@@ -1318,11 +1304,10 @@ export async function upsertTulipProductMappingAction(
         return { error: 'errors.tulipNotConfigured' };
       }
 
-      const tulipCatalog = await tulipListProducts(apiKey, { renterUid });
+      const tulipCatalog = await tulipListProducts(apiKey);
       const selectedTulipProduct =
         tulipCatalog.find(
-          (candidate) =>
-            getTulipProductId(candidate) === validated.tulipProductId,
+          (candidate) => candidate.id === validated.tulipProductId,
         ) ?? null;
 
       if (!selectedTulipProduct) {
@@ -1333,9 +1318,9 @@ export async function upsertTulipProductMappingAction(
 
       if (!isLouezManagedTulipProduct(selectedTulipProduct)) {
         const resolvedProductType =
-          normalizeTulipOptionalText(selectedTulipProduct.product_type) || 'event';
+          normalizeTulipOptionalText(selectedTulipProduct.productType) || 'event';
         const selectedSubtype = normalizeTulipOptionalText(
-          selectedTulipProduct.data?.product_subtype,
+          selectedTulipProduct.data?.productSubtype,
         );
         let resolvedSubtype = selectedSubtype;
         if (!resolvedSubtype && isKnownTulipProductType(resolvedProductType)) {
@@ -1361,11 +1346,11 @@ export async function upsertTulipProductMappingAction(
         const selectedTitle =
           normalizeTulipOptionalText(selectedTulipProduct.title) ?? product.name;
         const selectedPurchasedDate = toValidIsoDateString(
-          selectedTulipProduct.purchased_date,
+          selectedTulipProduct.purchasedDate,
         );
 
         const clonePayload = {
-          uid: renterUid,
+          uid: product.id,
           product_type: resolvedProductType,
           title: selectedTitle,
           description: buildLouezOriginDescription(
@@ -1376,22 +1361,23 @@ export async function upsertTulipProductMappingAction(
             ...(selectedBrand ? { brand: selectedBrand } : {}),
             ...(selectedModel ? { model: selectedModel } : {}),
             ...(selectedMargin != null ? { margin: selectedMargin } : {}),
+            louez_product_ID: product.id,
           },
           ...(selectedPurchasedDate
             ? { purchased_date: selectedPurchasedDate }
             : {}),
           value_excl:
-            typeof selectedTulipProduct.value_excl === 'number' &&
-            Number.isFinite(selectedTulipProduct.value_excl)
-              ? selectedTulipProduct.value_excl
+            typeof selectedTulipProduct.valueExcl === 'number' &&
+            Number.isFinite(selectedTulipProduct.valueExcl)
+              ? selectedTulipProduct.valueExcl
               : Number(product.price),
         };
 
         const createdClone = await tulipCreateProduct(apiKey, clonePayload);
         const clonedProductId = await resolveCreatedTulipProductId({
           apiKey,
-          renterUid,
           createdProduct: createdClone,
+          expectedLouezProductId: product.id,
           expectedTitle: selectedTitle,
           expectedBrand: selectedBrand,
           expectedModel: selectedModel,
@@ -1514,13 +1500,13 @@ export async function pushTulipProductUpdateAction(
       await tulipUpdateProduct(apiKey, resolvedTulipProductId, payload);
     } catch (error) {
       if (error instanceof TulipApiError && getTulipErrorCode(error.payload) === 4999) {
-        console.warn('[tulip][update-product] mapped product id not found, attempting mapping repair', {
+        console.warn('[tulip][update-product] mapped Tulip product not found, attempting mapping repair', {
           storeId: store.id,
           productId: product.id,
           mappedTulipProductId: resolvedTulipProductId,
         });
 
-        const rawCatalog = await tulipListProducts(apiKey, { renterUid });
+        const rawCatalog = await tulipListProducts(apiKey);
         const payloadTitle = typeof payload.title === 'string' ? payload.title : product.name;
         const payloadData =
           payload.data && typeof payload.data === 'object'
@@ -1531,21 +1517,15 @@ export async function pushTulipProductUpdateAction(
 
         const candidates = rawCatalog
           .map((candidate) => {
-            const id = getTulipProductId(candidate);
+            const id = candidate.id?.trim();
             if (!id) return null;
 
             return {
               id,
-              uid: getTulipLegacyUid(candidate),
               title: candidate.title || id,
-              brand:
-                candidate.data?.brand && typeof candidate.data.brand === 'string'
-                  ? candidate.data.brand
-                  : null,
-              model:
-                candidate.data?.model && typeof candidate.data.model === 'string'
-                  ? candidate.data.model
-                  : null,
+              louezProductId: candidate.data?.louezProductId ?? null,
+              brand: candidate.data?.brand ?? null,
+              model: candidate.data?.model ?? null,
             };
           })
           .filter(
@@ -1553,8 +1533,8 @@ export async function pushTulipProductUpdateAction(
               candidate,
             ): candidate is {
               id: string;
-              uid: string | null;
               title: string;
+              louezProductId: string | null;
               brand: string | null;
               model: string | null;
             } => candidate !== null,
@@ -1573,18 +1553,19 @@ export async function pushTulipProductUpdateAction(
           return true;
         };
 
-        const candidatesFromLegacyUid = candidates.filter(
-          (candidate) => candidate.uid === resolvedTulipProductId,
+        const candidatesFromLouezProductId = candidates.filter(
+          (candidate) => candidate.louezProductId === product.id,
         );
-        const candidatesFromLegacyUidAndPayload = candidatesFromLegacyUid.filter(matchesPayload);
+        const candidatesFromLouezProductIdAndPayload =
+          candidatesFromLouezProductId.filter(matchesPayload);
         const candidatesFromPayload = candidates.filter(matchesPayload);
 
         const repairedTulipProductId =
-          (candidatesFromLegacyUidAndPayload.length === 1
-            ? candidatesFromLegacyUidAndPayload[0]?.id
+          (candidatesFromLouezProductIdAndPayload.length === 1
+            ? candidatesFromLouezProductIdAndPayload[0]?.id
             : null) ??
-          (candidatesFromLegacyUid.length === 1
-            ? candidatesFromLegacyUid[0]?.id
+          (candidatesFromLouezProductId.length === 1
+            ? candidatesFromLouezProductId[0]?.id
             : null) ??
           (candidatesFromPayload.length === 1 ? candidatesFromPayload[0]?.id : null);
 
@@ -1622,7 +1603,7 @@ export async function pushTulipProductUpdateAction(
             storeId: store.id,
             productId: product.id,
             mappedTulipProductId: resolvedTulipProductId,
-            legacyUidCandidates: candidatesFromLegacyUid.length,
+            louezProductIdCandidates: candidatesFromLouezProductId.length,
             payloadCandidates: candidatesFromPayload.length,
           });
           await db
@@ -1756,7 +1737,7 @@ export async function createTulipProductAction(
       : null;
 
     const tulipPayload = {
-      uid: renterUid,
+      uid: product.id,
       product_type: resolvedProductType,
       title: resolvedTitle,
       description: buildLouezOriginDescription(product.description),
@@ -1765,6 +1746,7 @@ export async function createTulipProductAction(
         ...(resolvedBrand ? { brand: resolvedBrand } : {}),
         ...(resolvedModel ? { model: resolvedModel } : {}),
         ...(resolvedMargin != null ? { margin: resolvedMargin } : {}),
+        louez_product_ID: product.id,
       },
       ...(resolvedPurchasedDate
         ? { purchased_date: resolvedPurchasedDate }
@@ -1806,15 +1788,15 @@ export async function createTulipProductAction(
 
     const resolvedTulipProductId = await resolveCreatedTulipProductId({
       apiKey,
-      renterUid,
       createdProduct,
+      expectedLouezProductId: product.id,
       expectedTitle: resolvedTitle,
       expectedBrand: resolvedBrand,
       expectedModel: resolvedModel,
     });
 
     if (!resolvedTulipProductId) {
-      console.error('[tulip][create-product] unable to resolve Tulip product_id from create response', {
+      console.error('[tulip][create-product] unable to resolve Tulip product id from create response', {
         storeId: store.id,
         productId: product.id,
         createResponse: createdProduct,

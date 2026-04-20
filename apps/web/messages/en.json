@@ -5056,7 +5056,8 @@
     "tulipContractIdentityFrozen": "Tulip rejected the update: customer identity data is now frozen for this contract.",
     "tulipContractPayloadInvalid": "Tulip rejected the contract payload. Check the insured products and required fields being sent.",
     "tulipContractValidationFailed": "Tulip rejected this action because of a contract validation error.",
-    "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store."
+    "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store.",
+    "tulipContractProductsIncompatible": "The insured Tulip products in this reservation are not all compatible with this contract type."
   },
   "welcome": {
     "greeting": "Welcome to Louez.io",
