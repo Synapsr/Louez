@@ -65,6 +65,7 @@ tasks/
 specs/
 SPECIFICATIONS*.md
 CLAUDE.md
+.agents/
 
 # Internal scripts (root level only)
 /scripts/

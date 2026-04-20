@@ -935,6 +935,7 @@
           "mappingLabel": "Tulip product",
           "mappingPlaceholder": "Not mapped",
           "mappingSaving": "Saving...",
+          "dropdownValueExclTax": "{value} excl. tax",
           "noResults": "No Tulip products found",
           "dialog": {
             "description": "Configure Tulip product details and push updates.",
@@ -2155,6 +2156,7 @@
               "mapped": "Mapped",
               "notMapped": "Not mapped"
             },
+            "dropdownValueExclTax": "{value} excl. tax",
             "noResults": "No Tulip products found",
             "noFilterResults": "No products match the current filters.",
             "sheet": {

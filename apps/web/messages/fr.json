@@ -897,6 +897,7 @@
           "mappingLabel": "Produit Tulip",
           "mappingPlaceholder": "Non mappé",
           "mappingSaving": "Enregistrement...",
+          "dropdownValueExclTax": "{value} HT",
           "noResults": "Aucun produit Tulip trouvé",
           "dialog": {
             "description": "Configurez les détails du produit Tulip et poussez les mises à jour.",
@@ -2155,6 +2156,7 @@
               "mapped": "Mappé",
               "notMapped": "Non mappé"
             },
+            "dropdownValueExclTax": "{value} HT",
             "noResults": "Aucun produit Tulip trouvé",
             "noFilterResults": "Aucun produit ne correspond aux filtres.",
             "sheet": {
