@@ -57,6 +57,61 @@ interface ReservationBarProps {
   style?: React.CSSProperties
 }
 
+function formatReservationItems(items: Reservation['items']): string {
+  const quantitiesByProduct = new Map<string, number>()
+
+  for (const item of items) {
+    const productName = item.productSnapshot?.name || item.product?.name
+
+    if (!productName) {
+      continue
+    }
+
+    const quantity = item.quantity > 0 ? item.quantity : 1
+    quantitiesByProduct.set(
+      productName,
+      (quantitiesByProduct.get(productName) ?? 0) + quantity
+    )
+  }
+
+  return Array.from(quantitiesByProduct.entries())
+    .map(([productName, quantity]) =>
+      quantity > 1 ? `${productName} ×${quantity}` : productName
+    )
+    .join(', ')
+}
+
+function getReservationItemsList(items: Reservation['items']): { name: string; quantity: number }[] {
+  const quantitiesByProduct = new Map<string, number>()
+
+  for (const item of items) {
+    const productName = item.productSnapshot?.name || item.product?.name
+
+    if (!productName) {
+      continue
+    }
+
+    const quantity = item.quantity > 0 ? item.quantity : 1
+    quantitiesByProduct.set(
+      productName,
+      (quantitiesByProduct.get(productName) ?? 0) + quantity
+    )
+  }
+
+  return Array.from(quantitiesByProduct.entries()).map(([name, quantity]) => ({ name, quantity }))
+}
+
+const statusDotColors: Record<ReservationStatus, string> = {
+  pending: 'bg-yellow-500',
+  confirmed: 'bg-green-500',
+  ongoing: 'bg-blue-500',
+  completed: 'bg-gray-400',
+  cancelled: 'bg-red-300',
+  rejected: 'bg-red-400',
+  quote: 'bg-violet-500',
+  declined: 'bg-slate-400',
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -90,10 +145,7 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
     const status = reservation.status || 'pending'
 
     const customerName = `${reservation.customer.firstName} ${reservation.customer.lastName}`
-    const productNames = reservation.items
-      .map((item) => item.productSnapshot?.name || item.product?.name)
-      .filter(Boolean)
-      .join(', ')
+    const productNames = formatReservationItems(reservation.items)
 
     // Minimal mode: just a colored dot
     if (minimal) {
@@ -115,7 +167,6 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
             <ReservationTooltipContent
               reservation={reservation}
               customerName={customerName}
-              productNames={productNames}
               statusLabel={t(`status.${status}`)}
             />
           </TooltipContent>
@@ -202,7 +253,6 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
           <ReservationTooltipContent
             reservation={reservation}
             customerName={customerName}
-            productNames={productNames}
             statusLabel={t(`status.${status}`)}
           />
         </TooltipContent>
@@ -218,30 +268,49 @@ export const ReservationBar = forwardRef<HTMLAnchorElement, ReservationBarProps>
 interface TooltipContentProps {
   reservation: Reservation
   customerName: string
-  productNames: string
   statusLabel: string
 }
 
 function ReservationTooltipContent({
   reservation,
   customerName,
-  productNames,
   statusLabel,
 }: TooltipContentProps) {
+  const status = reservation.status || 'pending'
+  const items = getReservationItemsList(reservation.items)
+
   return (
-    <div className="space-y-1.5 text-sm">
-      <div className="font-semibold">{customerName}</div>
-      {productNames && (
-        <div className="text-muted-foreground">{productNames}</div>
-      )}
-      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span>#{reservation.number}</span>
-        <span>-</span>
-        <span>{statusLabel}</span>
+    <div className="min-w-48 space-y-2 p-1.5">
+      {/* Header: name + status badge */}
+      <div className="flex items-start justify-between gap-3">
+        <span className="font-semibold text-sm">{customerName}</span>
+        <span className="mt-0.5 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none whitespace-nowrap bg-muted">
+          <span className={cn('inline-block h-1.5 w-1.5 rounded-full', statusDotColors[status])} />
+          {statusLabel}
+        </span>
       </div>
-      <div className="text-xs text-muted-foreground">
-        {formatDateShort(reservation.startDate)} -{' '}
-        {formatDateShort(reservation.endDate)}
+
+      {/* Products list */}
+      {items.length > 0 && (
+        <ul className="space-y-0.5 text-xs text-muted-foreground">
+          {items.map((item) => (
+            <li key={item.name} className="flex items-baseline gap-1.5">
+              <span className="shrink-0 text-muted-foreground/50">-</span>
+              <span>{item.name}</span>
+              {item.quantity > 1 && (
+                <span className="text-[10px] font-semibold text-muted-foreground">x{item.quantity}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Footer: ref + dates */}
+      <div className="flex items-center justify-between gap-3 border-t pt-1.5 text-[11px] text-muted-foreground">
+        <span className="font-mono">#{reservation.number}</span>
+        <span>
+          {formatDateShort(reservation.startDate)} - {formatDateShort(reservation.endDate)}
+        </span>
       </div>
     </div>
   )
