@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "db:seed": "tsx scripts/seed/index.ts"
+    "db:seed": "tsx scripts/seed/index.ts",
+    "dev-localify": "next dev --hostname 127.0.0.1 --port 61092 --turbopack"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.58",
