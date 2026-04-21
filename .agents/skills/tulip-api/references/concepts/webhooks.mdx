@@ -1,0 +1,288 @@
+---
+title: Webhooks
+description: Événements en temps réel, format des payloads, politique de retry et bonnes pratiques d'intégration.
+---
+
+Tulip envoie des notifications en temps réel à votre système lorsque des événements se produisent sur vos contrats et sinistres. Les webhooks sont configurés par clé API.
+
+<Callout type="info">
+Tulip supporte **28 types d'événements** couvrant le cycle de vie complet des contrats (création, modification, résiliation, renouvellement) et des sinistres (pré-déclaration, traitement, règlements).
+</Callout>
+
+## Configuration
+
+Les webhooks se configurent depuis l'[espace développeur](/docs/getting-started/developer-space) de votre interface Colibri, dans l'onglet **Webhooks**.
+
+Pour chaque webhook, vous pouvez :
+- Définir un **nom** et une **URL de callback**
+- **Activer ou désactiver** le webhook
+- **Sélectionner les événements** auxquels vous souhaitez vous abonner (contrats, sinistres, documents, règlements)
+
+## Sécurité
+
+<Callout type="warn">
+**Validez la source** — Assurez-vous que votre endpoint webhook n'est accessible que depuis les IPs de Tulip ou utilisez un secret partagé dans l'URL (token query parameter) pour vérifier l'authenticité des appels. Contactez le [support](/docs/resources/support) pour obtenir la liste des IPs sources.
+</Callout>
+
+Recommandations de sécurité :
+
+1. **Utilisez HTTPS** — Votre URL de callback doit obligatoirement utiliser HTTPS pour garantir le chiffrement des données en transit
+2. **Restreignez l'accès** — Configurez votre pare-feu ou reverse proxy pour n'accepter que les requêtes provenant des IPs Tulip
+3. **Token de vérification** — Ajoutez un token secret dans votre URL de callback (ex : `https://api.example.com/webhooks?token=votre_secret`) pour valider l'origine des requêtes
+4. **Ne vous fiez pas uniquement au payload** — Pour les opérations critiques, utilisez l'API Tulip pour confirmer l'état de la ressource après réception du webhook
+
+## Format du payload
+
+Tous les payloads suivent cette structure :
+
+```json
+{
+  "event_type": "v2.contract.created",
+  "data": {
+    // Objet complet (contrat, sinistre ou renouvellement selon l'événement)
+  }
+}
+```
+
+<Callout type="info">
+Le contenu de `data` dépend du type d'événement :
+- **Événements `v2.contract.*`** — contient le contrat complet (même structure que la réponse de `GET /v2/contracts/{cid}`)
+- **Événements `v2.contract.renewal.*`** — contient l'objet renouvellement automatique complet
+- **Événements `v2.claim.*`** — contient le sinistre complet (même structure que `ClaimResponse`)
+</Callout>
+
+## Événements contrats
+
+### Cycle de vie du contrat
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.contract.created` | Nouveau contrat créé |
+| `v2.contract.updated` | Contrat modifié (changement de champs autre que `updated_at`) |
+| `v2.contract.closed` | Contrat arrivé à échéance (passage automatique en `closed`) |
+| `v2.contract.canceled` | Contrat annulé (dans la fenêtre de 4 heures) |
+| `v2.contract.terminated` | Contrat résilié (après la fenêtre de 4 heures) |
+| `v2.contract.reopened` | Contrat rouvert (passage en `open`) |
+| `v2.contract.renewed` | Renouvellement automatique appliqué, nouveau contrat créé |
+
+#### Exemple de payload contrat
+
+```json
+{
+  "event_type": "v2.contract.created",
+  "data": {
+    "cid": "01JQXK8VN4TZMW3",
+    "uid": "usr_xyz789",
+    "status": "open",
+    "contract_type": "LLD",
+    "start_date": "2026-04-01T00:00:00.000Z",
+    "end_date": "2027-04-01T00:00:00.000Z",
+    "options": ["break", "theft", "company", "home_to_work"],
+    "products": {
+      "cpid_8e4f1a2b": {
+        "product_id": "prod_velo_elec_001",
+        "status": "open",
+        "start_date": "2026-04-01T00:00:00.000Z",
+        "end_date": "2027-04-01T00:00:00.000Z",
+        "data": {
+          "user_name": "Marie Martin",
+          "product_marked": "MARK-001"
+        }
+      }
+    },
+    "company": {
+      "company_name": "Transport Express SAS",
+      "first_name": "Marie",
+      "last_name": "Martin",
+      "address": "10 rue de la Paix",
+      "zipcode": "75002",
+      "city": "PARIS-2EME-ARRONDISSEMENT",
+      "country": "FR"
+    },
+    "test": false,
+    "created_date": "2026-04-01T12:00:00.000Z",
+    "updated_date": "2026-04-01T12:00:00.000Z"
+  }
+}
+```
+
+### Renouvellement automatique
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.contract.renewal.enabled` | Renouvellement automatique activé sur un contrat |
+| `v2.contract.renewal.updated` | Configuration du renouvellement modifiée |
+| `v2.contract.renewal.rejected` | Renouvellement rejeté par le client |
+| `v2.contract.renewal.resumed` | Renouvellement précédemment rejeté réactivé |
+| `v2.contract.renewal.notification` | Notification de renouvellement envoyée au client |
+
+#### Exemple de payload renouvellement
+
+```json
+{
+  "event_type": "v2.contract.renewal.rejected",
+  "data": {
+    "id": "ar_abc123",
+    "cid": "01JQXK8VN4TZMW3",
+    "uid": "usr_xyz789",
+    "applied": false,
+    "applied_at": null,
+    "renewal_scheduled_for": "2027-04-01T00:00:00.000Z",
+    "use_notification": true,
+    "notified": true,
+    "notified_at": "2027-03-01T10:00:00.000Z",
+    "notification_scheduled_for": "2027-03-01T00:00:00.000Z",
+    "rejected": true,
+    "rejected_at": "2027-03-15T14:30:00.000Z",
+    "next_cid": null,
+    "created_at": "2026-04-01T12:00:00.000Z",
+    "updated_at": "2027-03-15T14:30:00.000Z"
+  }
+}
+```
+
+## Événements sinistres
+
+### Pré-déclaration (draft)
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.draft.created` | Nouvelle pré-déclaration créée |
+| `v2.claim.draft.ready` | Tous les documents obligatoires uploadés, prête pour soumission |
+| `v2.claim.draft.archived` | Pré-déclaration annulée |
+
+### Cycle de vie du sinistre
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.created` | Sinistre soumis et créé dans le système |
+| `v2.claim.closed` | Sinistre clôturé (traité et indemnisé) |
+| `v2.claim.reopened` | Sinistre rouvert après clôture |
+| `v2.claim.abandoned` | Sinistre abandonné |
+| `v2.claim.refused` | Sinistre refusé par l'assureur |
+
+### Statut
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.status.updated` | Changement de statut du sinistre |
+
+### Documents
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.document.uploaded` | Document uploadé |
+| `v2.claim.document.accepted` | Document accepté par le gestionnaire |
+| `v2.claim.document.refused` | Document refusé par le gestionnaire |
+| `v2.claim.document.requested` | Document supplémentaire demandé |
+
+### Règlements
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.settlement.created` | Nouveau règlement créé |
+| `v2.claim.settlement.paid` | Paiement effectué |
+| `v2.claim.settlement.returned` | Paiement retourné (échoué) |
+
+## Exemple de handler webhook
+
+Voici un exemple de handler en Node.js/Express pour recevoir et traiter les webhooks Tulip :
+
+```js title="webhook-handler.js"
+const express = require("express");
+const app = express();
+
+app.use(express.json());
+
+app.post("/webhooks/tulip", (req, res) => {
+  // 1. Répondre immédiatement avec un 200
+  res.status(200).json({ received: true });
+
+  // 2. Traiter l'événement de manière asynchrone
+  const { event_type, data } = req.body;
+
+  switch (event_type) {
+    // Événements contrats
+    case "v2.contract.created":
+      handleContractCreated(data);
+      break;
+    case "v2.contract.terminated":
+      handleContractTerminated(data);
+      break;
+    case "v2.contract.renewal.notification":
+      handleRenewalNotification(data);
+      break;
+
+    // Événements sinistres
+    case "v2.claim.created":
+      handleClaimCreated(data);
+      break;
+    case "v2.claim.closed":
+      handleClaimClosed(data);
+      break;
+    default:
+      console.log(`Événement non géré: ${event_type}`);
+  }
+});
+
+async function handleContractCreated(data) {
+  console.log(`Nouveau contrat créé: ${data.cid}`);
+  // Ex: synchroniser le contrat dans votre système
+}
+
+async function handleContractTerminated(data) {
+  console.log(`Contrat résilié: ${data.cid}`);
+  // Ex: mettre à jour le statut dans votre base de données
+}
+
+async function handleRenewalNotification(data) {
+  console.log(`Notification de renouvellement: contrat ${data.cid}`);
+  // Ex: notifier le client via votre canal préféré
+}
+
+async function handleClaimCreated(data) {
+  console.log(`Nouveau sinistre créé: ${data.claimId}`);
+  // Ex: créer une entrée dans votre système, notifier une équipe
+}
+
+async function handleClaimClosed(data) {
+  console.log(`Sinistre clôturé: ${data.claimId}`);
+  // Ex: mettre à jour le statut dans votre base de données
+}
+
+app.listen(3000, () => {
+  console.log("Webhook handler en écoute sur le port 3000");
+});
+```
+
+<Callout type="warn">
+**Répondez avant de traiter** — Il est essentiel de retourner un HTTP 200 **avant** de lancer votre logique métier. Si votre traitement prend trop de temps, Tulip considérera la livraison comme échouée et déclenchera un retry.
+</Callout>
+
+## Politique de retry
+
+Si votre endpoint retourne un code HTTP non-2xx, Tulip réessaie avec un backoff exponentiel :
+
+| Tentative | Délai |
+|-----------|-------|
+| 1ère | 1 minute |
+| 2ème | 5 minutes |
+| 3ème | 30 minutes |
+
+Après 3 échecs, le webhook est marqué comme échoué.
+
+<Callout type="info">
+**Livraisons échouées** — Si un webhook est marqué comme échoué après 3 tentatives, l'événement n'est pas perdu. Depuis l'[espace développeur](/docs/getting-started/developer-space#consulter-les-logs-de-livraison), vous pouvez consulter l'historique des livraisons, **rejouer** un webhook échoué ou **annuler** une tentative en attente.
+</Callout>
+
+## Bonnes pratiques
+
+1. **Répondez rapidement** — Retournez un 200 dès réception, traitez de manière asynchrone
+2. **Idempotence** — Votre handler doit supporter les doublons (même événement reçu plusieurs fois)
+3. **Vérifiez le `event_type`** — Ignorez les événements non gérés plutôt que de retourner une erreur
+4. **Loggez les payloads** — Conservez les payloads bruts pour le debugging
+5. **Gérez les retries** — Un même événement peut arriver plusieurs fois en cas de timeout
+
+## Espace développeur
+
+La configuration des webhooks, la consultation des logs de livraison et le replay des webhooks échoués se font depuis l'[espace développeur](/docs/getting-started/developer-space) de Colibri.

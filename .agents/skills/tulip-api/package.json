@@ -1,0 +1,29 @@
+{
+  "name": "@tulip/tulip-api-expert",
+  "version": "1.0.0",
+  "description": "Expert knowledge skill for Tulip Insurance API - complete business rules, workflows, and integration patterns",
+  "author": "Tulip",
+  "license": "MIT",
+  "keywords": [
+    "tulip",
+    "insurance",
+    "api",
+    "skill",
+    "claude",
+    "contracts",
+    "claims"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tulip/tulip-api-expert-skill"
+  },
+  "scripts": {
+    "build": "./scripts/build.sh",
+    "publish:skill": "npm run build && npx @anthropic-ai/create-skill publish"
+  },
+  "files": [
+    "SKILL.md",
+    "references/**/*",
+    "!references/**/*.bak"
+  ]
+}

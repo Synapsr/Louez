@@ -1,0 +1,124 @@
+---
+title: Gestion des documents
+description: Catégories de documents, conditions dynamiques, méthodes d'upload, validation et URLs signées.
+---
+
+Les documents justificatifs sont au coeur du processus de sinistre. Leur gestion suit des règles précises selon le type et le sous-type du sinistre.
+
+## Catégories de documents
+
+Chaque document requis pour un sinistre appartient à une catégorie :
+
+| Catégorie | Icône | Impact sur la soumission |
+|-----------|-------|------------------------|
+| **mandatory** | 🔴 | **Bloque la soumission** — doit être uploadé avant de soumettre |
+| **expected** | 🟡 | Ne bloque pas la soumission, mais peut retarder le traitement |
+| **optional** | 🟢 | Peut être uploadé si applicable |
+| **conditional** | ⚡ | Devient obligatoire ou attendu selon les réponses aux questions |
+
+## Documents conditionnels
+
+Certains documents changent de catégorie selon les réponses aux questions du sinistre.
+
+**Exemple — Vol total de vélo :**
+
+Si la réponse à "Avez-vous récupéré le dépôt de plainte final ?" est :
+- `true` → "Dépôt de plainte" devient 🔴 **mandatory**
+- `false` → "Récapitulatif de déclaration de plainte en ligne" devient 🔴 **mandatory**
+
+Si "Le vélo est-il électrique ?" = `true` ET "La batterie était-elle présente sur le vélo ?" = `false` :
+- "Photo de la batterie" devient 🔴 **mandatory**
+
+Consultez les [matrices par produit](/docs/concepts/questions-by-product) pour toutes les conditions.
+
+## Statuts d'un document
+
+```
+waiting_for → to_verify → accepted | rejected
+```
+
+| Statut | Description |
+|--------|-------------|
+| `waiting_for` | En attente de téléchargement |
+| `to_verify` | Téléchargé, en attente de vérification par le gestionnaire |
+| `accepted` | Accepté |
+| `rejected` | Refusé (voir `refusalReason` pour la raison) |
+
+## Méthodes d'upload
+
+### JSON avec base64
+
+```json
+PUT /v2/claims/{id}/documents
+Content-Type: application/json
+
+[
+  {
+    "type": "Dépôt de plainte",
+    "title": "Plainte du 15/01/2024",
+    "filename": "plainte.pdf",
+    "content": "JVBERi0xLjQKJeLjz9MK..."
+  }
+]
+```
+
+### Multipart form-data
+
+```
+PUT /v2/claims/{id}/documents
+Content-Type: multipart/form-data
+
+--boundary
+Content-Disposition: form-data; name="meta"
+Content-Type: application/json
+
+{"type": "Dépôt de plainte", "title": "Plainte du 15/01/2024"}
+
+--boundary
+Content-Disposition: form-data; name="file"; filename="plainte.pdf"
+Content-Type: application/pdf
+
+<contenu binaire>
+--boundary--
+```
+
+<Callout type="info">
+**Détection MIME automatique** — Le type MIME est détecté à partir du contenu du fichier, pas de l'extension ou du Content-Type déclaré. Envoyez le fichier brut.
+</Callout>
+
+## Téléchargement de documents
+
+```
+GET /v2/claims/{claimId}/documents/{documentId}
+```
+
+La réponse contient une **URL signée** (`downloadUrl`) pour télécharger le fichier.
+
+<Callout type="warn">
+**Expiration de 1 heure** — L'URL de téléchargement expire après 1 heure. Le champ `downloadUrlExpiresAt` indique la date d'expiration. Régénérez l'URL en rappelant l'endpoint si elle a expiré.
+</Callout>
+
+## Champs du document
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | string | Identifiant unique du document |
+| `type` | string | Type de document (ex: "Dépôt de plainte") |
+| `title` | string | Titre donné par l'uploloader |
+| `mimeType` | string | Type MIME détecté |
+| `status` | string | Statut actuel |
+| `refusalReason` | string \| null | Raison du refus si rejeté |
+| `note` | string \| null | Note du gestionnaire |
+| `uploadedAt` | string \| null | Date d'upload |
+
+## Erreurs courantes
+
+| Code | Cause |
+|------|-------|
+| 1002 | Fichier trop volumineux |
+| 1003 | Type MIME invalide (détecté depuis le contenu) |
+| 1005 | Encodage base64 invalide |
+| 1006 | Content-Type non supporté |
+| 3004 | Documents incomplets pour soumission |
+| 3005 | Document déjà validé |
+| 3006 | Type de document invalide |

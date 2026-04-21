@@ -1,0 +1,285 @@
+---
+title: Créer votre premier contrat
+description: Tutoriel pas à pas pour créer un contrat de location courte durée via l'API Tulip.
+---
+
+Ce tutoriel vous guide pas à pas pour créer votre premier contrat via l'API Tulip. Nous commençons par un contrat de location courte durée (LCD) pour un vélo, puis nous montrons un exemple LLD plus complet.
+
+## Prérequis
+
+- Votre [clé API](/docs/getting-started/authentication) sandbox ou production
+- Un `uid` (identifiant utilisateur dans votre système)
+- Un `product_id` si vous référencez un produit existant dans votre catalogue Tulip, **ou** les informations produit complètes pour une définition en ligne
+
+## Types de contrat et durées
+
+| Type | Nom | Durée autorisée |
+|------|-----|-----------------|
+| **LCD** | Location Courte Durée | 1 à 31 jours |
+| **LMD** | Location Moyenne Durée | 1 à 12 mois |
+| **LLD** | Location Longue Durée | 12 à 60 mois |
+
+<Callout type="warn">
+La durée entre `start_date` et `end_date` doit respecter les bornes ci-dessus. En dehors de ces limites, l'API rejettera la requête.
+</Callout>
+
+## Options disponibles
+
+Les options définissent les garanties et le contexte du contrat. Voici la liste complète des valeurs acceptées :
+
+`break`, `theft`, `assistance`, `home_to_work`, `pro`, `rc`, `ia`, `sharing`, `transportation`, `individual`, `company`, `loa`, `no_deductible`, `client_theft`
+
+Les options **`break`** et **`theft`** sont **obligatoires** pour tout contrat. Sans elles, la création échoue avec l'erreur 1009.
+
+Pour le détail de chaque option, consultez [Options de contrat](/docs/concepts/contract-options).
+
+## Étape 1 : Vérifier vos produits disponibles
+
+Si vous utilisez le catalogue Tulip, récupérez vos produits pour noter le `product_id` :
+
+```bash
+curl -X GET https://api.mytulip.io/v2/products \
+  -H "key: YOUR_API_KEY"
+```
+
+<Callout type="info">
+Si vous préférez définir le produit directement dans le contrat (style v2, sans catalogue), vous pouvez passer cette étape. Voir l'[Exemple 2](#exemple-2--lcd-avec-produit-en-ligne-v2) ci-dessous.
+</Callout>
+
+## Étape 2 : Créer le contrat
+
+### Exemple 1 : LCD avec produit du catalogue
+
+Ce premier exemple référence un produit existant via son `product_id` :
+
+```bash
+curl -X POST https://api.mytulip.io/v2/contracts \
+  -H "key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "usr_jean_dupont_01",
+    "contract_type": "LCD",
+    "options": ["break", "theft"],
+    "start_date": "2026-04-01T08:00:00.000Z",
+    "end_date": "2026-04-03T18:00:00.000Z",
+    "products": [
+      {
+        "product_id": "prod_velo_elec_001",
+        "data": {
+          "user_name": "Jean Dupont",
+          "product_marked": "MARK-VE-2026-001"
+        }
+      }
+    ]
+  }'
+```
+
+### Exemple 2 : LCD avec produit en ligne (v2)
+
+Ce deuxième exemple définit le produit directement dans la requête, sans passer par le catalogue. Vous devez fournir `product_type`, `product_subtype`, `value_excl`, `brand` et `model` :
+
+```bash
+curl -X POST https://api.mytulip.io/v2/contracts \
+  -H "key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "usr_jean_dupont_01",
+    "contract_type": "LCD",
+    "options": ["break", "theft"],
+    "start_date": "2026-04-10T09:00:00.000Z",
+    "end_date": "2026-04-12T18:00:00.000Z",
+    "products": [
+      {
+        "product_type": "bike",
+        "product_subtype": "electric",
+        "value_excl": 2500,
+        "brand": "VanMoof",
+        "model": "S5",
+        "data": {
+          "user_name": "Jean Dupont",
+          "product_marked": "MARK-VM-S5-042"
+        }
+      }
+    ]
+  }'
+```
+
+### Paramètres obligatoires
+
+| Paramètre | Description |
+|-----------|-------------|
+| `uid` | Identifiant unique de l'utilisateur dans votre système |
+| `contract_type` | Type de contrat : `LCD`, `LMD` ou `LLD` |
+| `options` | Options du contrat — `break` et `theft` sont **obligatoires** |
+| `start_date` | Date de début au format ISO 8601 (ne peut pas être dans le passé) |
+| `end_date` | Date de fin (ne peut pas être antérieure à `start_date`, doit respecter les contraintes de durée du type) |
+| `products` | Au moins un produit : soit avec `product_id` (catalogue), soit avec `product_type`, `product_subtype`, `value_excl`, `brand`, `model` (en ligne) |
+
+### Paramètres dans `products[].data`
+
+| Champ | LCD | LMD / LLD | Description |
+|-------|-----|-----------|-------------|
+| `user_name` | Non | **Oui** | Nom de l'utilisateur du produit |
+| `product_marked` | **Oui** | **Oui** | Numéro de marquage / identification du produit |
+| `internal_id` | Non | Non | Identifiant interne (votre référence) |
+
+<Callout type="info">
+En **LCD**, seul le numéro de marquage (`product_marked`) est obligatoire. À partir du **LMD**, le nom de l'utilisateur du matériel (`user_name`) devient également requis.
+</Callout>
+
+## Étape 3 : Vérifier la réponse
+
+Une création réussie retourne un objet contrat avec un `cid` (identifiant unique du contrat) :
+
+```json
+{
+  "status": "success",
+  "execution_id": "exec_7f2a9b3e",
+  "contract": {
+    "cid": "01JQXK8VN4TZMW3",
+    "uid": "usr_jean_dupont_01",
+    "status": "open",
+    "contract_type": "LCD",
+    "start_date": "2026-04-01T08:00:00.000Z",
+    "end_date": "2026-04-03T18:00:00.000Z",
+    "options": ["break", "theft"],
+    "products": [
+      {
+        "cpid": "cpid_8e4f1a2b",
+        "product_id": "prod_velo_elec_001",
+        "status": "open",
+        "data": {
+          "user_name": "Jean Dupont",
+          "product_marked": "MARK-VE-2026-001"
+        }
+      }
+    ],
+    "price": {
+      "total_excl": 4.50,
+      "total_incl": 5.40,
+      "currency": "EUR"
+    }
+  }
+}
+```
+
+Conservez le `cid` — vous en aurez besoin pour modifier le contrat ou [déclarer des sinistres](/docs/getting-started/first-claim).
+
+## Règle `individual` / `company` selon le type de contrat
+
+L'option `individual` ou `company` dans le tableau `options` est **soumise à des règles strictes** selon le type de contrat :
+
+| Type de contrat | Règle |
+|-----------------|-------|
+| **LCD** | `individual` / `company` **ne doit pas** être envoyé dans les options |
+| **LMD < 6 mois** | `individual` / `company` **ne doit pas** être envoyé dans les options |
+| **LMD ≥ 6 mois** | `individual` ou `company` **doit** être présent dans les options |
+| **LLD** | `individual` ou `company` **doit** être présent dans les options |
+
+## Exemple avancé : LLD avec informations particulier
+
+Pour un contrat longue durée (LLD) destiné à un particulier, ajoutez l'option `individual` et l'objet `individual` avec les coordonnées complètes :
+
+```bash
+curl -X POST https://api.mytulip.io/v2/contracts \
+  -H "key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "usr_marie_martin_07",
+    "contract_type": "LLD",
+    "options": ["break", "theft", "individual"],
+    "start_date": "2026-05-01T00:00:00.000Z",
+    "end_date": "2028-04-30T23:59:59.000Z",
+    "individual": {
+      "first_name": "Marie",
+      "last_name": "Martin",
+      "phone_number": "+33612345678",
+      "email": "marie.martin@example.com",
+      "address": "15 rue de Rivoli",
+      "zipcode": "75001",
+      "city": "PARIS-1ER-ARRONDISSEMENT",
+      "country": "FR"
+    },
+    "products": [
+      {
+        "product_type": "bike",
+        "product_subtype": "electric",
+        "value_excl": 3200,
+        "brand": "Moustache",
+        "model": "Samedi 27 Xroad 3",
+        "data": {
+          "user_name": "Marie Martin",
+          "product_marked": "MARK-MOU-2026-107"
+        }
+      }
+    ]
+  }'
+```
+
+<Callout type="info">
+**Format de ville normalisé** — Le champ `city` doit utiliser le format normalisé retourné par l'endpoint [GET /geo/cities](/docs/api-reference/geo/getCitiesByZipcode). Par exemple : `PARIS-1ER-ARRONDISSEMENT`, `LYON-2EME-ARRONDISSEMENT`, `MARSEILLE-1ER-ARRONDISSEMENT`. Utilisez cet endpoint pour obtenir la valeur exacte à partir du code postal.
+</Callout>
+
+## Prévisualisation
+
+Ajoutez `?preview=true` pour simuler la création sans réellement créer le contrat. La réponse contient les champs calculés (prix, garanties, détails produits) tels qu'ils seraient si l'opération était effectuée. Le champ `cid` sera `undefined` dans la réponse.
+
+```bash
+curl -X POST "https://api.mytulip.io/v2/contracts?preview=true" \
+  -H "key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "usr_jean_dupont_01",
+    "contract_type": "LCD",
+    "options": ["break", "theft"],
+    "start_date": "2026-04-01T08:00:00.000Z",
+    "end_date": "2026-04-03T18:00:00.000Z",
+    "products": [
+      {
+        "product_type": "bike",
+        "product_subtype": "electric",
+        "value_excl": 2500,
+        "brand": "VanMoof",
+        "model": "S5",
+        "data": {
+          "user_name": "Jean Dupont",
+          "product_marked": "MARK-VM-S5-042"
+        }
+      }
+    ]
+  }'
+```
+
+Utile pour valider les données et vérifier le prix avant de confirmer.
+
+## Contrats de test
+
+<Callout type="info">
+Ajoutez `"test": true` dans le corps de la requête pour créer un **contrat de test**. Les contrats de test se comportent normalement mais sont exclus des flux financiers et de la facturation. Ils sont filtrables via `?test=true` dans les endpoints de liste. Pour plus de détails, consultez le [guide d'environnement de test](/docs/guides/testing-sandbox).
+</Callout>
+
+```json
+{
+  "uid": "usr_test_01",
+  "contract_type": "LCD",
+  "test": true,
+  "options": ["break", "theft"],
+  "start_date": "2026-04-01T08:00:00.000Z",
+  "end_date": "2026-04-02T18:00:00.000Z",
+  "products": [...]
+}
+```
+
+## Points d'attention
+
+<Callout type="warn">
+**Fenêtre de modification de 4 heures** — Après 4 heures suivant la `start_date`, les champs `start_date` et `end_date` ne peuvent plus être modifiés. Dans cette même fenêtre, la suppression du contrat produit une annulation (`cancel`). Après, elle produit une résiliation (`terminated`) qui nécessite un champ `reason`. Assurez-vous que les informations sont correctes dès la création.
+</Callout>
+
+<Callout type="warn">
+**Gel des informations entreprise/particulier** — Les objets `company` et `individual` sont gelés dès que la `start_date` est passée. Vérifiez ces informations avant le démarrage du contrat.
+</Callout>
+
+## Prochaine étape
+
+Votre contrat est créé. Vous pouvez maintenant [déclarer votre premier sinistre](/docs/getting-started/first-claim).

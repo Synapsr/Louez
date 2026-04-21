@@ -1,0 +1,210 @@
+---
+title: B2B vs B2C
+description: Différences entre contrats entreprise et contrats particulier — options, validations et informations requises.
+---
+
+Les contrats Tulip distinguent deux contextes : les contrats pour **entreprises** (B2B) et pour **particuliers** (B2C). Cette distinction impacte les options requises, les informations à fournir et certaines règles de validation.
+
+## Quand utiliser quoi ?
+
+| Contexte | Option | Cas d'usage |
+|----------|--------|-------------|
+| **Entreprise** | `company` | Le locataire est une entreprise (location de flotte, équipement pro) |
+| **Particulier** | `individual` | Le locataire est un particulier |
+
+Pour les contrats **LCD** (courte durée), ces options sont souvent optionnelles. Pour les **LMD** et **LLD**, l'une des deux est généralement requise.
+
+## Liste complète des options
+
+### Options obligatoires pour tous les contrats
+
+| Option | Description |
+|--------|-------------|
+| `break` | Garantie casse |
+| `theft` | Garantie vol |
+
+<Callout type="info">
+Pour la liste complète des options et leurs règles de compatibilité (couplage casse/vol, seuil LMD 6 mois, options par type de produit), consultez la page [Options de contrat](/docs/concepts/contract-options).
+</Callout>
+
+### Options de contexte (LMD / LLD)
+
+| Option | Description | Contexte |
+|--------|-------------|----------|
+| `company` | Contrat pour une entreprise | Requis pour LMD/LLD avec entreprise (B2B) |
+| `individual` | Contrat pour un particulier | Requis pour LMD/LLD avec particulier (B2C) |
+
+### Options d'usage (LMD ≥ 6 mois et LLD)
+
+| Option | Description |
+|--------|-------------|
+| `home_to_work` | Trajets domicile-travail |
+| `pro` | Usage professionnel (hors transporteur) |
+| `transporter` | Usage transporteur |
+
+<Callout type="warn">
+**Option d'usage requise en LLD** -- Pour les contrats LLD, une option d'usage doit accompagner `company` ou `individual`. Son absence déclenche l'erreur **1015**. Pour les contrats LMD de 6 mois ou plus, les options d'usage sont disponibles mais pas obligatoires. Pour les LMD de moins de 6 mois, l'usage `home_to_work` est appliqué automatiquement.
+</Callout>
+
+<Callout type="info">
+Les options d'usage sont réservées aux produits **vélo** (`bike`). Consultez la page [Éligibilité et compatibilité](/docs/concepts/contract-eligibility) pour les matrices complètes.
+</Callout>
+
+### Options facultatives
+
+| Option | Description |
+|--------|-------------|
+| `assistance` | Assistance (dépréciée -- préférez `assistance_premium` ou `assistance_standard`) |
+| `rc` | Responsabilité civile |
+| `ia` | Individuel accident |
+| `sharing` | Produits partagés entre utilisateurs |
+| `transportation` | Transport |
+| `loa` | Location avec option d'achat |
+| `no_deductible` | Suppression de la franchise |
+| `client_theft` | Vol par le client |
+
+## Informations entreprise
+
+```json
+{
+  "company": {
+    "company_name": "Location Vélos Paris",
+    "siren": "123456789",
+    "first_name": "Marie",
+    "last_name": "Martin",
+    "address": "10 rue de la Paix",
+    "zipcode": "75002",
+    "city": "PARIS-2EME-ARRONDISSEMENT",
+    "country": "FR"
+  }
+}
+```
+
+| Champ | Obligatoire | Notes |
+|-------|-------------|-------|
+| `company_name` | Oui | Raison sociale |
+| `siren` | Recommandé | Exactement 9 caractères pour la France, exactement 11 caractères pour l'Italie |
+| `first_name` | Oui (LLD) | Contact principal |
+| `last_name` | Oui (LLD) | Contact principal |
+| `address` | Oui | Adresse postale |
+| `zipcode` | Oui | Code postal |
+| `city` | Oui | Ville au format normalisé (voir [API Geo](/docs/api-reference/geo/getCitiesByZipcode)) |
+| `country` | Oui | Code pays : `"FR"` pour la France, `"IT"` pour l'Italie |
+
+## Informations particulier
+
+```json
+{
+  "individual": {
+    "first_name": "Jean",
+    "last_name": "Dupont",
+    "phone_number": "+33612345678",
+    "email": "jean@example.com",
+    "address": "5 avenue des Champs-Élysées",
+    "zipcode": "75001",
+    "city": "PARIS-1ER-ARRONDISSEMENT",
+    "country": "FR"
+  }
+}
+```
+
+| Champ | Obligatoire | Notes |
+|-------|-------------|-------|
+| `first_name` | Oui | -- |
+| `last_name` | Oui | -- |
+| `phone_number` | Oui | Format international recommandé |
+| `email` | Recommandé | -- |
+| `address` | Oui | Adresse postale |
+| `zipcode` | Oui | Code postal |
+| `city` | Oui | Ville au format normalisé (voir [API Geo](/docs/api-reference/geo/getCitiesByZipcode)) |
+| `country` | Oui | Code pays : `"FR"` pour la France, `"IT"` pour l'Italie |
+
+<Callout type="info">
+**Valeurs du champ `country`** -- Utilisez `"FR"` pour la France et `"IT"` pour l'Italie. Ce sont les seules valeurs acceptées.
+</Callout>
+
+## Gel des informations
+
+<Callout type="warn">
+**Gel dès le démarrage du contrat** -- Les informations `company` (erreur **1150**) et `individual` (erreur **1151**) sont gelées **dès que le contrat a démarré** (la `start_date` est passée). La validation sous-jacente est `contractHasNotStarted` : si la date de début est dans le passé, ces champs deviennent immutables, sans aucun délai supplémentaire. Vérifiez les données **avant** la date de début du contrat.
+</Callout>
+
+## Validation SIREN
+
+Le numéro SIREN est validé selon le pays :
+- **France (`FR`)** : exactement **9 caractères**
+- **Italie (`IT`)** : exactement **11 caractères**
+
+Un SIREN invalide déclenche l'erreur **1102**.
+
+## Exemple complet B2B -- Contrat LLD avec entreprise
+
+```bash
+curl -X POST https://api.mytulip.io/v2/contracts \
+  -H "key: votre-cle-api" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "votre-user-id",
+    "contract_type": "LLD",
+    "options": ["break", "theft", "company", "home_to_work"],
+    "start_date": "2026-04-01T00:00:00.000Z",
+    "end_date": "2027-04-01T00:00:00.000Z",
+    "company": {
+      "company_name": "Transport Express SAS",
+      "siren": "987654321",
+      "first_name": "Marie",
+      "last_name": "Martin",
+      "address": "10 rue de la Paix",
+      "zipcode": "75002",
+      "city": "PARIS-2EME-ARRONDISSEMENT",
+      "country": "FR"
+    },
+    "products": [
+      {
+        "product_id": "votre-product-id",
+        "data": {
+          "product_marked": "FLEET001",
+          "user_name": "Marie Martin"
+        }
+      }
+    ]
+  }'
+```
+
+<Callout type="info">
+**Format de ville normalisé** -- La valeur de `city` doit correspondre au format retourné par l'[API Geo](/docs/api-reference/geo/getCitiesByZipcode) (par exemple `"PARIS-2EME-ARRONDISSEMENT"` et non `"Paris"`).
+</Callout>
+
+## Exemple complet B2C -- Contrat LLD avec particulier
+
+```bash
+curl -X POST https://api.mytulip.io/v2/contracts \
+  -H "key: votre-cle-api" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uid": "votre-user-id",
+    "contract_type": "LLD",
+    "options": ["break", "theft", "individual", "home_to_work"],
+    "start_date": "2026-04-01T00:00:00.000Z",
+    "end_date": "2027-04-01T00:00:00.000Z",
+    "individual": {
+      "first_name": "Jean",
+      "last_name": "Dupont",
+      "phone_number": "+33612345678",
+      "email": "jean@example.com",
+      "address": "12 rue de Rivoli",
+      "zipcode": "75001",
+      "city": "PARIS-1ER-ARRONDISSEMENT",
+      "country": "FR"
+    },
+    "products": [
+      {
+        "product_id": "votre-product-id",
+        "data": {
+          "product_marked": "VELO001",
+          "user_name": "Jean Dupont"
+        }
+      }
+    ]
+  }'
+```

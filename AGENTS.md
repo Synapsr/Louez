@@ -1,390 +1,92 @@
-# Louez - AI Agent Context
+# Agent Instructions
 
-> Universal context file for AI coding assistants. See also: [CLAUDE.md](./CLAUDE.md) for Claude-specific context.
+Turborepo + pnpm monorepo. All conventions live in `docs/` — read them before writing code.
 
-## Overview
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the stack, core principles, and framework decision tree.
 
-**Louez** is a multi-tenant, self-hosted equipment rental management platform. It provides rental businesses with inventory management, reservation handling, customer databases, and branded storefronts.
+## Step 1 — Classify the task
 
-- **License**: MIT (open-source)
-- **Monorepo**: Turborepo + pnpm workspaces
-- **Language**: TypeScript (strict mode)
-- **Framework**: Next.js 16 with App Router
+Before writing any code, classify what you are about to do:
 
-## Architecture
+- **from-scratch** — creating something new: a net-new app, a new shared package, initial monorepo setup, scaffolding a backend or frontend module that doesn't exist yet
+- **migration** — moving or cleaning existing code: extracting a package, swapping a framework, aligning a legacy module with current conventions
+- **development** — modifying existing, already-established code (the default)
 
-### Multi-Tenant Model
+State the mode explicitly at the start of your response, then load the docs for that mode (Step 2).
 
-Each `store` operates independently with its own:
+If the user hasn't stated the task explicitly, these signals help:
 
-- Products, categories, pricing tiers
-- Customers and reservations
-- Settings, branding, legal pages
-- Team members (owner/member roles)
+- "set up", "init", "create new app/package", no existing files → **from-scratch**
+- "refactor", "migrate", "clean up", "extract", "align with conventions" → **migration**
+- Anything else (new feature, bug fix, edit to existing code) → **development**
 
-**Subdomain routing**:
+When truly ambiguous, ask the user before writing code.
 
-- `app.domain.com` → Admin dashboard
-- `{store-slug}.domain.com` → Public storefront
+## Step 2 — Load docs by mode
 
-### Route Groups
+### From-scratch mode
 
-| Group          | Path                            | Auth      | Purpose          |
-| -------------- | ------------------------------- | --------- | ---------------- |
-| `(auth)`       | `/login`, `/verify-request`     | Public    | Authentication   |
-| `(dashboard)`  | `/dashboard/*`, `/onboarding/*` | Protected | Store management |
-| `(storefront)` | `/{slug}/*`                     | Public    | Customer-facing  |
+| Creating / scaffolding | Read first |
+|------------------------|------------|
+| New monorepo / env setup | [docs/from-scratch/01-monorepo-setup.md](docs/from-scratch/01-monorepo-setup.md) |
+| Choosing a framework (Next.js vs TanStack Start) | [docs/from-scratch/02-framework-decision.md](docs/from-scratch/02-framework-decision.md) |
+| New shared package | [docs/from-scratch/03-packages.md](docs/from-scratch/03-packages.md) |
+| Backend (oRPC, Drizzle, auth, Directus) | [docs/from-scratch/04-backend.md](docs/from-scratch/04-backend.md) |
+| Frontend (components, state, forms) | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) |
+| Linting, formatting, TS config | [docs/from-scratch/06-tooling.md](docs/from-scratch/06-tooling.md) |
 
-### Data Flow
+> **Note:** This project currently uses ESLint + Prettier. The docs describe OXC (oxlint + oxfmt) as the target tooling. See [docs/migration/02-strategy.md](docs/migration/02-strategy.md).
 
-**Server Actions (mutations)**:
+### Migration mode
 
-```
-Request → Middleware (subdomain detection) → Layout (auth check) → Page/Action
-                                                     ↓
-                                            getCurrentStore()
-                                                     ↓
-                                            Database (storeId filter)
-```
+Always follow the order **audit → strategy → patterns → checklist**.
 
-**oRPC (queries/mutations)**:
+| Phase | Doc |
+|-------|-----|
+| 1. Audit the codebase | [docs/migration/01-audit.md](docs/migration/01-audit.md) |
+| 2. Plan the strategy | [docs/migration/02-strategy.md](docs/migration/02-strategy.md) |
+| 3. Apply extraction patterns | [docs/migration/03-extraction-patterns.md](docs/migration/03-extraction-patterns.md) |
+| 4. Run final conformance check | [docs/migration/04-checklist.md](docs/migration/04-checklist.md) |
 
-```
-Client Component → orpc.dashboard.*.queryOptions() → /api/rpc/[...path]
-                                                           ↓
-                                                    RPCHandler → Procedure middleware
-                                                           ↓
-                                                    getCurrentStore() / getCustomerSession()
-                                                           ↓
-                                                    Database (storeId filter)
-```
+A migration task usually means bringing existing code up to our from-scratch conventions — pair the migration doc with the relevant from-scratch doc (e.g., extracting a package → also read [docs/from-scratch/03-packages.md](docs/from-scratch/03-packages.md)).
 
-## Tech Stack
+### Development mode (default)
 
-| Layer         | Technology                           |
-| ------------- | ------------------------------------ |
-| Monorepo      | Turborepo + pnpm workspaces          |
-| Runtime       | Node.js, Next.js 16, React 19        |
-| Language      | TypeScript 5                         |
-| Database      | MySQL 8, Drizzle ORM                 |
-| Auth          | Better Auth (OAuth, Magic Link, OTP) |
-| API           | oRPC (type-safe RPC)                 |
-| Data Fetching | TanStack Query                       |
-| Validation    | Zod                                  |
-| UI            | Tailwind CSS 4, shadcn/ui, Base UI   |
-| Forms         | TanStack Form                        |
-| Payments      | Stripe Connect                       |
-| Email         | React Email, Nodemailer              |
-| PDF           | @react-pdf/renderer                  |
-| i18n          | next-intl (fr, en)                   |
+Load only the `code-review/` docs that match what you're touching — not the full set.
 
-## Monorepo Architecture
+| Editing | Read first |
+|---------|-----------|
+| Any change | [docs/code-review/00-general.md](docs/code-review/00-general.md) |
+| Creating / moving / renaming files | [docs/code-review/01-structure.md](docs/code-review/01-structure.md) |
+| TypeScript | [docs/code-review/02-typescript.md](docs/code-review/02-typescript.md) |
+| React components or hooks | [docs/code-review/03-react-patterns.md](docs/code-review/03-react-patterns.md) + [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) |
+| Forms (TanStack Form, `useAppForm`) | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Forms section) |
+| DB queries, oRPC routes, React Query | [docs/code-review/04-data-layer.md](docs/code-review/04-data-layer.md) + [docs/from-scratch/04-backend.md](docs/from-scratch/04-backend.md) |
+| Tailwind / styling | [docs/code-review/05-styling.md](docs/code-review/05-styling.md) |
+| Translations / i18n | [docs/from-scratch/05-frontend.md](docs/from-scratch/05-frontend.md) (Internationalization section) |
+| Auth, security, user input | [docs/code-review/06-security.md](docs/code-review/06-security.md) |
+| New or modified shared package | [docs/from-scratch/03-packages.md](docs/from-scratch/03-packages.md) + [docs/architecture/module-ownership.md](docs/architecture/module-ownership.md) |
+| Env variables | [docs/from-scratch/01-monorepo-setup.md](docs/from-scratch/01-monorepo-setup.md#environment-variables) |
 
-This project uses **Turborepo** with **pnpm workspaces** for monorepo management.
+## Step 3 — Final pass before every commit
 
-### Workspaces
+Run [docs/code-review/07-checklist.md](docs/code-review/07-checklist.md) against the diff — it's the condensed version of every code-review rule.
 
-| Workspace    | Package Prefix | Purpose                      |
-| ------------ | -------------- | ---------------------------- |
-| `apps/*`     | `@louez/`      | Deployable applications      |
-| `packages/*` | `@louez/`      | Shared libraries and configs |
+## Cross-linking convention
 
-### Task Pipeline
+Every doc in `docs/` ends with a **Related** section pointing at adjacent docs you may need. If you open a doc and the Related block doesn't cover something you need, check the other two directories (`code-review/`, `from-scratch/`, `migration/`) manually — they're meant to complement each other.
 
-Turborepo manages task execution with automatic dependency resolution and caching.
+## Agent hooks (Claude Code + Codex)
 
-**Cached tasks** (outputs stored for replay):
+This repo ships automated reminders that inject context when an agent edits specific files. They live in [.agents/](.agents/) as shell scripts, wired from [.claude/settings.json](.claude/settings.json) and [.codex/hooks.json](.codex/hooks.json) — same scripts, both tools.
 
-- `build` - Production builds (outputs: `dist/**`, `.next/**`)
-- `lint` - ESLint checks
-- `type-check` - TypeScript validation
+**Claude Code** — hooks are active by default. If you add/modify hooks mid-session, open `/hooks` once to reload.
 
-**Non-cached tasks** (always run):
+**Codex** — enable once per user in `~/.codex/config.toml`:
 
-- `dev` - Development server (persistent)
-- `db:*` - Database operations (side effects)
-- `clean` - Cleanup
-
-### Filtering
-
-Run tasks for specific packages using `--filter`:
-
-```bash
-# Run dev for web app only
-pnpm dev --filter=@louez/web
-
-# Build a specific package
-pnpm build --filter=@louez/db
-
-# Type-check web and its dependencies
-pnpm type-check --filter=@louez/web...
-
-# Run for all packages except one
-pnpm build --filter=!@louez/config
+```toml
+[features]
+codex_hooks = true
 ```
 
-### Adding a New Package
-
-1. Create directory in `packages/` or `apps/`
-2. Add `package.json` with `"name": "@louez/package-name"`
-3. Run `pnpm install` to link workspaces
-4. Import in other packages: `import { x } from '@louez/package-name'`
-
-## Directory Structure
-
-```
-louez/
-├── apps/
-│   └── web/                        # Next.js application
-│       ├── app/                    # Next.js App Router
-│       │   ├── (auth)/            # Login pages
-│       │   ├── (dashboard)/       # Protected admin routes
-│       │   ├── (storefront)/      # Public store routes [slug]/
-│       │   └── api/               # API endpoints (including /api/rpc)
-│       ├── components/
-│       │   ├── ui/                # Base components (shadcn/ui)
-│       │   ├── dashboard/         # Admin-specific
-│       │   └── storefront/        # Customer-facing
-│       ├── lib/
-│       │   ├── auth.ts            # Better Auth config + backward-compatible auth() wrapper
-│       │   ├── auth-client.ts     # Better Auth React client (signIn, signOut, OTP)
-│       │   ├── store-context.ts   # Multi-tenant utilities
-│       │   └── orpc/              # oRPC client utilities
-│       ├── contexts/              # React contexts
-│       └── messages/              # i18n JSON files
-│
-├── packages/
-│   ├── api/                       # @louez/api - oRPC router & procedures
-│   │   └── src/
-│   │       ├── router.ts          # Root router
-│   │       ├── procedures.ts      # Base procedures (public, dashboard, storefront)
-│   │       ├── context.ts         # Context type definitions
-│   │       └── routers/           # Feature routers
-│   │           ├── dashboard/     # Admin procedures
-│   │           └── storefront/    # Customer procedures
-│   ├── db/                        # @louez/db - Drizzle schema & connection
-│   ├── validations/               # @louez/validations - Zod schemas
-│   ├── types/                     # @louez/types - Shared TypeScript types
-│   ├── utils/                     # @louez/utils - Shared utilities
-│   └── ui/                        # @louez/ui - shadcn/ui components
-```
-
-## Commands
-
-All commands run through Turborepo. Use `--filter` to target specific packages.
-
-| Command                          | Purpose                               |
-| -------------------------------- | ------------------------------------- |
-| `pnpm dev`                       | Start all dev servers (Turbo TUI)     |
-| `pnpm dev:web`                   | Start web app only                    |
-| `pnpm build`                     | Production build (all packages)       |
-| `pnpm build --filter=@louez/web` | Build web app only                    |
-| `pnpm type-check`                | TypeScript check (all packages)       |
-| `pnpm type-check:web`            | Type-check web only                   |
-| `pnpm lint`                      | Run ESLint + duplicate audit          |
-| `pnpm audit:duplicates`          | Detect exact duplicate files          |
-| `pnpm format`                    | Run Prettier                          |
-| `pnpm clean`                     | Remove build artifacts & node_modules |
-| `pnpm db:push`                   | Sync schema to DB                     |
-| `pnpm db:studio`                 | Open Drizzle Studio                   |
-| `pnpm db:generate`               | Generate migrations                   |
-| `pnpm db:migrate`                | Apply migrations                      |
-
-## Coding Conventions
-
-### Server Actions
-
-Located in `actions.ts` files. Always:
-
-1. Authenticate via `getCurrentStore()`
-2. Validate input with Zod
-3. Filter database queries by `storeId`
-4. Return `{ success: true }` or `{ error: 'i18n.key' }`
-5. Call `revalidatePath()` after mutations
-
-### oRPC (Type-Safe API)
-
-For new API calls, use oRPC instead of REST for end-to-end type safety.
-When touching existing app-owned REST endpoints or page-local API logic, prefer migrating that logic into `@louez/api` procedures/services and consume it via `orpc.*` from the web app.
-Keep route handlers for integration-style endpoints where oRPC is not a fit (for example webhooks, third-party callbacks, or transport-specific streaming handlers).
-
-**Dashboard standard (preferred)**
-
-- Pages should be a **server shell** (auth/store context + optional SSR initial data) with a **client renderer** that owns reads/writes via TanStack Query + oRPC.
-- Client components should **not** import dashboard `actions.ts` for CRUD flows. Use `orpc.dashboard.*` queries/mutations instead.
-- Mutations should use **optimistic update + targeted invalidation** (avoid `router.refresh()` / global refetch).
-- Centralize invalidations where possible (example: `apps/web/lib/orpc/invalidation.ts`).
-
-**Migration shim note**
-
-Some dashboard procedures can call existing app server actions through the oRPC context injection in `apps/web/app/api/rpc/[...path]/route.ts` while logic is being extracted into `packages/api/src/services/*`.
-
-**Defining procedures** (`packages/api/src/routers/`):
-
-```typescript
-import { z } from 'zod';
-
-import { dashboardProcedure } from '../../procedures';
-
-export const myRouter = {
-  getItems: dashboardProcedure
-    .input(z.object({ status: z.string().optional() }))
-    .handler(async ({ input, context }) => {
-      // context.store is available (multi-tenant isolated)
-      return db.query.items.findMany({
-        where: eq(items.storeId, context.store.id),
-      });
-    }),
-};
-```
-
-**Client usage** (in React components):
-
-```typescript
-import { useQuery } from '@tanstack/react-query';
-
-import { orpc } from '@/lib/orpc/react';
-
-function MyComponent() {
-  const { data, isLoading } = useQuery(
-    orpc.dashboard.myRouter.getItems.queryOptions({
-      input: { status: 'active' },
-    }),
-  );
-}
-```
-
-**Base procedures**:
-
-- `publicProcedure` - No auth required
-- `dashboardProcedure` - Requires authenticated user + store access
-- `storefrontProcedure` - Public but requires store context (via header)
-- `storefrontAuthProcedure` - Requires authenticated customer
-- `requirePermission('write')` - Requires specific permission
-
-### Client Async Data (Required)
-
-- In client components/hooks, all async network/IO flows must use TanStack Query:
-  - reads via `useQuery` (or `prefetchQuery` / `ensureQueryData` when applicable),
-  - writes via `useMutation`.
-- Do not implement request fetching with ad-hoc `useEffect` + local loading/error state when TanStack Query can model it.
-- Keep query keys stable and deterministic; use `staleTime`/`gcTime` intentionally to prevent redundant refetches.
-- Exceptions: server-side data loading in Server Components, Next.js route handlers, and one-off non-network async UI helpers.
-
-### Components
-
-- Use `cn()` for conditional classes (from `src/lib/utils.ts`)
-- Prefer shared primitives from `@louez/ui` first
-- Use `apps/web/components/ui/` only for app-specific composition/wrappers
-- Use CVA for variant-based styling
-- Keep components in appropriate domain folder
-
-### Module Ownership (Critical)
-
-- Follow `docs/architecture/module-ownership.md` as the single source of truth
-- Shared UI tokens/primitives: `packages/ui`
-- Shared types: `packages/types`
-- Shared validations: `packages/validations`
-- Shared pricing logic: `packages/utils/src/pricing`
-- Shared DB schema + migrations: `packages/db/src`
-- Never recreate shared modules under:
-  - `apps/web/lib/pricing/*`
-  - `apps/web/types/*`
-  - `apps/web/lib/validations/*`
-  - `apps/web/lib/db/*`
-
-### Database
-
-- All primary keys: 21-char nanoid
-- All monetary values: DECIMAL(10,2)
-- Always include `storeId` in queries (multi-tenant isolation)
-- Use relations defined in schema for joins
-- Migrations and snapshots live in `packages/db/src/migrations` only
-
-### Forms
-
-- TanStack Form with Zod validation via `useAppForm` hook
-- Shared validation schemas live in `packages/validations`
-- Error messages via i18n keys
-- For client-side async submissions (auth flows, save actions, etc.), prefer `useMutation` from TanStack Query over manual loading/error `useState`
-- If `mutateAsync` is called from `onSubmit`, handle expected failures explicitly (`try/catch` or use `mutate` + `onError`) to avoid rejected submit promises leaking to logs
-- Keep field values in `useAppForm` when practical; reserve `useState` for flow state (for example, step toggles)
-- When extracting large TanStack form sections into child components, keep `useStore` selectors in the parent coordinator and pass derived primitive values to children unless the child has a concretely typed form API
-- See details at `docs/FORM_HANDLING.md`
-
-### Internationalization
-
-- Translations in `src/messages/{locale}.json`
-- Prefer one `useTranslations()` call per file/component and reuse that single translator across the file
-- Allow exceptions only when Next.js boundaries require it (for example separate server/client translation APIs)
-- Prefer calling `useTranslations()` inside each component file instead of passing translator functions through props, to preserve i18n Ally key inference and local type safety
-- For feature-local client hooks that own UI copy, call `useTranslations()` inside the hook instead of passing a translator callback from parents
-- Keep related keys grouped in the same message namespace so i18n Ally can detect and manage them consistently
-- Reuse existing translation keys before creating new ones
-- Error keys follow pattern: `errors.{errorType}`
-
-### Reuse Existing Logic
-
-- Reuse existing helpers, UI primitives, and domain logic before introducing new abstractions
-- Prefer extending current patterns over creating parallel implementations for similar behavior
-- Prefer smaller coordinator files: when a page/form grows large, extract local hooks and section/step components early to keep the main file orchestration-focused
-- Extract helper functions when they are pure, non-UI, and add visual noise in page/component files
-- Keep logic inline when it is tiny and only meaningful next to a single JSX interaction
-- Prefer colocated utils first for feature-specific helpers
-- Move shared helpers to `lib/utils/util.<name>` when they are reused across features
-
-## Key Domain Concepts
-
-### Reservation Flow
-
-```
-pending → confirmed → ongoing → completed
-    ↓         ↓
- rejected  cancelled
-```
-
-### Pricing Modes
-
-- `hour`: Hourly rental
-- `day`: Daily rental
-- `week`: Weekly rental
-
-### Payment Methods
-
-`stripe` | `cash` | `card` | `transfer` | `check` | `other`
-
-### User Roles
-
-- `owner`: Full access including settings and team management
-- `member`: Read and write access only
-
-## Security Requirements
-
-- Never commit secrets or `.env` files
-- Always validate user input with Zod
-- Always filter by `storeId` (prevents cross-tenant access)
-- Use `currentUserHasPermission()` for sensitive operations
-- Customer sessions use separate auth (passwordless OTP)
-
-## Testing Workflow
-
-1. `pnpm lint` - Run ESLint and duplicate-audit guardrail
-2. `pnpm type-check:web` - Verify TypeScript compiles
-3. `pnpm build --filter=@louez/web` - Verify production build
-4. Test dashboard at `localhost:3000`
-5. Test storefront at `localhost:3000/{slug}` (with PREVIEW_MODE=slug)
-6. Check console for runtime errors
-
-## Documentation References
-
-- Database schema: `packages/db/src/schema.ts`
-- Auth configuration: `apps/web/lib/auth.ts` (Better Auth server + backward-compatible `auth()` wrapper)
-- Auth client: `apps/web/lib/auth-client.ts` (Better Auth React client)
-- Multi-tenant context: `apps/web/lib/store-context.ts`
-- Middleware routing: `apps/web/middleware.ts`
-- oRPC router: `packages/api/src/router.ts`
-- oRPC procedures: `packages/api/src/procedures.ts`
-- oRPC client: `apps/web/lib/orpc/`
-- Email templates: `apps/web/lib/email/templates/`
-- Pricing logic: `packages/utils/src/pricing/`
-- Module ownership rules: `docs/architecture/module-ownership.md`
+Note: as of April 2026, Codex `PreToolUse`/`PostToolUse` only emit the `Bash` tool name — the `Write`/`Edit`/`Update` matchers are kept for when Codex ships that support. Today, the reliably-firing Codex hooks are `pre-commit` (Bash) and `session-start`.

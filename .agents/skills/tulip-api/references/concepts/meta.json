@@ -1,0 +1,15 @@
+{
+  "title": "Concepts",
+  "pages": [
+    "index",
+    "contract-lifecycle",
+    "contract-options",
+    "contract-eligibility",
+    "products-catalog",
+    "claims-workflow",
+    "documents-management",
+    "questions-by-product",
+    "settlements-payments",
+    "webhooks"
+  ]
+}

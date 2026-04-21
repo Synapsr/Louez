@@ -1,0 +1,33 @@
+---
+title: Développer avec les LLMs
+description: Utilisez la documentation et les APIs Tulip avec vos assistants IA et LLMs.
+---
+
+Vous pouvez utiliser des modèles de langage (LLMs) pour vous aider à développer vos intégrations Tulip. Cette page explique comment accéder à notre documentation dans des formats adaptés aux LLMs et comment connecter vos assistants IA.
+
+## Utiliser la documentation avec les LLMs
+
+### llms.txt
+
+Le fichier [llms.txt](https://llmstxt.org) est un standard qui aide les LLMs à indexer du contenu efficacement, similaire à un sitemap pour les moteurs de recherche. Les outils IA utilisent ce fichier pour comprendre la structure de la documentation et trouver le contenu pertinent.
+
+Nous hébergeons deux fichiers :
+
+- [docs.mytulip.io/llms.txt](https://docs.mytulip.io/llms.txt) — index des pages disponibles
+- [docs.mytulip.io/llms-full.txt](https://docs.mytulip.io/llms-full.txt) — contenu complet de la documentation en un seul fichier
+
+### skill.md
+
+La [spécification skill.md](https://agentskills.io/specification) est un format structuré et lisible par les machines qui décrit ce que les agents IA peuvent accomplir avec Tulip. Là où `llms.txt` indique aux agents où trouver l'information, `skill.md` leur indique quelles capacités sont disponibles, quels inputs sont requis et quelles contraintes s'appliquent.
+
+Les agents peuvent installer ce skill via le [CLI skills](https://www.npmjs.com/package/skills) :
+
+```bash
+npx skills add @mytulip/tulip-api-skills
+```
+
+## Voir aussi
+
+- [Spécification OpenAPI](/openapi.json) — Spec complète de l'API
+- [Gestion des erreurs](/docs/guides/error-handling) — Catalogue des codes d'erreur
+- [Webhooks](/docs/concepts/webhooks) — Configuration des webhooks

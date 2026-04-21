@@ -1,0 +1,34 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-pre-commit.sh'" }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|Update",
+        "hooks": [
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-forms.sh'" },
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-data-layer.sh'" },
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-security.sh'" }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-new-package.sh'" },
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-new-file.sh'" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "sh -c 'cd \"$(git rev-parse --show-toplevel 2>/dev/null)\" && ./.agents/remind-on-session-start.sh'" }
+        ]
+      }
+    ]
+  }
+}

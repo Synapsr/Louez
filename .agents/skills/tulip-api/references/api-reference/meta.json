@@ -1,0 +1,15 @@
+{
+  "title": "Référence API",
+  "description": "Documentation des endpoints REST",
+  "root": true,
+  "pages": [
+    "index",
+    "---Contrats & Produits---",
+    "contracts",
+    "products",
+    "renters",
+    "geo",
+    "---Sinistres---",
+    "claims"
+  ]
+}

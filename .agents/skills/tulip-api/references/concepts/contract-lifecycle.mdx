@@ -1,0 +1,306 @@
+---
+title: Cycle de vie des contrats
+description: Types de contrat, statuts, fenêtres de modification, renouvellement automatique et résiliation.
+---
+
+## Types de contrat
+
+| Type | Nom | Durée typique |
+|------|-----|---------------|
+| **LCD** | Location Courte Durée | Quelques heures à quelques jours |
+| **LMD** | Location Moyenne Durée | 1 à 12 mois |
+| **LLD** | Location Longue Durée | 12 mois à plusieurs années |
+
+Le type de contrat détermine les options requises, les règles de validation et les fenêtres de modification applicables. Voir [Options de contrat](/docs/concepts/contract-options).
+
+## Statuts
+
+Un contrat passe par un statut initial `open`, puis se termine dans l'un des trois états finaux :
+
+```
+open → closed | cancel | terminated
+```
+
+| Statut | Description |
+|--------|-------------|
+| `open` | Le contrat est actif et en cours. |
+| `closed` | Fin normale : le contrat est arrivé à sa date de fin (`end_date`) de manière automatique. |
+| `cancel` | Annulation : le contrat a été supprimé dans les **4 premières heures** suivant sa date de début. |
+| `terminated` | Résiliation anticipée : le contrat a été résilié **après la fenêtre de 4 heures**, avant sa date de fin prévue. |
+
+<Callout type="info">
+**Trois états finaux distincts** — `closed` est automatique à l'échéance ; `cancel` ne s'applique que dans la fenêtre de 4 heures ; `terminated` nécessite une raison explicite (voir [Résiliation](#résiliation-terminated)).
+</Callout>
+
+## Fenêtres temporelles critiques
+
+### Tolérance à la création
+
+<Callout type="info">
+La `start_date` bénéficie d'une tolérance de **±30 minutes** à la création. Une date de début légèrement dans le passé (moins de 30 minutes) sera acceptée.
+</Callout>
+
+### Fenêtre de 4 heures — Modification des dates
+
+<Callout type="warn">
+Après **4 heures** suivant la `start_date`, les champs `start_date` et `end_date` ne peuvent plus être modifiés. Toute tentative renvoie l'erreur **1050**. Dans cette même fenêtre, la suppression du contrat produit une **annulation** (`cancel`), et non une résiliation.
+</Callout>
+
+### Gel des informations entreprise et particulier
+
+<Callout type="warn">
+Les informations `company` (erreur **1150**) et `individual` (erreur **1151**) sont gelées **dès que le contrat a démarré** (la `start_date` est passée). La validation sous-jacente est `contractHasNotStarted` : si la date de début est dans le passé, ces champs deviennent immutables, sans aucun délai supplémentaire.
+</Callout>
+
+Assurez-vous que les informations entreprise et particulier sont correctes **avant** la date de début du contrat. Après le démarrage, seule la création d'un nouveau contrat permet de corriger ces données.
+
+### Fenêtre de 2 heures — Modification post-clôture
+
+<Callout type="info">
+Un contrat passé au statut `closed` peut encore être modifié via `PATCH` pendant **2 heures** après la clôture. Passé ce délai, le contrat est définitivement verrouillé.
+</Callout>
+
+Cette fenêtre permet de corriger d'éventuelles erreurs sur un contrat long terme qui vient tout juste d'arriver à échéance.
+
+## Modification d'un contrat
+
+Les champs modifiables dépendent de l'état du contrat et du temps écoulé :
+
+| Champ | Modifiable si... |
+|-------|-----------------|
+| `start_date`, `end_date` | Contrat démarré depuis moins de 4 heures |
+| `company`, `individual` | Contrat pas encore démarré (`start_date` dans le futur) |
+| `products` (remplacement) | Le produit concerné est en statut `open` |
+| Champs LLD après clôture | Contrat LLD clôturé depuis moins de 2 heures |
+
+```bash
+PATCH /v2/contracts/{cid}
+```
+
+### Remplacement de produit
+
+La modification d'un produit dans un contrat **crée un nouveau produit** et passe l'ancien en statut `has_been_replaced` avec un champ `replaced_by` pointant vers le nouveau produit.
+
+## Opérations sur les produits
+
+En plus de la modification globale du contrat, vous pouvez gérer les produits individuellement :
+
+### Ajouter un produit
+
+```bash
+POST /v2/contracts/{cid}/products
+```
+
+Ajoute un ou plusieurs produits au contrat existant.
+
+### Supprimer un produit
+
+```bash
+DELETE /v2/contracts/{cid}/products
+```
+
+Le corps de la requête contient les identifiants des produits à supprimer (`cpid`).
+
+```json
+{
+  "products": ["cpid_001", "cpid_002"]
+}
+```
+
+### Mettre à jour un produit
+
+Utilisez `PATCH /v2/contracts/{cid}` en passant l'objet `products` avec les modifications souhaitées. Le remplacement suit le mécanisme décrit ci-dessus (`has_been_replaced`).
+
+## Prévisualisation
+
+Les endpoints suivants supportent le paramètre `?preview=true` :
+
+```
+POST   /v2/contracts?preview=true
+PATCH  /v2/contracts/{cid}?preview=true
+DELETE /v2/contracts/{cid}?preview=true
+POST   /v2/contracts/{cid}/products?preview=true
+DELETE /v2/contracts/{cid}/products?preview=true
+```
+
+En mode prévisualisation :
+
+- Le contrat n'est **pas créé, modifié, résilié ou altéré** réellement
+- La réponse contient les champs calculés (prix, garanties, détails produits) tels qu'ils seraient si l'opération était effectuée
+- Le champ `cid` est **`undefined`** dans la réponse (aucun contrat n'a été persisté)
+- Utile pour valider les données, vérifier les prix et afficher une confirmation à l'utilisateur avant de créer le contrat
+
+<Callout type="info">
+**Simulation de prix (Devis)** — Le mode preview est la méthode standard pour obtenir un devis sans créer de contrat. La requête en preview nécessite moins d'informations qu'une création réelle : seuls le type de produit et sa valeur sont requis, les informations utilisateur détaillées (`company`, `individual`) et les données produit complètes (`user_name`, `product_marked`) peuvent être omises.
+</Callout>
+
+## Annulation (`cancel`)
+
+Si le contrat a démarré il y a **moins de 4 heures**, la suppression produit une annulation :
+
+```bash
+DELETE /v2/contracts/{cid}
+```
+
+Le statut du contrat passe à `cancel`. Aucun paramètre supplémentaire n'est requis.
+
+## Résiliation (`terminated`)
+
+Si le contrat a démarré il y a **plus de 4 heures**, la suppression produit une résiliation anticipée :
+
+```bash
+DELETE /v2/contracts/{cid}
+Content-Type: application/json
+
+{
+  "reason": "Le locataire a restitué le véhicule avant terme.",
+  "end_date": "2024-09-15T00:00:00.000Z"
+}
+```
+
+<Callout type="warn">
+**Le champ `reason` est obligatoire** pour toute résiliation. Sans ce champ, la requête est rejetée. Le champ `end_date` est optionnel : sans lui, la résiliation est effective immédiatement.
+</Callout>
+
+Contraintes sur `end_date` :
+
+- Ne peut pas être dans le passé
+- Ne peut pas dépasser la date de fin originale du contrat
+
+Pour plus de détails sur les codes d'erreur, consultez le [guide de gestion des erreurs](/docs/guides/error-handling).
+
+## Renouvellement automatique (Tacite reconduction)
+
+Le renouvellement automatique permet de prolonger un contrat à son échéance sans intervention manuelle. À la date de fin, un nouveau contrat est automatiquement créé avec les mêmes paramètres.
+
+### Activer le renouvellement
+
+Deux méthodes sont disponibles :
+
+**À la création du contrat** — passez `automatic_renewal: true` dans le corps de la requête :
+
+```json
+{
+  "uid": "user-id",
+  "contract_type": "LLD",
+  "automatic_renewal": true,
+  "options": ["break", "theft", "company"],
+  ...
+}
+```
+
+**Sur un contrat existant** — utilisez l'endpoint dédié :
+
+```bash
+POST /v2/contracts/{cid}/automaticRenewal
+```
+
+### Champs modifiables
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `use_notification` | `boolean` | Active/désactive la notification avant renouvellement |
+| `rejected` | `boolean` | Rejeter (annuler) le renouvellement prévu |
+| `duration_months` | `number` | Durée du nouveau contrat en mois |
+
+Ces champs se modifient via :
+
+```bash
+PATCH /v2/contracts/{cid}/automaticRenewal
+```
+
+### Champs en lecture seule
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `applied` | `boolean` | Le renouvellement a été appliqué |
+| `applied_at` | `string` | Date à laquelle le renouvellement a été appliqué |
+| `renewal_scheduled_for` | `string` | Date prévue pour le renouvellement |
+| `notified` | `boolean` | La notification a été envoyée |
+| `next_cid` | `string` | Identifiant du nouveau contrat créé par le renouvellement |
+
+### Cycle de vie du renouvellement
+
+```
+Création → Notification (si activée) → Rejet ou Application → Nouveau contrat (next_cid)
+```
+
+1. **Création** — Le renouvellement est configuré (à la création du contrat ou via POST).
+2. **Notification** — Si `use_notification` est `true`, une notification est envoyée avant l'échéance.
+3. **Rejet ou application** — Le renouvellement peut être rejeté (`rejected: true`) ou s'applique automatiquement à la date prévue.
+4. **Nouveau contrat** — Si appliqué, un nouveau contrat est créé. Son identifiant est disponible dans `next_cid`.
+
+### Consulter le renouvellement
+
+```bash
+# Renouvellement du contrat courant
+GET /v2/contracts/{cid}/automaticRenewal
+
+# Renouvellement par identifiant
+GET /v2/contracts/{cid}/automaticRenewal/{renewalId}
+
+# Lister tous les renouvellements d'un contrat
+GET /v2/contracts/{cid}/automaticRenewals
+```
+
+### Actions en masse (bulk)
+
+Vous pouvez agir sur les renouvellements de plusieurs contrats en une seule requête :
+
+```bash
+POST /v2/contracts/automaticRenewals/bulk
+```
+
+Les actions disponibles en masse sont :
+
+- **Ajouter** un renouvellement automatique à plusieurs contrats
+- **Rejeter** les renouvellements de plusieurs contrats
+- **Activer les notifications** sur plusieurs renouvellements
+- **Désactiver les notifications** sur plusieurs renouvellements
+
+### Contraintes
+
+<Callout type="warn">
+- Le renouvellement ne peut **pas être modifié** après la `end_date` du contrat.
+- Le renouvellement ne peut **pas être modifié** s'il a déjà été appliqué (`applied: true`).
+- Le contrat doit être en statut **`open`** pour configurer ou modifier un renouvellement.
+</Callout>
+
+## Contrats de test
+
+<Callout type="info">
+**Configuration de compte requise** — La création de contrats de test nécessite l'activation de cette fonctionnalité sur votre compte Tulip. Les contrats de test se comportent comme des contrats normaux mais sont exclus des flux financiers. Pour plus de détails, contacter Tulip.
+</Callout>
+
+```json
+{
+  "uid": "user-id",
+  "contract_type": "LCD",
+  "test": true,
+  "options": ["break", "theft"],
+  ...
+}
+```
+
+## Récapitulatif des fenêtres temporelles
+
+| Fenêtre | Déclencheur | Effet |
+|---------|------------|-------|
+| **0 → 4h** après `start_date` | Suppression du contrat | Annulation (`cancel`) |
+| **> 4h** après `start_date` | Suppression du contrat | Résiliation (`terminated`, `reason` requis) |
+| **Dès que `start_date` est passée** | Modification `company` / `individual` | Bloquée (erreurs 1150/1151) |
+| **0 → 4h** après `start_date` | Modification `start_date` / `end_date` | Autorisée |
+| **> 4h** après `start_date` | Modification `start_date` / `end_date` | Bloquée (erreur 1050) |
+| **0 → 2h** après clôture | `PATCH` sur contrat `closed` | Autorisé |
+| **> 2h** après clôture | `PATCH` sur contrat `closed` | Bloqué |
+
+## LCD courte durée (≤ 4 heures)
+
+Les contrats LCD d'une durée inférieure ou égale à 4 heures bénéficient d'un tarif réduit automatique (« short LCD »). Ce mode est détecté par le système en fonction de la différence entre `start_date` et `end_date`. Aucun paramètre supplémentaire n'est requis.
+
+## Voir aussi
+
+- [Éligibilité et compatibilité](/docs/concepts/contract-eligibility) — Matrices produit × contrat × options et règles multi-produits
+- [Options de contrat](/docs/concepts/contract-options) — Options obligatoires, facultatives et combinaisons selon l'usage
+- [Gestion des erreurs](/docs/guides/error-handling) — Codes d'erreur et résolution
+- [Environnement de test](/docs/guides/testing-sandbox) — Contrats de test et sandbox

@@ -1,0 +1,65 @@
+---
+title: Authentification
+description: Comment obtenir et utiliser votre clé API pour accéder à l'API Tulip.
+---
+
+Tous les endpoints de l'API Tulip requièrent une authentification par clé API.
+
+## Obtenir votre clé API
+
+Votre clé API est fournie par Tulip lors de la mise en place de votre partenariat. Si vous n'en avez pas encore, contactez votre interlocuteur commercial ou le [support](/docs/resources/support).
+
+Vous recevrez deux clés :
+- **Clé développement** — pour les tests et le développement (aucun impact financier)
+- **Clé production** — pour les contrats et sinistres réels
+
+Les deux clés utilisent la même URL : `https://api.mytulip.io/v2`
+
+<Callout type="info">
+Vous pouvez retrouver votre clé API à tout moment depuis l'interface [Colibri](app.mytulip.io) : **Profil > Paramètres > Intégration API** ou dans l'[espace développeur](/docs/getting-started/developer-space) (menu latéral > Développeur). L'espace développeur vous donne également accès aux logs d'appels API et à la gestion des webhooks.
+</Callout>
+
+## Utilisation
+
+Incluez votre clé API dans le header `key` de chaque requête :
+
+```bash
+curl -X GET https://api.mytulip.io/v2/contracts \
+  -H "key: votre-cle-api"
+```
+
+```typescript
+const response = await fetch('https://api.mytulip.io/v2/contracts', {
+  headers: {
+    'key': 'votre-cle-api',
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+## Erreurs d'authentification
+
+| Code | Message | Cause |
+|------|---------|-------|
+| 9001 | Missing API key | Le header `key` est absent de la requête |
+| 9002 | Invalid API key | La clé API fournie n'est pas valide |
+| 9003 | Unauthorized user | La clé est valide mais n'a pas accès à cette ressource |
+
+Exemple de réponse d'erreur :
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 9001,
+    "message": "Missing API key"
+  }
+}
+```
+
+## Bonnes pratiques
+
+- **Ne partagez jamais** votre clé API dans du code client ou des dépôts publics
+- **Utilisez des variables d'environnement** pour stocker vos clés
+- **Utilisez la clé développement** pour le développement et les tests
+- En cas de compromission, contactez immédiatement le [support](/docs/resources/support) pour révoquer et régénérer votre clé
