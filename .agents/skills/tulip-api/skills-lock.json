@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "tulip-api": {
+      "source": "mytulip/tulip-api-skills",
+      "sourceType": "github",
+      "computedHash": "cf8fd0f31c28770cb8c9d2b4a80bd2f83a121b4a63b8232a4d359789f5f3559e"
+    }
+  }
+}

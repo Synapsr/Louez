@@ -1,0 +1,84 @@
+---
+title: Règlements et paiements
+description: Cycle de vie des remboursements, types de règlements et suivi des paiements.
+---
+
+Les règlements (settlements) représentent les transactions financières liées à un sinistre. Ils apparaissent dans le champ `settlements` de la réponse d'un sinistre.
+
+## Types de règlement
+
+| Type | Description |
+|------|-------------|
+| `refund` | **Remboursement** — paiement versé à l'assuré |
+| `returned` | **Retour** — remboursement échoué (IBAN invalide, virement rejeté, etc.) |
+
+## Cycle de vie
+
+```
+1. Remboursement approuvé
+   └─► Settlement créé (type: "refund", paymentAt: null)
+
+2. Virement traité
+   └─► paymentAt mis à jour avec la date de paiement
+
+3. Si le virement échoue
+   └─► Nouveau settlement créé (type: "returned")
+   └─► Nouveau settlement "refund" créé pour la nouvelle tentative
+```
+
+### Exemple de réponse
+
+```json
+{
+  "settlements": [
+    {
+      "id": "stl_001",
+      "type": "refund",
+      "amount": 500.00,
+      "paymentAt": "2024-02-15T14:30:00Z",
+      "createdAt": "2024-02-10T10:00:00Z"
+    },
+    {
+      "id": "stl_002",
+      "type": "returned",
+      "amount": 500.00,
+      "paymentAt": null,
+      "createdAt": "2024-02-20T09:00:00Z"
+    }
+  ]
+}
+```
+
+Dans cet exemple :
+1. Un remboursement de 500 € a été effectué le 15/02
+2. Ce remboursement a été retourné le 20/02 (virement échoué)
+
+## Champs
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | string | Identifiant unique du règlement |
+| `type` | `refund` \| `returned` | Type de transaction |
+| `amount` | number | Montant en euros |
+| `paymentAt` | string \| null | Date de paiement effectif (null si en attente) |
+| `createdAt` | string | Date de création du règlement |
+
+## Points d'attention
+
+<Callout type="warn">
+**Paiement actif bloque l'abandon** — Un sinistre avec un paiement en cours ne peut pas être abandonné (erreur 3007). Attendez que le paiement soit traité avant de tenter un abandon.
+</Callout>
+
+<Callout type="info">
+**`paymentAt` null** — Un règlement avec `paymentAt: null` signifie que le paiement est en cours de traitement. Il sera mis à jour automatiquement une fois le virement effectué.
+</Callout>
+
+## Webhooks associés
+
+| Événement | Description |
+|-----------|-------------|
+| `v2.claim.settlement.created` | Nouveau règlement créé |
+| `v2.claim.settlement.paid` | Paiement effectué |
+| `v2.claim.settlement.returned` | Paiement retourné (échoué) |
+
+Voir [Webhooks](/docs/concepts/webhooks) pour l'intégration.

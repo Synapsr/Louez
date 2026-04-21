@@ -1,0 +1,111 @@
+---
+title: Éligibilité et compatibilité
+description: Matrices de compatibilité produit/contrat/options, règles de panier multi-produits et seuils critiques.
+---
+
+Cette page de référence regroupe les règles d'éligibilité qui déterminent **quelles combinaisons de produits, types de contrat et options sont valides**. Consultez-la avant de construire vos appels API pour éviter les erreurs de validation.
+
+## Types de contrat par type de produit
+
+Chaque type de produit ne supporte pas tous les types de contrat. Un contrat ne peut être créé que si **tous les produits** du panier supportent le type de contrat sélectionné.
+
+| Type de produit | LCD | LMD | LLD |
+|---|:---:|:---:|:---:|
+| Vélo (`bike`) | Oui | Oui | Oui |
+| High-tech (`high-tech`) | Oui | Oui | Oui |
+| Sports nautiques (`watersports`) | Oui | Oui | Oui |
+| Sports d'hiver (`wintersports`) | Oui | Non* | Non* |
+| Événementiel (`event`) | Oui | Oui | Non* |
+| Outillage (`small-tools`) | Oui | Oui | Non* |
+| Sports (`sports`) | Oui | Oui | Non* |
+
+<Callout type="info">
+*Tarification sur demande, veuillez contacter le support Tulip.
+</Callout>
+
+<Callout type="warn">
+**Sports d'hiver** — Les produits `wintersports` ne peuvent être assurés qu'en LCD. Si vous tentez de créer un contrat LMD ou LLD avec un produit `wintersports`, la requête sera rejetée.
+</Callout>
+
+## Options disponibles par type de produit
+
+Toutes les options ne sont pas compatibles avec tous les types de produits :
+
+| Option | Vélo | High-tech | Watersports | Wintersports | Event | Small-tools | Sports |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `break` | Oui | Oui | Oui | Oui | Oui | Oui | Oui |
+| `theft` | Oui | Oui | Oui | Oui | Oui | Oui | Oui |
+| `client_theft` | Oui | Non | Non | Non | Non | Non | Non |
+| `ia` | Oui | Non | Non | Non | Non | Non | Non |
+| `rc` | Oui | Non | Non | Non | Non | Non | Non |
+| `assistance_standard` | Oui | Non | Non | Non | Non | Non | Non |
+| `assistance_premium` | Oui | Non | Non | Non | Non | Non | Non |
+| `no_deductible` | Non | Oui | Non | Non | Non | Non | Non |
+
+<Callout type="info">
+Les options `client_theft`, `ia`, `rc`, `assistance_standard`, `assistance_premium` sont **exclusives aux vélos**. L'option `no_deductible` est **exclusive au high-tech**. Les tenter sur d'autres produits déclenchera une erreur de validation.
+</Callout>
+
+## Options disponibles par type de contrat
+
+La disponibilité des options dépend aussi du type et de la durée du contrat :
+
+| Option | LCD | LMD < 6 mois | LMD ≥ 6 mois | LLD |
+|---|:---:|:---:|:---:|:---:|
+| `break` / `theft` | Oui (couplés) | Oui (couplés) | Oui (découplables) | Oui (découplables) |
+| `client_theft` | Oui | Oui | Oui | Oui |
+| `ia` / `rc` | Non | Oui | Oui | Oui |
+| `assistance_standard` | Non | Oui | Oui | Oui |
+| `assistance_premium` | Non | Non | Non | Oui |
+| `home_to_work` / `pro` / `transporter` | Non | Non | Oui | Oui |
+| `sharing` | Non | Non | Non | Oui |
+| `loa` | Non | Non | Non | Oui |
+| `no_deductible` | Non | Non | Non | Oui |
+
+Pour le détail du comportement de chaque option, consultez [Options de contrat](/docs/concepts/contract-options).
+
+## Seuil LMD 6 mois
+
+<Callout type="warn">
+**Seuil critique** — La durée de 6 mois est un point d'inflexion pour les contrats LMD. Un contrat LMD de 5 mois et un contrat LMD de 7 mois n'ont **pas les mêmes règles** :
+
+- **Options disponibles** : les options d'usage (`home_to_work`, `pro`, `transporter`) ne sont disponibles qu'à partir de 6 mois
+- **Couplage casse/vol** : découplable uniquement à partir de 6 mois
+- **Option `individual` / `company`** : doit être présente dans les options **à partir de 6 mois** (interdite avant)
+- **Champs obligatoires entreprise** : l'adresse et des champs supplémentaires sont requis à partir de 6 mois
+
+Vérifiez la durée de votre contrat pour déterminer les règles applicables.
+</Callout>
+
+## LCD courte durée (≤ 4 heures)
+
+Les contrats LCD d'une durée inférieure ou égale à 4 heures bénéficient d'un tarif réduit (« short LCD »). Ce mode est automatiquement détecté par le système en fonction de la différence entre `start_date` et `end_date`. Aucun paramètre supplémentaire n'est requis.
+
+## Panier multi-produits
+
+Lorsqu'un contrat contient plusieurs produits de types différents, des règles de combinaison s'appliquent :
+
+### Règle 1 — Intersection des types de contrat
+
+Le type de contrat doit être supporté par **tous** les produits du panier. Par exemple :
+
+- Vélo (`bike`) + High-tech → LCD, LMD ou LLD (les trois supportés par les deux)
+- Vélo (`bike`) + Ski (`wintersports`) → **LCD uniquement** (le ski ne supporte que LCD)
+- High-tech + Événementiel (`event`) → LCD ou LMD (l'événementiel ne supporte pas LLD)
+
+### Règle 2 — Union puis intersection des options
+
+Les options disponibles sont calculées en deux étapes :
+1. **Union** des options de chaque type de produit
+2. **Intersection** avec les options autorisées par le type de contrat
+
+<Callout type="info">
+**Exemple concret** — Un contrat LLD avec uniquement du high-tech ne pourra pas inclure l'option `ia` (individuel accident). Mais un contrat LLD avec un vélo + du high-tech le pourra, car le vélo rend l'option éligible.
+</Callout>
+
+## Voir aussi
+
+- [Options de contrat](/docs/concepts/contract-options) — Comportement détaillé de chaque option
+- [Catalogue de produits](/docs/concepts/products-catalog) — Types, sous-types et contraintes de valeur
+- [Cycle de vie des contrats](/docs/concepts/contract-lifecycle) — Statuts, fenêtres temporelles et modification
+- [Gestion des erreurs](/docs/guides/error-handling) — Codes d'erreur et résolution

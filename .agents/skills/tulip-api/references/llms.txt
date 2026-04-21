@@ -1,0 +1,71 @@
+# Tulip Documentation
+
+> Documentation officielle de la plateforme Tulip — assurance nouvelle génération. API Reference, Guides, et ressources pour les intégrateurs.
+
+- [llms-full.txt](https://docs.mytulip.io/llms-full.txt): Complete documentation content for AI agents
+
+## Plateforme
+
+- [Documentation Tulip](https://docs.mytulip.io/docs.mdx): Documentation officielle de la plateforme d'assurance Tulip — API, guides et ressources pour les intégrateurs.
+- [Flux des sinistres](https://docs.mytulip.io/docs/concepts/claims-workflow.mdx): Les 8 statuts d'un sinistre, les transitions possibles, l'auto-soumission, le système de double identifiant, les catégories de documents, les types de règlement et les codes d'erreur.
+- [Éligibilité et compatibilité](https://docs.mytulip.io/docs/concepts/contract-eligibility.mdx): Matrices de compatibilité produit/contrat/options, règles de panier multi-produits et seuils critiques.
+- [Cycle de vie des contrats](https://docs.mytulip.io/docs/concepts/contract-lifecycle.mdx): Types de contrat, statuts, fenêtres de modification, renouvellement automatique et résiliation.
+- [Options de contrat](https://docs.mytulip.io/docs/concepts/contract-options.mdx): Options obligatoires et facultatives, différences B2B/B2C et options dépréciées.
+- [Gestion des documents](https://docs.mytulip.io/docs/concepts/documents-management.mdx): Catégories de documents, conditions dynamiques, méthodes d'upload, validation et URLs signées.
+- [Concepts](https://docs.mytulip.io/docs/concepts.mdx): Les concepts fondamentaux de la plateforme Tulip — contrats, produits, sinistres, documents et paiements.
+- [Catalogue de produits](https://docs.mytulip.io/docs/concepts/products-catalog.mdx): Types de produits, sous-types, catalogue et gestion des produits dans les contrats.
+- [Questions et documents par produit](https://docs.mytulip.io/docs/concepts/questions-by-product.mdx): Matrices complètes des questions obligatoires et documents requis par type et sous-type de sinistre.
+- [Règlements et paiements](https://docs.mytulip.io/docs/concepts/settlements-payments.mdx): Cycle de vie des remboursements, types de règlements et suivi des paiements.
+- [Webhooks](https://docs.mytulip.io/docs/concepts/webhooks.mdx): Événements en temps réel, format des payloads, politique de retry et bonnes pratiques d'intégration.
+- [B2B vs B2C](https://docs.mytulip.io/docs/guides/b2b-vs-b2c.mdx): Différences entre contrats entreprise et contrats particulier — options, validations et informations requises.
+- [Gestion des erreurs](https://docs.mytulip.io/docs/guides/error-handling.mdx): Codes d'erreur de l'API, messages et stratégies de résolution.
+- [Guides d'intégration](https://docs.mytulip.io/docs/guides.mdx): Guides avancés pour la gestion des erreurs, les tests, les différences B2B/B2C et la migration.
+- [Guide de migration](https://docs.mytulip.io/docs/guides/migration-guide.mdx): Changements de version, options dépréciées et recommandations de migration.
+- [Tests et validation](https://docs.mytulip.io/docs/guides/testing-sandbox.mdx): Stratégies de test, contrats de test, prévisualisation et checklist d'intégration.
+- [Authentification](https://docs.mytulip.io/docs/getting-started/authentication.mdx): Comment obtenir et utiliser votre clé API pour accéder à l'API Tulip.
+- [Conventions API](https://docs.mytulip.io/docs/getting-started/conventions.mdx): Formats de données, authentification, géolocalisation, pagination, structure des réponses et codes HTTP.
+- [Espace développeur](https://docs.mytulip.io/docs/getting-started/developer-space.mdx): Gérer vos clés API, consulter les logs d'appels et configurer vos webhooks depuis l'interface Colibri.
+- [Environnements](https://docs.mytulip.io/docs/getting-started/environments.mdx): URL de l'API, clés de développement et de production, et contrats de test.
+- [Déclarer votre premier sinistre](https://docs.mytulip.io/docs/getting-started/first-claim.mdx): Tutoriel pas à pas pour créer un sinistre, uploader des documents et soumettre la déclaration.
+- [Créer votre premier contrat](https://docs.mytulip.io/docs/getting-started/first-contract.mdx): Tutoriel pas à pas pour créer un contrat de location courte durée via l'API Tulip.
+- [Démarrage rapide](https://docs.mytulip.io/docs/getting-started.mdx): Tout ce dont vous avez besoin pour commencer à utiliser l'API Tulip en quelques minutes.
+- [Développer avec les LLMs](https://docs.mytulip.io/docs/resources/ai-assistant.mdx): Utilisez la documentation et les APIs Tulip avec vos assistants IA et LLMs.
+- [Changelog](https://docs.mytulip.io/docs/resources/changelog.mdx): Historique des changements de l'API Tulip.
+- [Limites de requêtes](https://docs.mytulip.io/docs/resources/rate-limits.mdx): Limites de taux, quotas et gestion de l'erreur 99888.
+- [SDKs et clients API](https://docs.mytulip.io/docs/resources/sdks.mdx): Générer un client API à partir de la spécification OpenAPI de Tulip.
+- [Support](https://docs.mytulip.io/docs/resources/support.mdx): Comment obtenir de l'aide, contacter le support et escalader un problème.
+
+## API Reference
+
+- [Référence API](https://docs.mytulip.io/docs/api-reference.mdx): Documentation complète des endpoints REST de l'API Tulip v2.
+- [Annuler ou abandonner un sinistre](https://docs.mytulip.io/docs/api-reference/claims/cancelClaim.mdx): 
+- [Créer un sinistre (pré-déclaration)](https://docs.mytulip.io/docs/api-reference/claims/createClaim.mdx): 
+- [Récupérer un sinistre](https://docs.mytulip.io/docs/api-reference/claims/getClaim.mdx): 
+- [Récupérer un document](https://docs.mytulip.io/docs/api-reference/claims/getDocument.mdx): 
+- [Lister les sinistres](https://docs.mytulip.io/docs/api-reference/claims/listClaims.mdx): 
+- [Soumettre un sinistre](https://docs.mytulip.io/docs/api-reference/claims/submitClaim.mdx): 
+- [Mettre à jour un sinistre](https://docs.mytulip.io/docs/api-reference/claims/updateClaim.mdx): 
+- [Télécharger des documents](https://docs.mytulip.io/docs/api-reference/claims/uploadDocuments.mdx): 
+- [Actions en masse sur les renouvellements automatiques](https://docs.mytulip.io/docs/api-reference/contracts/bulkAutomaticRenewals.mdx): 
+- [Résiler un contrat](https://docs.mytulip.io/docs/api-reference/contracts/cancelContract.mdx): 
+- [Créer un renouvellement automatique](https://docs.mytulip.io/docs/api-reference/contracts/createAutomaticRenewal.mdx): 
+- [Créer un contrat](https://docs.mytulip.io/docs/api-reference/contracts/createContract.mdx): 
+- [Ajouter un produit à un contrat](https://docs.mytulip.io/docs/api-reference/contracts/createProductFromContract.mdx): 
+- [Supprimer un produit d'un contrat](https://docs.mytulip.io/docs/api-reference/contracts/deleteProductFromContract.mdx): 
+- [Récupérer un renouvellement automatique](https://docs.mytulip.io/docs/api-reference/contracts/getAutomaticRenewalById.mdx): 
+- [Récupérer le renouvellement automatique actif](https://docs.mytulip.io/docs/api-reference/contracts/getCurrentAutomaticRenewal.mdx): 
+- [Lister les renouvellements automatiques](https://docs.mytulip.io/docs/api-reference/contracts/listAutomaticRenewals.mdx): 
+- [Récupérer un contrat](https://docs.mytulip.io/docs/api-reference/contracts/retrieveContract.mdx): 
+- [Récupérer un ensemble de contrats](https://docs.mytulip.io/docs/api-reference/contracts/retrieveContracts.mdx): 
+- [Mettre à jour un renouvellement automatique](https://docs.mytulip.io/docs/api-reference/contracts/updateAutomaticRenewal.mdx): 
+- [Mettre à jour un contrat](https://docs.mytulip.io/docs/api-reference/contracts/updateContract.mdx): 
+- [Créer un produit](https://docs.mytulip.io/docs/api-reference/products/createProduct.mdx): 
+- [Supprimer un produit](https://docs.mytulip.io/docs/api-reference/products/deleteProduct.mdx): 
+- [Récupérer un produit](https://docs.mytulip.io/docs/api-reference/products/retrieveProduct.mdx): 
+- [Lister les produits](https://docs.mytulip.io/docs/api-reference/products/retrieveProducts.mdx): 
+- [Mettre à jour un produit](https://docs.mytulip.io/docs/api-reference/products/updateProduct.mdx): 
+- [Récupérer les villes par code postal](https://docs.mytulip.io/docs/api-reference/geo/getCitiesByZipcode.mdx): 
+- [Rechercher des villes par suggestion](https://docs.mytulip.io/docs/api-reference/geo/getCitiesSuggestions.mdx): 
+- [Ajouter un loueur](https://docs.mytulip.io/docs/api-reference/renters/addRenter.mdx): 
+- [Récupérer un loueur](https://docs.mytulip.io/docs/api-reference/renters/retrieveRenter.mdx): 
+- [Lister les loueurs](https://docs.mytulip.io/docs/api-reference/renters/retrieveRenters.mdx): 

@@ -1,0 +1,254 @@
+---
+title: Catalogue de produits
+description: Types de produits, sous-types, catalogue et gestion des produits dans les contrats.
+---
+
+Tulip assure **7 grandes familles de produits**. Chaque famille contient des sous-types avec des règles spécifiques pour les sinistres (questions et documents requis). Consultez les [questions par produit](/docs/concepts/questions-by-product) pour les détails par type de sinistre.
+
+## Types et sous-types
+
+### Vélo (`bike`) — 4 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `standard` | Vélo classique |
+| `electric` | Vélo à assistance électrique |
+| `cargo` | Vélo cargo |
+| `remorque` | Remorque vélo |
+
+### High-Tech (`high-tech`) — 11 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `action-cam` | Caméra d'action |
+| `drone` | Drone |
+| `camera` | Appareil photo |
+| `video-camera` | Caméra vidéo |
+| `stabilizer` | Stabilisateur |
+| `phone` | Téléphone |
+| `computer` | Ordinateur |
+| `tablet` | Tablette |
+| `small-appliance` | Petit électroménager |
+| `large-appliance` | Gros électroménager |
+| `other-electronic-equipment` | Autre équipement électronique |
+
+### Sports nautiques (`watersports`) — 13 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `kitesurf` | Kitesurf |
+| `foil` | Foil |
+| `windsurf` | Planche à voile |
+| `sailboat` | Voilier |
+| `kayak` | Kayak |
+| `canoe` | Canoë |
+| `water-ski` | Ski nautique |
+| `wakeboard` | Wakeboard |
+| `mono-ski` | Mono-ski |
+| `buoy` | Bouée tractée |
+| `paddle` | Paddle |
+| `surf` | Surf |
+| `pedalo` | Pédalo |
+
+### Sports d'hiver (`wintersports`) — 3 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `ski` | Ski |
+| `snowboard` | Snowboard |
+| `snowshoe` | Raquettes à neige |
+
+### Événementiel (`event`) — 5 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `furniture` | Mobilier |
+| `tent` | Tente / chapiteau |
+| `decorations` | Décorations |
+| `tableware` | Vaisselle / arts de la table |
+| `entertainment` | Animation / divertissement |
+
+### Outillage (`small-tools`) — 5 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `construction-equipment` | Matériel de chantier |
+| `diy-tools` | Outils de bricolage |
+| `electric-diy-tools` | Outils de bricolage électriques |
+| `gardening-tools` | Outils de jardinage |
+| `electric-gardening-tools` | Outils de jardinage électriques |
+
+### Sports (`sports`) — 9 sous-types
+
+| Sous-type | Description |
+|-----------|-------------|
+| `running-hiking` | Course à pied / randonnée |
+| `fishing` | Pêche |
+| `golf` | Golf |
+| `racket-sports` | Sports de raquette |
+| `horseriding` | Équitation |
+| `ball-sports` | Sports de ballon |
+| `fitness` | Fitness / musculation |
+| `water-sports` | Sports aquatiques |
+| `other` | Autre sport |
+
+## Tableau récapitulatif
+
+| Type produit | Nombre de sous-types |
+|---|---|
+| `bike` | 4 |
+| `high-tech` | 11 |
+| `watersports` | 13 |
+| `wintersports` | 3 |
+| `event` | 5 |
+| `small-tools` | 5 |
+| `sports` | 9 |
+| **Total** | **50** |
+
+## Compatibilité avec les types de contrat
+
+Tous les produits ne supportent pas tous les types de contrat. Par exemple, les produits `wintersports` ne sont assurables qu'en LCD. Consultez la [matrice de compatibilité complète](/docs/concepts/contract-eligibility#types-de-contrat-par-type-de-produit) pour les détails.
+
+## Panier multi-produits
+
+Lorsqu'un contrat contient des produits de types différents, le type de contrat est limité à l'**intersection** des types supportés par chaque produit. Par exemple, un panier contenant un vélo et un ski sera limité à LCD, car le ski ne supporte que LCD.
+
+Pour les règles complètes (intersection, union des options, exclusion high-tech seul), consultez la page [Éligibilité et compatibilité](/docs/concepts/contract-eligibility#panier-multi-produits).
+
+## Contraintes de valeur
+
+<Callout type="warn">
+**Valeur maximale : 15 000 EUR** — Le champ `value_excl` (valeur hors taxe) d'un produit ne peut pas dépasser 15 000 €. En cas de dépassement, l'API retourne l'erreur **1230**. Voir la [gestion des erreurs](/docs/guides/error-handling) pour plus de détails.
+</Callout>
+
+## Champs d'un produit (catalogue)
+
+Lorsque vous créez un produit dans le catalogue via `POST /products`, les champs suivants sont disponibles :
+
+### Champs obligatoires
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `uid` | string | Identifiant unique du produit dans votre système |
+| `product_type` | string | Type de produit (`bike`, `high-tech`, etc.) |
+| `title` | string | Titre / nom du produit |
+| `value_excl` | number | Valeur hors taxe en euros (max 15 000) |
+| `data.product_subtype` | string | Sous-type du produit (voir listes ci-dessus) |
+| `data.brand` | string | Marque du produit |
+| `data.model` | string | Modèle du produit |
+
+### Champs optionnels
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `description` | string | Description libre du produit |
+| `purchased_date` | string | Date d'achat du produit |
+| `data.*` | any | Propriétés personnalisées supplémentaires |
+
+<Callout type="info">
+**Propriétés personnalisées** — Le champ `data` peut contenir des propriétés personnalisées en plus des champs obligatoires (`product_subtype`, `brand`, `model`). Utilisez-le pour stocker des métadonnées spécifiques à votre catalogue (référence fournisseur, catégorie interne, etc.).
+</Callout>
+
+## Statuts d'un produit (catalogue)
+
+Un produit dans le catalogue possède un statut qui contrôle sa visibilité :
+
+| Statut | Description |
+|--------|-------------|
+| `show` | Le produit est visible et utilisable |
+| `hidden` | Le produit est masqué (soft-delete) |
+
+<Callout type="info">
+**Soft-delete** — L'appel `DELETE /products/{id}` ne supprime pas réellement le produit. Il passe son statut à `hidden`. Le produit reste accessible en lecture mais n'apparaît plus dans les listes par défaut.
+</Callout>
+
+## Utiliser un produit dans un contrat
+
+Il existe deux manières d'associer un produit à un contrat lors de sa création.
+
+### Depuis le catalogue (v1)
+
+Référencez un produit existant du catalogue par son `product_id` et complétez avec les données spécifiques au contrat :
+
+```json
+{
+  "product_id": "prod_abc123",
+  "data": {
+    "user_name": "Jean Dupont",
+    "product_marked": "MARK-001",
+    "internal_id": "REF-INTERNE-42"
+  }
+}
+```
+
+| Champ | Obligatoire | Description |
+|-------|-------------|-------------|
+| `product_id` | Oui | Identifiant du produit dans le catalogue Tulip |
+| `data.user_name` | Oui | Nom de l'utilisateur du produit |
+| `data.product_marked` | Oui | Numéro de marquage du produit |
+| `data.internal_id` | Non | Identifiant interne (votre référence) |
+
+### En ligne (v2)
+
+Définissez le produit directement dans le contrat sans passer par le catalogue :
+
+```json
+{
+  "product_type": "bike",
+  "product_subtype": "electric",
+  "value_excl": 2500,
+  "brand": "VanMoof",
+  "model": "S5",
+  "data": {
+    "user_name": "Jean Dupont",
+    "product_marked": "MARK-002"
+  }
+}
+```
+
+| Champ | Obligatoire | Description |
+|-------|-------------|-------------|
+| `product_type` | Oui | Type de produit |
+| `product_subtype` | Oui | Sous-type du produit |
+| `value_excl` | Oui | Valeur hors taxe en euros |
+| `brand` | Oui | Marque du produit |
+| `model` | Oui | Modèle du produit |
+| `data` | Oui | Données complémentaires (user_name, product_marked, etc.) |
+| `data.*` | Non | Propriétés personnalisées supplémentaires |
+
+<Callout type="info">
+**Propriétés personnalisées dans les contrats** — Le champ `data` peut également contenir des propriétés personnalisées spécifiques au contrat en plus des champs obligatoires (`user_name`, `product_marked`). Utilisez-le pour stocker des métadonnées propres à votre gestion contractuelle (référence interne, code magasin, numéro de série, etc.).
+</Callout>
+
+## Statuts d'un produit dans un contrat
+
+Un produit associé à un contrat possède son propre cycle de vie :
+
+| Statut | Description |
+|--------|-------------|
+| `open` | Le produit est actif dans le contrat |
+| `closed` | Le contrat est arrivé à échéance |
+| `cancel` | Le produit a été annulé |
+| `terminated` | Le produit a été résilié |
+| `has_been_replaced` | Le produit a été remplacé par un nouveau (voir section suivante) |
+
+## Remplacement de produit
+
+Quand vous modifiez un produit dans un contrat (via `PATCH /contracts/{id}`), le système ne met pas à jour le produit existant. Il applique un mécanisme de remplacement :
+
+1. Un **nouveau produit** est créé avec un nouveau `ContractProductId`
+2. L'ancien produit passe en statut `has_been_replaced`
+3. Un champ `replaced_by` est ajouté sur l'ancien produit, pointant vers le nouveau
+
+<Callout type="info">
+Ce mécanisme crée un historique de versions complet. Le produit remplacé reste accessible en lecture mais ne peut plus être modifié. Vous pouvez remonter la chaîne de remplacements via le champ `replaced_by`.
+</Callout>
+
+## Types de sinistres par produit
+
+Chaque type de produit supporte des combinaisons spécifiques de sinistres. Consultez les [questions par produit](/docs/concepts/questions-by-product) pour les matrices complètes de questions et documents requis.
+
+| Type produit | Vol total | Vol partiel | Vandalisme | Casse partielle | Casse totale | Panne |
+|---|---|---|---|---|---|---|
+| `bike` | Oui | Oui | Oui | Oui | — | — |
+| `high-tech` | Oui | Oui | — | Oui | Oui | Oui |
