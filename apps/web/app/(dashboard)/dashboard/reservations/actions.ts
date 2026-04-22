@@ -795,13 +795,16 @@ export async function createManualReservation(data: CreateReservationData) {
   const tulipMode = getDashboardTulipInsuranceMode(
     store.settings as StoreSettings | null,
   );
-  const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
-    mode: tulipMode,
-    requested: data.tulipInsuranceOptIn,
-    defaultOptional: getDashboardTulipInsuranceDefaultOptIn(
-      store.settings as StoreSettings | null,
-    ),
-  });
+  const tulipPastStartBlocked = data.startDate.getTime() < Date.now();
+  const tulipInsuranceOptIn = tulipPastStartBlocked
+    ? false
+    : resolveTulipInsuranceOptIn({
+        mode: tulipMode,
+        requested: data.tulipInsuranceOptIn,
+        defaultOptional: getDashboardTulipInsuranceDefaultOptIn(
+          store.settings as StoreSettings | null,
+        ),
+      });
 
   // Calculate totals
   let subtotalAmount = 0;
