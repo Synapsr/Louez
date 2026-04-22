@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm view:*)",
+      "Bash(npm info:*)",
+      "Bash(pnpm build:*)",
+      "Bash(for f in /Users/teogoulois/Developer/lumy/Louez/apps/web/messages/*.json)",
+      "Bash(node -e \"JSON.parse\\(require\\(''fs''\\).readFileSync\\(''$f'',''utf8''\\)\\); console.log\\(''OK''\\)\")",
+      "Bash(done)",
+      "Bash(lsof:*)",
+      "Bash(npx tsx:*)",
+      "WebFetch(domain:www.better-auth.com)",
+      "Bash(pnpm add:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "Bash(pnpm remove:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(git stash:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm exec tsc:*)",
+      "WebFetch(domain:louez.io)",
+      "Bash(ls:*)",
+      "Bash(pnpm --filter web exec tsc:*)",
+      "Bash(pnpm --filter=@louez/web exec tsc:*)",
+      "mcp__paper__get_basic_info",
+      "mcp__paper__get_font_family_info",
+      "mcp__paper__create_artboard",
+      "mcp__paper__write_html",
+      "mcp__paper__rename_nodes"
+    ]
+  }
+}
