@@ -1,0 +1,50 @@
+---
+title: Environnements
+description: URL de l'API, clés de développement et de production, et contrats de test.
+---
+
+## URL de l'API
+
+Tulip expose une **URL unique** pour tous les appels :
+
+```
+https://api.mytulip.io/v2
+```
+
+La distinction entre développement et production se fait par la **clé API** utilisée, pas par l'URL.
+
+## Clés API
+
+Vous disposez de deux clés API distinctes :
+
+| Clé | Usage |
+|-----|-------|
+| **Clé développement** | Tests et développement — les contrats créés n'ont aucun impact financier |
+| **Clé production** | Contrats et sinistres réels avec facturation active |
+
+<Callout type="info">
+Les deux clés utilisent la **même URL**. C'est la clé qui détermine le contexte (développement ou production). Retrouvez vos clés depuis l'[espace développeur](/docs/getting-started/developer-space).
+</Callout>
+
+## Contrats de test
+
+En complément de la clé développement, vous pouvez créer des **contrats de test** avec n'importe quelle clé en passant le paramètre `test: true` lors de la création :
+
+```json
+{
+  "uid": "user_123",
+  "contract_type": "LCD",
+  "test": true,
+  "options": ["break", "theft"],
+  "start_date": "2026-04-01T08:00:00.000Z",
+  "end_date": "2026-04-02T18:00:00.000Z",
+  "products": [...]
+}
+```
+
+Les contrats de test :
+- Sont distingués des contrats réels dans les listes (filtrable via `?test=true`)
+- N'ont aucun impact financier
+- Permettent de valider votre intégration
+
+Pour plus de détails sur les stratégies de test, consultez le [guide de test](/docs/guides/testing-sandbox).

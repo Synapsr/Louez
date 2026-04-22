@@ -1,0 +1,40 @@
+---
+title: Guide de migration
+description: Changements de version, options dépréciées et recommandations de migration.
+---
+
+## Options dépréciées
+
+### `assistance` → `assistance_premium`
+
+L'option `assistance` est **dépréciée**. Utilisez `assistance_premium` ou `assistance_standard` à la place.
+
+| Ancien | Nouveau | Impact |
+|--------|---------|--------|
+| `assistance` | `assistance_premium` | Couverture premium |
+| — | `assistance_standard` | Couverture standard (nouvelle option) |
+
+**Action requise** : Remplacez `assistance` par `assistance_premium` dans vos appels de création de contrat. L'ancienne option reste fonctionnelle pour la compatibilité.
+
+```diff
+{
+  "options": [
+    "break",
+    "theft",
+-   "assistance",
++   "assistance_premium"
+  ]
+}
+```
+
+## Versioning de l'API
+
+L'API Tulip est actuellement en version **v2**. La version est incluse dans l'URL de base :
+
+```
+https://api.mytulip.io/v2
+```
+
+## Changements récents
+
+Consultez le [changelog](/docs/resources/changelog) pour l'historique détaillé des modifications.

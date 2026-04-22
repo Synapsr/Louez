@@ -1,0 +1,29 @@
+---
+title: Limites de requêtes
+description: Limites de taux, quotas et gestion de l'erreur 99888.
+---
+
+## Limites par défaut
+
+Les limites de requêtes sont configurées par clé API. Si vous atteignez une limite, l'API retourne l'erreur **99888** :
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 99888,
+    "message": "La limite a été atteinte. Vous ne pouvez pas effectuer cette action. Veuillez contacter le support."
+  }
+}
+```
+
+## Augmentation des limites
+
+Si vos besoins dépassent les limites par défaut, contactez le [support](/docs/resources/support) pour demander une augmentation.
+
+## Bonnes pratiques
+
+- **Implémentez un backoff exponentiel** pour les erreurs 429 et 99888
+- **Mettez en cache** les réponses GET quand c'est possible (produits, loueurs)
+- **Utilisez la pagination** pour les listes volumineuses au lieu de tout charger
+- **Regroupez les uploads** de documents en une seule requête PUT

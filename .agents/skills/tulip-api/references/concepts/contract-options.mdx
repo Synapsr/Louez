@@ -1,0 +1,164 @@
+---
+title: Options de contrat
+description: Options obligatoires et facultatives, différences B2B/B2C et options dépréciées.
+---
+
+Les options définissent les garanties et le contexte d'un contrat. Elles influencent le prix, les validations requises et les informations à fournir.
+
+Pour savoir quelles options sont compatibles avec quel type de produit ou de contrat, consultez la page [Éligibilité et compatibilité](/docs/concepts/contract-eligibility).
+
+## Options obligatoires
+
+Les options **`break`** (casse) et **`theft`** (vol) sont **requises pour tout contrat**, quel que soit le type.
+
+```json
+{
+  "options": ["break", "theft"]
+}
+```
+
+Sans ces deux options, la création échoue avec l'erreur 1009.
+
+### Couplage casse / vol
+
+En **LCD** et **LMD de moins de 6 mois**, les options `break` et `theft` sont **toujours couplées** : vous devez inclure les deux ou aucune.
+
+En **LMD de 6 mois ou plus** et en **LLD**, il est possible de souscrire `break` seul ou `theft` seul (découplage). Cette possibilité dépend de la configuration de votre compte. Si le découplage n'est pas activé, les deux options restent obligatoirement liées.
+
+## Liste des options
+
+| Option | Description | Obligatoire |
+|--------|-------------|-------------|
+| `break` | Garantie casse | Oui |
+| `theft` | Garantie vol | Oui |
+| `company` | Contrat pour une entreprise | Requis si B2B |
+| `individual` | Contrat pour un particulier | Requis si B2C (LMD/LLD) |
+| `home_to_work` | Trajets domicile-travail | Selon produit |
+| `pro` | Usage professionnel (hors transporteur) | Selon produit |
+| `transporter` | Usage transporteur | Selon produit |
+| `sharing` | Produits partagés entre utilisateurs | Optionnel |
+| `rc` | Responsabilité civile | Optionnel |
+| `ia` | Individuel accident | Optionnel |
+| `loa` | Location avec option d'achat | Optionnel |
+| `assistance_premium` | Assistance premium | Optionnel |
+| `assistance_standard` | Assistance standard | Optionnel |
+| `no_deductible` | Suppression de la franchise | Optionnel |
+| `client_theft` | Vol par le client | Automatique |
+
+## B2B vs B2C
+
+Le choix entre `company` et `individual` détermine les informations supplémentaires requises.
+
+<Callout type="warn">
+**Règle par type de contrat** — L'option `individual` / `company` dans le tableau `options` suit des règles strictes :
+
+- **LCD** et **LMD < 6 mois** : `individual` / `company` **ne doit pas** être envoyé dans les options
+- **LMD ≥ 6 mois** et **LLD** : `individual` ou `company` **doit** être présent dans les options
+</Callout>
+
+### Contrat entreprise (`company`)
+
+Les champs requis pour l'objet `company` varient selon le type de contrat :
+
+| Champ | LMD < 6 mois | LMD ≥ 6 mois | LLD |
+|-------|:---:|:---:|:---:|
+| `company_name` | Oui | Oui | Oui |
+| `first_name` / `last_name` | Oui | Oui | Oui |
+| `address`, `zipcode`, `city`, `country` | Non | Oui | Oui |
+| `siren` | Non | Non | Oui |
+
+```json
+{
+  "options": ["break", "theft", "company"],
+  "company": {
+    "company_name": "Ma Société",
+    "siren": "123456789",
+    "first_name": "Marie",
+    "last_name": "Martin",
+    "address": "10 rue de la Paix",
+    "zipcode": "75002",
+    "city": "Paris",
+    "country": "France"
+  }
+}
+```
+
+<Callout type="info">
+**SIREN** — 9 caractères pour la France, 11 caractères pour l'Italie. Le champ est validé selon le pays. Requis uniquement pour les contrats **LLD**.
+</Callout>
+
+### Contrat particulier (`individual`)
+
+```json
+{
+  "options": ["break", "theft", "individual"],
+  "individual": {
+    "first_name": "Jean",
+    "last_name": "Dupont",
+    "phone_number": "+33612345678",
+    "email": "jean@example.com",
+    "address": "5 avenue des Champs-Élysées",
+    "zipcode": "75008",
+    "city": "Paris",
+    "country": "France"
+  }
+}
+```
+
+Pour plus de détails sur les différences B2B/B2C, consultez le [guide B2B vs B2C](/docs/guides/b2b-vs-b2c).
+
+## Comportement détaillé des options
+
+### Vol par le client (`client_theft`)
+
+- Disponible **uniquement pour les vélos** (`bike`)
+- S'active **automatiquement** lorsque l'option `theft` est sélectionnée et que votre compte le supporte
+- Non modifiable manuellement — l'option est forcée quand elle est disponible
+
+### Assistance (`assistance_standard` / `assistance_premium`)
+
+- Réservée au type de produit **vélo** (`bike`) uniquement
+- `assistance_standard` est disponible en **LMD** et **LLD** (pas en LCD), **conditionné par la configuration de votre compte**. Si cette configuration n'est pas activée, l'option standard n'est pas proposée.
+- `assistance_premium` est disponible en **LLD** uniquement et est **toujours disponible** (non conditionné par la configuration du compte)
+- Les deux sont **mutuellement exclusives** : vous ne pouvez choisir que l'une ou l'autre
+- Si l'assistance standard n'est pas activée sur votre compte : seule `assistance_premium` est proposée en LLD
+
+### Options d'usage (`home_to_work` / `pro` / `transporter`)
+
+- Réservées au type de produit **vélo** (`bike`) uniquement — les options d'usage ne s'appliquent **jamais** aux produits non-vélo (watersports, high-tech, event, etc.)
+- Disponibles pour les contrats **LMD de 6 mois ou plus** et **LLD**
+- Pour les LMD de moins de 6 mois **avec un vélo dans le panier**, l'usage `home_to_work` est appliqué automatiquement
+- Pour les LLD, une option d'usage est **requise** en plus de `break`, `theft` et `company`/`individual`. L'absence déclenche l'erreur **1015**.
+
+| Usage | Option |
+|-------|--------|
+| Domicile-travail | `home_to_work` |
+| Professionnel | `pro` |
+| Transporteur | `transporter` |
+
+### Suppression de franchise (`no_deductible`)
+
+- Disponible **uniquement pour le high-tech** (`high-tech`) en **LLD**
+- Augmente la prime du contrat
+
+### Partage (`sharing`)
+
+- Disponible en **LLD** uniquement, pour les **vélos** (`bike`) uniquement
+- Lorsqu'activée, le champ `user_name` des produits est automatiquement rempli avec "Partagé"
+- Indique que les vélos sont partagés entre plusieurs utilisateurs (pas d'attribution individuelle)
+
+### Location avec option d'achat (`loa`)
+
+- Disponible en **LLD** uniquement, pour les **vélos** (`bike`) uniquement
+- Option activable sur le contrat pour indiquer un contexte de leasing
+
+## Options dépréciées
+
+<Callout type="warn">
+**`assistance` est dépréciée** — Utilisez `assistance_premium` ou `assistance_standard` à la place. L'option `assistance` reste fonctionnelle pour la compatibilité mais sera retirée dans une version future.
+</Callout>
+
+## Voir aussi
+
+- [Éligibilité et compatibilité](/docs/concepts/contract-eligibility) — Matrices complètes produit × contrat × options
+- [B2B vs B2C](/docs/guides/b2b-vs-b2c) — Différences entre contrats entreprise et particulier

@@ -225,7 +225,7 @@ Built with modern, battle-tested technologies:
 | ⚡ | **Next.js 16** | React framework with App Router |
 | 📘 | **TypeScript** | Type-safe development |
 | 🎨 | **Tailwind CSS 4** | Utility-first styling |
-| 🧩 | **shadcn/ui** | Beautiful UI components |
+| 🧩 | **Base UI** | Accessible UI primitives |
 | 🗄️ | **Drizzle ORM** | Type-safe database queries |
 | 🔐 | **Auth.js** | Authentication (Google, Magic Link) |
 | ✉️ | **React Email** | Beautiful email templates |
@@ -273,7 +273,7 @@ louez/
 │   │   ├── (storefront)/     # Public store pages
 │   │   └── api/              # API routes
 │   ├── components/
-│   │   ├── ui/               # shadcn/ui components
+│   │   ├── ui/               # Base UI components
 │   │   ├── dashboard/        # Dashboard components
 │   │   └── storefront/       # Storefront components
 │   ├── lib/

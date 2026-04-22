@@ -1,0 +1,249 @@
+---
+title: Conventions API
+description: Formats de données, authentification, géolocalisation, pagination, structure des réponses et codes HTTP.
+---
+
+## Authentification
+
+Toutes les requêtes vers l'API Tulip nécessitent une clé API transmise via le header `key`.
+
+```bash
+curl -X GET https://api.mytulip.io/v2/contracts \
+  -H "key: YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+<Callout type="warn">
+Il n'y a pas de token Bearer. L'authentification repose uniquement sur le header `key`. Consultez la page [Authentification](/docs/getting-started/authentication) pour obtenir vos clés sandbox et production.
+</Callout>
+
+## URL de base
+
+Toutes les requêtes sont faites sur :
+
+```
+https://api.mytulip.io/v2
+```
+
+## Format des dates
+
+Toutes les dates sont au format **ISO 8601** en UTC :
+
+```
+2024-01-15T14:30:00.000Z
+```
+
+Le suffixe `Z` indique UTC. Toutes les dates retournées par l'API sont en UTC.
+
+## Pays supportés
+
+L'API Tulip supporte les pays suivants, identifiés par leur code **ISO 3166-1 alpha-2** (2 lettres) :
+
+| Code | Pays |
+|------|------|
+| `FR` | France métropolitaine |
+| `BE` | Belgique |
+| `IT` | Italie |
+| `RE` | La Réunion |
+
+Le champ `country` utilise ces codes dans les objets `company`, `individual` et les requêtes Géo.
+
+<Callout type="info">
+Le code `RE` désigne La Réunion. Les codes postaux réunionnais commencent par `974`.
+</Callout>
+
+## Normalisation des villes
+
+Les noms de villes doivent être transmis dans un **format normalisé en majuscules**, tel que retourné par l'API Géo.
+
+| Format | Exemple |
+|--------|---------|
+| Correct | `PARIS-1ER-ARRONDISSEMENT` |
+| Correct | `LYON-2EME-ARRONDISSEMENT` |
+| Correct | `SAINT-DENIS` |
+| Incorrect | `Paris` |
+| Incorrect | `paris 1er` |
+| Incorrect | `Saint Denis` |
+
+<Callout type="warn">
+L'API **rejette les noms de villes non normalisés**. Utilisez toujours l'API Géo pour récupérer le nom normalisé avant de l'envoyer dans vos requêtes.
+</Callout>
+
+### Validation ville / code postal
+
+La validation des couples ville + code postal est effectuée contre la base de données Géo de Tulip. En cas de valeur invalide :
+
+**Entreprise (company) :**
+
+| Code | Description |
+|------|-------------|
+| 1106 | Code postal manquant ou invalide |
+| 1107 | Ville manquante ou invalide |
+| 1108 | Pays manquant ou invalide |
+
+**Particulier (individual) :**
+
+| Code | Description |
+|------|-------------|
+| 1403 | Code postal manquant |
+| 1407 | Code postal invalide |
+| 1404 | Ville manquante |
+| 1408 | Ville invalide |
+| 1406 | Pays manquant |
+| 1409 | Pays invalide |
+
+## API Géo
+
+L'API Géo permet de récupérer les noms de villes normalisés et de valider les codes postaux. Deux endpoints sont disponibles — **sans authentification**.
+
+### Recherche par pays et code postal
+
+```bash
+curl -X GET https://api.mytulip.io/v2/geo/FR/75001
+```
+
+Retourne les villes correspondant à un code postal dans un pays donné :
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "city": "PARIS-1ER-ARRONDISSEMENT",
+      "zipcode": "75001",
+      "country": "FR"
+    }
+  ]
+}
+```
+
+### Suggestions de villes
+
+```bash
+curl -X GET "https://api.mytulip.io/v2/geo/suggestions?query=saint-den"
+```
+
+Retourne des suggestions avec un score de confiance, utile pour l'auto-complétion :
+
+```json
+{
+  "success": true,
+  "data": {
+    "cities": [
+      {
+        "ville": "SAINT-DENIS",
+        "zipcode": "93200",
+        "confidence": 0.95
+      },
+      {
+        "ville": "SAINT-DENIS",
+        "zipcode": "97400",
+        "confidence": 0.90
+      }
+    ]
+  }
+}
+```
+
+<Callout type="info">
+L'endpoint de suggestions est idéal pour implémenter une auto-complétion côté client. Le champ `confidence` (de 0 à 1) indique la pertinence du résultat.
+</Callout>
+
+## Structure des réponses
+
+### Succès (format standard)
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "claim_abc123",
+    "status": "open",
+    "created_at": "2024-01-15T14:30:00.000Z"
+  }
+}
+```
+
+### Succès (format contrats)
+
+Les endpoints de contrats utilisent un format spécifique avec `status` et `execution_id` :
+
+```json
+{
+  "status": "success",
+  "execution_id": "exec_7f3a2b9e",
+  "contract": {
+    "cid": "01CFV26E8TS0U",
+    "uid": "1b0b2b3b4b5b",
+    "status": "open",
+    "contract_type": "LCD"
+  }
+}
+```
+
+<Callout type="info">
+L'`execution_id` est un identifiant unique généré pour chaque appel API. Communiquez-le au support Tulip pour faciliter le diagnostic d'un problème.
+</Callout>
+
+### Erreur
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 1050,
+    "message": "The contract started more than 4 hours ago."
+  }
+}
+```
+
+Les messages d'erreur sont toujours en **anglais**. Consultez le [guide des erreurs](/docs/guides/error-handling) pour la liste complète.
+
+## Pagination
+
+Les endpoints de liste supportent la pagination par offset :
+
+| Paramètre | Type | Description |
+|-----------|------|-------------|
+| `limit` | number | Nombre de résultats par page (défaut : 20, max : 100) |
+| `offset` ou `skip` | number | Nombre de résultats à ignorer |
+
+```bash
+curl -X GET "https://api.mytulip.io/v2/claims?userId=user_123&limit=10&offset=20" \
+  -H "key: YOUR_API_KEY"
+```
+
+La réponse inclut les métadonnées de pagination :
+
+```json
+{
+  "success": true,
+  "data": [...],
+  "pagination": {
+    "total": 45,
+    "offset": 20,
+    "limit": 10
+  }
+}
+```
+
+## Types de contenu
+
+| Direction | Content-Type |
+|-----------|-------------|
+| Requêtes (JSON) | `application/json` |
+| Upload de documents | `multipart/form-data` |
+| Réponses | toujours `application/json` |
+
+## Codes HTTP
+
+| Code | Signification | Action recommandée |
+|------|---------------|-------------------|
+| 200 | Succès | — |
+| 201 | Ressource créée | — |
+| 400 | Erreur de validation | Consultez `error.code` et `error.message` |
+| 401 | Clé API manquante ou invalide | Vérifiez le header `key` |
+| 403 | Permissions insuffisantes (code 98888) | Vérifiez les droits de votre clé API |
+| 404 | Ressource non trouvée | Vérifiez l'identifiant |
+| 429 | Rate limit atteint | Réessayez avec backoff exponentiel |
+| 500 | Erreur serveur | Réessayez avec backoff ; contactez le support avec l'`execution_id` |

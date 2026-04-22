@@ -1,0 +1,369 @@
+---
+title: Déclarer votre premier sinistre
+description: Tutoriel pas à pas pour créer un sinistre, uploader des documents et soumettre la déclaration.
+---
+
+Ce tutoriel vous guide à travers le flux complet d'un sinistre : création, upload de documents, soumission et annulation.
+
+## Prérequis
+
+- Un [contrat actif](/docs/getting-started/first-contract) avec son `contractId` et `contractProductId`
+- Votre clé API
+- Les réponses aux questions liées au type de sinistre (voir [questions par produit](/docs/concepts/questions-by-product))
+
+## Étape 1 : Créer la pré-déclaration
+
+```bash
+curl -X POST https://api.mytulip.io/v2/claims \
+  -H "key: votre-cle-api" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "votre-user-id",
+    "contractId": "votre-contract-id",
+    "contractProductId": "votre-contract-product-id",
+    "type": "theft",
+    "subtype": "total_theft",
+    "claimAt": "2024-01-15T14:30:00Z",
+    "description": "Mon vélo a été volé le 15 janvier 2024 vers 14h30 devant la gare de Lyon. Il était attaché avec le cadenas fourni à un poteau fixe.",
+    "questions": {
+      "Le vélo était-il attaché à un point fixe ?": true,
+      "Le vélo était-il attaché avec le cadenas fourni ?": true,
+      "Y a-t-il eu une effraction d'\''un lieu privé ?": false,
+      "Le vélo est-il électrique ?": true,
+      "La batterie était-elle présente sur le vélo ?": false,
+      "Avez-vous récupéré le dépôt de plainte final ?": true
+    },
+    "insured": {
+      "firstName": "Jean",
+      "lastName": "Dupont",
+      "phoneNumber": "+33612345678",
+      "email": "jean.dupont@example.com"
+    },
+    "location": {
+      "address": "Gare de Lyon, Place Louis-Armand",
+      "city": "Paris",
+      "zipcode": "75012",
+      "country": "France"
+    }
+  }'
+```
+
+### Réponse
+
+```json
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "claim_xyz789",
+      "claimId": null,
+      "status": "draft",
+      "canSubmit": false,
+      "type": "theft",
+      "subtype": "total_theft",
+      "documentEntries": [
+        {
+          "type": "Dépôt de plainte",
+          "category": "mandatory",
+          "status": "waiting_for",
+          "document": null
+        },
+        {
+          "type": "Photo des clés de l'antivol et de la batterie",
+          "category": "mandatory",
+          "status": "waiting_for",
+          "document": null
+        }
+      ]
+    }
+  }
+}
+```
+
+<Callout type="info">
+**Double identifiant** — `id` est l'identifiant de la pré-déclaration, disponible immédiatement. `claimId` sera attribué après soumission. Les deux sont acceptés par tous les endpoints GET.
+</Callout>
+
+Notez le `id` et vérifiez les `documentEntries` pour savoir quels documents télécharger.
+
+## Étape 2 : Uploader les documents
+
+L'endpoint `PUT /v2/claims/{id}/documents` accepte **un seul document par requête**. Deux méthodes sont disponibles : JSON avec base64 ou multipart/form-data.
+
+### Formats acceptés et limites
+
+| Contrainte | Valeur |
+|------------|--------|
+| **Nombre de fichiers** | 1 par requête |
+| **Taille maximale** | 20 Mo (20 971 520 octets) |
+| **Types MIME autorisés** | `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` |
+
+<Callout type="warn">
+**Détection MIME automatique** — Le type MIME est détecté à partir du contenu du fichier (magic bytes), pas de l'extension ni du Content-Type déclaré. Envoyez le fichier brut sans modifier son contenu.
+</Callout>
+
+### Méthode 1 : JSON avec base64
+
+```bash
+curl -X PUT "https://api.mytulip.io/v2/claims/claim_xyz789/documents?autoSubmit=true" \
+  -H "key: votre-cle-api" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "Dépôt de plainte",
+    "title": "Plainte du 15/01/2024",
+    "filename": "plainte.pdf",
+    "content": "JVBERi0xLjQKJeLjz9MK...",
+    "comment": "Dépôt de plainte final récupéré au commissariat"
+  }'
+```
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `type` | string | oui | Type de document (doit correspondre à un `documentEntries[].type`) |
+| `title` | string | oui | Titre libre du document |
+| `filename` | string | oui | Nom du fichier avec extension |
+| `content` | string | oui | Contenu du fichier encodé en base64 |
+| `comment` | string | non | Commentaire optionnel |
+
+### Méthode 2 : Multipart form-data
+
+```bash
+curl -X PUT "https://api.mytulip.io/v2/claims/claim_xyz789/documents?autoSubmit=true" \
+  -H "key: votre-cle-api" \
+  -F 'meta={"type":"Dépôt de plainte","title":"Plainte du 15/01/2024","comment":"Dépôt de plainte final"}' \
+  -F "file=@plainte.pdf"
+```
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `meta` | JSON string | oui | Objet JSON stringifié contenant `type`, `title`, et optionnellement `comment` |
+| `file` | binary | oui | Le fichier binaire à uploader |
+
+### Réponse
+
+```json
+{
+  "success": true,
+  "data": {
+    "document": {
+      "id": "doc_abc123",
+      "type": "Dépôt de plainte",
+      "title": "Plainte du 15/01/2024",
+      "mimeType": "application/pdf",
+      "status": "to_verify",
+      "refusalReason": null,
+      "note": null,
+      "createdAt": "2024-01-16T10:00:00Z",
+      "updatedAt": "2024-01-16T10:00:00Z",
+      "uploadedAt": "2024-01-16T10:00:00Z",
+      "acceptedAt": null,
+      "refusedAt": null
+    },
+    "isRequiredDocument": true
+  }
+}
+```
+
+### Auto-soumission avec `?autoSubmit=true`
+
+Ajoutez le paramètre `?autoSubmit=true` à l'URL de l'upload. Si, après cet upload, tous les documents obligatoires sont présents, le sinistre est automatiquement soumis. Dans ce cas, la réponse inclut également les informations de soumission :
+
+```json
+{
+  "success": true,
+  "data": {
+    "document": {
+      "id": "doc_abc123",
+      "type": "Photo des clés de l'antivol et de la batterie",
+      "title": "Photo clés",
+      "mimeType": "image/jpeg",
+      "status": "to_verify"
+    },
+    "isRequiredDocument": true,
+    "claim": {
+      "id": "claim_xyz789",
+      "claimId": "internal_claim_abc",
+      "status": "submitted",
+      "canSubmit": false,
+      "autoSubmitted": true,
+      "submittedAt": "2024-01-16T12:00:00Z"
+    }
+  }
+}
+```
+
+<Callout type="info">
+**Quand utiliser `autoSubmit`** — Utilisez `autoSubmit=true` sur le dernier document uploadé pour éviter un appel supplémentaire à `/submit`. Si les documents obligatoires ne sont pas encore tous présents, le paramètre est ignoré et seul le document est uploadé.
+</Callout>
+
+## Étape 3 : Récupérer un document
+
+Utilisez cet endpoint pour obtenir une URL signée de téléchargement d'un document uploadé :
+
+```bash
+curl -X GET https://api.mytulip.io/v2/claims/claim_xyz789/documents/doc_abc123 \
+  -H "key: votre-cle-api"
+```
+
+### Réponse
+
+```json
+{
+  "success": true,
+  "data": {
+    "document": {
+      "id": "doc_abc123",
+      "type": "Dépôt de plainte",
+      "title": "Plainte du 15/01/2024",
+      "mimeType": "application/pdf",
+      "status": "to_verify",
+      "refusalReason": null,
+      "note": null,
+      "createdAt": "2024-01-16T10:00:00Z",
+      "updatedAt": "2024-01-16T10:00:00Z",
+      "uploadedAt": "2024-01-16T10:00:00Z",
+      "acceptedAt": null,
+      "refusedAt": null,
+      "downloadUrl": "https://storage.googleapis.com/...",
+      "downloadUrlExpiresAt": "2024-01-16T11:00:00Z"
+    }
+  }
+}
+```
+
+<Callout type="warn">
+**Expiration de 1 heure** — L'URL signée expire après 1 heure. Le champ `downloadUrlExpiresAt` indique la date d'expiration exacte. Rappelez l'endpoint pour générer une nouvelle URL si nécessaire.
+</Callout>
+
+## Étape 4 : Vérifier la soumissibilité
+
+Récupérez le sinistre pour vérifier si tous les documents obligatoires sont uploadés :
+
+```bash
+curl -X GET https://api.mytulip.io/v2/claims/claim_xyz789 \
+  -H "key: votre-cle-api"
+```
+
+Vérifiez le champ `canSubmit` dans `data.claim` :
+- `true` — tous les documents obligatoires sont fournis, vous pouvez soumettre
+- `false` — il manque des documents obligatoires (consultez `documentEntries` pour identifier les manquants)
+
+## Étape 5 : Soumettre le sinistre
+
+<Callout type="info">
+**Étape optionnelle si vous utilisez `autoSubmit`** — Si vous avez utilisé `?autoSubmit=true` lors de l'upload du dernier document et que la réponse contenait un objet `claim` avec `autoSubmitted: true`, le sinistre est déjà soumis. Vous pouvez passer cette étape.
+</Callout>
+
+```bash
+curl -X POST https://api.mytulip.io/v2/claims/claim_xyz789/submit \
+  -H "key: votre-cle-api"
+```
+
+### Réponse
+
+```json
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "claim_xyz789",
+      "claimId": "internal_claim_abc",
+      "status": "submitted",
+      "canSubmit": false,
+      "autoSubmitted": false,
+      "submittedAt": "2024-01-16T12:00:00Z"
+    }
+  }
+}
+```
+
+## Étape 6 : Annuler un sinistre
+
+Vous pouvez annuler un sinistre à tout moment (tant qu'il n'a pas de paiement en cours) via `DELETE /v2/claims/{id}` :
+
+```bash
+curl -X DELETE https://api.mytulip.io/v2/claims/claim_xyz789 \
+  -H "key: votre-cle-api" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Le vélo a été retrouvé"
+  }'
+```
+
+Le champ `reason` est optionnel. Si omis, la raison par défaut est "Demande d'abandon initiée par le client".
+
+### Réponse
+
+```json
+{
+  "success": true,
+  "data": {
+    "claim": {
+      "id": "claim_xyz789",
+      "status": "archived"
+    }
+  }
+}
+```
+
+<Callout type="warn">
+**Paiement en cours** — Si un paiement est en cours de traitement sur le sinistre, l'annulation sera refusée avec le code d'erreur `3007`. Attendez la fin du paiement avant de réessayer.
+</Callout>
+
+## Codes d'erreur sinistres
+
+Les erreurs sont retournées au format `{ "success": false, "error": { "code": 1000, "message": "..." } }`.
+
+### Erreurs de validation (400 Bad Request)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 1000 | Validation error | Erreur générique de validation (champ manquant, format invalide) |
+| 1001 | Questions incomplete | Réponses aux questions manquantes ou invalides |
+| 1002 | File too large | Le fichier dépasse la limite de 20 Mo |
+| 1003 | Invalid MIME type | Type MIME détecté non autorisé (seuls pdf, jpeg, png, webp, heic, heif sont acceptés) |
+| 1004 | Invalid subtype for product | Le sous-type de sinistre n'est pas valide pour ce type de produit |
+| 1005 | Invalid base64 content | Le contenu base64 est mal encodé ou vide |
+| 1006 | Unsupported content type | Le Content-Type de la requête n'est ni `multipart/form-data` ni `application/json` |
+| 1007 | Invalid type for subtype | Le type de sinistre n'est pas compatible avec le sous-type |
+| 1008 | Unsupported product type | Le type de produit n'est pas supporté pour la déclaration de sinistre |
+
+### Erreurs de ressource (404 Not Found)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 2001 | Claim not found | Sinistre introuvable (ou non autorisé pour votre clé API) |
+| 2002 | Contract not found | Contrat introuvable |
+| 2003 | Product not found | Produit introuvable dans le contrat |
+| 2004 | Document not found | Document introuvable |
+
+### Erreurs métier (409 Conflict)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 3001 | Claim not editable | Le sinistre n'est pas modifiable (pas en statut draft) |
+| 3002 | Claim not submittable | Le sinistre a déjà été soumis ou annulé |
+| 3003 | Claim status locked | Le statut du sinistre est verrouillé (ex: déjà annulé) |
+| 3004 | Documents incomplete | Des documents obligatoires sont manquants pour la soumission |
+| 3005 | Document already validated | Le document a déjà été accepté et ne peut pas être remplacé |
+| 3007 | Active payment blocking | Un paiement est en cours, impossible d'annuler le sinistre |
+
+<Callout type="info">
+Pour la stratégie de retry et le format général des erreurs, consultez le guide [gestion des erreurs](/docs/guides/error-handling).
+</Callout>
+
+## Flux complet résumé
+
+```
+POST   /claims                              — Créer la pré-déclaration (status: draft)
+PUT    /claims/{id}/documents               — Uploader un document (1 par requête)
+PUT    /claims/{id}/documents?autoSubmit=true — Uploader + auto-soumission si complet
+GET    /claims/{id}                          — Vérifier canSubmit = true
+POST   /claims/{id}/submit                  — Soumettre (status: submitted)
+GET    /claims/{claimId}/documents/{docId}   — Obtenir l'URL signée d'un document
+DELETE /claims/{id}                          — Annuler le sinistre
+```
+
+## Prochaine étape
+
+Votre sinistre est soumis. Consultez le [flux des sinistres](/docs/concepts/claims-workflow) pour comprendre les statuts suivants et les [webhooks](/docs/concepts/webhooks) pour recevoir des notifications de progression.

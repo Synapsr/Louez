@@ -1,0 +1,266 @@
+---
+title: Flux des sinistres
+description: Les 8 statuts d'un sinistre, les transitions possibles, l'auto-soumission, le système de double identifiant, les catégories de documents, les types de règlement et les codes d'erreur.
+---
+
+## Diagramme des statuts
+
+```
+┌─────────┐     ┌───────────┐     ┌───────────────┐     ┌────────┐
+│  draft  │ ──► │ submitted │ ──► │  in_progress  │ ──► │ closed │
+└─────────┘     └───────────┘     └───────────────┘     └────────┘
+     │                               ▲    │  │
+     │ (cancel)       (docs fournis) │    │  └──────────┬──────────┐
+     ▼                               │    │             │          │
+┌──────────┐                         │    │(docs requis)│          │
+│ archived │                      ┌──┴───────────┐ ┌───────────┐ ┌──────────┐
+└──────────┘                      │ pending_info │ │ abandoned │ │ rejected │
+                                  └──────────────┘ └───────────┘ └──────────┘
+```
+
+## Statuts
+
+| Statut | Description | Actions possibles |
+|--------|-------------|-------------------|
+| `draft` | Pré-déclaration créée, en attente de documents | Modifier, uploader docs, soumettre, annuler |
+| `submitted` | Soumis, en attente de prise en charge | Lecture seule |
+| `in_progress` | En cours de traitement par Tulip | Lecture seule |
+| `pending_info` | Documents supplémentaires demandés | Uploader docs |
+| `closed` | Traité et indemnisé | Lecture seule |
+| `rejected` | Rejeté par l'assureur | Lecture seule |
+| `abandoned` | Abandonné par l'assuré ou le partenaire | Lecture seule |
+| `archived` | Pré-déclaration annulée (depuis draft uniquement) | Lecture seule |
+
+## Mapping des statuts internes
+
+L'API expose des statuts publics qui sont dérivés des statuts internes. Voici le mapping complet :
+
+### Statut ExternalClaim (interne) vers statut API (public)
+
+| Statut interne ExternalClaim | Statut API |
+|------------------------------|------------|
+| `unmatched` | `draft` |
+| `pending` | `draft` |
+| `matched` | Dépend du `userClaimStage` (voir ci-dessous) |
+| `abandonned` | `archived` |
+
+### userClaimStage (interne) vers statut API (public)
+
+Lorsque le sinistre est `matched` (soumis et lié à un sinistre interne), le statut API dépend du champ `userClaimStage` :
+
+| userClaimStage | Statut API |
+|----------------|------------|
+| `waiting_for_tulip` | `in_progress` |
+| `document_to_send` | `pending_info` |
+| `waiting_for_payment` | `in_progress` |
+| `closed_paid` | `closed` |
+| `closed_rejected` | `rejected` |
+| `abandoned` | `abandoned` |
+| `reopened` | `in_progress` |
+| _(autre / absent)_ | `submitted` |
+
+## Transitions
+
+| De | Vers | Déclencheur |
+|----|------|-------------|
+| `draft` | `submitted` | Appel `POST /claims/{id}/submit` ou auto-soumission |
+| `draft` | `archived` | Appel `DELETE /claims/{id}` |
+| `submitted` | `in_progress` | Prise en charge par Tulip |
+| `in_progress` | `pending_info` | Tulip demande des documents supplémentaires |
+| `pending_info` | `in_progress` | Documents fournis |
+| `in_progress` | `closed` | Sinistre traité et indemnisé |
+| `in_progress` | `rejected` | Sinistre rejeté |
+| `in_progress` | `abandoned` | Abandon par l'assuré/partenaire (`DELETE /claims/{id}`) |
+
+## Double identifiant
+
+Chaque sinistre possède deux identifiants :
+
+| Champ | Disponible | Exemple |
+|-------|-----------|---------|
+| `id` | Dès la création | `claim_xyz789` |
+| `claimId` | Après soumission | `internal_claim_abc` |
+
+- `claimId` est `null` tant que le sinistre n'est pas soumis
+- **Les deux identifiants sont acceptés** pour tous les endpoints GET
+- Utilisez `id` si vous stockez la référence dès la création
+
+## Auto-soumission
+
+<Callout type="info">
+L'auto-soumission nécessite le query parameter `?autoSubmit=true` sur l'endpoint `PUT /claims/{id}/documents`. Sans ce paramètre, même lorsque tous les documents obligatoires sont uploadés, le sinistre reste en `draft` avec `canSubmit: true`.
+</Callout>
+
+Le fonctionnement est le suivant :
+
+1. Le partenaire uploade un document via `PUT /claims/{id}/documents?autoSubmit=true`
+2. Après l'upload, l'API vérifie si tous les documents `mandatory` sont présents
+3. Si oui **et** que `autoSubmit=true` est passé, le sinistre est automatiquement soumis
+4. La réponse contient alors `autoSubmitted: true` et le `claimId` du sinistre interne
+
+### Webhook `v2.claim.draft.ready`
+
+<Callout type="info">
+Lorsque tous les documents obligatoires sont uploadés **sans** le paramètre `autoSubmit=true`, l'API émet le webhook `v2.claim.draft.ready`. Cet événement permet au partenaire de savoir que le sinistre est prêt à être soumis manuellement via `POST /claims/{id}/submit`.
+</Callout>
+
+## Le champ `canSubmit`
+
+Le champ booléen `canSubmit` indique si le sinistre peut être soumis :
+
+- `true` : Tous les documents obligatoires (`category: "mandatory"`) sont uploadés
+- `false` : Il manque des documents obligatoires
+
+Utilisez ce champ pour conditionner l'affichage du bouton de soumission dans votre interface.
+
+## Catégories de documents
+
+Chaque type de document attendu est classé dans une catégorie qui détermine son impact sur la soumission :
+
+| Catégorie | Description | Impact sur la soumission |
+|-----------|-------------|-------------------------|
+| `mandatory` | Document obligatoire | Bloque la soumission tant qu'il n'est pas uploadé |
+| `expected` | Document attendu | Ne bloque pas la soumission mais peut retarder le traitement |
+| `optional` | Document complémentaire | Peut être uploadé à tout moment, aucun impact |
+
+<Callout type="warn">
+Seuls les documents `mandatory` sont pris en compte pour le calcul de `canSubmit`. Les documents `expected` et `optional` n'affectent pas la possibilité de soumettre le sinistre.
+</Callout>
+
+Les catégories de documents sont déterminées par la configuration produit en fonction du `subtype` du sinistre et du type de produit assuré.
+
+## Types MIME autorisés et taille maximale
+
+Les fichiers uploadés via `PUT /claims/{id}/documents` doivent respecter les contraintes suivantes :
+
+| Contrainte | Valeur |
+|------------|--------|
+| Taille maximale | **20 Mo** (20 971 520 octets) |
+| Types MIME autorisés | `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `image/heic`, `image/heif` |
+
+<Callout type="info">
+Le type MIME est **auto-détecté** à partir du contenu du fichier (magic bytes). Il n'est pas nécessaire de le spécifier dans la requête. Si le type MIME détecté n'est pas dans la liste autorisée, l'upload est rejeté avec l'erreur `1003 INVALID_MIME_TYPE`.
+</Callout>
+
+## Modification d'un sinistre
+
+<Callout type="warn">
+Un sinistre ne peut être modifié qu'en statut **`draft`**. Seuls les champs `description` et `location` sont modifiables. La description doit contenir au minimum 50 caractères.
+</Callout>
+
+Les champs `type`, `subtype`, `claimAt` et `questions` sont figés dès la création et ne peuvent pas être modifiés.
+
+## Annulation
+
+L'endpoint `DELETE /claims/{id}` permet d'annuler un sinistre. Le comportement varie selon le statut :
+
+### Sinistre en `draft`
+
+L'annulation est simple : le sinistre passe en statut `archived`. Le webhook `v2.claim.draft.archived` est émis.
+
+### Sinistre soumis (statut `submitted`, `in_progress`, etc.)
+
+L'annulation d'un sinistre soumis effectue les opérations suivantes :
+
+1. Vérification qu'il n'y a pas de paiement actif (`executing`, `approved`, `pending_approval`)
+2. Si un paiement est en cours, l'annulation est bloquée avec l'erreur **3007 `ACTIVE_PAYMENT_BLOCKING`**
+3. Sinon, le sinistre interne est abandonné et le statut passe à `abandoned`
+4. Le webhook `v2.claim.abandoned` est émis
+
+### Corps de la requête
+
+Le body est optionnel et accepte un champ `reason` :
+
+```json
+{
+  "reason": "Le client a retrouvé son vélo"
+}
+```
+
+Si aucune raison n'est fournie, la raison par défaut est : _"Demande d'abandon initiée par le client"_.
+
+<Callout type="warn">
+Un sinistre déjà annulé (`archived` ou `abandoned`) ne peut pas être annulé à nouveau. L'API retourne l'erreur **3003 `CLAIM_STATUS_LOCKED`**.
+</Callout>
+
+## Types de règlement (settlements)
+
+Les règlements associés à un sinistre sont exposés dans le champ `settlements` du détail. Il existe 4 types :
+
+| Type | Description |
+|------|-------------|
+| `refund` | Remboursement effectué à l'assuré |
+| `charge` | Prélèvement ou facturation (ex : franchise) |
+| `cancel` | Annulation d'un règlement précédent |
+| `returned` | Virement retourné (échec du transfert, IBAN invalide, etc.) |
+
+Chaque règlement contient les champs suivants :
+
+| Champ | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Identifiant unique du règlement |
+| `type` | `string` | Type de règlement (`refund`, `charge`, `cancel`, `returned`) |
+| `amount` | `number` | Montant en euros |
+| `paymentAt` | `string \| null` | Date de paiement effectif (ISO 8601), `null` si pas encore payé |
+| `createdAt` | `string` | Date de création du règlement (ISO 8601) |
+
+## Filtrage dans les listes
+
+L'endpoint `GET /claims` supporte le filtre `status` avec trois valeurs :
+
+| Valeur du filtre | Statuts API retournés | Statut interne correspondant |
+|------------------|-----------------------|------------------------------|
+| `draft` | `draft` | `unmatched`, `pending` |
+| `submitted` | `submitted`, `in_progress`, `pending_info`, `closed`, `rejected`, `abandoned` | `matched` |
+| `cancelled` | `archived` | `abandonned` |
+
+<Callout type="info">
+Le filtre utilise la valeur **`cancelled`** (et non `archived`). Ce filtre retourne les sinistres dont le statut interne est `abandonned`, qui sont exposés avec le statut API `archived`.
+</Callout>
+
+## Codes d'erreur
+
+L'API retourne des codes d'erreur structurés dans le champ `code` de la réponse d'erreur. Les codes sont organisés par plage :
+
+### Erreurs de validation (400 Bad Request)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 1000 | `VALIDATION_ERROR` | Erreur de validation générique |
+| 1001 | `QUESTIONS_INCOMPLETE` | Les réponses aux questions sont incomplètes |
+| 1002 | `FILE_TOO_LARGE` | Le fichier dépasse la taille maximale de 20 Mo |
+| 1003 | `INVALID_MIME_TYPE` | Le type MIME du fichier n'est pas autorisé |
+| 1004 | `INVALID_SUBTYPE_FOR_PRODUCT` | Le sous-type n'est pas valide pour ce produit |
+| 1005 | `INVALID_BASE64` | Le contenu base64 est invalide |
+| 1006 | `UNSUPPORTED_CONTENT_TYPE` | Le Content-Type de la requête n'est pas supporté |
+| 1007 | `INVALID_TYPE_FOR_SUBTYPE` | Le type n'est pas valide pour ce sous-type |
+| 1008 | `UNSUPPORTED_PRODUCT_TYPE` | Le type de produit n'est pas supporté |
+
+### Erreurs de ressource (404 Not Found)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 2001 | `CLAIM_NOT_FOUND` | Sinistre introuvable |
+| 2002 | `CONTRACT_NOT_FOUND` | Contrat introuvable |
+| 2003 | `PRODUCT_NOT_FOUND` | Produit introuvable |
+| 2004 | `DOCUMENT_NOT_FOUND` | Document introuvable |
+
+### Erreurs de logique métier (409 Conflict)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 3001 | `CLAIM_NOT_EDITABLE` | Le sinistre ne peut pas être modifié dans son état actuel |
+| 3002 | `CLAIM_NOT_SUBMITTABLE` | Le sinistre ne peut pas être soumis (documents manquants ou état invalide) |
+| 3003 | `CLAIM_STATUS_LOCKED` | Le statut du sinistre ne permet pas cette opération |
+| 3004 | `DOCUMENTS_INCOMPLETE` | Tous les documents obligatoires ne sont pas présents |
+| 3005 | `DOCUMENT_ALREADY_VALIDATED` | Le document a déjà été validé et ne peut pas être remplacé |
+| 3006 | `INVALID_DOCUMENT_TYPE` | Le type de document n'est pas valide |
+| 3007 | `ACTIVE_PAYMENT_BLOCKING` | Un paiement est en cours, l'opération est bloquée |
+
+### Erreurs d'authentification (401 Unauthorized)
+
+| Code | Nom | Description |
+|------|-----|-------------|
+| 9001 | `MISSING_API_KEY` | La clé API est manquante dans la requête |
+| 9002 | `INVALID_API_KEY` | La clé API est invalide |
+| 9003 | `UNAUTHORIZED_USER` | L'utilisateur n'est pas autorisé pour cette clé API |

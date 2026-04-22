@@ -1,0 +1,12 @@
+{
+  "title": "Démarrage rapide",
+  "pages": [
+    "index",
+    "authentication",
+    "environments",
+    "developer-space",
+    "conventions",
+    "first-contract",
+    "first-claim"
+  ]
+}

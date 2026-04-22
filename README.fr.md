@@ -223,7 +223,7 @@ Construit avec des technologies modernes et éprouvées :
 | ⚡  | **Next.js 16**     | Framework React avec App Router       |
 | 📘  | **TypeScript**     | Développement type-safe               |
 | 🎨  | **Tailwind CSS 4** | Styling utility-first                 |
-| 🧩  | **shadcn/ui**      | Composants UI élégants                |
+| 🧩  | **Base UI**        | Primitives UI accessibles             |
 | 🗄️  | **Drizzle ORM**    | Requêtes base de données type-safe    |
 | 🔐  | **Auth.js**        | Authentification (Google, Magic Link) |
 | ✉️  | **React Email**    | Templates d'emails élégants           |
@@ -271,7 +271,7 @@ louez/
 │   │   ├── (storefront)/     # Pages boutique publiques
 │   │   └── api/              # Routes API
 │   ├── components/
-│   │   ├── ui/               # Composants shadcn/ui
+│   │   ├── ui/               # Composants Base UI
 │   │   ├── dashboard/        # Composants dashboard
 │   │   └── storefront/       # Composants vitrine
 │   ├── lib/

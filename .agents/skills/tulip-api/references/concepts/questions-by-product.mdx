@@ -1,0 +1,183 @@
+---
+title: Questions et documents par produit
+description: Matrices complètes des questions obligatoires et documents requis par type et sous-type de sinistre.
+---
+
+Lors de la création d'un sinistre, les questions à répondre et les documents à fournir dépendent du type de produit (issu du contrat) et du sous-type de sinistre choisi.
+
+## Vélo (`bike`)
+
+### Vol total (`total_theft`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Le vélo était-il attaché à un point fixe ? | boolean |
+| Le vélo était-il attaché avec le cadenas fourni ? | boolean |
+| Y a-t-il eu une effraction d'un lieu privé ? | boolean |
+| Le vélo est-il électrique ? | boolean |
+| La batterie était-elle présente sur le vélo ? | boolean |
+| Avez-vous récupéré le dépôt de plainte final ? | boolean |
+
+**Documents :**
+
+| Document | Catégorie | Condition |
+|----------|-----------|-----------|
+| Récapitulatif de déclaration de plainte en ligne | 🔴 Obligatoire | Si dépôt de plainte final = **non** |
+| Dépôt de plainte | 🔴 Obligatoire | Si dépôt de plainte final = **oui** |
+| Photo des clés de l'antivol et de la batterie | 🔴 Obligatoire | — |
+| Photo de la batterie | 🔴 Obligatoire | Si vélo électrique = oui ET batterie présente = **non** |
+| Photo de l'effraction | 🔴 Obligatoire | Si effraction lieu privé = **oui** |
+| Contrat de location | 🟡 Attendu | — |
+| Facture d'achat du vélo | 🟡 Attendu | — |
+| Certificat de marquage du vélo | 🟡 Attendu | — |
+| Dépôt de plainte | 🟡 Attendu | Si dépôt de plainte final = **non** |
+
+### Vol partiel (`partial_theft`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Qu'est-ce qui a été volé ? | text |
+| Avez-vous récupéré le dépôt de plainte final ? | boolean |
+
+**Documents :**
+
+| Document | Catégorie | Condition |
+|----------|-----------|-----------|
+| Récapitulatif de déclaration de plainte en ligne | 🔴 Obligatoire | Si dépôt de plainte final = **non** |
+| Dépôt de plainte | 🔴 Obligatoire | Si dépôt de plainte final = **oui** |
+| Photo du vélo dans son ensemble | 🔴 Obligatoire | — |
+| Photo de la casse (angle 1) | 🔴 Obligatoire | — |
+| Photo de la casse (angle 2) | 🔴 Obligatoire | — |
+| Contrat de location | 🟡 Attendu | — |
+| Devis de réparation | 🟡 Attendu | — |
+| Facture de réparation | 🟡 Attendu | — |
+| Facture d'achat des pièces | 🟡 Attendu | — |
+
+### Vandalisme (`vandalism`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Quels éléments du matériel ont été vandalisés ? | text |
+
+**Documents :**
+
+| Document | Catégorie |
+|----------|-----------|
+| Photo du vélo dans son ensemble | 🔴 Obligatoire |
+| Photo de la casse (angle 1) | 🔴 Obligatoire |
+| Photo de la casse (angle 2) | 🔴 Obligatoire |
+| Dépôt de plainte | 🔴 Obligatoire |
+| Contrat de location | 🟡 Attendu |
+| Devis de réparation | 🟡 Attendu |
+| Facture de réparation | 🟡 Attendu |
+| Facture d'achat des pièces | 🟡 Attendu |
+
+### Casse partielle (`partial_break`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Quels éléments du matériel sont cassés ? | text |
+| La casse est-elle due à un accident avec un tiers ? | boolean |
+| Avez-vous fait un constat avec le tiers ? | boolean |
+| La réparation est-elle effectuée en externe ? | boolean |
+
+**Documents :**
+
+| Document | Catégorie | Condition |
+|----------|-----------|-----------|
+| Photo du vélo dans son ensemble | 🔴 Obligatoire | — |
+| Photo de la casse (angle 1) | 🔴 Obligatoire | — |
+| Photo de la casse (angle 2) | 🔴 Obligatoire | — |
+| Constat amiable | 🔴 Obligatoire | Si constat avec le tiers = **oui** |
+| Contrat de location | 🟡 Attendu | — |
+| Devis de réparation | 🟡 Attendu | Si réparation externe = **oui** |
+| Facture de réparation | 🟡 Attendu | — |
+| Facture d'achat des pièces | 🟡 Attendu | Si réparation externe = **oui** |
+
+---
+
+## High-Tech (`high-tech`)
+
+### Casse partielle (`partial_break`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Qu'est-ce qui est cassé ? | text |
+| Les dégâts ont-ils été causés par un liquide ? | boolean |
+
+**Documents :**
+
+| Document | Catégorie |
+|----------|-----------|
+| Photo du matériel vue du dessus | 🔴 Obligatoire |
+| Photo du matériel vue du dessous | 🔴 Obligatoire |
+| Photo du matériel (angle 1) | 🔴 Obligatoire |
+| Photo du matériel (angle 2) | 🔴 Obligatoire |
+| Photo du matériel (angle 3) | 🔴 Obligatoire |
+| Photo du matériel (angle 4) | 🔴 Obligatoire |
+| Photo de l'écran allumé | 🔴 Obligatoire |
+| Contrat de location (leasing) | 🟡 Attendu |
+| Devis des réparations | 🟡 Attendu |
+| Facture des réparations | 🟡 Attendu |
+
+### Casse totale (`total_break`)
+
+Mêmes questions et documents que `partial_break`, **sans** la photo de l'écran allumé.
+
+### Vol partiel (`partial_theft`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Quelles pièces ou accessoires ont été volés ? | text |
+| Le reste du matériel est-il encore utilisable ? | boolean |
+
+**Documents :**
+
+| Document | Catégorie |
+|----------|-----------|
+| Dépôt de plainte final | 🔴 Obligatoire |
+| Contrat de location (leasing) | 🟡 Attendu |
+| Facture du matériel | 🟡 Attendu |
+
+### Vol total (`total_theft`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Y a-t-il eu une effraction d'un lieu sécurisé ? | boolean |
+| S'agit-il d'un vol à la sauvette ? | boolean |
+
+**Documents :** Identiques à `partial_theft`.
+
+### Panne (`failure`)
+
+**Questions :**
+
+| Question | Type |
+|----------|------|
+| Quel est le problème technique constaté ? | text |
+| Les dégâts ont-ils été causés par un liquide ? | boolean |
+| Le matériel fonctionne-t-il encore ? | boolean |
+
+**Documents :** Identiques à `partial_break`.
+
+---
+
+<Callout type="info">
+**Questions personnalisées** — En plus des questions obligatoires définies par Tulip, vous pouvez ajouter vos propres questions personnalisées lors de la création d'un sinistre en fonction de vos besoins métier.
+</Callout>
+
+---
