@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef, useMemo } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -406,22 +406,34 @@ export function NewReservationForm({
   const watchedValues = useStore(form.store, (s) => s.values as NewReservationFormValues)
   const isSaving = createReservationMutation.isPending
 
-  const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
-  const effectiveTulipInsuranceOptIn =
-    tulipInsuranceMode === 'required'
-      ? true
-      : tulipInsuranceMode === 'optional'
-        ? tulipInsuranceOptIn
-        : false
   const hasTulipEligibleProducts = selectedProducts.some((item) => {
     const product = products.find((candidate) => candidate.id === item.productId)
     return product?.tulipInsurable === true
   })
+  const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
   const showTulipPastStartWarning =
-    effectiveTulipInsuranceOptIn &&
     hasTulipEligibleProducts &&
     watchStartDate instanceof Date &&
     watchStartDate.getTime() < Date.now()
+
+  useEffect(() => {
+    if (
+      tulipInsuranceMode === 'optional' &&
+      showTulipPastStartWarning &&
+      tulipInsuranceOptIn
+    ) {
+      setTulipInsuranceOptIn(false)
+    }
+  }, [showTulipPastStartWarning, tulipInsuranceMode, tulipInsuranceOptIn])
+
+  const effectiveTulipInsuranceOptIn =
+    showTulipPastStartWarning
+      ? false
+      : tulipInsuranceMode === 'required'
+        ? true
+        : tulipInsuranceMode === 'optional'
+          ? tulipInsuranceOptIn
+          : false
   const tulipQuoteItems = useMemo(
     () =>
       selectedProducts.map((item) => ({
@@ -1108,6 +1120,12 @@ export function NewReservationForm({
               customItems={customItems}
               tulipInsuranceMode={tulipInsuranceMode}
               tulipInsuranceOptIn={tulipInsuranceOptIn}
+              tulipQuoteUnavailable={tulipQuoteQuery.data?.quoteUnavailable ?? false}
+              tulipQuoteErrorMessage={
+                tulipQuoteQuery.data?.error
+                  ? getActionErrorMessage(new Error(tulipQuoteQuery.data.error))
+                  : null
+              }
               startDate={watchStartDate}
               endDate={watchEndDate}
               hasTulipEligibleProducts={hasTulipEligibleProducts}
@@ -1190,6 +1208,7 @@ export function NewReservationForm({
               isTulipInsuranceLoading={isTulipInsuranceLoading}
               insuredProductCount={tulipQuoteQuery.data?.insuredProductCount ?? null}
               uninsuredProductCount={tulipQuoteQuery.data?.uninsuredProductCount ?? null}
+              showTulipPastStartWarning={showTulipPastStartWarning}
               tulipQuoteUnavailable={tulipQuoteQuery.data?.quoteUnavailable ?? false}
               tulipQuoteErrorMessage={
                 tulipQuoteQuery.data?.error

@@ -549,6 +549,7 @@ export async function previewTulipQuoteForCheckout(params: {
     endDate: params.endDate,
     customer: params.customer,
     insuredItems: coverage.insuredItems,
+    preview: true,
   });
 
   try {
@@ -715,133 +716,7 @@ export async function createTulipContractForReservation(params: {
     };
   }
 
-  const insuranceSelection = getReservationInsuranceSelection({
-    tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
-    tulipInsuranceAmount: reservation.tulipInsuranceAmount,
-    items: reservation.items,
-  });
-
-  if (!insuranceSelection.optIn) {
-    console.info('[tulip][contract-create] marked not required: opt-in disabled', {
-      reservationId: reservation.id,
-      optIn: insuranceSelection.optIn,
-      amount: insuranceSelection.amount,
-    });
-    await db
-      .update(reservations)
-      .set({
-        tulipContractStatus: 'not_required',
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservation.id));
-
-    return {
-      contractId: null,
-      created: false,
-    };
-  }
-
-  const storeSettings = reservation.store.settings as any;
-  const tulipSettings = getTulipSettings(storeSettings);
-
-  if (!tulipSettings.enabled) {
-    await db
-      .update(reservations)
-      .set({
-        tulipContractStatus: 'not_required',
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservation.id));
-
-    return {
-      contractId: null,
-      created: false,
-    };
-  }
-
-  const apiKey = getTulipApiKey(storeSettings);
-  if (!apiKey || !tulipSettings.renterUid) {
-    throw new Error('errors.tulipNotConfigured');
-  }
-
-  const resolvedContractType = resolveTulipContractTypeFromDates(
-    reservation.startDate,
-    reservation.endDate,
-  );
-
-  await assertTulipContractTypeEnabled({
-    apiKey,
-    renterUid: tulipSettings.renterUid,
-    contractType: resolvedContractType,
-    fallbackKey: 'errors.tulipContractCreationFailed',
-  });
-
-  const coverage = await resolveTulipCoverage(
-    toInsuranceCandidateItems(reservation.items),
-  );
-  const insuredItems = applyReservationUnitIdentifiersToCoverage(
-    reservation.items,
-    coverage.insuredItems,
-  );
-
-  await assertTulipProductContractCompatibility({
-    apiKey,
-    insuredItems,
-    contractType: resolvedContractType,
-  });
-
-  console.info('[tulip][contract-create] coverage resolved', {
-    reservationId: reservation.id,
-    insuredProductCount: coverage.insuredProductCount,
-    uninsuredProductCount: coverage.uninsuredProductCount,
-  });
-
-  if (coverage.insuredProductCount === 0) {
-    console.info(
-      '[tulip][contract-create] marked not required: no insurable mapped products',
-      {
-        reservationId: reservation.id,
-      },
-    );
-    await db
-      .update(reservations)
-      .set({
-        tulipContractStatus: 'not_required',
-        updatedAt: new Date(),
-      })
-      .where(eq(reservations.id, reservation.id));
-
-    return {
-      contractId: null,
-      created: false,
-    };
-  }
-
-  const payload = buildContractPayload({
-    renterUid: tulipSettings.renterUid,
-    contractType: resolvedContractType,
-    startDate: reservation.startDate,
-    endDate: reservation.endDate,
-    customer: toTulipCustomerInput(reservation.customer),
-    insuredItems,
-  });
-
-  let contractId: string | null = null;
-  try {
-    const contract = await tulipCreateContractWithOptionsFallback({
-      apiKey,
-      payload,
-      preview: false,
-      storeIdForLog: reservation.storeId,
-      reservationIdForLog: reservation.id,
-    });
-    contractId = contract.cid || null;
-  } catch (error) {
-    console.error('[tulip][contract-create] api failure', {
-      reservationId: reservation.id,
-      request: summarizeContractPayloadForLogs(payload),
-      error: error instanceof Error ? error.message : 'unknown',
-    });
+  const resetCreationLock = async () => {
     await db
       .update(reservations)
       .set({
@@ -855,6 +730,140 @@ export async function createTulipContractForReservation(params: {
           eq(reservations.tulipContractStatus, 'creating'),
         ),
       );
+  };
+
+  let payload: ReturnType<typeof buildContractPayload> | null = null;
+  let contractId: string | null = null;
+  try {
+    const insuranceSelection = getReservationInsuranceSelection({
+      tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+      tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+      items: reservation.items,
+    });
+
+    if (!insuranceSelection.optIn) {
+      console.info('[tulip][contract-create] marked not required: opt-in disabled', {
+        reservationId: reservation.id,
+        optIn: insuranceSelection.optIn,
+        amount: insuranceSelection.amount,
+      });
+      await db
+        .update(reservations)
+        .set({
+          tulipContractStatus: 'not_required',
+          updatedAt: new Date(),
+        })
+        .where(eq(reservations.id, reservation.id));
+
+      return {
+        contractId: null,
+        created: false,
+      };
+    }
+
+    const storeSettings = reservation.store.settings as any;
+    const tulipSettings = getTulipSettings(storeSettings);
+
+    if (!tulipSettings.enabled) {
+      await db
+        .update(reservations)
+        .set({
+          tulipContractStatus: 'not_required',
+          updatedAt: new Date(),
+        })
+        .where(eq(reservations.id, reservation.id));
+
+      return {
+        contractId: null,
+        created: false,
+      };
+    }
+
+    const apiKey = getTulipApiKey(storeSettings);
+    if (!apiKey || !tulipSettings.renterUid) {
+      throw new Error('errors.tulipNotConfigured');
+    }
+
+    const resolvedContractType = resolveTulipContractTypeFromDates(
+      reservation.startDate,
+      reservation.endDate,
+    );
+
+    await assertTulipContractTypeEnabled({
+      apiKey,
+      renterUid: tulipSettings.renterUid,
+      contractType: resolvedContractType,
+      fallbackKey: 'errors.tulipContractCreationFailed',
+    });
+
+    const coverage = await resolveTulipCoverage(
+      toInsuranceCandidateItems(reservation.items),
+    );
+    const insuredItems = applyReservationUnitIdentifiersToCoverage(
+      reservation.items,
+      coverage.insuredItems,
+    );
+
+    await assertTulipProductContractCompatibility({
+      apiKey,
+      insuredItems,
+      contractType: resolvedContractType,
+    });
+
+    console.info('[tulip][contract-create] coverage resolved', {
+      reservationId: reservation.id,
+      insuredProductCount: coverage.insuredProductCount,
+      uninsuredProductCount: coverage.uninsuredProductCount,
+    });
+
+    if (coverage.insuredProductCount === 0) {
+      console.info(
+        '[tulip][contract-create] marked not required: no insurable mapped products',
+        {
+          reservationId: reservation.id,
+        },
+      );
+      await db
+        .update(reservations)
+        .set({
+          tulipContractStatus: 'not_required',
+          updatedAt: new Date(),
+        })
+        .where(eq(reservations.id, reservation.id));
+
+      return {
+        contractId: null,
+        created: false,
+      };
+    }
+
+    payload = buildContractPayload({
+      renterUid: tulipSettings.renterUid,
+      contractType: resolvedContractType,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      customer: toTulipCustomerInput(reservation.customer),
+      insuredItems,
+    });
+
+    const contract = await tulipCreateContractWithOptionsFallback({
+      apiKey,
+      payload,
+      preview: false,
+      storeIdForLog: reservation.storeId,
+      reservationIdForLog: reservation.id,
+    });
+    contractId = contract.cid || null;
+  } catch (error) {
+    console.error('[tulip][contract-create] api failure', {
+      reservationId: reservation.id,
+      request: payload ? summarizeContractPayloadForLogs(payload) : null,
+      error: error instanceof Error ? error.message : 'unknown',
+    });
+    await resetCreationLock();
+    if (error instanceof Error && error.message.startsWith('errors.')) {
+      throw error;
+    }
     throw toTulipContractError(error, 'errors.tulipContractCreationFailed');
   }
 

@@ -158,8 +158,12 @@ function buildCustomerPayload(
 function buildProductPayload(
   items: ResolvedTulipItemInput[],
   userName: string,
+  options?: {
+    preview?: boolean;
+  },
 ): Array<Record<string, unknown>> {
   const productsPayload: Array<Record<string, unknown>> = [];
+  const preview = options?.preview === true;
   const productOccurrenceById = new Map<string, number>();
 
   for (const item of items) {
@@ -176,19 +180,21 @@ function buildProductPayload(
       productOccurrenceById.set(item.productId, nextOccurrence);
 
       const assignedProductMarked = resolvedProductMarkedValues[nextMarkedIndex] ?? null;
-      const serialLikeIdentifier = `unassigned-${item.productId}-${nextOccurrence}`.trim();
-      const safeProductMarked =
+      const placeholderProductMarked = preview
+        ? `preview-${item.productId}-${nextOccurrence}`
+        : `unassigned-${item.productId}-${nextOccurrence}`;
+      const productMarked =
         assignedProductMarked && assignedProductMarked.length > 0
           ? assignedProductMarked
-          : serialLikeIdentifier.length > 0
-            ? serialLikeIdentifier
-          : `product-${productsPayload.length + 1}`;
+          : placeholderProductMarked;
 
       productsPayload.push({
         product_id: item.tulipProductId,
         data: {
           user_name: userName,
-          product_marked: safeProductMarked,
+          // Temporary compatibility: many Louez flows still do not assign a real unit identifier
+          // before Tulip pricing/contract calls, so we keep a synthetic product_marked fallback.
+          product_marked: productMarked,
           louez_product_ID: item.productId,
         },
       });
@@ -208,9 +214,12 @@ export function buildContractPayload(params: {
   endDate: Date;
   customer: TulipCustomerInput;
   insuredItems: ResolvedTulipItemInput[];
+  preview?: boolean;
 }): TulipContractPayload {
   const userName = `${params.customer.firstName} ${params.customer.lastName}`.trim();
-  const productsPayload = buildProductPayload(params.insuredItems, userName);
+  const productsPayload = buildProductPayload(params.insuredItems, userName, {
+    preview: params.preview,
+  });
   const customerPayload = buildCustomerPayload(params.customer, {
     contractType: params.contractType,
     startDate: params.startDate,

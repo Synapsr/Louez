@@ -60,6 +60,7 @@ interface NewReservationStepReviewProps {
   isTulipInsuranceLoading: boolean
   insuredProductCount: number | null
   uninsuredProductCount: number | null
+  showTulipPastStartWarning: boolean
   tulipQuoteUnavailable: boolean
   tulipQuoteErrorMessage: string | null
   subtotal: number
@@ -102,6 +103,7 @@ export function NewReservationStepReview({
   isTulipInsuranceLoading,
   insuredProductCount,
   uninsuredProductCount,
+  showTulipPastStartWarning,
   tulipQuoteUnavailable,
   tulipQuoteErrorMessage,
   subtotal,
@@ -130,15 +132,6 @@ export function NewReservationStepReview({
   const isTulipInsuranceEnabledForReservation =
     tulipInsuranceMode === 'required' ||
     (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn)
-  const hasTulipEligibleProducts = selectedProducts.some((item) => {
-    const product = products.find((candidate) => candidate.id === item.productId)
-    return product?.tulipInsurable === true
-  })
-  const showTulipPastStartWarning =
-    isTulipInsuranceEnabledForReservation &&
-    hasTulipEligibleProducts &&
-    startDate instanceof Date &&
-    startDate.getTime() < Date.now()
   const showOptionalTulipInsuranceDetails =
     tulipInsuranceMode === 'optional' &&
     (showTulipInsuranceSummary ||
@@ -446,9 +439,15 @@ export function NewReservationStepReview({
             </CardHeader>
             <CardContent className="space-y-3">
               {tulipInsuranceMode === 'required' ? (
-                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                  {tCheckout('insuranceRequiredNotice')}
-                </div>
+                showTulipPastStartWarning ? (
+                  <Alert variant="warning">
+                    <AlertDescription>{t('tulipInsurance.pastStartWarning')}</AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                    {tCheckout('insuranceRequiredNotice')}
+                  </div>
+                )
               ) : (
                 <>
                   <div className="rounded-lg border p-3">

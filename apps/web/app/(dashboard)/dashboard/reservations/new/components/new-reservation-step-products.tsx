@@ -51,6 +51,8 @@ interface NewReservationStepProductsProps {
   customItems: CustomItem[]
   tulipInsuranceMode: 'required' | 'optional' | 'no_public'
   tulipInsuranceOptIn: boolean
+  tulipQuoteUnavailable: boolean
+  tulipQuoteErrorMessage: string | null
   startDate: Date | undefined
   endDate: Date | undefined
   hasTulipEligibleProducts: boolean
@@ -92,6 +94,8 @@ export function NewReservationStepProducts({
   customItems,
   tulipInsuranceMode,
   tulipInsuranceOptIn,
+  tulipQuoteUnavailable,
+  tulipQuoteErrorMessage,
   startDate,
   endDate,
   hasTulipEligibleProducts,
@@ -173,6 +177,7 @@ export function NewReservationStepProducts({
     subtotal + (showTulipInsuranceSummary && tulipInsuranceOptIn ? tulipInsuranceAmount : 0)
   const showTulipInsuranceAmountLine =
     showTulipInsuranceSummary && (isTulipInsuranceLoading || tulipInsuranceAmount > 0)
+  const isTulipInsuranceSelectionDisabled = showTulipPastStartWarning
 
   return (
     <Card>
@@ -737,22 +742,39 @@ export function NewReservationStepProducts({
                 </p>
 
                 {tulipInsuranceMode === 'required' ? (
-                  <p className="mt-3 text-sm font-medium text-emerald-700">
-                    {t('tulipInsurance.required')}
-                  </p>
+                  <div className="mt-3 space-y-3">
+                    {showTulipPastStartWarning ? (
+                      <Alert variant="warning">
+                        <AlertDescription>{t('tulipInsurance.pastStartWarning')}</AlertDescription>
+                      </Alert>
+                    ) : (
+                      <p className="text-sm font-medium text-emerald-700">
+                        {t('tulipInsurance.required')}
+                      </p>
+                    )}
+                    {!showTulipPastStartWarning && tulipQuoteUnavailable && tulipQuoteErrorMessage && (
+                      <Alert variant="warning">
+                        <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
                 ) : (
                   <div className="mt-3 space-y-3">
                     <div className="flex items-center space-x-2">
                       <Checkbox
                         id="manual-form-tulip-insurance-opt-in"
                         checked={tulipInsuranceOptIn}
+                        disabled={isTulipInsuranceSelectionDisabled}
                         onCheckedChange={(checked) =>
                           onTulipInsuranceOptInChange(checked === true)
                         }
                       />
                       <label
                         htmlFor="manual-form-tulip-insurance-opt-in"
-                        className="cursor-pointer text-sm font-medium"
+                        className={cn(
+                          'cursor-pointer text-sm font-medium',
+                          isTulipInsuranceSelectionDisabled && 'cursor-not-allowed opacity-60',
+                        )}
                       >
                         {t('tulipInsurance.optionalLabel')}
                       </label>
@@ -760,6 +782,11 @@ export function NewReservationStepProducts({
                     <p className="text-xs text-muted-foreground">
                       {t('tulipInsurance.optionalHelp')}
                     </p>
+                    {showTulipPastStartWarning && (
+                      <Alert variant="warning">
+                        <AlertDescription>{t('tulipInsurance.pastStartWarning')}</AlertDescription>
+                      </Alert>
+                    )}
                     {hasTulipEligibleProducts &&
                       !showTulipPastStartWarning &&
                       showTulipInsuranceAmountLine && (
@@ -775,6 +802,11 @@ export function NewReservationStepProducts({
                             : tCheckout('insuranceOptionalDisabled')}
                         </span>
                       </div>
+                    )}
+                    {!showTulipPastStartWarning && tulipQuoteUnavailable && tulipQuoteErrorMessage && (
+                      <Alert variant="warning">
+                        <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
+                      </Alert>
                     )}
                   </div>
                 )}
