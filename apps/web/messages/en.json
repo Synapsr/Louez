@@ -5058,6 +5058,7 @@
     "tulipContractNotFound": "Tulip could not find this contract. Check synchronization before trying again.",
     "tulipContractNotOpen": "Tulip rejected the update: only open contracts can be modified.",
     "tulipContractIdentityFrozen": "Tulip rejected the update: customer identity data is now frozen for this contract.",
+    "tulipContractProductMarkedMissing": "Tulip requires the real identifier of each insured item. Assign a unit or physical identifier to every insured product before creating or syncing the contract.",
     "tulipContractPayloadInvalid": "Tulip rejected the contract payload. Check the insured products and required fields being sent.",
     "tulipContractValidationFailed": "Tulip rejected this action because of a contract validation error.",
     "tulipContractTypeDisabled": "The Tulip contract type required for this duration is not enabled for this store.",

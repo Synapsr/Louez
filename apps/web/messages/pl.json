@@ -5032,6 +5032,7 @@
     "tulipQuoteFailed": "Nie udało się obliczyć ochrony przed uszkodzeniem/kradzieżą dla tej rezerwacji.",
     "tulipContractPastDate": "Tulip odrzucił tworzenie umowy: daty umowy nie mogą być w przeszłości.",
     "tulipContractActionForbidden": "Tulip odrzucił tę akcję dla bieżącej konfiguracji konta.",
+    "tulipContractProductMarkedMissing": "Tulip wymaga rzeczywistego identyfikatora każdego ubezpieczonego przedmiotu. Przypisz jednostkę lub fizyczny identyfikator do każdego ubezpieczonego produktu przed utworzeniem lub synchronizacją umowy.",
     "tulipContractTypeDisabled": "Typ umowy Tulip wymagany dla tego czasu trwania nie jest włączony dla tego sklepu."
   },
   "welcome": {

@@ -5032,6 +5032,7 @@
     "tulipQuoteFailed": "Kan breuk-/diefstaldekking niet berekenen voor deze reservering.",
     "tulipContractPastDate": "Tulip heeft het aanmaken van het contract geweigerd: contractdatums kunnen niet in het verleden liggen.",
     "tulipContractActionForbidden": "Tulip heeft deze actie geweigerd voor de huidige accountconfiguratie.",
+    "tulipContractProductMarkedMissing": "Tulip vereist de echte identificatie van elk verzekerd item. Wijs een unit of fysieke identificatie toe aan elk verzekerd product voordat je het contract aanmaakt of synchroniseert.",
     "tulipContractTypeDisabled": "Het Tulip contracttype dat vereist is voor deze duur is niet ingeschakeld voor deze winkel."
   },
   "welcome": {

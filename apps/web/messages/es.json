@@ -5032,6 +5032,7 @@
     "tulipQuoteFailed": "No se pudo calcular la cobertura contra rotura/robo para esta reserva.",
     "tulipContractPastDate": "Tulip rechazo la creacion del contrato: las fechas del contrato no pueden estar en el pasado.",
     "tulipContractActionForbidden": "Tulip rechazo esta accion para la configuracion de cuenta actual.",
+    "tulipContractProductMarkedMissing": "Tulip requiere el identificador real de cada articulo asegurado. Asigna una unidad o un identificador fisico a cada producto asegurado antes de crear o sincronizar el contrato.",
     "tulipContractTypeDisabled": "El tipo de contrato Tulip requerido para esta duracion no esta activado para esta tienda."
   },
   "welcome": {
