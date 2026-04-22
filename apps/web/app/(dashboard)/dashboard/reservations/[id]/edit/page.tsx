@@ -6,7 +6,7 @@ import { redirect, notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
 import type { DeliverySettings, LegMethod } from '@louez/types'
 import type { SeasonalPricingConfig } from '@louez/utils'
-import { getTulipSettings } from '@/lib/integrations/tulip/settings'
+import { getDashboardTulipInsuranceMode } from '@/lib/integrations/tulip/settings'
 import { EditReservationForm } from './edit-reservation-form'
 import type { PricingTier, Product, StoreDeliveryInfo } from './types'
 
@@ -237,13 +237,7 @@ export default async function EditReservationPage({
   ])
 
   const currency = store.settings?.currency || 'EUR'
-  const tulipSettings = getTulipSettings(store.settings || null)
-  const tulipInsuranceMode =
-    !tulipSettings.enabled
-      ? 'no_public'
-      : tulipSettings.publicMode === 'required'
-        ? 'required'
-        : 'optional'
+  const tulipInsuranceMode = getDashboardTulipInsuranceMode(store.settings || null)
 
   // Build delivery info from store settings
   const deliverySettings = (store.settings as Record<string, unknown> | null)
@@ -259,6 +253,7 @@ export default async function EditReservationPage({
 
   return (
     <EditReservationForm
+      storeId={store.id}
       reservation={{
         id: reservation.id,
         number: reservation.number,
@@ -306,8 +301,16 @@ export default async function EditReservationPage({
             : null,
         })),
         customer: {
+          customerType: reservation.customer.customerType,
+          companyName: reservation.customer.companyName,
           firstName: reservation.customer.firstName,
           lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone,
+          address: reservation.customer.address,
+          city: reservation.customer.city,
+          postalCode: reservation.customer.postalCode,
+          country: reservation.customer.country,
         },
       }}
       availableProducts={availableProducts.map(mapProduct)}

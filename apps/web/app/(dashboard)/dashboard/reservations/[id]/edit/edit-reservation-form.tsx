@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import { toastManager } from '@louez/ui'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   Loader2,
@@ -51,6 +51,7 @@ import {
 import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
+import { getTulipQuotePreview } from '@/app/(storefront)/[slug]/checkout/actions'
 import type { PricingMode } from '@louez/types'
 import { EditReservationItemsSection } from './components/edit-reservation-items-section'
 import { EditReservationSummarySection } from './components/edit-reservation-summary-section'
@@ -110,6 +111,7 @@ function resolveInitialManualPricingMode(
 }
 
 export function EditReservationForm({
+  storeId,
   reservation,
   availableProducts,
   existingReservations,
@@ -134,6 +136,43 @@ export function EditReservationForm({
       },
     }),
   )
+
+  const getActionErrorMessage = (error: unknown) => {
+    const errorDetails =
+      typeof error === 'object' &&
+      error !== null &&
+      'data' in error &&
+      typeof error.data === 'object' &&
+      error.data !== null &&
+      'details' in error.data &&
+      typeof error.data.details === 'string' &&
+      error.data.details.trim().length > 0
+        ? error.data.details.trim()
+        : null
+
+    if (error instanceof Error) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof error.message === 'string'
+    ) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    return tErrors('generic')
+  }
 
   // State
   const [isLoading, setIsLoading] = useState(false)
@@ -171,6 +210,17 @@ export function EditReservationForm({
 
     return legacyInsuranceAmount
   })()
+  const originalItemsSubtotal = editableReservationItems.reduce((sum, item) => {
+    const parsed = Number(item.totalPrice)
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return sum
+    }
+
+    return sum + parsed
+  }, 0)
+  const originalComparableSubtotal = Math.round(
+    (originalItemsSubtotal + initialTulipInsuranceAmount) * 100,
+  ) / 100
   const [items, setItems] = useState<EditableItem[]>(
     editableReservationItems.map((item) => {
       const isManualPrice =
@@ -223,7 +273,86 @@ export function EditReservationForm({
         ? reservation.tulipInsuranceOptIn === true
         : false
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
-  const fixedTulipInsuranceAmount = tulipInsuranceOptIn ? initialTulipInsuranceAmount : 0
+  const effectiveTulipInsuranceOptIn =
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceOptIn
+        : false
+  const showTulipPastStartWarning =
+    effectiveTulipInsuranceOptIn &&
+    startDate instanceof Date &&
+    startDate.getTime() < Date.now()
+  const tulipQuoteItems = useMemo(
+    () =>
+      items
+        .filter(
+          (item): item is EditableItem & { productId: string } =>
+            typeof item.productId === 'string' && item.productId.length > 0,
+        )
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+    [items],
+  )
+  const tulipQuoteRequest =
+    !effectiveTulipInsuranceOptIn ||
+    showTulipPastStartWarning ||
+    tulipInsuranceMode === 'no_public' ||
+    !startDate ||
+    !endDate ||
+    tulipQuoteItems.length === 0
+      ? null
+      : {
+          storeId,
+          modeOverride: tulipInsuranceMode,
+          customer: {
+            customerType: reservation.customer.customerType,
+            companyName: reservation.customer.companyName ?? undefined,
+            firstName: reservation.customer.firstName,
+            lastName: reservation.customer.lastName,
+            email: reservation.customer.email,
+            phone: reservation.customer.phone ?? undefined,
+            address: reservation.customer.address ?? undefined,
+            city: reservation.customer.city ?? undefined,
+            postalCode: reservation.customer.postalCode ?? undefined,
+          },
+          items: tulipQuoteItems,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+        }
+  const tulipQuoteQuery = useQuery({
+    queryKey: ['dashboard-reservation-edit-tulip-quote', reservation.id, tulipQuoteRequest],
+    enabled: tulipQuoteRequest !== null,
+    queryFn: async () => {
+      if (!tulipQuoteRequest) {
+        return null
+      }
+
+      return getTulipQuotePreview(tulipQuoteRequest)
+    },
+    staleTime: 30_000,
+  })
+  const liveTulipInsuranceAmount =
+    tulipQuoteQuery.data?.appliedOptIn && (tulipQuoteQuery.data.amount ?? 0) > 0
+      ? Math.round((tulipQuoteQuery.data.amount ?? 0) * 100) / 100
+      : 0
+  const showTulipInsurancePreview =
+    tulipInsuranceMode !== 'no_public' &&
+    effectiveTulipInsuranceOptIn &&
+    !showTulipPastStartWarning
+  const isTulipInsuranceLoading =
+    tulipQuoteRequest !== null &&
+    (tulipQuoteQuery.isLoading || (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data))
+  const fixedTulipInsuranceAmount = showTulipInsurancePreview
+    ? tulipQuoteRequest === null
+      ? initialTulipInsuranceAmount
+      : isTulipInsuranceLoading && initialTulipInsuranceAmount > 0
+        ? initialTulipInsuranceAmount
+        : liveTulipInsuranceAmount
+    : 0
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -238,7 +367,7 @@ export function EditReservationForm({
   })
 
   // Original values for comparison
-  const originalSubtotal = parseFloat(reservation.subtotalAmount)
+  const originalSubtotal = originalComparableSubtotal
   const originalDeposit = parseFloat(reservation.depositAmount)
   const originalDeliveryFee = parseFloat(reservation.deliveryFee ?? '0')
   const originalDuration = calculateDuration(
@@ -467,6 +596,11 @@ export function EditReservationForm({
 
   const getWarningLabel = useCallback(
     (warning: ReservationValidationWarning) => {
+      if (warning.details && warning.details.trim().length > 0) {
+        const key = warning.key.replace('errors.', '')
+        return `${tErrors(key, warning.params || {})} Cause: ${warning.details.trim()}`
+      }
+
       const key = warning.key.replace('errors.', '')
       return tErrors(key, warning.params || {})
     },
@@ -482,13 +616,6 @@ export function EditReservationForm({
     }
     setIsLoading(true)
     try {
-      const effectiveTulipInsuranceOptIn =
-        tulipInsuranceMode === 'required'
-          ? true
-          : tulipInsuranceMode === 'optional'
-            ? tulipInsuranceOptIn
-            : false
-
       // Build delivery payload when delivery is available
       const deliveryPayload = storeDelivery
         ? {
@@ -564,8 +691,8 @@ export function EditReservationForm({
         toastManager.add({ title: t('edit.saved'), type: 'success' })
         router.push(`/dashboard/reservations/${reservation.id}`)
       }
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
     } finally {
       setIsLoading(false)
     }
@@ -749,6 +876,13 @@ export function EditReservationForm({
                       )}
                     </div>
                   )}
+                  {showTulipPastStartWarning && (
+                    <Alert variant="warning" className="mt-4">
+                      <AlertDescription>
+                        {tForm('tulipInsurance.pastStartWarning')}
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </CardContent>
               </Card>
 
@@ -759,6 +893,9 @@ export function EditReservationForm({
                 availableToAdd={availableToAdd}
                 itemsCount={items.length}
                 currencySymbol={currencySymbol}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceRow={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
                 getDurationUnit={getDurationUnit}
                 onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
                 onAddProduct={handleAddProduct}
@@ -796,9 +933,15 @@ export function EditReservationForm({
                     </p>
 
                     {tulipInsuranceMode === 'required' ? (
-                      <p className="text-sm font-medium text-emerald-700">
-                        {tForm('tulipInsurance.required')}
-                      </p>
+                      showTulipPastStartWarning ? (
+                        <p className="text-sm font-medium text-amber-700">
+                          {tForm('tulipInsurance.pastStartWarning')}
+                        </p>
+                      ) : (
+                        <p className="text-sm font-medium text-emerald-700">
+                          {tForm('tulipInsurance.required')}
+                        </p>
+                      )
                     ) : (
                       <div className="flex items-center space-x-2">
                         <Checkbox
@@ -825,9 +968,13 @@ export function EditReservationForm({
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
+                originalTulipInsuranceAmount={initialTulipInsuranceAmount}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceSummary={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
                 isLoading={isLoading}
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}

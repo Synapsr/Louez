@@ -59,6 +59,11 @@ interface TulipProductFormFieldsProps {
     (key: 'noResults'): string
     (key: 'noBrandResults'): string
     (key: 'noModelResults'): string
+    (key: 'categoryRequired'): string
+    (key: 'productSubtypeRequired'): string
+    (key: 'brandRequired'): string
+    (key: 'modelRequired'): string
+    (key: 'purchasePriceRequired'): string
     (key: 'invalidPurchasePrice'): string
     (key: 'invalidMargin'): string
     (key: 'marginTooltip'): string
@@ -68,6 +73,11 @@ interface TulipProductFormFieldsProps {
     hasInvalidValueExcl: boolean
     hasInvalidMargin: boolean
     hasInvalidPurchasedDate: boolean
+    hasMissingProductType: boolean
+    hasMissingSubtype: boolean
+    hasMissingBrand: boolean
+    hasMissingModel: boolean
+    hasMissingValueExcl: boolean
   }
 }
 
@@ -247,6 +257,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingProductType && (
+          <p className="text-destructive text-xs">{t('categoryRequired')}</p>
+        )}
       </div>
 
       {/* Subtype */}
@@ -278,6 +291,11 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingSubtype && (
+          <p className="text-destructive text-xs">
+            {t('productSubtypeRequired')}
+          </p>
+        )}
       </div>
 
       {/* Brand */}
@@ -323,6 +341,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingBrand && (
+          <p className="text-destructive text-xs">{t('brandRequired')}</p>
+        )}
       </div>
 
       {/* Model */}
@@ -368,6 +389,9 @@ export function TulipProductFormFields({
             </ComboboxList>
           </ComboboxPopup>
         </Combobox>
+        {validation.hasMissingModel && (
+          <p className="text-destructive text-xs">{t('modelRequired')}</p>
+        )}
       </div>
 
       {/* Purchase date */}
@@ -397,9 +421,13 @@ export function TulipProductFormFields({
           }
           disabled={disabled}
         />
-        {validation.hasInvalidValueExcl && (
+        {validation.hasMissingValueExcl ? (
+          <p className="text-destructive text-xs">
+            {t('purchasePriceRequired')}
+          </p>
+        ) : validation.hasInvalidValueExcl ? (
           <p className="text-destructive text-xs">{t('invalidPurchasePrice')}</p>
-        )}
+        ) : null}
       </div>
 
       {/* Margin */}

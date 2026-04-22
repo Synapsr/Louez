@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useStore } from '@tanstack/react-form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fr, enUS } from 'date-fns/locale'
 import { useLocale, useTranslations } from 'next-intl'
 import { formatStoreDate } from '@/lib/utils/store-date'
@@ -59,6 +59,7 @@ import type { PricingMode, UnitAttributes } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationList } from '@/lib/orpc/invalidation'
+import { getTulipQuotePreview } from '@/app/(storefront)/[slug]/checkout/actions'
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer'
 import { NewReservationStepDelivery } from './components/new-reservation-step-delivery'
 import { NewReservationStepProducts } from './components/new-reservation-step-products'
@@ -92,9 +93,11 @@ function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
 }
 
 export function NewReservationForm({
+  storeId,
   customers,
   products,
   tulipInsuranceMode,
+  tulipInsuranceDefaultOptIn,
   businessHours,
   advanceNoticeMinutes = 0,
   existingReservations = [],
@@ -147,7 +150,11 @@ export function NewReservationForm({
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
   const sendAsQuoteRef = useRef(false)
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
-    tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceDefaultOptIn
+        : false,
   )
 
   const isDeliveryEnabled = Boolean(
@@ -330,13 +337,6 @@ export function NewReservationForm({
       if (!validateCurrentStep()) return
 
       try {
-        const effectiveTulipInsuranceOptIn =
-          tulipInsuranceMode === 'required'
-            ? true
-            : tulipInsuranceMode === 'optional'
-              ? tulipInsuranceOptIn
-              : false
-
         const result = await createReservationMutation.mutateAsync({
           payload: {
             customerId: value.customerType === 'existing' ? value.customerId : undefined,
@@ -407,6 +407,89 @@ export function NewReservationForm({
   const isSaving = createReservationMutation.isPending
 
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
+  const effectiveTulipInsuranceOptIn =
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceOptIn
+        : false
+  const hasTulipEligibleProducts = selectedProducts.some((item) => {
+    const product = products.find((candidate) => candidate.id === item.productId)
+    return product?.tulipInsurable === true
+  })
+  const showTulipPastStartWarning =
+    effectiveTulipInsuranceOptIn &&
+    hasTulipEligibleProducts &&
+    watchStartDate instanceof Date &&
+    watchStartDate.getTime() < Date.now()
+  const tulipQuoteItems = useMemo(
+    () =>
+      selectedProducts.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    [selectedProducts],
+  )
+  const tulipQuoteCustomer =
+    watchCustomerType === 'existing' && selectedCustomer
+      ? {
+          firstName: selectedCustomer.firstName,
+          lastName: selectedCustomer.lastName,
+          email: selectedCustomer.email,
+          phone: selectedCustomer.phone ?? undefined,
+        }
+      : {
+          firstName: watchedValues.firstName,
+          lastName: watchedValues.lastName,
+          email: watchedValues.email,
+          phone: watchedValues.phone || undefined,
+        }
+  const tulipQuoteRequest =
+    !effectiveTulipInsuranceOptIn ||
+    showTulipPastStartWarning ||
+    tulipInsuranceMode === 'no_public' ||
+    !hasTulipEligibleProducts ||
+    !watchStartDate ||
+    !watchEndDate ||
+    tulipQuoteItems.length === 0 ||
+    !tulipQuoteCustomer.firstName ||
+    !tulipQuoteCustomer.lastName ||
+    !tulipQuoteCustomer.email
+      ? null
+      : {
+          storeId,
+          modeOverride: tulipInsuranceMode,
+          customer: tulipQuoteCustomer,
+          items: tulipQuoteItems,
+          startDate: watchStartDate.toISOString(),
+          endDate: watchEndDate.toISOString(),
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+        }
+  const tulipQuoteQuery = useQuery({
+    queryKey: ['dashboard-new-reservation-tulip-quote', storeId, tulipQuoteRequest],
+    enabled: tulipQuoteRequest !== null,
+    queryFn: async () => {
+      if (!tulipQuoteRequest) {
+        return null
+      }
+
+      return getTulipQuotePreview(tulipQuoteRequest)
+    },
+    staleTime: 30_000,
+  })
+  const liveTulipInsuranceAmount =
+    tulipQuoteQuery.data?.appliedOptIn && (tulipQuoteQuery.data.amount ?? 0) > 0
+      ? Math.round((tulipQuoteQuery.data.amount ?? 0) * 100) / 100
+      : 0
+  const showTulipInsurancePreview =
+    tulipInsuranceMode !== 'no_public' &&
+    hasTulipEligibleProducts &&
+    !showTulipPastStartWarning
+  const isTulipInsuranceLoading =
+    tulipQuoteRequest !== null &&
+    (tulipQuoteQuery.isLoading || (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data))
+  const fixedTulipInsuranceAmount =
+    showTulipInsurancePreview && effectiveTulipInsuranceOptIn ? liveTulipInsuranceAmount : 0
 
   const { periodWarnings, availabilityWarnings } = useNewReservationWarnings({
     startDate: watchStartDate,
@@ -1027,6 +1110,11 @@ export function NewReservationForm({
               tulipInsuranceOptIn={tulipInsuranceOptIn}
               startDate={watchStartDate}
               endDate={watchEndDate}
+              hasTulipEligibleProducts={hasTulipEligibleProducts}
+              tulipInsuranceAmount={fixedTulipInsuranceAmount}
+              showTulipInsuranceSummary={showTulipInsurancePreview}
+              isTulipInsuranceLoading={isTulipInsuranceLoading}
+              showTulipPastStartWarning={showTulipPastStartWarning}
               availabilityWarnings={availabilityWarnings}
               hasItems={hasItems}
               subtotal={subtotal}
@@ -1097,6 +1185,17 @@ export function NewReservationForm({
               products={products}
               tulipInsuranceMode={tulipInsuranceMode}
               tulipInsuranceOptIn={tulipInsuranceOptIn}
+              tulipInsuranceAmount={fixedTulipInsuranceAmount}
+              showTulipInsuranceSummary={showTulipInsurancePreview}
+              isTulipInsuranceLoading={isTulipInsuranceLoading}
+              insuredProductCount={tulipQuoteQuery.data?.insuredProductCount ?? null}
+              uninsuredProductCount={tulipQuoteQuery.data?.uninsuredProductCount ?? null}
+              tulipQuoteUnavailable={tulipQuoteQuery.data?.quoteUnavailable ?? false}
+              tulipQuoteErrorMessage={
+                tulipQuoteQuery.data?.error
+                  ? getActionErrorMessage(new Error(tulipQuoteQuery.data.error))
+                  : null
+              }
               subtotal={subtotal}
               deposit={deposit}
               getProductPricingDetails={getProductPricingDetails}

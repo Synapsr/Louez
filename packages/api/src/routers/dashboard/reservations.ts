@@ -166,7 +166,13 @@ const updateReservation = requirePermission('write')
       })
 
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error as string })
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error as string,
+          data:
+            'errorDetails' in result && result.errorDetails
+              ? { details: result.errorDetails }
+              : undefined,
+        })
       }
       return result
     } catch (error) {
@@ -224,7 +230,10 @@ const cancel = requirePermission('write')
       }
       const result = await fn(input.reservationId)
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', {
+          message: result.error,
+          data: result.errorDetails ? { details: result.errorDetails } : undefined,
+        })
       }
       return { success: true as const }
     } catch (error) {
@@ -389,7 +398,10 @@ const assignUnitsToItem = requirePermission('write')
       if (result.error) {
         throw new ORPCError('BAD_REQUEST', { message: result.error })
       }
-      return { success: true as const }
+      return {
+        success: true as const,
+        ...(result.warnings ? { warnings: result.warnings } : {}),
+      }
     } catch (error) {
       throw toORPCError(error)
     }

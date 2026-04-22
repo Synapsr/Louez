@@ -9,6 +9,7 @@ import {
   Package,
   PenLine,
   Plus,
+  Shield,
   Trash2,
   Unlock,
 } from 'lucide-react';
@@ -44,6 +45,9 @@ interface EditReservationItemsSectionProps {
   availableToAdd: Product[];
   itemsCount: number;
   currencySymbol: string;
+  tulipInsuranceAmount: number;
+  showTulipInsuranceRow: boolean;
+  isTulipInsuranceLoading: boolean;
   getDurationUnit: (mode: PricingMode) => string;
   onOpenCustomItemDialog: () => void;
   onAddProduct: (productId: string) => void;
@@ -130,6 +134,9 @@ export function EditReservationItemsSection({
   availableToAdd,
   itemsCount,
   currencySymbol,
+  tulipInsuranceAmount,
+  showTulipInsuranceRow,
+  isTulipInsuranceLoading,
   getDurationUnit,
   onOpenCustomItemDialog,
   onAddProduct,
@@ -141,6 +148,7 @@ export function EditReservationItemsSection({
   const t = useTranslations('dashboard.reservations');
   const tForm = useTranslations('dashboard.reservations.manualForm');
   const tCommon = useTranslations('common');
+  const tCheckout = useTranslations('storefront.checkout');
 
   return (
     <Card>
@@ -356,6 +364,39 @@ export function EditReservationItemsSection({
               </div>
             );
           })}
+
+          {showTulipInsuranceRow && (
+            <div className="bg-background rounded-lg border border-dashed p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-emerald-600" />
+                    <p className="truncate font-medium">
+                      {tCheckout('insuranceLineLabel')}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-300 bg-emerald-50 text-emerald-700"
+                    >
+                      Tulip
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isTulipInsuranceLoading
+                      ? tCheckout('insuranceEstimating')
+                      : tForm('tulipInsurance.appliesMappedProducts')}
+                  </p>
+                </div>
+                <div className="w-28 text-right">
+                  <p className="font-semibold">
+                    {isTulipInsuranceLoading
+                      ? '...'
+                      : `${tulipInsuranceAmount.toFixed(2)}${currencySymbol}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

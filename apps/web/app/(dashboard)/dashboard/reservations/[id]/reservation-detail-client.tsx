@@ -17,7 +17,7 @@ import {
   User,
 } from 'lucide-react'
 
-import { Badge, Button } from '@louez/ui'
+import { Alert, AlertDescription, Badge, Button } from '@louez/ui'
 import {
   Card,
   CardContent,
@@ -173,9 +173,24 @@ export function ReservationDetailClient({
     reservation.tulipContractId.trim().length > 0
       ? reservation.tulipContractId.trim()
       : null
+  const tulipContractStatus =
+    typeof reservation.tulipContractStatus === 'string' &&
+    reservation.tulipContractStatus.trim().length > 0
+      ? reservation.tulipContractStatus.trim()
+      : null
   const tulipContractUrl = tulipContractId
     ? `https://app.mycolibri.io/fr/contrat/${encodeURIComponent(tulipContractId)}`
     : null
+  const hasTulipContract =
+    tulipContractId !== null &&
+    tulipContractStatus !== 'cancelled' &&
+    tulipContractStatus !== 'not_required'
+  const expectsTulipCoverage =
+    reservation.tulipInsuranceOptIn === true && insuredProductIds.size > 0
+  const showTulipPastStartWarning =
+    expectsTulipCoverage &&
+    !hasTulipContract &&
+    startDate.getTime() < Date.now()
 
   const formattedDepartureInspection = departureInspection
     ? {
@@ -221,6 +236,12 @@ export function ReservationDetailClient({
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          {showTulipPastStartWarning && (
+            <Alert variant="warning">
+              <AlertDescription>{t('tulipPastStartWarning')}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -338,6 +359,7 @@ export function ReservationDetailClient({
                       const itemProductId =
                         typeof item.productId === 'string' ? item.productId : null
                       const isTulipInsured =
+                        hasTulipContract &&
                         itemProductId !== null &&
                         insuredProductIds.has(itemProductId)
                       const trackUnits = item.product?.trackUnits || false
