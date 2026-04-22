@@ -218,9 +218,6 @@ export function EditReservationForm({
 
     return sum + parsed
   }, 0)
-  const originalComparableSubtotal = Math.round(
-    (originalItemsSubtotal + initialTulipInsuranceAmount) * 100,
-  ) / 100
   const [items, setItems] = useState<EditableItem[]>(
     editableReservationItems.map((item) => {
       const isManualPrice =
@@ -273,6 +270,22 @@ export function EditReservationForm({
         ? reservation.tulipInsuranceOptIn === true
         : false
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(initialTulipInsuranceOptIn)
+  const tulipInsurableProductIds = useMemo(
+    () =>
+      new Set(
+        availableProducts
+          .filter((product) => product.tulipInsurable === true)
+          .map((product) => product.id),
+      ),
+    [availableProducts],
+  )
+  const hasTulipEligibleProducts = items.some(
+    (item) =>
+      typeof item.productId === 'string' &&
+      item.productId.length > 0 &&
+      (item.product?.tulipInsurable === true ||
+        tulipInsurableProductIds.has(item.productId)),
+  )
   const effectiveTulipInsuranceOptIn =
     tulipInsuranceMode === 'required'
       ? true
@@ -288,18 +301,22 @@ export function EditReservationForm({
       items
         .filter(
           (item): item is EditableItem & { productId: string } =>
-            typeof item.productId === 'string' && item.productId.length > 0,
+            typeof item.productId === 'string' &&
+            item.productId.length > 0 &&
+            (item.product?.tulipInsurable === true ||
+              tulipInsurableProductIds.has(item.productId)),
         )
         .map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
         })),
-    [items],
+    [items, tulipInsurableProductIds],
   )
   const tulipQuoteRequest =
     !effectiveTulipInsuranceOptIn ||
     showTulipPastStartWarning ||
     tulipInsuranceMode === 'no_public' ||
+    !hasTulipEligibleProducts ||
     !startDate ||
     !endDate ||
     tulipQuoteItems.length === 0
@@ -341,6 +358,7 @@ export function EditReservationForm({
       : 0
   const showTulipInsurancePreview =
     tulipInsuranceMode !== 'no_public' &&
+    hasTulipEligibleProducts &&
     effectiveTulipInsuranceOptIn &&
     !showTulipPastStartWarning
   const isTulipInsuranceLoading =
@@ -352,7 +370,79 @@ export function EditReservationForm({
       : isTulipInsuranceLoading && initialTulipInsuranceAmount > 0
         ? initialTulipInsuranceAmount
         : liveTulipInsuranceAmount
-    : 0
+      : 0
+  const originalTulipQuoteItems = useMemo(
+    () =>
+      editableReservationItems
+        .filter(
+          (item): item is typeof item & { productId: string } =>
+            typeof item.productId === 'string' &&
+            item.productId.length > 0 &&
+            (item.product?.tulipInsurable === true ||
+              tulipInsurableProductIds.has(item.productId)),
+        )
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        })),
+    [editableReservationItems, tulipInsurableProductIds],
+  )
+  const originalHasTulipEligibleProducts = originalTulipQuoteItems.length > 0
+  const shouldBackfillOriginalTulipInsuranceAmount =
+    initialTulipInsuranceAmount <= 0 &&
+    initialTulipInsuranceOptIn &&
+    tulipInsuranceMode !== 'no_public' &&
+    originalHasTulipEligibleProducts &&
+    reservation.customer.firstName.trim().length > 0 &&
+    reservation.customer.lastName.trim().length > 0 &&
+    reservation.customer.email.trim().length > 0
+  const originalTulipQuoteRequest = shouldBackfillOriginalTulipInsuranceAmount
+    ? {
+        storeId,
+        modeOverride: tulipInsuranceMode,
+        customer: {
+          customerType: reservation.customer.customerType,
+          companyName: reservation.customer.companyName ?? undefined,
+          firstName: reservation.customer.firstName,
+          lastName: reservation.customer.lastName,
+          email: reservation.customer.email,
+          phone: reservation.customer.phone ?? undefined,
+          address: reservation.customer.address ?? undefined,
+          city: reservation.customer.city ?? undefined,
+          postalCode: reservation.customer.postalCode ?? undefined,
+        },
+        items: originalTulipQuoteItems,
+        startDate: new Date(reservation.startDate).toISOString(),
+        endDate: new Date(reservation.endDate).toISOString(),
+        tulipInsuranceOptIn: initialTulipInsuranceOptIn,
+      }
+    : null
+  const originalTulipQuoteQuery = useQuery({
+    queryKey: [
+      'dashboard-reservation-edit-original-tulip-quote',
+      reservation.id,
+      originalTulipQuoteRequest,
+    ],
+    enabled: originalTulipQuoteRequest !== null,
+    queryFn: async () => {
+      if (!originalTulipQuoteRequest) {
+        return null
+      }
+
+      return getTulipQuotePreview(originalTulipQuoteRequest)
+    },
+    staleTime: 30_000,
+  })
+  const resolvedOriginalTulipInsuranceAmount =
+    initialTulipInsuranceAmount > 0
+      ? initialTulipInsuranceAmount
+      : originalTulipQuoteQuery.data?.appliedOptIn &&
+          (originalTulipQuoteQuery.data.amount ?? 0) > 0
+        ? Math.round((originalTulipQuoteQuery.data.amount ?? 0) * 100) / 100
+        : 0
+  const originalComparableSubtotal = Math.round(
+    (originalItemsSubtotal + resolvedOriginalTulipInsuranceAmount) * 100,
+  ) / 100
 
   // Custom item dialog state
   const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
@@ -968,7 +1058,7 @@ export function EditReservationForm({
                 originalSubtotal={originalSubtotal}
                 originalDeposit={originalDeposit}
                 originalDeliveryFee={originalDeliveryFee}
-                originalTulipInsuranceAmount={initialTulipInsuranceAmount}
+                originalTulipInsuranceAmount={resolvedOriginalTulipInsuranceAmount}
                 calculations={calculations}
                 deliveryFee={delivery.totalFee}
                 currencySymbol={currencySymbol}

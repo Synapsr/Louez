@@ -70,6 +70,7 @@ import {
 import {
   cancelTulipContractForReservation,
   createTulipContractForReservation,
+  getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
   syncTulipContractForReservation,
 } from '@/lib/integrations/tulip/contracts';
@@ -1029,8 +1030,20 @@ export async function createManualReservation(data: CreateReservationData) {
     productId: detail.product.id,
     quantity: detail.quantity,
   }));
+  const tulipCoverageSummary =
+    insuranceQuoteItems.length > 0
+      ? await getTulipCoverageSummary(insuranceQuoteItems)
+      : {
+          insuredProductCount: 0,
+          uninsuredProductCount: 0,
+          insuredProductIds: [],
+        };
+  const insuredProductIds = new Set(tulipCoverageSummary.insuredProductIds);
+  const insuredQuoteItems = insuranceQuoteItems.filter((item) =>
+    insuredProductIds.has(item.productId),
+  );
 
-  if (tulipInsuranceOptIn && insuranceQuoteItems.length > 0) {
+  if (tulipInsuranceOptIn && insuredQuoteItems.length > 0) {
     try {
       const quote = await previewTulipQuoteForCheckout({
         storeId: store.id,
@@ -1048,7 +1061,7 @@ export async function createManualReservation(data: CreateReservationData) {
           postalCode: customer.postalCode || '',
           country: customer.country,
         },
-        items: insuranceQuoteItems,
+        items: insuredQuoteItems,
         startDate: data.startDate,
         endDate: data.endDate,
         optIn: true,
@@ -1978,7 +1991,20 @@ export async function updateReservation(
     }
   }
 
-  if (nextTulipInsuranceOptIn && insuranceQuoteItems.length > 0) {
+  const tulipCoverageSummary =
+    insuranceQuoteItems.length > 0
+      ? await getTulipCoverageSummary(insuranceQuoteItems)
+      : {
+          insuredProductCount: 0,
+          uninsuredProductCount: 0,
+          insuredProductIds: [],
+        };
+  const insuredProductIds = new Set(tulipCoverageSummary.insuredProductIds);
+  const insuredQuoteItems = insuranceQuoteItems.filter((item) =>
+    insuredProductIds.has(item.productId),
+  );
+
+  if (nextTulipInsuranceOptIn && insuredQuoteItems.length > 0) {
     if (!reservation.customer) {
       tulipWarnings.push({ key: 'errors.customerNotFound' });
       if (previousTulipInsuranceAmount) {
@@ -2002,7 +2028,7 @@ export async function updateReservation(
             postalCode: reservation.customer.postalCode || '',
             country: reservation.customer.country,
           },
-          items: insuranceQuoteItems,
+          items: insuredQuoteItems,
           startDate: newStartDate,
           endDate: newEndDate,
           optIn: true,
@@ -2031,6 +2057,7 @@ export async function updateReservation(
 
   if (
     nextTulipInsuranceOptIn &&
+    insuredQuoteItems.length > 0 &&
     isPeriodReduced &&
     previousTulipInsuranceAmount &&
     (!nextTulipInsuranceAmount ||
