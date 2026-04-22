@@ -44,7 +44,10 @@ import type { StoreWithFullData } from '@/lib/store-context';
 
 import { env } from '@/env';
 
-type ActionError = { error: string };
+type ActionError = {
+  error: string;
+  details?: string;
+};
 type TulipCatalogItem = {
   type: string;
   label: string;
@@ -634,8 +637,26 @@ function getTulipErrorCode(payload: unknown): number | null {
   return typeof code === 'number' ? code : null;
 }
 
+function stringifyTulipErrorPayload(payload: unknown): string | undefined {
+  if (payload == null) {
+    return undefined;
+  }
+
+  if (typeof payload === 'string') {
+    return payload.trim() || undefined;
+  }
+
+  try {
+    return `payload: ${JSON.stringify(payload, null, 2)}`;
+  } catch {
+    return undefined;
+  }
+}
+
 function toActionError(error: unknown): ActionError {
   if (error instanceof TulipApiError) {
+    const payloadDetails = stringifyTulipErrorPayload(error.payload);
+
     console.error('[tulip] API error', {
       status: error.status,
       message: error.message,
@@ -643,30 +664,51 @@ function toActionError(error: unknown): ActionError {
     });
 
     if (error.status === 401) {
-      return { error: 'errors.tulipApiKeyInvalid' };
+      return {
+        error: 'errors.tulipApiKeyInvalid',
+        details: payloadDetails,
+      };
     }
 
     if (error.status === 403) {
-      return { error: 'errors.tulipActionForbidden' };
+      return {
+        error: 'errors.tulipActionForbidden',
+        details: payloadDetails,
+      };
     }
 
     if (error.status === 400) {
       const code = getTulipErrorCode(error.payload);
       if (code === 4009) {
-        return { error: 'errors.tulipProductSubtypeInvalid' };
+        return {
+          error: 'errors.tulipProductSubtypeInvalid',
+          details: payloadDetails,
+        };
       }
       if (code === 4005) {
-        return { error: 'errors.tulipProductPayloadInvalid' };
+        return {
+          error: 'errors.tulipProductPayloadInvalid',
+          details: payloadDetails,
+        };
       }
       if (code === 4004 || code === 4006 || code === 4007) {
-        return { error: 'errors.tulipProductRequiredFieldsMissing' };
+        return {
+          error: 'errors.tulipProductRequiredFieldsMissing',
+          details: payloadDetails,
+        };
       }
       if (code === 4999) {
-        return { error: 'errors.tulipProductNotFound' };
+        return {
+          error: 'errors.tulipProductNotFound',
+          details: payloadDetails,
+        };
       }
     }
 
-    return { error: 'errors.tulipApiUnavailable' };
+    return {
+      error: 'errors.tulipApiUnavailable',
+      details: payloadDetails,
+    };
   }
 
   if (error instanceof Error && error.message.startsWith('errors.')) {
