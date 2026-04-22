@@ -151,6 +151,7 @@ export function NewReservationStepReview({
       isTulipInsuranceLoading ||
       (insuredProductCount ?? 0) > 0 ||
       tulipInsuranceAmount > 0)
+  const showTulipInsuranceCard = tulipInsuranceMode !== 'no_public'
   const insuranceStatusLabel = tulipQuoteUnavailable
     ? tCheckout('insuranceOptionalUnavailableShort')
     : tulipInsuranceOptIn
@@ -437,76 +438,80 @@ export function NewReservationStepReview({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('tulipInsurance.title')}</CardTitle>
-            <CardDescription>{t('tulipInsurance.appliesMappedProducts')}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tulipInsuranceMode === 'required' ? (
-              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-                {tCheckout('insuranceRequiredNotice')}
-              </div>
-            ) : (
-              <>
-                <div className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium">{t('tulipInsurance.optionalLabel')}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {t('tulipInsurance.optionalHelp')}
-                      </p>
-                    </div>
-                    <Badge variant={tulipInsuranceOptIn ? 'default' : 'secondary'}>
-                      {insuranceStatusLabel}
-                    </Badge>
-                  </div>
-                  {showOptionalTulipInsuranceAmountLine && (
-                    <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
-                      <span className="text-muted-foreground">{tCheckout('insuranceLineLabel')}</span>
-                      <span className="font-medium">
-                        {tulipQuoteUnavailable
-                          ? tCheckout('insuranceOptionalUnavailableShort')
-                          : tulipInsuranceOptIn
-                            ? isTulipInsuranceLoading
-                              ? tCheckout('insuranceEstimating')
-                              : formatCurrency(tulipInsuranceAmount)
-                            : tCheckout('insuranceOptionalDisabled')}
-                      </span>
-                    </div>
-                  )}
+        {showTulipInsuranceCard && (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('tulipInsurance.title')}</CardTitle>
+              <CardDescription>{t('tulipInsurance.appliesMappedProducts')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {tulipInsuranceMode === 'required' ? (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+                  {tCheckout('insuranceRequiredNotice')}
                 </div>
+              ) : (
+                <>
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium">{t('tulipInsurance.optionalLabel')}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {t('tulipInsurance.optionalHelp')}
+                        </p>
+                      </div>
+                      <Badge variant={tulipInsuranceOptIn ? 'default' : 'secondary'}>
+                        {insuranceStatusLabel}
+                      </Badge>
+                    </div>
+                    {showOptionalTulipInsuranceAmountLine && (
+                      <div className="mt-3 flex items-center justify-between border-t pt-3 text-sm">
+                        <span className="text-muted-foreground">
+                          {tCheckout('insuranceLineLabel')}
+                        </span>
+                        <span className="font-medium">
+                          {tulipQuoteUnavailable
+                            ? tCheckout('insuranceOptionalUnavailableShort')
+                            : tulipInsuranceOptIn
+                              ? isTulipInsuranceLoading
+                                ? tCheckout('insuranceEstimating')
+                                : formatCurrency(tulipInsuranceAmount)
+                              : tCheckout('insuranceOptionalDisabled')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
 
-                {showOptionalTulipInsuranceDetails &&
-                  insuredProductCount === 0 &&
-                  uninsuredProductCount === 0 &&
-                  !isTulipInsuranceLoading &&
-                  !tulipQuoteUnavailable && (
-                    <p className="text-xs text-muted-foreground">
-                      {tCheckout('insuranceNoInsurableProducts')}
-                    </p>
+                  {showOptionalTulipInsuranceDetails &&
+                    insuredProductCount === 0 &&
+                    uninsuredProductCount === 0 &&
+                    !isTulipInsuranceLoading &&
+                    !tulipQuoteUnavailable && (
+                      <p className="text-xs text-muted-foreground">
+                        {tCheckout('insuranceNoInsurableProducts')}
+                      </p>
+                    )}
+
+                  {showOptionalTulipInsuranceDetails &&
+                    (insuredProductCount ?? 0) > 0 &&
+                    (uninsuredProductCount ?? 0) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {tCheckout('insurancePartialCoverage', {
+                          insured: insuredProductCount ?? 0,
+                          uninsured: uninsuredProductCount ?? 0,
+                        })}
+                      </p>
+                    )}
+
+                  {tulipQuoteUnavailable && tulipQuoteErrorMessage && (
+                    <Alert variant="warning">
+                      <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
+                    </Alert>
                   )}
-
-                {showOptionalTulipInsuranceDetails &&
-                  (insuredProductCount ?? 0) > 0 &&
-                  (uninsuredProductCount ?? 0) > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {tCheckout('insurancePartialCoverage', {
-                        insured: insuredProductCount ?? 0,
-                        uninsured: uninsuredProductCount ?? 0,
-                      })}
-                    </p>
-                  )}
-
-                {tulipQuoteUnavailable && tulipQuoteErrorMessage && (
-                  <Alert variant="warning">
-                    <AlertDescription>{tulipQuoteErrorMessage}</AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader>

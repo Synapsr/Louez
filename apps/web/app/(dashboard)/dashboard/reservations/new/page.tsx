@@ -19,7 +19,10 @@ async function getCustomers(storeId: string) {
   })
 }
 
-async function getProductsWithTiers(storeId: string) {
+async function getProductsWithTiers(
+  storeId: string,
+  tulipInsuranceEnabled: boolean,
+) {
   // Fetch products with their pricing tiers and seasonal pricings
   const result = await db.query.products.findMany({
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
@@ -45,7 +48,7 @@ async function getProductsWithTiers(storeId: string) {
   return result
     .map((p) => ({
       ...p,
-      tulipInsurable: Boolean(p.tulipMapping?.productId),
+      tulipInsurable: tulipInsuranceEnabled && Boolean(p.tulipMapping?.productId),
       seasonalPricings: p.seasonalPricings.map((sp) => ({
         id: sp.id,
         name: sp.name,
@@ -110,15 +113,16 @@ export default async function NewReservationPage() {
     redirect('/onboarding')
   }
 
-  const [customersList, productsList, activeReservations] = await Promise.all([
-    getCustomers(store.id),
-    getProductsWithTiers(store.id),
-    getActiveReservations(store.id),
-  ])
   const tulipInsuranceMode = getDashboardTulipInsuranceMode(store.settings || null)
   const tulipInsuranceDefaultOptIn = getDashboardTulipInsuranceDefaultOptIn(
     store.settings || null,
   )
+
+  const [customersList, productsList, activeReservations] = await Promise.all([
+    getCustomers(store.id),
+    getProductsWithTiers(store.id, tulipInsuranceMode !== 'no_public'),
+    getActiveReservations(store.id),
+  ])
 
   return (
     <div className="space-y-6">
