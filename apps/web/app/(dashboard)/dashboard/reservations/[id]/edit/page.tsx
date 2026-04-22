@@ -7,6 +7,8 @@ import { subDays } from 'date-fns'
 import type { DeliverySettings, LegMethod } from '@louez/types'
 import type { SeasonalPricingConfig } from '@louez/utils'
 import { getDashboardTulipInsuranceMode } from '@/lib/integrations/tulip/settings'
+import { getReservationInsuranceSelection } from '@/lib/integrations/tulip/contracts-insurance'
+import { getTulipQuotePreview } from '@/app/(storefront)/[slug]/checkout/actions'
 import { EditReservationForm } from './edit-reservation-form'
 import type { PricingTier, Product, StoreDeliveryInfo } from './types'
 
@@ -238,6 +240,58 @@ export default async function EditReservationPage({
 
   const currency = store.settings?.currency || 'EUR'
   const tulipInsuranceMode = getDashboardTulipInsuranceMode(store.settings || null)
+  const persistedInsuranceSelection = getReservationInsuranceSelection({
+    tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
+    tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+    items: reservation.items,
+  })
+  const shouldBackfillTulipInsuranceAmount =
+    persistedInsuranceSelection.amount <= 0 &&
+    reservation.tulipInsuranceOptIn === true &&
+    tulipInsuranceMode !== 'no_public' &&
+    reservation.customer.firstName.trim().length > 0 &&
+    reservation.customer.lastName.trim().length > 0 &&
+    reservation.customer.email.trim().length > 0
+  const tulipEligibleReservationItems = shouldBackfillTulipInsuranceAmount
+    ? reservation.items
+        .filter(
+          (item): item is typeof item & { productId: string } =>
+            typeof item.productId === 'string' &&
+            item.productId.length > 0 &&
+            Boolean(item.product?.tulipMapping?.productId),
+        )
+        .map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }))
+    : []
+  let backfilledTulipInsuranceAmount: string | null = null
+
+  if (shouldBackfillTulipInsuranceAmount && tulipEligibleReservationItems.length > 0) {
+    const quote = await getTulipQuotePreview({
+      storeId: store.id,
+      modeOverride: tulipInsuranceMode,
+      customer: {
+        customerType: reservation.customer.customerType,
+        companyName: reservation.customer.companyName ?? undefined,
+        firstName: reservation.customer.firstName,
+        lastName: reservation.customer.lastName,
+        email: reservation.customer.email,
+        phone: reservation.customer.phone ?? undefined,
+        address: reservation.customer.address ?? undefined,
+        city: reservation.customer.city ?? undefined,
+        postalCode: reservation.customer.postalCode ?? undefined,
+      },
+      items: tulipEligibleReservationItems,
+      startDate: reservation.startDate.toISOString(),
+      endDate: reservation.endDate.toISOString(),
+      tulipInsuranceOptIn: true,
+    })
+
+    if (quote.appliedOptIn && quote.amount > 0) {
+      backfilledTulipInsuranceAmount = quote.amount.toFixed(2)
+    }
+  }
 
   // Build delivery info from store settings
   const deliverySettings = (store.settings as Record<string, unknown> | null)
@@ -266,7 +320,8 @@ export default async function EditReservationPage({
         deliveryFee: reservation.deliveryFee,
         discountAmount: reservation.discountAmount,
         tulipInsuranceOptIn: reservation.tulipInsuranceOptIn,
-        tulipInsuranceAmount: reservation.tulipInsuranceAmount,
+        tulipInsuranceAmount:
+          reservation.tulipInsuranceAmount ?? backfilledTulipInsuranceAmount,
         delivery: {
           outboundMethod: (reservation.outboundMethod as LegMethod) ?? 'store',
           returnMethod: (reservation.returnMethod as LegMethod) ?? 'store',
