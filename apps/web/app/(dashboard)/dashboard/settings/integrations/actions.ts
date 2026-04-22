@@ -1350,7 +1350,7 @@ export async function upsertTulipProductMappingAction(
         );
 
         const clonePayload = {
-          uid: product.id,
+          uid: renterUid,
           product_type: resolvedProductType,
           title: selectedTitle,
           description: buildLouezOriginDescription(
@@ -1737,7 +1737,7 @@ export async function createTulipProductAction(
       : null;
 
     const tulipPayload = {
-      uid: product.id,
+      uid: renterUid,
       product_type: resolvedProductType,
       title: resolvedTitle,
       description: buildLouezOriginDescription(product.description),
