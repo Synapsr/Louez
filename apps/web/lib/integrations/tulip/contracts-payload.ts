@@ -176,10 +176,12 @@ function buildProductPayload(
     let remainingQuantity = item.quantity;
     let nextMarkedIndex = 0;
     while (remainingQuantity > 0) {
-      const nextOccurrence = (productOccurrenceById.get(item.productId) ?? 0) + 1;
+      const nextOccurrence =
+        (productOccurrenceById.get(item.productId) ?? 0) + 1;
       productOccurrenceById.set(item.productId, nextOccurrence);
 
-      const assignedProductMarked = resolvedProductMarkedValues[nextMarkedIndex] ?? null;
+      const assignedProductMarked =
+        resolvedProductMarkedValues[nextMarkedIndex] ?? null;
       const placeholderProductMarked = preview
         ? `preview-${item.productId}-${nextOccurrence}`
         : `unassigned-${item.productId}-${nextOccurrence}`;
@@ -216,7 +218,8 @@ export function buildContractPayload(params: {
   insuredItems: ResolvedTulipItemInput[];
   preview?: boolean;
 }): TulipContractPayload {
-  const userName = `${params.customer.firstName} ${params.customer.lastName}`.trim();
+  const userName =
+    `${params.customer.firstName} ${params.customer.lastName}`.trim();
   const productsPayload = buildProductPayload(params.insuredItems, userName, {
     preview: params.preview,
   });
@@ -235,7 +238,9 @@ export function buildContractPayload(params: {
     options: customerPayload.options,
     products: productsPayload,
     ...(customerPayload.company ? { company: customerPayload.company } : {}),
-    ...(customerPayload.individual ? { individual: customerPayload.individual } : {}),
+    ...(customerPayload.individual
+      ? { individual: customerPayload.individual }
+      : {}),
   };
 }
 
