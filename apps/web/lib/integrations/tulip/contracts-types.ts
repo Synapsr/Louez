@@ -22,6 +22,7 @@ export type ResolvedTulipItemInput = {
   productId: string;
   tulipProductId: string;
   quantity: number;
+  productMarkedValues?: string[];
 };
 
 export type TulipCoverageSummary = {

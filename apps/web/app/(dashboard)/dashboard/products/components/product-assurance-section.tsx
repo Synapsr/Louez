@@ -3,7 +3,7 @@
 import { type FormEvent, useState } from 'react';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -52,6 +52,7 @@ export function ProductAssuranceSection({
 }: ProductAssuranceSectionProps) {
   const t = useTranslations('dashboard.products.form.assurance');
   const tErrors = useTranslations('errors');
+  const locale = useLocale();
 
   const queryClient = useQueryClient();
 
@@ -216,6 +217,10 @@ export function ProductAssuranceSection({
   const tulipItems = state.tulipProducts.map((item) => ({
     label: item.louezManaged ? `${item.title} (Louez)` : item.title,
     value: item.id,
+    brand: item.brand,
+    model: item.model,
+    productSubtype: item.productSubtype,
+    valueExcl: item.valueExcl,
   }));
   const tulipProductById = new Map(
     state.tulipProducts.map((item) => [item.id, item] as const),
@@ -234,6 +239,31 @@ export function ProductAssuranceSection({
     isMappingBusy ||
     pushProductMutation.isPending ||
     createProductMutation.isPending;
+
+  const currencyFormatter = new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency: 'EUR',
+  });
+
+  const formatTulipProductMeta = (item: {
+    brand: string | null;
+    model: string | null;
+    productSubtype: string | null;
+    valueExcl: number | null;
+  }) => {
+    const parts = [
+      item.productSubtype?.trim(),
+      item.brand?.trim(),
+      item.model?.trim(),
+      item.valueExcl != null
+        ? t('dropdownValueExclTax', {
+            value: currencyFormatter.format(item.valueExcl),
+          })
+        : '—',
+    ].filter((part): part is string => Boolean(part && part.length > 0));
+
+    return parts.join(' • ');
+  };
 
   return (
     <>
@@ -337,7 +367,14 @@ export function ProductAssuranceSection({
                       <ComboboxList>
                         {(item) => (
                           <ComboboxItem key={item.value} value={item}>
-                            {item.label}
+                            <div className="min-w-0">
+                              <div className="truncate font-medium">
+                                {item.label}
+                              </div>
+                              <div className="text-muted-foreground truncate text-xs">
+                                {formatTulipProductMeta(item)}
+                              </div>
+                            </div>
                           </ComboboxItem>
                         )}
                       </ComboboxList>

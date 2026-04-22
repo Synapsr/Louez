@@ -76,7 +76,9 @@ export interface BaseContext {
   ) => Promise<{ customer: CustomerData } | null>;
   regenerateContract?: (reservationId: string) => Promise<void>;
   dashboardReservationActions?: {
-    cancelReservation?: (reservationId: string) => Promise<{ success?: boolean; error?: string }>
+    cancelReservation?: (
+      reservationId: string,
+    ) => Promise<{ success?: boolean; error?: string; errorDetails?: string | null }>
     updateReservationStatus?: (
       reservationId: string,
       status:
@@ -167,7 +169,15 @@ export interface BaseContext {
     assignUnitsToReservationItem?: (
       reservationItemId: string,
       unitIds: string[],
-    ) => Promise<{ success?: boolean; error?: string }>
+    ) => Promise<{
+      success?: boolean
+      error?: string
+      warnings?: Array<{
+        key: string
+        params?: Record<string, string | number>
+        details?: string
+      }>
+    }>
     requestPayment?: (
       reservationId: string,
       data: {

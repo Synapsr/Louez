@@ -12,9 +12,13 @@ interface EditReservationSummarySectionProps {
   originalSubtotal: number
   originalDeposit: number
   originalDeliveryFee: number
+  originalTulipInsuranceAmount: number
   calculations: ReservationCalculations
   deliveryFee: number
   currencySymbol: string
+  tulipInsuranceAmount: number
+  showTulipInsuranceSummary: boolean
+  isTulipInsuranceLoading: boolean
   isLoading: boolean
   isDeliveryCalculating: boolean
   hasChanges: boolean
@@ -25,9 +29,13 @@ export function EditReservationSummarySection({
   originalSubtotal,
   originalDeposit,
   originalDeliveryFee,
+  originalTulipInsuranceAmount,
   calculations,
   deliveryFee,
   currencySymbol,
+  tulipInsuranceAmount,
+  showTulipInsuranceSummary,
+  isTulipInsuranceLoading,
   isLoading,
   isDeliveryCalculating,
   hasChanges,
@@ -59,6 +67,33 @@ export function EditReservationSummarySection({
               {currencySymbol}
             </span>
           </div>
+
+          {showTulipInsuranceSummary && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                {t('edit.insuranceLine')}
+              </span>
+              <span>
+                {isTulipInsuranceLoading ? (
+                  t('edit.insuranceEstimating')
+                ) : originalTulipInsuranceAmount !== tulipInsuranceAmount &&
+                  originalTulipInsuranceAmount > 0 ? (
+                  <>
+                    <span className="mr-2 text-muted-foreground line-through">
+                      {originalTulipInsuranceAmount.toFixed(2)}
+                    </span>
+                    {tulipInsuranceAmount.toFixed(2)}
+                    {currencySymbol}
+                  </>
+                ) : (
+                  <>
+                    {tulipInsuranceAmount.toFixed(2)}
+                    {currencySymbol}
+                  </>
+                )}
+              </span>
+            </div>
+          )}
 
           {calculations.totalSavings > 0 && (
             <div className="flex justify-between text-sm">

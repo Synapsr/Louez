@@ -91,19 +91,35 @@ export const TULIP_FALLBACK_CATALOG: TulipCatalogItem[] = [
       'phone',
       'computer',
       'tablet',
+      'small-appliance',
+      'large-appliance',
+      'other-electronic-equipment',
     ].map((value) => ({ type: value, label: value })),
   },
   {
     type: 'small-tools',
     label: 'small-tools',
     subtypes: [
-      'small-appliance',
-      'large-appliance',
       'construction-equipment',
       'diy-tools',
       'electric-diy-tools',
       'gardening-tools',
       'electric-gardening-tools',
+    ].map((value) => ({ type: value, label: value })),
+  },
+  {
+    type: 'sports',
+    label: 'sports',
+    subtypes: [
+      'running-hiking',
+      'fishing',
+      'golf',
+      'racket-sports',
+      'horseriding',
+      'ball-sports',
+      'fitness',
+      'water-sports',
+      'other',
     ].map((value) => ({ type: value, label: value })),
   },
 ]
@@ -197,6 +213,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       hasInvalidPurchasedDate: false,
       hasMissingProductType: true,
       hasMissingSubtype: true,
+      hasMissingBrand: true,
+      hasMissingModel: true,
+      hasMissingValueExcl: true,
     }
   }
 
@@ -208,7 +227,8 @@ export function validateDraft(draft: TulipProductDraft | null) {
 
   return {
     hasInvalidValueExcl:
-      normalizedValueExcl.length > 0 && !Number.isFinite(parsedValueExcl),
+      normalizedValueExcl.length > 0 &&
+      (!Number.isFinite(parsedValueExcl) || Number(parsedValueExcl) > 15_000),
     hasInvalidMargin:
       normalizedMargin.length > 0 &&
       (!Number.isFinite(parsedMargin) || Number(parsedMargin) < 0),
@@ -217,6 +237,9 @@ export function validateDraft(draft: TulipProductDraft | null) {
       : false,
     hasMissingProductType: !normalizeCatalogValue(draft.productType),
     hasMissingSubtype: !normalizeCatalogValue(draft.productSubtype),
+    hasMissingBrand: draft.brand.trim().length === 0,
+    hasMissingModel: draft.model.trim().length === 0,
+    hasMissingValueExcl: normalizedValueExcl.length === 0,
   }
 }
 
@@ -235,7 +258,6 @@ export function initDraftFromTulipProduct(
     valueExcl: number | null
     margin: number | null
   } | null,
-  fallbackPrice: number,
 ): TulipProductDraft {
   const resolvedType = resolveProductType(resolvedCatalog, tulipProduct?.productType)
 
@@ -255,7 +277,7 @@ export function initDraftFromTulipProduct(
     valueExcl:
       tulipProduct?.valueExcl != null
         ? tulipProduct.valueExcl.toFixed(2)
-        : fallbackPrice.toFixed(2),
+        : '',
     margin:
       tulipProduct?.margin != null ? tulipProduct.margin.toFixed(2) : '',
   }

@@ -252,7 +252,13 @@ export async function getDashboardReservationById(params: {
     .map((item) => item.productId)
     .filter((productId): productId is string => typeof productId === 'string')
 
-  if (reservationProductIds.length === 0) {
+  const hasActiveTulipContract =
+    typeof reservation.tulipContractId === 'string' &&
+    reservation.tulipContractId.trim().length > 0 &&
+    reservation.tulipContractStatus !== 'cancelled' &&
+    reservation.tulipContractStatus !== 'not_required'
+
+  if (reservationProductIds.length === 0 || !hasActiveTulipContract) {
     return {
       ...reservation,
       insuredProductIds: [],

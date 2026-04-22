@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import { Pencil, RefreshCw, Search } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 import {
   Badge,
@@ -114,6 +114,7 @@ export function TulipProductMappingSection({
   const t = useTranslations(
     'dashboard.settings.integrationsPage.assurance.mapping',
   );
+  const locale = useLocale();
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<
@@ -135,6 +136,10 @@ export function TulipProductMappingSection({
       tulipProducts.map((tp) => ({
         label: tp.louezManaged ? `${tp.title} (Louez)` : tp.title,
         value: tp.id,
+        brand: tp.brand,
+        model: tp.model,
+        productSubtype: tp.productSubtype,
+        valueExcl: tp.valueExcl,
       })),
     [tulipProducts],
   );
@@ -187,6 +192,9 @@ export function TulipProductMappingSection({
     !sheetDraft ||
     validation.hasMissingProductType ||
     validation.hasMissingSubtype ||
+    validation.hasMissingBrand ||
+    validation.hasMissingModel ||
+    validation.hasMissingValueExcl ||
     validation.hasInvalidValueExcl ||
     validation.hasInvalidMargin ||
     validation.hasInvalidPurchasedDate ||
@@ -200,7 +208,7 @@ export function TulipProductMappingSection({
       ? (tulipProductById.get(product.tulipProductId) ?? null)
       : null;
 
-    setSheetDraft(initDraftFromTulipProduct(resolvedCatalog, tp, product.price));
+    setSheetDraft(initDraftFromTulipProduct(resolvedCatalog, tp));
     setEditingProductId(productId);
     setSheetOpen(true);
   };
@@ -222,6 +230,35 @@ export function TulipProductMappingSection({
       ? `${editingTulipProduct.title} (Louez)`
       : editingTulipProduct.title
     : (editingProduct?.name ?? '');
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: 'EUR',
+      }),
+    [locale],
+  );
+
+  const formatTulipProductMeta = (item: {
+    brand: string | null;
+    model: string | null;
+    productSubtype: string | null;
+    valueExcl: number | null;
+  }) => {
+    const parts = [
+      item.productSubtype?.trim(),
+      item.brand?.trim(),
+      item.model?.trim(),
+      item.valueExcl != null
+        ? t('dropdownValueExclTax', {
+            value: currencyFormatter.format(item.valueExcl),
+          })
+        : '—',
+    ].filter((part): part is string => Boolean(part && part.length > 0));
+
+    return parts.join(' • ');
+  };
 
   return (
     <Card>
@@ -386,7 +423,14 @@ export function TulipProductMappingSection({
                                     key={item.value}
                                     value={item}
                                   >
-                                    {item.label}
+                                    <div className="min-w-0">
+                                      <div className="truncate font-medium">
+                                        {item.label}
+                                      </div>
+                                      <div className="text-muted-foreground truncate text-xs">
+                                        {formatTulipProductMeta(item)}
+                                      </div>
+                                    </div>
                                   </ComboboxItem>
                                 )}
                               </ComboboxList>

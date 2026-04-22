@@ -1,6 +1,7 @@
 import { env } from '@/env';
 
 type TulipRecord = Record<string, unknown>;
+const TULIP_API_TIMEOUT_MS = 20_000;
 
 export class TulipApiError extends Error {
   status: number;
@@ -45,15 +46,45 @@ async function request<T>(
   const hasBody = options?.body !== undefined;
 
   const url = `${env.TULIP_API_BASE_URL}${path}`;
-  const response = await fetch(url, {
-    method,
-    headers: {
-      key: apiKey,
-      ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: hasBody ? JSON.stringify(options?.body) : undefined,
-    cache: 'no-store',
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TULIP_API_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers: {
+        key: apiKey,
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: hasBody ? JSON.stringify(options?.body) : undefined,
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' || error.name === 'TimeoutError')
+    ) {
+      throw new TulipApiError(
+        `Tulip API request timed out after ${TULIP_API_TIMEOUT_MS}ms`,
+        504,
+        { message: 'Request timed out' },
+      );
+    }
+
+    throw new TulipApiError(
+      error instanceof Error
+        ? `Tulip API request failed: ${error.message}`
+        : 'Tulip API request failed',
+      503,
+      {
+        message: error instanceof Error ? error.message : 'Network error',
+      },
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   let payload: unknown = null;
   try {
@@ -74,32 +105,79 @@ async function request<T>(
 }
 
 export type TulipProduct = {
-  uuid?: string;
-  uid?: string;
-  product_id?: string;
+  id: string;
   title?: string;
   description?: string;
-  product_type?: string;
-  purchased_date?: string;
+  productType?: string;
+  purchasedDate?: string;
   data?: {
-    product_subtype?: string;
+    productSubtype?: string;
     brand?: string;
     model?: string;
     margin?: number | string | null;
+    louezProductId?: string | null;
   };
-  value_excl?: number;
+  valueExcl?: number;
 };
 
-export function getTulipProductOwnerUuid(
-  product: Pick<TulipProduct, 'uuid' | 'uid'>,
-): string | null {
-  const uuid = typeof product.uuid === 'string' ? product.uuid.trim() : '';
-  if (uuid) {
-    return uuid;
+function parseTulipProduct(payload: unknown): TulipProduct | null {
+  if (!payload || typeof payload !== 'object') {
+    return null;
   }
 
-  const uid = typeof product.uid === 'string' ? product.uid.trim() : '';
-  return uid || null;
+  const record = payload as TulipRecord;
+  const id =
+    typeof record.product_id === 'string'
+      ? record.product_id.trim()
+      : typeof record.uid === 'string'
+        ? record.uid.trim()
+        : '';
+
+  if (!id) {
+    return null;
+  }
+
+  const data =
+    record.data && typeof record.data === 'object'
+      ? (record.data as TulipRecord)
+      : null;
+  const rawMargin = data?.margin;
+  const margin =
+    typeof rawMargin === 'number' || typeof rawMargin === 'string'
+      ? rawMargin
+      : null;
+
+  return {
+    id,
+    title: typeof record.title === 'string' ? record.title : undefined,
+    description:
+      typeof record.description === 'string' ? record.description : undefined,
+    productType:
+      typeof record.product_type === 'string' ? record.product_type : undefined,
+    purchasedDate:
+      typeof record.purchased_date === 'string'
+        ? record.purchased_date
+        : undefined,
+    data: data
+      ? {
+          productSubtype:
+            typeof data.product_subtype === 'string'
+              ? data.product_subtype
+              : undefined,
+          brand: typeof data.brand === 'string' ? data.brand : undefined,
+          model: typeof data.model === 'string' ? data.model : undefined,
+          margin,
+          louezProductId:
+            typeof data.louez_product_ID === 'string'
+              ? data.louez_product_ID
+              : null,
+        }
+      : undefined,
+    valueExcl:
+      typeof record.value_excl === 'number' && Number.isFinite(record.value_excl)
+        ? record.value_excl
+        : undefined,
+  };
 }
 
 export type TulipRenter = {
@@ -168,36 +246,37 @@ export async function tulipGetRenter(
   };
 }
 
+export async function tulipAddRenter(
+  apiKey: string,
+  renterUid: string,
+): Promise<void> {
+  await request<unknown>('/renters', apiKey, {
+    method: 'POST',
+    body: renterUid,
+  });
+}
+
 export async function tulipListProducts(
   apiKey: string,
-  options?: {
-    renterUid?: string | null;
-  },
 ): Promise<TulipProduct[]> {
   const payload = await request<unknown>('/products', apiKey);
   const envelope = unwrapEnvelope(payload);
-  let products: TulipProduct[] = [];
+  let productsPayload: unknown[] = [];
 
   if (Array.isArray(envelope)) {
-    products = envelope as TulipProduct[];
+    productsPayload = envelope;
   }
 
-  if (products.length === 0 && envelope && typeof envelope === 'object') {
+  if (productsPayload.length === 0 && envelope && typeof envelope === 'object') {
     const obj = envelope as TulipRecord;
     if (Array.isArray(obj.products)) {
-      products = obj.products as TulipProduct[];
+      productsPayload = obj.products;
     }
   }
 
-  const expectedRenterUid =
-    typeof options?.renterUid === 'string' ? options.renterUid.trim() : '';
-  if (!expectedRenterUid) {
-    return products;
-  }
-
-  return products.filter(
-    (product) => getTulipProductOwnerUuid(product) === expectedRenterUid,
-  );
+  return productsPayload
+    .map((product) => parseTulipProduct(product))
+    .filter((product): product is TulipProduct => product !== null);
 }
 
 export async function tulipCreateProduct(
@@ -213,12 +292,10 @@ export async function tulipCreateProduct(
   if (envelope && typeof envelope === 'object') {
     const obj = envelope as TulipRecord;
     if (obj.product && typeof obj.product === 'object') {
-      return obj.product as TulipProduct;
+      return parseTulipProduct(obj.product);
     }
 
-    if (obj.uid || obj.product_id) {
-      return obj as TulipProduct;
-    }
+    return parseTulipProduct(obj);
   }
 
   return null;
@@ -242,7 +319,7 @@ export async function tulipUpdateProduct(
   if (envelope && typeof envelope === 'object') {
     const obj = envelope as TulipRecord;
     if (obj.product && typeof obj.product === 'object') {
-      return obj.product as TulipProduct;
+      return parseTulipProduct(obj.product);
     }
   }
 
@@ -252,6 +329,29 @@ export async function tulipUpdateProduct(
 export type TulipContract = {
   cid?: string;
   price?: number;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+  contract_type?: string;
+  options?: string[];
+  company?: Record<string, unknown>;
+  individual?: Record<string, unknown>;
+  products?: Record<string, TulipContractProduct>;
+};
+
+export type TulipContractProduct = {
+  product_id?: string;
+  start_date?: string;
+  end_date?: string;
+  status?: string;
+  data?: {
+    user_name?: string;
+    product_marked?: string;
+    louez_product_ID?: string;
+    internal_id?: string;
+  };
+  price?: number;
+  replaced_by?: string;
 };
 
 function parseContractResponse(envelope: unknown): TulipContract {
@@ -277,6 +377,14 @@ export async function tulipCreateContract(
   return parseContractResponse(unwrapEnvelope(response));
 }
 
+export async function tulipGetContract(
+  apiKey: string,
+  contractId: string,
+): Promise<TulipContract> {
+  const response = await request<unknown>(`/contracts/${contractId}`, apiKey);
+  return parseContractResponse(unwrapEnvelope(response));
+}
+
 export async function tulipUpdateContract(
   apiKey: string,
   contractId: string,
@@ -289,6 +397,44 @@ export async function tulipUpdateContract(
     apiKey,
     {
       method: 'PATCH',
+      body: payload,
+    },
+  );
+
+  return parseContractResponse(unwrapEnvelope(response));
+}
+
+export async function tulipAddProductsToContract(
+  apiKey: string,
+  contractId: string,
+  payload: Record<string, unknown>,
+  preview: boolean,
+): Promise<TulipContract> {
+  const query = preview ? '?preview=true' : '';
+  const response = await request<unknown>(
+    `/contracts/${contractId}/products${query}`,
+    apiKey,
+    {
+      method: 'POST',
+      body: payload,
+    },
+  );
+
+  return parseContractResponse(unwrapEnvelope(response));
+}
+
+export async function tulipDeleteProductsFromContract(
+  apiKey: string,
+  contractId: string,
+  payload: Record<string, unknown>,
+  preview: boolean,
+): Promise<TulipContract> {
+  const query = preview ? '?preview=true' : '';
+  const response = await request<unknown>(
+    `/contracts/${contractId}/products${query}`,
+    apiKey,
+    {
+      method: 'DELETE',
       body: payload,
     },
   );
