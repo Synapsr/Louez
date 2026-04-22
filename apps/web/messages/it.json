@@ -5032,6 +5032,7 @@
     "tulipQuoteFailed": "Impossibile calcolare la copertura danni/furto per questa prenotazione.",
     "tulipContractPastDate": "Tulip ha rifiutato la creazione del contratto: le date del contratto non possono essere nel passato.",
     "tulipContractActionForbidden": "Tulip ha rifiutato questa azione per la configurazione attuale dell'account.",
+    "tulipContractProductMarkedMissing": "Tulip richiede l'identificativo reale di ogni articolo assicurato. Assegna un'unità o un identificativo fisico a ogni prodotto assicurato prima di creare o sincronizzare il contratto.",
     "tulipContractTypeDisabled": "Il tipo di contratto Tulip richiesto per questa durata non e abilitato per questo negozio."
   },
   "welcome": {

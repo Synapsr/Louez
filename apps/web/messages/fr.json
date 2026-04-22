@@ -5053,6 +5053,7 @@
     "tulipContractNotFound": "Tulip ne retrouve pas ce contrat. Vérifiez la synchronisation avant de réessayer.",
     "tulipContractNotOpen": "Tulip a refusé la modification : seuls les contrats ouverts peuvent être mis à jour.",
     "tulipContractIdentityFrozen": "Tulip a refusé la modification : les informations du client sont désormais gelées pour ce contrat.",
+    "tulipContractProductMarkedMissing": "Tulip exige le numéro réel du matériel assuré. Assignez une unité ou un identifiant physique à chaque produit assuré avant de créer ou synchroniser le contrat.",
     "tulipContractPayloadInvalid": "Tulip a refusé les données du contrat. Vérifiez les produits assurés et les champs requis envoyés.",
     "tulipContractValidationFailed": "Tulip a refusé cette action à cause d'une erreur de validation métier sur le contrat.",
     "tulipContractTypeDisabled": "Le type de contrat Tulip requis pour cette durée n'est pas activé pour cette boutique.",

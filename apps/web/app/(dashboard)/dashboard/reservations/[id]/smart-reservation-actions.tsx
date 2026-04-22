@@ -44,6 +44,7 @@ type InspectionMode = 'optional' | 'recommended' | 'required'
 type ActionWarning = {
   key: string
   params?: Record<string, string | number>
+  details?: string
 }
 
 interface SmartReservationActionsProps {
@@ -105,7 +106,8 @@ export function SmartReservationActions({
 
   const formatWarning = (warning: ActionWarning) => {
     const key = warning.key.replace('errors.', '')
-    return tErrors(key, warning.params || {})
+    const translated = tErrors(key, warning.params || {})
+    return warning.details ? `${translated} Cause: ${warning.details}` : translated
   }
 
   const showWarnings = (warnings: unknown, newStatus: ReservationStatus) => {
@@ -124,6 +126,10 @@ export function SmartReservationActions({
       .map((warning) => ({
         key: warning.key,
         params: warning.params,
+        details:
+          typeof warning.details === 'string' && warning.details.trim().length > 0
+            ? warning.details.trim()
+            : undefined,
       }))
 
     if (parsedWarnings.length === 0) {
@@ -266,8 +272,8 @@ export function SmartReservationActions({
 
       toastManager.add({ title: t('statusUpdated'), type: 'success' })
       await invalidateReservationAll(queryClient, reservationId)
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
     } finally {
       setIsLoading(false)
       setAcknowledgeWarnings(false)

@@ -5032,6 +5032,7 @@
     "tulipQuoteFailed": "Bruch-/Diebstahlschutz für diese Reservierung konnte nicht berechnet werden.",
     "tulipContractPastDate": "Tulip hat die Vertragserstellung abgelehnt: Vertragsdaten dürfen nicht in der Vergangenheit liegen.",
     "tulipContractActionForbidden": "Tulip hat diese Aktion für die aktuelle Kontokonfiguration abgelehnt.",
+    "tulipContractProductMarkedMissing": "Tulip benötigt die echte Kennung jedes versicherten Artikels. Weisen Sie jedem versicherten Produkt vor der Erstellung oder Synchronisierung des Vertrags eine Einheit oder physische Kennung zu.",
     "tulipContractTypeDisabled": "Der für diese Dauer erforderliche Tulip-Vertragstyp ist für diesen Shop nicht aktiviert."
   },
   "welcome": {

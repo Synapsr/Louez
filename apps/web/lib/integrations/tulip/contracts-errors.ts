@@ -195,10 +195,20 @@ export function toTulipContractError(error: unknown, fallbackKey: string): Error
       case 1229:
       case 1230:
         return new Error('errors.tulipContractPayloadInvalid');
+      case 1301:
+      case 1311:
+      case 1321:
+      case 1334:
+      case 1335:
+        return new Error('errors.tulipContractProductMarkedMissing');
     }
 
     if (message.includes('past') || message.includes('retro') || message.includes('date')) {
       return new Error('errors.tulipContractPastDate');
+    }
+
+    if (message.includes('product_marked')) {
+      return new Error('errors.tulipContractProductMarkedMissing');
     }
 
     if (
