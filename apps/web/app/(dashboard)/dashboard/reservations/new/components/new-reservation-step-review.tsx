@@ -132,6 +132,8 @@ export function NewReservationStepReview({
   const isTulipInsuranceEnabledForReservation =
     tulipInsuranceMode === 'required' ||
     (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn)
+  const isTulipInsuranceApplicableForReservation =
+    isTulipInsuranceEnabledForReservation && !showTulipPastStartWarning
   const showOptionalTulipInsuranceDetails =
     tulipInsuranceMode === 'optional' &&
     (showTulipInsuranceSummary ||
@@ -307,7 +309,7 @@ export function NewReservationStepReview({
 
                 const pricing = getProductPricingDetails(product, item)
                 const isProductTulipEligible =
-                  isTulipInsuranceEnabledForReservation &&
+                  isTulipInsuranceApplicableForReservation &&
                   product.tulipInsurable === true
                 const productInsuranceBadgeLabel =
                   tulipInsuranceMode === 'required'
