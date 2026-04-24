@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import Script from 'next/script';
 
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -8,6 +9,7 @@ import { GleapProvider } from '@/components/dashboard/gleap-provider';
 import { PostHogProvider } from '@/components/posthog-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 
+import { env } from '@/env';
 import { auth } from '@/lib/auth';
 import { getCurrentStore } from '@/lib/store-context';
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
@@ -30,6 +32,13 @@ export default async function DashboardLayout({
 
   return (
     <NextIntlClientProvider messages={messages}>
+      {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
+        <Script
+          src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL}/api/t.js`}
+          data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
+          strategy="afterInteractive"
+        />
+      )}
       <PostHogProvider
         user={
           session.user?.id && session.user?.email
