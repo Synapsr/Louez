@@ -36,6 +36,7 @@ import {
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import { orpc } from '@/lib/orpc/react'
+import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { deleteCustomer } from './actions'
 
 interface Customer {
@@ -154,9 +155,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                     {customer.phone && (
                       <div className="flex items-center gap-1 text-sm">
                         <Phone className="h-3 w-3 text-muted-foreground" />
-                        <a href={`tel:${customer.phone}`} className="hover:underline">
-                          {customer.phone}
-                        </a>
+                        <PhoneContactPopover phone={customer.phone} className="text-foreground" />
                       </div>
                     )}
                   </div>
