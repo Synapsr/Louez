@@ -149,6 +149,27 @@ const CARD_BRANDS: Record<string, string> = {
 
 const VISIBLE_HISTORY_COUNT = 3
 
+function getRentalAmount({
+  subtotalAmount,
+  depositAmount,
+  totalAmount,
+}: {
+  subtotalAmount: string
+  depositAmount: string
+  totalAmount: string
+}) {
+  const subtotal = parseFloat(subtotalAmount || '0')
+  const deposit = parseFloat(depositAmount || '0')
+  const total = parseFloat(totalAmount || '0')
+
+  if (!Number.isFinite(total) || total <= 0) return subtotal
+  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
+    return Math.max(0, total - deposit)
+  }
+
+  return total
+}
+
 export function UnifiedPaymentSection({
   reservationId,
   reservationNumber,
@@ -206,8 +227,8 @@ export function UnifiedPaymentSection({
     { value: 'other', label: t('payment.methods.other') },
   ]
 
-  // Calculate totals — rental tracks totalAmount (includes delivery fee)
-  const rental = parseFloat(totalAmount)
+  // totalAmount should exclude the deposit, but older rows may include it.
+  const rental = getRentalAmount({ subtotalAmount, depositAmount, totalAmount })
   const deposit = parseFloat(depositAmount)
   const depositStatusVal = depositStatusProp || 'none'
 
@@ -230,6 +251,7 @@ export function UnifiedPaymentSection({
   const rentalRemaining = Math.max(0, rental - rentalPaid)
   const depositRemaining = Math.max(0, deposit - depositCollected)
   const depositToReturn = depositCollected - depositReturned
+  const rentalProgress = rental > 0 ? Math.min(100, (rentalPaid / rental) * 100) : 100
 
   const isRentalFullyPaid = rentalRemaining === 0
   const isDepositFullyCollected = depositRemaining === 0
@@ -669,7 +691,7 @@ export function UnifiedPaymentSection({
             </div>
             <div className="flex items-center gap-2">
               <Progress
-                value={(rentalPaid / rental) * 100}
+                value={rentalProgress}
                 className={cn(
                   'h-2 flex-1',
                   isRentalFullyPaid ? '[&>div]:bg-emerald-500' : '[&>div]:bg-amber-500'
