@@ -656,6 +656,7 @@ async function handleDepositAuthorized(
       depositStatus: 'authorized',
       depositPaymentIntentId: paymentIntent.id,
       depositAuthorizationExpiresAt: expiresAt,
+      stripePaymentMethodId: paymentIntent.payment_method as string | null,
       updatedAt: new Date(),
     })
     .where(eq(reservations.id, reservationId))

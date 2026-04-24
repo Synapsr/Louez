@@ -4,6 +4,7 @@ import { db } from '@louez/db'
 import { stores, reservations, payments, reservationActivity, verificationCodes } from '@louez/db'
 import { eq, and, gt } from 'drizzle-orm'
 import { createDepositAuthorizationIntent, toStripeCents } from '@/lib/stripe'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { nanoid } from 'nanoid'
 import type { StoreSettings } from '@louez/types'
 
@@ -47,23 +48,25 @@ export async function getDepositAuthorizationData({
   }
 
   // Validate access via token (from verificationCodes table)
-  if (token) {
-    const verificationCode = await db.query.verificationCodes.findFirst({
-      where: and(
-        eq(verificationCodes.token, token),
-        eq(verificationCodes.reservationId, reservationId),
-        eq(verificationCodes.storeId, store.id),
-        gt(verificationCodes.expiresAt, new Date())
-      ),
-    })
-
-    if (!verificationCode) {
-      return { error: 'invalid_token' }
-    }
+  if (!token) {
+    return { error: 'invalid_token' }
   }
 
-  // Check if store has Stripe connected
-  if (!store.stripeAccountId) {
+  const verificationCode = await db.query.verificationCodes.findFirst({
+    where: and(
+      eq(verificationCodes.token, token),
+      eq(verificationCodes.reservationId, reservationId),
+      eq(verificationCodes.storeId, store.id),
+      gt(verificationCodes.expiresAt, new Date())
+    ),
+  })
+
+  if (!verificationCode) {
+    return { error: 'invalid_token' }
+  }
+
+  // Check if store can process Stripe payments
+  if (!store.stripeAccountId || !store.stripeChargesEnabled) {
     return { error: 'stripe_not_configured' }
   }
 
@@ -107,6 +110,7 @@ export async function getDepositAuthorizationData({
 interface CreateDepositPaymentIntentParams {
   reservationId: string
   storeId: string
+  token: string
 }
 
 /**
@@ -116,6 +120,7 @@ interface CreateDepositPaymentIntentParams {
 export async function createDepositPaymentIntent({
   reservationId,
   storeId,
+  token,
 }: CreateDepositPaymentIntentParams) {
   // Get store with Stripe account
   const store = await db.query.stores.findFirst({
@@ -123,6 +128,10 @@ export async function createDepositPaymentIntent({
   })
 
   if (!store || !store.stripeAccountId) {
+    return { error: 'stripe_not_configured' }
+  }
+
+  if (!store.stripeChargesEnabled) {
     return { error: 'stripe_not_configured' }
   }
 
@@ -136,6 +145,19 @@ export async function createDepositPaymentIntent({
 
   if (!reservation) {
     return { error: 'reservation_not_found' }
+  }
+
+  const verificationCode = await db.query.verificationCodes.findFirst({
+    where: and(
+      eq(verificationCodes.token, token),
+      eq(verificationCodes.reservationId, reservationId),
+      eq(verificationCodes.storeId, storeId),
+      gt(verificationCodes.expiresAt, new Date())
+    ),
+  })
+
+  if (!verificationCode) {
+    return { error: 'invalid_token' }
   }
 
   // Check if deposit is already authorized
@@ -222,12 +244,45 @@ export async function confirmDepositAuthorization({
   const depositAmount = parseFloat(reservation.depositAmount || '0')
 
   try {
+    const existingPayment = await db.query.payments.findFirst({
+      where: eq(payments.stripePaymentIntentId, paymentIntentId),
+    })
+
+    if (existingPayment) {
+      const accessToken = nanoid(64)
+      const tokenExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+
+      await db.insert(verificationCodes).values({
+        id: nanoid(),
+        email: reservation.customer.email,
+        storeId,
+        code: '',
+        type: 'instant_access',
+        token: accessToken,
+        reservationId,
+        expiresAt: tokenExpiresAt,
+        createdAt: new Date(),
+      })
+
+      return {
+        success: true,
+        redirectUrl: getStorefrontUrl(
+          store.slug,
+          `/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
+        ),
+      }
+    }
+
+    const authorizationExpiresAt = new Date()
+    authorizationExpiresAt.setDate(authorizationExpiresAt.getDate() + 7)
+
     // Update reservation with deposit info
     await db
       .update(reservations)
       .set({
         depositStatus: 'authorized',
         depositPaymentIntentId: paymentIntentId,
+        depositAuthorizationExpiresAt: authorizationExpiresAt,
         stripePaymentMethodId: paymentMethodId,
         updatedAt: new Date(),
       })
@@ -241,9 +296,10 @@ export async function confirmDepositAuthorization({
       currency,
       status: 'authorized',
       type: 'deposit_hold',
-      method: 'card',
+      method: 'stripe',
       stripePaymentIntentId: paymentIntentId,
       stripePaymentMethodId: paymentMethodId,
+      authorizationExpiresAt,
       notes: 'Deposit authorization hold',
     })
 
@@ -276,7 +332,10 @@ export async function confirmDepositAuthorization({
     })
 
     // Build redirect URL to account with auto-login
-    const redirectUrl = `/${store.slug}/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
+    const redirectUrl = getStorefrontUrl(
+      store.slug,
+      `/account/success?token=${accessToken}&type=deposit&reservation=${reservationId}`
+    )
 
     return { success: true, redirectUrl }
   } catch (error) {

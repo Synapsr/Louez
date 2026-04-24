@@ -373,7 +373,7 @@ export async function createDepositAuthorizationIntent({
       metadata: {
         reservationId,
         reservationNumber,
-        type: 'deposit_authorization_request',
+        type: 'deposit_hold',
       },
     },
     {

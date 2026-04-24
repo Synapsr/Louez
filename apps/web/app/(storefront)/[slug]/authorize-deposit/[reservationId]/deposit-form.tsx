@@ -40,6 +40,7 @@ interface DepositFormProps {
   }
   currency: string
   locale: string
+  token: string
 }
 
 function CheckoutForm({
@@ -48,7 +49,7 @@ function CheckoutForm({
   currency,
   onSuccess,
   t,
-}: Omit<DepositFormProps, 'customer'> & {
+}: Omit<DepositFormProps, 'customer' | 'token'> & {
   onSuccess: (redirectUrl?: string) => void
   t: ReturnType<typeof useTranslations<'storefront.authorizeDeposit'>>
 }) {
@@ -56,6 +57,16 @@ function CheckoutForm({
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const getStorefrontPath = (path: string) => {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`
+    const hostnamePrefix = window.location.hostname.split('.')[0]
+    const isStoreSubdomain = hostnamePrefix === store.slug
+
+    return isStoreSubdomain
+      ? normalizedPath
+      : `/${store.slug}${normalizedPath}`
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -72,7 +83,9 @@ function CheckoutForm({
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/${store.slug}/authorize-deposit/${reservation.id}/success`,
+          return_url: `${window.location.origin}${getStorefrontPath(
+            `/authorize-deposit/${reservation.id}/success`
+          )}`,
         },
         redirect: 'if_required',
       })
@@ -190,6 +203,7 @@ export function DepositForm(props: DepositFormProps) {
     createDepositPaymentIntent({
       reservationId: props.reservation.id,
       storeId: props.store.id,
+      token: props.token,
     }).then((result) => {
       if (result.error) {
         setError(result.error)
@@ -198,7 +212,7 @@ export function DepositForm(props: DepositFormProps) {
       }
       setIsLoading(false)
     })
-  }, [props.store.stripeAccountId, props.store.id, props.reservation.id])
+  }, [props.store.stripeAccountId, props.store.id, props.reservation.id, props.token])
 
   const handleSuccess = (redirectUrl?: string) => {
     setIsSuccess(true)
@@ -208,7 +222,12 @@ export function DepositForm(props: DepositFormProps) {
         router.push(redirectUrl)
       } else {
         // Fallback to success page if no redirect URL (shouldn't happen normally)
-        router.push(`/${props.store.slug}/authorize-deposit/${props.reservation.id}/success`)
+        const hostnamePrefix = window.location.hostname.split('.')[0]
+        const isStoreSubdomain = hostnamePrefix === props.store.slug
+        const successPath = `/authorize-deposit/${props.reservation.id}/success`
+        router.push(
+          isStoreSubdomain ? successPath : `/${props.store.slug}${successPath}`
+        )
       }
     }, 1500)
   }

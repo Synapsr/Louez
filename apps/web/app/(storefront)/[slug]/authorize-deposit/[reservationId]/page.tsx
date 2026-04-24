@@ -171,6 +171,7 @@ export default async function AuthorizeDepositPage({
           }}
           currency={currency}
           locale={locale}
+          token={token!}
         />
 
         {/* Back link */}

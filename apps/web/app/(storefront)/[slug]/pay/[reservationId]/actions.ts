@@ -4,8 +4,8 @@ import { db } from '@louez/db'
 import { stores, reservations, paymentRequests, verificationCodes } from '@louez/db'
 import { eq, and, gt } from 'drizzle-orm'
 import { createPaymentRequestSession, toStripeCents } from '@/lib/stripe'
+import { getStorefrontUrl } from '@/lib/storefront-url'
 import { nanoid } from 'nanoid'
-import { env } from '@/env'
 import type { StoreSettings } from '@louez/types'
 
 interface GetPaymentRequestDataParams {
@@ -157,13 +157,14 @@ export async function initiatePayment({
     createdAt: new Date(),
   })
 
-  // Build URLs
-  const domain = env.NEXT_PUBLIC_APP_DOMAIN
-  const protocol = domain.includes('localhost') ? 'http' : 'https'
-  const baseUrl = `${protocol}://${store.slug}.${domain}`
-
-  const successUrl = `${baseUrl}/account/success?token=${accessToken}&type=payment&reservation=${reservation.id}`
-  const cancelUrl = `${baseUrl}/pay/${reservation.id}?token=${token}`
+  const successUrl = getStorefrontUrl(
+    store.slug,
+    `/account/success?token=${accessToken}&type=payment&reservation=${reservation.id}`
+  )
+  const cancelUrl = getStorefrontUrl(
+    store.slug,
+    `/pay/${reservation.id}?token=${token}`
+  )
 
   const locale = storeSettings.country
     ? getStripeLocale(storeSettings.country)
