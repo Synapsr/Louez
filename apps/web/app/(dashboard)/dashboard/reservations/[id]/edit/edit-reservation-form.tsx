@@ -48,6 +48,7 @@ import {
   evaluateReservationRules,
   type ReservationValidationWarning,
 } from '@/lib/utils/reservation-rules'
+import { formatStoreDate } from '@/lib/utils/store-date'
 import { isLegacyTulipInsuranceItem } from '@/lib/integrations/tulip/contracts-insurance'
 import { orpc } from '@/lib/orpc/react'
 import { invalidateReservationAll } from '@/lib/orpc/invalidation'
@@ -62,6 +63,13 @@ import type { EditReservationFormProps, EditableItem } from './types'
 
 function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null
+}
+
+function isSameStoreDay(dateA: Date, dateB: Date, timezone?: string): boolean {
+  return (
+    formatStoreDate(dateA, timezone, 'yyyy-MM-dd') ===
+    formatStoreDate(dateB, timezone, 'yyyy-MM-dd')
+  )
 }
 
 function resolvePricingModeFromMinutes(
@@ -124,6 +132,7 @@ export function EditReservationForm({
   const tForm = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const tErrors = useTranslations('errors')
+  const tValidation = useTranslations('validation')
   const timezone = useStoreTimezone()
   const currencySymbol = getCurrencySymbol(currency)
 
@@ -139,6 +148,21 @@ export function EditReservationForm({
   const [isLoading, setIsLoading] = useState(false)
   const [startDate, setStartDate] = useState<Date | undefined>(new Date(reservation.startDate))
   const [endDate, setEndDate] = useState<Date | undefined>(new Date(reservation.endDate))
+  const endMinTime =
+    startDate && endDate && isSameStoreDay(startDate, endDate, timezone)
+      ? formatStoreDate(startDate, timezone, 'TIME_ONLY')
+      : '00:00'
+  const handleEndDateChange = useCallback(
+    (date: Date | undefined) => {
+      if (date && startDate && isSameStoreDay(startDate, date, timezone) && date < startDate) {
+        setEndDate(startDate)
+        return
+      }
+
+      setEndDate(date)
+    },
+    [startDate, timezone],
+  )
   const editableReservationItems = reservation.items.filter(
     (item) =>
       !isLegacyTulipInsuranceItem({
@@ -605,6 +629,11 @@ export function EditReservationForm({
       return
     }
 
+    if (endDate < startDate) {
+      toastManager.add({ title: tValidation('endDateBeforeStart'), type: 'error' })
+      return
+    }
+
     if (delivery.isCalculating) {
       toastManager.add({ title: tForm('loading'), type: 'error' })
       return
@@ -753,12 +782,18 @@ export function EditReservationForm({
                       <Label className="text-xs">{t('edit.endDate')}</Label>
                       <DateTimePicker
                         date={endDate}
-                        setDate={setEndDate}
+                        setDate={handleEndDateChange}
                         showTime={true}
-                        minTime="00:00"
+                        minTime={endMinTime}
                         maxTime="23:59"
                         timeStep={30}
-                        disabledDates={(date) => (startDate ? date < startDate : false)}
+                        disabledDates={(date) => {
+                          if (!startDate) return false
+
+                          const startDay = new Date(startDate)
+                          startDay.setHours(0, 0, 0, 0)
+                          return date < startDay
+                        }}
                         timezone={timezone}
                       />
                     </div>

@@ -4936,6 +4936,7 @@
     "customerHasReservations": "Cannot delete a customer with reservations",
     "cannotCancelReservation": "This reservation cannot be cancelled",
     "cannotEditCompletedReservation": "Completed reservations cannot be edited",
+    "endDateBeforeStart": "End date must be after or equal to start date",
     "negativeAmountOnlyForAdjustment": "Negative amounts are only allowed for adjustments",
     "productRequired": "Product required",
     "customerRequired": "Customer required",

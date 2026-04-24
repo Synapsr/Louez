@@ -4926,6 +4926,7 @@
     "customerHasReservations": "Kan een klant met reserveringen niet verwijderen",
     "cannotCancelReservation": "Deze reservering kan niet worden geannuleerd",
     "cannotEditCompletedReservation": "Voltooide reserveringen kunnen niet worden bewerkt",
+    "endDateBeforeStart": "Einddatum moet na of gelijk aan startdatum zijn",
     "negativeAmountOnlyForAdjustment": "Negatieve bedragen zijn alleen toegestaan voor aanpassingen",
     "productRequired": "Product vereist",
     "customerRequired": "Klant vereist",
