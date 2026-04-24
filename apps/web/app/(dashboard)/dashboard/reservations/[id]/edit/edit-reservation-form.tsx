@@ -296,6 +296,34 @@ export function EditReservationForm({
     )
   }
 
+  const handleItemTotalPriceChange = (
+    itemId: string,
+    totalPrice: number,
+    pricingMode?: PricingMode,
+  ) => {
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== itemId) return item
+
+        const effectivePricingMode = pricingMode ?? item.pricingMode
+        const itemDuration = startDate && endDate
+          ? getDurationForMode(effectivePricingMode)
+          : 0
+        const unitPrice =
+          itemDuration > 0 && item.quantity > 0
+            ? totalPrice / (itemDuration * item.quantity)
+            : totalPrice
+
+        return {
+          ...item,
+          unitPrice,
+          isManualPrice: true,
+          pricingMode: effectivePricingMode,
+        }
+      })
+    )
+  }
+
   const handleToggleManualPrice = (
     itemId: string,
     effectiveUnitPrice?: number,
@@ -762,6 +790,7 @@ export function EditReservationForm({
                 onAddProduct={handleAddProduct}
                 onQuantityChange={handleQuantityChange}
                 onPriceChange={handlePriceChange}
+                onTotalPriceChange={handleItemTotalPriceChange}
                 onToggleManualPrice={handleToggleManualPrice}
                 onRemoveItem={handleRemoveItem}
               />

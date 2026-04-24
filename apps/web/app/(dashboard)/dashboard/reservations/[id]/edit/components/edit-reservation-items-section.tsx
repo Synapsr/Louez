@@ -59,6 +59,11 @@ interface EditReservationItemsSectionProps {
     price: number,
     pricingMode?: PricingMode,
   ) => void;
+  onTotalPriceChange: (
+    itemId: string,
+    totalPrice: number,
+    pricingMode?: PricingMode,
+  ) => void;
   onToggleManualPrice: (
     itemId: string,
     effectiveUnitPrice?: number,
@@ -74,6 +79,10 @@ function PriceInput({
   isManual,
   suffix,
   ariaLabel,
+  autoFocus,
+  revertValue,
+  onCommit,
+  onCancel,
 }: {
   value: number;
   onChange: (value: number) => void;
@@ -81,6 +90,10 @@ function PriceInput({
   isManual?: boolean;
   suffix: string;
   ariaLabel: string;
+  autoFocus?: boolean;
+  revertValue?: number;
+  onCommit?: () => void;
+  onCancel?: () => void;
 }) {
   const [localValue, setLocalValue] = useState(value.toFixed(2));
   const inputRef = useRef<HTMLInputElement>(null);
@@ -112,9 +125,30 @@ function PriceInput({
           const final = Number.isNaN(parsed) ? 0 : parsed;
           setLocalValue(final.toFixed(2));
           onChange(final);
+          onCommit?.();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            const resetValue = revertValue ?? value;
+            setLocalValue(resetValue.toFixed(2));
+            onChange(resetValue);
+            onCancel?.();
+            return;
+          }
+
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            const parsed = parseFloat(localValue.replace(',', '.'));
+            const final = Number.isNaN(parsed) ? 0 : parsed;
+            setLocalValue(final.toFixed(2));
+            onChange(final);
+            onCommit?.();
+          }
         }}
         disabled={disabled}
         aria-label={ariaLabel}
+        autoFocus={autoFocus}
         className={cn(
           'h-8 w-28 [appearance:textfield] pr-8 text-right tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none',
           isManual && 'border-amber-300 bg-amber-50 dark:bg-amber-950/20',
@@ -126,6 +160,79 @@ function PriceInput({
       >
         {suffix}
       </span>
+    </div>
+  );
+}
+
+function TotalPriceEditor({
+  value,
+  savings,
+  isManual,
+  currencySymbol,
+  ariaLabel,
+  onChange,
+}: {
+  value: number;
+  savings: number;
+  isManual?: boolean;
+  currencySymbol: string;
+  ariaLabel: string;
+  onChange: (value: number) => void;
+}) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStartValue, setEditStartValue] = useState(value);
+
+  if (isEditing) {
+    return (
+      <div className="relative flex w-32 justify-end">
+        <PriceInput
+          value={value}
+          onChange={onChange}
+          isManual={isManual}
+          suffix={currencySymbol}
+          ariaLabel={ariaLabel}
+          autoFocus
+          revertValue={editStartValue}
+          onCommit={() => setIsEditing(false)}
+          onCancel={() => setIsEditing(false)}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex w-32 items-start justify-end gap-1">
+      <div className="min-w-0 text-right">
+        <p className="font-semibold tabular-nums">
+          {value.toFixed(2)}
+          {currencySymbol}
+        </p>
+        {savings > 0 && !isManual && (
+          <p className="text-[10px] text-emerald-600">
+            -{savings.toFixed(2)}
+            {currencySymbol}
+          </p>
+        )}
+      </div>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground h-7 w-7 shrink-0"
+              onClick={() => {
+                setEditStartValue(value);
+                setIsEditing(true);
+              }}
+            />
+          }
+        >
+          <PenLine className="h-3.5 w-3.5" />
+        </TooltipTrigger>
+        <TooltipContent>{ariaLabel}</TooltipContent>
+      </Tooltip>
     </div>
   );
 }
@@ -215,6 +322,7 @@ export function EditReservationItemsSection({
   onAddProduct,
   onQuantityChange,
   onPriceChange,
+  onTotalPriceChange,
   onToggleManualPrice,
   onRemoveItem,
 }: EditReservationItemsSectionProps) {
@@ -263,8 +371,8 @@ export function EditReservationItemsSection({
                     'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20',
                 )}
               >
-                <div className="flex items-start gap-4">
-                  <div className="min-w-0 flex-1">
+                <div className="space-y-2">
+                  <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium">
                         {item.productSnapshot.name}
@@ -298,125 +406,129 @@ export function EditReservationItemsSection({
                       </p>
                     )}
                   </div>
-
-                  <div
-                    className="flex items-center gap-1"
-                    role="group"
-                    aria-label={`${t('edit.qty')}, ${item.productSnapshot.name}`}
-                  >
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() =>
-                        onQuantityChange(item.id, item.quantity - 1)
-                      }
-                      disabled={item.quantity <= 1}
-                      aria-label={`${t('edit.qty')} −1`}
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="flex items-center gap-1"
+                      role="group"
+                      aria-label={`${t('edit.qty')}, ${item.productSnapshot.name}`}
                     >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(event) =>
-                        onQuantityChange(
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          onQuantityChange(item.id, item.quantity - 1)
+                        }
+                        disabled={item.quantity <= 1}
+                        aria-label={`${t('edit.qty')} −1`}
+                      >
+                        <Minus className="h-3 w-3" />
+                      </Button>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(event) =>
+                          onQuantityChange(
+                            item.id,
+                            parseInt(event.target.value) || 1,
+                          )
+                        }
+                        aria-label={t('edit.qty')}
+                        className="h-8 w-14 [appearance:textfield] text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() =>
+                          onQuantityChange(item.id, item.quantity + 1)
+                        }
+                        aria-label={`${t('edit.qty')} +1`}
+                      >
+                        <Plus className="h-3 w-3" />
+                      </Button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <PriceInput
+                        value={
+                          item.isManualPrice
+                            ? item.unitPrice
+                            : item.effectiveUnitPrice
+                        }
+                        onChange={(price) =>
+                          onPriceChange(item.id, price, item.displayPricingMode)
+                        }
+                        isManual={item.isManualPrice}
+                        suffix={`${currencySymbol}/${getDurationUnit(item.displayPricingMode)}`}
+                        ariaLabel={`${t('edit.unitPrice')}, ${item.productSnapshot.name}`}
+                      />
+                      {item.product && (
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() =>
+                                  onToggleManualPrice(
+                                    item.id,
+                                    item.effectiveUnitPrice,
+                                    item.displayPricingMode,
+                                  )
+                                }
+                              />
+                            }
+                          >
+                            {item.isManualPrice ? (
+                              <Lock className="h-3.5 w-3.5 text-amber-600" />
+                            ) : (
+                              <Unlock className="text-muted-foreground h-3.5 w-3.5" />
+                            )}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {item.isManualPrice
+                              ? t('edit.unlockPrice')
+                              : t('edit.lockPrice')}
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+
+                    <TotalPriceEditor
+                      value={item.totalPrice}
+                      savings={item.savings}
+                      isManual={item.isManualPrice}
+                      currencySymbol={currencySymbol}
+                      onChange={(totalPrice) =>
+                        onTotalPriceChange(
                           item.id,
-                          parseInt(event.target.value) || 1,
+                          totalPrice,
+                          item.displayPricingMode,
                         )
                       }
-                      aria-label={t('edit.qty')}
-                      className="h-8 w-14 [appearance:textfield] text-center tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      ariaLabel={`${tForm('customItem.totalPrice')}, ${item.productSnapshot.name}`}
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() =>
-                        onQuantityChange(item.id, item.quantity + 1)
-                      }
-                      aria-label={`${t('edit.qty')} +1`}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
 
-                  <div className="flex items-center gap-1">
-                    <PriceInput
-                      value={
-                        item.isManualPrice
-                          ? item.unitPrice
-                          : item.effectiveUnitPrice
-                      }
-                      onChange={(price) =>
-                        onPriceChange(item.id, price, item.displayPricingMode)
-                      }
-                      isManual={item.isManualPrice}
-                      suffix={`${currencySymbol}/${getDurationUnit(item.displayPricingMode)}`}
-                      ariaLabel={`${t('edit.unitPrice')}, ${item.productSnapshot.name}`}
-                    />
-                    {item.product && (
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() =>
-                                onToggleManualPrice(
-                                  item.id,
-                                  item.effectiveUnitPrice,
-                                  item.displayPricingMode,
-                                )
-                              }
-                            />
-                          }
-                        >
-                          {item.isManualPrice ? (
-                            <Lock className="h-3.5 w-3.5 text-amber-600" />
-                          ) : (
-                            <Unlock className="text-muted-foreground h-3.5 w-3.5" />
-                          )}
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          {item.isManualPrice
-                            ? t('edit.unlockPrice')
-                            : t('edit.lockPrice')}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive ml-auto h-8 w-8"
+                            onClick={() => onRemoveItem(item.id)}
+                            disabled={itemsCount <= 1}
+                          />
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>{tCommon('delete')}</TooltipContent>
+                    </Tooltip>
                   </div>
-
-                  <div className="w-28 text-right">
-                    <p className="font-semibold">
-                      {item.totalPrice.toFixed(2)}
-                      {currencySymbol}
-                    </p>
-                    {item.savings > 0 && !item.isManualPrice && (
-                      <p className="text-[10px] text-emerald-600">
-                        -{item.savings.toFixed(2)}{currencySymbol}
-                      </p>
-                    )}
-                  </div>
-
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive h-8 w-8"
-                          onClick={() => onRemoveItem(item.id)}
-                          disabled={itemsCount <= 1}
-                        />
-                      }
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </TooltipTrigger>
-                    <TooltipContent>{tCommon('delete')}</TooltipContent>
-                  </Tooltip>
                 </div>
               </div>
             );

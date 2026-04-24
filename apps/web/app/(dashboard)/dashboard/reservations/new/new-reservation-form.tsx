@@ -73,6 +73,7 @@ import type {
   NewReservationFormComponentApi,
   NewReservationFormProps,
   NewReservationFormValues,
+  ProductPricingDetails,
   SelectedProduct,
   StepFieldName,
 } from './types'
@@ -608,6 +609,28 @@ export function NewReservationForm({
     setSelectedProducts((prev) => prev.filter((line) => line.lineId !== lineId))
   }
 
+  const updateProductTotalPrice = (
+    lineId: string,
+    totalPrice: number,
+    pricing: ProductPricingDetails,
+  ) => {
+    setSelectedProducts((prev) =>
+      prev.map((line) => {
+        if (line.lineId !== lineId) return line
+
+        const divisor = pricing.productDuration * line.quantity
+        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice
+        if (Math.abs(unitPrice - pricing.calculatedPrice) < 0.01) {
+          const nextLine = { ...line }
+          delete nextLine.priceOverride
+          return nextLine
+        }
+
+        return { ...line, priceOverride: { unitPrice } }
+      })
+    )
+  }
+
   // Custom item management
   const resetCustomItemForm = () => {
     setCustomItemForm({
@@ -746,6 +769,24 @@ export function NewReservationForm({
 
   const removeCustomItem = (id: string) => {
     setCustomItems(customItems.filter((item) => item.id !== id))
+  }
+
+  const updateCustomItemTotalPrice = (id: string, totalPrice: number) => {
+    setCustomItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id || !watchStartDate || !watchEndDate) return item
+
+        const itemDuration = calculateDurationForMode(
+          watchStartDate,
+          watchEndDate,
+          item.pricingMode,
+        )
+        const divisor = itemDuration * item.quantity
+        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice
+
+        return { ...item, unitPrice }
+      })
+    )
   }
 
   // Price override functions
@@ -1101,6 +1142,8 @@ export function NewReservationForm({
               deposit={deposit}
               getProductPricingDetails={getProductPricingDetails}
               getCustomItemTotal={getCustomItemTotal}
+              onProductTotalChange={updateProductTotalPrice}
+              onCustomItemTotalChange={updateCustomItemTotalPrice}
               hasDeliveryLegs={delivery.outboundMethod === 'address' || delivery.returnMethod === 'address'}
               deliveryFee={delivery.totalFee}
               isDeliveryIncluded={delivery.isDeliveryIncluded}

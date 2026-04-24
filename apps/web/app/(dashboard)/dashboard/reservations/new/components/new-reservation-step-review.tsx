@@ -1,17 +1,21 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
+
 import { format } from 'date-fns'
 import type { Locale } from 'date-fns'
-import { Check, MapPin, Store, Truck, Shield } from 'lucide-react'
+import { Check, MapPin, PenLine, Store, Truck, Shield } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
   Badge,
+  Button,
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
   Separator,
 } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
@@ -60,6 +64,12 @@ interface NewReservationStepReviewProps {
     selectedItem?: SelectedProduct
   ) => ProductPricingDetails
   getCustomItemTotal: (item: CustomItem) => number
+  onProductTotalChange: (
+    lineId: string,
+    totalPrice: number,
+    pricing: ProductPricingDetails,
+  ) => void
+  onCustomItemTotalChange: (id: string, totalPrice: number) => void
   hasDeliveryLegs?: boolean
   deliveryFee?: number
   isDeliveryIncluded?: boolean
@@ -70,6 +80,105 @@ interface NewReservationStepReviewProps {
   returnAddress?: DeliveryAddress
   returnDistance?: number | null
   storeAddress?: string | null
+}
+
+function TotalPriceEditor({
+  value,
+  ariaLabel,
+  onChange,
+}: {
+  value: number
+  ariaLabel: string
+  onChange: (value: number) => void
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editStartValue, setEditStartValue] = useState(value)
+  const [localValue, setLocalValue] = useState(value.toFixed(2))
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setLocalValue(value.toFixed(2))
+    }
+  }, [value])
+
+  if (!isEditing) {
+    return (
+      <div className="flex w-36 items-start justify-end gap-1">
+        <span className="font-medium tabular-nums">
+          {formatCurrency(value)}
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="text-muted-foreground h-7 w-7 shrink-0"
+          aria-label={ariaLabel}
+          onClick={() => {
+            setEditStartValue(value)
+            setLocalValue(value.toFixed(2))
+            setIsEditing(true)
+          }}
+        >
+          <PenLine className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative w-32">
+      <Input
+        ref={inputRef}
+        inputMode="decimal"
+        autoFocus
+        value={localValue}
+        onChange={(event) => {
+          const raw = event.target.value
+          if (raw === '' || /^\d*[.,]?\d{0,2}$/.test(raw)) {
+            setLocalValue(raw)
+            const parsed = parseFloat(raw.replace(',', '.'))
+            if (!Number.isNaN(parsed)) {
+              onChange(parsed)
+            }
+          }
+        }}
+        onBlur={() => {
+          const parsed = parseFloat(localValue.replace(',', '.'))
+          const final = Number.isNaN(parsed) ? 0 : parsed
+          setLocalValue(final.toFixed(2))
+          onChange(final)
+          setIsEditing(false)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            setLocalValue(editStartValue.toFixed(2))
+            onChange(editStartValue)
+            setIsEditing(false)
+            return
+          }
+
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            const parsed = parseFloat(localValue.replace(',', '.'))
+            const final = Number.isNaN(parsed) ? 0 : parsed
+            setLocalValue(final.toFixed(2))
+            onChange(final)
+            setIsEditing(false)
+          }
+        }}
+        aria-label={ariaLabel}
+        className="h-8 pr-8 text-right tabular-nums"
+      />
+      <span
+        className="text-muted-foreground pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs"
+        aria-hidden="true"
+      >
+        €
+      </span>
+    </div>
+  )
 }
 
 export function NewReservationStepReview({
@@ -92,6 +201,8 @@ export function NewReservationStepReview({
   deposit,
   getProductPricingDetails,
   getCustomItemTotal,
+  onProductTotalChange,
+  onCustomItemTotalChange,
   hasDeliveryLegs,
   deliveryFee = 0,
   isDeliveryIncluded,
@@ -264,7 +375,7 @@ export function NewReservationStepReview({
                   product.tulipInsurable === true
 
                 return (
-                  <div key={item.lineId} className="flex justify-between p-3 text-sm">
+                  <div key={item.lineId} className="flex items-start justify-between gap-3 p-3 text-sm">
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{product.name}</span>
@@ -304,22 +415,18 @@ export function NewReservationStepReview({
                         </div>
                       )}
                     </div>
-                    <span
-                      className={
-                        pricing.hasPriceOverride
-                          ? pricing.effectivePrice < pricing.calculatedPrice
-                            ? 'text-green-600'
-                            : 'text-orange-600'
-                          : ''
+                    <TotalPriceEditor
+                      value={pricing.lineSubtotal}
+                      ariaLabel={`${t('customItem.totalPrice')}, ${product.name}`}
+                      onChange={(totalPrice) =>
+                        onProductTotalChange(item.lineId, totalPrice, pricing)
                       }
-                    >
-                      {formatCurrency(pricing.lineSubtotal)}
-                    </span>
+                    />
                   </div>
                 )
               })}
               {customItems.map((item) => (
-                <div key={item.id} className="flex justify-between bg-muted/30 p-3 text-sm">
+                <div key={item.id} className="flex items-start justify-between gap-3 bg-muted/30 p-3 text-sm">
                   <div>
                     <span className="font-medium">{item.name}</span>
                     <Badge variant="secondary" className="ml-2 text-xs">
@@ -327,7 +434,13 @@ export function NewReservationStepReview({
                     </Badge>
                     <span className="ml-2 text-muted-foreground">× {item.quantity}</span>
                   </div>
-                  <span>{formatCurrency(getCustomItemTotal(item))}</span>
+                  <TotalPriceEditor
+                    value={getCustomItemTotal(item)}
+                    ariaLabel={`${t('customItem.totalPrice')}, ${item.name}`}
+                    onChange={(totalPrice) =>
+                      onCustomItemTotalChange(item.id, totalPrice)
+                    }
+                  />
                 </div>
               ))}
             </div>
