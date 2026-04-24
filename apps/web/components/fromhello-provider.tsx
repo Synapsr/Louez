@@ -10,7 +10,6 @@ declare global {
 }
 
 interface FromHelloProviderProps {
-  children: React.ReactNode
   user?: {
     id: string
     email: string
@@ -32,7 +31,7 @@ interface FromHelloProviderProps {
  * and sets profile attributes. This merges the anonymous profile
  * (created by the tracking snippet) with the authenticated user.
  */
-export function FromHelloProvider({ children, user, store }: FromHelloProviderProps) {
+export function FromHelloProvider({ user, store }: FromHelloProviderProps) {
   useEffect(() => {
     if (typeof fh === 'undefined' || !user) return
 
@@ -50,5 +49,5 @@ export function FromHelloProvider({ children, user, store }: FromHelloProviderPr
     })
   }, [user, store])
 
-  return <>{children}</>
+  return null
 }
