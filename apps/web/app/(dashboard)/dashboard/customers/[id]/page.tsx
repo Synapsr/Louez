@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
+import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { CustomerNotes } from './customer-notes'
 
 interface CustomerPageProps {
@@ -205,9 +206,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
             {customer.phone && (
               <div className="flex items-center gap-3">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <a href={`tel:${customer.phone}`} className="hover:underline">
-                  {customer.phone}
-                </a>
+                <PhoneContactPopover phone={customer.phone} className="text-foreground" />
               </div>
             )}
             {(customer.address || customer.city || customer.postalCode) && (

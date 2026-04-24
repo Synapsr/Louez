@@ -36,6 +36,7 @@ import { formatStoreDate } from '@/lib/utils/store-date'
 import { orpc } from '@/lib/orpc/react'
 
 import { ActivityTimelineV2 } from './activity-timeline-v2'
+import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { ReservationHeader } from './reservation-header'
 import { ReservationNotes } from './reservation-notes'
 import { SmartReservationActions } from './smart-reservation-actions'
@@ -278,12 +279,10 @@ export function ReservationDetailClient({
                       <span className="text-muted-foreground hidden sm:inline">
                         •
                       </span>
-                      <a
-                        href={`tel:${reservation.customer.phone}`}
-                        className="text-sm text-muted-foreground hover:text-primary hidden sm:inline"
-                      >
-                        {reservation.customer.phone}
-                      </a>
+                      <PhoneContactPopover
+                        phone={reservation.customer.phone}
+                        className="hidden sm:inline"
+                      />
                     </>
                   )}
                 </div>

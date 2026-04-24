@@ -216,6 +216,14 @@
       "dark": "Dark",
       "system": "System"
     },
+    "phoneContact": {
+      "call": "Call",
+      "callTooltip": "Opens the phone app to call this number.",
+      "whatsapp": "WhatsApp",
+      "whatsappTooltip": "Opens a WhatsApp conversation with this number.",
+      "sms": "SMS",
+      "smsTooltip": "Opens the messages app to send an SMS."
+    },
     "sidebar": {
       "catalog": "Catalog",
       "analytics": "Analytics",
