@@ -2227,6 +2227,27 @@ interface RecordPaymentData {
   notes?: string;
 }
 
+function roundMoney(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function getReservationRentalAmount(reservation: {
+  subtotalAmount: string;
+  depositAmount: string;
+  totalAmount: string;
+}) {
+  const subtotal = parseFloat(reservation.subtotalAmount || '0');
+  const deposit = parseFloat(reservation.depositAmount || '0');
+  const total = parseFloat(reservation.totalAmount || '0');
+
+  if (!Number.isFinite(total) || total <= 0) return subtotal;
+  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
+    return Math.max(0, total - deposit);
+  }
+
+  return total;
+}
+
 export async function recordPayment(
   reservationId: string,
   data: RecordPaymentData,
@@ -2241,6 +2262,9 @@ export async function recordPayment(
       eq(reservations.id, reservationId),
       eq(reservations.storeId, store.id),
     ),
+    with: {
+      payments: true,
+    },
   });
 
   if (!reservation) {
@@ -2254,6 +2278,32 @@ export async function recordPayment(
   // Only adjustment type can have negative amounts
   if (data.amount < 0 && data.type !== 'adjustment') {
     return { error: 'errors.negativeAmountOnlyForAdjustment' };
+  }
+
+  if (data.amount > 0 && data.type === 'rental') {
+    const rentalPaid = reservation.payments
+      .filter((p) => p.type === 'rental' && p.status === 'completed')
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const rentalRemaining = roundMoney(
+      getReservationRentalAmount(reservation) - rentalPaid,
+    );
+
+    if (data.amount > rentalRemaining) {
+      return { error: 'errors.invalidAmount' };
+    }
+  }
+
+  if (data.amount > 0 && data.type === 'deposit') {
+    const depositCollected = reservation.payments
+      .filter((p) => p.type === 'deposit' && p.status === 'completed')
+      .reduce((sum, p) => sum + parseFloat(p.amount), 0);
+    const depositRemaining = roundMoney(
+      parseFloat(reservation.depositAmount || '0') - depositCollected,
+    );
+
+    if (data.amount > depositRemaining) {
+      return { error: 'errors.invalidAmount' };
+    }
   }
 
   const paymentId = nanoid();
@@ -3461,11 +3511,10 @@ export async function requestPayment(
       description = 'Payment';
     } else if (data.type === 'rental') {
       // Calculate remaining amount for rental from payments
-      const subtotalAmount = parseFloat(reservation.subtotalAmount || '0');
       const paidAmount = reservation.payments
         .filter((p) => p.type === 'rental' && p.status === 'completed')
         .reduce((sum, p) => sum + parseFloat(p.amount), 0);
-      amount = subtotalAmount - paidAmount;
+      amount = getReservationRentalAmount(reservation) - paidAmount;
 
       if (amount < 0.5) {
         return { error: 'errors.noAmountDue' };

@@ -100,6 +100,23 @@ function toDate(value: Date | string | null | undefined) {
   return value instanceof Date ? value : new Date(value)
 }
 
+function getRentalAmount(reservation: {
+  subtotalAmount?: string | null
+  depositAmount?: string | null
+  totalAmount?: string | null
+}) {
+  const subtotal = parseFloat(reservation.subtotalAmount || '0')
+  const deposit = parseFloat(reservation.depositAmount || '0')
+  const total = parseFloat(reservation.totalAmount || '0')
+
+  if (!Number.isFinite(total) || total <= 0) return subtotal
+  if (deposit > 0 && total - subtotal >= deposit - 0.01) {
+    return Math.max(0, total - deposit)
+  }
+
+  return total
+}
+
 export function ReservationDetailClient({
   reservationId,
   initialReservation,
@@ -138,7 +155,7 @@ export function ReservationDetailClient({
   const durationDays = Math.floor(totalHours / 24)
   const durationHours = totalHours % 24
 
-  const rental = parseFloat(reservation.totalAmount || '0')
+  const rental = getRentalAmount(reservation)
   const deposit = parseFloat(reservation.depositAmount || '0')
 
   const rentalPaid = (reservation.payments || [])
@@ -505,7 +522,7 @@ export function ReservationDetailClient({
 
                   <div className="flex justify-between border-t pt-2 font-semibold">
                     <span>{t('totalAmount')}</span>
-                    <span>{parseFloat(reservation.totalAmount).toFixed(2)}{currencySymbol}</span>
+                    <span>{rental.toFixed(2)}{currencySymbol}</span>
                   </div>
 
                   {parseFloat(reservation.depositAmount) > 0 && (
