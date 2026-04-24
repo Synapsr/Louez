@@ -1141,6 +1141,8 @@
         "unitPrice": "Prix unit.",
         "total": "Total",
         "addItem": "Ajouter un article",
+        "searchProductsPlaceholder": "Rechercher parmi {count} articles...",
+        "noProductsFound": "Aucun article trouvé",
         "subtotal": "Sous-total",
         "summary": "Récapitulatif",
         "before": "Avant",

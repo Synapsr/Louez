@@ -1138,6 +1138,8 @@
         "unitPrice": "Precio unit.",
         "total": "Total",
         "addItem": "Agregar articulo",
+        "searchProductsPlaceholder": "Buscar en {count} articulos...",
+        "noProductsFound": "No se encontraron articulos",
         "subtotal": "Subtotal",
         "summary": "Resumen",
         "before": "Antes",

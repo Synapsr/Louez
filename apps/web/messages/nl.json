@@ -1099,6 +1099,8 @@
         "unitPrice": "Stuksprijs",
         "total": "Totaal",
         "addItem": "Artikel toevoegen",
+        "searchProductsPlaceholder": "Zoeken in {count} artikelen...",
+        "noProductsFound": "Geen artikelen gevonden",
         "subtotal": "Subtotaal",
         "summary": "Samenvatting",
         "before": "Ervoor",

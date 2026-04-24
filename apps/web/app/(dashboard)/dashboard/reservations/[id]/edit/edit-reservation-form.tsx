@@ -633,10 +633,8 @@ export function EditReservationForm({
     delivery.inbound.method !== reservation.delivery.returnMethod ||
     hasDeliveryAddressChanges
 
-  // Products not in the reservation
-  const availableToAdd = availableProducts.filter(
-    (p) => !items.some((item) => item.productId === p.id)
-  )
+  // The add handler increments quantity when the product is already present.
+  const availableToAdd = availableProducts
 
   return (
     <TooltipProvider>

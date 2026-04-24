@@ -1138,6 +1138,8 @@
         "unitPrice": "Stückpreis",
         "total": "Gesamt",
         "addItem": "Artikel hinzufügen",
+        "searchProductsPlaceholder": "In {count} Artikeln suchen...",
+        "noProductsFound": "Keine Artikel gefunden",
         "subtotal": "Zwischensumme",
         "summary": "Zusammenfassung",
         "before": "Vorher",

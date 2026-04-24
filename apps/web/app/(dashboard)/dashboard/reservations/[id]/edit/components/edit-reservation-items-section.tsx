@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   AlertTriangle,
+  Check,
+  ChevronsUpDown,
   Lock,
   Minus,
   Package,
@@ -20,12 +22,16 @@ import {
   Button,
   Card,
   CardContent,
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -124,6 +130,80 @@ function PriceInput({
   );
 }
 
+function ProductAddCombobox({
+  products,
+  onAddProduct,
+  placeholder,
+  searchPlaceholder,
+  emptyLabel,
+}: {
+  products: Product[];
+  onAddProduct: (productId: string) => void;
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredProducts = products.filter((product) =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="h-9 w-[220px] justify-between"
+          />
+        }
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Plus className="h-4 w-4 shrink-0" />
+          <span className="truncate">{placeholder}</span>
+        </span>
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </PopoverTrigger>
+      <PopoverContent className="w-[360px] p-0 pt-2 *:p-0" align="end">
+        <Command open items={filteredProducts} filter={null}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+          />
+          <CommandEmpty>{emptyLabel}</CommandEmpty>
+          <CommandList className="max-h-[320px]">
+            <CommandGroup>
+              {filteredProducts.map((product) => (
+                <CommandItem
+                  key={product.id}
+                  value={product.id}
+                  onClick={() => {
+                    onAddProduct(product.id);
+                    setOpen(false);
+                    setSearchQuery('');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Package className="text-muted-foreground h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate">
+                    {product.name}
+                  </span>
+                  <Check className="h-4 w-4 shrink-0 opacity-0" />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function EditReservationItemsSection({
   calculations,
   availabilityWarnings,
@@ -155,30 +235,15 @@ export function EditReservationItemsSection({
               {tForm('customItem.button')}
             </Button>
             {availableToAdd.length > 0 && (
-              <Select
-                onValueChange={(value) => {
-                  if (value !== null) onAddProduct(value as string);
-                }}
-              >
-                <SelectTrigger className="h-9 w-[160px]">
-                  <Plus className="mr-2 h-4 w-4" />
-                  <SelectValue placeholder={t('edit.addItem')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableToAdd.map((product) => (
-                    <SelectItem
-                      key={product.id}
-                      value={product.id}
-                      label={product.name}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Package className="h-3 w-3" />
-                        {product.name}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ProductAddCombobox
+                products={availableToAdd}
+                onAddProduct={onAddProduct}
+                placeholder={t('edit.addItem')}
+                searchPlaceholder={t('edit.searchProductsPlaceholder', {
+                  count: availableToAdd.length,
+                })}
+                emptyLabel={t('edit.noProductsFound')}
+              />
             )}
           </div>
         </div>

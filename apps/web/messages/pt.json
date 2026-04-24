@@ -1099,6 +1099,8 @@
         "unitPrice": "Preco unit.",
         "total": "Total",
         "addItem": "Adicionar item",
+        "searchProductsPlaceholder": "Pesquisar em {count} itens...",
+        "noProductsFound": "Nenhum item encontrado",
         "subtotal": "Subtotal",
         "summary": "Resumo",
         "before": "Antes",

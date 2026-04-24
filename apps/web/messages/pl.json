@@ -1099,6 +1099,8 @@
         "unitPrice": "Cena jedn.",
         "total": "Suma",
         "addItem": "Dodaj przedmiot",
+        "searchProductsPlaceholder": "Szukaj wsrod {count} przedmiotow...",
+        "noProductsFound": "Nie znaleziono przedmiotow",
         "subtotal": "Suma częściowa",
         "summary": "Podsumowanie",
         "before": "Przed",

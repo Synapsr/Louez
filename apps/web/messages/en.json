@@ -1141,6 +1141,8 @@
         "unitPrice": "Unit price",
         "total": "Total",
         "addItem": "Add item",
+        "searchProductsPlaceholder": "Search in {count} products...",
+        "noProductsFound": "No items found",
         "subtotal": "Subtotal",
         "summary": "Summary",
         "before": "Before",
