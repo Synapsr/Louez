@@ -4926,6 +4926,7 @@
     "customerHasReservations": "Nao e possivel excluir um cliente com reservas",
     "cannotCancelReservation": "Esta reserva nao pode ser cancelada",
     "cannotEditCompletedReservation": "Reservas concluídas não podem ser editadas",
+    "endDateBeforeStart": "A data de fim deve ser apos ou igual a data de inicio",
     "negativeAmountOnlyForAdjustment": "Valores negativos são permitidos apenas para ajustes",
     "productRequired": "Produto obrigatorio",
     "customerRequired": "Cliente obrigatorio",

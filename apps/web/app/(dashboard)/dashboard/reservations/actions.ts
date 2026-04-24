@@ -1421,6 +1421,10 @@ export async function updateReservation(
   // Determine new dates
   const newStartDate = data.startDate || reservation.startDate;
   const newEndDate = data.endDate || reservation.endDate;
+  if (newEndDate < newStartDate) {
+    return { error: 'errors.endDateBeforeStart' };
+  }
+
   const previousPeriodMs =
     reservation.endDate.getTime() - reservation.startDate.getTime();
   const nextPeriodMs = newEndDate.getTime() - newStartDate.getTime();

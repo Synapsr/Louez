@@ -4936,6 +4936,7 @@
     "customerHasReservations": "Impossible de supprimer un client avec des réservations",
     "cannotCancelReservation": "Cette réservation ne peut pas être annulée",
     "cannotEditCompletedReservation": "Les réservations terminées ne peuvent pas être modifiées",
+    "endDateBeforeStart": "La date de fin doit être après ou égale à la date de début",
     "negativeAmountOnlyForAdjustment": "Les montants négatifs sont réservés aux ajustements",
     "productRequired": "Produit requis",
     "customerRequired": "Client requis",
