@@ -87,6 +87,7 @@ async function getActiveReservations(storeId: string) {
         columns: {
           productId: true,
           quantity: true,
+          combinationKey: true,
         },
       },
     },
@@ -137,6 +138,7 @@ export default async function NewReservationPage() {
         tulipInsuranceMode={tulipInsuranceMode}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
+        pendingBlocksAvailability={store.settings?.pendingBlocksAvailability ?? true}
         existingReservations={activeReservations}
         deliverySettings={store.settings?.delivery}
         storeLatitude={store.latitude ? parseFloat(store.latitude) : null}

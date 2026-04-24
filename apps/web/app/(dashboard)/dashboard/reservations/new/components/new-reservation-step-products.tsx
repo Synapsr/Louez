@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ImageIcon,
@@ -8,9 +9,11 @@ import {
   PackageX,
   PenLine,
   Plus,
+  Search,
   Shield,
   ShoppingCart,
   Trash2,
+  X,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -25,6 +28,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -35,7 +39,10 @@ import {
 import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils'
 
 import type { PricingMode } from '@louez/types'
-import { getLineQuantityConstraints } from '../utils/variant-lines'
+import {
+  buildProductCombinations,
+  getLineQuantityConstraints,
+} from '../utils/variant-lines'
 
 import type {
   AvailabilityWarning,
@@ -44,6 +51,7 @@ import type {
   ProductPricingDetails,
   SelectedProduct,
 } from '../types'
+import type { PeriodAvailability } from '../hooks/use-new-reservation-warnings'
 
 interface NewReservationStepProductsProps {
   products: Product[]
@@ -54,6 +62,7 @@ interface NewReservationStepProductsProps {
   startDate: Date | undefined
   endDate: Date | undefined
   availabilityWarnings: AvailabilityWarning[]
+  periodAvailability: PeriodAvailability
   hasItems: boolean
   subtotal: number
   originalSubtotal: number
@@ -90,6 +99,7 @@ export function NewReservationStepProducts({
   startDate,
   endDate,
   availabilityWarnings,
+  periodAvailability,
   hasItems,
   subtotal,
   originalSubtotal,
@@ -110,6 +120,28 @@ export function NewReservationStepProducts({
 }: NewReservationStepProductsProps) {
   const t = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
+  const [productSearchQuery, setProductSearchQuery] = useState('')
+
+  const normalizedProductSearchQuery = productSearchQuery.trim().toLowerCase()
+  const filteredProducts = useMemo(() => {
+    if (!normalizedProductSearchQuery) {
+      return products
+    }
+
+    return products.filter((product) => {
+      const searchableText = [
+        product.name,
+        product.description,
+        ...(product.bookingAttributeAxes || []).flatMap((axis) => [axis.key, axis.label]),
+        ...product.units.flatMap((unit) => Object.values(unit.attributes || {})),
+      ]
+        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .join(' ')
+        .toLowerCase()
+
+      return searchableText.includes(normalizedProductSearchQuery)
+    })
+  }, [normalizedProductSearchQuery, products])
 
   const getPricingUnitLabel = (mode: PricingMode) => {
     if (mode === 'hour') return t('perHour')
@@ -168,12 +200,49 @@ export function NewReservationStepProducts({
         <CardDescription>{t('productsDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {products.length > 0 && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={productSearchQuery}
+              onChange={(event) => setProductSearchQuery(event.target.value)}
+              placeholder={t('searchProductsPlaceholder', { count: products.length })}
+              className="h-10 [&_[data-slot=input]]:pl-9 [&_[data-slot=input]]:pr-10"
+            />
+            {productSearchQuery.length > 0 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setProductSearchQuery('')}
+                aria-label={t('clearProductSearch')}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
-          {products.map((product) => {
+          {filteredProducts.map((product) => {
             const productLines = selectedProducts.filter((line) => line.productId === product.id)
             const selectedQuantity = productLines.reduce((sum, line) => sum + line.quantity, 0)
-            const isOutOfStock = product.quantity === 0
-            const remainingStock = Math.max(0, product.quantity - selectedQuantity)
+            const productReservedQuantity =
+              periodAvailability.reservedByProduct.get(product.id) || 0
+            const productCombinations = buildProductCombinations(
+              product,
+              periodAvailability.reservedByProductCombination,
+            )
+            const productCapacity = product.trackUnits
+              ? productCombinations.reduce(
+                  (sum, combination) => sum + Math.max(0, combination.availableQuantity || 0),
+                  0,
+                )
+              : Math.max(0, product.quantity - productReservedQuantity)
+            const isOutOfStock = productCapacity === 0
+            const remainingStock = Math.max(0, productCapacity - selectedQuantity)
             const bookingAttributeAxes = (product.bookingAttributeAxes || [])
               .slice()
               .sort((a, b) => a.position - b.position)
@@ -206,7 +275,6 @@ export function NewReservationStepProducts({
             const {
               productPricingMode,
               basePrice,
-              effectivePrice,
               hasDiscount,
               applicableTierDiscountPercent,
               hasTieredPricing,
@@ -216,7 +284,13 @@ export function NewReservationStepProducts({
 
             const lineStates = productLines.map((line) => {
               const pricing = getProductPricingDetails(product, line)
-              const constraints = getLineQuantityConstraints(product, line, productLines)
+              const constraints = getLineQuantityConstraints(
+                product,
+                line,
+                productLines,
+                productReservedQuantity,
+                periodAvailability.reservedByProductCombination,
+              )
 
               return {
                 line,
@@ -535,6 +609,16 @@ export function NewReservationStepProducts({
             )
           })}
         </div>
+
+        {products.length > 0 && filteredProducts.length === 0 && (
+          <div className="py-8 text-center">
+            <PackageX className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="text-muted-foreground">{t('noProductsFound')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('noProductsFoundHint', { search: productSearchQuery.trim() })}
+            </p>
+          </div>
+        )}
 
         {products.length === 0 && customItems.length === 0 && (
           <div className="py-8 text-center">

@@ -66,7 +66,10 @@ import { NewReservationStepReview } from './components/new-reservation-step-revi
 import { useNewReservationDelivery } from './hooks/use-new-reservation-delivery'
 import { useNewReservationPricing } from './hooks/use-new-reservation-pricing'
 import { useNewReservationStepFlow } from './hooks/use-new-reservation-step-flow'
-import { useNewReservationWarnings } from './hooks/use-new-reservation-warnings'
+import {
+  getPeriodAvailability,
+  useNewReservationWarnings,
+} from './hooks/use-new-reservation-warnings'
 import { getLineQuantityConstraints } from './utils/variant-lines'
 import type {
   CustomItem,
@@ -98,6 +101,7 @@ export function NewReservationForm({
   tulipInsuranceMode,
   businessHours,
   advanceNoticeMinutes = 0,
+  pendingBlocksAvailability = true,
   existingReservations = [],
   deliverySettings,
   storeLatitude,
@@ -416,8 +420,19 @@ export function NewReservationForm({
     products,
     businessHours,
     advanceNoticeMinutes,
+    pendingBlocksAvailability,
     existingReservations,
   })
+  const periodAvailability = useMemo(
+    () =>
+      getPeriodAvailability({
+        startDate: watchStartDate,
+        endDate: watchEndDate,
+        pendingBlocksAvailability,
+        existingReservations,
+      }),
+    [existingReservations, pendingBlocksAvailability, watchEndDate, watchStartDate],
+  )
 
   const {
     calculateDurationForMode,
@@ -462,7 +477,13 @@ export function NewReservationForm({
           quantity: 1,
         }
         const productLines = [...prev.filter((line) => line.productId === productId), nextLine]
-        const constraints = getLineQuantityConstraints(product, nextLine, productLines)
+        const constraints = getLineQuantityConstraints(
+          product,
+          nextLine,
+          productLines,
+          periodAvailability.reservedByProduct.get(product.id) || 0,
+          periodAvailability.reservedByProductCombination,
+        )
         if (constraints.lineMaxQuantity <= 0) {
           return prev
         }
@@ -480,7 +501,13 @@ export function NewReservationForm({
           productId,
           quantity: 1,
         }
-        const constraints = getLineQuantityConstraints(product, nextLine, [nextLine])
+        const constraints = getLineQuantityConstraints(
+          product,
+          nextLine,
+          [nextLine],
+          periodAvailability.reservedByProduct.get(product.id) || 0,
+          periodAvailability.reservedByProductCombination,
+        )
         if (constraints.lineMaxQuantity <= 0) {
           return prev
         }
@@ -492,7 +519,13 @@ export function NewReservationForm({
       }
 
       const productLines = prev.filter((line) => line.productId === productId)
-      const constraints = getLineQuantityConstraints(product, existingLine, productLines)
+      const constraints = getLineQuantityConstraints(
+        product,
+        existingLine,
+        productLines,
+        periodAvailability.reservedByProduct.get(product.id) || 0,
+        periodAvailability.reservedByProductCombination,
+      )
       const nextQuantity = Math.min(
         existingLine.quantity + 1,
         Math.max(existingLine.quantity, constraints.lineMaxQuantity),
@@ -528,7 +561,13 @@ export function NewReservationForm({
       }
 
       const productLines = prev.filter((line) => line.productId === currentLine.productId)
-      const constraints = getLineQuantityConstraints(product, currentLine, productLines)
+      const constraints = getLineQuantityConstraints(
+        product,
+        currentLine,
+        productLines,
+        periodAvailability.reservedByProduct.get(product.id) || 0,
+        periodAvailability.reservedByProductCombination,
+      )
       const nextQuantity = Math.max(
         1,
         Math.min(currentLine.quantity + delta, Math.max(1, constraints.lineMaxQuantity)),
@@ -585,7 +624,13 @@ export function NewReservationForm({
       const productLines = prev
         .filter((line) => line.productId === currentLine.productId)
         .map((line) => (line.lineId === lineId ? nextLine : line))
-      const constraints = getLineQuantityConstraints(product, nextLine, productLines)
+      const constraints = getLineQuantityConstraints(
+        product,
+        nextLine,
+        productLines,
+        periodAvailability.reservedByProduct.get(product.id) || 0,
+        periodAvailability.reservedByProductCombination,
+      )
       const nextQuantity = Math.min(nextLine.quantity, constraints.lineMaxQuantity)
 
       const normalizedLine: SelectedProduct =
@@ -1069,6 +1114,7 @@ export function NewReservationForm({
               startDate={watchStartDate}
               endDate={watchEndDate}
               availabilityWarnings={availabilityWarnings}
+              periodAvailability={periodAvailability}
               hasItems={hasItems}
               subtotal={subtotal}
               originalSubtotal={originalSubtotal}

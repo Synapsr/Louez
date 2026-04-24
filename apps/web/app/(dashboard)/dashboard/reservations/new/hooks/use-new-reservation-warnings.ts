@@ -12,6 +12,10 @@ import type {
   SelectedProduct,
   NewReservationFormProps,
 } from '../types'
+import {
+  getProductCombinationAvailabilityKey,
+  type ReservedByProductCombination,
+} from '../utils/variant-lines'
 
 interface UseNewReservationWarningsParams {
   startDate: Date | undefined
@@ -20,7 +24,57 @@ interface UseNewReservationWarningsParams {
   products: Product[]
   businessHours: NewReservationFormProps['businessHours']
   advanceNoticeMinutes: number
+  pendingBlocksAvailability: boolean
   existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
+}
+
+export interface PeriodAvailability {
+  reservedByProduct: Map<string, number>
+  reservedByProductCombination: ReservedByProductCombination
+}
+
+export function getPeriodAvailability(params: {
+  startDate: Date | undefined
+  endDate: Date | undefined
+  pendingBlocksAvailability: boolean
+  existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
+}): PeriodAvailability {
+  const { startDate, endDate, pendingBlocksAvailability, existingReservations } = params
+  const reservedByProduct = new Map<string, number>()
+  const reservedByProductCombination: ReservedByProductCombination = new Map()
+  const blockingStatuses = pendingBlocksAvailability
+    ? ['pending', 'confirmed', 'ongoing']
+    : ['confirmed', 'ongoing']
+
+  if (!startDate || !endDate) {
+    return { reservedByProduct, reservedByProductCombination }
+  }
+
+  for (const reservation of existingReservations) {
+    if (!blockingStatuses.includes(reservation.status)) {
+      continue
+    }
+
+    if (!dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
+      continue
+    }
+
+    for (const item of reservation.items) {
+      if (!item.productId) continue
+
+      const current = reservedByProduct.get(item.productId) || 0
+      reservedByProduct.set(item.productId, current + item.quantity)
+
+      const combinationMapKey = getProductCombinationAvailabilityKey(
+        item.productId,
+        item.combinationKey,
+      )
+      const currentCombination = reservedByProductCombination.get(combinationMapKey) || 0
+      reservedByProductCombination.set(combinationMapKey, currentCombination + item.quantity)
+    }
+  }
+
+  return { reservedByProduct, reservedByProductCombination }
 }
 
 export function useNewReservationWarnings({
@@ -30,6 +84,7 @@ export function useNewReservationWarnings({
   products,
   businessHours,
   advanceNoticeMinutes,
+  pendingBlocksAvailability,
   existingReservations,
 }: UseNewReservationWarningsParams) {
   const t = useTranslations('dashboard.reservations.manualForm')
@@ -126,21 +181,12 @@ export function useNewReservationWarnings({
     }
 
     const warnings: AvailabilityWarning[] = []
-    const reservedByProduct = new Map<string, number>()
-
-    for (const reservation of existingReservations) {
-      if (!['pending', 'confirmed', 'ongoing'].includes(reservation.status)) {
-        continue
-      }
-
-      if (dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
-        for (const item of reservation.items) {
-          if (!item.productId) continue
-          const current = reservedByProduct.get(item.productId) || 0
-          reservedByProduct.set(item.productId, current + item.quantity)
-        }
-      }
-    }
+    const { reservedByProduct } = getPeriodAvailability({
+      startDate,
+      endDate,
+      pendingBlocksAvailability,
+      existingReservations,
+    })
 
     const requestedByProduct = new Map<string, number>()
     for (const selectedItem of selectedProducts) {
@@ -167,7 +213,14 @@ export function useNewReservationWarnings({
     }
 
     return warnings
-  }, [endDate, existingReservations, products, selectedProducts, startDate])
+  }, [
+    endDate,
+    existingReservations,
+    pendingBlocksAvailability,
+    products,
+    selectedProducts,
+    startDate,
+  ])
 
   return {
     periodWarnings,

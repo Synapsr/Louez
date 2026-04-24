@@ -31,6 +31,7 @@ export interface ProductPricingTier {
 export interface Product {
   id: string;
   name: string;
+  description?: string | null;
   price: string;
   deposit: string | null;
   tulipInsurable?: boolean;
@@ -110,12 +111,17 @@ export interface NewReservationFormProps {
   tulipInsuranceMode: TulipPublicMode;
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
+  pendingBlocksAvailability?: boolean;
   existingReservations?: Array<{
     id: string;
     startDate: Date;
     endDate: Date;
     status: string;
-    items: Array<{ productId: string | null; quantity: number }>;
+    items: Array<{
+      productId: string | null;
+      quantity: number;
+      combinationKey: string | null;
+    }>;
   }>;
   deliverySettings?: DeliverySettings;
   storeLatitude?: number | null;
