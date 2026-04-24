@@ -46,11 +46,12 @@ import {
 import { Badge } from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
 
+import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
+
 import { useStorefrontUrl } from '@/hooks/use-storefront-url';
 
 import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
-import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 interface CartSidebarProps {
   storeSlug: string;
@@ -68,6 +69,7 @@ export function CartSidebar({
   const { getUrl } = useStorefrontUrl(storeSlug);
   const {
     items,
+    isResolving,
     globalStartDate,
     globalEndDate,
     removeItemByLineId,
@@ -185,7 +187,11 @@ export function CartSidebar({
                       )}
                     <p className="text-muted-foreground text-xs">
                       {formatCurrency(
-                        calculateCartItemPrice(item, globalStartDate, globalEndDate).subtotal / Math.max(1, item.quantity),
+                        calculateCartItemPrice(
+                          item,
+                          globalStartDate,
+                          globalEndDate,
+                        ).subtotal / Math.max(1, item.quantity),
                         currency,
                       )}{' '}
                       × {item.quantity}
@@ -294,6 +300,7 @@ export function CartSidebar({
               render={<Link href={getUrl('/checkout')} />}
               className="w-full"
               size="lg"
+              disabled={isResolving}
             >
               {t('checkout')}
               <ArrowRight className="ml-2 h-4 w-4" />

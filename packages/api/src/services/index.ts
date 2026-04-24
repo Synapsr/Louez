@@ -1,5 +1,6 @@
 export * from './address';
 export * from './availability';
+export * from './cart';
 export * from './combination-resolver';
 export * from './distance';
 export * from './errors';

@@ -19,16 +19,6 @@ import { useCart } from '@/contexts/cart-context';
 import { useStoreCurrency } from '@/contexts/store-context';
 
 import { createReservation, getTulipQuotePreview } from './actions';
-import type { ValidatedPromo } from './promo-actions';
-import { buildReservationPayload } from './reservation-payload';
-import type {
-  CheckoutFormProps,
-  CheckoutFormValues,
-  CheckoutStep,
-  StepId,
-} from './types';
-import { createCheckoutSchemaWithOptions } from './validation';
-import { sanitizeTranslationParams } from './utils';
 import { CheckoutConfirmStep } from './components/checkout-confirm-step';
 import { CheckoutContactStep } from './components/checkout-contact-step';
 import { CheckoutDeliveryStep } from './components/checkout-delivery-step';
@@ -38,6 +28,16 @@ import { CheckoutWizardStepper } from './components/checkout-wizard-stepper';
 import { useCheckoutDelivery } from './hooks/use-checkout-delivery';
 import { useCheckoutLineResolutions } from './hooks/use-checkout-line-resolutions';
 import { useCheckoutStepFlow } from './hooks/use-checkout-step-flow';
+import type { ValidatedPromo } from './promo-actions';
+import { buildReservationPayload } from './reservation-payload';
+import type {
+  CheckoutFormProps,
+  CheckoutFormValues,
+  CheckoutStep,
+  StepId,
+} from './types';
+import { sanitizeTranslationParams } from './utils';
+import { createCheckoutSchemaWithOptions } from './validation';
 
 const STEP_ICONS: Record<StepId, CheckoutStep['icon']> = {
   contact: User,
@@ -119,6 +119,7 @@ export function CheckoutForm({
   const { trackEvent } = useAnalytics();
   const {
     items,
+    isResolving: isCartResolving,
     clearCart,
     getSubtotal,
     getTotalDeposit,
@@ -140,7 +141,11 @@ export function CheckoutForm({
   const discountAmount = useMemo(() => {
     if (!appliedPromo) return 0;
     if (appliedPromo.type === 'percentage') {
-      return Math.round(Math.min((subtotal * appliedPromo.value) / 100, subtotal) * 100) / 100;
+      return (
+        Math.round(
+          Math.min((subtotal * appliedPromo.value) / 100, subtotal) * 100,
+        ) / 100
+      );
     }
     return Math.round(Math.min(appliedPromo.value, subtotal) * 100) / 100;
   }, [appliedPromo, subtotal]);
@@ -163,7 +168,10 @@ export function CheckoutForm({
   // Auto-remove promo code if subtotal drops below minimum amount
   useEffect(() => {
     if (!appliedPromo) return;
-    if (appliedPromo.minimumAmount > 0 && subtotal < appliedPromo.minimumAmount) {
+    if (
+      appliedPromo.minimumAmount > 0 &&
+      subtotal < appliedPromo.minimumAmount
+    ) {
       setAppliedPromo(null);
       toastManager.add({ title: t('promoCode.minimumNotMet'), type: 'error' });
     }
@@ -207,13 +215,10 @@ export function CheckoutForm({
   const totalWithDelivery = total - discountAmount + deliveryTotalFee;
   const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
 
-  const {
-    lineResolutions,
-    itemsWithResolved,
-    canSubmitCheckout,
-  } = useCheckoutLineResolutions({
-    items,
-  });
+  const { lineResolutions, itemsWithResolved, canSubmitCheckout } =
+    useCheckoutLineResolutions({
+      items,
+    });
 
   const checkoutSchema = useMemo(
     () =>
@@ -296,38 +301,35 @@ export function CheckoutForm({
     ),
   });
 
-  const tulipQuoteCustomer = useMemo(
-    () => {
-      const customerType: 'business' | 'individual' =
-        formValues.isBusinessCustomer ? 'business' : 'individual';
+  const tulipQuoteCustomer = useMemo(() => {
+    const customerType: 'business' | 'individual' =
+      formValues.isBusinessCustomer ? 'business' : 'individual';
 
-      return {
-        customerType,
-        companyName: formValues.isBusinessCustomer
-          ? formValues.companyName
-          : undefined,
-        firstName: formValues.firstName,
-        lastName: formValues.lastName,
-        email: formValues.email,
-        phone: formValues.phone,
-        address: requireCustomerAddress ? formValues.address : undefined,
-        city: requireCustomerAddress ? formValues.city : undefined,
-        postalCode: requireCustomerAddress ? formValues.postalCode : undefined,
-      };
-    },
-    [
-      formValues.address,
-      formValues.city,
-      formValues.companyName,
-      formValues.email,
-      formValues.firstName,
-      formValues.isBusinessCustomer,
-      formValues.lastName,
-      formValues.phone,
-      formValues.postalCode,
-      requireCustomerAddress,
-    ],
-  );
+    return {
+      customerType,
+      companyName: formValues.isBusinessCustomer
+        ? formValues.companyName
+        : undefined,
+      firstName: formValues.firstName,
+      lastName: formValues.lastName,
+      email: formValues.email,
+      phone: formValues.phone,
+      address: requireCustomerAddress ? formValues.address : undefined,
+      city: requireCustomerAddress ? formValues.city : undefined,
+      postalCode: requireCustomerAddress ? formValues.postalCode : undefined,
+    };
+  }, [
+    formValues.address,
+    formValues.city,
+    formValues.companyName,
+    formValues.email,
+    formValues.firstName,
+    formValues.isBusinessCustomer,
+    formValues.lastName,
+    formValues.phone,
+    formValues.postalCode,
+    requireCustomerAddress,
+  ]);
 
   const tulipQuoteItems = useMemo(
     () =>
@@ -454,6 +456,7 @@ export function CheckoutForm({
 
   const canSubmitCheckoutWithTulip =
     canSubmitCheckout &&
+    !isCartResolving &&
     !isTulipQuoteLoading &&
     !(
       tulipInsurance?.enabled &&
@@ -623,7 +626,9 @@ export function CheckoutForm({
                   <CheckoutConfirmStep
                     form={form}
                     cgv={cgv}
-                    hasDeliveryLegs={outboundMethod === 'address' || returnMethod === 'address'}
+                    hasDeliveryLegs={
+                      outboundMethod === 'address' || returnMethod === 'address'
+                    }
                     reservationMode={reservationMode}
                     depositPercentage={depositPercentage}
                     subtotal={subtotalWithEstimatedInsurance}
@@ -656,7 +661,9 @@ export function CheckoutForm({
           totalSavings={totalSavings}
           totalDeposit={totalDeposit}
           totalWithDelivery={totalWithDelivery}
-          hasDeliveryLegs={outboundMethod === 'address' || returnMethod === 'address'}
+          hasDeliveryLegs={
+            outboundMethod === 'address' || returnMethod === 'address'
+          }
           deliveryFee={deliveryTotalFee}
           tulipInsurance={tulipInsurance}
           tulipInsuranceOptIn={tulipInsuranceOptIn}

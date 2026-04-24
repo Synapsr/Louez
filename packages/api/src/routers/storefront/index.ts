@@ -1,6 +1,7 @@
-import { storefrontAvailabilityRouter } from './availability'
-import { storefrontReservationsRouter } from './reservations'
-import { storefrontProcedure } from '../../procedures'
+import { storefrontProcedure } from '../../procedures';
+import { storefrontAvailabilityRouter } from './availability';
+import { storefrontCartRouter } from './cart';
+import { storefrontReservationsRouter } from './reservations';
 
 /**
  * Example storefront procedure for testing the setup
@@ -16,8 +17,8 @@ const storeInfo = storefrontProcedure.handler(async ({ context }) => {
     address: context.store.address,
     logoUrl: context.store.logoUrl,
     isCustomerLoggedIn: context.customer !== null,
-  }
-})
+  };
+});
 
 /**
  * Storefront router - procedures for customer-facing features
@@ -26,5 +27,6 @@ const storeInfo = storefrontProcedure.handler(async ({ context }) => {
 export const storefrontRouter = {
   storeInfo,
   availability: storefrontAvailabilityRouter,
+  cart: storefrontCartRouter,
   reservations: storefrontReservationsRouter,
-}
+};

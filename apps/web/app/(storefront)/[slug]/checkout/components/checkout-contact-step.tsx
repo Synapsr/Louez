@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Wand2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button, Card, CardContent, Checkbox, Label } from '@louez/ui';
@@ -9,6 +9,8 @@ import { PhoneInput } from '@/components/ui/phone-input';
 import { getFieldError } from '@/hooks/form/form-context';
 
 import type { CheckoutFormComponentApi } from '../types';
+
+const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 
 interface CheckoutContactStepProps {
   form: CheckoutFormComponentApi;
@@ -27,12 +29,40 @@ export function CheckoutContactStep({
 }: CheckoutContactStepProps) {
   const t = useTranslations('storefront.checkout');
 
+  const handleDevAutofill = () => {
+    form.setFieldValue('firstName', 'Teo');
+    form.setFieldValue('lastName', 'Lumy');
+    form.setFieldValue('email', 'teo+@lumy.bzh');
+    form.setFieldValue('phone', '+33612345678');
+    form.setFieldValue('isBusinessCustomer', false);
+    form.setFieldValue('companyName', '');
+    form.setFieldValue('address', '1 rue de la Location');
+    form.setFieldValue('postalCode', '75001');
+    form.setFieldValue('city', 'Paris');
+    form.setFieldValue('notes', '');
+    form.setFieldValue('acceptCgv', true);
+  };
+
   return (
     <Card>
       <CardContent className="space-y-4 pt-6">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold">{t('steps.contact')}</h2>
-          <p className="text-muted-foreground text-sm">{t('contactDescription')}</p>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">{t('steps.contact')}</h2>
+            <p className="text-muted-foreground text-sm">{t('contactDescription')}</p>
+          </div>
+          {IS_DEVELOPMENT && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDevAutofill}
+              className="w-fit shrink-0"
+            >
+              <Wand2 className="mr-2 h-4 w-4" />
+              Remplir dev
+            </Button>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

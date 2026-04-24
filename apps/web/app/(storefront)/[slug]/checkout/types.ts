@@ -95,4 +95,5 @@ export interface CheckoutFormComponentApi {
   getFieldValue: <K extends keyof CheckoutFormValues>(
     field: K,
   ) => CheckoutFormValues[K];
+  setFieldValue: (field: keyof CheckoutFormValues, value: any) => void;
 }

@@ -1,16 +1,17 @@
-import { z } from 'zod'
-import { isValidImageUrl } from './image'
+import { z } from 'zod';
+
+import { isValidImageUrl } from './image';
 
 const dateTimeOrDateSchema = z
   .string()
   .datetime({ offset: true })
-  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+  .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/));
 
 export const storefrontAvailabilityInputSchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
   productIds: z.array(z.string().length(21)).optional(),
-})
+});
 
 export const storefrontResolveCombinationInputSchema = z.object({
   productId: z.string().length(21),
@@ -18,15 +19,30 @@ export const storefrontResolveCombinationInputSchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
   selectedAttributes: z.record(z.string(), z.string()).optional(),
-})
+});
+
+export const storefrontCartResolveInputSchema = z.object({
+  lines: z
+    .array(
+      z.object({
+        lineId: z.string().min(1).max(128),
+        productId: z.string().length(21),
+        quantity: z.number().int().min(1),
+        startDate: dateTimeOrDateSchema,
+        endDate: dateTimeOrDateSchema,
+        selectedAttributes: z.record(z.string(), z.string()).optional(),
+      }),
+    )
+    .max(100),
+});
 
 export const storefrontAvailabilityRouteQuerySchema = z.object({
   startDate: dateTimeOrDateSchema,
   endDate: dateTimeOrDateSchema,
   productIds: z.string().nullish(),
-})
+});
 
-export const dashboardReservationPollInputSchema = z.object({})
+export const dashboardReservationPollInputSchema = z.object({});
 
 export const dashboardReservationsListInputSchema = z.object({
   status: z
@@ -48,16 +64,16 @@ export const dashboardReservationsListInputSchema = z.object({
   sortDirection: z.enum(['asc', 'desc']).optional(),
   page: z.number().int().min(1).optional(),
   pageSize: z.number().int().min(1).max(100).optional(),
-})
+});
 
 export const dashboardReservationGetByIdInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationUpdateNotesInputSchema = z.object({
   reservationId: z.string().length(21),
   notes: z.string().max(100000).default(''),
-})
+});
 
 export const dashboardReservationUpdateStatusInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -72,20 +88,20 @@ export const dashboardReservationUpdateStatusInputSchema = z.object({
     'declined',
   ]),
   rejectionReason: z.string().max(2000).optional(),
-})
+});
 
 export const dashboardReservationCancelInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationGetAvailableUnitsInputSchema = z.object({
   reservationItemId: z.string().length(21),
-})
+});
 
 export const dashboardReservationAssignUnitsInputSchema = z.object({
   reservationItemId: z.string().length(21),
   unitIds: z.array(z.string().length(21)).max(500),
-})
+});
 
 export const dashboardReservationRequestPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -98,26 +114,32 @@ export const dashboardReservationRequestPaymentInputSchema = z.object({
     }),
     customMessage: z.string().max(5000).optional(),
   }),
-})
+});
 
 export const dashboardReservationGetPaymentMethodInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationRecordPaymentInputSchema = z.object({
   reservationId: z.string().length(21),
   payload: z.object({
-    type: z.enum(['rental', 'deposit', 'deposit_return', 'damage', 'adjustment']),
+    type: z.enum([
+      'rental',
+      'deposit',
+      'deposit_return',
+      'damage',
+      'adjustment',
+    ]),
     amount: z.number(),
     method: z.enum(['cash', 'card', 'transfer', 'check', 'other']),
     paidAt: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     notes: z.string().max(10000).optional(),
   }),
-})
+});
 
 export const dashboardReservationDeletePaymentInputSchema = z.object({
   paymentId: z.string().length(21),
-})
+});
 
 export const dashboardReservationReturnDepositInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -126,7 +148,7 @@ export const dashboardReservationReturnDepositInputSchema = z.object({
     method: z.enum(['cash', 'card', 'transfer', 'check', 'other']),
     notes: z.string().max(10000).optional(),
   }),
-})
+});
 
 export const dashboardReservationRecordDamageInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -135,11 +157,11 @@ export const dashboardReservationRecordDamageInputSchema = z.object({
     method: z.enum(['cash', 'card', 'transfer', 'check', 'other']),
     notes: z.string().max(10000),
   }),
-})
+});
 
 export const dashboardReservationCreateDepositHoldInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationCaptureDepositHoldInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -147,11 +169,11 @@ export const dashboardReservationCaptureDepositHoldInputSchema = z.object({
     amount: z.number().min(0.01),
     reason: z.string().trim().min(1).max(10000),
   }),
-})
+});
 
 export const dashboardReservationReleaseDepositHoldInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationSendReservationEmailInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -160,15 +182,15 @@ export const dashboardReservationSendReservationEmailInputSchema = z.object({
     customSubject: z.string().max(500).optional(),
     customMessage: z.string().max(100000).optional(),
   }),
-})
+});
 
 export const dashboardReservationSendAccessLinkInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationSendAccessLinkSmsInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export const dashboardReservationUpdateReservationInputSchema = z.object({
   reservationId: z.string().length(21),
@@ -217,7 +239,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
       )
       .optional(),
   }),
-})
+});
 
 export const dashboardReservationCreateManualReservationInputSchema = z.object({
   payload: z.object({
@@ -283,13 +305,13 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     sendConfirmationEmail: z.boolean().optional(),
     sendAsQuote: z.boolean().optional(),
   }),
-})
+});
 
 export const updateStoreLegalInputSchema = z.object({
   cgv: z.string().max(100000, 'errors.invalidData').optional(),
   legalNotice: z.string().max(100000, 'errors.invalidData').optional(),
   includeFullCgvInContract: z.boolean().optional(),
-})
+});
 
 const s3UrlSchema = z
   .string()
@@ -300,7 +322,7 @@ const s3UrlSchema = z
   .refine(
     (url) => isValidImageUrl(url),
     'Invalid image URL. Must be a valid S3 URL.',
-  )
+  );
 
 export const updateStoreAppearanceInputSchema = z.object({
   logoUrl: z.union([s3UrlSchema, z.literal(''), z.null()]).optional(),
@@ -313,49 +335,51 @@ export const updateStoreAppearanceInputSchema = z.object({
       maxDiscountPercent: z.number().int().min(0).max(100).nullish(),
     })
     .optional(),
-})
+});
 
-export const dashboardIntegrationsGetTulipStateInputSchema = z.object({})
+export const dashboardIntegrationsGetTulipStateInputSchema = z.object({});
 
 export const dashboardIntegrationsGetTulipProductStateInputSchema = z.object({
   productId: z.string().length(21),
-})
+});
 
-export const dashboardIntegrationsListCatalogInputSchema = z.object({})
+export const dashboardIntegrationsListCatalogInputSchema = z.object({});
 
 export const dashboardIntegrationsListCategoryInputSchema = z.object({
   category: z.string().trim().min(1).max(60),
-})
+});
 
 export const dashboardIntegrationsGetDetailInputSchema = z.object({
   integrationId: z.string().trim().min(1).max(60),
-})
+});
 
 export const dashboardIntegrationsSetEnabledInputSchema = z.object({
   integrationId: z.string().trim().min(1).max(60),
   enabled: z.boolean(),
-})
+});
 
 export const dashboardIntegrationsConnectTulipInputSchema = z.object({
   renterUid: z.string().trim().min(1).max(120),
-})
+});
 
-export const dashboardIntegrationsUpdateTulipConfigurationInputSchema = z.object({
-  publicMode: z.enum(['required', 'optional', 'no_public']),
-})
+export const dashboardIntegrationsUpdateTulipConfigurationInputSchema =
+  z.object({
+    publicMode: z.enum(['required', 'optional', 'no_public']),
+  });
 
-export const dashboardIntegrationsUpsertTulipProductMappingInputSchema = z.object({
-  productId: z.string().length(21),
-  tulipProductId: z.string().trim().min(1).max(50).nullable(),
-})
+export const dashboardIntegrationsUpsertTulipProductMappingInputSchema =
+  z.object({
+    productId: z.string().length(21),
+    tulipProductId: z.string().trim().min(1).max(50).nullable(),
+  });
 
-const tulipProductTypeSchema = z.string().trim().min(1).max(80)
-const tulipProductSubtypeSchema = z.string().trim().min(1).max(80)
+const tulipProductTypeSchema = z.string().trim().min(1).max(80);
+const tulipProductSubtypeSchema = z.string().trim().min(1).max(80);
 
 const tulipPurchasedDateSchema = z.union([
   z.string().datetime({ offset: true }),
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-])
+]);
 
 export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
   productId: z.string().length(21),
@@ -367,7 +391,7 @@ export const dashboardIntegrationsPushTulipProductUpdateInputSchema = z.object({
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
   margin: z.number().min(0).max(1_000_000).nullable().optional(),
-})
+});
 
 export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
   productId: z.string().length(21),
@@ -379,152 +403,157 @@ export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
   model: z.string().trim().max(120).nullable().optional(),
   valueExcl: z.number().min(0).max(1_000_000).nullable().optional(),
   margin: z.number().min(0).max(1_000_000).nullable().optional(),
-})
+});
 
-export const dashboardIntegrationsDisconnectTulipInputSchema = z.object({})
+export const dashboardIntegrationsDisconnectTulipInputSchema = z.object({});
 
 export const addressAutocompleteInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
-})
+});
 
 export const addressResolveInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
-})
+});
 
 export const addressDetailsInputSchema = z.object({
   placeId: z.string().trim().min(1).max(255),
-})
+});
 
 export const addressReverseGeocodeInputSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
-})
+});
 
 export const routeDistanceInputSchema = z.object({
   originLatitude: z.number().min(-90).max(90),
   originLongitude: z.number().min(-180).max(180),
   destinationLatitude: z.number().min(-90).max(90),
   destinationLongitude: z.number().min(-180).max(180),
-})
+});
 
 export const reservationSignInputSchema = z.object({
   reservationId: z.string().length(21),
-})
+});
 
 export type StorefrontAvailabilityInput = z.infer<
   typeof storefrontAvailabilityInputSchema
->
+>;
 export type StorefrontResolveCombinationInput = z.infer<
   typeof storefrontResolveCombinationInputSchema
->
+>;
+export type StorefrontCartResolveInput = z.infer<
+  typeof storefrontCartResolveInputSchema
+>;
 export type DashboardReservationPollInput = z.infer<
   typeof dashboardReservationPollInputSchema
->
+>;
 export type DashboardReservationsListInput = z.infer<
   typeof dashboardReservationsListInputSchema
->
+>;
 export type DashboardReservationGetByIdInput = z.infer<
   typeof dashboardReservationGetByIdInputSchema
->
+>;
 export type DashboardReservationUpdateNotesInput = z.infer<
   typeof dashboardReservationUpdateNotesInputSchema
->
+>;
 export type DashboardReservationUpdateStatusInput = z.infer<
   typeof dashboardReservationUpdateStatusInputSchema
->
+>;
 export type DashboardReservationCancelInput = z.infer<
   typeof dashboardReservationCancelInputSchema
->
+>;
 export type DashboardReservationGetAvailableUnitsInput = z.infer<
   typeof dashboardReservationGetAvailableUnitsInputSchema
->
+>;
 export type DashboardReservationAssignUnitsInput = z.infer<
   typeof dashboardReservationAssignUnitsInputSchema
->
+>;
 export type DashboardReservationRequestPaymentInput = z.infer<
   typeof dashboardReservationRequestPaymentInputSchema
->
+>;
 export type DashboardReservationGetPaymentMethodInput = z.infer<
   typeof dashboardReservationGetPaymentMethodInputSchema
->
+>;
 export type DashboardReservationRecordPaymentInput = z.infer<
   typeof dashboardReservationRecordPaymentInputSchema
->
+>;
 export type DashboardReservationDeletePaymentInput = z.infer<
   typeof dashboardReservationDeletePaymentInputSchema
->
+>;
 export type DashboardReservationReturnDepositInput = z.infer<
   typeof dashboardReservationReturnDepositInputSchema
->
+>;
 export type DashboardReservationRecordDamageInput = z.infer<
   typeof dashboardReservationRecordDamageInputSchema
->
+>;
 export type DashboardReservationCreateDepositHoldInput = z.infer<
   typeof dashboardReservationCreateDepositHoldInputSchema
->
+>;
 export type DashboardReservationCaptureDepositHoldInput = z.infer<
   typeof dashboardReservationCaptureDepositHoldInputSchema
->
+>;
 export type DashboardReservationReleaseDepositHoldInput = z.infer<
   typeof dashboardReservationReleaseDepositHoldInputSchema
->
+>;
 export type DashboardReservationSendReservationEmailInput = z.infer<
   typeof dashboardReservationSendReservationEmailInputSchema
->
+>;
 export type DashboardReservationSendAccessLinkInput = z.infer<
   typeof dashboardReservationSendAccessLinkInputSchema
->
+>;
 export type DashboardReservationSendAccessLinkSmsInput = z.infer<
   typeof dashboardReservationSendAccessLinkSmsInputSchema
->
+>;
 export type DashboardReservationUpdateReservationInput = z.infer<
   typeof dashboardReservationUpdateReservationInputSchema
->
+>;
 export type DashboardReservationCreateManualReservationInput = z.infer<
   typeof dashboardReservationCreateManualReservationInputSchema
->
-export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>
+>;
+export type UpdateStoreLegalInput = z.infer<typeof updateStoreLegalInputSchema>;
 export type UpdateStoreAppearanceInput = z.infer<
   typeof updateStoreAppearanceInputSchema
->
+>;
 export type DashboardIntegrationsGetTulipStateInput = z.infer<
   typeof dashboardIntegrationsGetTulipStateInputSchema
->
+>;
 export type DashboardIntegrationsListCatalogInput = z.infer<
   typeof dashboardIntegrationsListCatalogInputSchema
->
+>;
 export type DashboardIntegrationsListCategoryInput = z.infer<
   typeof dashboardIntegrationsListCategoryInputSchema
->
+>;
 export type DashboardIntegrationsGetDetailInput = z.infer<
   typeof dashboardIntegrationsGetDetailInputSchema
->
+>;
 export type DashboardIntegrationsSetEnabledInput = z.infer<
   typeof dashboardIntegrationsSetEnabledInputSchema
->
+>;
 export type DashboardIntegrationsConnectTulipInput = z.infer<
   typeof dashboardIntegrationsConnectTulipInputSchema
->
+>;
 export type DashboardIntegrationsUpdateTulipConfigurationInput = z.infer<
   typeof dashboardIntegrationsUpdateTulipConfigurationInputSchema
->
+>;
 export type DashboardIntegrationsUpsertTulipProductMappingInput = z.infer<
   typeof dashboardIntegrationsUpsertTulipProductMappingInputSchema
->
+>;
 export type DashboardIntegrationsPushTulipProductUpdateInput = z.infer<
   typeof dashboardIntegrationsPushTulipProductUpdateInputSchema
->
+>;
 export type DashboardIntegrationsCreateTulipProductInput = z.infer<
   typeof dashboardIntegrationsCreateTulipProductInputSchema
->
+>;
 export type DashboardIntegrationsDisconnectTulipInput = z.infer<
   typeof dashboardIntegrationsDisconnectTulipInputSchema
->
+>;
 export type AddressAutocompleteInput = z.infer<
   typeof addressAutocompleteInputSchema
->
-export type AddressResolveInput = z.infer<typeof addressResolveInputSchema>
-export type AddressDetailsInput = z.infer<typeof addressDetailsInputSchema>
-export type AddressReverseGeocodeInput = z.infer<typeof addressReverseGeocodeInputSchema>
-export type RouteDistanceInput = z.infer<typeof routeDistanceInputSchema>
-export type ReservationSignInput = z.infer<typeof reservationSignInputSchema>
+>;
+export type AddressResolveInput = z.infer<typeof addressResolveInputSchema>;
+export type AddressDetailsInput = z.infer<typeof addressDetailsInputSchema>;
+export type AddressReverseGeocodeInput = z.infer<
+  typeof addressReverseGeocodeInputSchema
+>;
+export type RouteDistanceInput = z.infer<typeof routeDistanceInputSchema>;
+export type ReservationSignInput = z.infer<typeof reservationSignInputSchema>;
