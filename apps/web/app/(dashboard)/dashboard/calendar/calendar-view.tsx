@@ -1,40 +1,69 @@
-'use client'
+'use client';
 
-import { useState, useMemo, useCallback, useEffect, useTransition, useRef } from 'react'
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
 import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
+
+import Link from 'next/link';
+
+import {
+  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Plus,
-  Calendar as CalendarIcon,
   Download,
-  LayoutGrid,
-} from 'lucide-react'
-import { Button } from '@louez/ui'
-import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui'
+  Plus,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import {
+  createParser,
+  parseAsString,
+  parseAsStringLiteral,
+  useQueryStates,
+} from 'nuqs';
+
+import { Button } from '@louez/ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@louez/ui'
-import { cn, formatDateShort } from '@louez/utils'
-import { fetchReservationsForPeriod } from './actions'
-import { CalendarExportModal } from './calendar-export-modal'
-import { ViewModeToggle, type CalendarViewMode } from './view-mode-toggle'
-import { WeekView } from './week-view'
-import { MonthView } from './month-view'
-import { ProductsView } from './products-view'
+} from '@louez/ui';
+import { cn, formatDateShort } from '@louez/utils';
+
+import { fetchReservationsForPeriod } from './actions';
+import { CalendarExportModal } from './calendar-export-modal';
 import {
-  createWeekConfig,
-  createTwoWeekConfig,
+  CALENDAR_PERIODS,
+  CALENDAR_VIEW_MODES,
+  type CalendarPeriod,
+  PRODUCTS_PERIODS,
+  type ProductsPeriod,
+  getCalendarVisibleRange,
+  parseCalendarDateParam,
+  toCalendarDateParam,
+} from './calendar-query';
+import {
   createMonthConfig,
-  getWeekStart,
-  getWeekEnd,
-} from './calendar-utils'
-import type { Reservation, Product, ReservationStatus, TimelineConfig } from './types'
+  createTwoWeekConfig,
+  createWeekConfig,
+} from './calendar-utils';
+import { MonthView } from './month-view';
+import { ProductsView } from './products-view';
+import type {
+  Product,
+  Reservation,
+  ReservationStatus,
+  TimelineConfig,
+} from './types';
+import { type CalendarViewMode, ViewModeToggle } from './view-mode-toggle';
+import { WeekView } from './week-view';
 
 // =============================================================================
 // Constants
@@ -49,20 +78,22 @@ const STATUS_COLORS: Record<ReservationStatus, string> = {
   rejected: 'bg-red-400',
   quote: 'bg-violet-500',
   declined: 'bg-slate-400',
-}
+};
 
-// Calendar sub-view options
-type CalendarPeriod = 'week' | 'month'
-type ProductsPeriod = 'week' | 'twoWeeks' | 'month'
+const calendarDateParser = createParser({
+  parse: parseCalendarDateParam,
+  serialize: toCalendarDateParam,
+  eq: (a, b) => toCalendarDateParam(a) === toCalendarDateParam(b),
+});
 
 // =============================================================================
 // Types
 // =============================================================================
 
 interface CalendarViewProps {
-  initialReservations: Reservation[]
-  products: Product[]
-  storeId: string
+  initialReservations: Reservation[];
+  products: Product[];
+  storeId: string;
 }
 
 // =============================================================================
@@ -74,78 +105,82 @@ export function CalendarView({
   products,
   storeId,
 }: CalendarViewProps) {
-  const t = useTranslations('dashboard.calendar')
+  const t = useTranslations('dashboard.calendar');
+  const defaultDate = useRef(
+    parseCalendarDateParam(toCalendarDateParam(new Date())) ?? new Date(),
+  );
 
-  // Main view mode: calendar vs products
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('calendar')
+  const [calendarState, setCalendarState] = useQueryStates(
+    {
+      date: calendarDateParser.withDefault(defaultDate.current),
+      view: parseAsStringLiteral(CALENDAR_VIEW_MODES).withDefault('calendar'),
+      calendarPeriod:
+        parseAsStringLiteral(CALENDAR_PERIODS).withDefault('week'),
+      productsPeriod:
+        parseAsStringLiteral(PRODUCTS_PERIODS).withDefault('week'),
+      productId: parseAsString.withDefault('all'),
+    },
+    { history: 'replace', shallow: false },
+  );
 
-  // Sub-view options
-  const [calendarPeriod, setCalendarPeriod] = useState<CalendarPeriod>('week')
-  const [productsPeriod, setProductsPeriod] = useState<ProductsPeriod>('week')
-
-  // Date navigation
-  const [currentDate, setCurrentDate] = useState(new Date())
-
-  // Filters
-  const [selectedProductId, setSelectedProductId] = useState<string>('all')
+  const {
+    date: currentDate,
+    view: viewMode,
+    calendarPeriod,
+    productsPeriod,
+    productId: selectedProductId,
+  } = calendarState;
 
   // Data - dynamic fetching on navigation
-  const [reservations, setReservations] = useState(initialReservations)
-  const [isPending, startTransition] = useTransition()
-  const lastFetchedRange = useRef<string>('')
+  const [reservations, setReservations] = useState(initialReservations);
+  const [isPending, startTransition] = useTransition();
+  const lastFetchedRange = useRef<string>('');
+
+  useEffect(() => {
+    setReservations(initialReservations);
+  }, [initialReservations]);
 
   // Compute the visible date range for the current view
-  const visibleRange = useMemo(() => {
-    const isMonthView =
-      (viewMode === 'calendar' && calendarPeriod === 'month') ||
-      (viewMode === 'products' && productsPeriod === 'month')
-
-    if (isMonthView) {
-      const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-      const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
-      return { start, end }
-    }
-
-    if (viewMode === 'products' && productsPeriod === 'twoWeeks') {
-      const config = createTwoWeekConfig(currentDate)
-      return { start: config.startDate, end: config.endDate }
-    }
-
-    // Week view (default)
-    const weekStart = getWeekStart(currentDate)
-    const weekEnd = getWeekEnd(currentDate)
-    return { start: weekStart, end: weekEnd }
-  }, [currentDate, viewMode, calendarPeriod, productsPeriod])
+  const visibleRange = useMemo(
+    () =>
+      getCalendarVisibleRange({
+        date: currentDate,
+        view: viewMode,
+        calendarPeriod,
+        productsPeriod,
+      }),
+    [currentDate, viewMode, calendarPeriod, productsPeriod],
+  );
 
   // Fetch reservations when the visible range changes
   // Skip the initial mount since SSR data already covers the initial view
-  const isInitialMount = useRef(true)
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    const rangeKey = `${visibleRange.start.toISOString()}_${visibleRange.end.toISOString()}`
+    const rangeKey = `${visibleRange.start.toISOString()}_${visibleRange.end.toISOString()}`;
 
     if (isInitialMount.current) {
-      isInitialMount.current = false
-      lastFetchedRange.current = rangeKey
-      return
+      isInitialMount.current = false;
+      lastFetchedRange.current = rangeKey;
+      return;
     }
 
-    if (rangeKey === lastFetchedRange.current) return
-    lastFetchedRange.current = rangeKey
+    if (rangeKey === lastFetchedRange.current) return;
+    lastFetchedRange.current = rangeKey;
 
     startTransition(async () => {
       const result = await fetchReservationsForPeriod(
         visibleRange.start.toISOString(),
-        visibleRange.end.toISOString()
-      )
+        visibleRange.end.toISOString(),
+      );
       if ('data' in result && result.data) {
-        setReservations(result.data)
+        setReservations(result.data);
       }
-    })
-  }, [visibleRange])
+    });
+  }, [visibleRange]);
 
   // Modals
-  const [exportModalOpen, setExportModalOpen] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   // Status labels for legend
   const statusLabels: Record<ReservationStatus, string> = useMemo(
@@ -159,109 +194,121 @@ export function CalendarView({
       quote: t('status.quote'),
       declined: t('status.declined'),
     }),
-    [t]
-  )
+    [t],
+  );
 
   // Timeline configuration for products view
   const productsConfig = useMemo((): TimelineConfig => {
     if (productsPeriod === 'month') {
-      return createMonthConfig(currentDate)
+      return createMonthConfig(currentDate);
     }
     if (productsPeriod === 'twoWeeks') {
-      return createTwoWeekConfig(currentDate)
+      return createTwoWeekConfig(currentDate);
     }
-    return createWeekConfig(currentDate)
-  }, [currentDate, productsPeriod])
+    return createWeekConfig(currentDate);
+  }, [currentDate, productsPeriod]);
 
   // Filter reservations by product (only for calendar mode)
   const filteredReservations = useMemo(() => {
-    if (selectedProductId === 'all') return reservations
+    if (selectedProductId === 'all') return reservations;
     return reservations.filter((r) =>
-      r.items.some((item) => item.product?.id === selectedProductId)
-    )
-  }, [reservations, selectedProductId])
+      r.items.some((item) => item.product?.id === selectedProductId),
+    );
+  }, [reservations, selectedProductId]);
 
   // Filter products (for products view when a specific product is selected)
   const displayProducts = useMemo(() => {
-    if (selectedProductId === 'all') return products
-    return products.filter((p) => p.id === selectedProductId)
-  }, [products, selectedProductId])
+    if (selectedProductId === 'all') return products;
+    return products.filter((p) => p.id === selectedProductId);
+  }, [products, selectedProductId]);
 
   // Navigation step based on current view
   const getNavigationStep = useCallback(() => {
     if (viewMode === 'products') {
-      if (productsPeriod === 'month') return { type: 'month' as const }
-      if (productsPeriod === 'twoWeeks') return { type: 'days' as const, days: 14 }
-      return { type: 'days' as const, days: 7 }
+      if (productsPeriod === 'month') return { type: 'month' as const };
+      if (productsPeriod === 'twoWeeks')
+        return { type: 'days' as const, days: 14 };
+      return { type: 'days' as const, days: 7 };
     }
-    if (calendarPeriod === 'month') return { type: 'month' as const }
-    return { type: 'days' as const, days: 7 }
-  }, [viewMode, calendarPeriod, productsPeriod])
+    if (calendarPeriod === 'month') return { type: 'month' as const };
+    return { type: 'days' as const, days: 7 };
+  }, [viewMode, calendarPeriod, productsPeriod]);
 
   // Navigation
   const goToPrevious = useCallback(() => {
-    const step = getNavigationStep()
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev)
+    const step = getNavigationStep();
+    void setCalendarState((prev) => {
+      const newDate = new Date(prev.date);
       if (step.type === 'month') {
-        newDate.setMonth(newDate.getMonth() - 1)
+        newDate.setMonth(newDate.getMonth() - 1);
       } else {
-        newDate.setDate(newDate.getDate() - step.days)
+        newDate.setDate(newDate.getDate() - step.days);
       }
-      return newDate
-    })
-  }, [getNavigationStep])
+      return { date: newDate };
+    });
+  }, [getNavigationStep, setCalendarState]);
 
   const goToNext = useCallback(() => {
-    const step = getNavigationStep()
-    setCurrentDate((prev) => {
-      const newDate = new Date(prev)
+    const step = getNavigationStep();
+    void setCalendarState((prev) => {
+      const newDate = new Date(prev.date);
       if (step.type === 'month') {
-        newDate.setMonth(newDate.getMonth() + 1)
+        newDate.setMonth(newDate.getMonth() + 1);
       } else {
-        newDate.setDate(newDate.getDate() + step.days)
+        newDate.setDate(newDate.getDate() + step.days);
       }
-      return newDate
-    })
-  }, [getNavigationStep])
+      return { date: newDate };
+    });
+  }, [getNavigationStep, setCalendarState]);
 
   const goToToday = useCallback(() => {
-    setCurrentDate(new Date())
-  }, [])
+    void setCalendarState({ date: new Date() });
+  }, [setCalendarState]);
 
   // Period label
   const periodLabel = useMemo(() => {
     // For month view
     const isMonthView =
       (viewMode === 'calendar' && calendarPeriod === 'month') ||
-      (viewMode === 'products' && productsPeriod === 'month')
+      (viewMode === 'products' && productsPeriod === 'month');
 
     if (isMonthView) {
       return new Intl.DateTimeFormat('fr-FR', {
         month: 'long',
         year: 'numeric',
-      }).format(currentDate)
+      }).format(currentDate);
     }
 
     // For week/twoWeeks view
     const config =
-      viewMode === 'products' ? productsConfig : createWeekConfig(currentDate)
+      viewMode === 'products' ? productsConfig : createWeekConfig(currentDate);
 
-    return `${formatDateShort(config.startDate)} - ${formatDateShort(config.endDate)} ${config.endDate.getFullYear()}`
-  }, [currentDate, viewMode, calendarPeriod, productsPeriod, productsConfig])
+    return `${formatDateShort(config.startDate)} - ${formatDateShort(config.endDate)} ${config.endDate.getFullYear()}`;
+  }, [currentDate, viewMode, calendarPeriod, productsPeriod, productsConfig]);
 
   // Current period selector value
-  const currentPeriod = viewMode === 'calendar' ? calendarPeriod : productsPeriod
+  const currentPeriod =
+    viewMode === 'calendar' ? calendarPeriod : productsPeriod;
 
   // Handle period change
   const handlePeriodChange = (value: string | null) => {
-    if (value === null) return
+    if (value === null) return;
     if (viewMode === 'calendar') {
-      setCalendarPeriod(value as CalendarPeriod)
+      void setCalendarState({ calendarPeriod: value as CalendarPeriod });
     } else {
-      setProductsPeriod(value as ProductsPeriod)
+      void setCalendarState({ productsPeriod: value as ProductsPeriod });
     }
-  }
+  };
+
+  const handleViewModeChange = (value: CalendarViewMode) => {
+    void setCalendarState({ view: value });
+  };
+
+  const handleProductChange = (value: string | null) => {
+    if (value !== null) {
+      void setCalendarState({ productId: value });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -311,7 +358,11 @@ export function CalendarView({
                 <SelectTrigger className="w-[160px]">
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   <SelectValue>
-                    {currentPeriod === 'week' ? t('periods.week') : currentPeriod === 'twoWeeks' ? t('periods.twoWeeks') : t('periods.month')}
+                    {currentPeriod === 'week'
+                      ? t('periods.week')
+                      : currentPeriod === 'twoWeeks'
+                        ? t('periods.twoWeeks')
+                        : t('periods.month')}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -336,22 +387,33 @@ export function CalendarView({
               </Select>
 
               {/* Center: View mode toggle */}
-              <ViewModeToggle value={viewMode} onChange={setViewMode} />
+              <ViewModeToggle
+                value={viewMode}
+                onChange={handleViewModeChange}
+              />
 
               {/* Right side: Product filter */}
               <Select
                 value={selectedProductId}
-                onValueChange={(value) => { if (value !== null) setSelectedProductId(value) }}
+                onValueChange={handleProductChange}
               >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder={t('filterByProduct')}>
-                    {selectedProductId === 'all' ? t('allProducts') : products.find((p) => p.id === selectedProductId)?.name}
+                    {selectedProductId === 'all'
+                      ? t('allProducts')
+                      : products.find((p) => p.id === selectedProductId)?.name}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all" label={t('allProducts')}>{t('allProducts')}</SelectItem>
+                  <SelectItem value="all" label={t('allProducts')}>
+                    {t('allProducts')}
+                  </SelectItem>
                   {products.map((product) => (
-                    <SelectItem key={product.id} value={product.id} label={product.name}>
+                    <SelectItem
+                      key={product.id}
+                      value={product.id}
+                      label={product.name}
+                    >
                       {product.name}
                     </SelectItem>
                   ))}
@@ -363,30 +425,35 @@ export function CalendarView({
       </Card>
 
       {/* Main View */}
-      <div className={cn('transition-opacity duration-150', isPending && 'opacity-50 pointer-events-none')}>
-      {viewMode === 'calendar' && calendarPeriod === 'week' && (
-        <WeekView
-          reservations={filteredReservations}
-          currentDate={currentDate}
-          selectedProductId={selectedProductId}
-        />
-      )}
+      <div
+        className={cn(
+          'transition-opacity duration-150',
+          isPending && 'pointer-events-none opacity-50',
+        )}
+      >
+        {viewMode === 'calendar' && calendarPeriod === 'week' && (
+          <WeekView
+            reservations={filteredReservations}
+            currentDate={currentDate}
+            selectedProductId={selectedProductId}
+          />
+        )}
 
-      {viewMode === 'calendar' && calendarPeriod === 'month' && (
-        <MonthView
-          reservations={filteredReservations}
-          currentDate={currentDate}
-          selectedProductId={selectedProductId}
-        />
-      )}
+        {viewMode === 'calendar' && calendarPeriod === 'month' && (
+          <MonthView
+            reservations={filteredReservations}
+            currentDate={currentDate}
+            selectedProductId={selectedProductId}
+          />
+        )}
 
-      {viewMode === 'products' && (
-        <ProductsView
-          reservations={reservations}
-          products={displayProducts}
-          config={productsConfig}
-        />
-      )}
+        {viewMode === 'products' && (
+          <ProductsView
+            reservations={reservations}
+            products={displayProducts}
+            config={productsConfig}
+          />
+        )}
       </div>
 
       {/* Legend */}
@@ -396,14 +463,14 @@ export function CalendarView({
         </CardHeader>
         <CardContent className="py-2">
           <div className="flex flex-wrap gap-4">
-            {(Object.entries(statusLabels) as [ReservationStatus, string][]).map(
-              ([status, label]) => (
-                <div key={status} className="flex items-center gap-2">
-                  <div className={cn('h-3 w-3 rounded', STATUS_COLORS[status])} />
-                  <span className="text-sm text-muted-foreground">{label}</span>
-                </div>
-              )
-            )}
+            {(
+              Object.entries(statusLabels) as [ReservationStatus, string][]
+            ).map(([status, label]) => (
+              <div key={status} className="flex items-center gap-2">
+                <div className={cn('h-3 w-3 rounded', STATUS_COLORS[status])} />
+                <span className="text-muted-foreground text-sm">{label}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -415,5 +482,5 @@ export function CalendarView({
         storeId={storeId}
       />
     </div>
-  )
+  );
 }

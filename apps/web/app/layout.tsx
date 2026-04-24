@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
 import { Agentation } from 'agentation';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 import { AnchoredToastProvider, ToastProvider } from '@louez/ui';
 
@@ -55,11 +56,13 @@ export default function RootLayout({
           />
         </head>
         <body className={`${inter.variable} font-sans antialiased`}>
-          <ORPCProvider>
-            <ToastProvider position="top-center">
-              <AnchoredToastProvider>{children}</AnchoredToastProvider>
-            </ToastProvider>
-          </ORPCProvider>
+          <NuqsAdapter>
+            <ORPCProvider>
+              <ToastProvider position="top-center">
+                <AnchoredToastProvider>{children}</AnchoredToastProvider>
+              </ToastProvider>
+            </ORPCProvider>
+          </NuqsAdapter>
         </body>
       </html>
     </>
