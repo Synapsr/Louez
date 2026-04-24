@@ -99,7 +99,62 @@ interface ActivityTimelineV2Props {
   payments?: ActivityTimelinePayment[]
   reservationCreatedAt: Date
   reservationSource: string | null
+  currency?: string
   initialVisibleCount?: number
+}
+
+const PAYMENT_AMOUNT_ACTIVITY_TYPES = new Set<ActivityType>([
+  'payment_added',
+  'payment_updated',
+  'payment_received',
+  'payment_initiated',
+  'payment_failed',
+  'payment_expired',
+  'deposit_authorized',
+  'deposit_captured',
+  'deposit_released',
+  'deposit_failed',
+])
+
+function parseActivityAmount(amount: unknown): number | null {
+  if (typeof amount === 'number') {
+    return Number.isFinite(amount) ? amount : null
+  }
+
+  if (typeof amount === 'string') {
+    const parsed = parseFloat(amount)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  return null
+}
+
+function getPaymentAmountClassName(
+  activityType: ActivityType,
+  amount: number,
+  isPaymentRequest: boolean,
+) {
+  if (isPaymentRequest) {
+    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  }
+
+  if (
+    activityType === 'payment_failed' ||
+    activityType === 'payment_expired' ||
+    activityType === 'deposit_failed'
+  ) {
+    return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+  }
+
+  if (activityType === 'payment_initiated' || activityType === 'deposit_authorized') {
+    return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+  }
+
+  if (amount < 0 || activityType === 'deposit_captured' || activityType === 'payment_updated') {
+    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+  }
+
+  return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
 }
 
 const ACTIVITY_CONFIG: Record<
@@ -265,6 +320,7 @@ export function ActivityTimelineV2({
   payments = [],
   reservationCreatedAt,
   reservationSource,
+  currency = 'EUR',
   initialVisibleCount = 3,
 }: ActivityTimelineV2Props) {
   const t = useTranslations('dashboard.reservations')
@@ -383,9 +439,25 @@ export function ActivityTimelineV2({
         : Globe
       : config.icon
 
-    const paymentAmount = activity.metadata?.amount as number | undefined
-    const paymentCurrency = (activity.metadata?.currency as string) || 'EUR'
+    const paymentAmount = parseActivityAmount(activity.metadata?.amount)
+    const paymentCurrency =
+      typeof activity.metadata?.currency === 'string' ? activity.metadata.currency : currency
     const isStripePayment = activity.metadata?.method === 'stripe'
+    const isPaymentRequest = activity.metadata?.isPaymentRequest === true
+    const activityTitle = isPaymentRequest
+      ? t('requestPaymentModal.success')
+      : t(`activity.${activity.activityType}`)
+    const showPositivePaymentPrefix =
+      paymentAmount !== null &&
+      paymentAmount > 0 &&
+      !isPaymentRequest &&
+      ![
+        'payment_initiated',
+        'payment_failed',
+        'payment_expired',
+        'deposit_authorized',
+        'deposit_failed',
+      ].includes(activity.activityType)
 
     const isLastVisibleBeforeFade =
       !isExpanded && index === initialVisibleCount - 1 && hasMoreActivities
@@ -419,7 +491,7 @@ export function ActivityTimelineV2({
         <div className="flex-1 min-w-0 pt-0.5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="font-medium text-sm">{t(`activity.${activity.activityType}`)}</p>
+              <p className="font-medium text-sm">{activityTitle}</p>
               {/* Source badge for creation events */}
               {activitySource && (
                 <Badge
@@ -457,27 +529,22 @@ export function ActivityTimelineV2({
                   </Badge>
                 )}
               {/* Payment amount badge */}
-              {paymentAmount &&
-                (activity.activityType === 'payment_received' ||
-                  activity.activityType === 'payment_initiated' ||
-                  activity.activityType === 'payment_failed' ||
-                  activity.activityType === 'payment_expired') && (
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      'text-[10px] px-1.5 py-0 h-4 font-mono',
-                      activity.activityType === 'payment_received'
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                        : activity.activityType === 'payment_failed' ||
-                            activity.activityType === 'payment_expired'
-                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                    )}
-                  >
-                    {activity.activityType === 'payment_received' ? '+' : ''}
-                    {paymentAmount.toFixed(2)} {paymentCurrency}
-                  </Badge>
-                )}
+              {paymentAmount !== null && PAYMENT_AMOUNT_ACTIVITY_TYPES.has(activity.activityType) && (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'text-[10px] px-1.5 py-0 h-4 font-mono',
+                    getPaymentAmountClassName(
+                      activity.activityType,
+                      paymentAmount,
+                      isPaymentRequest
+                    )
+                  )}
+                >
+                  {showPositivePaymentPrefix ? '+' : ''}
+                  {paymentAmount.toFixed(2)} {paymentCurrency}
+                </Badge>
+              )}
               {/* Modified amount badge */}
               {activity.activityType === 'modified' &&
                 activity.metadata?.difference !== undefined && (

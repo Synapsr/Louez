@@ -543,6 +543,7 @@ export function ReservationDetailClient({
             payments={reservation.payments}
             reservationCreatedAt={reservation.createdAt}
             reservationSource={reservation.source}
+            currency={currency}
             initialVisibleCount={3}
           />
         </div>
