@@ -24,6 +24,34 @@ interface ReservationNotesProps {
   initialNotes: string
 }
 
+interface ReservationCustomerNotesProps {
+  notes: string
+}
+
+export function ReservationCustomerNotes({
+  notes,
+}: ReservationCustomerNotesProps) {
+  const t = useTranslations('dashboard.reservations')
+  const trimmedNotes = notes.trim()
+
+  if (!trimmedNotes) {
+    return null
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">{t('customerNotes')}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="whitespace-pre-wrap text-sm leading-6">
+          {trimmedNotes}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function ReservationNotes({
   reservationId,
   initialNotes,

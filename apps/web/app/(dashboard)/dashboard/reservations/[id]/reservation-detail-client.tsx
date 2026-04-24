@@ -38,7 +38,10 @@ import { orpc } from '@/lib/orpc/react'
 import { ActivityTimelineV2 } from './activity-timeline-v2'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { ReservationHeader } from './reservation-header'
-import { ReservationNotes } from './reservation-notes'
+import {
+  ReservationCustomerNotes,
+  ReservationNotes,
+} from './reservation-notes'
 import { SmartReservationActions } from './smart-reservation-actions'
 import { UnifiedPaymentSection } from './unified-payment-section'
 import { UnitAssignmentSelector } from '@/components/dashboard/unit-assignment-selector'
@@ -705,6 +708,8 @@ export function ReservationDetailClient({
             }}
             stripeConfigured={stripeConfigured}
           />
+
+          <ReservationCustomerNotes notes={reservation.customerNotes || ''} />
 
           <ReservationNotes
             reservationId={reservation.id}
