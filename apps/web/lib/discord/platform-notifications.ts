@@ -82,15 +82,17 @@ async function resolveStoreOwner(storeId: string): Promise<string | undefined> {
 async function trackFromHello(
   eventName: string,
   properties: Record<string, unknown> = {},
-  options?: { profileId?: string; storeId?: string }
+  options?: { externalId?: string; storeId?: string }
 ): Promise<void> {
   if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return
 
   try {
-    // Resolve profileId: use explicit value, or look up store owner
-    let profileId = options?.profileId
-    if (!profileId && options?.storeId) {
-      profileId = await resolveStoreOwner(options.storeId)
+    // Resolve externalId: use explicit value, or look up store owner.
+    // The store owner's userId (Better Auth) is sent as fromHello's
+    // externalId — fromHello find-or-creates a profile keyed on it.
+    let externalId = options?.externalId
+    if (!externalId && options?.storeId) {
+      externalId = await resolveStoreOwner(options.storeId)
     }
 
     await fetch(`${env.FROMHELLO_API_URL}/api/events`, {
@@ -103,7 +105,7 @@ async function trackFromHello(
         name: eventName,
         source: 'api',
         properties,
-        ...(profileId && { profileId }),
+        ...(externalId && { externalId }),
       }),
     })
   } catch {
@@ -112,23 +114,29 @@ async function trackFromHello(
 }
 
 /**
- * Update profile attributes on fromHello. Fire-and-forget.
+ * Update profile attributes on fromHello, keyed by integrator-supplied
+ * externalId. Hits the /by-external/ route, which find-or-creates the
+ * profile so the first call from a previously-unknown user still works.
+ * Fire-and-forget.
  */
 async function setFromHelloProfile(
-  profileId: string,
+  externalId: string,
   attributes: Record<string, unknown>
 ): Promise<void> {
   if (!env.FROMHELLO_API_URL || !env.FROMHELLO_API_KEY) return
 
   try {
-    await fetch(`${env.FROMHELLO_API_URL}/api/profiles/${profileId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': env.FROMHELLO_API_KEY,
-      },
-      body: JSON.stringify(attributes),
-    })
+    await fetch(
+      `${env.FROMHELLO_API_URL}/api/profiles/by-external/${encodeURIComponent(externalId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': env.FROMHELLO_API_KEY,
+        },
+        body: JSON.stringify(attributes),
+      }
+    )
   } catch {
     // Fire-and-forget
   }
@@ -188,7 +196,7 @@ export async function notifyUserSignedIn(
   email: string,
   method: 'magic link' | 'google'
 ): Promise<void> {
-  trackFromHello('user_signed_in', { email, method }, { profileId: userId }).catch(() => {})
+  trackFromHello('user_signed_in', { email, method }, { externalId: userId }).catch(() => {})
   if (!isEnabled()) return
 
   // Resolve the user's primary store for context
@@ -456,7 +464,7 @@ export async function notifyAiRateLimitHit(
   count: number,
   limit: number
 ): Promise<void> {
-  trackFromHello('ai_rate_limit_hit', { window, count, limit }, { profileId: userId, storeId }).catch(() => {})
+  trackFromHello('ai_rate_limit_hit', { window, count, limit }, { externalId: userId, storeId }).catch(() => {})
   if (!isEnabled()) return
 
   try {
