@@ -154,6 +154,11 @@ export const env = createEnv({
     // ===== fromHello (Optional — engagement & growth) =====
     NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
     NEXT_PUBLIC_FROMHELLO_KEY: z.string().optional(),
+    // Set to e.g. ".louez.io" when marketing and app live on
+    // different subdomains so the fh_aid cookie follows visitors
+    // across the signup boundary. Leave unset for single-domain
+    // deploys.
+    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: z.string().optional(),
   },
 
   runtimeEnv: {
@@ -209,6 +214,7 @@ export const env = createEnv({
     NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,
     NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,
     NEXT_PUBLIC_FROMHELLO_KEY: process.env.NEXT_PUBLIC_FROMHELLO_KEY,
+    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
