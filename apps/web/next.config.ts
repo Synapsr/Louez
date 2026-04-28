@@ -26,6 +26,18 @@ const storefrontWildcard = appDomainBase && !['localhost', '127.0.0.1'].includes
   ? `https://*.${appDomainBase}`
   : null
 
+// fromHello (engagement platform) origin for CSP. Only added when the
+// integration is configured. URL() normalizes the value so a trailing
+// slash on the env var doesn't sneak through.
+const fromhelloOrigin = (() => {
+  try {
+    const raw = process.env.NEXT_PUBLIC_FROMHELLO_API_URL
+    return raw ? new URL(raw).origin : null
+  } catch {
+    return null
+  }
+})()
+
 // CSP Directives
 const cspDirectives = {
   // Default: only allow from same origin
@@ -51,6 +63,8 @@ const cspDirectives = {
     // Production: unsafe-inline needed for Next.js inline scripts (nonce-based CSP is the next step)
     // unsafe-eval required by PostHog JS SDK (eval/new Function for feature flags & config)
     ...(!isDev ? ["'unsafe-inline'", "'unsafe-eval'"] : []),
+    // fromHello tracking snippet
+    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
   ],
 
   // Styles: self + inline (required for Tailwind and component libraries)
@@ -94,6 +108,8 @@ const cspDirectives = {
     'https://*.wasabisys.com',
     // Linode
     'https://*.linodeobjects.com',
+    // fromHello pixel proxy (Meta/LinkedIn/Google pixels routed via fromHello)
+    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
   ],
 
   // Fonts: self + Google Fonts + Fontshare
@@ -123,6 +139,8 @@ const cspDirectives = {
     'https://cdn.fontshare.com',
     // Development: Next.js WebSocket for hot reload
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
+    // fromHello: snippet POSTs to /api/events, /api/profiles/merge, etc.
+    ...(fromhelloOrigin ? [fromhelloOrigin] : []),
   ],
 
   // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)

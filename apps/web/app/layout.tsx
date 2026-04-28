@@ -53,7 +53,7 @@ export default function RootLayout({
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (
           <Script
-            src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL}/api/t.js`}
+            src={`${env.NEXT_PUBLIC_FROMHELLO_API_URL.replace(/\/$/, '')}/api/t.js`}
             data-key={env.NEXT_PUBLIC_FROMHELLO_KEY}
             data-cookie-domain={env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN || undefined}
             strategy="afterInteractive"
