@@ -29,17 +29,26 @@ const storefrontWildcard = appDomainBase && !['localhost', '127.0.0.1'].includes
 // fromHello (engagement platform) origin for CSP. Only added when the
 // integration is configured. URL() normalizes the value so a trailing
 // slash on the env var doesn't sneak through.
-const fromhelloOrigin = (() => {
+//
+// Evaluated as a function (not a top-level const) because some hosting
+// platforms (Easypanel/Nixpacks) inject NEXT_PUBLIC_* vars only into
+// the runtime container — not into the `next build` step nor into the
+// very first module-load of next.config.ts. Reading at headers() time
+// ensures we see whatever env the running process actually has.
+function getFromhelloOrigin(): string | null {
   try {
     const raw = process.env.NEXT_PUBLIC_FROMHELLO_API_URL
     return raw ? new URL(raw).origin : null
   } catch {
     return null
   }
-})()
+}
 
-// CSP Directives
-const cspDirectives = {
+// CSP Directives factory. Returns a fresh object each call so
+// fromhelloOrigin reflects the current env (see getFromhelloOrigin).
+function buildCspDirectives() {
+  const fromhelloOrigin = getFromhelloOrigin()
+  return {
   // Default: only allow from same origin
   'default-src': ["'self'"],
 
@@ -166,21 +175,26 @@ const cspDirectives = {
 
   // Upgrade insecure requests in production
   ...(!isDev ? { 'upgrade-insecure-requests': [] } : {}),
+  }
 }
 
-// Build CSP string
-const cspString = Object.entries(cspDirectives)
-  .map(([directive, sources]) => {
-    if (sources.length === 0) return directive
-    return `${directive} ${sources.join(' ')}`
-  })
-  .join('; ')
+// Build the CSP header string from a fresh directive set. Called
+// inside headers() so each invocation reflects current env vars.
+function buildCspString(): string {
+  return Object.entries(buildCspDirectives())
+    .map(([directive, sources]) => {
+      if (sources.length === 0) return directive
+      return `${directive} ${sources.join(' ')}`
+    })
+    .join('; ')
+}
 
-const securityHeaders = [
+function buildSecurityHeaders() {
+  return [
   {
     // Content Security Policy - Main XSS protection
     key: 'Content-Security-Policy',
-    value: cspString,
+    value: buildCspString(),
   },
   {
     // Prevent clickjacking attacks (legacy, superseded by CSP frame-ancestors)
@@ -212,7 +226,8 @@ const securityHeaders = [
     key: 'Strict-Transport-Security',
     value: 'max-age=31536000; includeSubDomains',
   },
-]
+  ]
+}
 
 const nextConfig: NextConfig = {
   // Enable standalone output for Docker deployment
@@ -231,6 +246,9 @@ const nextConfig: NextConfig = {
   },
   // Security headers for all routes
   async headers() {
+    // Build at request time so env vars (e.g. NEXT_PUBLIC_FROMHELLO_API_URL)
+    // injected only at runtime by the host platform are reflected here.
+    const securityHeaders = buildSecurityHeaders()
     // Embed routes: allow framing from any origin (for iframe embedding)
     const embedSecurityHeaders = securityHeaders
       .filter((h) => h.key !== 'X-Frame-Options')
