@@ -2,11 +2,12 @@
 
 import { useEffect } from 'react'
 
+type FhFn = ((...args: unknown[]) => void) & { q?: unknown[][] }
+
 declare global {
-  function fh(command: 'identify', profileId: string): void
-  function fh(command: 'set', attributes: Record<string, unknown>): void
-  function fh(command: 'track', event: string, properties?: Record<string, unknown>): void
-  function fh(command: 'page', url?: string): void
+  interface Window {
+    fh?: FhFn
+  }
 }
 
 interface FromHelloProviderProps {
@@ -27,16 +28,31 @@ interface FromHelloProviderProps {
 /**
  * fromHello engagement provider for client-side identity resolution.
  *
- * When a user prop is provided, identifies the user in fromHello
- * and sets profile attributes. This merges the anonymous profile
- * (created by the tracking snippet) with the authenticated user.
+ * When a user prop is provided, identifies the user in fromHello and
+ * sets profile attributes. This merges the anonymous profile
+ * (created by the tracking snippet on previous pages) with the
+ * authenticated user.
+ *
+ * The snippet loads with strategy="afterInteractive", which races
+ * with this useEffect — at hydration time `window.fh` may not exist
+ * yet. We seed `window.fh` as a queue stub so the identify/set calls
+ * are buffered and replayed by the snippet when it loads (the
+ * snippet replays `window.fh.q` on init).
  */
 export function FromHelloProvider({ user, store }: FromHelloProviderProps) {
   useEffect(() => {
-    if (typeof fh === 'undefined' || !user) return
+    if (!user || typeof window === 'undefined') return
 
-    fh('identify', user.id)
-    fh('set', {
+    if (!window.fh) {
+      const stub: FhFn = ((...args: unknown[]) => {
+        ;(stub.q = stub.q || []).push(args)
+      }) as FhFn
+      stub.q = []
+      window.fh = stub
+    }
+
+    window.fh('identify', user.id)
+    window.fh('set', {
       email: user.email,
       name: user.name || undefined,
       ...(store && {
