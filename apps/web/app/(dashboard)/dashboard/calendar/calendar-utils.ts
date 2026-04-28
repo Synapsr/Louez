@@ -269,7 +269,11 @@ export function calculateWeekLayout(
     reservations,
     weekStart,
     weekEnd
-  )
+  ).filter((reservation) => {
+    const start = new Date(reservation.startDate)
+    const end = new Date(reservation.endDate)
+    return !isSameDay(start, end)
+  })
 
   // Calculate spanning info for each reservation
   const spanningReservations: SpanningReservation[] = weekReservations.map(
