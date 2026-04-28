@@ -1933,7 +1933,8 @@
             "step1": "Oeffnen Sie Google Kalender",
             "step2": "Klicken Sie auf das + neben \"Weitere Kalender\" und dann auf \"Per URL\"",
             "step3": "Fuegen Sie den Link ein und klicken Sie auf \"Kalender hinzufuegen\"",
-            "openLink": "Google Kalender oeffnen"
+            "openLink": "Google Kalender oeffnen",
+            "freshnessNote": "Louez veroeffentlicht Aenderungen sofort und fordert eine Aktualisierung alle 5 Minuten an. Google kann trotzdem eine eigene Synchronisierungsverzoegerung anwenden."
           },
           "apple": {
             "step1": "Oeffnen Sie die Kalender-App auf Mac oder iPhone",

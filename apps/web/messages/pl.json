@@ -1894,7 +1894,8 @@
             "step1": "Otworz Kalendarz Google",
             "step2": "Kliknij + obok \"Inne kalendarze\" i nastepnie \"Z adresu URL\"",
             "step3": "Wklej link i kliknij \"Dodaj kalendarz\"",
-            "openLink": "Otworz Kalendarz Google"
+            "openLink": "Otworz Kalendarz Google",
+            "freshnessNote": "Louez publikuje zmiany natychmiast i prosi klientow o odswiezanie co 5 minut. Google moze jednak stosowac wlasne opoznienie synchronizacji."
           },
           "apple": {
             "step1": "Otworz aplikacje Kalendarz na Macu lub iPhonie",

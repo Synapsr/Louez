@@ -1941,7 +1941,8 @@
             "step1": "Abre Google Calendar",
             "step2": "Haz clic en el + junto a \"Otros calendarios\" y luego en \"Desde URL\"",
             "step3": "Pega el enlace y haz clic en \"Anadir calendario\"",
-            "openLink": "Abrir Google Calendar"
+            "openLink": "Abrir Google Calendar",
+            "freshnessNote": "Louez publica los cambios inmediatamente y solicita una actualizacion cada 5 minutos. Google puede aplicar su propio retraso de sincronizacion."
           },
           "apple": {
             "step1": "Abre la app Calendario en Mac o iPhone",

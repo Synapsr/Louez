@@ -1941,7 +1941,8 @@
             "step1": "Ouvrez Google Agenda",
             "step2": "Cliquez sur le + a cote de \"Autres agendas\" puis \"A partir de l'URL\"",
             "step3": "Collez le lien et cliquez sur \"Ajouter un agenda\"",
-            "openLink": "Ouvrir Google Agenda"
+            "openLink": "Ouvrir Google Agenda",
+            "freshnessNote": "Louez publie les changements immediatement et demande un rafraichissement toutes les 5 minutes. Google peut toutefois appliquer son propre delai de synchronisation."
           },
           "apple": {
             "step1": "Ouvrez l'app Calendrier sur Mac ou iPhone",

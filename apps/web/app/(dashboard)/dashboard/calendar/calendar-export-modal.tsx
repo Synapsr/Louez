@@ -140,6 +140,9 @@ export function CalendarExportModal({
                 {t('instructions.google.openLink')}
                 <ExternalLink className="h-3 w-3" />
               </a>
+              <p className="pl-8 text-xs text-muted-foreground">
+                {t('instructions.google.freshnessNote')}
+              </p>
             </div>
 
             {/* Apple Calendar */}

@@ -1894,7 +1894,8 @@
             "step1": "Abra o Google Agenda",
             "step2": "Clique no + ao lado de \"Outras agendas\" e depois em \"A partir do URL\"",
             "step3": "Cole o link e clique em \"Adicionar agenda\"",
-            "openLink": "Abrir Google Agenda"
+            "openLink": "Abrir Google Agenda",
+            "freshnessNote": "Louez publica as alteracoes imediatamente e solicita atualizacao a cada 5 minutos. O Google ainda pode aplicar seu proprio atraso de sincronizacao."
           },
           "apple": {
             "step1": "Abra o app Calendario no Mac ou iPhone",
