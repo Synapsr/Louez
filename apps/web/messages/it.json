@@ -1894,7 +1894,8 @@
             "step1": "Apri Google Calendar",
             "step2": "Clicca sul + accanto a \"Altri calendari\" e poi su \"Da URL\"",
             "step3": "Incolla il link e clicca su \"Aggiungi calendario\"",
-            "openLink": "Apri Google Calendar"
+            "openLink": "Apri Google Calendar",
+            "freshnessNote": "Louez pubblica le modifiche immediatamente e richiede un aggiornamento ogni 5 minuti. Google puo comunque applicare un proprio ritardo di sincronizzazione."
           },
           "apple": {
             "step1": "Apri l'app Calendario su Mac o iPhone",

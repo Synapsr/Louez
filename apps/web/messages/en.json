@@ -1941,7 +1941,8 @@
             "step1": "Open Google Calendar",
             "step2": "Click the + next to \"Other calendars\" then \"From URL\"",
             "step3": "Paste the link and click \"Add calendar\"",
-            "openLink": "Open Google Calendar"
+            "openLink": "Open Google Calendar",
+            "freshnessNote": "Louez publishes changes immediately and asks clients to refresh every 5 minutes. Google may still apply its own sync delay."
           },
           "apple": {
             "step1": "Open the Calendar app on Mac or iPhone",

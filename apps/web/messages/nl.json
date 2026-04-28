@@ -1894,7 +1894,8 @@
             "step1": "Open Google Agenda",
             "step2": "Klik op het + naast \"Andere agenda's\" en dan op \"Via URL\"",
             "step3": "Plak de link en klik op \"Agenda toevoegen\"",
-            "openLink": "Google Agenda openen"
+            "openLink": "Google Agenda openen",
+            "freshnessNote": "Louez publiceert wijzigingen onmiddellijk en vraagt clients om elke 5 minuten te vernieuwen. Google kan toch zijn eigen synchronisatievertraging toepassen."
           },
           "apple": {
             "step1": "Open de Agenda-app op Mac of iPhone",
