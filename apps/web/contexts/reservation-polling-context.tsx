@@ -50,7 +50,7 @@ export function ReservationPollingProvider({
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const lastReservationIdRef = useRef<string | null>(null)
-  const lastTotalCountRef = useRef<number | null>(null)
+  const lastReservationCreatedAtRef = useRef<number | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const isFirstPollRef = useRef(true)
 
@@ -90,21 +90,28 @@ export function ReservationPollingProvider({
       // On first poll, just store the reference values
       if (isFirstPollRef.current) {
         lastReservationIdRef.current = data.latestReservation?.id || null
-        lastTotalCountRef.current = data.totalCount
+        lastReservationCreatedAtRef.current = data.latestReservation
+          ? Date.parse(data.latestReservation.createdAt)
+          : null
         isFirstPollRef.current = false
         return
       }
 
-      // Check if there's a new reservation
+      const latestReservationCreatedAt = data.latestReservation
+        ? Date.parse(data.latestReservation.createdAt)
+        : null
+
+      // Check if there's a newly submitted storefront reservation request
       const hasNewReservation =
         data.latestReservation &&
         lastReservationIdRef.current !== data.latestReservation.id &&
-        data.totalCount > (lastTotalCountRef.current || 0)
+        latestReservationCreatedAt !== null &&
+        latestReservationCreatedAt > (lastReservationCreatedAtRef.current || 0)
 
       if (hasNewReservation) {
         // Update references
         lastReservationIdRef.current = data.latestReservation!.id
-        lastTotalCountRef.current = data.totalCount
+        lastReservationCreatedAtRef.current = latestReservationCreatedAt
 
         // Play sound
         playNotificationSound()
@@ -118,6 +125,13 @@ export function ReservationPollingProvider({
 
         // Refresh the page data
         router.refresh()
+      } else if (
+        data.latestReservation &&
+        latestReservationCreatedAt !== null &&
+        latestReservationCreatedAt > (lastReservationCreatedAtRef.current || 0)
+      ) {
+        lastReservationIdRef.current = data.latestReservation.id
+        lastReservationCreatedAtRef.current = latestReservationCreatedAt
       }
     } catch (error) {
       console.debug('Polling error:', error)

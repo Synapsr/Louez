@@ -17,7 +17,11 @@ export async function getReservationPollData(
     .where(and(eq(reservations.storeId, storeId), eq(reservations.status, 'pending')))
 
   const latestReservation = await db.query.reservations.findFirst({
-    where: eq(reservations.storeId, storeId),
+    where: and(
+      eq(reservations.storeId, storeId),
+      eq(reservations.status, 'pending'),
+      eq(reservations.source, 'online'),
+    ),
     orderBy: [desc(reservations.createdAt)],
     columns: {
       id: true,
