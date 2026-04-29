@@ -31,6 +31,7 @@ export async function getDashboardReservationsList(params: {
 }) {
   const { storeId, status, period, limit, search, sort, sortDirection, page, pageSize } = params
   const conditions = [eq(reservations.storeId, storeId)]
+  const needsSearch = search && search.trim()
 
   if (status && status !== 'all') {
     if (status === 'cancelled') {
@@ -45,8 +46,9 @@ export async function getDashboardReservationsList(params: {
     } else {
       conditions.push(eq(reservations.status, status))
     }
-  } else {
-    // Default "all" view excludes cancelled, rejected, and declined
+  } else if (!needsSearch) {
+    // Default "all" view focuses the active workflow. Global search must still
+    // find closed reservations when the user does not already know their status.
     conditions.push(
       not(eq(reservations.status, 'cancelled')),
       not(eq(reservations.status, 'rejected')),
@@ -104,8 +106,6 @@ export async function getDashboardReservationsList(params: {
   const usePagination = page != null && pageSize != null
   const effectiveLimit = usePagination ? pageSize : limit
   const offset = usePagination ? (page - 1) * pageSize : 0
-
-  const needsSearch = search && search.trim()
 
   // When searching, we need to join with customers table.
   // Drizzle relational queries don't support cross-table WHERE, so we use a
