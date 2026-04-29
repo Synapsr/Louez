@@ -1471,6 +1471,9 @@ export async function updateReservation(
     previousInsuranceSelection.amount > 0 ? previousInsuranceSelection.amount : null;
 
   const INSURANCE_ITEM_NAME = 'Garantie casse/vol';
+  const existingItemsById = new Map(
+    reservation.items.map((item) => [item.id, item]),
+  );
 
   // Process items
   if (data.items && data.items.length > 0) {
@@ -1634,6 +1637,9 @@ export async function updateReservation(
           quantity: item.quantity,
         });
       }
+      const existingSnapshot = item.id
+        ? existingItemsById.get(item.id)?.productSnapshot
+        : null;
 
       await db.insert(reservationItems).values({
         id: nanoid(),
@@ -1648,7 +1654,7 @@ export async function updateReservation(
         productSnapshot: {
           name: item.productSnapshot.name,
           description: item.productSnapshot.description || null,
-          images: item.productSnapshot.images || [],
+          images: item.productSnapshot.images || existingSnapshot?.images || [],
         },
       });
     }

@@ -117,6 +117,22 @@ function resolveInitialManualPricingMode(
   return resolvePricingModeFromMinutes(applicablePeriod, fallback)
 }
 
+function toReservationItemPayload(item: EditableItem) {
+  return {
+    id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    depositPerUnit: item.depositPerUnit,
+    isManualPrice: item.isManualPrice,
+    pricingMode: item.pricingMode,
+    productSnapshot: {
+      name: item.productSnapshot.name,
+      description: item.productSnapshot.description ?? null,
+    },
+  }
+}
+
 export function EditReservationForm({
   reservation,
   availableProducts,
@@ -580,16 +596,7 @@ export function EditReservationForm({
           endDate,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
           delivery: deliveryPayload,
-          items: items.map((item) => ({
-            id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            depositPerUnit: item.depositPerUnit,
-            isManualPrice: item.isManualPrice,
-            pricingMode: item.pricingMode,
-            productSnapshot: item.productSnapshot,
-          })),
+          items: items.map(toReservationItemPayload),
         },
       })
 
