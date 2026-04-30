@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
@@ -59,7 +59,7 @@ import { EditReservationDeliverySection } from './components/edit-reservation-de
 import { useEditReservationAvailability } from './hooks/use-edit-reservation-availability'
 import { useEditReservationPricing } from './hooks/use-edit-reservation-pricing'
 import { useEditReservationDelivery } from './hooks/use-edit-reservation-delivery'
-import type { EditReservationFormProps, EditableItem } from './types'
+import type { EditReservationFormProps, EditableItem, ReservationItem } from './types'
 
 function parseCoordinate(value: string | null): number | null {
   return value ? parseFloat(value) : null
@@ -133,6 +133,58 @@ function toReservationItemPayload(item: EditableItem) {
   }
 }
 
+function toEditableItem(item: ReservationItem, startDate: Date, endDate: Date): EditableItem {
+  const isManualPrice =
+    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride ===
+    true
+  const fallbackPricingMode = ((item.product?.pricingMode ??
+    (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
+    'day') as PricingMode)
+  const pricingMode = isManualPrice
+    ? resolveInitialManualPricingMode(item.product, fallbackPricingMode, startDate, endDate)
+    : fallbackPricingMode
+  const duration = calculateDuration(startDate, endDate, pricingMode)
+  const preciseManualUnitPrice =
+    isManualPrice && item.quantity > 0 && duration > 0
+      ? Number(item.totalPrice) / (duration * item.quantity)
+      : Number(item.unitPrice)
+
+  return {
+    id: item.id,
+    productId: item.productId,
+    quantity: item.quantity,
+    unitPrice: preciseManualUnitPrice,
+    depositPerUnit: parseFloat(item.depositPerUnit),
+    isManualPrice,
+    pricingMode,
+    basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
+    enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
+    productSnapshot: item.productSnapshot,
+    product: item.product,
+  }
+}
+
+function roundComparableNumber(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+function buildItemsChangeSignature(items: EditableItem[]): string {
+  const comparableItems = items
+    .map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: roundComparableNumber(item.unitPrice),
+      depositPerUnit: roundComparableNumber(item.depositPerUnit),
+      isManualPrice: item.isManualPrice,
+      pricingMode: item.pricingMode,
+      productSnapshotName: item.productSnapshot.name.trim(),
+      productSnapshotDescription: item.productSnapshot.description?.trim() ?? null,
+    }))
+    .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))
+
+  return JSON.stringify(comparableItems)
+}
+
 export function EditReservationForm({
   reservation,
   availableProducts,
@@ -186,6 +238,17 @@ export function EditReservationForm({
         productSnapshot: item.productSnapshot,
       })
   )
+  const initialEditableItems = useMemo(
+    () =>
+      editableReservationItems.map((item) =>
+        toEditableItem(
+          item,
+          new Date(reservation.startDate),
+          new Date(reservation.endDate),
+        )
+      ),
+    [editableReservationItems, reservation.startDate, reservation.endDate],
+  )
   const legacyInsuranceAmount = reservation.items.reduce((sum, item) => {
     if (
       !isLegacyTulipInsuranceItem({
@@ -212,45 +275,7 @@ export function EditReservationForm({
     return legacyInsuranceAmount
   })()
   const [items, setItems] = useState<EditableItem[]>(
-    editableReservationItems.map((item) => {
-      const isManualPrice =
-        (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.isManualOverride ===
-        true
-      const fallbackPricingMode = ((item.product?.pricingMode ??
-        (item.pricingBreakdown as unknown as Record<string, unknown> | null)?.pricingMode ??
-        'day') as PricingMode)
-      const pricingMode = isManualPrice
-        ? resolveInitialManualPricingMode(
-            item.product,
-            fallbackPricingMode,
-            new Date(reservation.startDate),
-            new Date(reservation.endDate),
-          )
-        : fallbackPricingMode
-      const duration = calculateDuration(
-        new Date(reservation.startDate),
-        new Date(reservation.endDate),
-        pricingMode,
-      )
-      const preciseManualUnitPrice =
-        isManualPrice && item.quantity > 0 && duration > 0
-          ? Number(item.totalPrice) / (duration * item.quantity)
-          : Number(item.unitPrice)
-
-      return {
-        id: item.id,
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: preciseManualUnitPrice,
-        depositPerUnit: parseFloat(item.depositPerUnit),
-        isManualPrice,
-        pricingMode,
-        basePeriodMinutes: item.product?.basePeriodMinutes ?? null,
-        enforceStrictTiers: item.product?.enforceStrictTiers ?? false,
-        productSnapshot: item.productSnapshot,
-        product: item.product,
-      }
-    })
+    initialEditableItems
   )
   const [validationWarningsToConfirm, setValidationWarningsToConfirm] = useState<
     ReservationValidationWarning[]
@@ -686,12 +711,22 @@ export function EditReservationForm({
       )
     )
 
+  const originalItemsSignature = useMemo(
+    () => buildItemsChangeSignature(initialEditableItems),
+    [initialEditableItems],
+  )
+  const currentItemsSignature = useMemo(
+    () => buildItemsChangeSignature(items),
+    [items],
+  )
+  const hasItemChanges = currentItemsSignature !== originalItemsSignature
+
   const hasChanges =
     (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
     (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime() ||
     calculations.subtotal !== originalSubtotal ||
     tulipInsuranceOptIn !== initialTulipInsuranceOptIn ||
-    items.length !== editableReservationItems.length ||
+    hasItemChanges ||
     delivery.totalFee !== originalDeliveryFee ||
     delivery.outbound.method !== reservation.delivery.outboundMethod ||
     delivery.inbound.method !== reservation.delivery.returnMethod ||
