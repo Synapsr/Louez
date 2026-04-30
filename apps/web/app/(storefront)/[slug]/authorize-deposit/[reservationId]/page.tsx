@@ -12,6 +12,7 @@ import { Button } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { generateStoreMetadata } from '@/lib/seo'
 import { getStorefrontUrl } from '@/lib/storefront-url'
+import { env } from '@/env'
 import { getDepositAuthorizationData } from './actions'
 import { DepositForm } from './deposit-form'
 import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
@@ -172,6 +173,7 @@ export default async function AuthorizeDepositPage({
           currency={currency}
           locale={locale}
           token={token!}
+          stripePublishableKey={env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
         />
 
         {/* Back link */}
