@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { loadStripe } from '@stripe/stripe-js'
-import { env } from '@/env'
 import {
   Elements,
   PaymentElement,
@@ -41,6 +40,7 @@ interface DepositFormProps {
   currency: string
   locale: string
   token: string
+  stripePublishableKey: string
 }
 
 function CheckoutForm({
@@ -49,7 +49,7 @@ function CheckoutForm({
   currency,
   onSuccess,
   t,
-}: Omit<DepositFormProps, 'customer' | 'token'> & {
+}: Omit<DepositFormProps, 'customer' | 'token' | 'stripePublishableKey'> & {
   onSuccess: (redirectUrl?: string) => void
   t: ReturnType<typeof useTranslations<'storefront.authorizeDeposit'>>
 }) {
@@ -202,7 +202,7 @@ export function DepositForm(props: DepositFormProps) {
 
     // Load Stripe with the connected account
     const stripe = loadStripe(
-      env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+      props.stripePublishableKey,
       {
         stripeAccount: props.store.stripeAccountId,
       }
@@ -240,7 +240,13 @@ export function DepositForm(props: DepositFormProps) {
     return () => {
       isCancelled = true
     }
-  }, [props.store.stripeAccountId, props.store.id, props.reservation.id, props.token])
+  }, [
+    props.stripePublishableKey,
+    props.store.stripeAccountId,
+    props.store.id,
+    props.reservation.id,
+    props.token,
+  ])
 
   const handleSuccess = (redirectUrl?: string) => {
     setIsSuccess(true)
