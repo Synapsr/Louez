@@ -57,6 +57,7 @@ function buildCspDirectives() {
     "'self'",
     // Stripe.js for payments
     'https://js.stripe.com',
+    'https://*.js.stripe.com',
     'https://maps.googleapis.com',
     // Google Maps
     'https://maps.gstatic.com',
@@ -97,6 +98,8 @@ function buildCspDirectives() {
     'https://gleapjs.com',
     'https://api.gleap.io',
     'https://staticfiles.gleap.io',
+    // Stripe Elements icons/assets
+    'https://*.stripe.com',
     // YouTube thumbnails
     'https://img.youtube.com',
     'https://i.ytimg.com',
@@ -153,7 +156,7 @@ function buildCspDirectives() {
   ],
 
   // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)
-  'frame-src': ["'self'", 'https://js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io', ...(storefrontWildcard ? [storefrontWildcard] : [])],
+  'frame-src': ["'self'", 'https://js.stripe.com', 'https://*.js.stripe.com', 'https://hooks.stripe.com', 'https://gleapjs.com', 'https://messenger-app.gleap.io', ...(storefrontWildcard ? [storefrontWildcard] : [])],
 
   // Workers: only from self
   'worker-src': ["'self'", 'blob:'],

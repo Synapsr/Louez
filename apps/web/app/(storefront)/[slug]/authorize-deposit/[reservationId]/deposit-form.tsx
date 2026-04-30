@@ -57,6 +57,7 @@ function CheckoutForm({
   const elements = useElements()
   const [isProcessing, setIsProcessing] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isPaymentElementReady, setIsPaymentElementReady] = useState(false)
 
   const getStorefrontPath = (path: string) => {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`
@@ -139,6 +140,13 @@ function CheckoutForm({
           options={{
             layout: 'tabs',
           }}
+          onReady={() => {
+            setIsPaymentElementReady(true)
+          }}
+          onLoadError={(event) => {
+            console.error('Stripe PaymentElement failed to load:', event.error)
+            setErrorMessage(t('paymentInitError'))
+          }}
         />
       </div>
 
@@ -154,7 +162,7 @@ function CheckoutForm({
         type="submit"
         size="lg"
         className="w-full"
-        disabled={!stripe || isProcessing}
+        disabled={!stripe || !elements || !isPaymentElementReady || isProcessing}
         style={{
           backgroundColor: store.theme?.primaryColor || undefined,
         }}
@@ -190,6 +198,8 @@ export function DepositForm(props: DepositFormProps) {
   const [isSuccess, setIsSuccess] = useState(false)
 
   useEffect(() => {
+    let isCancelled = false
+
     // Load Stripe with the connected account
     const stripe = loadStripe(
       env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
@@ -198,6 +208,18 @@ export function DepositForm(props: DepositFormProps) {
       }
     )
     setStripePromise(stripe)
+    stripe
+      .then((resolvedStripe) => {
+        if (!isCancelled && !resolvedStripe) {
+          setError('payment_init_failed')
+        }
+      })
+      .catch((loadError) => {
+        console.error('Stripe.js failed to initialize:', loadError)
+        if (!isCancelled) {
+          setError('payment_init_failed')
+        }
+      })
 
     // Create PaymentIntent
     createDepositPaymentIntent({
@@ -205,6 +227,8 @@ export function DepositForm(props: DepositFormProps) {
       storeId: props.store.id,
       token: props.token,
     }).then((result) => {
+      if (isCancelled) return
+
       if (result.error) {
         setError(result.error)
       } else if (result.clientSecret) {
@@ -212,6 +236,10 @@ export function DepositForm(props: DepositFormProps) {
       }
       setIsLoading(false)
     })
+
+    return () => {
+      isCancelled = true
+    }
   }, [props.store.stripeAccountId, props.store.id, props.reservation.id, props.token])
 
   const handleSuccess = (redirectUrl?: string) => {

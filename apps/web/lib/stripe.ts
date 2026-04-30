@@ -367,9 +367,9 @@ export async function createDepositAuthorizationIntent({
       amount,
       currency: currency.toLowerCase(),
       capture_method: 'manual', // Authorization only, no immediate capture
-      automatic_payment_methods: {
-        enabled: true,
-      },
+      // Deposit holds must be card authorizations. Dynamic methods can expose
+      // redirect/deferred methods that cannot create a capturable card hold.
+      payment_method_types: ['card'],
       metadata: {
         reservationId,
         reservationNumber,
