@@ -15,7 +15,7 @@ import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispa
 import { notifyNewReservation } from '@/lib/discord/platform-notifications'
 import { getLocaleFromCountry } from '@/lib/email/i18n'
 import { validateRentalPeriod } from '@/lib/utils/business-hours'
-import { getMinStartDateTime, dateRangesOverlap } from '@/lib/utils/duration'
+import { getMinStartDateTime } from '@/lib/utils/duration'
 import {
   formatDurationFromMinutes,
   getMinRentalMinutes,
@@ -25,9 +25,11 @@ import {
 } from '@/lib/utils/rental-duration'
 import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
 import {
+  calculatePeakReservedQuantities,
   calculateSeasonalAwarePrice,
   calculateDuration as calcDuration,
   getDeterministicCombinationSortValue,
+  getProductCombinationAvailabilityKey,
   matchesSelectedAttributes,
   DEFAULT_COMBINATION_KEY,
 } from '@louez/utils'
@@ -131,10 +133,6 @@ async function generateUniqueReservationNumber(storeId: string, maxRetries = 5):
   // If all retries failed, use timestamp + nanoid for guaranteed uniqueness
   const fallbackRandom = nanoid(6).toUpperCase()
   return `${prefix}${fallbackRandom}`
-}
-
-function getCombinationMapKey(productId: string, combinationKey: string): string {
-  return `${productId}:${combinationKey}`
 }
 
 function getReservationItemResolutionKey(item: ReservationItem, index: number): string {
@@ -996,22 +994,12 @@ export async function createReservation(input: CreateReservationInput) {
         },
       })
 
-      const reservedByProduct = new Map<string, number>()
-      const reservedByProductCombination = new Map<string, number>()
-      for (const reservation of overlappingReservations) {
-        if (dateRangesOverlap(reservation.startDate, reservation.endDate, rentalStartDate, rentalEndDate)) {
-          for (const resItem of reservation.items) {
-            if (!resItem.productId) continue
-            const current = reservedByProduct.get(resItem.productId) || 0
-            reservedByProduct.set(resItem.productId, current + resItem.quantity)
-
-            const combinationKey = resItem.combinationKey || DEFAULT_COMBINATION_KEY
-            const key = getCombinationMapKey(resItem.productId, combinationKey)
-            const currentCombination = reservedByProductCombination.get(key) || 0
-            reservedByProductCombination.set(key, currentCombination + resItem.quantity)
-          }
-        }
-      }
+      const { reservedByProduct, reservedByProductCombination } =
+        calculatePeakReservedQuantities({
+          reservations: overlappingReservations,
+          startDate: rentalStartDate,
+          endDate: rentalEndDate,
+        })
 
       const trackedProductIds = [...productsForReservation.values()]
         .filter((product) => product.trackUnits)
@@ -1107,7 +1095,7 @@ export async function createReservation(input: CreateReservationInput) {
           })
 
         const resolvedCombination = candidates.find((candidate) => {
-          const key = getCombinationMapKey(product.id, candidate.combinationKey)
+          const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey)
           const reserved = reservedByProductCombination.get(key) || 0
           const available = Math.max(0, candidate.totalQuantity - reserved)
           return available >= item.quantity
@@ -1121,7 +1109,7 @@ export async function createReservation(input: CreateReservationInput) {
           }
         }
 
-        const key = getCombinationMapKey(product.id, resolvedCombination.combinationKey)
+        const key = getProductCombinationAvailabilityKey(product.id, resolvedCombination.combinationKey)
         const reserved = reservedByProductCombination.get(key) || 0
         reservedByProductCombination.set(key, reserved + item.quantity)
         reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) || 0) + item.quantity)
