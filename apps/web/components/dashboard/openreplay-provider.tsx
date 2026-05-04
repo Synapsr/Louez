@@ -4,6 +4,12 @@ import { useEffect } from 'react';
 
 import { env } from '@/env';
 
+const OPENREPLAY_PROJECT_KEY =
+  env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY || 'W9AU13WEWMDZ4m8KQzWZ';
+const OPENREPLAY_INGEST_POINT =
+  env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT ||
+  'https://replay.lumy.cloud/ingest';
+
 type OpenReplayTracker = InstanceType<
   Awaited<typeof import('@openreplay/tracker')>['default']
 >;
@@ -29,8 +35,8 @@ async function getOpenReplayTracker() {
     const { default: Tracker } = await import('@openreplay/tracker');
 
     openReplayTracker = new Tracker({
-      projectKey: env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
-      ingestPoint: env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
+      projectKey: OPENREPLAY_PROJECT_KEY,
+      ingestPoint: OPENREPLAY_INGEST_POINT,
       respectDoNotTrack: true,
       privateMode: true,
       obscureTextEmails: true,
