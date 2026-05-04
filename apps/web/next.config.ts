@@ -57,7 +57,8 @@ function getOpenReplayOrigin(): string | null {
 // fromhelloOrigin reflects the current env (see getFromhelloOrigin).
 function buildCspDirectives() {
   const fromhelloOrigin = getFromhelloOrigin()
-  const openReplayOrigin = getOpenReplayOrigin()
+  const openReplayOrigin =
+    getOpenReplayOrigin() || 'https://replay.lumy.cloud'
   return {
   // Default: only allow from same origin
   'default-src': ["'self'"],
