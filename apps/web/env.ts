@@ -152,10 +152,12 @@ export const env = createEnv({
     NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
 
     // ===== OpenReplay (Optional — dashboard session replay) =====
-    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z.string().optional(),
+    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z
+      .string()
+      .default('W9AU13WEWMDZ4m8KQzWZ'),
     NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: z
       .url('NEXT_PUBLIC_OPENREPLAY_INGEST_POINT must be a valid URL')
-      .optional(),
+      .default('https://replay.lumy.cloud/ingest'),
 
     // ===== fromHello (Optional — engagement & growth) =====
     NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
