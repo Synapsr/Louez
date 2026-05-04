@@ -80,8 +80,9 @@ export function OpenReplayProvider({
 
     void getOpenReplayTracker().then((tracker) => {
       window.__louezOpenReplayStartPromise ??= tracker.start({
-        userID: user?.id,
+        userID: user?.email,
         metadata: {
+          ...(user?.id && { userId: user.id }),
           ...(user?.email && { email: user.email }),
           ...(user?.name && { name: user.name }),
           ...(store && {
@@ -99,7 +100,8 @@ export function OpenReplayProvider({
     }
 
     void getOpenReplayTracker().then((tracker) => {
-      tracker.setUserID(user.id);
+      tracker.setUserID(user.email);
+      tracker.setMetadata('userId', user.id);
       tracker.setMetadata('email', user.email);
 
       if (user.name) {
