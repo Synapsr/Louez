@@ -1,11 +1,14 @@
 'use client';
 
-import Tracker from '@openreplay/tracker/cjs';
 import { useEffect } from 'react';
 
 import { env } from '@/env';
 
-let openReplayTracker: Tracker | null = null;
+type OpenReplayTracker = InstanceType<
+  Awaited<typeof import('@openreplay/tracker')>['default']
+>;
+
+let openReplayTracker: OpenReplayTracker | null = null;
 let openReplayStartPromise: Promise<unknown> | null = null;
 
 interface OpenReplayProviderProps {
@@ -21,8 +24,10 @@ interface OpenReplayProviderProps {
   };
 }
 
-function getOpenReplayTracker() {
+async function getOpenReplayTracker() {
   if (!openReplayTracker) {
+    const { default: Tracker } = await import('@openreplay/tracker');
+
     openReplayTracker = new Tracker({
       projectKey: env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
       ingestPoint: env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
@@ -56,43 +61,39 @@ export function OpenReplayProvider({
       return;
     }
 
-    const tracker = getOpenReplayTracker();
-
-    if (!tracker) {
-      return;
-    }
-
-    openReplayStartPromise ??= tracker.start({
-      userID: user?.id,
-      metadata: {
-        ...(user?.email && { email: user.email }),
-        ...(user?.name && { name: user.name }),
-        ...(store && {
-          storeId: store.id,
-          storeName: store.name,
-        }),
-      },
+    void getOpenReplayTracker().then((tracker) => {
+      openReplayStartPromise ??= tracker.start({
+        userID: user?.id,
+        metadata: {
+          ...(user?.email && { email: user.email }),
+          ...(user?.name && { name: user.name }),
+          ...(store && {
+            storeId: store.id,
+            storeName: store.name,
+          }),
+        },
+      });
     });
   }, [store, user]);
 
   useEffect(() => {
-    const tracker = getOpenReplayTracker();
-
-    if (!tracker || !user) {
+    if (!user) {
       return;
     }
 
-    tracker.setUserID(user.id);
-    tracker.setMetadata('email', user.email);
+    void getOpenReplayTracker().then((tracker) => {
+      tracker.setUserID(user.id);
+      tracker.setMetadata('email', user.email);
 
-    if (user.name) {
-      tracker.setMetadata('name', user.name);
-    }
+      if (user.name) {
+        tracker.setMetadata('name', user.name);
+      }
 
-    if (store) {
-      tracker.setMetadata('storeId', store.id);
-      tracker.setMetadata('storeName', store.name);
-    }
+      if (store) {
+        tracker.setMetadata('storeId', store.id);
+        tracker.setMetadata('storeName', store.name);
+      }
+    });
   }, [store, user]);
 
   return <>{children}</>;
