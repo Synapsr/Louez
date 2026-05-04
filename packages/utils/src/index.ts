@@ -23,6 +23,7 @@ export {
 // Pricing utilities
 export * from './pricing'
 export * from './variants'
+export * from './availability'
 
 // Permissions
 export {

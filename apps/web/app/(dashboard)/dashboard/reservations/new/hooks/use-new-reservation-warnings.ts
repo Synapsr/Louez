@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import { useTranslations } from 'next-intl'
+import { calculatePeakReservedQuantities } from '@louez/utils'
 
 import { isWithinBusinessHours, getDaySchedule, formatDaySchedule } from '@/lib/utils/business-hours'
-import { dateRangesOverlap, getMinStartDateTime } from '@/lib/utils/duration'
+import { getMinStartDateTime } from '@/lib/utils/duration'
 import { formatDurationFromMinutes } from '@/lib/utils/rental-duration'
 
 import type {
@@ -12,10 +13,7 @@ import type {
   SelectedProduct,
   NewReservationFormProps,
 } from '../types'
-import {
-  getProductCombinationAvailabilityKey,
-  type ReservedByProductCombination,
-} from '../utils/variant-lines'
+import type { ReservedByProductCombination } from '../utils/variant-lines'
 
 interface UseNewReservationWarningsParams {
   startDate: Date | undefined
@@ -50,29 +48,20 @@ export function getPeriodAvailability(params: {
     return { reservedByProduct, reservedByProductCombination }
   }
 
-  for (const reservation of existingReservations) {
-    if (!blockingStatuses.includes(reservation.status)) {
-      continue
-    }
+  const peakAvailability = calculatePeakReservedQuantities({
+    reservations: existingReservations.filter((reservation) =>
+      blockingStatuses.includes(reservation.status),
+    ),
+    startDate,
+    endDate,
+  })
 
-    if (!dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
-      continue
-    }
-
-    for (const item of reservation.items) {
-      if (!item.productId) continue
-
-      const current = reservedByProduct.get(item.productId) || 0
-      reservedByProduct.set(item.productId, current + item.quantity)
-
-      const combinationMapKey = getProductCombinationAvailabilityKey(
-        item.productId,
-        item.combinationKey,
-      )
-      const currentCombination = reservedByProductCombination.get(combinationMapKey) || 0
-      reservedByProductCombination.set(combinationMapKey, currentCombination + item.quantity)
-    }
-  }
+  peakAvailability.reservedByProduct.forEach((quantity, productId) => {
+    reservedByProduct.set(productId, quantity)
+  })
+  peakAvailability.reservedByProductCombination.forEach((quantity, combinationKey) => {
+    reservedByProductCombination.set(combinationKey, quantity)
+  })
 
   return { reservedByProduct, reservedByProductCombination }
 }

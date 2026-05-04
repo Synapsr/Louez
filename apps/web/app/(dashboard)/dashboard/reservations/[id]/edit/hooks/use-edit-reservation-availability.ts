@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-
-import { dateRangesOverlap } from '@/lib/utils/duration'
+import { calculatePeakReservedQuantities } from '@louez/utils'
 
 import type {
   AvailabilityWarning,
@@ -27,22 +26,13 @@ export function useEditReservationAvailability({
     }
 
     const warnings: AvailabilityWarning[] = []
-    const reservedByProduct = new Map<string, number>()
-
-    for (const reservation of existingReservations) {
-      if (!['pending', 'confirmed', 'ongoing'].includes(reservation.status)) {
-        continue
-      }
-
-      if (dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
-        for (const item of reservation.items) {
-          if (!item.productId) continue
-
-          const currentQuantity = reservedByProduct.get(item.productId) || 0
-          reservedByProduct.set(item.productId, currentQuantity + item.quantity)
-        }
-      }
-    }
+    const { reservedByProduct } = calculatePeakReservedQuantities({
+      reservations: existingReservations.filter((reservation) =>
+        ['pending', 'confirmed', 'ongoing'].includes(reservation.status),
+      ),
+      startDate,
+      endDate,
+    })
 
     for (const item of items) {
       if (!item.productId || !item.product) {

@@ -14,8 +14,10 @@ import type {
   UnitAttributes,
 } from '@louez/types'
 import {
+  calculatePeakReservedQuantities,
   DEFAULT_COMBINATION_KEY,
   getDeterministicCombinationSortValue,
+  getProductCombinationAvailabilityKey,
   normalizeDaySchedule,
 } from '@louez/utils'
 import { and, eq, gt, inArray, lt } from 'drizzle-orm'
@@ -51,15 +53,6 @@ function normalizeTimezone(timezone: unknown): string | undefined {
 
 function getMinStartDateTime(advanceNoticeMinutes: number = 0): Date {
   return new Date(Date.now() + advanceNoticeMinutes * 60 * 1000)
-}
-
-function dateRangesOverlap(
-  range1Start: Date,
-  range1End: Date,
-  range2Start: Date,
-  range2End: Date,
-): boolean {
-  return range1Start < range2End && range2Start < range1End
 }
 
 function getDateKeyInTimezone(date: Date, timezone?: string): string {
@@ -183,10 +176,6 @@ interface GetStorefrontAvailabilityParams {
   productIds?: string[]
 }
 
-function getCombinationMapKey(productId: string, combinationKey: string): string {
-  return `${productId}:${combinationKey}`
-}
-
 export async function getStorefrontAvailability(
   params: GetStorefrontAvailabilityParams,
 ): Promise<AvailabilityResponse> {
@@ -267,28 +256,12 @@ export async function getStorefrontAvailability(
     },
   })
 
-  const reservedByProduct = new Map<string, number>()
-  const reservedByProductCombination = new Map<string, number>()
-
-  for (const reservation of overlappingReservations) {
-    if (!dateRangesOverlap(reservation.startDate, reservation.endDate, startDate, endDate)) {
-      continue
-    }
-
-    for (const item of reservation.items) {
-      if (!item.productId) {
-        continue
-      }
-
-      const current = reservedByProduct.get(item.productId) || 0
-      reservedByProduct.set(item.productId, current + item.quantity)
-
-      const combinationKey = item.combinationKey || DEFAULT_COMBINATION_KEY
-      const combinationMapKey = getCombinationMapKey(item.productId, combinationKey)
-      const currentCombinationQty = reservedByProductCombination.get(combinationMapKey) || 0
-      reservedByProductCombination.set(combinationMapKey, currentCombinationQty + item.quantity)
-    }
-  }
+  const { reservedByProduct, reservedByProductCombination } =
+    calculatePeakReservedQuantities({
+      reservations: overlappingReservations,
+      startDate,
+      endDate,
+    })
 
   const trackedProductIds = storeProducts.filter((product) => product.trackUnits).map((product) => product.id)
   const availableUnits = trackedProductIds.length > 0
@@ -360,7 +333,7 @@ export async function getStorefrontAvailability(
     let totalQuantity = 0
     for (const [combinationKey, combinationData] of productCombinations.entries()) {
       const reservedQuantity = reservedByProductCombination.get(
-        getCombinationMapKey(product.id, combinationKey),
+        getProductCombinationAvailabilityKey(product.id, combinationKey),
       ) || 0
       const availableQuantity = Math.max(0, combinationData.totalQuantity - reservedQuantity)
 
