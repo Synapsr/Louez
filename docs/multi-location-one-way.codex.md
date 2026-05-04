@@ -1,285 +1,393 @@
-# Optional Multi-Location One-Way Routing (Codex Plan)
+# Multi-Location Pickup And Return Plan
 
 ## Summary
-Implement an **opt-in multi-location routing mode** for stores that need one-way rentals, while keeping today's default flow unchanged for everyone else.
 
-Chosen direction:
-1. End-to-end scope across dashboard + storefront + artifacts.
-2. Store-managed locations.
-3. Pricing formula: two legs from boutique.
-4. Multi-location checkout uses location selectors only.
-5. Primary location label displayed as `Boutique`.
+Implement configurable pickup/return locations for stores that operate from several places while keeping stock, pricing, and opening hours global to the store.
 
-This extends the current delivery system and avoids breaking existing stores.
+This is not multi-site inventory. Locations are operational information for the reservation flow:
 
-## Approaches Considered
-1. Keep free-form addresses only and add dropoff address.
-- Rejected: weaker data quality and harder consistent city labeling.
-2. Store-managed locations with free-form override.
-- Rejected for v1: adds UX and validation complexity.
-3. Store-managed locations only when enabled (selected).
-- Best fit for one-way operations, controlled choices, cleaner pricing, stable labels.
+- customers can choose where they pick up equipment;
+- customers can choose where they return equipment;
+- pickup and return locations can be different;
+- delivery to/from a customer address remains available when delivery is enabled;
+- no per-location stock, fees, or opening hours are introduced.
 
-## Data Model And Persistence Changes
+## Locked Decisions
 
-### 1) New table: `store_locations`
+1. The primary location is virtual and comes from the store's existing address fields.
+2. Additional locations are persisted in a new `store_locations` table.
+3. The primary location is always listed first and is not edited from the locations UI.
+4. `locationId = null` or an omitted location id means the primary virtual location.
+5. Location selection is enabled by an explicit toggle in delivery settings.
+6. Locations do not replace delivery. They coexist with the existing address delivery flow.
+7. Location choices never affect stock availability or reservation pricing.
+8. Only address delivery legs use existing delivery fee logic.
+9. Reservation location data is snapshotted server-side.
+10. Prefer deduction over mode flags: no `deliveryFlowType`, no `isOneWay`.
+11. No migration backfill for old reservations; display code falls back when snapshots are missing.
+
+## Current Checkout Model
+
+The checkout already has two independent legs:
+
+- outbound/reception: `store` or `address`;
+- return: `store` or `address`.
+
+The feature extends `store` from "the store's single address" to "a selected store location".
+
+When multi-location is enabled:
+
+- `method = "store"` means a configured location selection;
+- `method = "address"` keeps the existing delivery/address behavior;
+- if `method = "store"` and no location id is provided, the primary virtual location is used.
+
+This keeps the current payload shape largely intact and avoids a deep rename from `store` to `location`.
+
+## Data Model
+
+### New Table: `store_locations`
+
 File: `packages/db/src/schema.ts`
 
-Add `storeLocations`:
-- `id` (nanoid PK)
-- `storeId` (FK to `stores`, indexed)
-- `label` (varchar)
-- `city` (varchar, required)
-- `address` (text, optional)
-- `latitude` / `longitude` (decimal, required)
-- `isPrimary` (boolean, default false)
-- `isActive` (boolean, default true)
-- `displayOrder` (int, default 0)
-- `createdAt` / `updatedAt`
+Stores only additional locations. The primary location remains on `stores`.
+
+Fields:
+
+- `id` varchar(21), nanoid primary key
+- `storeId` varchar(21), required, indexed, FK to `stores`
+- `name` varchar(255), required
+- `address` text, required
+- `city` varchar(255), nullable
+- `postalCode` varchar(20), nullable
+- `country` varchar(2), default `FR`
+- `latitude` decimal(10,7), nullable
+- `longitude` decimal(10,7), nullable
+- `isActive` boolean, default true
+- `createdAt` timestamp
+- `updatedAt` timestamp
+
+No unique constraint on `(storeId, name)`. The address disambiguates similar names, and a uniqueness constraint would block legitimate cases.
 
 Relations:
+
 - `storesRelations.locations = many(storeLocations)`
 - `storeLocationsRelations.store = one(stores)`
 
-### 2) Extend `reservations` for route snapshots
-File: `packages/db/src/schema.ts`
+### Store Settings
 
-Add columns:
-- `deliveryFlowType` (`'address' | 'locations'`, default `'address'`)
-- `pickupLocationId` (nullable FK to `store_locations`)
-- `dropoffLocationId` (nullable FK to `store_locations`)
-- `pickupLabel` (varchar, nullable)
-- `pickupCity` (varchar, nullable)
-- `dropoffLabel` (varchar, nullable)
-- `dropoffCity` (varchar, nullable)
-- `pickupDistanceKm` (decimal, nullable)
-- `dropoffDistanceKm` (decimal, nullable)
-- `pickupFee` (decimal, default 0)
-- `dropoffFee` (decimal, default 0)
-
-Keep existing delivery fields (`deliveryOption`, `deliveryAddress`, `deliveryCity`, `deliveryDistanceKm`, `deliveryFee`, etc.) for backward compatibility.
-
-### 3) Migration strategy
-Directory: `packages/db/src/migrations`
-
-Create migration to add table + columns.
-
-Backfill behavior:
-- Existing reservations default to `deliveryFlowType = 'address'`.
-- If route snapshot fields are empty, fallback display should behave as `Boutique -> Boutique`.
-- If legacy delivery city exists, use it for dropoff display fallback when possible.
-
-No destructive rewrite of legacy delivery fields.
-
-## Shared Types And Settings Changes
-
-### 4) Extend delivery settings type
 File: `packages/types/src/store.ts`
 
-Add in `DeliverySettings`:
-- `routingMode?: 'address' | 'locations'` (default `'address'`)
+Extend `DeliverySettings` with:
 
-Behavior:
-- Existing stores without this key keep current behavior.
-- Location mode applies only when `delivery.enabled` is true and `routingMode === 'locations'`.
+```ts
+multiLocationEnabled?: boolean
+```
 
-## Dashboard: Delivery Settings + Location Management
+Dashboard wording:
 
-### 5) Extend delivery settings UI/actions
-Files:
-- `apps/web/app/(dashboard)/dashboard/settings/delivery/actions.ts`
-- `apps/web/app/(dashboard)/dashboard/settings/delivery/delivery-settings-form.tsx`
+- toggle: `Activer les lieux de retrait et de retour`
+- description: `Permettre aux clients de choisir un lieu configure pour le retrait et le retour du materiel. Le stock reste commun a la boutique.`
+
+### Reservation Snapshots
+
+Add lightweight IDs plus JSON snapshots to `reservations`.
+
+Recommended columns:
+
+- `pickupLocationId` varchar(21), nullable
+- `returnLocationId` varchar(21), nullable
+- `pickupLocationSnapshot` json, nullable
+- `returnLocationSnapshot` json, nullable
+
+Snapshot type:
+
+```ts
+export interface ReservationLocationSnapshot {
+  type: 'primary' | 'additional'
+  name: string
+  address: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
+  latitude?: number | null
+  longitude?: number | null
+}
+```
+
+Rules:
+
+- snapshot is always written for new `store` legs, including the primary virtual location;
+- `locationId = null` means the primary virtual location;
+- `locationId != null` must belong to the store and be active when creating/updating to a new choice;
+- old reservations without snapshots use display fallbacks.
+
+## Dashboard Settings
+
+Location management lives in `Parametres > Livraison` to stay near the existing pickup/delivery configuration.
+
+Files likely touched:
+
 - `apps/web/app/(dashboard)/dashboard/settings/delivery/page.tsx`
+- `apps/web/app/(dashboard)/dashboard/settings/delivery/delivery-settings-form.tsx`
+- `apps/web/app/(dashboard)/dashboard/settings/delivery/actions.ts`
+- `packages/api` or app server helpers if delivery settings are moved through oRPC later
 
-Add:
-- Routing mode selector (`address` vs `locations`).
-- Location CRUD (add/edit/reorder/archive).
-- Automatic bootstrap of primary location from store coordinates with label `Boutique`.
+UI requirements:
+
+- show the multi-location toggle;
+- show the primary virtual location first, read-only, derived from the store address;
+- list additional locations;
+- add an additional location;
+- edit an additional location;
+- deactivate/reactivate an additional location;
+- no reordering in v1;
+- no editable primary marker in v1.
 
 Validation:
-- Cannot enable locations mode without valid store coordinates.
-- Must keep at least one active location.
-- Exactly one active primary location per store.
 
-### 6) Preserve settings on store settings update
-File: `apps/web/app/(dashboard)/dashboard/settings/actions.ts`
+- additional location `name` is required;
+- additional location `address` is required;
+- coordinates are stored when available but should not block reservation if missing;
+- zero active additional locations is allowed because the primary virtual location always exists.
 
-Ensure `updateStoreSettings` preserves nested settings currently at risk of being overwritten:
-- `settings.delivery`
-- `settings.inspection`
-- other existing nested config sections
+Disabling a location:
 
-This prevents delivery/location config loss when editing general store settings.
+- never changes existing reservations, including future reservations;
+- only hides that location from future checkout/manual reservation selections;
+- existing reservations keep their snapshot.
 
-## Storefront Checkout Changes
+## Storefront Checkout
 
-### 7) Checkout UI in locations mode
-Files:
+Files likely touched:
+
 - `apps/web/app/(storefront)/[slug]/checkout/page.tsx`
 - `apps/web/app/(storefront)/[slug]/checkout/checkout-form.tsx`
 - `apps/web/app/(storefront)/[slug]/checkout/components/checkout-delivery-step.tsx`
+- `apps/web/app/(storefront)/[slug]/checkout/components/delivery-leg-card.tsx`
 - `apps/web/app/(storefront)/[slug]/checkout/hooks/use-checkout-delivery.ts`
-- `apps/web/app/(storefront)/[slug]/checkout/types.ts`
 - `apps/web/app/(storefront)/[slug]/checkout/reservation-payload.ts`
+- `apps/web/app/(storefront)/[slug]/checkout/actions.ts`
 
-In locations mode:
-- Replace free-form delivery address input with pickup and dropoff location selectors.
-- Keep boutique selectable as a location.
-- Default both selectors to boutique.
+When delivery and multi-location are both enabled, each leg keeps two choices:
 
-### 8) Pricing formula for locations mode
-Use selected rule:
-- `totalDistance = distance(store -> pickup) + distance(store -> dropoff)`
-- Apply fee config once to total:
-- free-threshold check once
-- minimum fee once
-- if `mode === 'included'`, force fee `0`
+Reception:
 
-Distance limits:
-- Validate per leg (`store -> pickup`, `store -> dropoff`) using configured `maximumDistance`.
+- `Retrait dans un lieu`
+- `Livraison a mon adresse`
 
-### 9) Server-side reservation creation validation and write
-File: `apps/web/app/(storefront)/[slug]/checkout/actions.ts`
+Return:
 
-Add server checks:
-- location IDs belong to store
-- locations are active
-- distances recomputed server-side
+- `Retour dans un lieu`
+- `Recuperation a mon adresse`
 
-Persist:
-- `deliveryFlowType = 'locations'`
-- selected location IDs
-- route snapshot labels/cities
-- leg distances + leg fees
-- keep `deliveryFee = pickupFee + dropoffFee` for compatibility
+When delivery is disabled but multi-location is enabled:
 
-Legacy address flow remains unchanged.
+- only location selection is shown for `store` legs;
+- no address delivery choice appears.
 
-## Dashboard Reservation Create/Edit Support
+Location UI:
 
-### 10) Manual reservation and edit flows
-Files:
+- keep the current radio-card layout;
+- the `store` card displays the selected location;
+- the selected card contains a select/popover trigger;
+- clicking opens all available locations;
+- primary virtual location appears first;
+- each option shows name plus full address or `address, postalCode city`;
+- return location defaults to the selected pickup location but remains editable.
+
+Pricing:
+
+- selected locations add no fees;
+- existing delivery fees apply only to `address` legs;
+- examples:
+  - delivery to customer + return to Portsall => address delivery fee only;
+  - pickup at Porspoder + customer address collection => return address fee only;
+  - Porspoder -> Portsall => no location fee.
+
+Client payload:
+
+- send only location IDs for `store` legs;
+- do not send client-computed snapshots;
+- `null`/omitted location ID means primary virtual location.
+
+Server action:
+
+- reconstruct snapshots from DB/store on the server;
+- validate additional location IDs belong to the store;
+- validate additional locations are active for new choices;
+- keep existing address delivery validation unchanged.
+
+## Shared Server Helper
+
+Create a small server-only helper to resolve location IDs into snapshots.
+
+Responsibilities:
+
+- `locationId == null` => build primary snapshot from the store address;
+- `locationId != null` => load additional location for the same store;
+- creation/update validates active locations;
+- display code reads reservation snapshots first and falls back only when missing.
+
+Possible home:
+
+- app server utility near reservation actions if the flow stays action-based;
+- or `packages/api/src/services/*` if dashboard/manual reservation logic is moved through oRPC services.
+
+Keep it small and framework-aligned; do not add a broad abstraction layer.
+
+## Dashboard Manual Reservation Create/Edit
+
+Manual creation and editing must match the checkout model.
+
+Required behavior:
+
+- same per-leg model: `store` or `address`;
+- when `store`, choose a pickup/return location;
+- return defaults to pickup but can differ;
+- client sends IDs only;
+- server reconstructs snapshots.
+
+Editing an existing reservation with a now-inactive location:
+
+- show the current value from the snapshot;
+- if the staff changes the field, only active locations are selectable;
+- do not force existing inactive snapshot values to be replaced.
+
+Files likely touched:
+
 - `apps/web/app/(dashboard)/dashboard/reservations/new/new-reservation-form.tsx`
+- `apps/web/app/(dashboard)/dashboard/reservations/new/hooks/use-new-reservation-delivery.ts`
+- `apps/web/app/(dashboard)/dashboard/reservations/new/components/new-reservation-step-delivery.tsx`
 - `apps/web/app/(dashboard)/dashboard/reservations/new/types.ts`
+- dashboard reservation edit form files
 - `apps/web/app/(dashboard)/dashboard/reservations/actions.ts`
 - `packages/validations/src/api.ts`
-- `packages/api/src/context.ts`
+- relevant oRPC/dashboard reservation router files if used by the current form
 
-Add route fields for manual create/edit in location mode:
-- pickup location
-- dropoff location
-- server-side recalculation and validation with same rules as storefront
+## Display Rules
 
-## Reservation Labels In List And Calendar
+Compact display uses location names, not city names.
 
-### 11) Reservations list (table/cards)
-Files:
-- `apps/web/app/(dashboard)/dashboard/reservations/reservations-types.ts`
-- `apps/web/app/(dashboard)/dashboard/reservations/reservations-table-view.tsx`
-- `apps/web/app/(dashboard)/dashboard/reservations/reservations-card-view.tsx`
+Rules:
 
-Under dates, show:
-- `Boutique -> Boutique` (default)
-- `Boutique -> City`
-- `City A -> City B`
+- same pickup and return location: `Porspoder`
+- different locations: `Porspoder -> Portsall`
+- address delivery to location return: `Livraison -> Portsall`
+- location pickup to address collection: `Porspoder -> Recuperation`
+- address both ways: keep existing delivery display conventions
 
-### 12) Calendar bars and tooltips
-Files:
-- `apps/web/app/(dashboard)/dashboard/calendar/types.ts`
-- `apps/web/app/(dashboard)/dashboard/calendar/reservation-bar.tsx`
-- `apps/web/app/(dashboard)/dashboard/calendar/month-view.tsx`
-- other calendar views as needed for consistent rendering
+Detailed display:
 
-Show compact route suffix where space allows and full route in tooltip.
+- `Lieu de retrait: Porspoder`
+- address below
+- `Lieu de retour: Portsall`
+- address below
 
-## End-To-End Read Surfaces
+For address legs, use existing delivery/return address display.
 
-### 13) Reservation details and customer-facing pages
-Files:
-- `apps/web/app/(dashboard)/dashboard/reservations/[id]/reservation-header.tsx`
-- `apps/web/app/(dashboard)/dashboard/reservations/[id]/reservation-detail-client.tsx`
-- `apps/web/app/(storefront)/[slug]/confirmation/[reservationId]/page.tsx`
-- `apps/web/app/(storefront)/[slug]/account/reservations/[reservationId]/page.tsx`
+## Surfaces To Update In V1
 
-Expose route info consistently with snapshot-first rendering.
+Because this is operational reservation information, it must appear everywhere staff or customers need logistics context.
 
-### 14) Emails, contract, and ICS export
-Files:
-- `apps/web/lib/email/send.ts`
-- `apps/web/lib/email/templates/reservation-confirmation.tsx`
-- `apps/web/lib/email/templates/request-accepted.tsx`
-- `apps/web/lib/pdf/contract.tsx`
-- `apps/web/lib/pdf/generate.ts`
-- `apps/web/app/api/calendar/ics/route.ts`
+Storefront:
 
-Add departure/arrival location info in generated artifacts.
+- checkout
+- checkout confirmation/success
+- customer account reservation detail
 
-## i18n Updates
-Files:
-- `apps/web/messages/en.json`
-- `apps/web/messages/fr.json`
-- other locales aligned later or with fallback behavior
+Dashboard:
 
-Add keys for:
-- pickup/dropoff labels
-- route string formatting
-- location management UI
-- validation and error messages
+- reservation detail
+- reservation table/list view
+- reservation card view
+- calendar bars where space allows
+- calendar tooltip
+- manual reservation creation
+- reservation editing
 
-## API And Interface Changes
+Artifacts and integrations:
 
-### Store settings/public shape
-- `DeliverySettings.routingMode?: 'address' | 'locations'`
+- customer confirmation email
+- other reservation lifecycle emails where pickup/return information is shown
+- contract/PDF
+- ICS calendar feed
 
-### New entities
-- `store_locations` table and relation exposure in relevant queries.
+ICS rule:
 
-### Reservation payloads (storefront and dashboard)
-Add location-mode route payload:
-- `pickupLocationId`
-- `dropoffLocationId`
-- flow discriminator (`deliveryFlowType`/equivalent input field)
+- `LOCATION` should be the pickup location address when reception is in a location;
+- if reception is address delivery, use the customer delivery address;
+- add full pickup/return logistics to `DESCRIPTION`.
 
-Keep legacy delivery payload path valid.
+## i18n
 
-## Edge Cases And Failure Modes
-1. Store has no coordinates: locations mode cannot be enabled.
-2. Location archived after booking: reservation keeps snapshot labels/cities.
-3. One leg exceeds max distance: block with explicit error.
-4. Only one active location: default to `Boutique -> Boutique`.
-5. Free threshold with two-leg routing applies once on total transport fee.
-6. Included mode always yields `deliveryFee = 0`.
-7. Legacy reservations missing route fields render fallback labels.
-8. Race condition on location updates during checkout handled by submit-time server validation.
-9. Existing stores not in location mode keep current address flow unchanged.
+Add French and English keys for:
 
-## Test Cases
+- multi-location toggle and description;
+- location list management in delivery settings;
+- checkout labels:
+  - `Retrait dans un lieu`
+  - `Lieu de retrait`
+  - `Retour dans un lieu`
+  - `Lieu de retour`
+- compact route labels:
+  - `Livraison`
+  - `Recuperation`
+- validation errors:
+  - location not found;
+  - inactive location;
+  - missing additional location address/name.
 
-### Unit tests
-1. Two-leg distance pricing (normal, free-threshold, included, minimum fee).
-2. Per-leg max-distance validation.
-3. Route label formatter (`Boutique` fallback, city-to-city variants).
+Keep terminology:
 
-### Integration tests
-1. Delivery settings: enable locations mode + location CRUD.
-2. Checkout in locations mode:
-- boutique to boutique
-- boutique to city
-- city to city
-- invalid/deactivated location
-3. Reservation writes persist snapshots and fee breakdown.
-4. Dashboard list + calendar show route labels.
-5. Confirmation, account, email, contract, ICS include route data.
+- FR UI: `lieu`, `lieu de retrait`, `lieu de retour`;
+- EN UI: `location`, `pickup location`, `return location`;
+- code: `pickupLocation`, `returnLocation`.
 
-### Regression tests
-1. Legacy address delivery checkout unchanged.
-2. Non-delivery stores unchanged.
-3. General settings update does not wipe delivery/location config.
+## Migration Strategy
 
-## Assumptions And Locked Defaults
-1. Feature is opt-in via `delivery.routingMode = 'locations'`.
-2. Primary location label is fixed to `Boutique`.
-3. In location mode, checkout uses location selectors only.
-4. Pricing formula is two legs from boutique.
-5. Max-distance validation is per leg.
-6. Legacy mode remains available and unchanged for all non-opted stores.
+Create a migration that:
+
+- creates `store_locations`;
+- adds nullable location ID and snapshot columns to `reservations`.
+
+Do not backfill existing reservations.
+
+Fallback behavior:
+
+- if snapshots are missing and method is `store`, display the current primary virtual location from the store;
+- if method is `address`, keep current delivery/return address display.
+
+## Tests And Verification
+
+Unit/service tests:
+
+- resolving primary virtual location snapshot;
+- resolving additional active location snapshot;
+- rejecting additional location from another store;
+- rejecting inactive location for new choices;
+- compact route formatter.
+
+Integration/manual verification:
+
+1. Enable multi-location in delivery settings.
+2. Add `Portsall` as an additional location.
+3. Checkout with `Porspoder -> Porspoder`.
+4. Checkout with `Porspoder -> Portsall`.
+5. Checkout with delivery address outbound and `Portsall` return.
+6. Verify delivery fees apply only to address legs.
+7. Verify reservation snapshots are written server-side.
+8. Disable `Portsall`; verify old reservation still displays `Portsall`.
+9. Verify new checkout no longer offers disabled `Portsall`.
+10. Verify dashboard list, detail, calendar, email, PDF, and ICS display the route.
+11. Verify stores without multi-location enabled keep current checkout behavior.
+
+## Non-Goals For V1
+
+- stock per location;
+- per-location opening hours;
+- per-location delivery fees;
+- public marketing display on home/catalog pages;
+- drag-and-drop location ordering;
+- hard deletion of locations;
+- backfilling old reservations;
+- deep rename of existing `store | address` leg methods.

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { getTranslations } from 'next-intl/server'
 import { db } from '@louez/db'
-import { stores, promoCodes } from '@louez/db'
+import { stores, promoCodes, storeLocations } from '@louez/db'
 import { eq, and, or, gt, lt, isNull, sql } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 
@@ -71,6 +71,40 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
   // LMD/LLD customer identity fields are mandatory on Tulip; keeping address
   // fields required avoids checkout flows that later fail contract creation.
   const effectiveRequireCustomerAddress = true
+  const multiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled)
+  const additionalLocations = multiLocationEnabled
+    ? await db.query.storeLocations.findMany({
+        where: and(
+          eq(storeLocations.storeId, store.id),
+          eq(storeLocations.isActive, true),
+        ),
+        orderBy: (locations, { asc }) => [asc(locations.createdAt)],
+      })
+    : []
+  const locations = multiLocationEnabled
+    ? [
+        {
+          id: null,
+          name: store.name,
+          address: store.address,
+          city: null,
+          postalCode: null,
+          country: store.settings?.country ?? 'FR',
+          latitude: storeLatitude,
+          longitude: storeLongitude,
+        },
+        ...additionalLocations.map((location) => ({
+          id: location.id,
+          name: location.name,
+          address: location.address,
+          city: location.city,
+          postalCode: location.postalCode,
+          country: location.country,
+          latitude: location.latitude ? parseFloat(location.latitude) : null,
+          longitude: location.longitude ? parseFloat(location.longitude) : null,
+        })),
+      ]
+    : []
 
   // Check if store has at least one active promo code
   const now = new Date()
@@ -121,6 +155,8 @@ export default async function CheckoutPage({ params }: CheckoutPageProps) {
           storeAddress={storeAddress}
           storeLatitude={storeLatitude}
           storeLongitude={storeLongitude}
+          storeName={store.name}
+          locations={locations}
           tulipInsurance={{
             enabled: tulipConnected && tulipMode !== 'no_public',
             mode: tulipMode,

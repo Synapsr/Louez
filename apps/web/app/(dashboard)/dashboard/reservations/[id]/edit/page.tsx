@@ -1,6 +1,6 @@
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { reservations, products } from '@louez/db'
+import { reservations, products, storeLocations } from '@louez/db'
 import { eq, and, inArray, gte, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import { subDays } from 'date-fns'
@@ -8,7 +8,7 @@ import type { DeliverySettings, LegMethod } from '@louez/types'
 import type { SeasonalPricingConfig } from '@louez/utils'
 import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import { EditReservationForm } from './edit-reservation-form'
-import type { PricingTier, Product, StoreDeliveryInfo } from './types'
+import type { PricingTier, Product, ReservationLocationOption, StoreDeliveryInfo } from './types'
 
 interface EditReservationPageProps {
   params: Promise<{ id: string }>
@@ -217,7 +217,9 @@ export default async function EditReservationPage({
   }
 
   // Fetch products and existing reservations in parallel
-  const [availableProducts, existingReservations] = await Promise.all([
+  const deliverySettings = (store.settings as Record<string, unknown> | null)
+    ?.delivery as DeliverySettings | undefined
+  const [availableProducts, existingReservations, activeStoreLocations] = await Promise.all([
     db.query.products.findMany({
       where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
       with: {
@@ -234,6 +236,12 @@ export default async function EditReservationPage({
       orderBy: (products, { asc }) => [asc(products.name)],
     }),
     getActiveReservations(store.id, id),
+    deliverySettings?.multiLocationEnabled
+      ? db.query.storeLocations.findMany({
+          where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
+          orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
+        })
+      : Promise.resolve([]),
   ])
 
   const currency = store.settings?.currency || 'EUR'
@@ -245,15 +253,34 @@ export default async function EditReservationPage({
         ? 'required'
         : 'optional'
 
+  const locationOptions: ReservationLocationOption[] = [
+    {
+      id: null,
+      name: store.name,
+      address: store.address ?? null,
+      city: null,
+      postalCode: null,
+      country: store.settings?.country ?? 'FR',
+    },
+    ...activeStoreLocations.map((location) => ({
+      id: location.id,
+      name: location.name,
+      address: location.address,
+      city: location.city,
+      postalCode: location.postalCode,
+      country: location.country,
+    })),
+  ]
+
   // Build delivery info from store settings
-  const deliverySettings = (store.settings as Record<string, unknown> | null)
-    ?.delivery as DeliverySettings | undefined
-  const storeDelivery: StoreDeliveryInfo | null = deliverySettings?.enabled
+  const storeDelivery: StoreDeliveryInfo | null =
+    deliverySettings?.enabled || deliverySettings?.multiLocationEnabled
     ? {
         settings: deliverySettings,
         latitude: store.latitude ? parseFloat(store.latitude) : null,
         longitude: store.longitude ? parseFloat(store.longitude) : null,
         address: store.address ?? null,
+        locations: locationOptions,
       }
     : null
 
@@ -275,6 +302,10 @@ export default async function EditReservationPage({
         delivery: {
           outboundMethod: (reservation.outboundMethod as LegMethod) ?? 'store',
           returnMethod: (reservation.returnMethod as LegMethod) ?? 'store',
+          pickupLocationId: reservation.pickupLocationId,
+          returnLocationId: reservation.returnLocationId,
+          pickupLocationSnapshot: reservation.pickupLocationSnapshot,
+          returnLocationSnapshot: reservation.returnLocationSnapshot,
           deliveryAddress: reservation.deliveryAddress,
           deliveryCity: reservation.deliveryCity,
           deliveryPostalCode: reservation.deliveryPostalCode,

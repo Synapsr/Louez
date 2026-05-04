@@ -10,6 +10,7 @@ import { createContractStyles } from './styles'
 import { parseCgvHtml } from './cgv-parser'
 import { formatStoreDate } from '@/lib/utils/store-date'
 import { env } from '@/env'
+import type { ReservationLocationSnapshot } from '@louez/types'
 
 // Cast react-pdf components to React types for TS/React 19 compatibility.
 type PdfComponent = ComponentType<PropsWithChildren<Record<string, unknown>>>
@@ -187,6 +188,8 @@ interface Reservation {
   returnAddress?: string | null
   returnCity?: string | null
   returnPostalCode?: string | null
+  pickupLocationSnapshot?: ReservationLocationSnapshot | null
+  returnLocationSnapshot?: ReservationLocationSnapshot | null
 }
 
 interface ContractDocumentProps {
@@ -372,7 +375,11 @@ export function ContractDocument({
                     {reservation.deliveryPostalCode && ` ${reservation.deliveryPostalCode}`}
                   </Text>
                 ) : (
-                  <Text style={styles.periodDeliveryInfo}>{t.period.pickup}</Text>
+                  <Text style={styles.periodDeliveryInfo}>
+                    {reservation.pickupLocationSnapshot
+                      ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ''}`
+                      : t.period.pickup}
+                  </Text>
                 )}
               </View>
             </View>
@@ -392,7 +399,13 @@ export function ContractDocument({
                     {reservation.returnPostalCode && ` ${reservation.returnPostalCode}`}
                   </Text>
                 ) : (
-                  <Text style={styles.periodDeliveryInfo}>{t.period.pickup}</Text>
+                  <Text style={styles.periodDeliveryInfo}>
+                    {reservation.returnLocationSnapshot
+                      ? `${reservation.returnLocationSnapshot.name} : ${reservation.returnLocationSnapshot.address ?? ''}`
+                      : reservation.pickupLocationSnapshot
+                        ? `${reservation.pickupLocationSnapshot.name} : ${reservation.pickupLocationSnapshot.address ?? ''}`
+                        : t.period.pickup}
+                  </Text>
                 )}
               </View>
             </View>

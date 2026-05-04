@@ -4,13 +4,22 @@ import { MapPin, Store, Truck } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import type { DeliverySettings, LegMethod } from '@louez/types';
-import { Badge, RadioGroup, RadioGroupItem } from '@louez/ui';
+import {
+  Badge,
+  RadioGroup,
+  RadioGroupItem,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
 
 import { AddressInput } from '@/components/ui/address-input';
 import { isFreeDelivery } from '@/lib/utils/geo';
 
-import type { DeliveryAddress } from '../types';
+import type { CheckoutLocationOption, DeliveryAddress } from '../types';
 
 interface DeliveryLegCardProps {
   /** Which leg this card represents */
@@ -35,6 +44,12 @@ interface DeliveryLegCardProps {
   error: string | null;
   /** Store's physical address (shown under "store" option) */
   storeAddress?: string | null;
+  storeName?: string;
+  isMultiLocationEnabled: boolean;
+  isAddressDeliveryEnabled: boolean;
+  locations: CheckoutLocationOption[];
+  selectedLocationId: string | null;
+  onLocationChange: (locationId: string | null) => void;
   /** Delivery settings */
   deliverySettings: DeliverySettings;
   /** Order subtotal (for free delivery check) */
@@ -45,6 +60,7 @@ interface DeliveryLegCardProps {
   isOutboundForced: boolean;
   /** Whether delivery is included (free) */
   isDeliveryIncluded: boolean;
+  isDeliveryAmountEligible: boolean;
 }
 
 export function DeliveryLegCard({
@@ -57,11 +73,18 @@ export function DeliveryLegCard({
   fee,
   error,
   storeAddress,
+  storeName,
+  isMultiLocationEnabled,
+  isAddressDeliveryEnabled,
+  locations,
+  selectedLocationId,
+  onLocationChange,
   deliverySettings,
   subtotal,
   currency,
   isOutboundForced,
   isDeliveryIncluded,
+  isDeliveryAmountEligible,
 }: DeliveryLegCardProps) {
   const t = useTranslations('storefront.checkout');
 
@@ -73,6 +96,19 @@ export function DeliveryLegCard({
     ? t('outboundAddressPlaceholder')
     : t('returnAddressPlaceholder');
   const LegIcon = isOutbound ? Truck : MapPin;
+  const locationLabel = isOutbound ? t('pickupAtLocation') : t('returnAtLocation');
+  const selectedLocation = locations.find((location) => location.id === selectedLocationId)
+    ?? locations[0]
+    ?? {
+      id: null,
+      name: storeName || t('storeLocationFallback'),
+      address: storeAddress ?? null,
+      city: null,
+      postalCode: null,
+      country: null,
+    };
+  const locationValue = selectedLocationId ?? 'primary';
+  const minimumOrderAmount = deliverySettings.minimumOrderAmountForDelivery ?? null;
 
   // Outbound is forced when mode is 'required' or 'included'
   const isForced = isOutbound && isOutboundForced;
@@ -94,22 +130,73 @@ export function DeliveryLegCard({
           {/* Store option */}
           <label
             className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
+              'flex min-w-0 cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
               method === 'store'
                 ? 'border-primary bg-primary/5'
                 : 'hover:bg-muted/50',
             )}
           >
             <RadioGroupItem value="store" className="mt-0.5" />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <Store className="h-4 w-4 shrink-0" />
-                <span className="font-medium text-sm">{storeLabel}</span>
-                <Badge variant="secondary" className="text-xs">
+                <span className="min-w-0 font-medium text-sm">
+                  {isMultiLocationEnabled ? locationLabel : storeLabel}
+                </span>
+                <Badge variant="secondary" className="shrink-0 text-xs">
                   {t('free')}
                 </Badge>
               </div>
-              {storeAddress && (
+              {isMultiLocationEnabled ? (
+                <div className="mt-2 w-full min-w-0 max-w-full space-y-2">
+                  <Select
+                    value={locationValue}
+                    onValueChange={(value) => onLocationChange(value === 'primary' ? null : value)}
+                  >
+                    <SelectTrigger className="h-auto min-h-10 w-full min-w-0 max-w-full items-start overflow-hidden py-2 text-left">
+                      <SelectValue className="min-w-0">
+                        <span className="block max-w-full truncate text-sm font-medium">
+                          {selectedLocation.name}
+                        </span>
+                        {selectedLocation.address && (
+                          <span className="text-muted-foreground block max-w-full truncate text-xs">
+                            {selectedLocation.address}
+                          </span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((location) => {
+                        const value = location.id ?? 'primary';
+                        const locationAddress = [
+                          location.address,
+                          [location.postalCode, location.city].filter(Boolean).join(' '),
+                        ]
+                          .filter(Boolean)
+                          .join(', ');
+
+                        return (
+                          <SelectItem
+                            key={value}
+                            value={value}
+                            label={location.name}
+                            className="min-w-0"
+                          >
+                            <span className="block max-w-full truncate text-sm font-medium">
+                              {location.name}
+                            </span>
+                            {locationAddress && (
+                              <span className="text-muted-foreground block max-w-full truncate text-xs">
+                                {locationAddress}
+                              </span>
+                            )}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : storeAddress && (
                 <p className="text-muted-foreground mt-1 text-xs">
                   {storeAddress}
                 </p>
@@ -118,30 +205,45 @@ export function DeliveryLegCard({
           </label>
 
           {/* Address option */}
-          <label
-            className={cn(
-              'flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
-              method === 'address'
-                ? 'border-primary bg-primary/5'
-                : 'hover:bg-muted/50',
-            )}
-          >
-            <RadioGroupItem value="address" className="mt-0.5" />
-            <div className="flex-1">
-              <span className="font-medium text-sm">{addressLabel}</span>
-              <p className="text-muted-foreground mt-0.5 text-xs">
-                {t('deliveryOptionDescription', {
-                  pricePerKm: formatCurrency(deliverySettings.pricePerKm, currency),
-                })}
-              </p>
-              {deliverySettings.freeDeliveryThreshold &&
-                isFreeDelivery(subtotal, deliverySettings) && (
-                  <p className="mt-1 text-xs text-green-600">
-                    {t('freeDeliveryApplied')}
+          {isAddressDeliveryEnabled && (
+            <label
+              className={cn(
+                'flex min-w-0 cursor-pointer items-start gap-3 rounded-lg border p-4 transition-colors',
+                !isDeliveryAmountEligible && 'cursor-not-allowed opacity-60',
+                method === 'address'
+                  ? 'border-primary bg-primary/5'
+                  : 'hover:bg-muted/50',
+              )}
+            >
+              <RadioGroupItem
+                value="address"
+                className="mt-0.5"
+                disabled={!isDeliveryAmountEligible}
+              />
+              <div className="min-w-0 flex-1">
+                <span className="font-medium text-sm">{addressLabel}</span>
+                {isDeliveryAmountEligible ? (
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    {t('deliveryOptionDescription', {
+                      pricePerKm: formatCurrency(deliverySettings.pricePerKm, currency),
+                    })}
+                  </p>
+                ) : minimumOrderAmount !== null && (
+                  <p className="text-muted-foreground mt-0.5 text-xs">
+                    {t('deliveryAvailableFrom', {
+                      amount: formatCurrency(minimumOrderAmount, currency),
+                    })}
                   </p>
                 )}
-            </div>
-          </label>
+                {deliverySettings.freeDeliveryThreshold &&
+                  isFreeDelivery(subtotal, deliverySettings) && (
+                    <p className="mt-1 text-xs text-green-600">
+                      {t('freeDeliveryApplied')}
+                    </p>
+                  )}
+              </div>
+            </label>
+          )}
         </RadioGroup>
       )}
 

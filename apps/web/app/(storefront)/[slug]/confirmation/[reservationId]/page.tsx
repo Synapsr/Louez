@@ -11,6 +11,7 @@ import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Separator } fr
 import { formatCurrency } from '@louez/utils'
 import type { StoreSettings, StoreTheme } from '@louez/types'
 import { generateStoreMetadata } from '@/lib/seo'
+import { formatLocationSnapshotAddress } from '@/lib/reservations/location-snapshots'
 import { formatStoreDate } from '@/lib/utils/store-date'
 
 interface ConfirmationPageProps {
@@ -85,6 +86,10 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
   const hasReturnDelivery = returnMethod === 'address'
   const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery
   const deliveryFee = reservation.deliveryFee ? parseFloat(reservation.deliveryFee) : 0
+  const pickupLocationAddress =
+    formatLocationSnapshotAddress(reservation.pickupLocationSnapshot) ?? store.address
+  const returnLocationAddress =
+    formatLocationSnapshotAddress(reservation.returnLocationSnapshot) ?? store.address
 
   // Format dates with times in store timezone
   const storeTimezone = storeSettings.timezone
@@ -164,9 +169,13 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                     </>
                   ) : (
                     <>
-                      <p className="font-medium">{t('pickupLabel')}</p>
-                      {store.address && (
-                        <p className="text-sm text-muted-foreground">{store.address}</p>
+                      <p className="font-medium">
+                        {reservation.pickupLocationSnapshot?.name ?? t('pickupLabel')}
+                      </p>
+                      {pickupLocationAddress && (
+                        <p className="text-sm text-muted-foreground">
+                          {pickupLocationAddress}
+                        </p>
                       )}
                     </>
                   )}
@@ -200,9 +209,13 @@ export default async function ConfirmationPage({ params }: ConfirmationPageProps
                     </>
                   ) : (
                     <>
-                      <p className="font-medium">{t('storeReturnLabel')}</p>
-                      {store.address && (
-                        <p className="text-sm text-muted-foreground">{store.address}</p>
+                      <p className="font-medium">
+                        {reservation.returnLocationSnapshot?.name ?? t('storeReturnLabel')}
+                      </p>
+                      {returnLocationAddress && (
+                        <p className="text-sm text-muted-foreground">
+                          {returnLocationAddress}
+                        </p>
                       )}
                     </>
                   )}

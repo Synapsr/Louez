@@ -12,7 +12,6 @@ import { useStore } from '@tanstack/react-form'
 
 import { Button } from '@louez/ui'
 import { Input } from '@louez/ui'
-import { Switch } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { Label } from '@louez/ui'
 import { Slider } from '@louez/ui'
@@ -36,10 +35,14 @@ import {
   CardTitle,
 } from '@louez/ui'
 import { RadioGroup, RadioGroupItem } from '@louez/ui'
-import { updateDeliverySettings } from './actions'
+import {
+  setStoreLocationActive,
+  updateDeliverySettings,
+  upsertStoreLocation,
+} from './actions'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { formatCurrency } from '@louez/utils'
-import type { StoreSettings, DeliverySettings, DeliveryMode } from '@louez/types'
+import type { StoreSettings, DeliverySettings } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { getFieldError } from '@/hooks/form/form-context'
 import { RootError } from '@/components/form/root-error'
@@ -51,6 +54,7 @@ const createDeliverySettingsSchema = (
 ) =>
   z.object({
     enabled: z.boolean(),
+    multiLocationEnabled: z.boolean(),
     mode: z.enum(DELIVERY_MODES),
     pricePerKm: z
       .number()
@@ -70,27 +74,44 @@ const createDeliverySettingsSchema = (
       .min(0, t('minValue', { min: 0 }))
       .max(100000, t('maxValue', { max: 100000 }))
       .nullable(),
+    minimumOrderAmountForDelivery: z
+      .number()
+      .min(0, t('minValue', { min: 0 }))
+      .max(100000, t('maxValue', { max: 100000 }))
+      .nullable(),
   })
-
-type DeliverySettingsInput = z.infer<
-  ReturnType<typeof createDeliverySettingsSchema>
->
 
 interface Store {
   id: string
+  name: string
+  address: string | null
   settings: StoreSettings | null
   latitude: string | null
   longitude: string | null
 }
 
+interface StoreLocation {
+  id: string
+  name: string
+  address: string
+  city: string | null
+  postalCode: string | null
+  country: string | null
+  latitude: string | null
+  longitude: string | null
+  isActive: boolean
+}
+
 interface DeliverySettingsFormProps {
   store: Store
   hasCoordinates: boolean
+  locations: StoreLocation[]
 }
 
 export function DeliverySettingsForm({
   store,
   hasCoordinates,
+  locations,
 }: DeliverySettingsFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -108,17 +129,20 @@ export function DeliverySettingsForm({
     minimumFee: 10,
     maximumDistance: null,
     freeDeliveryThreshold: null,
+    minimumOrderAmountForDelivery: null,
   }
 
   const [rootError, setRootError] = useState<string | null>(null)
   const form = useAppForm({
     defaultValues: {
       enabled: currentDelivery.enabled,
+      multiLocationEnabled: currentDelivery.multiLocationEnabled ?? false,
       mode: currentDelivery.mode || 'optional',
       pricePerKm: currentDelivery.pricePerKm,
       minimumFee: currentDelivery.minimumFee,
       maximumDistance: currentDelivery.maximumDistance,
       freeDeliveryThreshold: currentDelivery.freeDeliveryThreshold,
+      minimumOrderAmountForDelivery: currentDelivery.minimumOrderAmountForDelivery ?? null,
     },
     validators: { onSubmit: deliverySettingsSchema },
     onSubmit: async ({ value }) => {
@@ -144,11 +168,13 @@ export function DeliverySettingsForm({
   const isDirty = useStore(form.store, (s) => s.isDirty)
 
   const isEnabled = useStore(form.store, (s) => s.values.enabled)
+  const multiLocationEnabled = useStore(form.store, (s) => s.values.multiLocationEnabled)
   const mode = useStore(form.store, (s) => s.values.mode)
   const pricePerKm = useStore(form.store, (s) => s.values.pricePerKm)
   const minimumFee = useStore(form.store, (s) => s.values.minimumFee)
   const maximumDistance = useStore(form.store, (s) => s.values.maximumDistance)
   const freeDeliveryThreshold = useStore(form.store, (s) => s.values.freeDeliveryThreshold)
+  const minimumOrderAmountForDelivery = useStore(form.store, (s) => s.values.minimumOrderAmountForDelivery)
 
   // Pricing is only relevant when mode is not 'included'
   const showPricing = mode !== 'included'
@@ -161,6 +187,12 @@ export function DeliverySettingsForm({
   const [testLatitude, setTestLatitude] = useState<number | null>(null)
   const [testLongitude, setTestLongitude] = useState<number | null>(null)
   const [testDistance, setTestDistance] = useState<number | null>(null)
+  const [locationFormOpen, setLocationFormOpen] = useState(false)
+  const [editingLocation, setEditingLocation] = useState<StoreLocation | null>(null)
+  const [locationName, setLocationName] = useState('')
+  const [locationAddress, setLocationAddress] = useState('')
+  const [locationLatitude, setLocationLatitude] = useState<number | null>(null)
+  const [locationLongitude, setLocationLongitude] = useState<number | null>(null)
 
   const testMapRef = useRef<HTMLDivElement>(null)
   const testMapInstanceRef = useRef<unknown>(null)
@@ -179,6 +211,14 @@ export function DeliverySettingsForm({
 
   // Calculate simulated delivery fee (per leg)
   const getSimulatedFee = () => {
+    if (
+      mode === 'optional' &&
+      minimumOrderAmountForDelivery &&
+      simOrderTotal < minimumOrderAmountForDelivery
+    ) {
+      return { fee: 0, isFree: false, reason: 'minimumOrder' as const }
+    }
+
     // Check if free delivery applies
     if (freeDeliveryThreshold && simOrderTotal >= freeDeliveryThreshold) {
       return { fee: 0, isFree: true, reason: 'threshold' as const }
@@ -226,6 +266,56 @@ export function DeliverySettingsForm({
       setSimDistance(testDistance)
     }
     setIsAddressDialogOpen(false)
+  }
+
+  const openLocationForm = (location?: StoreLocation) => {
+    setEditingLocation(location ?? null)
+    setLocationName(location?.name ?? '')
+    setLocationAddress(location?.address ?? '')
+    setLocationLatitude(location?.latitude ? parseFloat(location.latitude) : null)
+    setLocationLongitude(location?.longitude ? parseFloat(location.longitude) : null)
+    setLocationFormOpen(true)
+  }
+
+  const handleLocationAddressChange = (
+    address: string,
+    latitude: number | null,
+    longitude: number | null,
+  ) => {
+    setLocationAddress(address)
+    setLocationLatitude(latitude)
+    setLocationLongitude(longitude)
+  }
+
+  const handleSaveLocation = () => {
+    startTransition(async () => {
+      const result = await upsertStoreLocation({
+        id: editingLocation?.id,
+        name: locationName,
+        address: locationAddress,
+        latitude: locationLatitude,
+        longitude: locationLongitude,
+        country: store.settings?.country ?? 'FR',
+      })
+      if (result.error) {
+        toastManager.add({ title: t('locationsSaveError'), type: 'error' })
+        return
+      }
+      toastManager.add({ title: t('locationsSaved'), type: 'success' })
+      setLocationFormOpen(false)
+      router.refresh()
+    })
+  }
+
+  const handleToggleLocationActive = (location: StoreLocation) => {
+    startTransition(async () => {
+      const result = await setStoreLocationActive(location.id, !location.isActive)
+      if (result.error) {
+        toastManager.add({ title: t('locationsSaveError'), type: 'error' })
+        return
+      }
+      router.refresh()
+    })
   }
 
   // Initialize test map when dialog opens
@@ -411,6 +501,132 @@ export function DeliverySettingsForm({
               />
             )}
           </form.AppField>
+
+          <form.AppField name="multiLocationEnabled">
+            {(field) => (
+              <field.Switch
+                label={t('multiLocationEnabled')}
+                description={t('multiLocationEnabledDescription')}
+              />
+            )}
+          </form.AppField>
+
+          {multiLocationEnabled && (
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-medium">{t('locationsTitle')}</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {t('locationsDescription')}
+                  </p>
+                </div>
+                <Button type="button" variant="outline" onClick={() => openLocationForm()}>
+                  <MapPin className="mr-2 h-4 w-4" />
+                  {t('locationsAdd')}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="rounded-md border bg-muted/30 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium">{store.name}</p>
+                      {store.address && (
+                        <p className="text-muted-foreground text-xs">{store.address}</p>
+                      )}
+                    </div>
+                    <span className="text-muted-foreground text-xs">
+                      {t('locationsPrimary')}
+                    </span>
+                  </div>
+                </div>
+
+                {locations.map((location) => (
+                  <div key={location.id} className="rounded-md border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{location.name}</p>
+                          {!location.isActive && (
+                            <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                              {t('locationsInactive')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-muted-foreground text-xs">{location.address}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openLocationForm(location)}
+                        >
+                          {t('locationsEdit')}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleToggleLocationActive(location)}
+                        >
+                          {location.isActive ? t('locationsDeactivate') : t('locationsReactivate')}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Dialog open={locationFormOpen} onOpenChange={setLocationFormOpen}>
+                <DialogPopup>
+                  <DialogPanel>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {editingLocation ? t('locationsEdit') : t('locationsAdd')}
+                      </DialogTitle>
+                      <DialogDescription>{t('locationsDialogDescription')}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="location-name">{t('locationsName')}</Label>
+                        <Input
+                          id="location-name"
+                          value={locationName}
+                          onChange={(event) => setLocationName(event.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label>{t('locationsAddress')}</Label>
+                        <AddressInput
+                          value={locationAddress}
+                          latitude={locationLatitude}
+                          longitude={locationLongitude}
+                          onChange={handleLocationAddressChange}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setLocationFormOpen(false)}
+                      >
+                        {tCommon('cancel')}
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={handleSaveLocation}
+                        disabled={!locationName.trim() || !locationAddress.trim() || isPending}
+                      >
+                        {tCommon('save')}
+                      </Button>
+                    </DialogFooter>
+                  </DialogPanel>
+                </DialogPopup>
+              </Dialog>
+            </div>
+          )}
 
           {/* Delivery Mode Selection */}
           {isEnabled && (
@@ -668,6 +884,45 @@ export function DeliverySettingsForm({
                       </div>
                     )}
                   </form.Field>
+
+                  {/* Minimum order amount for delivery */}
+                  <form.Field name="minimumOrderAmountForDelivery">
+                    {(field) => (
+                      <div className="grid gap-2">
+                        <Label htmlFor={field.name} className="flex items-center gap-2">
+                          {t('minimumOrderAmountForDelivery')}
+                          <span className="text-xs text-muted-foreground font-normal">
+                            ({tCommon('optional')})
+                          </span>
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id={field.name}
+                            type="number"
+                            min={0}
+                            max={100000}
+                            placeholder="-"
+                            value={field.state.value ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              field.handleChange(
+                                val === '' ? null : parseFloat(val)
+                              )
+                            }}
+                            onBlur={field.handleBlur}
+                            className="w-28"
+                          />
+                          <span className="text-sm text-muted-foreground">
+                            {currency}
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-sm">
+                          {t('minimumOrderAmountForDeliveryDescription')}
+                        </p>
+                        {field.state.meta.errors.length > 0 && <p className="text-destructive text-sm">{getFieldError(field.state.meta.errors[0])}</p>}
+                      </div>
+                    )}
+                  </form.Field>
                 </div>
 
               </div>
@@ -779,7 +1034,7 @@ export function DeliverySettingsForm({
             </div>
 
             {/* Order Total Slider */}
-            {freeDeliveryThreshold && (
+            {(freeDeliveryThreshold || minimumOrderAmountForDelivery) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label>{t('simulator.orderTotal')}</Label>
@@ -791,15 +1046,28 @@ export function DeliverySettingsForm({
                   value={[simOrderTotal]}
                   onValueChange={(value) => setSimOrderTotal(Array.isArray(value) ? value[0] : value)}
                   min={0}
-                  max={Math.max(freeDeliveryThreshold * 1.5, 500)}
+                  max={Math.max(
+                    (freeDeliveryThreshold ?? 0) * 1.5,
+                    (minimumOrderAmountForDelivery ?? 0) * 1.5,
+                    500,
+                  )}
                   step={10}
                   className="w-full"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>{formatCurrency(0, currency)}</span>
-                  <span className="text-primary font-medium">
-                    {t('simulator.freeAbove', { amount: formatCurrency(freeDeliveryThreshold, currency) })}
-                  </span>
+                  <div className="flex flex-col items-end gap-1">
+                    {minimumOrderAmountForDelivery && mode === 'optional' && (
+                      <span className="text-primary font-medium">
+                        {t('simulator.availableAbove', { amount: formatCurrency(minimumOrderAmountForDelivery, currency) })}
+                      </span>
+                    )}
+                    {freeDeliveryThreshold && (
+                      <span className="text-green-600 font-medium">
+                        {t('simulator.freeAbove', { amount: formatCurrency(freeDeliveryThreshold, currency) })}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -816,6 +1084,13 @@ export function DeliverySettingsForm({
                       {t('simulator.tooFar', { max: maximumDistance })}
                     </p>
                   )}
+                  {simResult.reason === 'minimumOrder' && minimumOrderAmountForDelivery && (
+                    <p className="text-xs text-destructive">
+                      {t('simulator.minimumOrderNotMet', {
+                        amount: formatCurrency(minimumOrderAmountForDelivery, currency),
+                      })}
+                    </p>
+                  )}
                   {simResult.reason === 'threshold' && (
                     <p className="text-xs text-green-600 dark:text-green-400">
                       {t('simulator.freeDeliveryApplied')}
@@ -828,7 +1103,7 @@ export function DeliverySettingsForm({
                   )}
                 </div>
                 <div className="text-right">
-                  {simResult.reason === 'tooFar' ? (
+                  {simResult.reason === 'tooFar' || simResult.reason === 'minimumOrder' ? (
                     <span className="text-lg font-semibold text-destructive">
                       {t('simulator.notAvailable')}
                     </span>

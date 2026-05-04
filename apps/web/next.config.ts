@@ -44,10 +44,20 @@ function getFromhelloOrigin(): string | null {
   }
 }
 
+function getOpenReplayOrigin(): string | null {
+  try {
+    const raw = process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT
+    return raw ? new URL(raw).origin : null
+  } catch {
+    return null
+  }
+}
+
 // CSP Directives factory. Returns a fresh object each call so
 // fromhelloOrigin reflects the current env (see getFromhelloOrigin).
 function buildCspDirectives() {
   const fromhelloOrigin = getFromhelloOrigin()
+  const openReplayOrigin = getOpenReplayOrigin()
   return {
   // Default: only allow from same origin
   'default-src': ["'self'"],
@@ -153,6 +163,8 @@ function buildCspDirectives() {
     ...(isDev ? ['ws://localhost:*', 'ws://127.0.0.1:*'] : []),
     // fromHello: snippet POSTs to /api/events, /api/profiles/merge, etc.
     ...(fromhelloOrigin ? [fromhelloOrigin] : []),
+    // OpenReplay session recording ingest
+    ...(openReplayOrigin ? [openReplayOrigin] : []),
   ],
 
   // Frames: Stripe for 3D Secure + Gleap + storefront embeds (dashboard previews)

@@ -6,6 +6,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import { getRouteDistance } from '@louez/api/services';
+import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { db } from '@louez/db';
 import {
   customers,
@@ -25,6 +26,7 @@ import type { NotificationEventType } from '@louez/types';
 import type { Rate } from '@louez/types';
 import type {
   BookingAttributeAxis,
+  DeliverySettings,
   PricingBreakdown,
   PricingMode,
   StoreSettings,
@@ -77,6 +79,14 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
+
+function getActionErrorKey(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.startsWith('errors.')) {
+    return error.message;
+  }
+
+  return fallback;
+}
 import { getTulipSettings } from '@/lib/integrations/tulip/settings';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
@@ -683,6 +693,7 @@ interface CreateReservationData {
   delivery?: {
     outbound: {
       method: 'store' | 'address';
+      locationId?: string | null;
       address?: string;
       city?: string;
       postalCode?: string;
@@ -692,6 +703,7 @@ interface CreateReservationData {
     };
     return: {
       method: 'store' | 'address';
+      locationId?: string | null;
       address?: string;
       city?: string;
       postalCode?: string;
@@ -982,6 +994,28 @@ export async function createManualReservation(data: CreateReservationData) {
   const hasOutboundDelivery = outboundLeg?.method === 'address';
   const hasReturnDelivery = returnLeg?.method === 'address';
   const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery;
+  const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store';
+  const hasReturnStore = !returnLeg || returnLeg.method === 'store';
+  const isMultiLocationEnabled = Boolean(storeDeliverySettings?.multiLocationEnabled);
+  let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+  let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+
+  try {
+    pickupLocation = hasOutboundStore
+      ? await resolveReservationLocationSnapshot({
+          store,
+          locationId: isMultiLocationEnabled ? outboundLeg?.locationId ?? null : null,
+        })
+      : null;
+    returnLocation = hasReturnStore
+      ? await resolveReservationLocationSnapshot({
+          store,
+          locationId: isMultiLocationEnabled ? returnLeg?.locationId ?? null : null,
+        })
+      : null;
+  } catch (error) {
+    return { error: getActionErrorKey(error, 'errors.locationInvalid') };
+  }
 
   if (hasAnyDelivery) {
     if (!storeDeliverySettings?.enabled) {
@@ -1089,6 +1123,10 @@ export async function createManualReservation(data: CreateReservationData) {
     returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
     returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
     returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
+    pickupLocationId: pickupLocation?.locationId ?? null,
+    returnLocationId: returnLocation?.locationId ?? null,
+    pickupLocationSnapshot: pickupLocation?.snapshot ?? null,
+    returnLocationSnapshot: returnLocation?.snapshot ?? null,
   });
 
   // Create reservation items for catalog products
@@ -1353,6 +1391,7 @@ interface UpdateReservationItem {
 
 interface UpdateDeliveryLeg {
   method: 'store' | 'address';
+  locationId?: string | null;
   address?: string;
   city?: string;
   postalCode?: string;
@@ -1974,14 +2013,19 @@ export async function updateReservation(
 
   if (data.delivery) {
     const deliverySettings = (store.settings as Record<string, unknown> | null)
-      ?.delivery as { enabled: boolean; pricePerKm: number; minimumFee: number; maximumDistance: number | null; freeDeliveryThreshold: number | null; mode: string } | undefined;
+      ?.delivery as DeliverySettings | undefined;
+    const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled);
 
     const storeLat = store.latitude ? parseFloat(store.latitude) : null;
     const storeLon = store.longitude ? parseFloat(store.longitude) : null;
+    let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+    let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
 
     // Outbound leg
     deliveryUpdateFields.outboundMethod = data.delivery.outbound.method;
     if (data.delivery.outbound.method === 'address') {
+      deliveryUpdateFields.pickupLocationId = null;
+      deliveryUpdateFields.pickupLocationSnapshot = null;
       deliveryUpdateFields.deliveryAddress = data.delivery.outbound.address ?? null;
       deliveryUpdateFields.deliveryCity = data.delivery.outbound.city ?? null;
       deliveryUpdateFields.deliveryPostalCode = data.delivery.outbound.postalCode ?? null;
@@ -2001,6 +2045,16 @@ export async function updateReservation(
         deliveryUpdateFields.deliveryDistanceKm = null;
       }
     } else {
+      try {
+        pickupLocation = await resolveReservationLocationSnapshot({
+          store,
+          locationId: isMultiLocationEnabled ? data.delivery.outbound.locationId ?? null : null,
+        });
+      } catch (error) {
+        return { error: getActionErrorKey(error, 'errors.locationInvalid') };
+      }
+      deliveryUpdateFields.pickupLocationId = pickupLocation.locationId;
+      deliveryUpdateFields.pickupLocationSnapshot = pickupLocation.snapshot;
       deliveryUpdateFields.deliveryAddress = null;
       deliveryUpdateFields.deliveryCity = null;
       deliveryUpdateFields.deliveryPostalCode = null;
@@ -2013,6 +2067,8 @@ export async function updateReservation(
     // Return leg
     deliveryUpdateFields.returnMethod = data.delivery.return.method;
     if (data.delivery.return.method === 'address') {
+      deliveryUpdateFields.returnLocationId = null;
+      deliveryUpdateFields.returnLocationSnapshot = null;
       deliveryUpdateFields.returnAddress = data.delivery.return.address ?? null;
       deliveryUpdateFields.returnCity = data.delivery.return.city ?? null;
       deliveryUpdateFields.returnPostalCode = data.delivery.return.postalCode ?? null;
@@ -2032,6 +2088,16 @@ export async function updateReservation(
         deliveryUpdateFields.returnDistanceKm = null;
       }
     } else {
+      try {
+        returnLocation = await resolveReservationLocationSnapshot({
+          store,
+          locationId: isMultiLocationEnabled ? data.delivery.return.locationId ?? null : null,
+        });
+      } catch (error) {
+        return { error: getActionErrorKey(error, 'errors.locationInvalid') };
+      }
+      deliveryUpdateFields.returnLocationId = returnLocation.locationId;
+      deliveryUpdateFields.returnLocationSnapshot = returnLocation.snapshot;
       deliveryUpdateFields.returnAddress = null;
       deliveryUpdateFields.returnCity = null;
       deliveryUpdateFields.returnPostalCode = null;

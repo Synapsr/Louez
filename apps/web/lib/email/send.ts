@@ -5,6 +5,7 @@ import { emailLogs } from '@louez/db'
 import { getEmailTranslations, type EmailLocale } from './i18n'
 import { getLogoForLightBackground } from '@louez/utils'
 import { isSvgUrl, convertSvgToPngBuffer } from '@/lib/image-utils'
+import type { ReservationLocationSnapshot } from '@louez/types'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
@@ -211,6 +212,8 @@ export async function sendReservationConfirmationEmail({
     taxRate?: number | null
     subtotalExclTax?: number | null
     taxAmount?: number | null
+    pickupLocationSnapshot?: ReservationLocationSnapshot | null
+    returnLocationSnapshot?: ReservationLocationSnapshot | null
   }
   items: ReservationItem[]
   reservationUrl: string
@@ -229,6 +232,8 @@ export async function sendReservationConfirmationEmail({
       logoUrl: logo.url,
       primaryColor: store.theme?.primaryColor || '#0066FF',
       storeAddress: store.address,
+      pickupLocationSnapshot: reservation.pickupLocationSnapshot,
+      returnLocationSnapshot: reservation.returnLocationSnapshot,
       storePhone: store.phone,
       storeEmail: store.email,
       storeTimezone: store.settings?.timezone,

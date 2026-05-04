@@ -41,7 +41,7 @@ import {
 import { TooltipProvider } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
-import { getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
+import { formatCurrency, getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
 import { calculateDuration } from '@/lib/utils/duration'
 import { useStoreTimezone } from '@/contexts/store-context'
 import {
@@ -596,7 +596,9 @@ export function EditReservationForm({
                     latitude: delivery.outbound.address.latitude ?? undefined,
                     longitude: delivery.outbound.address.longitude ?? undefined,
                   }
-                : {}),
+                : {
+                    locationId: delivery.outbound.locationId,
+                  }),
             },
             return: {
               method: delivery.inbound.method as 'store' | 'address',
@@ -609,7 +611,9 @@ export function EditReservationForm({
                     latitude: delivery.inbound.address.latitude ?? undefined,
                     longitude: delivery.inbound.address.longitude ?? undefined,
                   }
-                : {}),
+                : {
+                    locationId: delivery.inbound.locationId,
+                  }),
             },
           }
         : undefined
@@ -711,6 +715,30 @@ export function EditReservationForm({
       )
     )
 
+  const deliveryMinimumAmount =
+    storeDelivery?.settings.minimumOrderAmountForDelivery ?? null
+  const deliveryMinimumWarning =
+    storeDelivery?.settings.mode === 'optional' &&
+    deliveryMinimumAmount !== null &&
+    calculations.subtotal < deliveryMinimumAmount &&
+    (delivery.outbound.method === 'address' || delivery.inbound.method === 'address')
+      ? tForm('deliveryMinimumOverrideWarning', {
+          amount: formatCurrency(deliveryMinimumAmount, currency),
+        })
+      : null
+
+  const hasDeliveryLocationChanges =
+    (
+      (delivery.outbound.method === 'store' ||
+        reservation.delivery.outboundMethod === 'store') &&
+      delivery.outbound.locationId !== reservation.delivery.pickupLocationId
+    ) ||
+    (
+      (delivery.inbound.method === 'store' ||
+        reservation.delivery.returnMethod === 'store') &&
+      delivery.inbound.locationId !== reservation.delivery.returnLocationId
+    )
+
   const originalItemsSignature = useMemo(
     () => buildItemsChangeSignature(initialEditableItems),
     [initialEditableItems],
@@ -730,6 +758,7 @@ export function EditReservationForm({
     delivery.totalFee !== originalDeliveryFee ||
     delivery.outbound.method !== reservation.delivery.outboundMethod ||
     delivery.inbound.method !== reservation.delivery.returnMethod ||
+    hasDeliveryLocationChanges ||
     hasDeliveryAddressChanges
 
   // The add handler increments quantity when the product is already present.
@@ -879,10 +908,14 @@ export function EditReservationForm({
                   inbound={delivery.inbound}
                   totalFee={delivery.totalFee}
                   isDeliveryIncluded={delivery.isDeliveryIncluded}
+                  deliveryMinimumWarning={deliveryMinimumWarning}
                   storeAddress={storeDelivery.address}
+                  locations={storeDelivery.locations}
                   currencySymbol={currencySymbol}
                   onOutboundMethodChange={delivery.setOutboundMethod}
                   onInboundMethodChange={delivery.setInboundMethod}
+                  onOutboundLocationChange={delivery.setOutboundLocationId}
+                  onInboundLocationChange={delivery.setInboundLocationId}
                   onOutboundAddressChange={delivery.setOutboundAddress}
                   onInboundAddressChange={delivery.setInboundAddress}
                 />

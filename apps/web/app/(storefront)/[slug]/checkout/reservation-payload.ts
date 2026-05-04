@@ -19,8 +19,10 @@ interface BuildReservationPayloadInput {
   totalAmount: number;
   outboundMethod: LegMethod;
   outboundAddress: DeliveryAddress;
+  pickupLocationId?: string | null;
   returnMethod: LegMethod;
   returnAddress: DeliveryAddress;
+  returnLocationId?: string | null;
   tulipInsuranceMode: 'required' | 'optional' | 'no_public';
   promoCode?: string;
 }
@@ -28,9 +30,10 @@ interface BuildReservationPayloadInput {
 function buildDeliveryLeg(
   method: LegMethod,
   address: DeliveryAddress,
-): { method: LegMethod; address?: string; city?: string; postalCode?: string; country?: string; latitude?: number; longitude?: number } {
+  locationId?: string | null,
+): { method: LegMethod; locationId?: string | null; address?: string; city?: string; postalCode?: string; country?: string; latitude?: number; longitude?: number } {
   if (method === 'store') {
-    return { method: 'store' };
+    return { method: 'store', locationId: locationId ?? null };
   }
 
   return {
@@ -54,8 +57,10 @@ export function buildReservationPayload({
   totalAmount,
   outboundMethod,
   outboundAddress,
+  pickupLocationId,
   returnMethod,
   returnAddress,
+  returnLocationId,
   tulipInsuranceMode,
   promoCode,
 }: BuildReservationPayloadInput): CreateReservationInput {
@@ -112,8 +117,8 @@ export function buildReservationPayload({
     locale,
     promoCode,
     delivery: {
-      outbound: buildDeliveryLeg(outboundMethod, outboundAddress),
-      return: buildDeliveryLeg(returnMethod, returnAddress),
+      outbound: buildDeliveryLeg(outboundMethod, outboundAddress, pickupLocationId),
+      return: buildDeliveryLeg(returnMethod, returnAddress, returnLocationId),
     },
   };
 }

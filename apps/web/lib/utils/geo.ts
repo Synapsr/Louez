@@ -142,3 +142,14 @@ export function isFreeDelivery(
     orderSubtotal >= settings.freeDeliveryThreshold
   )
 }
+
+export function isDeliveryOrderAmountEligible(
+  orderSubtotal: number,
+  settings: DeliverySettings
+): boolean {
+  return (
+    settings.mode !== 'optional' ||
+    settings.minimumOrderAmountForDelivery == null ||
+    orderSubtotal >= settings.minimumOrderAmountForDelivery
+  )
+}

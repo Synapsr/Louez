@@ -9,21 +9,29 @@ import {
   Card,
   CardContent,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@louez/ui'
 import { cn } from '@louez/utils'
 
 import { AddressInput } from '@/components/ui/address-input'
 
 import type { DeliveryLegAddress, DeliveryLegState } from '../hooks/use-edit-reservation-delivery'
+import type { ReservationLocationOption } from '../types'
 
 interface DeliveryLegCardProps {
   variant: 'outbound' | 'return'
   icon: React.ReactNode
   leg: DeliveryLegState
   storeAddress: string | null
+  locations: ReservationLocationOption[]
   currencySymbol: string
   isIncluded: boolean
   onMethodChange: (method: LegMethod) => void
+  onLocationChange: (locationId: string | null) => void
   onAddressChange: (address: DeliveryLegAddress) => void
 }
 
@@ -32,14 +40,26 @@ function DeliveryLegCard({
   icon,
   leg,
   storeAddress,
+  locations,
   currencySymbol,
   isIncluded,
   onMethodChange,
+  onLocationChange,
   onAddressChange,
 }: DeliveryLegCardProps) {
   const t = useTranslations('dashboard.reservations.edit.delivery')
   const isOutbound = variant === 'outbound'
   const title = isOutbound ? t('outboundTitle') : t('returnTitle')
+  const selectedLocation =
+    locations.find((location) => location.id === leg.locationId) ??
+    locations[0] ??
+    null
+  const selectedLocationAddress = selectedLocation
+    ? [
+        selectedLocation.address,
+        [selectedLocation.postalCode, selectedLocation.city].filter(Boolean).join(' '),
+      ].filter(Boolean).join(', ')
+    : storeAddress
 
   return (
     <div className="space-y-3">
@@ -64,9 +84,9 @@ function DeliveryLegCard({
             <p className="font-medium">
               {isOutbound ? t('storePickup') : t('storeReturn')}
             </p>
-            {storeAddress && (
+            {selectedLocationAddress && (
               <p className="truncate text-xs text-muted-foreground">
-                {storeAddress}
+                {selectedLocationAddress}
               </p>
             )}
           </div>
@@ -97,6 +117,53 @@ function DeliveryLegCard({
           </div>
         </button>
       </div>
+
+      {leg.method === 'store' && locations.length > 1 && (
+        <div className="space-y-2">
+          <Label className="text-xs">
+            {isOutbound ? t('pickupLocation') : t('returnLocation')}
+          </Label>
+          <Select
+            value={leg.locationId ?? 'primary'}
+            onValueChange={(value) => onLocationChange(value === 'primary' ? null : value)}
+          >
+            <SelectTrigger className="h-auto min-h-10 w-full min-w-0 max-w-full items-start overflow-hidden py-2 text-left">
+              <SelectValue className="min-w-0">
+                <span className="block max-w-full truncate text-sm font-medium">
+                  {selectedLocation?.name ?? t('storeLocationFallback')}
+                </span>
+                {selectedLocationAddress && (
+                  <span className="block max-w-full truncate text-xs text-muted-foreground">
+                    {selectedLocationAddress}
+                  </span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((location) => {
+                const value = location.id ?? 'primary'
+                const locationAddress = [
+                  location.address,
+                  [location.postalCode, location.city].filter(Boolean).join(' '),
+                ].filter(Boolean).join(', ')
+
+                return (
+                  <SelectItem key={value} value={value} label={location.name}>
+                    <span className="block max-w-full truncate text-sm font-medium">
+                      {location.name}
+                    </span>
+                    {locationAddress && (
+                      <span className="block max-w-full truncate text-xs text-muted-foreground">
+                        {locationAddress}
+                      </span>
+                    )}
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {leg.method === 'address' && (
         <div className="space-y-2">
@@ -155,10 +222,14 @@ interface EditReservationDeliverySectionProps {
   inbound: DeliveryLegState & { fee: number }
   totalFee: number
   isDeliveryIncluded: boolean
+  deliveryMinimumWarning: string | null
   storeAddress: string | null
+  locations: ReservationLocationOption[]
   currencySymbol: string
   onOutboundMethodChange: (method: LegMethod) => void
   onInboundMethodChange: (method: LegMethod) => void
+  onOutboundLocationChange: (locationId: string | null) => void
+  onInboundLocationChange: (locationId: string | null) => void
   onOutboundAddressChange: (address: DeliveryLegAddress) => void
   onInboundAddressChange: (address: DeliveryLegAddress) => void
 }
@@ -168,10 +239,14 @@ export function EditReservationDeliverySection({
   inbound,
   totalFee,
   isDeliveryIncluded,
+  deliveryMinimumWarning,
   storeAddress,
+  locations,
   currencySymbol,
   onOutboundMethodChange,
   onInboundMethodChange,
+  onOutboundLocationChange,
+  onInboundLocationChange,
   onOutboundAddressChange,
   onInboundAddressChange,
 }: EditReservationDeliverySectionProps) {
@@ -188,14 +263,22 @@ export function EditReservationDeliverySection({
         </h2>
 
         <div className="space-y-6">
+          {deliveryMinimumWarning && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+              {deliveryMinimumWarning}
+            </div>
+          )}
+
           <DeliveryLegCard
             variant="outbound"
             icon={<Truck className="h-4 w-4 text-muted-foreground" />}
             leg={outbound}
             storeAddress={storeAddress}
+            locations={locations}
             currencySymbol={currencySymbol}
             isIncluded={isDeliveryIncluded}
             onMethodChange={onOutboundMethodChange}
+            onLocationChange={onOutboundLocationChange}
             onAddressChange={onOutboundAddressChange}
           />
 
@@ -204,9 +287,11 @@ export function EditReservationDeliverySection({
             icon={<MapPin className="h-4 w-4 text-muted-foreground" />}
             leg={inbound}
             storeAddress={storeAddress}
+            locations={locations}
             currencySymbol={currencySymbol}
             isIncluded={isDeliveryIncluded}
             onMethodChange={onInboundMethodChange}
+            onLocationChange={onInboundLocationChange}
             onAddressChange={onInboundAddressChange}
           />
 
