@@ -1,6 +1,6 @@
 'use client';
 
-import Tracker from '@openreplay/tracker';
+import Tracker from '@openreplay/tracker/cjs';
 import { useEffect } from 'react';
 
 import { env } from '@/env';
@@ -22,10 +22,6 @@ interface OpenReplayProviderProps {
 }
 
 function getOpenReplayTracker() {
-  if (!env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY) {
-    return null;
-  }
-
   if (!openReplayTracker) {
     openReplayTracker = new Tracker({
       projectKey: env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
