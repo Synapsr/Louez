@@ -74,6 +74,9 @@ importers:
       '@louez/validations':
         specifier: workspace:*
         version: link:../../packages/validations
+      '@openreplay/tracker':
+        specifier: 17.2.9
+        version: 17.2.9
       '@orpc/client':
         specifier: ^1.13.4
         version: 1.13.4(@opentelemetry/api@1.9.0)
@@ -1774,6 +1777,13 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@openreplay/network-proxy@1.2.4':
+    resolution: {integrity: sha512-egSeDXscqPXllrBKf7QIDRbEDWLyKsCmtnNgtL0ORG/99rVAJpYny6KnZLggfbBbwQedIGeliQzZDhmIZOkkxQ==}
+
+  '@openreplay/tracker@17.2.9':
+    resolution: {integrity: sha512-eZ8bm61cPUPBPV8yYn3MBvuoeDwCKWAjjvN9DSZm3cqFEEtzgiYoPBXnyjLPfwvUvVsofI8JnYDakSu/0R3G/g==}
+    engines: {node: '>=14.0'}
 
   '@opentelemetry/api-logs@0.208.0':
     resolution: {integrity: sha512-CjruKY9V6NMssL/T1kAFgzosF1v9o6oeN+aX5JB/C/xPNtmgIJqcXHG7fA82Ou1zCpWGl4lROQUKwUNE1pMCyg==}
@@ -4054,6 +4064,12 @@ packages:
   error-ex@1.3.4:
     resolution: {integrity: sha512-sqQamAnR14VgCr1A618A3sGrygcpK+HEbenA/HiEAkkUwcZIIB/tgWqHFxWgOyDh4nB4JCRimh79dR5Ywc9MDQ==}
 
+  error-stack-parser-es@0.1.5:
+    resolution: {integrity: sha512-xHku1X40RO+fO8yJ8Wh2f2rZWVjqyhb1zgq1yZ8aZRQkv6OOKhKWRUaht3eSCUbAOBaKIgM+ykwFLE+QUxgGeg==}
+
+  error-stack-parser@2.1.4:
+    resolution: {integrity: sha512-Sk5V6wVazPhq5MhpO+AUxJn5x7XSXGl1R93Vn7i+zS15KDVxQijejNCrz8340/2bgLBjR9GtEG8ZVKONDjcqGQ==}
+
   es-abstract@1.24.1:
     resolution: {integrity: sha512-zHXBLhP+QehSSbsS9Pt23Gg964240DPd6QCf8WpkqEXxQ7fhdZzYsocOr5u7apWonsS5EjZDmTF+/slGMyasvw==}
     engines: {node: '>= 0.4'}
@@ -5965,6 +5981,9 @@ packages:
   stable-hash@0.0.5:
     resolution: {integrity: sha512-+L3ccpzibovGXFK+Ap/f8LOS0ahMrHTf3xu7mMLSpEGU0EO9ucaysSylKo9eRDFNhWve/y275iPmIZ4z39a9iA==}
 
+  stackframe@1.3.4:
+    resolution: {integrity: sha512-oeVtt7eWQS+Na6F//S4kJ2K2VbRlS9D43mAlMyVpVWovy9o+jfgH8O9agzANzaiLjclA0oYzUXEM4PurhSUChw==}
+
   statuses@2.0.2:
     resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
     engines: {node: '>= 0.8'}
@@ -6330,6 +6349,9 @@ packages:
 
   web-vitals@4.2.4:
     resolution: {integrity: sha512-r4DIlprAGwJ7YM11VZp4R884m0Vmgr6EAKe3P+kO0PPj3Unqyvv59rczf6UiGcb9Z8QxZVcqKNwv/g0WNdWwsw==}
+
+  web-vitals@5.2.0:
+    resolution: {integrity: sha512-i2z98bEmaCqSDiHEDu+gHl/dmR4Q+TxFmG3/13KkMO+o8UxQzCqWaDRCiLgEa41nlO4VpXSI0ASa1xWmO9sBlA==}
 
   when-exit@2.1.5:
     resolution: {integrity: sha512-VGkKJ564kzt6Ms1dbgPP/yuIoQCrsFAnRbptpC5wOEsDaNsbCB2bnfnaA8i/vRs5tjUSEOtIuvl9/MyVsvQZCg==}
@@ -7780,6 +7802,15 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@openreplay/network-proxy@1.2.4': {}
+
+  '@openreplay/tracker@17.2.9':
+    dependencies:
+      '@openreplay/network-proxy': 1.2.4
+      error-stack-parser: 2.1.4
+      error-stack-parser-es: 0.1.5
+      web-vitals: 5.2.0
 
   '@opentelemetry/api-logs@0.208.0':
     dependencies:
@@ -10046,6 +10077,12 @@ snapshots:
     dependencies:
       is-arrayish: 0.2.1
 
+  error-stack-parser-es@0.1.5: {}
+
+  error-stack-parser@2.1.4:
+    dependencies:
+      stackframe: 1.3.4
+
   es-abstract@1.24.1:
     dependencies:
       array-buffer-byte-length: 1.0.2
@@ -12299,6 +12336,8 @@ snapshots:
 
   stable-hash@0.0.5: {}
 
+  stackframe@1.3.4: {}
+
   statuses@2.0.2: {}
 
   stdin-discarder@0.2.2: {}
@@ -12703,6 +12742,8 @@ snapshots:
   w3c-keyname@2.2.8: {}
 
   web-vitals@4.2.4: {}
+
+  web-vitals@5.2.0: {}
 
   when-exit@2.1.5: {}
 
