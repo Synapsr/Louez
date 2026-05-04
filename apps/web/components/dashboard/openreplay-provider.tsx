@@ -14,8 +14,13 @@ type OpenReplayTracker = InstanceType<
   Awaited<typeof import('@openreplay/tracker')>['default']
 >;
 
-let openReplayTracker: OpenReplayTracker | null = null;
-let openReplayStartPromise: Promise<unknown> | null = null;
+declare global {
+  interface Window {
+    __louezOpenReplayTracker?: OpenReplayTracker;
+    __louezOpenReplayTrackerPromise?: Promise<OpenReplayTracker>;
+    __louezOpenReplayStartPromise?: Promise<unknown>;
+  }
+}
 
 interface OpenReplayProviderProps {
   children: React.ReactNode;
@@ -31,10 +36,14 @@ interface OpenReplayProviderProps {
 }
 
 async function getOpenReplayTracker() {
-  if (!openReplayTracker) {
+  if (window.__louezOpenReplayTracker) {
+    return window.__louezOpenReplayTracker;
+  }
+
+  window.__louezOpenReplayTrackerPromise ??= (async () => {
     const { default: Tracker } = await import('@openreplay/tracker');
 
-    openReplayTracker = new Tracker({
+    window.__louezOpenReplayTracker = new Tracker({
       projectKey: OPENREPLAY_PROJECT_KEY,
       ingestPoint: OPENREPLAY_INGEST_POINT,
       respectDoNotTrack: true,
@@ -52,9 +61,11 @@ async function getOpenReplayTracker() {
         ignoreHeaders: true,
       },
     });
-  }
 
-  return openReplayTracker;
+    return window.__louezOpenReplayTracker;
+  })();
+
+  return window.__louezOpenReplayTrackerPromise;
 }
 
 export function OpenReplayProvider({
@@ -68,7 +79,7 @@ export function OpenReplayProvider({
     }
 
     void getOpenReplayTracker().then((tracker) => {
-      openReplayStartPromise ??= tracker.start({
+      window.__louezOpenReplayStartPromise ??= tracker.start({
         userID: user?.id,
         metadata: {
           ...(user?.email && { email: user.email }),
