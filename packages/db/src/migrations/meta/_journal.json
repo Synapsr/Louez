@@ -274,6 +274,13 @@
       "when": 1773504000000,
       "tag": "0035_add_delivery_leg_methods",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1775232000000,
+      "tag": "0036_add_store_locations",
+      "breakpoints": true
     }
   ]
 }

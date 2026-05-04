@@ -12,7 +12,7 @@ import {
 } from '@louez/ui';
 import { formatCurrency } from '@louez/utils';
 
-import type { DeliveryAddress } from '../types';
+import type { CheckoutLocationOption, DeliveryAddress } from '../types';
 import { DeliveryLegCard } from './delivery-leg-card';
 
 interface CheckoutDeliveryStepProps {
@@ -20,15 +20,22 @@ interface CheckoutDeliveryStepProps {
   subtotal: number;
   currency: string;
   storeAddress?: string | null;
+  storeName?: string;
+  isMultiLocationEnabled: boolean;
+  isAddressDeliveryEnabled: boolean;
+  locations: CheckoutLocationOption[];
   isDeliveryForced: boolean;
   isDeliveryIncluded: boolean;
+  isDeliveryAmountEligible: boolean;
   // Outbound leg
   outboundMethod: LegMethod;
+  pickupLocationId: string | null;
   outboundAddress: DeliveryAddress;
   outboundDistance: number | null;
   outboundFee: number;
   outboundError: string | null;
   onOutboundMethodChange: (method: LegMethod) => void;
+  onPickupLocationChange: (locationId: string | null) => void;
   onOutboundAddressChange: (
     address: string,
     latitude: number | null,
@@ -36,11 +43,13 @@ interface CheckoutDeliveryStepProps {
   ) => void;
   // Return leg
   returnMethod: LegMethod;
+  returnLocationId: string | null;
   returnAddress: DeliveryAddress;
   returnDistance: number | null;
   returnFee: number;
   returnError: string | null;
   onReturnMethodChange: (method: LegMethod) => void;
+  onReturnLocationChange: (locationId: string | null) => void;
   onReturnAddressChange: (
     address: string,
     latitude: number | null,
@@ -58,21 +67,30 @@ export function CheckoutDeliveryStep({
   subtotal,
   currency,
   storeAddress,
+  storeName,
+  isMultiLocationEnabled,
+  isAddressDeliveryEnabled,
+  locations,
   isDeliveryForced,
   isDeliveryIncluded,
+  isDeliveryAmountEligible,
   outboundMethod,
+  pickupLocationId,
   outboundAddress,
   outboundDistance,
   outboundFee,
   outboundError,
   onOutboundMethodChange,
+  onPickupLocationChange,
   onOutboundAddressChange,
   returnMethod,
+  returnLocationId,
   returnAddress,
   returnDistance,
   returnFee,
   returnError,
   onReturnMethodChange,
+  onReturnLocationChange,
   onReturnAddressChange,
   totalFee,
   canContinue,
@@ -105,11 +123,18 @@ export function CheckoutDeliveryStep({
           fee={outboundFee}
           error={outboundError}
           storeAddress={storeAddress}
+          storeName={storeName}
+          isMultiLocationEnabled={isMultiLocationEnabled}
+          isAddressDeliveryEnabled={isAddressDeliveryEnabled}
+          locations={locations}
+          selectedLocationId={pickupLocationId}
+          onLocationChange={onPickupLocationChange}
           deliverySettings={deliverySettings}
           subtotal={subtotal}
           currency={currency}
           isOutboundForced={isDeliveryForced}
           isDeliveryIncluded={isDeliveryIncluded}
+          isDeliveryAmountEligible={isDeliveryAmountEligible}
         />
 
         <Separator />
@@ -125,11 +150,18 @@ export function CheckoutDeliveryStep({
           fee={returnFee}
           error={returnError}
           storeAddress={storeAddress}
+          storeName={storeName}
+          isMultiLocationEnabled={isMultiLocationEnabled}
+          isAddressDeliveryEnabled={isAddressDeliveryEnabled}
+          locations={locations}
+          selectedLocationId={returnLocationId}
+          onLocationChange={onReturnLocationChange}
           deliverySettings={deliverySettings}
           subtotal={subtotal}
           currency={currency}
           isOutboundForced={false}
           isDeliveryIncluded={isDeliveryIncluded}
+          isDeliveryAmountEligible={isDeliveryAmountEligible}
         />
 
         {/* Total fee summary */}

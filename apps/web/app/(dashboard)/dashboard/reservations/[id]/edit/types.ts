@@ -3,6 +3,7 @@ import type {
   LegMethod,
   PricingBreakdown,
   PricingMode,
+  ReservationLocationSnapshot,
   ProductSnapshot,
   StoreSettings,
   TulipPublicMode,
@@ -56,6 +57,10 @@ export interface ExistingReservation {
 export interface ReservationDelivery {
   outboundMethod: LegMethod
   returnMethod: LegMethod
+  pickupLocationId: string | null
+  returnLocationId: string | null
+  pickupLocationSnapshot: ReservationLocationSnapshot | null
+  returnLocationSnapshot: ReservationLocationSnapshot | null
   deliveryAddress: string | null
   deliveryCity: string | null
   deliveryPostalCode: string | null
@@ -120,6 +125,16 @@ export interface StoreDeliveryInfo {
   latitude: number | null
   longitude: number | null
   address: string | null
+  locations: ReservationLocationOption[]
+}
+
+export interface ReservationLocationOption {
+  id: string | null
+  name: string
+  address: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
 }
 
 export interface EditReservationFormProps {

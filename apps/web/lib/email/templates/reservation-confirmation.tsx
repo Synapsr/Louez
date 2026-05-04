@@ -16,6 +16,7 @@ import {
   type EmailLocale,
 } from '../i18n'
 import type { EmailCustomContent } from '@louez/types'
+import type { ReservationLocationSnapshot } from '@louez/types'
 import {
   formatEmailDateInStoreTimezone,
   getStoreTimezoneLabel,
@@ -33,6 +34,8 @@ interface ReservationConfirmationEmailProps {
   logoUrl?: string | null
   primaryColor?: string
   storeAddress?: string | null
+  pickupLocationSnapshot?: ReservationLocationSnapshot | null
+  returnLocationSnapshot?: ReservationLocationSnapshot | null
   storePhone?: string | null
   storeEmail?: string | null
   storeTimezone?: string | null
@@ -61,6 +64,8 @@ export function ReservationConfirmationEmail({
   logoUrl,
   primaryColor = '#0066FF',
   storeAddress,
+  pickupLocationSnapshot,
+  returnLocationSnapshot,
   storePhone,
   storeEmail,
   storeTimezone,
@@ -163,15 +168,24 @@ export function ReservationConfirmationEmail({
         <Text style={timezoneText}>{timezoneLine}</Text>
       </Section>
 
-      {/* Pickup Address */}
-      {storeAddress && (
+      {/* Pickup / Return Address */}
+      {(pickupLocationSnapshot || returnLocationSnapshot || storeAddress) && (
         <Section style={section}>
           <Text style={sectionTitle}>{tc.pickupAddress}</Text>
           <Text style={paragraph}>
-            {storeName}
+            {pickupLocationSnapshot?.name ?? storeName}
             <br />
-            {storeAddress}
+            {pickupLocationSnapshot?.address ?? storeAddress}
           </Text>
+          {(returnLocationSnapshot || pickupLocationSnapshot) && (
+            <Text style={paragraph}>
+              {tc.returnAddress}
+              <br />
+              {returnLocationSnapshot?.name ?? pickupLocationSnapshot?.name}
+              <br />
+              {returnLocationSnapshot?.address ?? pickupLocationSnapshot?.address}
+            </Text>
+          )}
         </Section>
       )}
 

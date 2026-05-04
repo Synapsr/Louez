@@ -601,8 +601,12 @@ export function ReservationDetailClient({
             hasReturnInspection={!!returnInspection}
           />
 
-          {/* Delivery & Return card — shown when any leg uses address delivery */}
-          {(reservation.outboundMethod === 'address' || reservation.returnMethod === 'address' || reservation.deliveryOption === 'delivery') && (
+          {/* Delivery & Return card */}
+          {(reservation.outboundMethod === 'address' ||
+            reservation.returnMethod === 'address' ||
+            reservation.deliveryOption === 'delivery' ||
+            reservation.pickupLocationSnapshot ||
+            reservation.returnLocationSnapshot) && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -633,9 +637,18 @@ export function ReservationDetailClient({
                       )}
                     </>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">{t('storePickup')}</p>
+                      <div>
+                        <p className="text-sm">
+                          {reservation.pickupLocationSnapshot?.name ?? t('storePickup')}
+                        </p>
+                        {reservation.pickupLocationSnapshot?.address && (
+                          <p className="text-muted-foreground text-xs">
+                            {reservation.pickupLocationSnapshot.address}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -662,9 +675,22 @@ export function ReservationDetailClient({
                       )}
                     </>
                   ) : (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-start gap-2">
                       <Store className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">{t('storeReturn')}</p>
+                      <div>
+                        <p className="text-sm">
+                          {reservation.returnLocationSnapshot?.name ??
+                            reservation.pickupLocationSnapshot?.name ??
+                            t('storeReturn')}
+                        </p>
+                        {(reservation.returnLocationSnapshot?.address ||
+                          reservation.pickupLocationSnapshot?.address) && (
+                          <p className="text-muted-foreground text-xs">
+                            {reservation.returnLocationSnapshot?.address ??
+                              reservation.pickupLocationSnapshot?.address}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

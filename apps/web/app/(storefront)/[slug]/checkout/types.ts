@@ -21,11 +21,24 @@ export interface CheckoutFormProps {
   storeAddress?: string | null;
   storeLatitude?: number | null;
   storeLongitude?: number | null;
+  storeName?: string;
+  locations?: CheckoutLocationOption[];
   tulipInsurance?: {
     enabled: boolean;
     mode: 'required' | 'optional' | 'no_public';
   };
   hasActivePromoCodes?: boolean;
+}
+
+export interface CheckoutLocationOption {
+  id: string | null;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface CheckoutFormValues {

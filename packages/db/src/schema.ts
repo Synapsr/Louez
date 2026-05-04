@@ -29,6 +29,7 @@ import type {
   CustomerNotificationSettings,
   UnitAttributes,
   PromoCodeSnapshot,
+  ReservationLocationSnapshot,
 } from '@louez/types'
 
 // Helper for generating IDs
@@ -288,6 +289,30 @@ export const stores = mysqlTable(
     slugIdx: index('stores_slug_idx').on(table.slug),
     userIdx: index('stores_user_idx').on(table.userId),
     referralCodeIdx: index('stores_referral_code_idx').on(table.referralCode),
+  })
+)
+
+export const storeLocations = mysqlTable(
+  'store_locations',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 })
+      .notNull()
+      .references(() => stores.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 255 }).notNull(),
+    address: text('address').notNull(),
+    city: varchar('city', { length: 255 }),
+    postalCode: varchar('postal_code', { length: 20 }),
+    country: varchar('country', { length: 2 }).default('FR'),
+    latitude: decimal('latitude', { precision: 10, scale: 7 }),
+    longitude: decimal('longitude', { precision: 10, scale: 7 }),
+    isActive: boolean('is_active').default(true).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('store_locations_store_idx').on(table.storeId),
+    activeIdx: index('store_locations_active_idx').on(table.storeId, table.isActive),
   })
 )
 
@@ -617,6 +642,12 @@ export const reservations = mysqlTable(
     returnLatitude: decimal('return_latitude', { precision: 10, scale: 7 }),
     returnLongitude: decimal('return_longitude', { precision: 10, scale: 7 }),
     returnDistanceKm: decimal('return_distance_km', { precision: 8, scale: 2 }),
+
+    // Store pickup/return location snapshots. Null id means the store primary location.
+    pickupLocationId: varchar('pickup_location_id', { length: 21 }),
+    returnLocationId: varchar('return_location_id', { length: 21 }),
+    pickupLocationSnapshot: json('pickup_location_snapshot').$type<ReservationLocationSnapshot>(),
+    returnLocationSnapshot: json('return_location_snapshot').$type<ReservationLocationSnapshot>(),
 
     // Promo code
     promoCodeId: varchar('promo_code_id', { length: 21 }),
@@ -1183,11 +1214,19 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   }),
   categories: many(categories),
   products: many(products),
+  locations: many(storeLocations),
   customers: many(customers),
   reservations: many(reservations),
   promoCodes: many(promoCodes),
   emailLogs: many(emailLogs),
   smsLogs: many(smsLogs),
+}))
+
+export const storeLocationsRelations = relations(storeLocations, ({ one }) => ({
+  store: one(stores, {
+    fields: [storeLocations.storeId],
+    references: [stores.id],
+  }),
 }))
 
 export const promoCodesRelations = relations(promoCodes, ({ one }) => ({

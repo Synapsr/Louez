@@ -107,6 +107,8 @@ export function CheckoutForm({
   storeAddress,
   storeLatitude,
   storeLongitude,
+  storeName,
+  locations,
   tulipInsurance,
   hasActivePromoCodes,
 }: CheckoutFormProps) {
@@ -187,9 +189,14 @@ export function CheckoutForm({
 
   const {
     isDeliveryEnabled,
+    isMultiLocationEnabled,
+    isAddressDeliveryEnabled,
+    locations: checkoutLocations,
     isDeliveryForced,
     isDeliveryIncluded,
     outboundMethod,
+    pickupLocationId,
+    handlePickupLocationChange,
     outboundAddress,
     outboundDistance,
     outboundFee,
@@ -197,6 +204,8 @@ export function CheckoutForm({
     handleOutboundMethodChange,
     handleOutboundAddressChange,
     returnMethod,
+    returnLocationId,
+    handleReturnLocationChange,
     returnAddress,
     returnDistance,
     returnFee,
@@ -205,15 +214,35 @@ export function CheckoutForm({
     handleReturnAddressChange,
     totalFee: deliveryTotalFee,
     canContinue: deliveryCanContinue,
+    isDeliveryAmountEligible,
   } = useCheckoutDelivery({
     deliverySettings,
     storeLatitude,
     storeLongitude,
     subtotal,
+    deliveryEligibilitySubtotal: subtotal - discountAmount,
+    locations,
   });
 
   const totalWithDelivery = total - discountAmount + deliveryTotalFee;
   const tulipInsuranceMode = tulipInsurance?.mode ?? 'no_public';
+  const selectedPickupLocation = checkoutLocations.find((location) => location.id === pickupLocationId)
+    ?? checkoutLocations[0]
+    ?? null;
+  const selectedReturnLocation = checkoutLocations.find((location) => location.id === returnLocationId)
+    ?? selectedPickupLocation;
+  const logisticsLabel = (() => {
+    const pickupLabel =
+      outboundMethod === 'address'
+        ? t('deliveryCompact')
+        : selectedPickupLocation?.name ?? t('storeLocationFallback');
+    const returnLabel =
+      returnMethod === 'address'
+        ? t('collectionCompact')
+        : selectedReturnLocation?.name ?? pickupLabel;
+
+    return pickupLabel === returnLabel ? pickupLabel : `${pickupLabel} -> ${returnLabel}`;
+  })();
 
   const { lineResolutions, itemsWithResolved, canSubmitCheckout } =
     useCheckoutLineResolutions({
@@ -484,8 +513,10 @@ export function CheckoutForm({
         totalAmount: totalWithEstimatedInsurance,
         outboundMethod,
         outboundAddress,
+        pickupLocationId,
         returnMethod,
         returnAddress,
+        returnLocationId,
         tulipInsuranceMode,
         promoCode: appliedPromo?.code,
       });
@@ -599,21 +630,30 @@ export function CheckoutForm({
                       subtotal={subtotal}
                       currency={currency}
                       storeAddress={storeAddress}
+                      storeName={storeName}
+                      isMultiLocationEnabled={isMultiLocationEnabled}
+                      isAddressDeliveryEnabled={isAddressDeliveryEnabled}
+                      locations={checkoutLocations}
                       isDeliveryForced={isDeliveryForced}
                       isDeliveryIncluded={isDeliveryIncluded}
+                      isDeliveryAmountEligible={isDeliveryAmountEligible}
                       outboundMethod={outboundMethod}
+                      pickupLocationId={pickupLocationId}
                       outboundAddress={outboundAddress}
                       outboundDistance={outboundDistance}
                       outboundFee={outboundFee}
                       outboundError={outboundError}
                       onOutboundMethodChange={handleOutboundMethodChange}
+                      onPickupLocationChange={handlePickupLocationChange}
                       onOutboundAddressChange={handleOutboundAddressChange}
                       returnMethod={returnMethod}
+                      returnLocationId={returnLocationId}
                       returnAddress={returnAddress}
                       returnDistance={returnDistance}
                       returnFee={returnFee}
                       returnError={returnError}
                       onReturnMethodChange={handleReturnMethodChange}
+                      onReturnLocationChange={handleReturnLocationChange}
                       onReturnAddressChange={handleReturnAddressChange}
                       totalFee={deliveryTotalFee}
                       canContinue={deliveryCanContinue}
@@ -629,6 +669,7 @@ export function CheckoutForm({
                     hasDeliveryLegs={
                       outboundMethod === 'address' || returnMethod === 'address'
                     }
+                    logisticsLabel={logisticsLabel}
                     reservationMode={reservationMode}
                     depositPercentage={depositPercentage}
                     subtotal={subtotalWithEstimatedInsurance}

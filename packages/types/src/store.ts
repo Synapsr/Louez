@@ -104,6 +104,8 @@ export type LegMethod = 'store' | 'address'
 export interface DeliverySettings {
   /** Whether delivery is enabled for this store */
   enabled: boolean
+  /** Whether customers can choose configured pickup/return locations */
+  multiLocationEnabled?: boolean
   /** How delivery is offered to customers */
   mode: DeliveryMode
   /** Price per kilometer in store currency */
@@ -114,6 +116,19 @@ export interface DeliverySettings {
   maximumDistance: number | null
   /** Order subtotal above which delivery is free, null = no free delivery */
   freeDeliveryThreshold: number | null
+  /** Minimum order subtotal required to offer address delivery, null = always available */
+  minimumOrderAmountForDelivery?: number | null
+}
+
+export interface ReservationLocationSnapshot {
+  type: 'primary' | 'additional'
+  name: string
+  address: string | null
+  city: string | null
+  postalCode: string | null
+  country: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 // ============================================================================

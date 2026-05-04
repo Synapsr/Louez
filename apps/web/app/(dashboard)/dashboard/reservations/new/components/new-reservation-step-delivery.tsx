@@ -244,6 +244,11 @@ export function NewReservationStepDelivery({
 }: NewReservationStepDeliveryProps) {
   const t = useTranslations('dashboard.reservations.manualForm')
   const hasAnyDelivery = outboundMethod === 'address' || returnMethod === 'address'
+  const deliveryMinimumAmount = deliverySettings.minimumOrderAmountForDelivery ?? null
+  const isBelowDeliveryMinimum =
+    deliverySettings.mode === 'optional' &&
+    deliveryMinimumAmount !== null &&
+    subtotal < deliveryMinimumAmount
 
   return (
     <Card>
@@ -255,6 +260,14 @@ export function NewReservationStepDelivery({
         <CardDescription>{t('deliveryStepDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {hasAnyDelivery && isBelowDeliveryMinimum && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+            {t('deliveryMinimumOverrideWarning', {
+              amount: formatCurrency(deliveryMinimumAmount, currency),
+            })}
+          </div>
+        )}
+
         {/* Outbound leg */}
         <DeliveryLeg
           leg="outbound"

@@ -23,6 +23,7 @@ export interface DeliveryLegAddress {
 
 export interface DeliveryLegState {
   method: LegMethod
+  locationId: string | null
   address: DeliveryLegAddress
   distance: number | null
   fee: number
@@ -40,6 +41,7 @@ export interface EditDeliveryState {
 
 function buildInitialLegState(
   method: LegMethod,
+  locationId: string | null,
   address: string | null,
   city: string | null,
   postalCode: string | null,
@@ -51,6 +53,7 @@ function buildInitialLegState(
 ): DeliveryLegState {
   return {
     method,
+    locationId,
     address: {
       address: address ?? '',
       city: city ?? '',
@@ -85,6 +88,7 @@ export function useEditReservationDelivery({
   const [outbound, setOutbound] = useState<DeliveryLegState>(() =>
     buildInitialLegState(
       initialDelivery.outboundMethod,
+      initialDelivery.pickupLocationId,
       initialDelivery.deliveryAddress,
       initialDelivery.deliveryCity,
       initialDelivery.deliveryPostalCode,
@@ -99,6 +103,7 @@ export function useEditReservationDelivery({
   const [inbound, setInbound] = useState<DeliveryLegState>(() =>
     buildInitialLegState(
       initialDelivery.returnMethod,
+      initialDelivery.returnLocationId,
       initialDelivery.returnAddress,
       initialDelivery.returnCity,
       initialDelivery.returnPostalCode,
@@ -203,6 +208,13 @@ export function useEditReservationDelivery({
     [outbound.address, recalculateDistance],
   )
 
+  const setOutboundLocationId = useCallback((locationId: string | null) => {
+    setOutbound((prev) => ({
+      ...prev,
+      locationId,
+    }))
+  }, [])
+
   const setInboundMethod = useCallback(
     (method: LegMethod) => {
       if (method === 'store') {
@@ -228,6 +240,13 @@ export function useEditReservationDelivery({
     },
     [inbound.address, recalculateDistance],
   )
+
+  const setInboundLocationId = useCallback((locationId: string | null) => {
+    setInbound((prev) => ({
+      ...prev,
+      locationId,
+    }))
+  }, [])
 
   const setOutboundAddress = useCallback(
     (address: DeliveryLegAddress) => {
@@ -293,6 +312,8 @@ export function useEditReservationDelivery({
     isDeliveryIncluded,
     setOutboundMethod,
     setInboundMethod,
+    setOutboundLocationId,
+    setInboundLocationId,
     setOutboundAddress,
     setInboundAddress,
   }

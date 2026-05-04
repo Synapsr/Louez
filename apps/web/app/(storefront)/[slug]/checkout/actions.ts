@@ -35,12 +35,17 @@ import {
 } from '@louez/utils'
 import type { SeasonalPricingConfig } from '@louez/utils'
 import type { PricingMode } from '@louez/utils'
-import { calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo'
+import {
+  calculateTotalDeliveryFee,
+  isDeliveryOrderAmountEligible,
+  validateDelivery,
+} from '@/lib/utils/geo'
 import {
   getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
 } from '@/lib/integrations/tulip/contracts'
 import { getTulipSettings } from '@/lib/integrations/tulip/settings'
+import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots'
 import { env } from '@/env'
 
 interface ReservationItem {
@@ -59,6 +64,7 @@ interface ReservationItem {
 
 interface DeliveryLegInput {
   method: 'store' | 'address'
+  locationId?: string | null
   address?: string
   city?: string
   postalCode?: string
@@ -696,12 +702,35 @@ export async function createReservation(input: CreateReservationInput) {
     const deliveryMode = deliverySettings?.mode || 'optional'
     const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
     const isDeliveryIncluded = deliveryMode === 'included'
+    const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled)
 
     const outboundLeg = input.delivery?.outbound
     const returnLeg = input.delivery?.return
     const hasOutboundDelivery = outboundLeg?.method === 'address'
     const hasReturnDelivery = returnLeg?.method === 'address'
     const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery
+    const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store'
+    const hasReturnStore = !returnLeg || returnLeg.method === 'store'
+
+    let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null
+    let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null
+
+    try {
+      pickupLocation = hasOutboundStore
+        ? await resolveReservationLocationSnapshot({
+            store,
+            locationId: isMultiLocationEnabled ? outboundLeg?.locationId ?? null : null,
+          })
+        : null
+      returnLocation = hasReturnStore
+        ? await resolveReservationLocationSnapshot({
+            store,
+            locationId: isMultiLocationEnabled ? returnLeg?.locationId ?? null : null,
+          })
+        : null
+    } catch (error) {
+      return { error: getErrorKey(error, 'errors.locationInvalid') }
+    }
 
     // Validate that outbound delivery is selected when mode is forced
     if (isDeliveryForced && deliverySettings?.enabled && !hasOutboundDelivery) {
@@ -939,6 +968,21 @@ export async function createReservation(input: CreateReservationInput) {
         code: promoRow.code,
         type: promoRow.type,
         value: promoValue,
+      }
+    }
+
+    const deliveryEligibilitySubtotal =
+      Math.round((serverSubtotal - serverDiscountAmount) * 100) / 100
+    if (
+      hasAnyDelivery &&
+      deliverySettings &&
+      !isDeliveryOrderAmountEligible(deliveryEligibilitySubtotal, deliverySettings)
+    ) {
+      return {
+        error: 'errors.deliveryMinimumOrderAmountNotMet',
+        errorParams: {
+          amount: (deliverySettings.minimumOrderAmountForDelivery ?? 0).toFixed(2),
+        },
       }
     }
 
@@ -1233,6 +1277,10 @@ export async function createReservation(input: CreateReservationInput) {
         returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
         returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
         returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
+        pickupLocationId: pickupLocation?.locationId ?? null,
+        returnLocationId: returnLocation?.locationId ?? null,
+        pickupLocationSnapshot: pickupLocation?.snapshot ?? null,
+        returnLocationSnapshot: returnLocation?.snapshot ?? null,
       })
 
       for (let i = 0; i < input.items.length; i++) {

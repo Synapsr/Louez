@@ -5,6 +5,7 @@ import { getMessages } from 'next-intl/server';
 
 import { FromHelloProvider } from '@/components/fromhello-provider';
 import { GleapProvider } from '@/components/dashboard/gleap-provider';
+import { OpenReplayProvider } from '@/components/dashboard/openreplay-provider';
 import { PostHogProvider } from '@/components/posthog-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -47,29 +48,7 @@ export default async function DashboardLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FromHelloProvider
-            user={
-              session.user?.id && session.user?.email
-                ? {
-                    id: session.user.id,
-                    email: session.user.email,
-                    name: session.user.name,
-                  }
-                : undefined
-            }
-            store={
-              store
-                ? {
-                    name: store.name,
-                    slug: store.slug,
-                    phone: store.phone,
-                    email: store.email,
-                    plan: planSlug,
-                  }
-                : undefined
-            }
-          />
-          <GleapProvider
+          <OpenReplayProvider
             user={
               session.user?.id && session.user?.email
                 ? {
@@ -88,8 +67,50 @@ export default async function DashboardLayout({
                 : undefined
             }
           >
-            <div className="bg-background min-h-screen">{children}</div>
-          </GleapProvider>
+            <FromHelloProvider
+              user={
+                session.user?.id && session.user?.email
+                  ? {
+                      id: session.user.id,
+                      email: session.user.email,
+                      name: session.user.name,
+                    }
+                  : undefined
+              }
+              store={
+                store
+                  ? {
+                      name: store.name,
+                      slug: store.slug,
+                      phone: store.phone,
+                      email: store.email,
+                      plan: planSlug,
+                    }
+                  : undefined
+              }
+            />
+            <GleapProvider
+              user={
+                session.user?.id && session.user?.email
+                  ? {
+                      id: session.user.id,
+                      email: session.user.email,
+                      name: session.user.name,
+                    }
+                  : undefined
+              }
+              store={
+                store
+                  ? {
+                      id: store.id,
+                      name: store.name,
+                    }
+                  : undefined
+              }
+            >
+              <div className="bg-background min-h-screen">{children}</div>
+            </GleapProvider>
+          </OpenReplayProvider>
         </ThemeProvider>
       </PostHogProvider>
     </NextIntlClientProvider>

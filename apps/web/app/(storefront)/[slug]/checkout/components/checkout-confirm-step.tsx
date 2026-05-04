@@ -15,6 +15,7 @@ interface CheckoutConfirmStepProps {
   form: CheckoutFormComponentApi;
   cgv: string | null;
   hasDeliveryLegs: boolean;
+  logisticsLabel?: string;
   reservationMode: 'payment' | 'request';
   depositPercentage: number;
   subtotal: number;
@@ -34,6 +35,7 @@ export function CheckoutConfirmStep({
   form,
   cgv,
   hasDeliveryLegs,
+  logisticsLabel,
   reservationMode,
   depositPercentage,
   subtotal,
@@ -84,7 +86,9 @@ export function CheckoutConfirmStep({
               {form.getFieldValue('city')}
             </p>
           )}
-          {hasDeliveryLegs && (
+          {logisticsLabel ? (
+            <p className="text-muted-foreground text-sm">{logisticsLabel}</p>
+          ) : hasDeliveryLegs && (
             <p className="text-muted-foreground text-sm">{t('deliveryOption')}</p>
           )}
         </div>

@@ -141,6 +141,8 @@ export async function generateContract({
         returnAddress: reservation.returnAddress,
         returnCity: reservation.returnCity,
         returnPostalCode: reservation.returnPostalCode,
+        pickupLocationSnapshot: reservation.pickupLocationSnapshot,
+        returnLocationSnapshot: reservation.returnLocationSnapshot,
         items: reservation.items.map((item) => ({
           productSnapshot: item.productSnapshot as { name: string; description?: string | null },
           quantity: item.quantity,
