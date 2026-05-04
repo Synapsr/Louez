@@ -1,12 +1,26 @@
 'use client';
 
-import Tracker from '@openreplay/tracker';
 import { useEffect } from 'react';
 
 import { env } from '@/env';
 
-let openReplayTracker: Tracker | null = null;
-let openReplayStartPromise: Promise<unknown> | null = null;
+const OPENREPLAY_PROJECT_KEY =
+  env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY || 'W9AU13WEWMDZ4m8KQzWZ';
+const OPENREPLAY_INGEST_POINT =
+  env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT ||
+  'https://replay.lumy.cloud/ingest';
+
+type OpenReplayTracker = InstanceType<
+  Awaited<typeof import('@openreplay/tracker')>['default']
+>;
+
+declare global {
+  interface Window {
+    __louezOpenReplayTracker?: OpenReplayTracker;
+    __louezOpenReplayTrackerPromise?: Promise<OpenReplayTracker>;
+    __louezOpenReplayStartPromise?: Promise<unknown>;
+  }
+}
 
 interface OpenReplayProviderProps {
   children: React.ReactNode;
@@ -21,15 +35,17 @@ interface OpenReplayProviderProps {
   };
 }
 
-function getOpenReplayTracker() {
-  if (!env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY) {
-    return null;
+async function getOpenReplayTracker() {
+  if (window.__louezOpenReplayTracker) {
+    return window.__louezOpenReplayTracker;
   }
 
-  if (!openReplayTracker) {
-    openReplayTracker = new Tracker({
-      projectKey: env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
-      ingestPoint: env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
+  window.__louezOpenReplayTrackerPromise ??= (async () => {
+    const { default: Tracker } = await import('@openreplay/tracker');
+
+    window.__louezOpenReplayTracker = new Tracker({
+      projectKey: OPENREPLAY_PROJECT_KEY,
+      ingestPoint: OPENREPLAY_INGEST_POINT,
       respectDoNotTrack: true,
       privateMode: true,
       obscureTextEmails: true,
@@ -45,9 +61,11 @@ function getOpenReplayTracker() {
         ignoreHeaders: true,
       },
     });
-  }
 
-  return openReplayTracker;
+    return window.__louezOpenReplayTracker;
+  })();
+
+  return window.__louezOpenReplayTrackerPromise;
 }
 
 export function OpenReplayProvider({
@@ -60,43 +78,41 @@ export function OpenReplayProvider({
       return;
     }
 
-    const tracker = getOpenReplayTracker();
-
-    if (!tracker) {
-      return;
-    }
-
-    openReplayStartPromise ??= tracker.start({
-      userID: user?.id,
-      metadata: {
-        ...(user?.email && { email: user.email }),
-        ...(user?.name && { name: user.name }),
-        ...(store && {
-          storeId: store.id,
-          storeName: store.name,
-        }),
-      },
+    void getOpenReplayTracker().then((tracker) => {
+      window.__louezOpenReplayStartPromise ??= tracker.start({
+        userID: user?.email,
+        metadata: {
+          ...(user?.id && { userId: user.id }),
+          ...(user?.email && { email: user.email }),
+          ...(user?.name && { name: user.name }),
+          ...(store && {
+            storeId: store.id,
+            storeName: store.name,
+          }),
+        },
+      });
     });
   }, [store, user]);
 
   useEffect(() => {
-    const tracker = getOpenReplayTracker();
-
-    if (!tracker || !user) {
+    if (!user) {
       return;
     }
 
-    tracker.setUserID(user.id);
-    tracker.setMetadata('email', user.email);
+    void getOpenReplayTracker().then((tracker) => {
+      tracker.setUserID(user.email);
+      tracker.setMetadata('userId', user.id);
+      tracker.setMetadata('email', user.email);
 
-    if (user.name) {
-      tracker.setMetadata('name', user.name);
-    }
+      if (user.name) {
+        tracker.setMetadata('name', user.name);
+      }
 
-    if (store) {
-      tracker.setMetadata('storeId', store.id);
-      tracker.setMetadata('storeName', store.name);
-    }
+      if (store) {
+        tracker.setMetadata('storeId', store.id);
+        tracker.setMetadata('storeName', store.name);
+      }
+    });
   }, [store, user]);
 
   return <>{children}</>;
