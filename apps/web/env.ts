@@ -151,6 +151,12 @@ export const env = createEnv({
     // ===== Gleap (Required for feedback) =====
     NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
 
+    // ===== OpenReplay (Optional — dashboard session replay) =====
+    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z.string().optional(),
+    NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: z
+      .url('NEXT_PUBLIC_OPENREPLAY_INGEST_POINT must be a valid URL')
+      .optional(),
+
     // ===== fromHello (Optional — engagement & growth) =====
     NEXT_PUBLIC_FROMHELLO_API_URL: z.url().optional(),
     NEXT_PUBLIC_FROMHELLO_KEY: z.string().optional(),
@@ -212,6 +218,10 @@ export const env = createEnv({
     NEXT_PUBLIC_UMAMI_SCRIPT_URL: process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL,
     NEXT_PUBLIC_UMAMI_WEBSITE_ID: process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID,
     NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,
+    NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY:
+      process.env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
+    NEXT_PUBLIC_OPENREPLAY_INGEST_POINT:
+      process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
     NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,
     NEXT_PUBLIC_FROMHELLO_KEY: process.env.NEXT_PUBLIC_FROMHELLO_KEY,
     NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
