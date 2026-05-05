@@ -95,7 +95,7 @@ interface Product {
   price: string;
   deposit: string | null;
   quantity: number;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; order?: number | null } | null;
   pricingMode?: PricingMode | null;
   basePeriodMinutes?: number | null;
   enforceStrictTiers?: boolean;
@@ -114,6 +114,7 @@ interface Product {
 interface Category {
   id: string;
   name: string;
+  order?: number | null;
 }
 
 interface Store {
@@ -241,20 +242,46 @@ export function RentalContent({
     return filtered;
   }, [products, selectedCategory, searchTerm]);
 
-  // Sort products by availability
+  // Keep the catalog category order first, then surface available products within each category.
   const sortedProducts = useMemo(() => {
+    const categoryOrderById = new Map(
+      categories.map((category, index) => [
+        category.id,
+        category.order ?? index,
+      ]),
+    );
+    const originalOrderById = new Map(
+      filteredProducts.map((product, index) => [product.id, index]),
+    );
+    const uncategorizedOrder = Number.MAX_SAFE_INTEGER;
+
     return [...filteredProducts].sort((a, b) => {
+      const aCategoryOrder = a.category?.id
+        ? (categoryOrderById.get(a.category.id) ?? a.category.order ?? uncategorizedOrder)
+        : uncategorizedOrder;
+      const bCategoryOrder = b.category?.id
+        ? (categoryOrderById.get(b.category.id) ?? b.category.order ?? uncategorizedOrder)
+        : uncategorizedOrder;
+
+      if (aCategoryOrder !== bCategoryOrder) {
+        return aCategoryOrder - bCategoryOrder;
+      }
+
       const aAvail = availability.get(a.id);
       const bAvail = availability.get(b.id);
 
-      // Sort by status: available > limited > unavailable
       const statusOrder = { available: 0, limited: 1, unavailable: 2 };
       const aStatus = aAvail?.status || 'available';
       const bStatus = bAvail?.status || 'available';
+      const availabilityOrder = statusOrder[aStatus] - statusOrder[bStatus];
 
-      return statusOrder[aStatus] - statusOrder[bStatus];
+      if (availabilityOrder !== 0) {
+        return availabilityOrder;
+      }
+
+      return (originalOrderById.get(a.id) ?? 0) - (originalOrderById.get(b.id) ?? 0);
     });
-  }, [filteredProducts, availability]);
+  }, [filteredProducts, availability, categories]);
 
   const handleChangeDates = () => {
     setIsDateModalOpen(true);
