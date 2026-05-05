@@ -11,27 +11,35 @@ import {
   CardHeader,
   CardTitle,
   Separator,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@louez/ui'
 import { cn, formatCurrency } from '@louez/utils'
 
 import { AddressInput } from '@/components/ui/address-input'
 
-import type { DeliveryAddress } from '../types'
+import type { DeliveryAddress, ReservationLocationOption } from '../types'
 
 interface NewReservationStepDeliveryProps {
   deliverySettings: DeliverySettings
   subtotal: number
   currency: string
   storeAddress?: string | null
+  locations: ReservationLocationOption[]
   isDeliveryForced: boolean
   isDeliveryIncluded: boolean
   // Outbound leg
   outboundMethod: LegMethod
+  pickupLocationId: string | null
   outboundAddress: DeliveryAddress
   outboundDistance: number | null
   outboundFee: number
   outboundError: string | null
   onOutboundMethodChange: (method: LegMethod) => void
+  onPickupLocationChange: (locationId: string | null) => void
   onOutboundAddressChange: (
     address: string,
     latitude: number | null,
@@ -39,11 +47,13 @@ interface NewReservationStepDeliveryProps {
   ) => void
   // Return leg
   returnMethod: LegMethod
+  returnLocationId: string | null
   returnAddress: DeliveryAddress
   returnDistance: number | null
   returnFee: number
   returnError: string | null
   onReturnMethodChange: (method: LegMethod) => void
+  onReturnLocationChange: (locationId: string | null) => void
   onReturnAddressChange: (
     address: string,
     latitude: number | null,
@@ -63,6 +73,9 @@ function DeliveryLeg({
   fee,
   error,
   storeAddress,
+  locations,
+  selectedLocationId,
+  onLocationChange,
   isForced,
   isDeliveryIncluded,
   currency,
@@ -76,11 +89,24 @@ function DeliveryLeg({
   fee: number
   error: string | null
   storeAddress?: string | null
+  locations: ReservationLocationOption[]
+  selectedLocationId: string | null
+  onLocationChange: (locationId: string | null) => void
   isForced: boolean
   isDeliveryIncluded: boolean
   currency: string
 }) {
   const t = useTranslations('dashboard.reservations.manualForm')
+  const selectedLocation =
+    locations.find((location) => location.id === selectedLocationId) ??
+    locations[0] ??
+    null
+  const selectedLocationAddress = selectedLocation
+    ? [
+        selectedLocation.address,
+        [selectedLocation.postalCode, selectedLocation.city].filter(Boolean).join(' '),
+      ].filter(Boolean).join(', ')
+    : storeAddress
 
   return (
     <div className="space-y-4">
@@ -129,11 +155,58 @@ function DeliveryLeg({
             )} />
             <div>
               <span className="text-sm font-medium">{t('deliveryNo')}</span>
-              {storeAddress && (
-                <p className="text-muted-foreground text-xs mt-0.5">{storeAddress}</p>
+              {selectedLocationAddress && (
+                <p className="text-muted-foreground text-xs mt-0.5">{selectedLocationAddress}</p>
               )}
             </div>
           </button>
+        </div>
+      )}
+
+      {method === 'store' && locations.length > 1 && (
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            {leg === 'outbound' ? t('pickupLocation') : t('returnLocation')}
+          </label>
+          <Select
+            value={selectedLocationId ?? 'primary'}
+            onValueChange={(value) => onLocationChange(value === 'primary' ? null : value)}
+          >
+            <SelectTrigger className="h-auto min-h-10 w-full min-w-0 max-w-full items-start overflow-hidden py-2 text-left">
+              <SelectValue className="min-w-0">
+                <span className="block max-w-full truncate text-sm font-medium">
+                  {selectedLocation?.name ?? t('storeLocationFallback')}
+                </span>
+                {selectedLocationAddress && (
+                  <span className="block max-w-full truncate text-xs text-muted-foreground">
+                    {selectedLocationAddress}
+                  </span>
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((location) => {
+                const value = location.id ?? 'primary'
+                const locationAddress = [
+                  location.address,
+                  [location.postalCode, location.city].filter(Boolean).join(' '),
+                ].filter(Boolean).join(', ')
+
+                return (
+                  <SelectItem key={value} value={value} label={location.name}>
+                    <span className="block max-w-full truncate text-sm font-medium">
+                      {location.name}
+                    </span>
+                    {locationAddress && (
+                      <span className="block max-w-full truncate text-xs text-muted-foreground">
+                        {locationAddress}
+                      </span>
+                    )}
+                  </SelectItem>
+                )
+              })}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -224,21 +297,26 @@ export function NewReservationStepDelivery({
   subtotal,
   currency,
   storeAddress,
+  locations,
   isDeliveryForced,
   isDeliveryIncluded,
   outboundMethod,
+  pickupLocationId,
   outboundAddress,
   outboundDistance,
   outboundFee,
   outboundError,
   onOutboundMethodChange,
+  onPickupLocationChange,
   onOutboundAddressChange,
   returnMethod,
+  returnLocationId,
   returnAddress,
   returnDistance,
   returnFee,
   returnError,
   onReturnMethodChange,
+  onReturnLocationChange,
   onReturnAddressChange,
   totalFee,
 }: NewReservationStepDeliveryProps) {
@@ -279,6 +357,9 @@ export function NewReservationStepDelivery({
           fee={outboundFee}
           error={outboundError}
           storeAddress={storeAddress}
+          locations={locations}
+          selectedLocationId={pickupLocationId}
+          onLocationChange={onPickupLocationChange}
           isForced={isDeliveryForced}
           isDeliveryIncluded={isDeliveryIncluded}
           currency={currency}
@@ -297,6 +378,9 @@ export function NewReservationStepDelivery({
           fee={returnFee}
           error={returnError}
           storeAddress={storeAddress}
+          locations={locations}
+          selectedLocationId={returnLocationId}
+          onLocationChange={onReturnLocationChange}
           isForced={false}
           isDeliveryIncluded={isDeliveryIncluded}
           currency={currency}

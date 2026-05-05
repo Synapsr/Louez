@@ -49,6 +49,7 @@ export function useNewReservationDelivery({
   const [outboundMethod, setOutboundMethod] = useState<LegMethod>(
     isDeliveryForced ? 'address' : 'store',
   )
+  const [pickupLocationId, setPickupLocationId] = useState<string | null>(null)
   const [outboundAddress, setOutboundAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   )
@@ -59,6 +60,7 @@ export function useNewReservationDelivery({
 
   // --- Return leg state ---
   const [returnMethod, setReturnMethod] = useState<LegMethod>('store')
+  const [returnLocationId, setReturnLocationId] = useState<string | null>(null)
   const [returnAddress, setReturnAddress] = useState<DeliveryAddress>(
     DEFAULT_DELIVERY_ADDRESS,
   )
@@ -209,6 +211,14 @@ export function useNewReservationDelivery({
     [outboundDistance, outboundMethod, recalculateFees],
   )
 
+  const handlePickupLocationChange = useCallback((locationId: string | null) => {
+    setPickupLocationId(locationId)
+  }, [])
+
+  const handleReturnLocationChange = useCallback((locationId: string | null) => {
+    setReturnLocationId(locationId)
+  }, [])
+
   const handleOutboundAddressChange = useCallback(
     (address: string, latitude: number | null, longitude: number | null) => {
       void handleLegAddressChange('outbound', address, latitude, longitude, returnDistance, returnMethod)
@@ -253,21 +263,25 @@ export function useNewReservationDelivery({
       isDeliveryIncluded,
 
       outboundMethod,
+      pickupLocationId,
       outboundAddress,
       outboundDistance,
       outboundFee,
       outboundError,
       outboundIsCalculating,
       handleOutboundMethodChange,
+      handlePickupLocationChange,
       handleOutboundAddressChange,
 
       returnMethod,
+      returnLocationId,
       returnAddress,
       returnDistance,
       returnFee,
       returnError,
       returnIsCalculating,
       handleReturnMethodChange,
+      handleReturnLocationChange,
       handleReturnAddressChange,
 
       totalFee,
@@ -279,8 +293,10 @@ export function useNewReservationDelivery({
       deliveryOption,
       handleOutboundAddressChange,
       handleOutboundMethodChange,
+      handlePickupLocationChange,
       handleReturnAddressChange,
       handleReturnMethodChange,
+      handleReturnLocationChange,
       isDeliveryEnabled,
       isDeliveryForced,
       isDeliveryIncluded,
@@ -290,12 +306,14 @@ export function useNewReservationDelivery({
       outboundFee,
       outboundIsCalculating,
       outboundMethod,
+      pickupLocationId,
       returnAddress,
       returnDistance,
       returnError,
       returnFee,
       returnIsCalculating,
       returnMethod,
+      returnLocationId,
       totalFee,
     ],
   )

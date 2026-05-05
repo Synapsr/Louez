@@ -107,6 +107,7 @@ export function NewReservationForm({
   storeLatitude,
   storeLongitude,
   storeAddress,
+  storeLocations,
 }: NewReservationFormProps) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -156,7 +157,8 @@ export function NewReservationForm({
   )
 
   const isDeliveryEnabled = Boolean(
-    deliverySettings?.enabled && storeLatitude != null && storeLongitude != null,
+    (deliverySettings?.enabled && storeLatitude != null && storeLongitude != null) ||
+      deliverySettings?.multiLocationEnabled,
   )
 
   // Price override dialog state
@@ -376,7 +378,7 @@ export function NewReservationForm({
                     latitude: delivery.outboundAddress.latitude,
                     longitude: delivery.outboundAddress.longitude,
                   }
-                : { method: 'store' as const },
+                : { method: 'store' as const, locationId: delivery.pickupLocationId },
               return: delivery.returnMethod === 'address' && delivery.returnAddress.latitude !== null && delivery.returnAddress.longitude !== null
                 ? {
                     method: 'address' as const,
@@ -387,7 +389,7 @@ export function NewReservationForm({
                     latitude: delivery.returnAddress.latitude,
                     longitude: delivery.returnAddress.longitude,
                   }
-                : { method: 'store' as const },
+                : { method: 'store' as const, locationId: delivery.returnLocationId },
             },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
@@ -1144,21 +1146,26 @@ export function NewReservationForm({
               subtotal={subtotal}
               currency="EUR"
               storeAddress={storeAddress}
+              locations={storeLocations}
               isDeliveryForced={delivery.isDeliveryForced}
               isDeliveryIncluded={delivery.isDeliveryIncluded}
               outboundMethod={delivery.outboundMethod}
+              pickupLocationId={delivery.pickupLocationId}
               outboundAddress={delivery.outboundAddress}
               outboundDistance={delivery.outboundDistance}
               outboundFee={delivery.outboundFee}
               outboundError={delivery.outboundError}
               onOutboundMethodChange={delivery.handleOutboundMethodChange}
+              onPickupLocationChange={delivery.handlePickupLocationChange}
               onOutboundAddressChange={delivery.handleOutboundAddressChange}
               returnMethod={delivery.returnMethod}
+              returnLocationId={delivery.returnLocationId}
               returnAddress={delivery.returnAddress}
               returnDistance={delivery.returnDistance}
               returnFee={delivery.returnFee}
               returnError={delivery.returnError}
               onReturnMethodChange={delivery.handleReturnMethodChange}
+              onReturnLocationChange={delivery.handleReturnLocationChange}
               onReturnAddressChange={delivery.handleReturnAddressChange}
               totalFee={delivery.totalFee}
             />
