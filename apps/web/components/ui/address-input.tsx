@@ -9,8 +9,12 @@ import { useTranslations } from 'next-intl';
 import { useDebouncedCallback } from 'use-debounce';
 
 import type { AddressSuggestion } from '@louez/types';
-import { Input } from '@louez/ui';
-import { Button } from '@louez/ui';
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+} from '@louez/ui';
 import { cn } from '@louez/utils';
 
 import { AddressMapModal } from '@/components/ui/address-map-modal';
@@ -309,9 +313,9 @@ export function AddressInput({
   return (
     <>
       <div ref={containerRef} className={cn('relative', className)}>
-        <div className="relative">
-          <MapPin className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
+        <InputGroup>
+
+          <InputGroupInput
             ref={inputRef}
             type="text"
             value={inputValue}
@@ -321,25 +325,30 @@ export function AddressInput({
             onFocus={() => suggestions.length > 0 && setIsOpen(true)}
             placeholder={placeholder || t('placeholder')}
             disabled={disabled}
-            className={cn('pl-9', inputValue ? 'pr-[4.5rem]' : 'pr-10')}
             autoComplete="one-time-code"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
             data-form-type="other"
             data-lpignore="true"
+            className="py-0.5"
           />
-          <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-0.5">
+          <InputGroupAddon align="inline-end" className="gap-0.5 ">
             {isLoading && (
-              <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
+              <InputGroupButton
+                type="button"
+                size="icon-sm"
+
+                title={t('editLocation')}
+              >
+              <Loader2 className="text-muted-foreground size-4 animate-spin" />
+              </InputGroupButton>
             )}
             {!isLoading && (
-              <Button
+              <InputGroupButton
                 type="button"
-                variant="ghost"
-                size="icon"
+                size="icon-sm"
                 className={cn(
-                  'h-7 w-7',
                   hasCoordinates
                     ? 'text-primary hover:text-primary hover:bg-primary/10'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted',
@@ -348,21 +357,20 @@ export function AddressInput({
                 title={t('editLocation')}
               >
                 <MapPin className="h-4 w-4" />
-              </Button>
+              </InputGroupButton>
             )}
             {inputValue && !isLoading && (
-              <Button
+              <InputGroupButton
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-foreground h-7 w-7"
+                size="icon-sm"
+                className="text-muted-foreground hover:text-foreground"
                 onClick={handleClear}
               >
                 <X className="h-3.5 w-3.5" />
-              </Button>
+              </InputGroupButton>
             )}
-          </div>
-        </div>
+          </InputGroupAddon>
+        </InputGroup>
 
       </div>
 

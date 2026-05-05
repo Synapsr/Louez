@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useHotkey } from '@tanstack/react-hotkeys'
 import {
   AlertTriangle,
   ImageIcon,
@@ -28,7 +29,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupInput,
+  InputGroupText,
   Select,
   SelectContent,
   SelectItem,
@@ -121,6 +126,15 @@ export function NewReservationStepProducts({
   const t = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const [productSearchQuery, setProductSearchQuery] = useState('')
+  const productSearchInputRef = useRef<HTMLInputElement>(null)
+
+  useHotkey(
+    'Mod+F',
+    () => {
+      productSearchInputRef.current?.focus()
+    },
+    { enabled: products.length > 0 },
+  )
 
   const normalizedProductSearchQuery = productSearchQuery.trim().toLowerCase()
   const filteredProducts = useMemo(() => {
@@ -201,28 +215,41 @@ export function NewReservationStepProducts({
       </CardHeader>
       <CardContent className="space-y-6">
         {products.length > 0 && (
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+          <InputGroup className="h-10">
+            <InputGroupInput
+              ref={productSearchInputRef}
               type="search"
+              autoFocus
               value={productSearchQuery}
               onChange={(event) => setProductSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.currentTarget.blur()
+                }
+              }}
               placeholder={t('searchProductsPlaceholder', { count: products.length })}
-              className="h-10 [&_[data-slot=input]]:pl-9 [&_[data-slot=input]]:pr-10"
             />
+            <InputGroupAddon align="inline-start">
+              <Search className="h-4 w-4" />
+            </InputGroupAddon>
             {productSearchQuery.length > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => setProductSearchQuery('')}
-                aria-label={t('clearProductSearch')}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-sm"
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => setProductSearchQuery('')}
+                  aria-label={t('clearProductSearch')}
+                >
+                  <X className="h-4 w-4" />
+                </InputGroupButton>
+              </InputGroupAddon>
             )}
-          </div>
+            {productSearchQuery.length === 0 && (
+              <InputGroupAddon align="inline-end">
+                <InputGroupText>⌘F</InputGroupText>
+              </InputGroupAddon>
+            )}
+          </InputGroup>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">

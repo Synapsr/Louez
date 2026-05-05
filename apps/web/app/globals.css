@@ -100,6 +100,48 @@
   background: radial-gradient(circle, oklch(0.65 0.18 264 / 0.15), transparent 65%);
 }
 
+@keyframes timeline-dot-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  70% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+@keyframes timeline-dash-flow {
+  to {
+    background-position: 8px 0;
+  }
+}
+
+.timeline-dot-pulse {
+  animation: timeline-dot-pulse 2.4s ease-out infinite;
+}
+
+.timeline-dash-flow {
+  background-image: repeating-linear-gradient(
+    to right,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 0,
+    color-mix(in srgb, var(--color-primary) 35%, transparent) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+  background-size: 8px 1px;
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+  animation: timeline-dash-flow 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timeline-dot-pulse,
+  .timeline-dash-flow {
+    animation: none;
+  }
+}
+
 .product-image-crop .ReactCrop__crop-selection {
   border: 2px solid rgb(255 255 255 / 94%);
   border-radius: 14px;

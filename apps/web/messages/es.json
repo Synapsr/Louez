@@ -109,6 +109,7 @@
     },
     "dateTimePicker": {
       "select": "Seleccionar",
+      "naturalPlaceholder": "p. ej. mañana a las 14 o 12 de mayo a las 13",
       "time": "Hora",
       "confirm": "Confirmar"
     },

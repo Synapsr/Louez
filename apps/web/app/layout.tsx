@@ -48,7 +48,7 @@ export default function RootLayout({
     <>
       {process.env.NODE_ENV === 'development' && <Agentation />}
 
-      <html lang="fr" suppressHydrationWarning>
+      <html lang="fr" suppressHydrationWarning className='overscroll-none'>
         <UmamiAnalytics />
 
         {env.NEXT_PUBLIC_FROMHELLO_KEY && env.NEXT_PUBLIC_FROMHELLO_API_URL && (

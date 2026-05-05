@@ -19,6 +19,7 @@ import {
   Loader2,
   Plus,
   PenLine,
+  ShieldCheckIcon,
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
 
@@ -39,7 +40,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
-import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Stepper, StepContent, StepActions } from '@louez/ui'
 import {
   Dialog,
@@ -54,7 +54,6 @@ import { Label } from '@louez/ui'
 import { Checkbox } from '@louez/ui'
 
 import { cn, formatCurrency } from '@louez/utils'
-import { Alert, AlertDescription } from '@louez/ui'
 import type { PricingMode, UnitAttributes } from '@louez/types'
 import { useAppForm } from '@/hooks/form/form'
 import { orpc } from '@/lib/orpc/react'
@@ -926,7 +925,7 @@ export function NewReservationForm({
   return (
     <>
       <form.AppForm>
-        <form.Form className="space-y-6">
+        <form.Form className="space-y-6 pb-28">
         {/* Stepper */}
         <Card>
           <CardContent className="pt-6">
@@ -964,139 +963,130 @@ export function NewReservationForm({
               </CardHeader>
               <CardContent>
                 <div className="grid gap-6 sm:grid-cols-2">
-                  <form.Field name="startDate">
+                  <form.AppField name="startDate">
                     {(field) => {
                       const timeSlots = getTimeSlotsForDate(field.state.value)
                       return (
-                        <div className="flex flex-col space-y-2">
-                          <Label>{t('startDate')}</Label>
-                          <DateTimePicker
-                            date={field.state.value}
-                            setDate={(date) => {
-                              field.handleChange(date)
-                              clearStepFieldError('startDate')
-                            }}
-                            placeholder={t('pickDate')}
-                            showTime={true}
-                            minTime={timeSlots.minTime}
-                            maxTime={timeSlots.maxTime}
-                            timezone={timezone}
-                            autoCloseOnTimeSelect
-                            onAutoClose={() => {
-                              // Small delay to let the start popover close before opening end
-                              setTimeout(() => setEndDatePickerOpen(true), 150)
-                            }}
-                            defaultTime={defaultTimeSlot}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-sm font-medium text-destructive">
-                              {getFieldErrorMessage(field.state.meta.errors[0])}
-                            </p>
-                          )}
-                        </div>
+                        <field.ReservationDatePicker
+                          id="reservation-start-date"
+                          label={t('startDate')}
+                          minTime={timeSlots.minTime}
+                          maxTime={timeSlots.maxTime}
+                          timezone={timezone}
+                          autoCloseOnTimeSelect
+                          onChange={() => clearStepFieldError('startDate')}
+                          onAutoClose={() => {
+                            // Small delay to let the start popover close before opening end.
+                            setTimeout(() => setEndDatePickerOpen(true), 150)
+                          }}
+                          defaultTime={defaultTimeSlot}
+                        />
                       )
                     }}
-                  </form.Field>
-                  <form.Field name="endDate">
+                  </form.AppField>
+                  <form.AppField name="endDate">
                     {(field) => {
                       const timeSlots = getTimeSlotsForDate(field.state.value)
                       return (
-                        <div className="flex flex-col space-y-2">
-                          <Label>{t('endDate')}</Label>
-                          <DateTimePicker
-                            date={field.state.value}
-                            setDate={(date) => {
-                              field.handleChange(date)
-                              clearStepFieldError('endDate')
-                            }}
-                            placeholder={t('pickDate')}
-                            disabledDates={(date) => {
-                              // Only block dates before start date (logical constraint)
-                              if (watchStartDate) {
-                                const startDay = new Date(watchStartDate)
-                                startDay.setHours(0, 0, 0, 0)
-                                return date < startDay
-                              }
-                              return false
-                            }}
-                            showTime={true}
-                            minTime={timeSlots.minTime}
-                            maxTime={timeSlots.maxTime}
-                            timezone={timezone}
-                            autoCloseOnTimeSelect
-                            open={endDatePickerOpen}
-                            onOpenChange={setEndDatePickerOpen}
-                            defaultTime={defaultTimeSlot}
-                          />
-                          {field.state.meta.errors.length > 0 && (
-                            <p className="text-sm font-medium text-destructive">
-                              {getFieldErrorMessage(field.state.meta.errors[0])}
-                            </p>
-                          )}
-                        </div>
+                        <field.ReservationDatePicker
+                          id="reservation-end-date"
+                          label={t('endDate')}
+                          disabledDates={(date) => {
+                            // Only block dates before start date (logical constraint).
+                            if (watchStartDate) {
+                              const startDay = new Date(watchStartDate)
+                              startDay.setHours(0, 0, 0, 0)
+                              return date < startDay
+                            }
+                            return false
+                          }}
+                          minTime={timeSlots.minTime}
+                          maxTime={timeSlots.maxTime}
+                          timezone={timezone}
+                          referenceDate={watchStartDate}
+                          autoCloseOnTimeSelect
+                          open={endDatePickerOpen}
+                          onOpenChange={setEndDatePickerOpen}
+                          onChange={() => clearStepFieldError('endDate')}
+                          defaultTime={defaultTimeSlot}
+                        />
                       )
                     }}
-                  </form.Field>
+                  </form.AppField>
                 </div>
 
                 {watchStartDate && watchEndDate && duration > 0 && (
-                  <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                          <Calendar className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{t('duration')}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatStoreDate(watchStartDate, timezone, "d MMMM yyyy HH:mm")}
-                            {' '}&rarr;{' '}
-                            {formatStoreDate(watchEndDate, timezone, "d MMMM yyyy HH:mm")}
-                          </p>
-                        </div>
+                  <div className="mt-6 space-y-2.5">
+                    <div className="flex items-center gap-4 rounded-xl border bg-card px-4 py-3 relative">
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium tabular-nums">
+                          {formatStoreDate(watchStartDate, timezone, "d MMM yyyy")}
+                        </p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">
+                          {formatStoreDate(watchStartDate, timezone, "HH:mm")}
+                        </p>
                       </div>
-                      {detailedDuration && (
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-bold text-primary">
+
+                      <div className="relative flex h-3 flex-1 items-center justify-between">
+                        <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
+                        <div className="relative h-2 w-2 shrink-0">
+                          <span className="absolute inset-0 rounded-full bg-primary timeline-dot-pulse" />
+                          <span className="relative block h-2 w-2 rounded-full bg-primary ring-[3px] ring-primary/15" />
+                        </div>
+                        <div className="relative h-2 w-2 shrink-0">
+                          <span
+                            className="absolute inset-0 rounded-full bg-primary timeline-dot-pulse"
+                            style={{ animationDelay: '1.2s' }}
+                          />
+                          <span className="relative block h-2 w-2 rounded-full bg-primary ring-[3px] ring-primary/15" />
+                        </div>
+                        {detailedDuration && (
+                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-card px-2 py-0.5 text-[11px] font-semibold tabular-nums">
                             {[
                               detailedDuration.days > 0 && `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
                               detailedDuration.hours > 0 && `${detailedDuration.hours}h`,
                               detailedDuration.minutes > 0 && `${detailedDuration.minutes} min`,
-                            ].filter(Boolean).join(', ') || `0 min`}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
+                            ].filter(Boolean).join(' · ') || `0 min`}
+                          </span>
+                        )}
+                      </div>
 
-                {/* Period Warnings - Shown when dates are outside normal business conditions */}
-                {periodWarnings.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {periodWarnings.map((warning, index) => (
-                      <Alert
-                        key={`${warning.type}-${warning.field}-${index}`}
-                        className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
-                      >
-                        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-                        <AlertDescription className="ml-2">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-medium text-amber-800 dark:text-amber-200">
-                              {warning.message}
-                            </span>
-                            {warning.details && (
-                              <span className="text-sm text-amber-700 dark:text-amber-300">
-                                {warning.details}
-                              </span>
-                            )}
+                      <div className="min-w-0 text-right">
+                        <p className="text-xs font-medium tabular-nums">
+                          {formatStoreDate(watchEndDate, timezone, "d MMM yyyy")}
+                        </p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">
+                          {formatStoreDate(watchEndDate, timezone, "HH:mm")}
+                        </p>
+                      </div>
+                    </div>
+
+                    {periodWarnings.length > 0 && (
+                      <div className="space-y-1.5">
+                        {periodWarnings.map((warning, index) => (
+                          <div
+                            key={`${warning.type}-${warning.field}-${index}`}
+                            className="flex items-start gap-2.5 rounded-lg bg-warning/10 px-3 py-2"
+                          >
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
+                            <div className="min-w-0 space-y-0.5">
+                              <p className="text-xs font-medium text-foreground">
+                                {warning.message}
+                              </p>
+                              {warning.details && (
+                                <p className="text-[11px] text-muted-foreground">
+                                  {warning.details}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </AlertDescription>
-                      </Alert>
-                    ))}
-                    <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {t('warnings.canContinue')}
-                    </p>
+                        ))}
+                        <p className="flex items-center gap-1.5 px-1 pt-1 text-[11px] text-muted-foreground">
+                          <ShieldCheckIcon className="h-3 w-3" />
+                          {t('warnings.canContinue')}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -1212,7 +1202,7 @@ export function NewReservationForm({
         )}
 
         {/* Navigation */}
-        <StepActions>
+        <StepActions position="fixed" className="lg:left-64">
           <div>
             {currentStep > 0 ? (
               <Button type="button" variant="outline" onClick={goToPreviousStep}>

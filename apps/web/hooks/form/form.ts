@@ -6,6 +6,7 @@ import { FormSwitch } from '@/components/form/form-switch'
 import { FormSelect } from '@/components/form/form-select'
 import { FormCheckbox } from '@/components/form/form-checkbox'
 import { FormPriceDuration } from '@/components/form/form-price-duration'
+import { FormReservationDatePicker } from '@/components/form/form-reservation-date-picker'
 import { SubscribeButton } from '@/components/form/subscribe-button'
 import { FormForm } from '@/components/form/form-form'
 
@@ -17,6 +18,7 @@ export const { useAppForm, withForm } = createFormHook({
     Select: FormSelect,
     Checkbox: FormCheckbox,
     PriceDuration: FormPriceDuration,
+    ReservationDatePicker: FormReservationDatePicker,
   },
   formComponents: {
     Form: FormForm,
