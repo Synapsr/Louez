@@ -33,7 +33,7 @@ export function FormInput({
   );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0">
       {label && (
         <Label htmlFor={field.name} data-error={errors.length > 0}>
           {label}

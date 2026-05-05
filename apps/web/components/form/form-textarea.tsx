@@ -12,7 +12,7 @@ export function FormTextarea({
   const errors = field.state.meta.errors
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2 min-w-0">
       {label && (
         <Label htmlFor={field.name} data-error={errors.length > 0}>
           {label}

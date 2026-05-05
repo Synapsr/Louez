@@ -12,12 +12,12 @@ export default async function SettingsLayout({
   const isPlatformAdmin = await isCurrentUserPlatformAdmin()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('title')}</h1>
       </div>
 
-      <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[220px_1fr] xl:gap-10">
+      <div className="flex flex-col gap-4 sm:gap-6 xl:grid xl:grid-cols-[220px_1fr] xl:gap-10">
         <SettingsNav isPlatformAdmin={isPlatformAdmin} />
         <main className="min-w-0">{children}</main>
       </div>

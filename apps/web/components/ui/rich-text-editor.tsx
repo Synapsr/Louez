@@ -91,12 +91,14 @@ export function RichTextEditor({
           'prose prose-sm dark:prose-invert max-w-none',
           'min-h-[120px] w-full rounded-md bg-transparent px-3 py-2',
           'focus:outline-none',
+          '[overflow-wrap:anywhere] [&_*]:min-w-0',
           'prose-p:my-2 prose-ul:my-2 prose-ol:my-2',
           'prose-li:my-0',
           'prose-h1:text-2xl prose-h1:font-bold prose-h1:mt-4 prose-h1:mb-2',
           'prose-h2:text-xl prose-h2:font-semibold prose-h2:mt-3 prose-h2:mb-2',
           'prose-h3:text-lg prose-h3:font-medium prose-h3:mt-2 prose-h3:mb-1',
           'prose-blockquote:border-l-4 prose-blockquote:border-primary/50 prose-blockquote:pl-4 prose-blockquote:italic',
+          'prose-a:break-all',
           disabled && 'opacity-50 cursor-not-allowed'
         ),
       },
@@ -130,14 +132,14 @@ export function RichTextEditor({
   return (
     <div
       className={cn(
-        'border-input bg-background rounded-md border',
+        'border-input bg-background w-full min-w-0 max-w-full overflow-hidden rounded-md border',
         'focus-within:ring-ring focus-within:ring-2 focus-within:ring-offset-2',
         disabled && 'opacity-50',
         className
       )}
     >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 border-b p-1">
+      <div className="flex flex-wrap items-center gap-1 border-b p-1 min-w-0">
         {/* Heading dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button

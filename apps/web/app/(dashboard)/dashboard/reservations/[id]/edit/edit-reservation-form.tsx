@@ -769,29 +769,59 @@ export function EditReservationForm({
       <div className="-mx-4 -my-6 sm:-mx-6 lg:-mx-8 min-h-screen bg-muted/30">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-background border-b">
-          <div className="container max-w-5xl mx-auto px-4 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+          <div className="container max-w-5xl mx-auto px-3 py-3 sm:px-4 sm:py-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="ghost" size="icon" className="shrink-0">
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-lg font-semibold">{t('edit.title')}</h1>
-                    <Badge variant="outline" className="font-mono">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h1 className="text-base sm:text-lg font-semibold truncate">{t('edit.title')}</h1>
+                    <Badge variant="outline" className="font-mono shrink-0">
                       #{reservation.number}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">
                     {reservation.customer.firstName} {reservation.customer.lastName}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Button render={<Link href={`/dashboard/reservations/${reservation.id}`} />} variant="outline">
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  render={<Link href={`/dashboard/reservations/${reservation.id}`} />}
+                  variant="outline"
+                  size="icon"
+                  className="sm:hidden"
+                  title={tCommon('cancel')}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  render={<Link href={`/dashboard/reservations/${reservation.id}`} />}
+                  variant="outline"
+                  className="hidden sm:inline-flex"
+                >
                   {tCommon('cancel')}
                 </Button>
-                <Button onClick={handleSave} disabled={isLoading || delivery.isCalculating || !hasChanges}>
+                <Button
+                  onClick={handleSave}
+                  disabled={isLoading || delivery.isCalculating || !hasChanges}
+                  size="icon"
+                  className="sm:hidden"
+                  title={t('edit.save')}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="h-4 w-4" />
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={isLoading || delivery.isCalculating || !hasChanges}
+                  className="hidden sm:inline-flex"
+                >
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
@@ -804,10 +834,10 @@ export function EditReservationForm({
           </div>
         </div>
 
-        <div className="container max-w-5xl mx-auto px-4 py-6">
+        <div className="container max-w-5xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
           {/* Warnings */}
           {availabilityWarnings.length > 0 && (
-            <Alert variant="warning" className="mb-6">
+            <Alert variant="warning" className="mb-4 sm:mb-6">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription className="ml-2">
                 <div className="flex flex-col gap-1">
@@ -827,12 +857,12 @@ export function EditReservationForm({
             </Alert>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
               {/* Dates Card */}
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <h2 className="text-sm font-medium text-muted-foreground mb-4">
                     {t('edit.dates')}
                   </h2>
@@ -923,10 +953,10 @@ export function EditReservationForm({
             </div>
 
             {/* Sidebar */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6 min-w-0">
               {tulipInsuranceMode !== 'no_public' && (
                 <Card>
-                  <CardContent className="p-6 space-y-3">
+                  <CardContent className="p-4 sm:p-6 space-y-3">
                     <h2 className="text-sm font-medium">{tForm('tulipInsurance.title')}</h2>
                     <p className="text-xs text-muted-foreground">
                       {tForm('tulipInsurance.appliesMappedProducts')}

@@ -211,9 +211,9 @@ export function StoreSettingsForm({
   const billingCountry = useStore(form.store, (state) => state.values.billingCountry);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <form.AppForm>
-        <form.Form className="space-y-6">
+        <form.Form className="space-y-4 sm:space-y-6">
           <RootError error={rootError} />
 
           <StoreSettingsIdentitySection

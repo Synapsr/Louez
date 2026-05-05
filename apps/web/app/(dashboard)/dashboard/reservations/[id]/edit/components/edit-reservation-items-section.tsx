@@ -265,7 +265,7 @@ function ProductAddCombobox({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="h-9 w-[220px] justify-between"
+            className="h-9 w-full justify-between sm:w-[220px]"
           />
         }
       >
@@ -275,7 +275,7 @@ function ProductAddCombobox({
         </span>
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent className="w-[360px] p-0 pt-2 *:p-0" align="end">
+      <PopoverContent className="w-(--radix-popover-trigger-width) sm:w-[360px] p-0 pt-2 *:p-0" align="end">
         <Command open items={filteredProducts} filter={null}>
           <CommandInput
             placeholder={searchPlaceholder}
@@ -332,12 +332,12 @@ export function EditReservationItemsSection({
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <CardContent className="p-4 sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-muted-foreground text-sm font-medium">
             {t('edit.items')}
           </h2>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <Button variant="outline" onClick={onOpenCustomItemDialog}>
               <PenLine className="mr-2 h-4 w-4" />
               {tForm('customItem.button')}
@@ -366,14 +366,14 @@ export function EditReservationItemsSection({
               <div
                 key={item.id}
                 className={cn(
-                  'bg-background rounded-lg border p-4 transition-colors',
+                  'bg-background rounded-lg border p-3 sm:p-4 transition-colors',
                   hasWarning &&
                     'border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20',
                 )}
               >
                 <div className="space-y-2">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <p className="truncate font-medium">
                         {item.productSnapshot.name}
                       </p>
@@ -406,7 +406,7 @@ export function EditReservationItemsSection({
                       </p>
                     )}
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="flex flex-wrap items-start gap-2 sm:gap-4">
                     <div
                       className="flex items-center gap-1"
                       role="group"

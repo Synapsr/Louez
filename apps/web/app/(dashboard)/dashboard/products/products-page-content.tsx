@@ -91,28 +91,67 @@ export function ProductsPageContent({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
-          <p className="text-muted-foreground">{t('description')}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{t('title')}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">{t('description')}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" render={<Link href="/dashboard/categories" />}>
-              <FolderOpen className="mr-2 h-4 w-4" />
-              {t('manageCategories')}
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="sm:hidden"
+            title={t('manageCategories')}
+            render={<Link href="/dashboard/categories" />}
+          >
+            <FolderOpen className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden sm:inline-flex"
+            render={<Link href="/dashboard/categories" />}
+          >
+            <FolderOpen className="mr-2 h-4 w-4" />
+            {t('manageCategories')}
           </Button>
           {isAtLimit ? (
-            <Button onClick={() => setShowUpgradeModal(true)}>
-              <Lock className="mr-2 h-4 w-4" />
-              {t('addProduct')}
-            </Button>
+            <>
+              <Button
+                size="icon"
+                className="sm:hidden"
+                onClick={() => setShowUpgradeModal(true)}
+                title={t('addProduct')}
+              >
+                <Lock className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hidden sm:inline-flex"
+                onClick={() => setShowUpgradeModal(true)}
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                {t('addProduct')}
+              </Button>
+            </>
           ) : (
-            <Button render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}>
+            <>
+              <Button
+                size="icon"
+                className="sm:hidden"
+                title={t('addProduct')}
+                render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+              <Button
+                className="hidden sm:inline-flex"
+                render={<Link href="/dashboard/products/new" onClick={handleAddProductClick} />}
+              >
                 <Plus className="mr-2 h-4 w-4" />
                 {t('addProduct')}
-            </Button>
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -129,21 +168,35 @@ export function ProductsPageContent({
       )}
 
       {/* Filters */}
-      <div className="flex items-center justify-between gap-4">
-        <ProductsFilters
-          categories={categories}
-          counts={counts}
-          currentStatus={currentStatus}
-          currentCategory={currentCategory}
-        />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <ProductsFilters
+            categories={categories}
+            counts={counts}
+            currentStatus={currentStatus}
+            currentCategory={currentCategory}
+          />
+        </div>
         {products.length > 1 && (
-          <Button
-            variant="outline"
-            onClick={() => setShowOrderDialog(true)}
-          >
-            <ArrowUpDown className="mr-2 h-4 w-4" />
-            {t('reorder')}
-          </Button>
+          <>
+            <Button
+              variant="outline"
+              size="icon"
+              className="shrink-0 sm:hidden"
+              onClick={() => setShowOrderDialog(true)}
+              title={t('reorder')}
+            >
+              <ArrowUpDown className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden shrink-0 sm:inline-flex"
+              onClick={() => setShowOrderDialog(true)}
+            >
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              {t('reorder')}
+            </Button>
+          </>
         )}
       </div>
 

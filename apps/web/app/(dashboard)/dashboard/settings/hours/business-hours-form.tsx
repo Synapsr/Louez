@@ -133,18 +133,18 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
   const closurePeriods = useStore(form.store, (s) => s.values.closurePeriods)
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <form.AppForm>
-        <form.Form className="space-y-6">
+        <form.Form className="min-w-0 space-y-6">
           <RootError error={rootError} />
 
         {/* Two-column layout on desktop */}
-        <div className="grid gap-6 lg:grid-cols-[1fr,minmax(300px,400px)] lg:items-start">
+        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr),minmax(300px,400px)] lg:items-start">
           {/* Weekly Schedule - Left column */}
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
+              <div className="flex min-w-0 items-center justify-between gap-4">
+                <div className="min-w-0 space-y-1">
                   <CardTitle>{t('weeklySchedule')}</CardTitle>
                   <CardDescription>{t('weeklyScheduleDescription')}</CardDescription>
                 </div>
@@ -163,8 +163,8 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className={`${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
-              <div className="divide-y">
+            <CardContent className={`min-w-0 ${!isEnabled ? 'opacity-50 pointer-events-none' : ''}`}>
+              <div className="min-w-0 divide-y">
                 {DAY_KEYS.map((dayKey) => (
                   <DayScheduleRow
                     key={dayKey}
@@ -179,10 +179,10 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
           </Card>
 
           {/* Closure Periods - Right column */}
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
-              <div className="flex items-center justify-between gap-4">
-                <div className="space-y-1">
+              <div className="flex min-w-0 items-center justify-between gap-4">
+                <div className="min-w-0 space-y-1">
                   <CardTitle>{t('closurePeriods')}</CardTitle>
                   <CardDescription>{t('closurePeriodsDescription')}</CardDescription>
                 </div>
@@ -197,7 +197,7 @@ export function BusinessHoursForm({ store }: BusinessHoursFormProps) {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="min-w-0">
               {closurePeriods.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
                   <div className="rounded-full bg-muted p-3 mb-3">
@@ -269,12 +269,10 @@ function DayScheduleRow({
   timeSlots,
 }: {
   dayKey: 0 | 1 | 2 | 3 | 4 | 5 | 6
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   form: any
   t: ReturnType<typeof useTranslations>
   timeSlots: string[]
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const schedule = useStore(form.store, (s: any) => s.values.schedule)
   const daySchedule = schedule[dayKey]
   const isOpen = daySchedule?.isOpen ?? false
@@ -302,24 +300,26 @@ function DayScheduleRow({
   }
 
   return (
-    <div className="py-3 px-1">
-      <div className="flex items-center gap-3">
-        <form.Field name={`schedule.${dayKey}.isOpen` as any}>
-          {(field: any) => (
-            <Switch
-              checked={field.state.value}
-              onCheckedChange={(checked) => field.handleChange(checked)}
-            />
-          )}
-        </form.Field>
-        <span className={`font-medium text-sm w-24 shrink-0 ${!isOpen ? 'text-muted-foreground' : ''}`}>
-          {t(`days.${dayKey}`)}
-        </span>
+    <div className="px-1 py-3">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 items-center gap-3 sm:w-32 sm:shrink-0">
+          <form.Field name={`schedule.${dayKey}.isOpen` as any}>
+            {(field: any) => (
+              <Switch
+                checked={field.state.value}
+                onCheckedChange={(checked) => field.handleChange(checked)}
+              />
+            )}
+          </form.Field>
+          <span className={`min-w-0 truncate text-sm font-medium ${!isOpen ? 'text-muted-foreground' : ''}`}>
+            {t(`days.${dayKey}`)}
+          </span>
+        </div>
 
         {isOpen ? (
-          <div className="flex flex-col gap-2 flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
             {ranges.map((_range: { openTime: string; closeTime: string }, rangeIndex: number) => (
-              <div key={rangeIndex} className="flex items-center gap-2">
+              <div key={rangeIndex} className="flex min-w-0 items-center gap-2">
                 <form.Field name={`schedule.${dayKey}.ranges[${rangeIndex}].openTime` as any}>
                   {(field: any) => (
                     <Select
@@ -328,7 +328,7 @@ function DayScheduleRow({
                         if (value !== null) field.handleChange(value)
                       }}
                     >
-                      <SelectTrigger className="w-[100px]">
+                      <SelectTrigger className="min-w-0 flex-1 sm:w-[100px] sm:flex-none">
                         <SelectValue>{field.state.value}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -341,7 +341,7 @@ function DayScheduleRow({
                     </Select>
                   )}
                 </form.Field>
-                <span className="text-muted-foreground text-sm">-</span>
+                <span className="text-muted-foreground shrink-0 text-sm">-</span>
                 <form.Field name={`schedule.${dayKey}.ranges[${rangeIndex}].closeTime` as any}>
                   {(field: any) => (
                     <Select
@@ -350,7 +350,7 @@ function DayScheduleRow({
                         if (value !== null) field.handleChange(value)
                       }}
                     >
-                      <SelectTrigger className="w-[100px]">
+                      <SelectTrigger className="min-w-0 flex-1 sm:w-[100px] sm:flex-none">
                         <SelectValue>{field.state.value}</SelectValue>
                       </SelectTrigger>
                       <SelectContent>
@@ -391,7 +391,7 @@ function DayScheduleRow({
             )}
           </div>
         ) : (
-          <Badge variant="secondary" className="text-muted-foreground">
+          <Badge variant="secondary" className="w-fit text-muted-foreground">
             {t('closed')}
           </Badge>
         )}

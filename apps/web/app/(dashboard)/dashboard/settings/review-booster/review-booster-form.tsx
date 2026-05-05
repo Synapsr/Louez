@@ -33,7 +33,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui'
-import { Badge } from '@louez/ui'
 import { cn } from '@louez/utils'
 import { FloatingSaveBar } from '@/components/dashboard/floating-save-bar'
 import { GooglePlaceSearch } from './google-place-search'
@@ -75,13 +74,11 @@ const DELAY_OPTIONS = [
 export function ReviewBoosterForm({
   store,
   hasFeatureAccess,
-  planSlug,
   storeLocale,
 }: ReviewBoosterFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const t = useTranslations('dashboard.settings.reviewBooster')
-  const tCommon = useTranslations('common')
 
   const initialSettingsRef = useMemo(
     () => store.reviewBoosterSettings || defaultReviewBoosterSettings,
@@ -253,17 +250,17 @@ export function ReviewBoosterForm({
 
   // Full access for Pro/Ultra plans
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Google Place Search */}
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Star className="h-5 w-5" />
+          <CardTitle className="flex min-w-0 items-center gap-2">
+            <Star className="h-5 w-5 shrink-0" />
             {t('searchPlace')}
           </CardTitle>
           <CardDescription>{t('searchPlaceDescription')}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <GooglePlaceSearch
             selectedPlace={{
               placeId: settings.googlePlaceId,

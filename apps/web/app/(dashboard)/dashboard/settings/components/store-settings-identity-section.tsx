@@ -63,19 +63,19 @@ export function StoreSettingsIdentitySection({
   };
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>{t('storeSettings.generalInfo')}</CardTitle>
         <CardDescription>{t('storeSettings.generalInfoDescription')}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid min-w-0 gap-4 p-4 sm:p-6">
         <form.AppField name="name">
           {(field: any) => <field.Input label={`${t('storeSettings.name')} *`} />}
         </form.AppField>
 
         <form.Field name="description">
           {(field: any) => (
-            <div className="grid gap-2">
+            <div className="grid gap-2 min-w-0">
               <Label htmlFor={field.name}>{t('storeSettings.descriptionLabel')}</Label>
               <RichTextEditor
                 value={field.state.value || ''}
@@ -91,7 +91,7 @@ export function StoreSettingsIdentitySection({
           )}
         </form.Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <form.AppField name="email">
             {(field: any) => (
               <field.Input
@@ -114,7 +114,7 @@ export function StoreSettingsIdentitySection({
 
         <form.Field name="address">
           {(field: any) => (
-            <div className="grid gap-2">
+            <div className="grid min-w-0 gap-2">
               <Label htmlFor={field.name}>{t('storeSettings.address')}</Label>
               <AddressInput
                 value={field.state.value || ''}
@@ -136,10 +136,10 @@ export function StoreSettingsIdentitySection({
           )}
         </form.Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
           <form.Field name="country">
             {(field: any) => (
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor={field.name}>{t('storeSettings.country')}</Label>
                 <Select
                   onValueChange={(value) => {
@@ -150,11 +150,13 @@ export function StoreSettingsIdentitySection({
                   value={field.state.value}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue>
+                    <SelectValue className="min-w-0">
                       {field.state.value && (
-                        <span className="flex items-center gap-2">
-                          <span>{getCountryFlag(field.state.value)}</span>
-                          <span>{getCountryName(field.state.value)}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="shrink-0">{getCountryFlag(field.state.value)}</span>
+                          <span className="truncate">
+                            {getCountryName(field.state.value)}
+                          </span>
                         </span>
                       )}
                     </SelectValue>
@@ -181,7 +183,7 @@ export function StoreSettingsIdentitySection({
 
           <form.Field name="currency">
             {(field: any) => (
-              <div className="grid gap-2">
+              <div className="grid min-w-0 gap-2">
                 <Label htmlFor={field.name}>{t('storeSettings.currency')}</Label>
                 <Select
                   onValueChange={(value) => {
@@ -192,14 +194,14 @@ export function StoreSettingsIdentitySection({
                   value={field.state.value}
                 >
                   <SelectTrigger className="w-full">
-                    <SelectValue>
+                    <SelectValue className="min-w-0">
                       {field.state.value && (
-                        <span className="flex items-center gap-2">
-                          <span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="shrink-0">
                             {getCurrencyByCode(field.state.value as CurrencyCode)?.symbol ||
                               field.state.value}
                           </span>
-                          <span>
+                          <span className="truncate">
                             {getCurrencyByCode(field.state.value as CurrencyCode)?.name ||
                               field.state.value}
                           </span>
@@ -230,7 +232,7 @@ export function StoreSettingsIdentitySection({
           </form.Field>
         </div>
 
-        <div className="flex items-center justify-between rounded-lg border p-3">
+        <div className="flex min-w-0 items-center justify-between rounded-lg border p-3">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-muted-foreground shrink-0 text-sm">
               {t('storeSettings.storeUrl')}

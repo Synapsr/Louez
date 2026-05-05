@@ -25,8 +25,8 @@ export default async function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <p className="text-muted-foreground">{t('notifications.description')}</p>
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <p className="text-sm sm:text-base text-muted-foreground">{t('notifications.description')}</p>
 
       <NotificationsForm
         settings={data.settings}

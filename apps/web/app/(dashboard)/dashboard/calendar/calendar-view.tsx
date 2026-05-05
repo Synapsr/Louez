@@ -311,13 +311,47 @@ export function CalendarView({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Controls */}
       <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4">
-            {/* Top row: Navigation + Period label */}
-            <div className="flex items-center justify-between">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            {/* Row 1: Period label + Actions */}
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate text-base font-semibold capitalize sm:text-lg">
+                {periodLabel}
+              </span>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setExportModalOpen(true)}
+                  title={t('export.button')}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+
+                <Button
+                  render={<Link href="/dashboard/reservations/new" />}
+                  size="icon"
+                  className="sm:hidden"
+                  title={t('new')}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+                <Button
+                  render={<Link href="/dashboard/reservations/new" />}
+                  className="hidden sm:inline-flex"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('new')}
+                </Button>
+              </div>
+            </div>
+
+            {/* Row 2: Navigation + View toggle */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="icon" onClick={goToPrevious}>
                   <ChevronLeft className="h-4 w-4" />
@@ -328,35 +362,19 @@ export function CalendarView({
                 <Button variant="outline" onClick={goToToday}>
                   {t('today')}
                 </Button>
-                <span className="ml-2 text-lg font-semibold capitalize">
-                  {periodLabel}
-                </span>
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setExportModalOpen(true)}
-                  title={t('export.button')}
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-
-                <Button render={<Link href="/dashboard/reservations/new" />}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('new')}
-                </Button>
-              </div>
+              <ViewModeToggle
+                value={viewMode}
+                onChange={handleViewModeChange}
+              />
             </div>
 
-            {/* Bottom row: View toggle (centered) + Filters */}
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-between">
-              {/* Left side: Period selector */}
+            {/* Row 3: Filters (full-width grid on mobile) */}
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:gap-2">
               <Select value={currentPeriod} onValueChange={handlePeriodChange}>
-                <SelectTrigger className="w-[160px]">
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
                   <SelectValue>
                     {currentPeriod === 'week'
                       ? t('periods.week')
@@ -386,22 +404,18 @@ export function CalendarView({
                 </SelectContent>
               </Select>
 
-              {/* Center: View mode toggle */}
-              <ViewModeToggle
-                value={viewMode}
-                onChange={handleViewModeChange}
-              />
-
-              {/* Right side: Product filter */}
               <Select
                 value={selectedProductId}
                 onValueChange={handleProductChange}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder={t('filterByProduct')}>
-                    {selectedProductId === 'all'
-                      ? t('allProducts')
-                      : products.find((p) => p.id === selectedProductId)?.name}
+                    <span className="truncate">
+                      {selectedProductId === 'all'
+                        ? t('allProducts')
+                        : products.find((p) => p.id === selectedProductId)
+                            ?.name}
+                    </span>
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -458,17 +472,24 @@ export function CalendarView({
 
       {/* Legend */}
       <Card>
-        <CardHeader className="py-3">
+        <CardHeader className="py-2 sm:py-3">
           <CardTitle className="text-sm font-medium">{t('legend')}</CardTitle>
         </CardHeader>
         <CardContent className="py-2">
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-x-3 gap-y-2 sm:gap-4">
             {(
               Object.entries(statusLabels) as [ReservationStatus, string][]
             ).map(([status, label]) => (
-              <div key={status} className="flex items-center gap-2">
-                <div className={cn('h-3 w-3 rounded', STATUS_COLORS[status])} />
-                <span className="text-muted-foreground text-sm">{label}</span>
+              <div key={status} className="flex items-center gap-1.5 sm:gap-2">
+                <div
+                  className={cn(
+                    'h-2.5 w-2.5 shrink-0 rounded sm:h-3 sm:w-3',
+                    STATUS_COLORS[status],
+                  )}
+                />
+                <span className="text-muted-foreground text-xs sm:text-sm">
+                  {label}
+                </span>
               </div>
             ))}
           </div>

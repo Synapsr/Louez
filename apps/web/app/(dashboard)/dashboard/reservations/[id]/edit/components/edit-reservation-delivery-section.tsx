@@ -257,12 +257,12 @@ export function EditReservationDeliverySection({
 
   return (
     <Card>
-      <CardContent className="p-6">
+      <CardContent className="p-4 sm:p-6">
         <h2 className="mb-4 text-sm font-medium text-muted-foreground">
           {t('title')}
         </h2>
 
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {deliveryMinimumWarning && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
               {deliveryMinimumWarning}

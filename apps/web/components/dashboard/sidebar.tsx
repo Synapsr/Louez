@@ -463,7 +463,7 @@ export function MobileHeader({
 
   return (
     <header className="bg-card/80 sticky top-0 z-40 flex h-14 items-center justify-between border-b px-4 backdrop-blur-sm lg:hidden">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger
             render={<Button variant="ghost" size="icon" className="shrink-0" />}
@@ -471,8 +471,12 @@ export function MobileHeader({
             <Menu className="h-5 w-5" />
             <span className="sr-only">Menu</span>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <div className="flex h-14 items-center justify-between border-b px-4">
+          <SheetContent
+            side="left"
+            className="flex w-[85vw] max-w-sm flex-col p-0"
+            showCloseButton={false}
+          >
+            <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
               <div className="flex items-center gap-2">
                 <Link
                   href="/dashboard"
@@ -487,44 +491,48 @@ export function MobileHeader({
                 variant="ghost"
                 size="icon"
                 onClick={() => setOpen(false)}
+                aria-label="Close menu"
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
-            <div className="flex h-[calc(100%-3.5rem)] flex-col">
-              {/* Store Switcher */}
-              <div className="border-b p-3">
-                <StoreSwitcher
-                  stores={stores}
-                  currentStoreId={currentStoreId}
-                />
-              </div>
+
+            {/* Store Switcher (fixed) */}
+            <div className="shrink-0 border-b p-3">
+              <StoreSwitcher
+                stores={stores}
+                currentStoreId={currentStoreId}
+              />
+            </div>
+
+            {/* Scrollable nav */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
-              <div className="mt-auto border-t">
-                {/* Pending Reservations Alert + New Reservation Button */}
-                <div className="space-y-2 p-3">
-                  <PendingReservationsAlert onNavigate={() => setOpen(false)} />
-                  <Button
-                    render={<Link href="/dashboard/reservations/new" />}
-                    className="w-full"
-                    onClick={() => setOpen(false)}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    <NewReservationLabel />
-                  </Button>
+            </div>
+
+            {/* Footer (fixed) */}
+            <div className="shrink-0 border-t">
+              <div className="space-y-2 p-3">
+                <PendingReservationsAlert onNavigate={() => setOpen(false)} />
+                <Button
+                  render={<Link href="/dashboard/reservations/new" />}
+                  className="w-full"
+                  onClick={() => setOpen(false)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  <NewReservationLabel />
+                </Button>
+              </div>
+              <Separator className="opacity-50" />
+              <div className="flex items-center justify-between px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <ThemeToggle />
+                  <LanguageSwitcher variant="compact" />
                 </div>
-                <Separator className="opacity-50" />
-                {/* Theme/Language/Help + User Menu */}
-                <div className="flex items-center justify-between px-3 py-2">
-                  <div className="flex items-center gap-2">
-                    <ThemeToggle />
-                    <LanguageSwitcher variant="compact" />
-                  </div>
-                  <HelpButton />
-                </div>
-                <div className="px-1 pb-2">
-                  <UserMenu userEmail={userEmail} userImage={userImage} />
-                </div>
+                <HelpButton />
+              </div>
+              <div className="px-1 pb-2">
+                <UserMenu userEmail={userEmail} userImage={userImage} />
               </div>
             </div>
           </SheetContent>

@@ -40,8 +40,8 @@ export function EditReservationSummarySection({
   const difference = newTotal - originalTotal
 
   return (
-    <Card className="sticky top-24">
-      <CardContent className="p-6">
+    <Card className="lg:sticky lg:top-24">
+      <CardContent className="p-4 sm:p-6">
         <h2 className="mb-4 text-sm font-medium text-muted-foreground">{t('edit.summary')}</h2>
 
         <div className="space-y-3">

@@ -18,8 +18,8 @@ export default async function ReviewBoosterPage() {
   const storeLocale = getLocaleFromCountry(store.settings?.country)
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <p className="text-muted-foreground">{t('reviewBooster.description')}</p>
+    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-4 sm:space-y-6">
+      <p className="text-sm sm:text-base text-muted-foreground">{t('reviewBooster.description')}</p>
 
       <ReviewBoosterForm
         store={store}

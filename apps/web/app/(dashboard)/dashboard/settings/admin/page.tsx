@@ -20,8 +20,8 @@ export default async function AdminSettingsPage() {
   const t = await getTranslations('dashboard.settings')
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <p className="text-muted-foreground">
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <p className="text-sm sm:text-base text-muted-foreground">
         {t('admin.description')}
       </p>
 

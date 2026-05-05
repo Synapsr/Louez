@@ -15,8 +15,8 @@ export default async function PaymentsSettingsPage() {
   const reservationMode = store.settings?.reservationMode ?? 'request'
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <p className="text-muted-foreground">{t('payments.description')}</p>
+    <div className="mx-auto max-w-4xl space-y-4 sm:space-y-6">
+      <p className="text-sm sm:text-base text-muted-foreground">{t('payments.description')}</p>
 
       <PaymentsContent
         stripeAccountId={store.stripeAccountId}

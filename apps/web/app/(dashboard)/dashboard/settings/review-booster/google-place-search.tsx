@@ -6,7 +6,6 @@ import Image from 'next/image'
 import { Search, Star, Loader2, X, Building2, Check } from 'lucide-react'
 import { Input } from '@louez/ui'
 import { Button } from '@louez/ui'
-import { cn } from '@louez/utils'
 import { searchGooglePlaces, fetchGooglePlaceDetails } from './actions'
 import type { PlaceSearchResult } from '@/lib/google-places'
 
@@ -140,14 +139,14 @@ export function GooglePlaceSearch({
   // If a place is already selected, show the selected place card
   if (selectedPlace.placeId) {
     return (
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-start gap-3">
+      <div className="min-w-0 rounded-lg border bg-card p-4">
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 flex-shrink-0">
               <Building2 className="h-5 w-5 text-primary" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-2">
                 <h4 className="font-medium truncate">{selectedPlace.name}</h4>
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-green-500/10 flex-shrink-0">
                   <Check className="h-3 w-3 text-green-600" />
@@ -157,13 +156,13 @@ export function GooglePlaceSearch({
                 {selectedPlace.address}
               </p>
               {selectedPlace.rating && (
-                <div className="flex items-center gap-2 mt-1">
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <div className="mt-1 flex min-w-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
                     <span className="text-sm font-medium">{selectedPlace.rating.toFixed(1)}</span>
                   </div>
                   {selectedPlace.reviewCount && (
-                    <span className="text-sm text-muted-foreground">
+                    <span className="min-w-0 truncate text-sm text-muted-foreground">
                       ({selectedPlace.reviewCount} {t('reviews')})
                     </span>
                   )}
@@ -175,7 +174,7 @@ export function GooglePlaceSearch({
             variant="ghost"
             onClick={onPlaceClear}
             disabled={disabled}
-            className="flex-shrink-0"
+            className="w-fit flex-shrink-0"
           >
             {t('changePlace')}
           </Button>
@@ -185,7 +184,7 @@ export function GooglePlaceSearch({
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -220,7 +219,7 @@ export function GooglePlaceSearch({
       {isOpen && results.length > 0 && (
         <div
           ref={dropdownRef}
-          className="absolute z-50 mt-1 w-full rounded-lg border bg-popover shadow-lg"
+          className="absolute z-50 mt-1 w-full min-w-0 rounded-lg border bg-popover shadow-lg"
         >
           <ul className="py-1">
             {results.map((place) => (
@@ -228,9 +227,9 @@ export function GooglePlaceSearch({
                 <button
                   type="button"
                   onClick={() => handleSelectPlace(place)}
-                  className="w-full px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                  className="w-full px-4 py-3 text-left transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
                     {place.photoUrl ? (
                       <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
                         <Image
@@ -252,11 +251,11 @@ export function GooglePlaceSearch({
                         {place.address}
                       </p>
                       {place.rating && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        <div className="mt-1 flex min-w-0 items-center gap-1">
+                          <Star className="h-3.5 w-3.5 shrink-0 fill-amber-400 text-amber-400" />
                           <span className="text-xs">{place.rating.toFixed(1)}</span>
                           {place.reviewCount && (
-                            <span className="text-xs text-muted-foreground">
+                            <span className="min-w-0 truncate text-xs text-muted-foreground">
                               ({place.reviewCount})
                             </span>
                           )}

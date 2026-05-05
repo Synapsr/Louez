@@ -45,12 +45,12 @@ export function StoreSettingsBillingSection({
   const t = useTranslations('dashboard.settings');
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <CardTitle>{t('billingAddress.title')}</CardTitle>
         <CardDescription>{t('billingAddress.description')}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid min-w-0 gap-4 p-4 sm:p-6">
         <form.AppField name="billingAddressSameAsStore">
           {(field: any) => (
             <field.Checkbox
@@ -61,7 +61,7 @@ export function StoreSettingsBillingSection({
         </form.AppField>
 
         {!billingAddressSameAsStore && (
-          <div className="animate-in fade-in-0 slide-in-from-top-2 space-y-4 duration-200">
+          <div className="animate-in fade-in-0 slide-in-from-top-2 min-w-0 space-y-4 duration-200">
             <form.AppField name="billingAddress">
               {(field: any) => (
                 <field.Input
@@ -71,7 +71,7 @@ export function StoreSettingsBillingSection({
               )}
             </form.AppField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-4 sm:grid-cols-2">
               <form.AppField name="billingPostalCode">
                 {(field: any) => (
                   <field.Input
@@ -93,7 +93,7 @@ export function StoreSettingsBillingSection({
 
             <form.Field name="billingCountry">
               {(field: any) => (
-                <div className="grid gap-2">
+                <div className="grid min-w-0 gap-2">
                   <Label htmlFor={field.name}>{t('billingAddress.country')}</Label>
                   <Select
                     onValueChange={(value) => {
@@ -104,11 +104,15 @@ export function StoreSettingsBillingSection({
                     value={field.state.value}
                   >
                     <SelectTrigger className="w-full">
-                      <SelectValue>
+                      <SelectValue className="min-w-0">
                         {field.state.value && (
-                          <span className="flex items-center gap-2">
-                            <span>{getCountryFlag(field.state.value)}</span>
-                            <span>{getCountryName(field.state.value)}</span>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className="shrink-0">
+                              {getCountryFlag(field.state.value)}
+                            </span>
+                            <span className="truncate">
+                              {getCountryName(field.state.value)}
+                            </span>
                           </span>
                         )}
                       </SelectValue>

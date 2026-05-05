@@ -319,6 +319,8 @@ export function MonthView({
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto">
+        <div className="min-w-[700px]">
       {/* Day Headers */}
       <div className="grid grid-cols-7 border-b bg-muted/30">
         {dayNames.map((name, index) => {
@@ -412,6 +414,8 @@ export function MonthView({
           </div>
         )
       })}
+        </div>
+      </div>
     </div>
   )
 }

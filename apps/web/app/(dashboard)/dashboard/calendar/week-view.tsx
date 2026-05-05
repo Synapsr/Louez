@@ -76,6 +76,8 @@ export function WeekView({
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card">
+      <div className="overflow-x-auto">
+        <div className="min-w-[700px]">
       {/* Day Headers */}
       <div className="grid grid-cols-7 border-b bg-muted/30">
         {weekDays.map((day, index) => {
@@ -202,6 +204,8 @@ export function WeekView({
             </div>
           )
         })}
+      </div>
+        </div>
       </div>
     </div>
   )

@@ -75,39 +75,41 @@ export function ProductsFilters({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      {/* Status Tabs */}
-      <div className="bg-muted/50 flex items-center gap-1 rounded-lg border p-1">
-        {STATUS_OPTIONS.map((option) => {
-          const count =
-            option.value === 'all'
-              ? counts.all
-              : counts[option.value as keyof Omit<ProductCounts, 'all'>];
-          const isActive = currentStatus === option.value;
+    <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+      {/* Status Tabs - horizontally scrollable when overflowing */}
+      <div className="-mx-1 min-w-0 max-w-full overflow-x-auto px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="bg-muted/50 inline-flex items-center gap-1 rounded-lg border p-1">
+          {STATUS_OPTIONS.map((option) => {
+            const count =
+              option.value === 'all'
+                ? counts.all
+                : counts[option.value as keyof Omit<ProductCounts, 'all'>];
+            const isActive = currentStatus === option.value;
 
-          return (
-            <Button
-              key={option.value}
-              variant={isActive ? 'secondary' : 'ghost'}
-              className="gap-2"
-              onClick={() => handleStatusChange(option.value)}
-            >
-              {option.label}
-              <Badge
-                variant={isActive ? 'default' : 'secondary'}
-                className="ml-1 h-5 min-w-5 px-1.5"
+            return (
+              <Button
+                key={option.value}
+                variant={isActive ? 'secondary' : 'ghost'}
+                className="shrink-0 gap-2"
+                onClick={() => handleStatusChange(option.value)}
               >
-                {count}
-              </Badge>
-            </Button>
-          );
-        })}
+                {option.label}
+                <Badge
+                  variant={isActive ? 'default' : 'secondary'}
+                  className="ml-1 h-5 min-w-5 px-1.5"
+                >
+                  {count}
+                </Badge>
+              </Button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Category Filter */}
       {categories.length > 0 && (
         <Select value={currentCategory} onValueChange={handleCategoryChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder={t('category')}>
               {currentCategory === 'all'
                 ? t('allCategories')

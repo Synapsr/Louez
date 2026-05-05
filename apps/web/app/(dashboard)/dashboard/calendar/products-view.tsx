@@ -148,7 +148,7 @@ export function ProductsView({
       </div>
 
       {/* Products and slots */}
-      <ScrollArea className="h-[500px]">
+      <ScrollArea className="h-[420px] sm:h-[500px]">
         <div className="relative min-w-full">
           {productGroups.map((group) => (
             <ProductGroup

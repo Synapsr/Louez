@@ -14,8 +14,8 @@ export default async function AppearancePage() {
   const t = await getTranslations('dashboard.settings')
 
   return (
-    <div className="space-y-6">
-      <p className="text-muted-foreground">
+    <div className="space-y-4 sm:space-y-6">
+      <p className="text-sm sm:text-base text-muted-foreground">
         {t('appearanceSettings.description')}
       </p>
 

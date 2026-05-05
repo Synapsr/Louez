@@ -73,7 +73,7 @@ export function StoreSettingsRentalRulesSection({
         <CardTitle>{t('reservationSettings.title')}</CardTitle>
         <CardDescription>{t('reservationSettings.description')}</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
+      <CardContent className="grid gap-4 p-4 sm:p-6">
         <div className="grid gap-4 sm:grid-cols-2">
           <form.Field name="reservationMode">
             {(field: any) => (

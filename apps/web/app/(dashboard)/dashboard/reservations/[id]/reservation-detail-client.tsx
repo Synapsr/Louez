@@ -215,7 +215,7 @@ export function ReservationDetailClient({
     : null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <ReservationHeader
         reservationId={reservation.id}
         reservationNumber={reservation.number}
@@ -240,10 +240,10 @@ export function ReservationDetailClient({
         sentEmails={reservation.sentEmails || []}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-            <div className="flex items-center gap-3 min-w-0">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
+          <div className="flex items-start justify-between gap-2 p-3 sm:p-4 rounded-lg border bg-card">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 {reservation.customer.customerType === 'business' ? (
                   <Building2 className="h-5 w-5 text-primary" />
@@ -251,58 +251,68 @@ export function ReservationDetailClient({
                   <User className="h-5 w-5 text-primary" />
                 )}
               </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="min-w-0 flex-1 space-y-1">
+                {/* Name(s) */}
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
                   {reservation.customer.customerType === 'business' &&
                   reservation.customer.companyName ? (
                     <>
-                      <span className="font-medium">
+                      <span className="font-medium truncate">
                         {reservation.customer.companyName}
                       </span>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-muted-foreground truncate">
                         {reservation.customer.firstName}{' '}
                         {reservation.customer.lastName}
                       </span>
                     </>
                   ) : (
-                    <span className="font-medium">
+                    <span className="font-medium truncate">
                       {reservation.customer.firstName}{' '}
                       {reservation.customer.lastName}
                     </span>
                   )}
-                  <span className="text-muted-foreground">•</span>
+                </div>
+
+                {/* Contact (email + phone) */}
+                <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
                   <a
                     href={`mailto:${reservation.customer.email}`}
-                    className="text-sm text-muted-foreground hover:text-primary truncate"
+                    className="hover:text-primary truncate min-w-0"
                   >
                     {reservation.customer.email}
                   </a>
                   {reservation.customer.phone && (
-                    <>
-                      <span className="text-muted-foreground hidden sm:inline">
-                        •
-                      </span>
-                      <PhoneContactPopover
-                        phone={reservation.customer.phone}
-                        className="hidden sm:inline"
-                      />
-                    </>
+                    <PhoneContactPopover
+                      phone={reservation.customer.phone}
+                    />
                   )}
                 </div>
+
                 {reservation.customer.address && (
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    <MapPin className="h-3 w-3 inline mr-1" />
-                    {reservation.customer.address}
-                    {reservation.customer.city && `, ${reservation.customer.city}`}
-                    {reservation.customer.postalCode &&
-                      ` ${reservation.customer.postalCode}`}
+                  <p className="text-xs text-muted-foreground truncate flex items-start gap-1">
+                    <MapPin className="h-3 w-3 mt-0.5 shrink-0" />
+                    <span className="truncate">
+                      {reservation.customer.address}
+                      {reservation.customer.city && `, ${reservation.customer.city}`}
+                      {reservation.customer.postalCode &&
+                        ` ${reservation.customer.postalCode}`}
+                    </span>
                   </p>
                 )}
               </div>
             </div>
             <Button
               variant="ghost"
-              className="shrink-0"
+              size="icon"
+              className="shrink-0 sm:hidden"
+              title={t('viewCustomer')}
+              render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
+            >
+              <ExternalLink className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              className="shrink-0 hidden sm:inline-flex"
               render={<Link href={`/dashboard/customers/${reservation.customer.id}`} />}
             >
               {t('viewCustomer')}
@@ -318,9 +328,9 @@ export function ReservationDetailClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 text-sm">
+                <Calendar className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                <div className="flex items-center gap-x-2 gap-y-1 flex-wrap min-w-0">
                   <span>
                     {formatStoreDate(startDate, storeTimezone, 'SHORT_DATETIME')}
                   </span>
@@ -336,8 +346,8 @@ export function ReservationDetailClient({
                 </div>
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
+              <div className="border rounded-lg overflow-x-auto">
+                <Table className="min-w-[520px]">
                   <TableHeader>
                     <TableRow className="bg-muted/30">
                       <TableHead>{t('productName')}</TableHead>
@@ -467,7 +477,7 @@ export function ReservationDetailClient({
 
               {/* Pricing summary */}
               <div className="flex justify-end pt-4">
-                <div className="w-64 space-y-2 text-sm">
+                <div className="w-full sm:w-64 space-y-2 text-sm">
                   {reservation.taxAmount && parseFloat(reservation.taxAmount) > 0 ? (
                     <>
                       <div className="flex justify-between text-muted-foreground">
@@ -548,7 +558,7 @@ export function ReservationDetailClient({
           />
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           {tulipContractUrl && (
             <Card>
               <CardHeader className="pb-3">

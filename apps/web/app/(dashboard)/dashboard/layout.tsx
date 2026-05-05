@@ -73,7 +73,7 @@ export default async function DashboardMainLayout({
             userImage={session.user.image}
             planSlug={planSlug}
           />
-          <main className="lg:pl-64">
+          <main className="overflow-x-hidden lg:pl-64">
             <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
           </main>
           <Suspense fallback={null}>
