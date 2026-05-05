@@ -37,6 +37,7 @@ export * from './components/menu'
 
 // Input
 export * from './components/input'
+export * from './components/input-group'
 export * from './components/input-otp'
 
 // Label

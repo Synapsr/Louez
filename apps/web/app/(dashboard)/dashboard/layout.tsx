@@ -56,7 +56,7 @@ export default async function DashboardMainLayout({
       timezone={settings.timezone}
     >
       <ReservationPollingProvider interval={30000}>
-        <div className="dashboard bg-muted/30 min-h-screen">
+        <div className="dashboard bg-background min-h-screen">
           <Sidebar
             stores={userStores}
             currentStoreId={store.id}

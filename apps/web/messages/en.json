@@ -109,6 +109,7 @@
     },
     "dateTimePicker": {
       "select": "Select",
+      "naturalPlaceholder": "e.g. tomorrow at 2pm or May 12 at 1pm",
       "time": "Time",
       "confirm": "Confirm"
     },

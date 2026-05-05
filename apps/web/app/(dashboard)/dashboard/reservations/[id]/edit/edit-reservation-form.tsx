@@ -40,7 +40,7 @@ import {
 } from '@louez/ui'
 import { TooltipProvider } from '@louez/ui'
 import { Alert, AlertDescription } from '@louez/ui'
-import { DateTimePicker } from '@/components/ui/date-time-picker'
+import { ReservationDatePickerControl } from '@/components/form/form-reservation-date-picker'
 import { formatCurrency, getCurrencySymbol, minutesToPriceDuration } from '@louez/utils'
 import { calculateDuration } from '@/lib/utils/duration'
 import { useStoreTimezone } from '@/contexts/store-context'
@@ -869,10 +869,10 @@ export function EditReservationForm({
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label className="text-xs">{t('edit.startDate')}</Label>
-                      <DateTimePicker
-                        date={startDate}
-                        setDate={setStartDate}
-                        showTime={true}
+                      <ReservationDatePickerControl
+                        id="edit-reservation-start-date"
+                        value={startDate}
+                        onChange={setStartDate}
                         minTime="00:00"
                         maxTime="23:59"
                         timeStep={30}
@@ -881,13 +881,14 @@ export function EditReservationForm({
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs">{t('edit.endDate')}</Label>
-                      <DateTimePicker
-                        date={endDate}
-                        setDate={handleEndDateChange}
-                        showTime={true}
+                      <ReservationDatePickerControl
+                        id="edit-reservation-end-date"
+                        value={endDate}
+                        onChange={handleEndDateChange}
                         minTime={endMinTime}
                         maxTime="23:59"
                         timeStep={30}
+                        referenceDate={startDate}
                         disabledDates={(date) => {
                           if (!startDate) return false
 

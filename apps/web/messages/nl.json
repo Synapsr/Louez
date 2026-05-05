@@ -109,6 +109,7 @@
     },
     "dateTimePicker": {
       "select": "Selecteren",
+      "naturalPlaceholder": "bijv. morgen om 14:00 of 12 mei om 13:00",
       "time": "Tijd",
       "confirm": "Bevestigen"
     },
