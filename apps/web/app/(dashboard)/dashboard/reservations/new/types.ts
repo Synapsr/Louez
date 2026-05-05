@@ -97,8 +97,18 @@ export interface DeliveryAddress {
   longitude: number | null;
 }
 
+export interface ReservationLocationOption {
+  id: string | null;
+  name: string;
+  address: string | null;
+  city: string | null;
+  postalCode: string | null;
+  country: string | null;
+}
+
 export interface DeliveryLegState {
   method: import('@louez/types').LegMethod;
+  locationId: string | null;
   address: DeliveryAddress;
   distance: number | null;
   fee: number;
@@ -127,6 +137,7 @@ export interface NewReservationFormProps {
   storeLatitude?: number | null;
   storeLongitude?: number | null;
   storeAddress?: string | null;
+  storeLocations: ReservationLocationOption[];
 }
 
 export type StepFieldName =

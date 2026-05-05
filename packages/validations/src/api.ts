@@ -284,6 +284,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
       .object({
         outbound: z.object({
           method: z.enum(['store', 'address']),
+          locationId: z.string().length(21).nullable().optional(),
           address: z.string().max(1000).optional(),
           city: z.string().max(255).optional(),
           postalCode: z.string().max(20).optional(),
@@ -293,6 +294,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
         }),
         return: z.object({
           method: z.enum(['store', 'address']),
+          locationId: z.string().length(21).nullable().optional(),
           address: z.string().max(1000).optional(),
           city: z.string().max(255).optional(),
           postalCode: z.string().max(20).optional(),

@@ -1,6 +1,6 @@
 import { db } from '@louez/db'
 import { getCurrentStore } from '@/lib/store-context'
-import { customers, products, reservations } from '@louez/db'
+import { customers, products, reservations, storeLocations } from '@louez/db'
 import { eq, and, inArray, gte } from 'drizzle-orm'
 import { redirect } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
@@ -108,10 +108,17 @@ export default async function NewReservationPage() {
     redirect('/onboarding')
   }
 
-  const [customersList, productsList, activeReservations] = await Promise.all([
+  const deliverySettings = store.settings?.delivery
+  const [customersList, productsList, activeReservations, activeStoreLocations] = await Promise.all([
     getCustomers(store.id),
     getProductsWithTiers(store.id),
     getActiveReservations(store.id),
+    deliverySettings?.multiLocationEnabled
+      ? db.query.storeLocations.findMany({
+          where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
+          orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
+        })
+      : Promise.resolve([]),
   ])
   const tulipSettings = getTulipSettings(store.settings || null)
   const tulipInsuranceMode =
@@ -140,10 +147,28 @@ export default async function NewReservationPage() {
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         pendingBlocksAvailability={store.settings?.pendingBlocksAvailability ?? true}
         existingReservations={activeReservations}
-        deliverySettings={store.settings?.delivery}
+        deliverySettings={deliverySettings}
         storeLatitude={store.latitude ? parseFloat(store.latitude) : null}
         storeLongitude={store.longitude ? parseFloat(store.longitude) : null}
         storeAddress={store.address}
+        storeLocations={[
+          {
+            id: null,
+            name: store.name,
+            address: store.address ?? null,
+            city: null,
+            postalCode: null,
+            country: store.settings?.country ?? 'FR',
+          },
+          ...activeStoreLocations.map((location) => ({
+            id: location.id,
+            name: location.name,
+            address: location.address,
+            city: location.city,
+            postalCode: location.postalCode,
+            country: location.country,
+          })),
+        ]}
       />
     </div>
   )
