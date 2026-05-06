@@ -112,6 +112,7 @@ export interface BaseContext {
             images?: string[]
           }
         }>
+        notifyCustomerByEmail?: boolean
       },
     ) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
     createManualReservation?: (data: {
@@ -206,6 +207,10 @@ export interface BaseContext {
     sendReservationEmail?: (
       reservationId: string,
       data: { templateId: string; customSubject?: string; customMessage?: string },
+    ) => Promise<{ success?: boolean; error?: string }>
+    sendReservationModificationEmail?: (
+      reservationId: string,
+      data?: { previousPeriod?: { startDate: Date; endDate: Date } },
     ) => Promise<{ success?: boolean; error?: string }>
     sendAccessLink?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>
     sendAccessLinkBySms?: (reservationId: string) => Promise<{ success?: boolean; error?: string } & Record<string, unknown>>

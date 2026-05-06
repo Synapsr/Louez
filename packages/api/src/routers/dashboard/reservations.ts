@@ -20,6 +20,7 @@ import {
   dashboardReservationCaptureDepositHoldInputSchema,
   dashboardReservationReleaseDepositHoldInputSchema,
   dashboardReservationSendReservationEmailInputSchema,
+  dashboardReservationSendModificationEmailInputSchema,
   dashboardReservationSendAccessLinkInputSchema,
   dashboardReservationSendAccessLinkSmsInputSchema,
 } from '@louez/validations'
@@ -38,6 +39,16 @@ import { ORPCError } from '@orpc/server'
 function toDate(value: string | Date | undefined): Date | undefined {
   if (!value) return undefined
   return value instanceof Date ? value : new Date(value)
+}
+
+function toOptionalPeriod(payload?: {
+  previousStartDate?: string | Date
+  previousEndDate?: string | Date
+}) {
+  const startDate = toDate(payload?.previousStartDate)
+  const endDate = toDate(payload?.previousEndDate)
+  if (!startDate || !endDate) return undefined
+  return { startDate, endDate }
 }
 
 const poll = dashboardProcedure
@@ -415,6 +426,28 @@ const sendReservationEmail = requirePermission('write')
     }
   })
 
+const sendModificationEmail = requirePermission('write')
+  .input(dashboardReservationSendModificationEmailInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardReservationActions?.sendReservationModificationEmail
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message: 'dashboardReservationActions.sendReservationModificationEmail not provided',
+        })
+      }
+      const result = await fn(input.reservationId, {
+        previousPeriod: toOptionalPeriod(input.payload),
+      })
+      if (result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error })
+      }
+      return { success: true as const }
+    } catch (error) {
+      throw toORPCError(error)
+    }
+  })
+
 const sendAccessLink = requirePermission('write')
   .input(dashboardReservationSendAccessLinkInputSchema)
   .handler(async ({ context, input }) => {
@@ -510,6 +543,7 @@ export const dashboardReservationsRouter = {
   releaseDepositHold,
   assignUnitsToItem,
   sendReservationEmail,
+  sendModificationEmail,
   sendAccessLink,
   sendAccessLinkBySms,
   requestPayment,

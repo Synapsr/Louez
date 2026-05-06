@@ -184,6 +184,16 @@ export const dashboardReservationSendReservationEmailInputSchema = z.object({
   }),
 });
 
+export const dashboardReservationSendModificationEmailInputSchema = z.object({
+  reservationId: z.string().length(21),
+  payload: z
+    .object({
+      previousStartDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+      previousEndDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+    })
+    .optional(),
+});
+
 export const dashboardReservationSendAccessLinkInputSchema = z.object({
   reservationId: z.string().length(21),
 });
@@ -197,6 +207,7 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
   payload: z.object({
     startDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
     endDate: z.union([dateTimeOrDateSchema, z.date()]).optional(),
+    notifyCustomerByEmail: z.boolean().optional(),
     tulipInsuranceOptIn: z.boolean().optional(),
     delivery: z
       .object({
@@ -501,6 +512,9 @@ export type DashboardReservationReleaseDepositHoldInput = z.infer<
 >;
 export type DashboardReservationSendReservationEmailInput = z.infer<
   typeof dashboardReservationSendReservationEmailInputSchema
+>;
+export type DashboardReservationSendModificationEmailInput = z.infer<
+  typeof dashboardReservationSendModificationEmailInputSchema
 >;
 export type DashboardReservationSendAccessLinkInput = z.infer<
   typeof dashboardReservationSendAccessLinkInputSchema

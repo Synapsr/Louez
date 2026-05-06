@@ -3,7 +3,7 @@
 import { ChevronRight, Loader2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
-import { Button, Card, CardContent, Separator } from '@louez/ui'
+import { Button, Card, CardContent, Checkbox, Separator } from '@louez/ui'
 import { cn } from '@louez/utils'
 
 import type { ReservationCalculations } from '../types'
@@ -18,6 +18,9 @@ interface EditReservationSummarySectionProps {
   isLoading: boolean
   isDeliveryCalculating: boolean
   hasChanges: boolean
+  notifyCustomerByEmail: boolean
+  onNotifyCustomerByEmailChange: (checked: boolean) => void
+  hasScheduleChanges: boolean
   onSave: () => void
 }
 
@@ -31,6 +34,9 @@ export function EditReservationSummarySection({
   isLoading,
   isDeliveryCalculating,
   hasChanges,
+  notifyCustomerByEmail,
+  onNotifyCustomerByEmailChange,
+  hasScheduleChanges,
   onSave,
 }: EditReservationSummarySectionProps) {
   const t = useTranslations('dashboard.reservations')
@@ -143,6 +149,34 @@ export function EditReservationSummarySection({
             </span>
           </div>
         </div>
+
+        <Separator className="my-4" />
+
+        <label
+          htmlFor="notifyCustomerByEmailSummary"
+          className={cn(
+            'flex items-start gap-3 rounded-lg border p-3 text-sm',
+            hasChanges ? 'cursor-pointer bg-background' : 'cursor-not-allowed bg-muted/40',
+          )}
+        >
+          <Checkbox
+            id="notifyCustomerByEmailSummary"
+            checked={notifyCustomerByEmail}
+            disabled={!hasChanges || isLoading}
+            onCheckedChange={(checked) => onNotifyCustomerByEmailChange(checked === true)}
+            className="mt-0.5"
+          />
+          <span className="space-y-1">
+            <span className="block font-medium">{t('edit.notifyCustomerByEmail')}</span>
+            <span className="block text-xs text-muted-foreground">
+              {hasChanges
+                ? hasScheduleChanges
+                  ? t('edit.notifyCustomerScheduleHelp')
+                  : t('edit.notifyCustomerHelp')
+                : t('edit.notifyCustomerDisabledHelp')}
+            </span>
+          </span>
+        </label>
 
         <Button
           className="mt-6 w-full"

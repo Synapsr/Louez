@@ -68,6 +68,7 @@ import {
   sendReminderPickupEmail,
   sendReminderReturnEmail,
   sendReservationConfirmationEmail,
+  sendReservationModifiedEmail,
 } from '@/lib/email/send';
 import {
   cancelTulipContractForReservation,
@@ -1403,6 +1404,7 @@ interface UpdateDeliveryLeg {
 interface UpdateReservationData {
   startDate?: Date;
   endDate?: Date;
+  notifyCustomerByEmail?: boolean;
   tulipInsuranceOptIn?: boolean;
   delivery?: {
     outbound: UpdateDeliveryLeg;
@@ -2274,12 +2276,40 @@ export async function updateReservation(
     ...tulipWarnings,
   ];
 
+  let emailNotification:
+    | { status: 'sent'; to: string }
+    | { status: 'failed'; error: string; to: string }
+    | undefined;
+
+  if (data.notifyCustomerByEmail) {
+    const emailResult = await sendReservationModificationEmail(reservationId, {
+      previousPeriod: {
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+      },
+    });
+
+    if (emailResult.error) {
+      emailNotification = {
+        status: 'failed',
+        error: emailResult.error,
+        to: reservation.customer.email,
+      };
+    } else {
+      emailNotification = {
+        status: 'sent',
+        to: reservation.customer.email,
+      };
+    }
+  }
+
   return {
     success: true,
     difference,
     newTotal: newTotalAmount,
     previousTotal: previousState.totalAmount,
     ...(responseWarnings.length > 0 && { warnings: responseWarnings }),
+    ...(emailNotification && { emailNotification }),
   };
 }
 
@@ -3069,6 +3099,100 @@ interface SendReservationEmailData {
   templateId: string;
   customSubject?: string;
   customMessage?: string;
+}
+
+export async function sendReservationModificationEmail(
+  reservationId: string,
+  data?: {
+    previousPeriod?: {
+      startDate: Date;
+      endDate: Date;
+    };
+  },
+) {
+  const store = await getStoreForUser();
+  if (!store) {
+    return { error: 'errors.unauthorized' };
+  }
+
+  const reservation = await db.query.reservations.findFirst({
+    where: and(
+      eq(reservations.id, reservationId),
+      eq(reservations.storeId, store.id),
+    ),
+    with: {
+      customer: true,
+    },
+  });
+
+  if (!reservation) {
+    return { error: 'errors.reservationNotFound' };
+  }
+
+  const storeData = {
+    id: store.id,
+    name: store.name,
+    logoUrl: store.logoUrl,
+    darkLogoUrl: store.darkLogoUrl,
+    email: store.email,
+    phone: store.phone,
+    address: store.address,
+    theme: store.theme,
+    settings: store.settings,
+    emailSettings: store.emailSettings,
+  };
+
+  const customerData = {
+    firstName: reservation.customer.firstName,
+    lastName: reservation.customer.lastName,
+    email: reservation.customer.email,
+  };
+
+  const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+  const reservationUrl = `https://${store.slug}.${domain}/account/reservations/${reservationId}`;
+
+  try {
+    await sendReservationModifiedEmail({
+      to: customerData.email,
+      store: storeData,
+      customer: customerData,
+      reservation: {
+        id: reservation.id,
+        number: reservation.number,
+        startDate: reservation.startDate,
+        endDate: reservation.endDate,
+      },
+      previousPeriod: data?.previousPeriod,
+      reservationUrl,
+      locale: getLocaleFromCountry(store.settings?.country),
+    });
+
+    await logReservationActivity(
+      reservationId,
+      'note_updated',
+      {
+        templateId: 'reservation_modified',
+        to: customerData.email,
+        customerEmailNotification: 'sent',
+      },
+    );
+
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to send reservation modification email:', error);
+    await logReservationActivity(
+      reservationId,
+      'note_updated',
+      {
+        templateId: 'reservation_modified',
+        to: customerData.email,
+        customerEmailNotification: 'failed',
+      },
+    );
+    revalidatePath(`/dashboard/reservations/${reservationId}`);
+    return { error: 'errors.emailSendFailed' };
+  }
 }
 
 export async function sendReservationEmail(

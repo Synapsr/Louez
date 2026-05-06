@@ -9,6 +9,8 @@ import type { ReservationLocationSnapshot } from '@louez/types'
 import {
   VerificationCodeEmail,
   ReservationConfirmationEmail,
+  ReservationModifiedEmail,
+  getReservationModifiedEmailSubject,
   ReservationCancelledEmail,
   ReservationCompletedEmail,
   RequestReceivedEmail,
@@ -276,6 +278,87 @@ export async function sendReservationConfirmationEmail({
       to,
       subject,
       templateType: 'reservation_confirmation',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Reservation Modified Email
+export async function sendReservationModifiedEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  reservationUrl,
+  previousPeriod,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: Customer
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+  }
+  reservationUrl: string
+  previousPeriod?: {
+    startDate: Date
+    endDate: Date
+  } | null
+  locale?: EmailLocale
+}) {
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const subject = `${getReservationModifiedEmailSubject(reservation.number, locale)} - ${store.name}`
+  const html = await render(
+    ReservationModifiedEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storePhone: store.phone,
+      storeEmail: store.email,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
+      customerFirstName: customer.firstName,
+      reservationNumber: reservation.number,
+      previousStartDate: previousPeriod?.startDate,
+      previousEndDate: previousPeriod?.endDate,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
+      reservationUrl,
+      locale,
+    }),
+  )
+
+  try {
+    const result = await sendEmail({
+      to,
+      subject,
+      html,
+      attachments: logo.attachments,
+      fromName: store.name,
+    })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_modified',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reservation_modified',
       status: 'failed',
       error: String(error),
     })
