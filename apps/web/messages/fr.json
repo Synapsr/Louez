@@ -1930,6 +1930,7 @@
         "unit": "Unité",
         "available": "Disponible",
         "noProducts": "Aucun produit à afficher",
+        "resizeProductColumn": "Redimensionner la colonne produit",
         "reservationsCount": "{count, plural, one {# réservation} other {# réservations}}"
       },
       "timeline": {

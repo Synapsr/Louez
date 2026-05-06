@@ -1876,6 +1876,7 @@
         "unit": "Eenheid",
         "available": "Beschikbaar",
         "noProducts": "Geen producten om weer te geven",
+        "resizeProductColumn": "Productkolom aanpassen",
         "reservationsCount": "{count, plural, one {# reservering} other {# reserveringen}}"
       },
       "timeline": {
