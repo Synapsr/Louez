@@ -1,7 +1,6 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
-import { useHotkey } from '@tanstack/react-hotkeys'
+import { useMemo, useState } from 'react'
 import {
   AlertTriangle,
   ImageIcon,
@@ -10,11 +9,9 @@ import {
   PackageX,
   PenLine,
   Plus,
-  Search,
   Shield,
   ShoppingCart,
   Trash2,
-  X,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
@@ -29,11 +26,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-  InputGroupText,
   Select,
   SelectContent,
   SelectItem,
@@ -42,6 +34,8 @@ import {
   Separator,
 } from '@louez/ui'
 import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils'
+
+import { SearchInput } from '@/components/ui/search-input'
 
 import type { PricingMode } from '@louez/types'
 import {
@@ -126,15 +120,6 @@ export function NewReservationStepProducts({
   const t = useTranslations('dashboard.reservations.manualForm')
   const tCommon = useTranslations('common')
   const [productSearchQuery, setProductSearchQuery] = useState('')
-  const productSearchInputRef = useRef<HTMLInputElement>(null)
-
-  useHotkey(
-    'Mod+F',
-    () => {
-      productSearchInputRef.current?.focus()
-    },
-    { enabled: products.length > 0 },
-  )
 
   const normalizedProductSearchQuery = productSearchQuery.trim().toLowerCase()
   const filteredProducts = useMemo(() => {
@@ -215,41 +200,15 @@ export function NewReservationStepProducts({
       </CardHeader>
       <CardContent className="space-y-6">
         {products.length > 0 && (
-          <InputGroup className="h-10">
-            <InputGroupInput
-              ref={productSearchInputRef}
-              type="search"
-              autoFocus
-              value={productSearchQuery}
-              onChange={(event) => setProductSearchQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') {
-                  event.currentTarget.blur()
-                }
-              }}
-              placeholder={t('searchProductsPlaceholder', { count: products.length })}
-            />
-            <InputGroupAddon align="inline-start">
-              <Search className="h-4 w-4" />
-            </InputGroupAddon>
-            {productSearchQuery.length > 0 && (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-sm"
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => setProductSearchQuery('')}
-                  aria-label={t('clearProductSearch')}
-                >
-                  <X className="h-4 w-4" />
-                </InputGroupButton>
-              </InputGroupAddon>
-            )}
-            {productSearchQuery.length === 0 && (
-              <InputGroupAddon align="inline-end">
-                <InputGroupText>⌘F</InputGroupText>
-              </InputGroupAddon>
-            )}
-          </InputGroup>
+          <SearchInput
+            autoFocus
+            value={productSearchQuery}
+            onChange={(event) => setProductSearchQuery(event.target.value)}
+            onClear={() => setProductSearchQuery('')}
+            placeholder={t('searchProductsPlaceholder', { count: products.length })}
+            clearLabel={t('clearProductSearch')}
+            groupClassName="h-10"
+          />
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">

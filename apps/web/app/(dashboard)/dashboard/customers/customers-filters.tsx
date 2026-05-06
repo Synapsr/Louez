@@ -1,13 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { Plus, Search, Users } from 'lucide-react';
+import { Plus, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useDebouncedCallback } from 'use-debounce';
 
-import { Input } from '@louez/ui';
 import { Button } from '@louez/ui';
 import {
   Select,
@@ -16,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@louez/ui';
+
+import { SearchInput } from '@/components/ui/search-input';
 
 interface CustomersFiltersProps {
   totalCount: number;
@@ -29,6 +32,12 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
 
   const currentType = searchParams.get('type') || 'all';
   const currentSort = searchParams.get('sort') || 'recent';
+  const currentSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(currentSearch);
+
+  useEffect(() => {
+    setSearchQuery(currentSearch);
+  }, [currentSearch]);
 
   const typeOptions = [
     { value: 'all', label: t('filter.all') },
@@ -52,6 +61,20 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
     }
     router.push(`?${params.toString()}`);
   }, 300);
+
+  const updateSearchQuery = (term: string) => {
+    setSearchQuery(term);
+    handleSearch(term);
+  };
+
+  const clearSearchQuery = () => {
+    setSearchQuery('');
+    handleSearch.cancel();
+
+    const params = new URLSearchParams(searchParams);
+    params.delete('search');
+    router.push(`?${params.toString()}`);
+  };
 
   const handleSortChange = (value: string | null) => {
     if (value === null) return;
@@ -86,12 +109,13 @@ export function CustomersFilters({ totalCount }: CustomersFiltersProps) {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
-          <Input
+          <SearchInput
             placeholder={t('searchCustomers')}
-            className="w-full sm:w-[250px]"
-            defaultValue={searchParams.get('search') || ''}
-            onChange={(e) => handleSearch(e.target.value)}
+            groupClassName="w-full sm:w-[250px]"
+            value={searchQuery}
+            onChange={(event) => updateSearchQuery(event.target.value)}
+            onClear={clearSearchQuery}
+            clearLabel={t('clearSearch')}
           />
         </div>
 
