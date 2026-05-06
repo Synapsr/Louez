@@ -169,13 +169,14 @@ export function SmartReservationActions({
   // Calculate payment states
   const isRentalFullyPaid = rentalPaid >= rentalAmount
   const isDepositFullyCollected = depositCollected >= depositAmount
+  const isDepositCovered = depositAmount === 0 || isDepositFullyCollected || hasActiveAuthorization
   const rentalRemaining = Math.max(0, rentalAmount - rentalPaid)
   const depositRemaining = Math.max(0, depositAmount - depositCollected)
   const depositToReturn = depositCollected - depositReturned
 
   // Determine warnings
   const hasPaymentWarning = !isRentalFullyPaid && status === 'confirmed'
-  const hasDepositWarning = depositAmount > 0 && !isDepositFullyCollected && status === 'confirmed'
+  const hasDepositWarning = !isDepositCovered && status === 'confirmed'
   const hasWarnings = hasPaymentWarning || hasDepositWarning
 
   const updateStatusMutation = useMutation(
@@ -817,9 +818,11 @@ export function SmartReservationActions({
               {depositAmount > 0 && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{t('payment.deposit')}</span>
-                  <span className={cn('font-medium', isDepositFullyCollected ? 'text-emerald-600' : 'text-amber-600')}>
+                  <span className={cn('font-medium', isDepositCovered ? 'text-emerald-600' : 'text-amber-600')}>
                     {isDepositFullyCollected
                       ? `${depositCollected.toFixed(2)}${currencySymbol} ${t('smartActions.collected')}`
+                      : hasActiveAuthorization
+                      ? t('smartActions.authorized')
                       : t('smartActions.notCollected')}
                   </span>
                 </div>

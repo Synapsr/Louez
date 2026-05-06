@@ -1503,6 +1503,7 @@
         "fullyPaid": "Fully paid",
         "partiallyPaid": "{paid} of {total} paid",
         "collected": "collected",
+        "authorized": "Hold active",
         "notCollected": "Not collected",
         "toReturnToCustomer": "To return to customer",
         "returnQuestion": "Confirm that the equipment was returned in good condition?",

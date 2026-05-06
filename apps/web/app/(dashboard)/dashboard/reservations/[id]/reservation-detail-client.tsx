@@ -213,6 +213,12 @@ export function ReservationDetailClient({
         signedAt: toDate(returnInspection.signedAt),
       }
     : null
+  const depositAuthorizationExpiresAt = toDate(
+    reservation.depositAuthorizationExpiresAt,
+  )
+  const hasActiveDepositAuthorization =
+    reservation.depositStatus === 'authorized' &&
+    (!depositAuthorizationExpiresAt || depositAuthorizationExpiresAt > new Date())
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -603,7 +609,7 @@ export function ReservationDetailClient({
             depositCollected={depositCollected}
             depositReturned={depositReturned}
             hasOnlinePaymentPending={hasOnlinePaymentPending}
-            hasActiveAuthorization={reservation.depositStatus === 'authorized'}
+            hasActiveAuthorization={hasActiveDepositAuthorization}
             currency={currency}
             inspectionEnabled={inspectionSettings.enabled}
             inspectionMode={inspectionSettings.mode}
@@ -736,7 +742,7 @@ export function ReservationDetailClient({
             status={status}
             currency={currency}
             depositStatus={reservation.depositStatus as DepositStatus | null}
-            depositAuthorizationExpiresAt={reservation.depositAuthorizationExpiresAt}
+            depositAuthorizationExpiresAt={depositAuthorizationExpiresAt}
             stripePaymentMethodId={reservation.stripePaymentMethodId}
             customer={{
               firstName: reservation.customer.firstName,
