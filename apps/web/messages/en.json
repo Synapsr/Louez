@@ -1394,6 +1394,7 @@
           "canContinue": "As a manager, you can create this reservation despite the warnings.",
           "productConflict": "{name}: availability conflict",
           "productConflictDetails": "Requested quantity: {requested}, available for this period: {available}",
+          "turnoverBufferConflictDetails": "This calculation includes a {duration} min buffer after each return.",
           "conflictCanContinue": "These products are already reserved during this period. You can proceed if you manage availability manually.",
           "insufficientStock": "Insufficient stock"
         },
@@ -2564,6 +2565,9 @@
         "maxRentalHoursHelp": "In hours. Leave empty for no limit.",
         "leadTime": "Minimum notice",
         "leadTimeHelp": "Time before the first available date",
+        "turnoverBuffer": "Buffer between reservations",
+        "turnoverBufferDescription": "Time added after each return before stock becomes available again.",
+        "turnoverBufferHelp": "This buffer only blocks availability. It does not change the rented duration or the charged price.",
         "durationUnit": {
           "day": "In days",
           "hour": "In hours",

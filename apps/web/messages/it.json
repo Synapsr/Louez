@@ -1320,6 +1320,7 @@
           "canContinue": "Come gestore, puoi creare questa prenotazione nonostante gli avvisi.",
           "productConflict": "{name}: conflitto di disponibilità",
           "productConflictDetails": "Quantità richiesta: {requested}, disponibile per questo periodo: {available}",
+          "turnoverBufferConflictDetails": "Questo calcolo include un margine di {duration} min dopo ogni restituzione.",
           "conflictCanContinue": "Questi prodotti sono già prenotati durante questo periodo. Puoi procedere se gestisci manualmente la disponibilità.",
           "insufficientStock": "Stock insufficiente"
         },
@@ -2318,6 +2319,9 @@
         "maxRentalHoursHelp": "In ore. Lasciare vuoto per nessun limite.",
         "leadTime": "Preavviso minimo",
         "leadTimeHelp": "Tempo prima della prima data disponibile",
+        "turnoverBuffer": "Margine tra prenotazioni",
+        "turnoverBufferDescription": "Tempo aggiunto dopo ogni restituzione prima che lo stock torni disponibile.",
+        "turnoverBufferHelp": "Questo margine blocca solo la disponibilità. Non modifica la durata noleggiata né il prezzo addebitato.",
         "durationUnit": {
           "day": "In giorni",
           "hour": "In ore",

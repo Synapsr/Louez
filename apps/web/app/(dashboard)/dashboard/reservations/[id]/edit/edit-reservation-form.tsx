@@ -324,6 +324,7 @@ export function EditReservationForm({
     endDate,
     items,
     existingReservations,
+    turnoverBufferMinutes: storeSettings?.turnoverBufferMinutes ?? 0,
   })
 
   // Delivery state
@@ -847,6 +848,13 @@ export function EditReservationForm({
                         requested: warning.requestedQuantity,
                         available: warning.availableQuantity,
                       })}
+                      {(warning.turnoverBufferMinutes ?? 0) > 0 && (
+                        <span className="block text-sm font-normal text-amber-700 dark:text-amber-300">
+                          {tForm('warnings.turnoverBufferConflictDetails', {
+                            duration: warning.turnoverBufferMinutes ?? 0,
+                          })}
+                        </span>
+                      )}
                     </span>
                   ))}
                   <span className="text-sm text-amber-700 dark:text-amber-300 mt-1">

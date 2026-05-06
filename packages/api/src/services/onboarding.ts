@@ -115,6 +115,7 @@ export async function completeOnboarding(params: CompleteOnboardingParams) {
     minRentalMinutes: 60,
     maxRentalMinutes: null,
     advanceNoticeMinutes: 1440,
+    turnoverBufferMinutes: 0,
     openingHours: null,
   };
 

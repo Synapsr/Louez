@@ -227,6 +227,7 @@ export const stores = mysqlTable(
       minRentalMinutes: 60,
       maxRentalMinutes: null,
       advanceNoticeMinutes: 1440,
+      turnoverBufferMinutes: 0,
     }),
 
     // Theme

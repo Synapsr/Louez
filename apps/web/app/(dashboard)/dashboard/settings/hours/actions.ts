@@ -29,6 +29,7 @@ export async function updateBusinessHours(data: BusinessHoursInput) {
       minRentalMinutes: 60,
       maxRentalMinutes: null,
       advanceNoticeMinutes: 1440,
+      turnoverBufferMinutes: 0,
     }
 
     // Update store settings with business hours

@@ -12,6 +12,7 @@ interface UseEditReservationAvailabilityParams {
   endDate: Date | undefined
   items: EditableItem[]
   existingReservations: ExistingReservation[]
+  turnoverBufferMinutes: number
 }
 
 export function useEditReservationAvailability({
@@ -19,6 +20,7 @@ export function useEditReservationAvailability({
   endDate,
   items,
   existingReservations,
+  turnoverBufferMinutes,
 }: UseEditReservationAvailabilityParams) {
   const availabilityWarnings = useMemo<AvailabilityWarning[]>(() => {
     if (!startDate || !endDate || items.length === 0) {
@@ -32,6 +34,7 @@ export function useEditReservationAvailability({
       ),
       startDate,
       endDate,
+      turnoverBufferMinutes,
     })
 
     for (const item of items) {
@@ -48,12 +51,13 @@ export function useEditReservationAvailability({
           productName: item.productSnapshot.name,
           requestedQuantity: item.quantity,
           availableQuantity: available,
+          turnoverBufferMinutes,
         })
       }
     }
 
     return warnings
-  }, [endDate, existingReservations, items, startDate])
+  }, [endDate, existingReservations, items, startDate, turnoverBufferMinutes])
 
   return {
     availabilityWarnings,

@@ -118,6 +118,7 @@ export interface AvailabilityWarning {
   productName: string
   requestedQuantity: number
   availableQuantity: number
+  turnoverBufferMinutes?: number
 }
 
 export interface StoreDeliveryInfo {

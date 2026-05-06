@@ -46,6 +46,7 @@ export async function updateInspectionSettings(
     minRentalMinutes: 60,
     maxRentalMinutes: null,
     advanceNoticeMinutes: 1440,
+    turnoverBufferMinutes: 0,
   }
 
   await db

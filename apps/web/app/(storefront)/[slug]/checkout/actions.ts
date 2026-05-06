@@ -1006,6 +1006,13 @@ export async function createReservation(input: CreateReservationInput) {
     const displayMode = storeTaxSettings?.displayMode ?? 'inclusive'
 
     const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
+    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0
+    const bufferedQueryStart = new Date(
+      rentalStartDate.getTime() - Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+    )
+    const bufferedQueryEnd = new Date(
+      rentalEndDate.getTime() + Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+    )
     const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
       pendingBlocksAvailability
         ? ['pending', 'confirmed', 'ongoing']
@@ -1030,8 +1037,8 @@ export async function createReservation(input: CreateReservationInput) {
         where: and(
           eq(reservations.storeId, input.storeId),
           inArray(reservations.status, blockingStatuses),
-          lt(reservations.startDate, rentalEndDate),
-          gt(reservations.endDate, rentalStartDate),
+          lt(reservations.startDate, bufferedQueryEnd),
+          gt(reservations.endDate, bufferedQueryStart),
         ),
         with: {
           items: true,
@@ -1043,6 +1050,7 @@ export async function createReservation(input: CreateReservationInput) {
           reservations: overlappingReservations,
           startDate: rentalStartDate,
           endDate: rentalEndDate,
+          turnoverBufferMinutes,
         })
 
       const trackedProductIds = [...productsForReservation.values()]

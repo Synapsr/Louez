@@ -310,6 +310,64 @@ export function StoreSettingsRentalRulesSection({
           </form.Field>
         </div>
 
+        <form.Field name="turnoverBufferMinutes">
+          {(field: any) => (
+            <div className="grid gap-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor={field.name}>
+                  {t('reservationSettings.turnoverBuffer')}
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Info className="text-muted-foreground h-3.5 w-3.5 cursor-help" />
+                      }
+                    />
+                    <TooltipContent side="top" className="max-w-xs">
+                      <p>{t('reservationSettings.turnoverBufferHelp')}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="border-input dark:bg-input/30 has-[:focus]:border-ring has-[:focus]:ring-ring/50 flex h-9 max-w-xs rounded-md border bg-transparent shadow-xs has-[:focus]:ring-[3px]">
+                <input
+                  id={field.name}
+                  type="number"
+                  min={0}
+                  max={10080}
+                  step={1}
+                  className="min-w-0 flex-1 [appearance:textfield] rounded-l-md bg-transparent px-3 text-base outline-none md:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  value={field.state.value || ''}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === '') {
+                      field.handleChange(0);
+                      return;
+                    }
+
+                    const parsed = parseInt(value);
+                    if (!Number.isNaN(parsed)) {
+                      field.handleChange(Math.max(0, parsed));
+                    }
+                  }}
+                />
+                <span className="border-input bg-muted/50 text-muted-foreground flex h-full items-center rounded-r-md border-l px-2.5 text-sm">
+                  min
+                </span>
+              </div>
+              <p className="text-muted-foreground text-sm">
+                {t('reservationSettings.turnoverBufferDescription')}
+              </p>
+              {field.state.meta.errors.length > 0 && (
+                <p className="text-destructive text-sm">
+                  {getFieldError(field.state.meta.errors[0])}
+                </p>
+              )}
+            </div>
+          )}
+        </form.Field>
+
         <form.AppField name="requireCustomerAddress">
           {(field: any) => (
             <field.Switch

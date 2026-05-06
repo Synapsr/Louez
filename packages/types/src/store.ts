@@ -203,6 +203,8 @@ export interface StoreSettings {
   maxRentalMinutes?: number | null
   /** Minimum notice before start in minutes. Default: 1440 (24h). */
   advanceNoticeMinutes: number
+  /** Operational buffer after each return before stock is available again. Default: 0. */
+  turnoverBufferMinutes?: number
   requireCustomerAddress?: boolean
   /**
    * Controls whether pending (unanswered) reservation requests block availability.

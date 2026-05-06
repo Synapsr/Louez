@@ -1,6 +1,7 @@
 import { z } from 'zod'
-import { db, reservations, customers, products, reservationItems } from '@louez/db'
-import { and, eq, gte, lte, sql, desc } from 'drizzle-orm'
+import { db, reservations, customers, products, reservationItems, stores } from '@louez/db'
+import { calculatePeakReservedQuantities } from '@louez/utils'
+import { and, eq, gt, gte, inArray, lt, lte, desc } from 'drizzle-orm'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 
 import type { McpSessionContext } from '../auth/context'
@@ -157,21 +158,44 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
 
       if (!product) return toolResult('Product not found.')
 
-      const [overlap] = await db
-        .select({ count: sql<number>`COALESCE(SUM(${reservationItems.quantity}), 0)` })
-        .from(reservationItems)
-        .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
-        .where(
-          and(
-            eq(reservationItems.productId, productId),
-            eq(reservations.storeId, ctx.storeId),
-            sql`${reservations.status} IN ('pending', 'confirmed', 'ongoing')`,
-            lte(reservations.startDate, end),
-            gte(reservations.endDate, start)
-          )
-        )
+      const store = await db.query.stores.findFirst({
+        where: eq(stores.id, ctx.storeId),
+        columns: { settings: true },
+      })
+      const pendingBlocksAvailability = store?.settings?.pendingBlocksAvailability ?? true
+      const turnoverBufferMinutes = store?.settings?.turnoverBufferMinutes ?? 0
+      const bufferMs = Math.max(0, turnoverBufferMinutes) * 60 * 1000
+      const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
+        pendingBlocksAvailability
+          ? ['pending', 'confirmed', 'ongoing']
+          : ['confirmed', 'ongoing']
 
-      const reserved = overlap?.count ?? 0
+      const overlappingReservations = await db.query.reservations.findMany({
+        where: and(
+          eq(reservations.storeId, ctx.storeId),
+          inArray(reservations.status, blockingStatuses),
+          lt(reservations.startDate, new Date(end.getTime() + bufferMs)),
+          gt(reservations.endDate, new Date(start.getTime() - bufferMs)),
+        ),
+        with: {
+          items: {
+            where: eq(reservationItems.productId, productId),
+            columns: {
+              productId: true,
+              quantity: true,
+              combinationKey: true,
+            },
+          },
+        },
+      })
+
+      const { reservedByProduct } = calculatePeakReservedQuantities({
+        reservations: overlappingReservations,
+        startDate: start,
+        endDate: end,
+        turnoverBufferMinutes,
+      })
+      const reserved = reservedByProduct.get(productId) ?? 0
       const available = Math.max(0, product.quantity - reserved)
 
       return toolResult(
@@ -179,6 +203,7 @@ export function registerCalendarTools(server: McpServer, ctx: McpSessionContext)
           `- Period: ${formatDate(start)} → ${formatDate(end)}\n` +
           `- Total stock: ${product.quantity}\n` +
           `- Reserved: ${reserved}\n` +
+          `- Buffer after return: ${turnoverBufferMinutes} min\n` +
           `- **Available: ${available}**`
       )
     }

@@ -101,6 +101,7 @@ export function NewReservationForm({
   businessHours,
   advanceNoticeMinutes = 0,
   pendingBlocksAvailability = true,
+  turnoverBufferMinutes = 0,
   existingReservations = [],
   deliverySettings,
   storeLatitude,
@@ -422,6 +423,7 @@ export function NewReservationForm({
     businessHours,
     advanceNoticeMinutes,
     pendingBlocksAvailability,
+    turnoverBufferMinutes,
     existingReservations,
   })
   const periodAvailability = useMemo(
@@ -430,9 +432,10 @@ export function NewReservationForm({
         startDate: watchStartDate,
         endDate: watchEndDate,
         pendingBlocksAvailability,
+        turnoverBufferMinutes,
         existingReservations,
       }),
-    [existingReservations, pendingBlocksAvailability, watchEndDate, watchStartDate],
+    [existingReservations, pendingBlocksAvailability, turnoverBufferMinutes, watchEndDate, watchStartDate],
   )
 
   const {
@@ -936,6 +939,11 @@ export function NewReservationForm({
             />
           </CardContent>
         </Card>
+         {/* <Stepper
+              steps={steps}
+              currentStep={currentStep}
+              onStepClick={goToStep}
+            /> */}
 
         {/* Step: Customer */}
         {currentStepId === 'customer' && (

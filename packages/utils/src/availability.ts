@@ -57,15 +57,17 @@ export function calculatePeakReservedQuantities(params: {
   reservations: AvailabilityReservation[]
   startDate: Date
   endDate: Date
+  turnoverBufferMinutes?: number
 }): PeakReservedQuantities {
   const productDeltas = new Map<string, Map<number, number>>()
   const combinationDeltas = new Map<string, Map<number, number>>()
   const requestedStart = params.startDate.getTime()
-  const requestedEnd = params.endDate.getTime()
+  const bufferMs = Math.max(0, params.turnoverBufferMinutes ?? 0) * 60 * 1000
+  const requestedEnd = params.endDate.getTime() + bufferMs
 
   for (const reservation of params.reservations) {
     const overlapStart = Math.max(reservation.startDate.getTime(), requestedStart)
-    const overlapEnd = Math.min(reservation.endDate.getTime(), requestedEnd)
+    const overlapEnd = Math.min(reservation.endDate.getTime() + bufferMs, requestedEnd)
 
     if (overlapStart >= overlapEnd) {
       continue

@@ -1359,6 +1359,7 @@
           "canContinue": "Als Manager können Sie diese Reservierung trotz der Warnungen erstellen.",
           "productConflict": "{name}: Verfügbarkeitskonflikt",
           "productConflictDetails": "Angeforderte Menge: {requested}, verfügbar für diesen Zeitraum: {available}",
+          "turnoverBufferConflictDetails": "Diese Berechnung enthält einen Puffer von {duration} Min. nach jeder Rückgabe.",
           "conflictCanContinue": "Diese Produkte sind in diesem Zeitraum bereits reserviert. Sie können fortfahren, wenn Sie die Verfügbarkeit manuell verwalten.",
           "insufficientStock": "Unzureichender Lagerbestand"
         },
@@ -2318,6 +2319,9 @@
         "maxRentalHoursHelp": "In Stunden. Leer lassen für kein Limit.",
         "leadTime": "Mindestvorlaufzeit",
         "leadTimeHelp": "Zeit vor dem ersten verfügbaren Datum",
+        "turnoverBuffer": "Puffer zwischen Reservierungen",
+        "turnoverBufferDescription": "Zeit nach jeder Rückgabe, bevor der Bestand wieder verfügbar ist.",
+        "turnoverBufferHelp": "Dieser Puffer blockiert nur die Verfügbarkeit. Er ändert weder die Mietdauer noch den berechneten Preis.",
         "durationUnit": {
           "day": "In Tagen",
           "hour": "In Stunden",

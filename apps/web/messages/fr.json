@@ -1403,6 +1403,7 @@
           "canContinue": "En tant que gérant, vous pouvez créer cette réservation malgré les avertissements.",
           "productConflict": "{name} : conflit de disponibilité",
           "productConflictDetails": "Quantité demandée : {requested}, disponible sur cette période : {available}",
+          "turnoverBufferConflictDetails": "Ce calcul inclut une marge de {duration} min après chaque retour.",
           "conflictCanContinue": "Ces produits sont déjà réservés sur cette période. Vous pouvez continuer si vous gérez manuellement la disponibilité.",
           "insufficientStock": "Stock insuffisant"
         },
@@ -2564,6 +2565,9 @@
         "maxRentalHoursHelp": "En heures. Laisser vide pour aucune limite.",
         "leadTime": "Préavis minimum",
         "leadTimeHelp": "Délai avant la première date disponible",
+        "turnoverBuffer": "Marge entre deux réservations",
+        "turnoverBufferDescription": "Temps ajouté après chaque retour avant que le stock soit à nouveau disponible.",
+        "turnoverBufferHelp": "Cette marge bloque uniquement la disponibilité. Elle ne change pas la durée louée ni le prix facturé.",
         "durationUnit": {
           "day": "En jours",
           "hour": "En heures",

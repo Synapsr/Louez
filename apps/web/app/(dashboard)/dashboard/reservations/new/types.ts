@@ -84,6 +84,7 @@ export interface AvailabilityWarning {
   requestedQuantity: number;
   availableQuantity: number;
   conflictingReservations?: number;
+  turnoverBufferMinutes?: number;
 }
 
 export type { LegMethod } from '@louez/types';
@@ -122,6 +123,7 @@ export interface NewReservationFormProps {
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
   pendingBlocksAvailability?: boolean;
+  turnoverBufferMinutes?: number;
   existingReservations?: Array<{
     id: string;
     startDate: Date;

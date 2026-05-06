@@ -1367,6 +1367,7 @@
           "canContinue": "Como gerente, puede crear esta reserva a pesar de las advertencias.",
           "productConflict": "{name}: conflicto de disponibilidad",
           "productConflictDetails": "Cantidad solicitada: {requested}, disponible para este período: {available}",
+          "turnoverBufferConflictDetails": "Este cálculo incluye un margen de {duration} min después de cada devolución.",
           "conflictCanContinue": "Estos productos ya están reservados durante este período. Puede continuar si gestiona la disponibilidad manualmente.",
           "insufficientStock": "Stock insuficiente"
         },
@@ -2326,6 +2327,9 @@
         "maxRentalHoursHelp": "En horas. Dejar vacío para sin límite.",
         "leadTime": "Aviso mínimo",
         "leadTimeHelp": "Tiempo antes de la primera fecha disponible",
+        "turnoverBuffer": "Margen entre reservas",
+        "turnoverBufferDescription": "Tiempo agregado después de cada devolución antes de que el stock vuelva a estar disponible.",
+        "turnoverBufferHelp": "Este margen solo bloquea la disponibilidad. No cambia la duración alquilada ni el precio cobrado.",
         "durationUnit": {
           "day": "En dias",
           "hour": "En horas",

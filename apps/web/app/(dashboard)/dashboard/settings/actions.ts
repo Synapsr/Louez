@@ -40,6 +40,7 @@ interface StoreSettingsInput {
   minRentalMinutes: number
   maxRentalMinutes: number | null
   advanceNoticeMinutes: number
+  turnoverBufferMinutes: number
   requireCustomerAddress: boolean
 }
 
@@ -68,6 +69,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
           minRentalMinutes: data.minRentalMinutes,
           maxRentalMinutes: data.maxRentalMinutes,
           advanceNoticeMinutes: data.advanceNoticeMinutes,
+          turnoverBufferMinutes: data.turnoverBufferMinutes,
           requireCustomerAddress: data.requireCustomerAddress,
           businessHours: store.settings?.businessHours,
           country: data.country,

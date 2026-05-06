@@ -77,7 +77,8 @@ const createStoreSettingsSchema = (
     onlinePaymentDepositPercentage: z.number().int().min(10).max(100),
     minRentalMinutes: z.number().int().min(0),
     maxRentalMinutes: z.number().int().min(1).nullable(),
-    advanceNoticeMinutes: z.number().min(0),
+    advanceNoticeMinutes: z.number().int().min(0),
+    turnoverBufferMinutes: z.number().int().min(0).max(10080),
     requireCustomerAddress: z.boolean(),
   });
 
@@ -129,6 +130,7 @@ export function StoreSettingsForm({
     minRentalMinutes: store.settings?.minRentalMinutes ?? 60,
     maxRentalMinutes: store.settings?.maxRentalMinutes ?? null,
     advanceNoticeMinutes: store.settings?.advanceNoticeMinutes ?? 1440,
+    turnoverBufferMinutes: store.settings?.turnoverBufferMinutes ?? 0,
     requireCustomerAddress: store.settings?.requireCustomerAddress ?? false,
     businessHours: store.settings?.businessHours,
     country: store.settings?.country,
@@ -173,6 +175,7 @@ export function StoreSettingsForm({
       minRentalMinutes: getMinRentalMinutes(settings as StoreSettings),
       maxRentalMinutes: getMaxRentalMinutes(settings as StoreSettings),
       advanceNoticeMinutes: settings.advanceNoticeMinutes,
+      turnoverBufferMinutes: settings.turnoverBufferMinutes ?? 0,
       requireCustomerAddress: settings.requireCustomerAddress ?? false,
     },
     validators: { onSubmit: storeSettingsSchema },

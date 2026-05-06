@@ -146,6 +146,7 @@ export default async function NewReservationPage() {
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
         pendingBlocksAvailability={store.settings?.pendingBlocksAvailability ?? true}
+        turnoverBufferMinutes={store.settings?.turnoverBufferMinutes ?? 0}
         existingReservations={activeReservations}
         deliverySettings={deliverySettings}
         storeLatitude={store.latitude ? parseFloat(store.latitude) : null}

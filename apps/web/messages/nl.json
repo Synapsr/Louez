@@ -1320,6 +1320,7 @@
           "canContinue": "Als manager kunt u deze reservering aanmaken ondanks de waarschuwingen.",
           "productConflict": "{name}: beschikbaarheidsconflict",
           "productConflictDetails": "Gevraagde hoeveelheid: {requested}, beschikbaar voor deze periode: {available}",
+          "turnoverBufferConflictDetails": "Deze berekening bevat een buffer van {duration} min na elke retour.",
           "conflictCanContinue": "Deze producten zijn al gereserveerd gedurende deze periode. U kunt doorgaan als u de beschikbaarheid handmatig beheert.",
           "insufficientStock": "Onvoldoende voorraad"
         },
@@ -2318,6 +2319,9 @@
         "maxRentalHoursHelp": "In uren. Leeg laten voor geen limiet.",
         "leadTime": "Minimale vooraankondiging",
         "leadTimeHelp": "Tijd voor de eerste beschikbare datum",
+        "turnoverBuffer": "Buffer tussen reserveringen",
+        "turnoverBufferDescription": "Tijd toegevoegd na elke retour voordat voorraad weer beschikbaar is.",
+        "turnoverBufferHelp": "Deze buffer blokkeert alleen beschikbaarheid. Hij wijzigt de gehuurde duur of de aangerekende prijs niet.",
         "durationUnit": {
           "day": "In dagen",
           "hour": "In uren",

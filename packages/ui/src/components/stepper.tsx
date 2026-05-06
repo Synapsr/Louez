@@ -41,24 +41,16 @@ export function Stepper({
     <nav aria-label="Progress" className={cn('w-full', className)}>
       {/* Desktop */}
       <div className="hidden sm:block">
-        <ol className="relative flex items-start">
+        <ol className="relative flex min-h-14 items-start justify-between">
           {/* Track (background) — spans from center of first chip to center of last chip */}
           <span
             aria-hidden
-            className="bg-border absolute top-3 h-px"
-            style={{
-              left: `${50 / steps.length}%`,
-              right: `${50 / steps.length}%`,
-            }}
+            className="bg-border absolute top-3 right-3 left-3 h-px"
           />
           {/* Track (filled) */}
           <motion.span
             aria-hidden
-            className="bg-primary absolute top-3 h-px origin-left"
-            style={{
-              left: `${50 / steps.length}%`,
-              right: `${50 / steps.length}%`,
-            }}
+            className="bg-primary absolute top-3 right-3 left-3 h-px origin-left"
             initial={false}
             animate={{ scaleX: progress }}
             transition={SPRING}
@@ -69,19 +61,18 @@ export function Stepper({
             const isCurrent = index === currentStep;
             const isReachable = isCompleted || isCurrent;
             const isClickable = !!onStepClick && isReachable;
+            const isFirst = index === 0 && steps.length > 1;
+            const isLast = index === steps.length - 1 && steps.length > 1;
 
             return (
-              <li
-                key={step.id}
-                className="relative z-10 flex flex-1 justify-center"
-              >
+              <li key={step.id} className="relative z-10">
                 <button
                   type="button"
                   onClick={() => isClickable && onStepClick?.(index)}
                   disabled={!isClickable}
                   aria-current={isCurrent ? 'step' : undefined}
                   className={cn(
-                    'group relative -my-2 flex flex-col items-center gap-2 px-2 py-2',
+                    'group relative -my-2 flex w-6 flex-col items-center py-2',
                     isClickable && 'cursor-pointer active:scale-[0.98]',
                     !isReachable && 'opacity-100',
                   )}
@@ -154,25 +145,23 @@ export function Stepper({
                   </span>
 
                   {/* Label */}
-                  <span className="relative flex flex-col items-center pb-1">
-                    <span
-                      className={cn(
-                        'relative text-[13px] leading-tight tracking-tight whitespace-nowrap',
-                        'transition-colors duration-200 ease-out',
-                        isCurrent
-                          ? 'text-foreground font-medium'
-                          : isCompleted
-                            ? 'text-foreground/80'
-                            : 'text-muted-foreground',
-                      )}
-                    >
-                      {step.title}
-                    </span>
-                    {step.description && (
-                      <span className="text-muted-foreground/80 mt-0.5 text-[11px] leading-tight tracking-tight whitespace-nowrap">
-                        {step.description}
-                      </span>
+                  <span
+                    className={cn(
+                      'absolute top-full mt-2 whitespace-nowrap pb-1',
+                      'text-[13px] leading-tight tracking-tight transition-colors duration-200 ease-out',
+                      isFirst
+                        ? 'left-0'
+                        : isLast
+                          ? 'right-0'
+                          : 'left-1/2 -translate-x-1/2',
+                      isCurrent
+                        ? 'text-foreground font-medium'
+                        : isCompleted
+                          ? 'text-foreground/80'
+                          : 'text-muted-foreground',
                     )}
+                  >
+                    {step.title}
                   </span>
                 </button>
               </li>

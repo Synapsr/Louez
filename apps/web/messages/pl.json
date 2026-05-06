@@ -1320,6 +1320,7 @@
           "canContinue": "Jako menedżer możesz utworzyć tę rezerwację mimo ostrzeżeń.",
           "productConflict": "{name}: konflikt dostępności",
           "productConflictDetails": "Żądana ilość: {requested}, dostępna na ten okres: {available}",
+          "turnoverBufferConflictDetails": "To obliczenie uwzględnia bufor {duration} min po każdym zwrocie.",
           "conflictCanContinue": "Te produkty są już zarezerwowane w tym okresie. Możesz kontynuować, jeśli ręcznie zarządzasz dostępnością.",
           "insufficientStock": "Niewystarczający stan magazynowy"
         },
@@ -2318,6 +2319,9 @@
         "maxRentalHoursHelp": "W godzinach. Pozostaw puste, aby nie było limitu.",
         "leadTime": "Minimalny okres wyprzedzenia",
         "leadTimeHelp": "Czas przed pierwszą dostępną datą",
+        "turnoverBuffer": "Bufor między rezerwacjami",
+        "turnoverBufferDescription": "Czas dodany po każdym zwrocie, zanim zapas będzie ponownie dostępny.",
+        "turnoverBufferHelp": "Ten bufor blokuje tylko dostępność. Nie zmienia czasu wynajmu ani naliczonej ceny.",
         "durationUnit": {
           "day": "W dniach",
           "hour": "W godzinach",

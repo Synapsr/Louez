@@ -23,6 +23,7 @@ interface UseNewReservationWarningsParams {
   businessHours: NewReservationFormProps['businessHours']
   advanceNoticeMinutes: number
   pendingBlocksAvailability: boolean
+  turnoverBufferMinutes: number
   existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
 }
 
@@ -35,9 +36,16 @@ export function getPeriodAvailability(params: {
   startDate: Date | undefined
   endDate: Date | undefined
   pendingBlocksAvailability: boolean
+  turnoverBufferMinutes?: number
   existingReservations: NonNullable<NewReservationFormProps['existingReservations']>
 }): PeriodAvailability {
-  const { startDate, endDate, pendingBlocksAvailability, existingReservations } = params
+  const {
+    startDate,
+    endDate,
+    pendingBlocksAvailability,
+    turnoverBufferMinutes = 0,
+    existingReservations,
+  } = params
   const reservedByProduct = new Map<string, number>()
   const reservedByProductCombination: ReservedByProductCombination = new Map()
   const blockingStatuses = pendingBlocksAvailability
@@ -54,6 +62,7 @@ export function getPeriodAvailability(params: {
     ),
     startDate,
     endDate,
+    turnoverBufferMinutes,
   })
 
   peakAvailability.reservedByProduct.forEach((quantity, productId) => {
@@ -74,6 +83,7 @@ export function useNewReservationWarnings({
   businessHours,
   advanceNoticeMinutes,
   pendingBlocksAvailability,
+  turnoverBufferMinutes,
   existingReservations,
 }: UseNewReservationWarningsParams) {
   const t = useTranslations('dashboard.reservations.manualForm')
@@ -174,6 +184,7 @@ export function useNewReservationWarnings({
       startDate,
       endDate,
       pendingBlocksAvailability,
+      turnoverBufferMinutes,
       existingReservations,
     })
 
@@ -197,6 +208,7 @@ export function useNewReservationWarnings({
           requestedQuantity,
           availableQuantity: available,
           conflictingReservations: reserved,
+          turnoverBufferMinutes,
         })
       }
     }
@@ -209,6 +221,7 @@ export function useNewReservationWarnings({
     products,
     selectedProducts,
     startDate,
+    turnoverBufferMinutes,
   ])
 
   return {

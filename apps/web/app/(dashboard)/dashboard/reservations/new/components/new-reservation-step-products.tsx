@@ -767,6 +767,13 @@ export function NewReservationStepProducts({
                         available: warning.availableQuantity,
                       })}
                     </span>
+                    {(warning.turnoverBufferMinutes ?? 0) > 0 && (
+                      <span className="text-sm text-amber-700 dark:text-amber-300">
+                        {t('warnings.turnoverBufferConflictDetails', {
+                          duration: warning.turnoverBufferMinutes ?? 0,
+                        })}
+                      </span>
+                    )}
                   </div>
                 </AlertDescription>
               </Alert>
