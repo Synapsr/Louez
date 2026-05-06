@@ -1,0 +1,10 @@
+{
+  "title": "Guides",
+  "pages": [
+    "index",
+    "error-handling",
+    "b2b-vs-b2c",
+    "testing-sandbox",
+    "migration-guide"
+  ]
+}

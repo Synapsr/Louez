@@ -1,0 +1,431 @@
+---
+title: Gestion des erreurs
+description: Codes d'erreur de l'API, messages et stratégies de résolution.
+---
+
+L'API Tulip retourne des codes d'erreur numériques avec des messages en **anglais**. Chaque erreur appartient à un domaine fonctionnel identifiable par la plage de codes.
+
+## Format des erreurs
+
+Toutes les réponses d'erreur suivent le même format JSON :
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 1050,
+    "message": "The contract started more than 4 hours ago."
+  }
+}
+```
+
+<Callout type="warn">
+Les messages d'erreur sont retournés en **anglais** par l'API, quel que soit le contexte d'appel.
+</Callout>
+
+## Codes d'erreur par domaine
+
+---
+
+### Création de contrat (1000–1022)
+
+Ces erreurs surviennent lors de l'appel de création d'un contrat.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1000 | `The start_date cannot be in the past.` | La date de début doit être dans le futur. |
+| 1001 | `The end_date cannot be earlier than the start_date.` | La date de fin doit être postérieure à la date de début. |
+| 1002 | `The duration of the contract is invalid.` | Vérifiez que la durée respecte les limites du type de contrat. |
+| 1003 | `You do not have permissions to create this type of contract.` | Votre compte n'a pas les droits pour ce type de contrat. |
+| 1004 | `The contract type is invalid.` | Le `contract_type` fourni n'existe pas. |
+| 1005 | `An end_date is required.` | Le champ `end_date` est obligatoire. |
+| 1006 | `A contract_type is required.` | Le champ `contract_type` est obligatoire. |
+| 1007 | `At least one product is required to create the contract.` | Ajoutez au moins un produit dans le tableau `products`. |
+| 1008 | `Options are required to create a contract.` | Le champ `options` est obligatoire. |
+| 1009 | `Options for breakage and theft are required to create a contract, including whether the insured is a company or an individual.` | Spécifiez les options casse/vol et le type d'assuré (entreprise ou particulier). |
+| 1010 | `The options for the contract are invalid.` | Vérifiez la structure et les valeurs du champ `options`. |
+| 1011 | `The document does not exist.` | Le document référencé est introuvable. |
+| 1012 | `A uid is required to create a contract.` | Le champ `uid` est obligatoire. |
+| 1013 | `A company is required to create this contract.` | Ce type de contrat nécessite un objet `company`. |
+| 1014 | `An individual is required to create this contract.` | Ce type de contrat nécessite un objet `individual`. |
+| 1015 | `Options for breakage and theft are required to create a contract, specifying whether the insured is a company or an individual, and defining the use case of the product(s): home_to_work, professional, or transporter.` | Spécifiez les options casse/vol, le type d'assuré et le cas d'usage (`home_to_work`, `professional` ou `transporter`). |
+| 1016 | `An ia is required to create this contract.` | Le champ `ia` (intermédiaire d'assurance) est obligatoire. |
+| 1017 | `The ia is invalid.` | L'identifiant `ia` fourni n'est pas reconnu. |
+| 1018 | `Options for breakage and theft are required to create a contract.` | Les options casse/vol sont manquantes. |
+| 1019 | `Options for breakage and theft are required to create a contract.` | Les options casse/vol sont manquantes (variante). |
+| 1020 | `Options for breakage and theft are required to create a contract, including whether the insured is a company or an individual.` | Spécifiez les options casse/vol et le type d'assuré. |
+| 1021 | `The end_date cannot be in the past.` | La date de fin doit être dans le futur. |
+| 1022 | `For special cases, please contact Tulip.` | Ce cas particulier nécessite une intervention manuelle de Tulip. |
+
+---
+
+### Modification de contrat (1050–1052)
+
+Ces erreurs surviennent lors de la mise à jour d'un contrat existant.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1050 | `The contract started more than 4 hours ago.` | Un contrat ne peut plus être modifié 4 heures après son début. |
+| 1051 | `The contract does not exist.` | L'identifiant de contrat fourni est introuvable. |
+| 1052 | `The contract is not open.` | Seuls les contrats au statut `open` peuvent être modifiés. |
+
+<Callout type="info">
+La fenêtre de modification d'un contrat est de **4 heures** après la date de début. Passé ce délai, le code 1050 sera retourné.
+</Callout>
+
+---
+
+### Entreprise (1100–1109)
+
+Validation des informations entreprise lors de la création d'un contrat B2B.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1100 | `A company name is required to create this contract.` | Le champ `name` de l'entreprise est obligatoire. |
+| 1101 | `A SIREN number is required to create this contract.` | Le champ `siren` est obligatoire. |
+| 1102 | `The SIREN must be 9 characters for France and 11 characters for Italy.` | 9 caractères pour la France, 11 pour l'Italie. |
+| 1103 | `A first name is required to create this contract.` | Le prénom du contact est obligatoire. |
+| 1104 | `A last name is required to create this contract.` | Le nom du contact est obligatoire. |
+| 1105 | `An address is required to create this contract.` | L'adresse est obligatoire. |
+| 1106 | `A zipcode is required to create this contract.` / `The zipcode provided is invalid.` | Code postal manquant ou invalide. |
+| 1107 | `A city is required to create this contract.` / `The city provided is invalid.` | Ville manquante ou invalide. |
+| 1108 | `A country is required to create this contract.` / `The country provided is invalid.` | Pays manquant ou invalide. |
+| 1109 | `The company details are invalid.` | Vérifiez l'ensemble des informations entreprise. |
+
+### Gel d'entreprise (1150)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1150 | `The company informations is frozen.` | Les informations entreprise sont gelées et ne peuvent plus être modifiées. |
+
+### Gel de particulier (1151)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1151 | `The individual account is frozen.` | Le compte particulier est gelé et ne peut plus être modifié. |
+
+<Callout type="warn">
+Les codes 1150 et 1151 indiquent un gel administratif. Contactez le support Tulip pour débloquer la situation.
+</Callout>
+
+---
+
+### Produits dans un contrat — Création (1200–1230)
+
+Erreurs lors de l'ajout de produits à un contrat.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1200 | `product_id is required to assign a product to the contract` | Le champ `product_id` est obligatoire. |
+| 1201 | `product_id must exist to assign a product to the contract` | Le `product_id` fourni n'existe pas dans le catalogue. |
+| 1202 | `You do not have permission to create a contract with this type of product` | Votre compte n'a pas les droits pour ce type de produit. |
+| 1203 | `The document does not exist` | Le document référencé est introuvable. |
+| 1220 | `data is required when the product is a bike/winter sports/water sports/event/small tool` | Le champ `data` est obligatoire pour ce type de produit. Le message précise le type concerné. |
+| 1221 | `The products are invalid` | Vérifiez la structure du tableau `products`. |
+| 1222 | `product_type is required to create this contract` | Le champ `product_type` est obligatoire (définition inline). |
+| 1223 | `product_type is invalid` | Le `product_type` fourni n'est pas reconnu. |
+| 1224 | `product_subtype is required to create this contract` | Le champ `product_subtype` est obligatoire (définition inline). |
+| 1225 | `product_subtype is invalid` | Le `product_subtype` fourni n'est pas reconnu. |
+| 1226 | `value_excl is required to create this contract` | Le champ `value_excl` (valeur HT) est obligatoire. |
+| 1227 | `value_excl must be positive` | La valeur HT doit être strictement positive. |
+| 1228 | `brand is required to create this contract` | Le champ `brand` (marque) est obligatoire. |
+| 1229 | `model is required to create this contract` | Le champ `model` (modèle) est obligatoire. |
+| 1230 | `value_excl must be less or equal to 15000` | La valeur HT ne doit pas dépasser 15 000. |
+
+<Callout type="info">
+Le code **1220** est partagé par plusieurs types de produits (vélo, sports d'hiver, sports nautiques, événement, petit outillage). Le message retourné précise le type concerné.
+</Callout>
+
+---
+
+### Produits dans un contrat — Données vélo (1300–1301)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1300 | `user_name is required to create this contract` | Le nom de l'utilisateur du vélo est obligatoire dans `data`. |
+| 1301 | `product_marked is required to create this contract` | Le marquage du produit est obligatoire dans `data`. |
+
+### Produits dans un contrat — Données sports d'hiver (1310–1311)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1310 | `user_name is required to create this contract` | Le nom de l'utilisateur est obligatoire dans `data`. |
+| 1311 | `product_marked is required to create this contract` | Le marquage du produit est obligatoire dans `data`. |
+
+### Produits dans un contrat — Données sports nautiques (1320–1321)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1320 | `user_name is required to create this contract` | Le nom de l'utilisateur est obligatoire dans `data`. |
+| 1321 | `product_marked is required to create this contract` | Le marquage du produit est obligatoire dans `data`. |
+
+---
+
+### Produits dans un contrat — Modification (1330–1343)
+
+Erreurs lors de la mise à jour d'un produit rattaché à un contrat.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1330 | `The cpid does not exist` | L'identifiant produit-contrat (`cpid`) est introuvable. |
+| 1331 | `The product status is not allowed` | Le statut actuel du produit ne permet pas cette modification. |
+| 1332 | `user_name cannot be empty` | Le champ `user_name` ne peut pas être vide. |
+| 1333 | `internal_id cannot be empty` | Le champ `internal_id` ne peut pas être vide. |
+| 1334 | `product_marked cannot be empty` | Le champ `product_marked` ne peut pas être vide. |
+| 1335 | `product_marked must be a string` | Le champ `product_marked` doit être une chaîne de caractères. |
+| 1336 | `user_name must be a string` | Le champ `user_name` doit être une chaîne de caractères. |
+| 1337 | `internal_id must be a string` | Le champ `internal_id` doit être une chaîne de caractères. |
+| 1338 | `You are not authorized to update the start_date or end_date` | Votre compte n'a pas les droits pour modifier les dates du produit. |
+| 1339 | `The start_date cannot be earlier than the contract's start_date` | La date de début du produit ne peut pas précéder celle du contrat. |
+| 1340 | `The start_date cannot be later than the contract's end_date` | La date de début du produit ne peut pas dépasser la date de fin du contrat. |
+| 1341 | `The end_date cannot be earlier than the contract's start_date` | La date de fin du produit ne peut pas précéder la date de début du contrat. |
+| 1342 | `The end_date cannot be later than the contract's end_date` | La date de fin du produit ne peut pas dépasser celle du contrat. |
+| 1343 | `The start_date cannot be later than the product's start_date` | La nouvelle date de début ne peut pas être postérieure à la date de début actuelle du produit. |
+
+---
+
+### Produits dans un contrat — Suppression (1350–1352)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1350 | `The product does not exist, or is closed, or has been terminated` | Le produit est introuvable, déjà fermé ou résilié. |
+| 1351 | `The end_date cannot be in the past` | La date de fin de résiliation doit être dans le futur. |
+| 1352 | `The end_date cannot be in the future of the contract` | La date de fin du produit ne peut pas dépasser celle du contrat. |
+
+---
+
+### Particulier (1400–1410)
+
+Validation des informations du particulier lors de la création d'un contrat B2C.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1400 | `A first_name is required to create this contract.` | Le prénom est obligatoire. |
+| 1401 | `A last_name is required to create this contract.` | Le nom est obligatoire. |
+| 1402 | `An address is required to create this contract.` | L'adresse est obligatoire. |
+| 1403 | `A zipcode is required to create this contract.` | Le code postal est obligatoire. |
+| 1404 | `A city is required to create this contract.` | La ville est obligatoire. |
+| 1405 | `A phone_number is required to create this contract.` | Le numéro de téléphone est obligatoire. |
+| 1406 | `A country is required to create this contract.` | Le pays est obligatoire. |
+| 1407 | `The zipcode is invalid.` | Le code postal fourni n'est pas valide. |
+| 1408 | `The city is invalid.` | La ville fournie n'est pas valide. |
+| 1409 | `The country is invalid.` | Le pays fourni n'est pas valide. |
+| 1410 | `The individual details are invalid.` | Vérifiez l'ensemble des informations du particulier. |
+
+---
+
+### Locataires (2000–2002)
+
+Erreurs liées à l'ajout d'un locataire.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 2000 | `The renter_id is required.` | Le champ `renter_id` est obligatoire. |
+| 2001 | `Invalid renter_id.` | L'identifiant du locataire n'est pas valide. |
+| 2002 | `The renter_id is already registered.` | Ce locataire est déjà enregistré sur le contrat. |
+
+---
+
+### Produits — CRUD (4000–4999)
+
+Erreurs liées aux opérations sur l'endpoint `/products` (création, lecture, mise à jour, suppression de produits dans le catalogue).
+
+#### Création de produit (4000–4022)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 4000 | `A uid is required to create a product.` | Le champ `uid` est obligatoire. |
+| 4001 | `A product_type is required to create a product.` | Le champ `product_type` est obligatoire. |
+| 4002 | `A title is required to create a product.` | Le champ `title` est obligatoire. |
+| 4003 | `Data is required to create a product.` | Le champ `data` est obligatoire. |
+| 4004 | `A value_excl is required to create a product.` | Le champ `value_excl` (valeur HT) est obligatoire. |
+| 4005 | `A product_subtype is required to create a product.` | Le champ `product_subtype` est obligatoire. |
+| 4006 | `A brand is required to create a product.` | Le champ `brand` est obligatoire. |
+| 4007 | `A model is required to create a product.` | Le champ `model` est obligatoire. |
+| 4008 | `The provided product_type is invalid.` | Le `product_type` fourni n'est pas reconnu. |
+| 4009 | `The provided product_subtype is invalid.` | Le `product_subtype` fourni n'est pas reconnu. |
+| 4011 | `The uid should be a string.` | Le champ `uid` doit être une chaîne de caractères. |
+| 4012 | `The title should be a string.` | Le champ `title` doit être une chaîne de caractères. |
+| 4013 | `The value_excl should be a number.` | Le champ `value_excl` doit être un nombre. |
+| 4014 | `The description should be a string.` | Le champ `description` doit être une chaîne de caractères. |
+| 4015 | `The brand should be a string.` | Le champ `brand` doit être une chaîne de caractères. |
+| 4016 | `The model should be a string.` | Le champ `model` doit être une chaîne de caractères. |
+| 4017 | `The data should be an object.` | Le champ `data` doit être un objet JSON. |
+| 4018 | `The product_type should be a string.` | Le champ `product_type` doit être une chaîne de caractères. |
+| 4019 | `The product_subtype should be a string.` | Le champ `product_subtype` doit être une chaîne de caractères. |
+| 4020 | `You do not have permission to create this product_type.` | Votre compte n'a pas les droits pour ce type de produit. |
+| 4021 | `The value_excl must be positive.` | La valeur HT doit être strictement positive. |
+| 4022 | `The purchased_date must be a date.` | Le champ `purchased_date` doit être une date valide. |
+
+#### Mise à jour de produit (4100–4104)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 4100 | `A product_id is required to update a product.` | Le champ `product_id` est obligatoire pour la mise à jour. |
+| 4101 | `The value_excl must be a number.` | Le champ `value_excl` doit être un nombre. |
+| 4102 | `The description must be a string.` | Le champ `description` doit être une chaîne de caractères. |
+| 4103 | `The title must be a string.` | Le champ `title` doit être une chaîne de caractères. |
+| 4104 | `The purchased_date must be a date.` | Le champ `purchased_date` doit être une date valide. |
+
+#### Lecture de produit (4200)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 4200 | `A product_id is required to read a product.` | Le champ `product_id` est obligatoire pour la lecture. |
+
+#### Suppression de produit (4300)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 4300 | `A product_id is required to delete a product.` | Le champ `product_id` est obligatoire pour la suppression. |
+
+#### Produit non trouvé (4999)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 4999 | `The product was not found.` | Le produit référencé n'existe pas dans le catalogue. |
+
+---
+
+### Renouvellement automatique (5000–5114)
+
+Erreurs liées à la gestion du renouvellement automatique des contrats.
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 5000 | `Automatic renewal not found.` | Le renouvellement automatique n'existe pas pour ce contrat. |
+| 5050 | `This contract is locked.` | Le contrat est verrouillé et ne peut pas être modifié. |
+| 5100 | `The default application is not modifiable.` | L'application par défaut ne peut pas être modifiée. |
+| 5101 | `Applied status is not modifiable.` | Le statut d'application ne peut pas être modifié. |
+| 5102 | `Applied date is not modifiable.` | La date d'application ne peut pas être modifiée. |
+| 5103 | `Renewal scheduled date is not modifiable.` | La date de renouvellement planifiée ne peut pas être modifiée. |
+| 5104 | `Notified status is not modifiable.` | Le statut de notification ne peut pas être modifié. |
+| 5105 | `Notification date is not modifiable.` | La date de notification ne peut pas être modifiée. |
+| 5106 | `Notification scheduled date is not modifiable.` | La date de notification planifiée ne peut pas être modifiée. |
+| 5107 | `Rejection date is not modifiable.` | La date de rejet ne peut pas être modifiée. |
+| 5108 | `Extension is not modifiable.` | L'extension ne peut pas être modifiée. |
+| 5109 | `Next CID is not modifiable.` | L'identifiant du prochain contrat ne peut pas être modifié. |
+| 5110 | `Rejection status is not modifiable.` | Le statut de rejet ne peut pas être modifié. |
+| 5112 | `Not modifiable because the contract's end date is in the past.` | Le contrat est expiré, aucune modification n'est possible. |
+| 5113 | `Not modifiable because the automatic renewal has already been applied.` | Le renouvellement a déjà été appliqué. |
+| 5114 | `This contract is locked.` | Le contrat est verrouillé (variante). |
+
+<Callout type="warn">
+Les champs du renouvellement automatique (5100–5110) sont en lecture seule une fois le processus enclenché. Seul le champ `rejected` peut encore être modifié tant que le renouvellement n'a pas été appliqué.
+</Callout>
+
+---
+
+### Sinistres — Validation (1000–1008)
+
+Ces erreurs sont dans le contexte de l'API Claims (différent des codes contrats dans la même plage).
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 1000 | `Validation error` | Erreur générique de validation du corps de la requête. |
+| 1001 | `Questions validation failed. Missing: ... Invalid: ...` | Les réponses aux questions obligatoires sont incomplètes ou invalides. |
+| 1002 | `File too large` | Le fichier dépasse la taille maximale de 20 Mo. |
+| 1003 | `Invalid MIME type` | Le type de fichier n'est pas supporté. Types acceptés : PDF, JPEG, PNG, WebP, HEIC, HEIF. |
+| 1004 | `Invalid subtype for product type` | Le sous-type de sinistre n'est pas valide pour ce type de produit. |
+| 1005 | `Invalid base64 content` | Le contenu base64 fourni est invalide. |
+| 1006 | `Unsupported content type` | Le Content-Type de la requête n'est pas supporté. |
+| 1007 | `Invalid type for subtype` | Le type de sinistre n'est pas compatible avec le sous-type. |
+| 1008 | `Unsupported product type` | Le type de produit n'est pas supporté pour les sinistres. |
+
+### Sinistres — Ressources introuvables (2001–2004)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 2001 | `Claim not found` | Le sinistre n'existe pas ou vous n'avez pas les droits d'accès. |
+| 2002 | `Contract not found` | Le contrat référencé n'existe pas. |
+| 2003 | `Product not found in contract` | Le produit n'existe pas dans le contrat. |
+| 2004 | `Document not found` | Le document n'existe pas. |
+
+### Sinistres — Logique métier (3001–3007)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 3001 | `Claim can only be modified in draft status` | Le sinistre ne peut être modifié qu'en statut `draft`. |
+| 3002 | `Claim has already been submitted or cancelled` | Le sinistre a déjà été soumis ou annulé. |
+| 3003 | `Claim is already abandoned` | Le sinistre est déjà abandonné/archivé. |
+| 3004 | `Missing required documents: ...` | Des documents obligatoires manquent pour soumettre. |
+| 3005 | `This document has already been validated and cannot be replaced` | Le document a été accepté et ne peut plus être remplacé. |
+| 3007 | `Cannot abandon claim: payment in progress` | Un paiement est en cours, impossible d'abandonner. |
+
+### Sinistres — Authentification (9001–9003)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 9001 | `API key is required` | Le header `key` est absent. |
+| 9002 | `Invalid API key` | La clé API n'est pas valide. |
+| 9003 | `User is not authorized for this API key` | L'utilisateur (`userId`) n'est pas autorisé pour cette clé API. |
+
+<Callout type="warn">
+Les codes d'erreur **sinistres** (1000–9003) sont dans un namespace distinct des codes contrats (1000–1052). Le contexte d'appel (endpoint `/claims` vs `/contracts`) détermine quelle plage s'applique.
+</Callout>
+
+---
+
+### Permissions et limites (98888, 99888)
+
+| Code | Message API | Description |
+|------|------------|-------------|
+| 98888 | `You do not have permissions.` | Votre compte n'a pas les droits nécessaires pour cette action. Vérifiez les permissions associées à votre clé API. |
+| 99888 | `The limit has been reached. You cannot perform this action. Please contact support.` | Vous avez atteint la limite autorisée (rate limit ou quota). Contactez le support Tulip. |
+
+<Callout type="warn">
+Le code **99888** indique un dépassement de quota. Ce n'est pas une erreur transitoire : il faut contacter le support pour augmenter vos limites.
+</Callout>
+
+---
+
+## Stratégie de retry
+
+Toutes les erreurs ne doivent pas être réessayées. Voici les recommandations par code HTTP :
+
+| Code HTTP | Type | Action recommandée |
+|-----------|------|-------------------|
+| **400** | Erreur de validation | **Ne pas réessayer.** Corrigez le corps de la requête en vous appuyant sur le code d'erreur et le message retournés. |
+| **401** | Authentification | **Ne pas réessayer.** Vérifiez votre clé API et ses permissions. |
+| **403** | Autorisation | **Ne pas réessayer.** Votre compte n'a pas les droits nécessaires (code 98888). |
+| **404** | Ressource introuvable | **Ne pas réessayer.** Vérifiez l'identifiant de la ressource (contrat, produit, etc.). |
+| **429** | Rate limit | **Réessayer** avec un backoff exponentiel. Respectez le header `Retry-After` si présent. |
+| **500** | Erreur serveur | **Réessayer** avec un backoff exponentiel : 1s, 2s, 4s, 8s (maximum 3 tentatives). |
+| **502/503** | Service indisponible | **Réessayer** avec un backoff exponentiel. Attendez au moins 5 secondes avant la première tentative. |
+| **Timeout** | Pas de réponse | **Réessayer** avec précaution. Vérifiez d'abord via un appel `GET` si la ressource a été créée pour éviter les doublons. |
+
+### Exemple d'implémentation
+
+```typescript
+async function callWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3
+): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      const status = error?.response?.status;
+
+      // Ne pas réessayer les erreurs client
+      if (status && status >= 400 && status < 500) {
+        throw error;
+      }
+
+      // Dernière tentative, propager l'erreur
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Backoff exponentiel
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("Unreachable");
+}
+```
+
+<Callout type="info">
+Pour les opérations de création (POST), vérifiez toujours via un GET que la ressource n'a pas été créée avant de réessayer, afin d'éviter les doublons.
+</Callout>

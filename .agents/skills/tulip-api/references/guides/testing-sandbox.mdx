@@ -1,0 +1,73 @@
+---
+title: Tests et validation
+description: Stratégies de test, contrats de test, prévisualisation et checklist d'intégration.
+---
+
+## Clé de développement
+
+Votre clé de développement utilise la **même URL** que la clé de production (`https://api.mytulip.io/v2`). Les contrats créés avec cette clé n'ont aucun impact financier. Voir [Environnements](/docs/getting-started/environments) pour les détails.
+
+## Contrats de test
+
+Pour valider votre intégration sans créer de vrais contrats, utilisez le paramètre `test: true` :
+
+```json
+POST /v2/contracts
+{
+  "test": true,
+  "uid": "test_user",
+  "contract_type": "LCD",
+  ...
+}
+```
+
+Les contrats de test sont filtrables via `?test=true` dans les listes.
+
+## Prévisualisation
+
+Utilisez `?preview=true` sur les endpoints de création, modification et résiliation pour simuler l'opération sans l'exécuter :
+
+```bash
+# Simuler la création d'un contrat
+POST /v2/contracts?preview=true
+
+# Simuler une résiliation
+DELETE /v2/contracts/{id}?preview=true
+```
+
+La réponse contient le résultat tel qu'il serait, y compris le prix calculé.
+
+## Checklist d'intégration
+
+### Contrats
+
+- [ ] Créer un contrat LCD avec les options minimales (`break`, `theft`)
+- [ ] Créer un contrat LMD avec option `company`
+- [ ] Créer un contrat LLD avec option `individual`
+- [ ] Modifier un contrat (dans la fenêtre de 4h)
+- [ ] Résilier un contrat
+- [ ] Ajouter/supprimer un produit
+- [ ] Tester le mode `preview`
+
+### Sinistres
+
+- [ ] Créer une pré-déclaration (vol total vélo)
+- [ ] Uploader des documents (JSON base64)
+- [ ] Vérifier `canSubmit` avant soumission
+- [ ] Soumettre le sinistre
+- [ ] Tester l'annulation (DELETE depuis draft)
+- [ ] Récupérer un document avec URL signée
+
+### Erreurs
+
+- [ ] Requête sans clé API → erreur 9001
+- [ ] Clé API invalide → erreur 9002
+- [ ] Contrat non trouvé → erreur 1051
+- [ ] Modification après 4h → erreur 1050
+- [ ] Documents incomplets à la soumission → erreur 3004
+
+### Webhooks
+
+- [ ] Configurer un webhook depuis l'[espace développeur](/docs/getting-started/developer-space)
+- [ ] Vérifier la réception des événements
+- [ ] Tester l'idempotence de votre handler

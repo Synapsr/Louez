@@ -1,0 +1,44 @@
+---
+title: Support
+description: Comment obtenir de l'aide, contacter le support et escalader un problème.
+---
+
+## Contact
+
+| Canal | Coordonnées | Usage |
+|-------|-------------|-------|
+| **Email** | api-support@mytulip.io | Questions techniques, bugs, demandes de fonctionnalités |
+| **Documentation** | Ce portail | Référence API, guides, tutoriels |
+
+## Quand contacter le support
+
+- **Clé API** — Demande, régénération ou révocation
+- **Webhooks** — Configuration de votre URL de callback
+- **Limites** — Augmentation des quotas de requêtes
+- **Erreur 1022** — Cas spéciaux nécessitant une intervention manuelle
+- **Bugs** — Comportement inattendu de l'API
+
+## Informations à fournir
+
+Pour accélérer le traitement de votre demande, incluez :
+
+1. **Votre identifiant partenaire** (clé API ou nom du partenaire)
+2. **L'endpoint concerné** (méthode + URL)
+3. **Le code d'erreur** reçu
+4. **Le payload de la requête** (en masquant les données sensibles)
+5. **La réponse complète** de l'API
+6. **La date et l'heure** de l'incident
+
+## FAQ
+
+### Ma clé API ne fonctionne plus
+
+Vérifiez que vous utilisez la bonne clé pour le bon environnement (sandbox vs production). Si le problème persiste, contactez le support pour vérification.
+
+### J'obtiens l'erreur 99888
+
+Vous avez atteint la limite de requêtes. Voir [Limites de requêtes](/docs/resources/rate-limits).
+
+### Comment tester les webhooks ?
+
+Utilisez un service comme [webhook.site](https://webhook.site) pour recevoir et inspecter les payloads. Voir [Webhooks](/docs/concepts/webhooks).

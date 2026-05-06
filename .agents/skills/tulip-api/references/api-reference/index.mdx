@@ -1,0 +1,88 @@
+---
+title: Référence API
+description: Documentation complète des endpoints REST de l'API Tulip v2.
+---
+
+L'API Tulip est une API REST qui utilise JSON pour les requêtes et réponses. Tous les endpoints sont versionnés sous `/v2`.
+
+<Callout type="info">
+**Spécification OpenAPI** — Téléchargez la spécification complète au format OpenAPI 3.x pour l'importer dans vos outils (Postman, Insomnia, génération de SDK…) : [openapi.json](/openapi.json)
+</Callout>
+
+## Authentification
+
+Toutes les requêtes nécessitent une clé API dans le header `key`. Voir [Authentification](/docs/getting-started/authentication).
+
+## URL de base
+
+```
+https://api.mytulip.io/v2
+```
+
+## Endpoints par domaine
+
+### Contrats
+
+Gérer les contrats de location (création, modification, résiliation).
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/contracts` | Lister les contrats |
+| GET | `/contracts/{id}` | Récupérer un contrat |
+| POST | `/contracts` | Créer un contrat |
+| PATCH | `/contracts/{id}` | Mettre à jour un contrat |
+| DELETE | `/contracts/{id}` | Résilier un contrat |
+| POST | `/contracts/{id}/products` | Ajouter un produit |
+| DELETE | `/contracts/{id}/products` | Supprimer un produit |
+
+### Sinistres
+
+Gérer les sinistres (déclaration, documents, soumission).
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| POST | `/claims` | Créer une pré-déclaration |
+| GET | `/claims` | Lister les sinistres |
+| GET | `/claims/{id}` | Récupérer un sinistre |
+| PATCH | `/claims/{id}` | Mettre à jour un sinistre |
+| DELETE | `/claims/{id}` | Annuler/abandonner |
+| POST | `/claims/{id}/submit` | Soumettre un sinistre |
+| PUT | `/claims/{id}/documents` | Uploader des documents |
+| GET | `/claims/{id}/documents/{docId}` | Télécharger un document |
+
+### Produits
+
+Gérer le catalogue de produits assurables.
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/products` | Lister les produits |
+| GET | `/products/{id}` | Récupérer un produit |
+| POST | `/products` | Créer un produit |
+| PATCH | `/products/{id}` | Mettre à jour un produit |
+| DELETE | `/products/{id}` | Supprimer un produit |
+
+### Loueurs
+
+Gérer les loueurs associés à votre clé API.
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/renters` | Lister les loueurs |
+| GET | `/renters/{id}` | Récupérer un loueur |
+| POST | `/renters` | Ajouter un loueur |
+
+### Géolocalisation
+
+| Méthode | Endpoint | Description |
+|---------|----------|-------------|
+| GET | `/geo/getCitiesByZipCode/{zipcode}` | Villes par code postal |
+| GET | `/geo/getCitiesSuggestions/{country}/{zipcode}` | Recherche de villes par suggestion |
+
+## Conventions
+
+Consultez les [conventions API](/docs/getting-started/conventions) pour les détails sur les formats de dates, la pagination et la structure des réponses.
+
+## Codes d'erreur
+
+Consultez le [guide des erreurs](/docs/guides/error-handling) pour la liste complète des codes d'erreur.
