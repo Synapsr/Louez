@@ -2,6 +2,10 @@ export { BaseLayout } from './base-layout'
 export { BaseLayoutSimple } from '@louez/email/templates'
 export { VerificationCodeEmail } from './verification-code'
 export { ReservationConfirmationEmail } from './reservation-confirmation'
+export {
+  ReservationModifiedEmail,
+  getReservationModifiedEmailSubject,
+} from './reservation-modified'
 export { ReservationCancelledEmail } from './reservation-cancelled'
 export { ReservationCompletedEmail } from './reservation-completed'
 export { RequestReceivedEmail } from './request-received'

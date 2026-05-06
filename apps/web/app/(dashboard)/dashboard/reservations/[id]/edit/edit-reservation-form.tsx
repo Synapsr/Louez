@@ -13,6 +13,7 @@ import {
   PenLine,
   AlertTriangle,
   Check,
+  Mail,
 } from 'lucide-react'
 
 import { Button } from '@louez/ui'
@@ -117,6 +118,17 @@ function resolveInitialManualPricingMode(
   return resolvePricingModeFromMinutes(applicablePeriod, fallback)
 }
 
+function isEmailNotificationResult(
+  value: unknown,
+): value is { status: 'sent' | 'failed'; error?: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'status' in value &&
+    (value.status === 'sent' || value.status === 'failed')
+  )
+}
+
 function toReservationItemPayload(item: EditableItem) {
   return {
     id: item.id.startsWith('new-') || item.id.startsWith('custom-') ? undefined : item.id,
@@ -211,6 +223,13 @@ export function EditReservationForm({
       },
     }),
   )
+  const sendModificationEmailMutation = useMutation(
+    orpc.dashboard.reservations.sendModificationEmail.mutationOptions({
+      onSuccess: async () => {
+        await invalidateReservationAll(queryClient, reservation.id)
+      },
+    }),
+  )
 
   // State
   const [isLoading, setIsLoading] = useState(false)
@@ -281,6 +300,8 @@ export function EditReservationForm({
     ReservationValidationWarning[]
   >([])
   const [showValidationConfirmDialog, setShowValidationConfirmDialog] = useState(false)
+  const [notifyCustomerByEmail, setNotifyCustomerByEmail] = useState(false)
+  const [emailRetryWarning, setEmailRetryWarning] = useState<string | null>(null)
   const initialTulipInsuranceOptIn =
     tulipInsuranceMode === 'required'
       ? true
@@ -624,6 +645,7 @@ export function EditReservationForm({
         payload: {
           startDate,
           endDate,
+          notifyCustomerByEmail,
           tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
           delivery: deliveryPayload,
           items: items.map(toReservationItemPayload),
@@ -633,7 +655,7 @@ export function EditReservationForm({
       if (result.error) {
         toastManager.add({ title: tErrors(result.error), type: 'error' })
       } else {
-        const warnings = (result as any)?.warnings
+        const warnings = result.warnings
         if (Array.isArray(warnings) && warnings.length > 0) {
           const toastableWarnings = warnings.filter(
             (warning: ReservationValidationWarning) =>
@@ -650,7 +672,23 @@ export function EditReservationForm({
           }
         }
 
-        toastManager.add({ title: t('edit.saved'), type: 'success' })
+        const emailNotification = isEmailNotificationResult(result.emailNotification)
+          ? result.emailNotification
+          : null
+        if (emailNotification?.status === 'failed') {
+          setEmailRetryWarning(t('edit.emailNotificationFailed'))
+          toastManager.add({ title: t('edit.savedEmailFailed'), type: 'warning' })
+          return
+        }
+
+        setEmailRetryWarning(null)
+        toastManager.add({
+          title:
+            emailNotification?.status === 'sent'
+              ? t('edit.savedEmailSent')
+              : t('edit.saved'),
+          type: 'success',
+        })
         router.push(`/dashboard/reservations/${reservation.id}`)
       }
     } catch {
@@ -694,6 +732,27 @@ export function EditReservationForm({
   const handleConfirmWarningSave = async () => {
     setShowValidationConfirmDialog(false)
     await saveReservation()
+  }
+
+  const handleRetryModificationEmail = async () => {
+    setIsLoading(true)
+    try {
+      await sendModificationEmailMutation.mutateAsync({
+        reservationId: reservation.id,
+        payload: {
+          previousStartDate: reservation.startDate,
+          previousEndDate: reservation.endDate,
+        },
+      })
+      setEmailRetryWarning(null)
+      toastManager.add({ title: t('edit.emailNotificationSent'), type: 'success' })
+      router.push(`/dashboard/reservations/${reservation.id}`)
+    } catch {
+      setEmailRetryWarning(t('edit.emailNotificationFailed'))
+      toastManager.add({ title: t('edit.emailNotificationRetryFailed'), type: 'error' })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const hasDeliveryAddressChanges =
@@ -761,6 +820,10 @@ export function EditReservationForm({
     delivery.inbound.method !== reservation.delivery.returnMethod ||
     hasDeliveryLocationChanges ||
     hasDeliveryAddressChanges
+
+  const hasScheduleChanges =
+    (startDate?.getTime() ?? 0) !== new Date(reservation.startDate).getTime() ||
+    (endDate?.getTime() ?? 0) !== new Date(reservation.endDate).getTime()
 
   // The add handler increments quantity when the product is already present.
   const availableToAdd = availableProducts
@@ -836,6 +899,42 @@ export function EditReservationForm({
         </div>
 
         <div className="container max-w-5xl mx-auto px-3 py-4 sm:px-4 sm:py-6">
+          {emailRetryWarning && (
+            <Alert variant="warning" className="mb-4 sm:mb-6">
+              <Mail className="h-4 w-4" />
+              <AlertDescription className="ml-2">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    {emailRetryWarning}
+                  </span>
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/dashboard/reservations/${reservation.id}`)}
+                    >
+                      {t('edit.ignoreEmailFailure')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleRetryModificationEmail}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="mr-2 h-4 w-4" />
+                      )}
+                      {t('edit.retryEmailNotification')}
+                    </Button>
+                  </div>
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Warnings */}
           {availabilityWarnings.length > 0 && (
             <Alert variant="warning" className="mb-4 sm:mb-6">
@@ -1007,6 +1106,9 @@ export function EditReservationForm({
                 isLoading={isLoading}
                 isDeliveryCalculating={delivery.isCalculating}
                 hasChanges={hasChanges}
+                notifyCustomerByEmail={notifyCustomerByEmail}
+                onNotifyCustomerByEmailChange={setNotifyCustomerByEmail}
+                hasScheduleChanges={hasScheduleChanges}
                 onSave={handleSave}
               />
             </div>
