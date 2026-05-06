@@ -1,0 +1,99 @@
+---
+title: Espace développeur
+description: Gérer vos clés API, consulter les logs d'appels et configurer vos webhooks depuis l'interface Colibri.
+---
+
+L'interface [Colibri](app.mytulip.io) met à disposition un **espace développeur** accessible depuis le menu latéral (section **Développeur**). Cet espace vous permet de gérer votre intégration API en autonomie.
+
+<Callout type="info">
+L'espace développeur n'est visible que pour les utilisateurs ayant le rôle **propriétaire d'API**. Si vous ne voyez pas la section « Développeur » dans le menu, contactez votre administrateur de compte.
+</Callout>
+
+## Clés API
+
+La page principale de l'espace développeur affiche vos clés API :
+
+- **Identifiant** de chaque clé (partiellement masqué pour la sécurité)
+- **Nom** et **date de dernière mise à jour**
+- Accès direct aux **logs** de chaque clé
+
+Votre clé API est également accessible depuis **Profil > Paramètres > Intégration API** avec un bouton de copie rapide.
+
+<Callout type="warn">
+**Votre clé API est confidentielle** — Ne la partagez jamais dans du code client ou des dépôts publics. Utilisez des variables d'environnement pour la stocker. En cas de compromission, contactez immédiatement le [support](/docs/resources/support).
+</Callout>
+
+## Logs des appels API
+
+L'onglet **Appels** vous donne une vue complète de toutes les requêtes effectuées vers l'API Tulip :
+
+### Filtrage
+
+- **Méthode HTTP** : GET, POST, PATCH, DELETE
+- **Code de statut** HTTP
+- **Code d'erreur** Tulip
+- **Plage de dates** (du / au)
+- **Recherche libre** par identifiant
+
+### Détail d'un appel
+
+Pour chaque appel, vous pouvez consulter :
+
+| Champ | Description |
+|-------|-------------|
+| Statut HTTP | Code de retour avec indicateur visuel (succès/erreur) |
+| Méthode | GET, POST, PATCH ou DELETE |
+| Chemin | URL de l'endpoint appelé |
+| Durée | Temps de réponse en millisecondes |
+| Horodatage | Date et heure de la requête |
+| Identifiant d'exécution | Référence unique pour le support |
+| Paramètres de requête | Query parameters envoyés (JSON) |
+| Corps de la requête | Body envoyé (JSON) |
+| Réponse | Corps de la réponse retournée (JSON) |
+
+<Callout type="info">
+L'identifiant d'exécution (`execution_id`) est retourné dans chaque réponse API. Communiquez-le au [support](/docs/resources/support) pour faciliter le diagnostic en cas de problème.
+</Callout>
+
+## Gestion des webhooks
+
+L'onglet **Webhooks** vous permet de créer et gérer vos webhooks en autonomie, sans contacter le support.
+
+### Créer un webhook
+
+Pour chaque webhook, configurez :
+
+- **Nom** : identifiant libre pour reconnaître le webhook
+- **URL de callback** : l'endpoint HTTPS qui recevra les notifications
+- **Événements** : sélectionnez les événements souhaités parmi 5 catégories (contrats, pré-déclarations, sinistres, documents, règlements)
+- **Statut** : actif ou inactif (vous pouvez désactiver un webhook sans le supprimer)
+
+Pour la liste complète des événements disponibles, consultez la page [Webhooks](/docs/concepts/webhooks).
+
+### Consulter les logs de livraison
+
+Pour chaque webhook, un historique détaillé des livraisons est disponible :
+
+| Champ | Description |
+|-------|-------------|
+| Statut | Succès, erreur ou en attente de retry |
+| Événement | Type d'événement (`v2.contract.created`, etc.) |
+| Code de réponse | Code HTTP retourné par votre endpoint |
+| Durée | Temps de réponse de votre endpoint |
+| Tentative | Numéro de la tentative (1ère, 2ème, 3ème) |
+| Prochaine tentative | Date du prochain retry (si en attente) |
+| Payload | Corps envoyé à votre endpoint (JSON) |
+| Réponse | Corps retourné par votre endpoint (JSON) |
+
+### Rejouer ou annuler
+
+- **Rejouer** : relancer la livraison d'un webhook échoué
+- **Annuler** : abandonner une tentative de retry en attente
+
+Ces actions sont disponibles directement depuis le détail de chaque livraison.
+
+## Voir aussi
+
+- [Authentification](/docs/getting-started/authentication) — Obtenir et utiliser votre clé API
+- [Webhooks](/docs/concepts/webhooks) — Liste des événements, format des payloads et bonnes pratiques
+- [Environnement de test](/docs/guides/testing-sandbox) — Tester votre intégration en sandbox
