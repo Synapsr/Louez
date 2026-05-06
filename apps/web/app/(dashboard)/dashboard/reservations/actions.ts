@@ -2651,6 +2651,9 @@ export async function createDepositHold(reservationId: string) {
       eq(reservations.id, reservationId),
       eq(reservations.storeId, store.id),
     ),
+    with: {
+      customer: true,
+    },
   });
 
   if (!reservation) {
@@ -2682,6 +2685,7 @@ export async function createDepositHold(reservationId: string) {
       currency,
       reservationId,
       reservationNumber: reservation.number,
+      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
     });
 
     // Update reservation
