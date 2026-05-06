@@ -110,6 +110,7 @@ export async function createReservationPaymentSession(
       reservationId,
       reservationNumber: reservation.number,
       customerEmail: reservation.customer.email,
+      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
       lineItems,
       depositAmount: toStripeCents(parseFloat(reservation.depositAmount), currency),
       currency,

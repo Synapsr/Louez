@@ -90,6 +90,7 @@ interface CreateCheckoutSessionParams {
   reservationId: string
   reservationNumber: string
   customerEmail: string
+  customerName?: string | null
   lineItems: CheckoutLineItem[]
   depositAmount?: number // In cents - stored in metadata for later authorization hold
   currency: string
@@ -99,11 +100,47 @@ interface CreateCheckoutSessionParams {
   locale?: string
 }
 
+function normalizeStripeReferenceValue(value: string | null | undefined): string | undefined {
+  const normalized = value?.trim().replace(/\s+/g, ' ')
+  return normalized || undefined
+}
+
+function buildReservationPaymentReference({
+  reservationId,
+  reservationNumber,
+  customerName,
+  type,
+}: {
+  reservationId: string
+  reservationNumber: string
+  customerName?: string | null
+  type?: string
+}) {
+  const normalizedCustomerName = normalizeStripeReferenceValue(customerName)
+  const reservationReference = `Reservation #${reservationNumber}`
+  const description = normalizedCustomerName
+    ? `${reservationReference} - ${normalizedCustomerName}`
+    : reservationReference
+
+  return {
+    clientReferenceId: reservationNumber,
+    description,
+    metadata: {
+      reservationId,
+      reservationNumber,
+      reservationReference,
+      ...(normalizedCustomerName ? { customerName: normalizedCustomerName } : {}),
+      ...(type ? { type } : {}),
+    },
+  }
+}
+
 export async function createCheckoutSession({
   stripeAccountId,
   reservationId,
   reservationNumber,
   customerEmail,
+  customerName,
   lineItems,
   depositAmount = 0,
   currency,
@@ -131,11 +168,19 @@ export async function createCheckoutSession({
     ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
     : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
 
+  const paymentReference = buildReservationPaymentReference({
+    reservationId,
+    reservationNumber,
+    customerName,
+    type: 'reservation_payment',
+  })
+
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
     payment_method_types: ['card'],
     line_items: stripeLineItems,
     customer_email: customerEmail,
+    client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
@@ -143,17 +188,14 @@ export async function createCheckoutSession({
     // Create customer on connected account for future charges (deposit hold)
     customer_creation: 'always',
     metadata: {
-      reservationId,
-      reservationNumber,
+      ...paymentReference.metadata,
       depositAmount: depositAmount.toString(),
     },
     payment_intent_data: {
+      description: paymentReference.description,
       // Save card for future use (deposit authorization hold)
       setup_future_usage: 'off_session',
-      metadata: {
-        reservationId,
-        reservationNumber,
-      },
+      metadata: paymentReference.metadata,
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
         : {}),
@@ -202,6 +244,7 @@ interface CreatePaymentRequestSessionParams {
   reservationId: string
   reservationNumber: string
   customerEmail: string
+  customerName?: string | null
   amount: number // In cents
   description: string
   currency: string
@@ -222,6 +265,7 @@ export async function createPaymentRequestSession({
   reservationId,
   reservationNumber,
   customerEmail,
+  customerName,
   amount,
   description,
   currency,
@@ -235,6 +279,13 @@ export async function createPaymentRequestSession({
   const successUrlWithSession = successUrl.includes('?')
     ? `${successUrl}&session_id={CHECKOUT_SESSION_ID}`
     : `${successUrl}?session_id={CHECKOUT_SESSION_ID}`
+
+  const paymentReference = buildReservationPaymentReference({
+    reservationId,
+    reservationNumber,
+    customerName,
+    type: 'payment_request',
+  })
 
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     mode: 'payment',
@@ -252,22 +303,20 @@ export async function createPaymentRequestSession({
       },
     ],
     customer_email: customerEmail,
+    client_reference_id: paymentReference.clientReferenceId,
     success_url: successUrlWithSession,
     cancel_url: cancelUrl,
     locale: (locale as Stripe.Checkout.SessionCreateParams.Locale) || 'auto',
     expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
     metadata: {
-      reservationId,
-      reservationNumber,
+      ...paymentReference.metadata,
       paymentRequestId,
-      type: 'payment_request',
     },
     payment_intent_data: {
+      description: `${description} - ${paymentReference.description}`,
       metadata: {
-        reservationId,
-        reservationNumber,
+        ...paymentReference.metadata,
         paymentRequestId,
-        type: 'payment_request',
       },
       ...(applicationFeeAmount && applicationFeeAmount > 0
         ? { application_fee_amount: applicationFeeAmount }
@@ -348,6 +397,7 @@ interface CreateDepositAuthorizationIntentParams {
   currency: string
   reservationId: string
   reservationNumber: string
+  customerName?: string | null
 }
 
 /**
@@ -361,20 +411,25 @@ export async function createDepositAuthorizationIntent({
   currency,
   reservationId,
   reservationNumber,
+  customerName,
 }: CreateDepositAuthorizationIntentParams) {
+  const paymentReference = buildReservationPaymentReference({
+    reservationId,
+    reservationNumber,
+    customerName,
+    type: 'deposit_hold',
+  })
+
   const paymentIntent = await stripe.paymentIntents.create(
     {
       amount,
       currency: currency.toLowerCase(),
+      description: `Deposit hold - ${paymentReference.description}`,
       capture_method: 'manual', // Authorization only, no immediate capture
       // Deposit holds must be card authorizations. Dynamic methods can expose
       // redirect/deferred methods that cannot create a capturable card hold.
       payment_method_types: ['card'],
-      metadata: {
-        reservationId,
-        reservationNumber,
-        type: 'deposit_hold',
-      },
+      metadata: paymentReference.metadata,
     },
     {
       stripeAccount: stripeAccountId,
@@ -396,6 +451,7 @@ interface CreateDepositAuthorizationParams {
   currency: string
   reservationId: string
   reservationNumber: string
+  customerName?: string | null
 }
 
 /**
@@ -411,21 +467,26 @@ export async function createDepositAuthorization({
   currency,
   reservationId,
   reservationNumber,
+  customerName,
 }: CreateDepositAuthorizationParams) {
+  const paymentReference = buildReservationPaymentReference({
+    reservationId,
+    reservationNumber,
+    customerName,
+    type: 'deposit_hold',
+  })
+
   const paymentIntent = await stripe.paymentIntents.create(
     {
       amount,
       currency: currency.toLowerCase(),
+      description: `Deposit hold - ${paymentReference.description}`,
       customer: customerId,
       payment_method: paymentMethodId,
       capture_method: 'manual', // Authorization only, no immediate capture
       confirm: true, // Confirm immediately to create the authorization
       off_session: true, // No customer interaction required
-      metadata: {
-        reservationId,
-        reservationNumber,
-        type: 'deposit_hold',
-      },
+      metadata: paymentReference.metadata,
     },
     {
       stripeAccount: stripeAccountId,

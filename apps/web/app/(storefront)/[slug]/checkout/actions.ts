@@ -1638,6 +1638,7 @@ export async function createReservation(input: CreateReservationInput) {
           reservationId,
           reservationNumber,
           customerEmail,
+          customerName: `${input.customer.firstName} ${input.customer.lastName}`,
           lineItems,
           depositAmount: toStripeCents(finalDeposit, currency),
           currency,

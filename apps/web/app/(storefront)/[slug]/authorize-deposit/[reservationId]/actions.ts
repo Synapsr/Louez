@@ -141,6 +141,9 @@ export async function createDepositPaymentIntent({
       eq(reservations.id, reservationId),
       eq(reservations.storeId, storeId)
     ),
+    with: {
+      customer: true,
+    },
   })
 
   if (!reservation) {
@@ -181,6 +184,7 @@ export async function createDepositPaymentIntent({
       currency,
       reservationId: reservation.id,
       reservationNumber: reservation.number,
+      customerName: `${reservation.customer.firstName} ${reservation.customer.lastName}`,
     })
 
     return {
