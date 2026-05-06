@@ -65,6 +65,10 @@ export function setSessionHook(
   _sessionHook = hook
 }
 
+const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 90
+const SESSION_REFRESH_INTERVAL_SECONDS = 60 * 60 * 24
+const SESSION_COOKIE_CACHE_SECONDS = 5 * 60
+
 // ============================================================================
 // Auth instance (direct — no factory/singleton)
 // ============================================================================
@@ -92,9 +96,11 @@ export const authInstance = betterAuth({
   },
 
   session: {
+    expiresIn: SESSION_DURATION_SECONDS,
+    updateAge: SESSION_REFRESH_INTERVAL_SECONDS,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60, // 5 minutes
+      maxAge: SESSION_COOKIE_CACHE_SECONDS,
     },
   },
 
