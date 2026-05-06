@@ -1923,6 +1923,7 @@
         "unit": "Unidad",
         "available": "Disponible",
         "noProducts": "No hay productos que mostrar",
+        "resizeProductColumn": "Cambiar el tamano de la columna de producto",
         "reservationsCount": "{count, plural, one {# reserva} other {# reservas}}"
       },
       "timeline": {

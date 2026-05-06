@@ -1876,6 +1876,7 @@
         "unit": "Jednostka",
         "available": "Dostępny",
         "noProducts": "Brak produktów do wyświetlenia",
+        "resizeProductColumn": "Zmien szerokosc kolumny produktu",
         "reservationsCount": "{count, plural, one {# rezerwacja} few {# rezerwacje} many {# rezerwacji} other {# rezerwacji}}"
       },
       "timeline": {

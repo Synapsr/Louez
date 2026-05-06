@@ -1915,6 +1915,7 @@
         "unit": "Einheit",
         "available": "Verfügbar",
         "noProducts": "Keine Produkte anzuzeigen",
+        "resizeProductColumn": "Produktspalte vergrossern oder verkleinern",
         "reservationsCount": "{count, plural, one {# Reservierung} other {# Reservierungen}}"
       },
       "timeline": {
