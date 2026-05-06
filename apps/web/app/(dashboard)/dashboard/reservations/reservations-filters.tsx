@@ -1,17 +1,16 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { LayoutGrid, List, Search } from 'lucide-react';
+import { LayoutGrid, List } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useDebouncedCallback } from 'use-debounce';
 
 import {
   Badge,
   Button,
-  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -20,6 +19,8 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from '@louez/ui';
+
+import { SearchInput } from '@/components/ui/search-input';
 
 import type { ReservationCounts } from './reservations-types';
 
@@ -50,6 +51,11 @@ export function ReservationsFilters({
 
   const currentView = searchParams.get('view') || 'cards'
   const currentSearch = searchParams.get('search') || ''
+  const [searchQuery, setSearchQuery] = useState(currentSearch)
+
+  useEffect(() => {
+    setSearchQuery(currentSearch)
+  }, [currentSearch])
 
   const createQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -93,6 +99,22 @@ export function ReservationsFilters({
       })}`,
     );
   }, 300);
+
+  const updateSearchQuery = (term: string) => {
+    setSearchQuery(term)
+    handleSearch(term)
+  }
+
+  const clearSearchQuery = () => {
+    setSearchQuery('')
+    handleSearch.cancel()
+    router.push(
+      `/dashboard/reservations?${createQueryString({
+        search: null,
+        page: null,
+      })}`,
+    )
+  }
 
   const handleViewChange = (value: any[]) => {
     const selected = value[0] as string | undefined
@@ -173,11 +195,12 @@ export function ReservationsFilters({
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         {/* Search */}
         <div className="relative max-w-sm flex-1">
-          {/* <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" /> */}
-          <Input
+          <SearchInput
+            value={searchQuery}
+            onChange={(event) => updateSearchQuery(event.target.value)}
+            onClear={clearSearchQuery}
             placeholder={t('searchReservations')}
-            defaultValue={currentSearch}
-            onChange={(e) => handleSearch(e.target.value)}
+            clearLabel={t('clearSearch')}
           />
         </div>
 
