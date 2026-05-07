@@ -19,7 +19,7 @@
     "@louez/utils": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.12.1",
     "drizzle-orm": "^0.45.1",
-    "zod": "^3.24.4"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@louez/config": "workspace:*",

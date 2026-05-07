@@ -9,7 +9,6 @@ import { z } from 'zod';
 
 import { authClient } from '@louez/auth/client';
 
-import { useAppForm } from '@/hooks/form/form';
 import { isValidReferralCode } from '@/lib/utils/referral';
 import {
   createAuthMutationError,
@@ -18,6 +17,8 @@ import {
   hasAuthError,
   mapAuthErrorCodeToMessageKey,
 } from '@/lib/utils/util.auth-error';
+
+import { useAppForm } from '@/hooks/form/form';
 
 interface UseLoginFormParams {
   callbackUrl: string;
@@ -160,7 +161,7 @@ export const useLoginForm = ({
   const emailSchema = useMemo(
     () =>
       z.object({
-        email: z.string().email(t('errors.invalidEmail')),
+        email: z.email(t('errors.invalidEmail')),
       }),
     [t],
   );

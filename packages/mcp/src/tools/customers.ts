@@ -1,38 +1,45 @@
-import { z } from 'zod'
-import { db, customers, reservations } from '@louez/db'
-import { and, eq, desc, like, sql } from 'drizzle-orm'
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { and, desc, eq, like, sql } from 'drizzle-orm';
+import { z } from 'zod';
 
-import type { McpSessionContext } from '../auth/context'
-import { requirePermission } from '../auth/context'
-import { formatCurrency, formatDate, formatStatus } from '../utils/formatting'
-import { toolError, toolResult } from '../utils/errors'
-import { paginationParams } from '../utils/pagination'
+import { customers, db, reservations } from '@louez/db';
 
-export function registerCustomerTools(server: McpServer, ctx: McpSessionContext) {
+import type { McpSessionContext } from '../auth/context';
+import { requirePermission } from '../auth/context';
+import { toolError, toolResult } from '../utils/errors';
+import { formatCurrency, formatDate, formatStatus } from '../utils/formatting';
+import { paginationParams } from '../utils/pagination';
+
+export function registerCustomerTools(
+  server: McpServer,
+  ctx: McpSessionContext,
+) {
   server.tool(
     'list_customers',
     'List customers with optional search and filters',
     {
       search: z.string().optional().describe('Search by name or email'),
-      type: z.enum(['individual', 'business']).optional().describe('Filter by customer type'),
+      type: z
+        .enum(['individual', 'business'])
+        .optional()
+        .describe('Filter by customer type'),
       page: z.number().optional(),
       pageSize: z.number().optional(),
     },
     async ({ search, type, page, pageSize }) => {
-      requirePermission(ctx, 'customers', 'read')
-      const { limit, offset } = paginationParams({ page, pageSize })
+      requirePermission(ctx, 'customers', 'read');
+      const { limit, offset } = paginationParams({ page, pageSize });
 
-      const conditions = [eq(customers.storeId, ctx.storeId)]
+      const conditions = [eq(customers.storeId, ctx.storeId)];
 
       if (type) {
-        conditions.push(eq(customers.customerType, type))
+        conditions.push(eq(customers.customerType, type));
       }
       if (search) {
-        const s = `%${search.toLowerCase()}%`
+        const s = `%${search.toLowerCase()}%`;
         conditions.push(
-          sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`
-        )
+          sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`,
+        );
       }
 
       const rows = await db
@@ -41,27 +48,27 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         .where(and(...conditions))
         .orderBy(desc(customers.createdAt))
         .limit(limit)
-        .offset(offset)
+        .offset(offset);
 
       const [countResult] = await db
         .select({ total: sql<number>`COUNT(*)` })
         .from(customers)
-        .where(and(...conditions))
+        .where(and(...conditions));
 
-      const total = countResult?.total ?? 0
+      const total = countResult?.total ?? 0;
 
       const lines = rows.map(
         (c) =>
           `- **${c.firstName} ${c.lastName}** (${c.id})\n` +
           `  ${c.email}${c.phone ? ` | ${c.phone}` : ''} | ${c.customerType}\n` +
-          `  Registered: ${formatDate(c.createdAt)}`
-      )
+          `  Registered: ${formatDate(c.createdAt)}`,
+      );
 
       return toolResult(
-        `## Customers (${total} result${total !== 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'No customers found.'}`
-      )
-    }
-  )
+        `## Customers (${total} result${total !== 1 ? 's' : ''})\n\n${lines.join('\n\n') || 'No customers found.'}`,
+      );
+    },
+  );
 
   server.tool(
     'get_customer',
@@ -70,19 +77,22 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
       customerId: z.string().describe('The customer ID'),
     },
     async ({ customerId }) => {
-      requirePermission(ctx, 'customers', 'read')
+      requirePermission(ctx, 'customers', 'read');
 
       const customer = await db.query.customers.findFirst({
-        where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+        where: and(
+          eq(customers.storeId, ctx.storeId),
+          eq(customers.id, customerId),
+        ),
         with: {
           reservations: {
             orderBy: [desc(reservations.createdAt)],
             limit: 10,
           },
         },
-      })
+      });
 
-      if (!customer) return toolError('Customer not found.')
+      if (!customer) return toolError('Customer not found.');
 
       let text =
         `## ${customer.firstName} ${customer.lastName}\n\n` +
@@ -90,48 +100,73 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
         `- **Type**: ${customer.customerType}\n` +
         `- **Email**: ${customer.email}\n` +
         (customer.phone ? `- **Phone**: ${customer.phone}\n` : '') +
-        (customer.companyName ? `- **Company**: ${customer.companyName}\n` : '') +
-        (customer.address ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n` : '') +
-        `- **Registered**: ${formatDate(customer.createdAt)}\n`
+        (customer.companyName
+          ? `- **Company**: ${customer.companyName}\n`
+          : '') +
+        (customer.address
+          ? `- **Address**: ${customer.address}, ${customer.city} ${customer.postalCode}\n`
+          : '') +
+        `- **Registered**: ${formatDate(customer.createdAt)}\n`;
 
       if (customer.notes) {
-        text += `\n### Notes\n${customer.notes}\n`
+        text += `\n### Notes\n${customer.notes}\n`;
       }
 
       if (customer.reservations.length > 0) {
-        text += `\n### Recent reservations (${customer.reservations.length})\n`
+        text += `\n### Recent reservations (${customer.reservations.length})\n`;
         for (const r of customer.reservations) {
-          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}\n`
+          text += `- #${r.number} — ${formatStatus(r.status)} — ${formatDate(r.startDate)} → ${formatDate(r.endDate)} — ${formatCurrency(r.totalAmount)}\n`;
         }
       }
 
-      return toolResult(text)
-    }
-  )
+      return toolResult(text);
+    },
+  );
 
   server.tool(
     'create_customer',
     'Create a new customer',
     {
-      email: z.string().email().describe('Customer email'),
+      email: z.email().describe('Customer email'),
       firstName: z.string().min(1).describe('First name'),
       lastName: z.string().min(1).describe('Last name'),
       phone: z.string().optional().describe('Phone number'),
-      customerType: z.enum(['individual', 'business']).optional().describe('Customer type'),
-      companyName: z.string().optional().describe('Company name (for business customers)'),
+      customerType: z
+        .enum(['individual', 'business'])
+        .optional()
+        .describe('Customer type'),
+      companyName: z
+        .string()
+        .optional()
+        .describe('Company name (for business customers)'),
       address: z.string().optional().describe('Street address'),
       city: z.string().optional().describe('City'),
       postalCode: z.string().optional().describe('Postal code'),
     },
-    async ({ email, firstName, lastName, phone, customerType, companyName, address, city, postalCode }) => {
-      requirePermission(ctx, 'customers', 'write')
+    async ({
+      email,
+      firstName,
+      lastName,
+      phone,
+      customerType,
+      companyName,
+      address,
+      city,
+      postalCode,
+    }) => {
+      requirePermission(ctx, 'customers', 'write');
 
       const existingEmail = await db.query.customers.findFirst({
-        where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, email)),
+        where: and(
+          eq(customers.storeId, ctx.storeId),
+          eq(customers.email, email),
+        ),
         columns: { id: true },
-      })
+      });
       if (existingEmail) {
-        return toolError('A customer with this email already exists in this store.')
+        return toolError(
+          'A customer with this email already exists in this store.',
+        );
       }
 
       const [created] = await db
@@ -148,16 +183,16 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
           city: city ?? null,
           postalCode: postalCode ?? null,
         })
-        .$returningId()
+        .$returningId();
 
       return toolResult(
         `Customer created successfully.\n\n` +
           `- **Name**: ${firstName} ${lastName}\n` +
           `- **ID**: ${created.id}\n` +
-          `- **Email**: ${email}`
-      )
-    }
-  )
+          `- **Email**: ${email}`,
+      );
+    },
+  );
 
   server.tool(
     'update_customer',
@@ -166,7 +201,7 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
       customerId: z.string().describe('The customer ID'),
       firstName: z.string().optional(),
       lastName: z.string().optional(),
-      email: z.string().email().optional(),
+      email: z.email().optional(),
       phone: z.string().optional(),
       address: z.string().optional(),
       city: z.string().optional(),
@@ -174,36 +209,47 @@ export function registerCustomerTools(server: McpServer, ctx: McpSessionContext)
       notes: z.string().optional(),
     },
     async ({ customerId, ...updates }) => {
-      requirePermission(ctx, 'customers', 'write')
+      requirePermission(ctx, 'customers', 'write');
 
       const existing = await db.query.customers.findFirst({
-        where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+        where: and(
+          eq(customers.storeId, ctx.storeId),
+          eq(customers.id, customerId),
+        ),
         columns: { id: true, email: true },
-      })
-      if (!existing) return toolError('Customer not found.')
+      });
+      if (!existing) return toolError('Customer not found.');
 
       if (updates.email && updates.email !== existing.email) {
         const emailTaken = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, updates.email)),
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.email, updates.email),
+          ),
           columns: { id: true },
-        })
+        });
         if (emailTaken) {
-          return toolError('A customer with this email already exists in this store.')
+          return toolError(
+            'A customer with this email already exists in this store.',
+          );
         }
       }
 
-      const updateData: Record<string, unknown> = {}
+      const updateData: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(updates)) {
-        if (value !== undefined) updateData[key] = value
+        if (value !== undefined) updateData[key] = value;
       }
 
       if (Object.keys(updateData).length === 0) {
-        return toolError('No fields to update.')
+        return toolError('No fields to update.');
       }
 
-      await db.update(customers).set(updateData).where(eq(customers.id, customerId))
+      await db
+        .update(customers)
+        .set(updateData)
+        .where(eq(customers.id, customerId));
 
-      return toolResult(`Customer ${customerId} updated successfully.`)
-    }
-  )
+      return toolResult(`Customer ${customerId} updated successfully.`);
+    },
+  );
 }
