@@ -166,6 +166,7 @@
       "invalidCredentials": "Ungültige Anmeldedaten",
       "accountNotFound": "Konto nicht gefunden",
       "emailAlreadyExists": "Diese E-Mail wird bereits verwendet",
+      "invalidEmail": "Geben Sie eine gültige E-Mail-Adresse ein.",
       "accountNotLinked": "Ein Konto mit dieser E-Mail existiert bereits. Bitte melden Sie sich mit Ihrer E-Mail an.",
       "oauthError": "Bei der Anmeldung ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.",
       "accessDenied": "Zugriff verweigert. Sie haben keine Berechtigung zur Anmeldung.",

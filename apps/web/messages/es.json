@@ -166,6 +166,7 @@
       "invalidCredentials": "Credenciales invalidas",
       "accountNotFound": "Cuenta no encontrada",
       "emailAlreadyExists": "Este correo ya esta en uso",
+      "invalidEmail": "Ingrese una direccion de correo valida.",
       "accountNotLinked": "Ya existe una cuenta con este correo. Por favor, inicie sesion con su correo.",
       "oauthError": "Ocurrio un error durante el inicio de sesion. Por favor, intente de nuevo.",
       "accessDenied": "Acceso denegado. No tiene permiso para iniciar sesion.",

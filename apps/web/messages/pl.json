@@ -166,6 +166,7 @@
       "invalidCredentials": "Nieprawidłowe dane logowania",
       "accountNotFound": "Nie znaleziono konta",
       "emailAlreadyExists": "Ten email jest już używany",
+      "invalidEmail": "Wpisz prawidłowy adres email.",
       "accountNotLinked": "Konto z tym emailem już istnieje. Zaloguj się przez email.",
       "oauthError": "Wystąpił błąd podczas logowania. Spróbuj ponownie.",
       "accessDenied": "Odmowa dostępu. Nie masz uprawnień do logowania.",

@@ -166,6 +166,7 @@
       "invalidCredentials": "Ongeldige inloggegevens",
       "accountNotFound": "Account niet gevonden",
       "emailAlreadyExists": "Dit e-mailadres is al in gebruik",
+      "invalidEmail": "Voer een geldig e-mailadres in.",
       "accountNotLinked": "Er bestaat al een account met dit e-mailadres. Log in met uw e-mail.",
       "oauthError": "Er is een fout opgetreden bij het inloggen. Probeer het opnieuw.",
       "accessDenied": "Toegang geweigerd. U heeft geen toestemming om in te loggen.",
