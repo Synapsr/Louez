@@ -56,7 +56,7 @@ const createStoreSettingsSchema = (
       .min(2, t('minLength', { min: 2 }))
       .max(255),
     description: z.string(),
-    email: z.string().email(t('email')).or(z.literal('')),
+    email: z.email(t('email')).or(z.literal('')),
     phone: z.string(),
     address: z.string(),
     country: z.string().length(2),
