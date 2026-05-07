@@ -157,11 +157,6 @@
     "termsOfService": "Terminos de servicio",
     "and": "y",
     "privacyPolicy": "Politica de privacidad",
-    "verifyRequest": {
-      "title": "Revise su correo",
-      "description": "Se ha enviado un enlace de inicio de sesion a su direccion de correo.",
-      "checkSpam": "Haga clic en el enlace del correo para iniciar sesion. Si no lo ve, revise su carpeta de spam."
-    },
     "errors": {
       "invalidCredentials": "Credenciales invalidas",
       "accountNotFound": "Cuenta no encontrada",

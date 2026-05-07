@@ -73,6 +73,7 @@ export function OpenReplayProvider({
   user,
   store,
 }: OpenReplayProviderProps) {
+
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
       return;
@@ -95,7 +96,7 @@ export function OpenReplayProvider({
   }, [store, user]);
 
   useEffect(() => {
-    if (!user) {
+    if (!user || env.NODE_ENV !== 'production') {
       return;
     }
 

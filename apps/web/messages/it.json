@@ -157,11 +157,6 @@
     "termsOfService": "Termini di Servizio",
     "and": "e",
     "privacyPolicy": "Informativa sulla Privacy",
-    "verifyRequest": {
-      "title": "Controlla la tua email",
-      "description": "Un link di accesso e stato inviato al tuo indirizzo email.",
-      "checkSpam": "Clicca sul link nell'email per accedere. Se non lo vedi, controlla la cartella spam."
-    },
     "errors": {
       "invalidCredentials": "Credenziali non valide",
       "accountNotFound": "Account non trovato",

@@ -157,11 +157,6 @@
     "termsOfService": "Nutzungsbedingungen",
     "and": "und",
     "privacyPolicy": "Datenschutzrichtlinie",
-    "verifyRequest": {
-      "title": "Überprüfen Sie Ihre E-Mail",
-      "description": "Ein Anmeldelink wurde an Ihre E-Mail-Adresse gesendet.",
-      "checkSpam": "Klicken Sie auf den Link in der E-Mail, um sich anzumelden. Wenn Sie ihn nicht sehen, überprüfen Sie Ihren Spam-Ordner."
-    },
     "errors": {
       "invalidCredentials": "Ungültige Anmeldedaten",
       "accountNotFound": "Konto nicht gefunden",

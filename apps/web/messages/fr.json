@@ -157,11 +157,6 @@
     "termsOfService": "Conditions d'utilisation",
     "and": "et",
     "privacyPolicy": "Politique de confidentialité",
-    "verifyRequest": {
-      "title": "Vérifiez votre email",
-      "description": "Un lien de connexion a été envoyé à votre adresse email.",
-      "checkSpam": "Cliquez sur le lien dans l'email pour vous connecter. Si vous ne le voyez pas, vérifiez votre dossier spam."
-    },
     "errors": {
       "invalidCredentials": "Identifiants invalides",
       "accountNotFound": "Compte non trouvé",

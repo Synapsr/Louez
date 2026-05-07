@@ -157,11 +157,6 @@
     "termsOfService": "Regulamin",
     "and": "i",
     "privacyPolicy": "Politykę prywatności",
-    "verifyRequest": {
-      "title": "Sprawdź swój email",
-      "description": "Link logowania został wysłany na Twój adres email.",
-      "checkSpam": "Kliknij link w emailu, aby się zalogować. Jeśli go nie widzisz, sprawdź folder spam."
-    },
     "errors": {
       "invalidCredentials": "Nieprawidłowe dane logowania",
       "accountNotFound": "Nie znaleziono konta",

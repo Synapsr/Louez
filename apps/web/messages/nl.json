@@ -157,11 +157,6 @@
     "termsOfService": "Algemene voorwaarden",
     "and": "en",
     "privacyPolicy": "Privacybeleid",
-    "verifyRequest": {
-      "title": "Controleer uw e-mail",
-      "description": "Een inloglink is naar uw e-mailadres verzonden.",
-      "checkSpam": "Klik op de link in de e-mail om in te loggen. Als u deze niet ziet, controleer dan uw spammap."
-    },
     "errors": {
       "invalidCredentials": "Ongeldige inloggegevens",
       "accountNotFound": "Account niet gevonden",

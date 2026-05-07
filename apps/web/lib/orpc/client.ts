@@ -43,7 +43,6 @@ function getStoreSlugFromPath(): string | null {
     'dashboard',
     'login',
     'api',
-    'verify-request',
     'onboarding',
     'invitation',
     'multi-store',

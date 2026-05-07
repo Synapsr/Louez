@@ -157,11 +157,6 @@
     "termsOfService": "Terms of Service",
     "and": "and",
     "privacyPolicy": "Privacy Policy",
-    "verifyRequest": {
-      "title": "Check your email",
-      "description": "A login link has been sent to your email address.",
-      "checkSpam": "Click the link in the email to sign in. If you don't see it, check your spam folder."
-    },
     "errors": {
       "invalidCredentials": "Invalid credentials",
       "accountNotFound": "Account not found",

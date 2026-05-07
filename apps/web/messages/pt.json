@@ -157,11 +157,6 @@
     "termsOfService": "Termos de Servico",
     "and": "e",
     "privacyPolicy": "Politica de Privacidade",
-    "verifyRequest": {
-      "title": "Verifique seu email",
-      "description": "Um link de login foi enviado para seu endereco de email.",
-      "checkSpam": "Clique no link do email para entrar. Se nao o encontrar, verifique a pasta de spam."
-    },
     "errors": {
       "invalidCredentials": "Credenciais invalidas",
       "accountNotFound": "Conta nao encontrada",
