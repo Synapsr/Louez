@@ -166,6 +166,7 @@
       "invalidCredentials": "Invalid credentials",
       "accountNotFound": "Account not found",
       "emailAlreadyExists": "This email is already in use",
+      "invalidEmail": "Enter a valid email address.",
       "accountNotLinked": "An account already exists with this email. Please sign in with your email.",
       "oauthError": "An error occurred during sign in. Please try again.",
       "accessDenied": "Access denied. You don't have permission to sign in.",

@@ -166,6 +166,7 @@
       "invalidCredentials": "Credenciais invalidas",
       "accountNotFound": "Conta nao encontrada",
       "emailAlreadyExists": "Este email ja esta em uso",
+      "invalidEmail": "Insira um endereco de email valido.",
       "accountNotLinked": "Ja existe uma conta com este email. Por favor, entre com seu email.",
       "oauthError": "Ocorreu um erro ao entrar. Por favor, tente novamente.",
       "accessDenied": "Acesso negado. Voce nao tem permissao para entrar.",
