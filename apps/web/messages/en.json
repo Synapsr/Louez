@@ -209,6 +209,7 @@
       "clickToView": "Click to process"
     },
     "theme": {
+      "label": "Theme",
       "light": "Light",
       "dark": "Dark",
       "system": "System"
@@ -228,7 +229,8 @@
       "dashboard": "Dashboard",
       "viewStore": "View store",
       "newReservation": "New reservation",
-      "help": "Help"
+      "help": "Help",
+      "feedback": "Help and feedback"
     },
     "storeSwitcher": {
       "selectStore": "Select a store",
@@ -3677,6 +3679,47 @@
         "products": "Which products are rented the most?",
         "customers": "How many new customers this month?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Home",
+      "products": "Products",
+      "productsNew": "New product",
+      "reservations": "Reservations",
+      "reservationsNew": "New reservation",
+      "customers": "Customers",
+      "customersNew": "New customer",
+      "calendar": "Calendar",
+      "analytics": "Analytics",
+      "team": "Team",
+      "referrals": "Referrals",
+      "sms": "SMS",
+      "subscription": "Subscription",
+      "account": "Account",
+      "settings": "Settings",
+      "settingsAdmin": "Administration",
+      "settingsApi": "API",
+      "settingsAppearance": "Appearance",
+      "settingsDelivery": "Delivery",
+      "settingsEmbed": "Embed",
+      "settingsExport": "Data export",
+      "settingsHours": "Hours",
+      "settingsInspections": "Inspections",
+      "settingsIntegrations": "Integrations",
+      "settingsLegal": "Legal pages",
+      "settingsNotifications": "Notifications",
+      "settingsPayments": "Payments",
+      "settingsPromoCodes": "Promo codes",
+      "settingsReviewBooster": "Review booster",
+      "settingsTaxes": "Taxes"
+    },
+    "notificationsCenter": {
+      "title": "Notifications",
+      "description": "Items that need your attention",
+      "pendingReservations": "Pending requests",
+      "emptyTitle": "Nothing to review",
+      "emptyDescription": "New requests will appear here.",
+      "viewAllPending": "View all pending requests"
     }
   },
   "storefront": {

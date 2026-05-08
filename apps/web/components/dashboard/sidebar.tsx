@@ -1,61 +1,64 @@
 'use client';
 
-import { useState } from 'react';
-
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import {
-  BarChart3,
-  Calendar,
-  CalendarDays,
-  ChevronRight,
-  CreditCard,
-  Crown,
-  ExternalLink,
-  Gift,
-  HelpCircle,
-  Home,
-  LogOut,
-  Menu,
-  Package,
-  Plus,
-  Settings,
-  Sparkles,
-  Users,
-  X,
-} from 'lucide-react';
+import Gleap from 'gleap';
 import { useTranslations } from 'next-intl';
 
 import { authClient } from '@louez/auth/client';
-import { Button } from '@louez/ui';
-import { Logo, LogoIcon } from '@louez/ui';
-import { Avatar, AvatarFallback, AvatarImage } from '@louez/ui';
 import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@louez/ui';
-import { Sheet, SheetContent, SheetTrigger } from '@louez/ui';
-import {
+  Logo,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  Sidebar as UISidebar,
 } from '@louez/ui';
-import { Separator } from '@louez/ui';
-import { cn } from '@louez/utils';
+import {
+  AnalyticsIcon,
+  CalendarDaysIcon,
+  CalendarIcon,
+  CreditCardIcon,
+  CrownIcon,
+  ExternalLinkIcon,
+  GiftIcon,
+  HomeIcon,
+  LifeBuoyIcon,
+  LogOutIcon,
+  PackageIcon,
+  SettingsIcon,
+  SparklesIcon,
+  UsersIcon,
+} from '@louez/ui/icons';
 
-import { PendingReservationsAlert } from '@/components/dashboard/pending-reservations-alert';
 import { StoreSwitcher } from '@/components/dashboard/store-switcher';
-import { ThemeToggle } from '@/components/dashboard/theme-toggle';
-import { LanguageSwitcher } from '@/components/ui/language-switcher';
+import { ThemeMenuSub } from '@/components/dashboard/theme-toggle';
+import { LanguageMenuSub } from '@/components/ui/language-switcher';
+
+import { cn } from '@/lib/utils';
 
 import { env } from '@/env';
-import Gleap from 'gleap';
 
 interface StoreWithRole {
   id: string;
@@ -65,7 +68,7 @@ interface StoreWithRole {
   role: 'owner' | 'member' | 'platform_admin';
 }
 
-interface SidebarProps {
+interface DashboardSidebarProps {
   stores: StoreWithRole[];
   currentStoreId: string;
   storeSlug?: string;
@@ -75,155 +78,165 @@ interface SidebarProps {
 }
 
 const mainNavigation = [
-  { key: 'home', href: '/dashboard', icon: Home },
-  { key: 'calendar', href: '/dashboard/calendar', icon: CalendarDays },
-  { key: 'reservations', href: '/dashboard/reservations', icon: Calendar },
-  { key: 'customers', href: '/dashboard/customers', icon: Users },
+  { key: 'home', href: '/dashboard', icon: HomeIcon },
+  { key: 'calendar', href: '/dashboard/calendar', icon: CalendarDaysIcon },
+  { key: 'reservations', href: '/dashboard/reservations', icon: CalendarIcon },
+  { key: 'customers', href: '/dashboard/customers', icon: UsersIcon },
 ];
 
 const catalogNavigation = [
-  { key: 'products', href: '/dashboard/products', icon: Package },
+  { key: 'products', href: '/dashboard/products', icon: PackageIcon },
 ];
 
 const analyticsNavigation = [
-  { key: 'analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { key: 'analytics', href: '/dashboard/analytics', icon: AnalyticsIcon },
 ];
 
 const managementNavigation = [
-  { key: 'team', href: '/dashboard/team', icon: Users },
-  { key: 'referrals', href: '/dashboard/referrals', icon: Gift },
-  { key: 'subscription', href: '/dashboard/subscription', icon: CreditCard },
-  { key: 'settings', href: '/dashboard/settings', icon: Settings },
+  { key: 'team', href: '/dashboard/team', icon: UsersIcon },
+  { key: 'referrals', href: '/dashboard/referrals', icon: GiftIcon },
+  {
+    key: 'subscription',
+    href: '/dashboard/subscription',
+    icon: CreditCardIcon,
+  },
+  { key: 'settings', href: '/dashboard/settings', icon: SettingsIcon },
 ];
 
-interface NavItemProps {
-  item: {
-    key: string;
-    href: string;
-    icon: React.ComponentType<{ className?: string }>;
-  };
-  pathname: string;
-  onNavigate?: () => void;
-  t: (key: string) => string;
-}
-
-function NavItem({ item, pathname, onNavigate, t }: NavItemProps) {
-  const isActive =
-    pathname === item.href ||
-    (item.href !== '/dashboard' && pathname.startsWith(`${item.href}/`));
-  const isExactDashboard =
-    item.href === '/dashboard' && pathname === '/dashboard';
-  const active = isExactDashboard || isActive;
-
-  return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      className={cn(
-        'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
-        active
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
-      )}
-    >
-      <item.icon
-        className={cn(
-          'h-[18px] w-[18px] shrink-0 transition-transform duration-200',
-          !active && 'group-hover:scale-110',
-        )}
-      />
-      <span className="truncate">{t(item.key)}</span>
-      {active && <ChevronRight className="ml-auto h-4 w-4 opacity-70" />}
-    </Link>
-  );
-}
-
-function NavSection({
-  items,
-  pathname,
-  onNavigate,
-  t,
-  label,
-}: {
+const navigationSections = [
+  { items: mainNavigation },
+  { labelKey: 'catalog', items: catalogNavigation },
+  { labelKey: 'analytics', items: analyticsNavigation },
+  { labelKey: 'manage', items: managementNavigation },
+] satisfies {
+  labelKey?: string;
   items: typeof mainNavigation;
-  pathname: string;
-  onNavigate?: () => void;
-  t: (key: string) => string;
-  label?: string;
-}) {
-  return (
-    <div className="space-y-1">
-      {label && (
-        <p className="text-muted-foreground/70 mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase">
-          {label}
-        </p>
-      )}
-      {items.map((item) => (
-        <NavItem
-          key={item.key}
-          item={item}
-          pathname={pathname}
-          onNavigate={onNavigate}
-          t={t}
-        />
-      ))}
-    </div>
-  );
+}[];
+
+interface NavigationItem {
+  key: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
-function NavLinks({
+const isNavigationItemActive = (pathname: string, href: string) => {
+  if (href === '/dashboard') {
+    return pathname === '/dashboard';
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+};
+
+const DashboardNavItem = ({
+  item,
   pathname,
-  onNavigate,
 }: {
+  item: NavigationItem;
   pathname: string;
-  onNavigate?: () => void;
-}) {
+}) => {
   const t = useTranslations('dashboard.navigation');
-  const tNav = useTranslations('dashboard.sidebar');
+  const active = isNavigationItemActive(pathname, item.href);
 
   return (
-    <nav className="flex-1 space-y-3 px-3 py-4">
-      <NavSection
-        items={mainNavigation}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        t={t}
-      />
-      <Separator className="my-1 opacity-40" />
-      <NavSection
-        items={catalogNavigation}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        t={t}
-        label={tNav('catalog')}
-      />
-      <Separator className="my-1 opacity-40" />
-      <NavSection
-        items={analyticsNavigation}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        t={t}
-        label={tNav('analytics')}
-      />
-      <Separator className="my-1 opacity-40" />
-      <NavSection
-        items={managementNavigation}
-        pathname={pathname}
-        onNavigate={onNavigate}
-        t={t}
-        label={tNav('manage')}
-      />
-    </nav>
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        render={<Link href={item.href} />}
+        isActive={active}
+        tooltip={t(item.key)}
+      >
+        <item.icon />
+        <span>{t(item.key)}</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
   );
-}
+};
 
-function UserMenu({
+const DashboardNavSection = ({
+  items,
+  labelKey,
+  pathname,
+}: {
+  items: NavigationItem[];
+  labelKey?: string;
+  pathname: string;
+}) => {
+  const t = useTranslations('dashboard.sidebar');
+
+  return (
+    <SidebarGroup>
+      {labelKey && <SidebarGroupLabel>{t(labelKey)}</SidebarGroupLabel>}
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => (
+            <DashboardNavItem key={item.href} item={item} pathname={pathname} />
+          ))}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
+  );
+};
+
+const StoreHeader = ({
+  stores,
+  currentStoreId,
+  storeSlug,
+  planSlug,
+}: {
+  stores: StoreWithRole[];
+  currentStoreId: string;
+  storeSlug?: string;
+  planSlug?: string;
+}) => {
+  const t = useTranslations('dashboard.sidebar');
+  return (
+    <SidebarHeader className="border-sidebar-border gap-3 border-b px-0">
+      <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4">
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
+            <Image
+              src={'/favicon.svg'}
+              width={32}
+              height={32}
+              alt="Logo"
+              className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block"
+            />
+          </Link>
+          <PlanBadge planSlug={planSlug} />
+        </div>
+
+        {storeSlug && (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
+                  target="_blank"
+                  className="text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex size-8 shrink-0 items-center justify-center rounded-md transition-colors group-data-[collapsible=icon]:hidden"
+                />
+              }
+            >
+              <ExternalLinkIcon className="h-4 w-4" />
+              <span className="sr-only">{t('viewStore')}</span>
+            </TooltipTrigger>
+            <TooltipContent side="right">{t('viewStore')}</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+      <div className="mx-auto w-fit group-data-[state=expanded]:w-full">
+        <StoreSwitcher stores={stores} currentStoreId={currentStoreId} />
+      </div>
+    </SidebarHeader>
+  );
+};
+
+const UserMenu = ({
   userEmail,
   userImage,
 }: {
   userEmail: string;
   userImage?: string | null;
-}) {
+}) => {
   const t = useTranslations('dashboard.settings.accountSettings');
   const tAuth = useTranslations('auth');
   const initials = userEmail.slice(0, 2).toUpperCase();
@@ -234,24 +247,24 @@ function UserMenu({
         render={
           <Button
             variant="ghost"
-            className="hover:bg-accent/50 w-full justify-start gap-3 px-3 py-6 transition-colors duration-200"
+            className="hover:bg-sidebar-accent h-12 w-full justify-start gap-3 px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
           />
         }
       >
-        <Avatar className="ring-border h-9 w-9 ring-2">
+        <Avatar className="size-8 shrink-0">
           <AvatarImage src={userImage || undefined} />
-          <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
-        <div className="flex min-w-0 flex-col items-start">
-          <span className="truncate text-sm font-medium">{userEmail}</span>
-        </div>
+        <span className="truncate text-left text-sm font-medium group-data-[collapsible=icon]:hidden">
+          {userEmail}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuItem
-          render={<Link href="/dashboard/account" className="cursor-pointer" />}
-        >
+        <ThemeMenuSub />
+        <LanguageMenuSub />
+        <DropdownMenuItem render={<Link href="/dashboard/account" />}>
           {t('title')}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -267,13 +280,77 @@ function UserMenu({
           }
           className="text-destructive cursor-pointer"
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOutIcon className="mr-2 h-4 w-4" />
           {tAuth('logout')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+};
+
+const HelpButton = () => {
+  const t = useTranslations('dashboard.sidebar');
+
+  return (
+    <Button
+      variant="ghost"
+      className="hover:bg-sidebar-accent h-auto w-full justify-start gap-3 px-2 py-2 text-left group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-0"
+      onClick={() => Gleap.open()}
+    >
+      <LifeBuoyIcon className="text-sidebar-foreground/70 h-4 w-4 shrink-0" />
+      <span className="min-w-0 group-data-[collapsible=icon]:hidden">
+        <span className="block text-sm leading-none font-medium">
+          {t('help')}
+        </span>
+        {/* <span className="text-muted-foreground mt-1 block truncate text-xs">
+          {t('feedback')}
+        </span> */}
+      </span>
+    </Button>
+  );
+};
+
+export const DashboardSidebar = ({
+  stores,
+  currentStoreId,
+  storeSlug,
+  userEmail,
+  userImage,
+  planSlug,
+}: DashboardSidebarProps) => {
+  const pathname = usePathname();
+
+  return (
+    <TooltipProvider>
+      <UISidebar variant="inset" collapsible="icon">
+        <StoreHeader
+          stores={stores}
+          currentStoreId={currentStoreId}
+          storeSlug={storeSlug}
+        />
+        <SidebarContent>
+          {navigationSections.map((section, index) => (
+            <div key={section.labelKey || 'main'}>
+              {index > 0 && <SidebarSeparator />}
+              <DashboardNavSection
+                items={section.items}
+                labelKey={section.labelKey}
+                pathname={pathname}
+              />
+            </div>
+          ))}
+        </SidebarContent>
+        <SidebarFooter className="border-sidebar-border border-t">
+          <div>
+            <HelpButton />
+          </div>
+          <UserMenu userEmail={userEmail} userImage={userImage} />
+        </SidebarFooter>
+        {/* <SidebarRail /> */}
+      </UISidebar>
+    </TooltipProvider>
+  );
+};
 
 function PlanBadge({ planSlug }: { planSlug?: string }) {
   const plan = planSlug || 'start';
@@ -290,13 +367,13 @@ function PlanBadge({ planSlug }: { planSlug?: string }) {
     pro: {
       label: 'Pro',
       className: 'bg-primary/10 text-primary hover:bg-primary/20',
-      icon: <Sparkles className="h-3 w-3" />,
+      icon: <SparklesIcon className="h-3 w-3" />,
     },
     ultra: {
       label: 'Ultra',
       className:
         'bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20',
-      icon: <Crown className="h-3 w-3" />,
+      icon: <CrownIcon className="h-3 w-3" />,
     },
   };
 
@@ -306,256 +383,12 @@ function PlanBadge({ planSlug }: { planSlug?: string }) {
     <Link
       href="/dashboard/subscription"
       className={cn(
-        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
+        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition-colors group-data-[collapsible=icon]:hidden',
         config.className,
       )}
     >
       {config.icon}
       {config.label}
     </Link>
-  );
-}
-
-function StoreHeader({
-  stores,
-  currentStoreId,
-  storeSlug,
-  planSlug,
-}: {
-  stores: StoreWithRole[];
-  currentStoreId: string;
-  storeSlug?: string;
-  planSlug?: string;
-}) {
-  const t = useTranslations('dashboard.sidebar');
-
-  return (
-    <div className="space-y-3">
-      {/* Louez Logo + Plan Badge */}
-      <div className="flex items-center justify-between px-3">
-        <div className="flex items-center gap-2">
-          <Link href="/dashboard" className="flex items-center">
-            <Logo className="h-5 w-auto" />
-          </Link>
-          <PlanBadge planSlug={planSlug} />
-        </div>
-        {storeSlug && (
-          <Link
-            href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
-            target="_blank"
-            className="hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg p-2 transition-colors"
-            title={t('viewStore')}
-          >
-            <ExternalLink className="h-4 w-4" />
-          </Link>
-        )}
-      </div>
-
-      {/* Store Switcher */}
-      <div className="px-2">
-        <StoreSwitcher stores={stores} currentStoreId={currentStoreId} />
-      </div>
-    </div>
-  );
-}
-
-function HelpButton() {
-  const t = useTranslations('dashboard.sidebar');
-
-  return (
-    <TooltipProvider>
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground h-8 w-8"
-            onClick={() => Gleap.open()}
-          />
-        }
-      >
-        <HelpCircle className="h-4 w-4" />
-      </TooltipTrigger>
-      <TooltipContent side="top" className="text-xs">
-        {t('help')}
-      </TooltipContent>
-    </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function NewReservationLabel() {
-  const t = useTranslations('dashboard.sidebar');
-  return <>{t('newReservation')}</>;
-}
-
-export function Sidebar({
-  stores,
-  currentStoreId,
-  storeSlug,
-  userEmail,
-  userImage,
-  planSlug,
-}: SidebarProps) {
-  const pathname = usePathname();
-
-  return (
-    <aside className="hidden overscroll-y-none lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-      <div className="bg-card/50 flex grow flex-col overflow-y-auto overscroll-y-none border-r backdrop-blur-sm">
-        {/* Store Header */}
-        <div className="bg-card sticky top-0 z-10 border-b px-1 py-3">
-          <StoreHeader
-            stores={stores}
-            currentStoreId={currentStoreId}
-            storeSlug={storeSlug}
-            planSlug={planSlug}
-          />
-        </div>
-
-        {/* Navigation */}
-        <NavLinks pathname={pathname} />
-
-        {/* Bottom Section */}
-        <div className="bg-card sticky bottom-0 border-t">
-          {/* Pending Reservations Alert + New Reservation Button */}
-          <div className="space-y-2 p-3">
-            <PendingReservationsAlert />
-            <Button
-              render={<Link href="/dashboard/reservations/new" />}
-              className="w-full"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              <NewReservationLabel />
-            </Button>
-          </div>
-
-          <Separator className="opacity-50" />
-
-          {/* Theme/Language/Help + User Menu */}
-          <div className="flex items-center justify-between px-3 py-2">
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <LanguageSwitcher variant="compact" />
-            </div>
-            <HelpButton />
-          </div>
-          <div className="px-1 pb-2">
-            <UserMenu userEmail={userEmail} userImage={userImage} />
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-export function MobileHeader({
-  stores,
-  currentStoreId,
-  storeSlug,
-  userEmail,
-  userImage,
-  planSlug,
-}: SidebarProps) {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const currentStore = stores.find((s) => s.id === currentStoreId);
-
-  return (
-    <header className="bg-card/80 sticky top-0 z-40 flex h-14 items-center justify-between border-b px-4 backdrop-blur-sm lg:hidden">
-      <div className="flex items-center gap-3 min-w-0">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger
-            render={<Button variant="ghost" size="icon" className="shrink-0" />}
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Menu</span>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="flex w-[85vw] max-w-sm flex-col p-0"
-            showCloseButton={false}
-          >
-            <div className="flex h-14 shrink-0 items-center justify-between border-b px-4">
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/dashboard"
-                  className="flex items-center"
-                  onClick={() => setOpen(false)}
-                >
-                  <Logo className="h-5 w-auto" />
-                </Link>
-                <PlanBadge planSlug={planSlug} />
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-
-            {/* Store Switcher (fixed) */}
-            <div className="shrink-0 border-b p-3">
-              <StoreSwitcher
-                stores={stores}
-                currentStoreId={currentStoreId}
-              />
-            </div>
-
-            {/* Scrollable nav */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-              <NavLinks pathname={pathname} onNavigate={() => setOpen(false)} />
-            </div>
-
-            {/* Footer (fixed) */}
-            <div className="shrink-0 border-t">
-              <div className="space-y-2 p-3">
-                <PendingReservationsAlert onNavigate={() => setOpen(false)} />
-                <Button
-                  render={<Link href="/dashboard/reservations/new" />}
-                  className="w-full"
-                  onClick={() => setOpen(false)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  <NewReservationLabel />
-                </Button>
-              </div>
-              <Separator className="opacity-50" />
-              <div className="flex items-center justify-between px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <ThemeToggle />
-                  <LanguageSwitcher variant="compact" />
-                </div>
-                <HelpButton />
-              </div>
-              <div className="px-1 pb-2">
-                <UserMenu userEmail={userEmail} userImage={userImage} />
-              </div>
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex min-w-0 items-center gap-2">
-          <LogoIcon size={24} className="shrink-0" />
-          <span className="truncate font-semibold">
-            {currentStore?.name || 'Louez'}
-          </span>
-          <PlanBadge planSlug={planSlug} />
-        </div>
-      </div>
-
-      {storeSlug && (
-        <Link
-          href={`https://${storeSlug}.${env.NEXT_PUBLIC_APP_DOMAIN}`}
-          target="_blank"
-          className="hover:bg-accent text-muted-foreground hover:text-foreground shrink-0 rounded-lg p-2 transition-colors"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Link>
-      )}
-    </header>
   );
 }

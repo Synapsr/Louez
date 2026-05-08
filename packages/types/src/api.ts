@@ -48,6 +48,14 @@ export interface CombinationResolutionResult {
 export interface ReservationPollResponse {
   pendingCount: number
   totalCount: number
+  pendingReservations: {
+    id: string
+    number: string
+    status: string
+    createdAt: string
+    startDate: string
+    customerName: string
+  }[]
   latestReservation: {
     id: string
     number: string

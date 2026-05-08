@@ -209,6 +209,7 @@
       "clickToView": "Clic para procesar"
     },
     "theme": {
+      "label": "Tema",
       "light": "Claro",
       "dark": "Oscuro",
       "system": "Sistema"
@@ -228,7 +229,8 @@
       "dashboard": "Panel",
       "viewStore": "Ver tienda",
       "newReservation": "Nueva reserva",
-      "help": "Ayuda"
+      "help": "Ayuda",
+      "feedback": "Ayuda y feedback"
     },
     "storeSwitcher": {
       "selectStore": "Seleccionar una tienda",
@@ -3650,6 +3652,47 @@
         "products": "¿Cuáles son los productos más alquilados?",
         "customers": "¿Cuántos clientes nuevos este mes?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Miga de pan",
+      "home": "Inicio",
+      "products": "Productos",
+      "productsNew": "Nuevo producto",
+      "reservations": "Reservas",
+      "reservationsNew": "Nueva reserva",
+      "customers": "Clientes",
+      "customersNew": "Nuevo cliente",
+      "calendar": "Calendario",
+      "analytics": "Analíticas",
+      "team": "Equipo",
+      "referrals": "Referidos",
+      "sms": "SMS",
+      "subscription": "Suscripción",
+      "account": "Cuenta",
+      "settings": "Ajustes",
+      "settingsAdmin": "Administración",
+      "settingsApi": "API",
+      "settingsAppearance": "Apariencia",
+      "settingsDelivery": "Entrega",
+      "settingsEmbed": "Inserción",
+      "settingsExport": "Exportación de datos",
+      "settingsHours": "Horarios",
+      "settingsInspections": "Inspecciones",
+      "settingsIntegrations": "Integraciones",
+      "settingsLegal": "Páginas legales",
+      "settingsNotifications": "Notificaciones",
+      "settingsPayments": "Pagos",
+      "settingsPromoCodes": "Códigos promocionales",
+      "settingsReviewBooster": "Impulso de reseñas",
+      "settingsTaxes": "Impuestos"
+    },
+    "notificationsCenter": {
+      "title": "Notificaciones",
+      "description": "Lo que requiere tu atención",
+      "pendingReservations": "Solicitudes pendientes",
+      "emptyTitle": "Nada que revisar",
+      "emptyDescription": "Las nuevas solicitudes aparecerán aquí.",
+      "viewAllPending": "Ver todas las solicitudes pendientes"
     }
   },
   "storefront": {

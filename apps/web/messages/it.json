@@ -209,6 +209,7 @@
       "clickToView": "Clicca per elaborare"
     },
     "theme": {
+      "label": "Tema",
       "light": "Chiaro",
       "dark": "Scuro",
       "system": "Sistema"
@@ -220,7 +221,8 @@
       "dashboard": "Dashboard",
       "viewStore": "Vedi negozio",
       "newReservation": "Nuova prenotazione",
-      "help": "Aiuto"
+      "help": "Aiuto",
+      "feedback": "Aiuto e feedback"
     },
     "storeSwitcher": {
       "selectStore": "Seleziona un negozio",
@@ -3642,6 +3644,47 @@
         "products": "Quali sono i prodotti più noleggiati?",
         "customers": "Quanti nuovi clienti questo mese?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Home",
+      "products": "Prodotti",
+      "productsNew": "Nuovo prodotto",
+      "reservations": "Prenotazioni",
+      "reservationsNew": "Nuova prenotazione",
+      "customers": "Clienti",
+      "customersNew": "Nuovo cliente",
+      "calendar": "Calendario",
+      "analytics": "Analisi",
+      "team": "Team",
+      "referrals": "Referral",
+      "sms": "SMS",
+      "subscription": "Abbonamento",
+      "account": "Account",
+      "settings": "Impostazioni",
+      "settingsAdmin": "Amministrazione",
+      "settingsApi": "API",
+      "settingsAppearance": "Aspetto",
+      "settingsDelivery": "Consegna",
+      "settingsEmbed": "Integrazione",
+      "settingsExport": "Esportazione dati",
+      "settingsHours": "Orari",
+      "settingsInspections": "Ispezioni",
+      "settingsIntegrations": "Integrazioni",
+      "settingsLegal": "Pagine legali",
+      "settingsNotifications": "Notifiche",
+      "settingsPayments": "Pagamenti",
+      "settingsPromoCodes": "Codici promozionali",
+      "settingsReviewBooster": "Booster recensioni",
+      "settingsTaxes": "Tasse"
+    },
+    "notificationsCenter": {
+      "title": "Notifiche",
+      "description": "Ciò che richiede attenzione",
+      "pendingReservations": "Richieste in attesa",
+      "emptyTitle": "Nulla da rivedere",
+      "emptyDescription": "Le nuove richieste appariranno qui.",
+      "viewAllPending": "Vedi tutte le richieste in attesa"
     }
   },
   "storefront": {
