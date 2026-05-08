@@ -5,7 +5,7 @@ import { getMessages } from 'next-intl/server';
 
 import { FromHelloProvider } from '@/components/fromhello-provider';
 import { GleapProvider } from '@/components/dashboard/gleap-provider';
-import { OpenReplayProvider } from '@/components/dashboard/openreplay-provider';
+import { OpenReplayProvider } from '@/components/openreplay-provider';
 import { PostHogProvider } from '@/components/posthog-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 
@@ -49,6 +49,7 @@ export default async function DashboardLayout({
           disableTransitionOnChange
         >
           <OpenReplayProvider
+            surface="dashboard"
             user={
               session.user?.id && session.user?.email
                 ? {

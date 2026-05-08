@@ -221,6 +221,7 @@
       "dashboard": "Dashboard",
       "viewStore": "Vedi negozio",
       "newReservation": "Nuova prenotazione",
+      "reservationLimitReached": "Limite raggiunto",
       "help": "Aiuto",
       "feedback": "Aiuto e feedback"
     },

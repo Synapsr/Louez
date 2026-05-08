@@ -221,6 +221,7 @@
       "dashboard": "Panel",
       "viewStore": "Zobacz sklep",
       "newReservation": "Nowa rezerwacja",
+      "reservationLimitReached": "Limit osiagniety",
       "help": "Pomoc",
       "feedback": "Pomoc i opinie"
     },

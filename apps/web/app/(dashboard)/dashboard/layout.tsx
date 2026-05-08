@@ -19,6 +19,7 @@ import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
 
 import { isAIChatConfigured } from '@/lib/ai/provider';
 import { auth } from '@/lib/auth';
+import { getStoreLimits } from '@/lib/plan-limits';
 import { getCurrentStore, getUserStores } from '@/lib/store-context';
 import { getCurrentPlanSlug } from '@/lib/stripe/subscriptions';
 
@@ -55,7 +56,10 @@ export default async function DashboardMainLayout({
   const showAIChat = isAIChatConfigured();
 
   // Get current plan for the store
-  const planSlug = await getCurrentPlanSlug(store.id);
+  const [planSlug, limits] = await Promise.all([
+    getCurrentPlanSlug(store.id),
+    getStoreLimits(store.id),
+  ]);
 
   return (
     <StoreProvider
@@ -83,7 +87,11 @@ export default async function DashboardMainLayout({
                     <Separator orientation="vertical" className="h-4 shrink-0" />
                     <DashboardBreadcrumbs />
                   </div>
-                  <DashboardHeaderActions showAIChat={showAIChat} />
+                  <DashboardHeaderActions
+                    showAIChat={showAIChat}
+                    reservationLimits={limits.reservationsThisMonth}
+                    planSlug={planSlug}
+                  />
                 </header>
                 <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
               </SidebarInset>

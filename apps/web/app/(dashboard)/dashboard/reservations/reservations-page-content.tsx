@@ -220,8 +220,6 @@ export function ReservationsPageContent({
     );
   };
 
-  console.log({ isAtLimit });
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -230,25 +228,6 @@ export function ReservationsPageContent({
           <h1 className="text-2xl font-bold tracking-tight">{t('title')}</h1>
           <p className="text-muted-foreground">{t('description')}</p>
         </div>
-
-        {isAtLimit ? (
-          <Button onClick={() => setShowUpgradeModal(true)}>
-            <Lock className="mr-2 h-4 w-4" />
-            {t('addReservation')}
-          </Button>
-        ) : (
-          <Button
-            render={
-              <Link
-                href="/dashboard/reservations/new"
-                onClick={handleAddReservationClick}
-              />
-            }
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            {t('addReservation')}
-          </Button>
-        )}
       </div>
 
       {/* Limit Banner */}

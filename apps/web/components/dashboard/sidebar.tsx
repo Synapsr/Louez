@@ -327,6 +327,7 @@ export const DashboardSidebar = ({
           stores={stores}
           currentStoreId={currentStoreId}
           storeSlug={storeSlug}
+          planSlug={planSlug}
         />
         <SidebarContent>
           {navigationSections.map((section, index) => (
