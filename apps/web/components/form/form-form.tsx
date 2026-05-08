@@ -1,7 +1,5 @@
 'use client'
 
-import { toastManager } from '@louez/ui'
-
 import { useFormContext } from '@/hooks/form/form-context'
 
 function getFormValidationErrors(form: ReturnType<typeof useFormContext>) {
@@ -44,11 +42,6 @@ export function FormForm({
 
         const errors = getFormValidationErrors(form)
         if (errors) {
-          toastManager.add({
-            title: 'Please fix the errors before submitting',
-            type: 'error',
-          })
-
           if (process.env.NODE_ENV === 'development') {
             console.group('[Form] Validation errors on submit')
             if (Object.keys(errors.fieldErrors).length > 0) {
