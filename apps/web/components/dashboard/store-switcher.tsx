@@ -8,8 +8,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Building2, Check, ChevronsUpDown, Plus, Shield } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Button, PopoverPopup } from '@louez/ui';
 import {
+  Button,
   Command,
   CommandGroup,
   CommandGroupLabel,
@@ -17,8 +17,10 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
+  Popover,
+  PopoverPopup,
+  PopoverTrigger,
 } from '@louez/ui';
-import { Popover, PopoverTrigger } from '@louez/ui';
 import { cn } from '@louez/utils';
 
 import { switchStore } from '@/app/(dashboard)/dashboard/actions';
@@ -180,7 +182,7 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             role="combobox"
             aria-expanded={open}
             aria-label={t('selectStore')}
-            className="h-auto w-full justify-between px-3 py-2"
+            className="h-auto w-full justify-between px-3 py-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
             disabled={isPending}
           />
         }
@@ -191,14 +193,14 @@ export function StoreSwitcher({ stores, currentStoreId }: StoreSwitcherProps) {
             name={currentStore?.name || '?'}
             size="md"
           />
-          <div className="flex min-w-0 flex-col items-start">
+          <div className="flex min-w-0 flex-col items-start group-data-[collapsible=icon]:hidden">
             <span className="w-full truncate text-sm font-medium">
               {currentStore?.name || t('selectStore')}
             </span>
             {currentStore && <RoleBadge role={currentStore.role} t={t} />}
           </div>
         </div>
-        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50 group-data-[collapsible=icon]:hidden" />
       </PopoverTrigger>
       <PopoverPopup
         className="w-[260px] p-0 *:pt-0 *:pb-1.5"

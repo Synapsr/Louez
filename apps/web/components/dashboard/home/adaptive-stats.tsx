@@ -78,7 +78,7 @@ const iconTextColors: Record<IconVariant, string> = {
   primary: 'text-primary',
 }
 
-function StatCard({
+const StatCard = ({
   title,
   value,
   icon: Icon,
@@ -87,9 +87,14 @@ function StatCard({
   badge,
   trend,
   href,
-}: StatCardProps) {
+}: StatCardProps) => {
   const card = (
-    <Card className={cn('stat-card', href && 'transition-colors hover:bg-muted/50 cursor-pointer')}>
+    <Card
+      className={cn(
+        'stat-card h-full',
+        href && 'cursor-pointer transition-colors group-hover:bg-muted/50'
+      )}
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
@@ -139,13 +144,20 @@ function StatCard({
   )
 
   if (href) {
-    return <Link href={href}>{card}</Link>
+    return (
+      <Link
+        href={href}
+        className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        {card}
+      </Link>
+    )
   }
 
   return card
 }
 
-export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
+export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
   const t = useTranslations('dashboard.home')
 
   // For virgin/building stores, show catalog-focused stats
@@ -184,6 +196,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.todaysDepartures}
           icon={ArrowUpRight}
           iconVariant="emerald"
+          href="/dashboard/reservations?status=confirmed"
           subtitle={t('stats.toDeliver')}
         />
         <StatCard
@@ -191,6 +204,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.todaysReturns}
           icon={ArrowDownRight}
           iconVariant="blue"
+          href="/dashboard/reservations?status=ongoing"
           subtitle={t('stats.toRecover')}
         />
         <StatCard
@@ -198,6 +212,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.pendingReservations}
           icon={Clock}
           iconVariant="orange"
+          href="/dashboard/reservations?status=pending"
           badge={
             metrics.pendingReservations > 0 ? t('stats.toProcess') : undefined
           }
@@ -207,6 +222,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
           value={metrics.totalReservations}
           icon={Package}
           iconVariant="primary"
+          href="/dashboard/reservations"
           subtitle={t('stats.completed', { count: metrics.completedReservations })}
         />
       </div>
@@ -226,6 +242,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         value={metrics.todaysDepartures}
         icon={ArrowUpRight}
         iconVariant="emerald"
+        href="/dashboard/reservations?status=confirmed"
         subtitle={t('stats.toDeliver')}
       />
       <StatCard
@@ -233,6 +250,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         value={metrics.todaysReturns}
         icon={ArrowDownRight}
         iconVariant="blue"
+        href="/dashboard/reservations?status=ongoing"
         subtitle={t('stats.toRecover')}
       />
       <StatCard
@@ -240,6 +258,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         value={metrics.pendingReservations}
         icon={Clock}
         iconVariant="orange"
+        href="/dashboard/reservations?status=pending"
         badge={
           metrics.pendingReservations > 0 ? t('stats.toProcess') : undefined
         }
@@ -249,6 +268,7 @@ export function AdaptiveStats({ metrics, storeState }: AdaptiveStatsProps) {
         value={formatCurrency(metrics.monthlyRevenue)}
         icon={Euro}
         iconVariant="purple"
+        href="/dashboard/analytics"
         trend={revenueGrowth}
         subtitle={t('stats.vsLastMonth')}
       />

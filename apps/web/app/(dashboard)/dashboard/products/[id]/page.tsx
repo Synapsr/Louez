@@ -5,6 +5,8 @@ import { eq, and, ne } from 'drizzle-orm'
 import { redirect, notFound } from 'next/navigation'
 import { getTranslations } from 'next-intl/server'
 
+import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
+
 import { ProductForm } from '../product-form'
 
 interface EditProductPageProps {
@@ -75,6 +77,7 @@ export default async function EditProductPage({ params }: EditProductPageProps) 
 
   return (
     <div className="space-y-6">
+      <DashboardBreadcrumbLabel label={product.name} />
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t('editProduct')}</h1>
         <p className="text-muted-foreground">

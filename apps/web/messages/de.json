@@ -209,6 +209,7 @@
       "clickToView": "Klicken zum Bearbeiten"
     },
     "theme": {
+      "label": "Design",
       "light": "Hell",
       "dark": "Dunkel",
       "system": "System"
@@ -220,7 +221,8 @@
       "dashboard": "Dashboard",
       "viewStore": "Shop ansehen",
       "newReservation": "Neue Reservierung",
-      "help": "Hilfe"
+      "help": "Hilfe",
+      "feedback": "Hilfe und Feedback"
     },
     "storeSwitcher": {
       "selectStore": "Shop auswählen",
@@ -3642,6 +3644,47 @@
         "products": "Welche Produkte werden am meisten vermietet?",
         "customers": "Wie viele neue Kunden diesen Monat?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Startseite",
+      "products": "Produkte",
+      "productsNew": "Neues Produkt",
+      "reservations": "Reservierungen",
+      "reservationsNew": "Neue Reservierung",
+      "customers": "Kunden",
+      "customersNew": "Neuer Kunde",
+      "calendar": "Kalender",
+      "analytics": "Analysen",
+      "team": "Team",
+      "referrals": "Empfehlungen",
+      "sms": "SMS",
+      "subscription": "Abonnement",
+      "account": "Konto",
+      "settings": "Einstellungen",
+      "settingsAdmin": "Administration",
+      "settingsApi": "API",
+      "settingsAppearance": "Erscheinungsbild",
+      "settingsDelivery": "Lieferung",
+      "settingsEmbed": "Einbettung",
+      "settingsExport": "Datenexport",
+      "settingsHours": "Öffnungszeiten",
+      "settingsInspections": "Inspektionen",
+      "settingsIntegrations": "Integrationen",
+      "settingsLegal": "Rechtliche Seiten",
+      "settingsNotifications": "Benachrichtigungen",
+      "settingsPayments": "Zahlungen",
+      "settingsPromoCodes": "Promo-Codes",
+      "settingsReviewBooster": "Bewertungs-Booster",
+      "settingsTaxes": "Steuern"
+    },
+    "notificationsCenter": {
+      "title": "Benachrichtigungen",
+      "description": "Was Ihre Aufmerksamkeit braucht",
+      "pendingReservations": "Offene Anfragen",
+      "emptyTitle": "Nichts zu prüfen",
+      "emptyDescription": "Neue Anfragen erscheinen hier.",
+      "viewAllPending": "Alle offenen Anfragen ansehen"
     }
   },
   "storefront": {

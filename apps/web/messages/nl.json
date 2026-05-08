@@ -209,6 +209,7 @@
       "clickToView": "Klik om te verwerken"
     },
     "theme": {
+      "label": "Thema",
       "light": "Licht",
       "dark": "Donker",
       "system": "Systeem"
@@ -220,7 +221,8 @@
       "dashboard": "Dashboard",
       "viewStore": "Winkel bekijken",
       "newReservation": "Nieuwe reservering",
-      "help": "Hulp"
+      "help": "Hulp",
+      "feedback": "Hulp en feedback"
     },
     "storeSwitcher": {
       "selectStore": "Selecteer een winkel",
@@ -3642,6 +3644,47 @@
         "products": "Welke producten worden het meest verhuurd?",
         "customers": "Hoeveel nieuwe klanten deze maand?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Kruimelpad",
+      "home": "Home",
+      "products": "Producten",
+      "productsNew": "Nieuw product",
+      "reservations": "Reserveringen",
+      "reservationsNew": "Nieuwe reservering",
+      "customers": "Klanten",
+      "customersNew": "Nieuwe klant",
+      "calendar": "Kalender",
+      "analytics": "Analyses",
+      "team": "Team",
+      "referrals": "Verwijzingen",
+      "sms": "SMS",
+      "subscription": "Abonnement",
+      "account": "Account",
+      "settings": "Instellingen",
+      "settingsAdmin": "Administratie",
+      "settingsApi": "API",
+      "settingsAppearance": "Uiterlijk",
+      "settingsDelivery": "Levering",
+      "settingsEmbed": "Insluiten",
+      "settingsExport": "Gegevens exporteren",
+      "settingsHours": "Openingstijden",
+      "settingsInspections": "Inspecties",
+      "settingsIntegrations": "Integraties",
+      "settingsLegal": "Juridische pagina's",
+      "settingsNotifications": "Meldingen",
+      "settingsPayments": "Betalingen",
+      "settingsPromoCodes": "Promocodes",
+      "settingsReviewBooster": "Reviewbooster",
+      "settingsTaxes": "Belastingen"
+    },
+    "notificationsCenter": {
+      "title": "Meldingen",
+      "description": "Wat je aandacht vraagt",
+      "pendingReservations": "Openstaande aanvragen",
+      "emptyTitle": "Niets te controleren",
+      "emptyDescription": "Nieuwe aanvragen verschijnen hier.",
+      "viewAllPending": "Alle openstaande aanvragen bekijken"
     }
   },
   "storefront": {

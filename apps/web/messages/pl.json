@@ -209,6 +209,7 @@
       "clickToView": "Kliknij, aby przetworzyć"
     },
     "theme": {
+      "label": "Motyw",
       "light": "Jasny",
       "dark": "Ciemny",
       "system": "Systemowy"
@@ -220,7 +221,8 @@
       "dashboard": "Panel",
       "viewStore": "Zobacz sklep",
       "newReservation": "Nowa rezerwacja",
-      "help": "Pomoc"
+      "help": "Pomoc",
+      "feedback": "Pomoc i opinie"
     },
     "storeSwitcher": {
       "selectStore": "Wybierz sklep",
@@ -3642,6 +3644,47 @@
         "products": "Które produkty są najczęściej wynajmowane?",
         "customers": "Ilu nowych klientów w tym miesiącu?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Okruszki",
+      "home": "Strona główna",
+      "products": "Produkty",
+      "productsNew": "Nowy produkt",
+      "reservations": "Rezerwacje",
+      "reservationsNew": "Nowa rezerwacja",
+      "customers": "Klienci",
+      "customersNew": "Nowy klient",
+      "calendar": "Kalendarz",
+      "analytics": "Analityka",
+      "team": "Zespół",
+      "referrals": "Polecenia",
+      "sms": "SMS",
+      "subscription": "Subskrypcja",
+      "account": "Konto",
+      "settings": "Ustawienia",
+      "settingsAdmin": "Administracja",
+      "settingsApi": "API",
+      "settingsAppearance": "Wygląd",
+      "settingsDelivery": "Dostawa",
+      "settingsEmbed": "Osadzanie",
+      "settingsExport": "Eksport danych",
+      "settingsHours": "Godziny",
+      "settingsInspections": "Inspekcje",
+      "settingsIntegrations": "Integracje",
+      "settingsLegal": "Strony prawne",
+      "settingsNotifications": "Powiadomienia",
+      "settingsPayments": "Płatności",
+      "settingsPromoCodes": "Kody promocyjne",
+      "settingsReviewBooster": "Wzmacniacz opinii",
+      "settingsTaxes": "Podatki"
+    },
+    "notificationsCenter": {
+      "title": "Powiadomienia",
+      "description": "Sprawy wymagające uwagi",
+      "pendingReservations": "Oczekujące prośby",
+      "emptyTitle": "Nic do sprawdzenia",
+      "emptyDescription": "Nowe prośby pojawią się tutaj.",
+      "viewAllPending": "Zobacz wszystkie oczekujące prośby"
     }
   },
   "storefront": {

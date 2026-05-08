@@ -5,6 +5,8 @@ import { redirect, notFound } from 'next/navigation'
 import { getDashboardReservationById } from '@louez/api/services'
 import { DEFAULT_INSPECTION_SETTINGS } from '@louez/types'
 
+import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
+
 import { isSmsConfigured } from '@/lib/sms'
 import { getCurrentStore } from '@/lib/store-context'
 
@@ -119,18 +121,20 @@ export default async function ReservationDetailPage({
       : null
 
   return (
-    <ReservationDetailClient
-      reservationId={id}
-      initialReservation={reservation}
-      storeSlug={store.slug}
-      currency={currency}
-      storeTimezone={storeTimezone}
-      smsConfigured={smsConfigured}
-      stripeConfigured={stripeConfigured}
-      inspectionSettings={inspectionSettings}
-      departureInspection={formattedDepartureInspection}
-      returnInspection={formattedReturnInspection}
-    />
+    <>
+      <DashboardBreadcrumbLabel label={`#${reservation.number}`} />
+      <ReservationDetailClient
+        reservationId={id}
+        initialReservation={reservation}
+        storeSlug={store.slug}
+        currency={currency}
+        storeTimezone={storeTimezone}
+        smsConfigured={smsConfigured}
+        stripeConfigured={stripeConfigured}
+        inspectionSettings={inspectionSettings}
+        departureInspection={formattedDepartureInspection}
+        returnInspection={formattedReturnInspection}
+      />
+    </>
   )
 }
-

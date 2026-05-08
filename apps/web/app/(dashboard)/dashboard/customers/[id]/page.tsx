@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
+import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { CustomerNotes } from './customer-notes'
 
@@ -93,9 +94,14 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
       ? customerReservations.reduce((sum, r) => sum + parseFloat(r.totalAmount), 0) / customerReservations.length
       : 0,
   }
+  const customerBreadcrumbLabel =
+    customer.customerType === 'business' && customer.companyName
+      ? customer.companyName
+      : `${customer.firstName} ${customer.lastName}`.trim()
 
   return (
     <div className="space-y-6">
+      <DashboardBreadcrumbLabel label={customerBreadcrumbLabel} />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">

@@ -3,10 +3,18 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 
 import type { StoreSettings } from '@louez/types';
+import {
+  Separator,
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@louez/ui';
 
-import { ChatBubble } from '@/components/dashboard/ai-chat';
+import { DashboardBreadcrumbs } from '@/components/dashboard/dashboard-breadcrumbs';
+import { DashboardBreadcrumbsProvider } from '@/components/dashboard/dashboard-breadcrumbs-context';
+import { DashboardHeaderActions } from '@/components/dashboard/dashboard-header-actions';
 import { ReservationPollingProvider } from '@/components/dashboard/reservation-polling-provider';
-import { MobileHeader, Sidebar } from '@/components/dashboard/sidebar';
+import { DashboardSidebar } from '@/components/dashboard/sidebar';
 import { WelcomeOverlay } from '@/components/dashboard/welcome-overlay';
 
 import { isAIChatConfigured } from '@/lib/ai/provider';
@@ -43,10 +51,11 @@ export default async function DashboardMainLayout({
     redirect('/onboarding');
   }
 
-  // Get current plan for the store
-  const planSlug = await getCurrentPlanSlug(store.id);
   const settings = (store.settings as StoreSettings) || {};
   const showAIChat = isAIChatConfigured();
+
+  // Get current plan for the store
+  const planSlug = await getCurrentPlanSlug(store.id);
 
   return (
     <StoreProvider
@@ -56,30 +65,33 @@ export default async function DashboardMainLayout({
       timezone={settings.timezone}
     >
       <ReservationPollingProvider interval={30000}>
-        <div className="dashboard bg-background min-h-screen">
-          <Sidebar
-            stores={userStores}
-            currentStoreId={store.id}
-            storeSlug={store.slug}
-            userEmail={session.user.email || ''}
-            userImage={session.user.image}
-            planSlug={planSlug}
-          />
-          <MobileHeader
-            stores={userStores}
-            currentStoreId={store.id}
-            storeSlug={store.slug}
-            userEmail={session.user.email || ''}
-            userImage={session.user.image}
-            planSlug={planSlug}
-          />
-          <main className="overflow-x-hidden lg:pl-64">
-            <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
-          </main>
+        <div className="dashboard min-h-screen">
+          <SidebarProvider>
+            <DashboardBreadcrumbsProvider>
+              <DashboardSidebar
+                planSlug={planSlug}
+                stores={userStores}
+                currentStoreId={store.id}
+                storeSlug={store.slug}
+                userEmail={session.user.email || ''}
+                userImage={session.user.image}
+              />
+              <SidebarInset className="overflow-x-hidden">
+                <header className="bg-background/90 supports-backdrop-filter:bg-background/70 sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-2.5 backdrop-blur">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <SidebarTrigger className="-ml-1 shrink-0" />
+                    <Separator orientation="vertical" className="h-4 shrink-0" />
+                    <DashboardBreadcrumbs />
+                  </div>
+                  <DashboardHeaderActions showAIChat={showAIChat} />
+                </header>
+                <div className="px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+              </SidebarInset>
+            </DashboardBreadcrumbsProvider>
+          </SidebarProvider>
           <Suspense fallback={null}>
             <WelcomeOverlay />
           </Suspense>
-          {showAIChat && <ChatBubble />}
         </div>
       </ReservationPollingProvider>
     </StoreProvider>

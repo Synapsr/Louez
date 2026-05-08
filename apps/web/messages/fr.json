@@ -209,6 +209,7 @@
       "clickToView": "Cliquer pour traiter"
     },
     "theme": {
+      "label": "Thème",
       "light": "Clair",
       "dark": "Sombre",
       "system": "Système"
@@ -228,7 +229,8 @@
       "dashboard": "Dashboard",
       "viewStore": "Voir la boutique",
       "newReservation": "Nouvelle réservation",
-      "help": "Aide"
+      "help": "Aide",
+      "feedback": "Aide et feedback"
     },
     "storeSwitcher": {
       "selectStore": "Sélectionner une boutique",
@@ -3677,6 +3679,47 @@
         "products": "Quels sont les produits les plus loués ?",
         "customers": "Combien de nouveaux clients ce mois-ci ?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Fil d'Ariane",
+      "home": "Accueil",
+      "products": "Produits",
+      "productsNew": "Nouveau produit",
+      "reservations": "Réservations",
+      "reservationsNew": "Nouvelle réservation",
+      "customers": "Clients",
+      "customersNew": "Nouveau client",
+      "calendar": "Calendrier",
+      "analytics": "Analyses",
+      "team": "Équipe",
+      "referrals": "Parrainage",
+      "sms": "SMS",
+      "subscription": "Abonnement",
+      "account": "Compte",
+      "settings": "Paramètres",
+      "settingsAdmin": "Administration",
+      "settingsApi": "API",
+      "settingsAppearance": "Apparence",
+      "settingsDelivery": "Livraison",
+      "settingsEmbed": "Intégration",
+      "settingsExport": "Export des données",
+      "settingsHours": "Horaires",
+      "settingsInspections": "États des lieux",
+      "settingsIntegrations": "Intégrations",
+      "settingsLegal": "Pages légales",
+      "settingsNotifications": "Notifications",
+      "settingsPayments": "Paiements",
+      "settingsPromoCodes": "Codes promo",
+      "settingsReviewBooster": "Booster d'avis",
+      "settingsTaxes": "Taxes"
+    },
+    "notificationsCenter": {
+      "title": "Notifications",
+      "description": "Ce qui demande votre attention",
+      "pendingReservations": "Demandes en attente",
+      "emptyTitle": "Rien à traiter",
+      "emptyDescription": "Les nouvelles demandes apparaîtront ici.",
+      "viewAllPending": "Voir toutes les demandes en attente"
     }
   },
   "storefront": {

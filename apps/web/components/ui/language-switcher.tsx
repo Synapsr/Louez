@@ -9,10 +9,14 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@louez/ui'
 import { Button } from '@louez/ui'
-import { Globe } from 'lucide-react'
+import { Check, Globe } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 interface LanguageSwitcherProps {
   variant?: 'default' | 'compact' | 'minimal'
@@ -126,5 +130,44 @@ export function LanguageSwitcher({ variant = 'default', className }: LanguageSwi
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+export function LanguageMenuSub() {
+  const locale = useLocale() as Locale
+  const router = useRouter()
+  const t = useTranslations('common.language')
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const handleLocaleChange = (newLocale: Locale) => {
+    if (newLocale === locale) return
+    setLocaleCookie(newLocale)
+    router.refresh()
+  }
+
+  return (
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>
+        <Globe className="h-4 w-4" />
+        {t('label')}
+      </DropdownMenuSubTrigger>
+      <DropdownMenuSubContent className="w-48">
+        {locales.map((loc) => (
+          <DropdownMenuItem
+            key={loc}
+            onClick={() => handleLocaleChange(loc)}
+            className="cursor-pointer"
+          >
+            <span className="text-base">{localeFlags[loc]}</span>
+            <span>{localeNames[loc]}</span>
+            {mounted && locale === loc && <Check className="ml-auto h-4 w-4" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
   )
 }

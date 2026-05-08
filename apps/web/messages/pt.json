@@ -209,6 +209,7 @@
       "clickToView": "Clique para processar"
     },
     "theme": {
+      "label": "Tema",
       "light": "Claro",
       "dark": "Escuro",
       "system": "Sistema"
@@ -220,7 +221,8 @@
       "dashboard": "Painel",
       "viewStore": "Ver loja",
       "newReservation": "Nova reserva",
-      "help": "Ajuda"
+      "help": "Ajuda",
+      "feedback": "Ajuda e feedback"
     },
     "storeSwitcher": {
       "selectStore": "Selecionar uma loja",
@@ -3642,6 +3644,47 @@
         "products": "Quais são os produtos mais alugados?",
         "customers": "Quantos novos clientes este mês?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Breadcrumb",
+      "home": "Início",
+      "products": "Produtos",
+      "productsNew": "Novo produto",
+      "reservations": "Reservas",
+      "reservationsNew": "Nova reserva",
+      "customers": "Clientes",
+      "customersNew": "Novo cliente",
+      "calendar": "Calendário",
+      "analytics": "Análises",
+      "team": "Equipa",
+      "referrals": "Indicações",
+      "sms": "SMS",
+      "subscription": "Subscrição",
+      "account": "Conta",
+      "settings": "Definições",
+      "settingsAdmin": "Administração",
+      "settingsApi": "API",
+      "settingsAppearance": "Aparência",
+      "settingsDelivery": "Entrega",
+      "settingsEmbed": "Incorporação",
+      "settingsExport": "Exportação de dados",
+      "settingsHours": "Horários",
+      "settingsInspections": "Inspeções",
+      "settingsIntegrations": "Integrações",
+      "settingsLegal": "Páginas legais",
+      "settingsNotifications": "Notificações",
+      "settingsPayments": "Pagamentos",
+      "settingsPromoCodes": "Códigos promocionais",
+      "settingsReviewBooster": "Impulso de avaliações",
+      "settingsTaxes": "Impostos"
+    },
+    "notificationsCenter": {
+      "title": "Notificações",
+      "description": "O que precisa da sua atenção",
+      "pendingReservations": "Pedidos pendentes",
+      "emptyTitle": "Nada para rever",
+      "emptyDescription": "Novos pedidos aparecerão aqui.",
+      "viewAllPending": "Ver todos os pedidos pendentes"
     }
   },
   "storefront": {
