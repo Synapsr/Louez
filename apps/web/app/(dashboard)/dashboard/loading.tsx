@@ -1,15 +1,11 @@
-import { Loader2 } from 'lucide-react'
-import { getTranslations } from 'next-intl/server'
+import { DashboardHomeSkeleton } from '@/components/dashboard/home/dashboard-home-skeleton'
+import { GradientMesh } from '@/components/dashboard/home'
 
-export default async function DashboardLoading() {
-  const t = await getTranslations('common')
-
+export default function DashboardLoading() {
   return (
-    <div className="flex h-[50vh] items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">{t('loading')}</p>
-      </div>
-    </div>
+    <>
+      <GradientMesh />
+      <DashboardHomeSkeleton />
+    </>
   )
 }
