@@ -96,7 +96,7 @@ export function OpenReplayProvider({
   }, [store, user]);
 
   useEffect(() => {
-    if (!user || env.NODE_ENV !== 'production') {
+    if (!user || process.env.NODE_ENV !== 'production') {
       return;
     }
 
