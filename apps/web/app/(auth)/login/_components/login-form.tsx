@@ -19,12 +19,12 @@ export const LoginForm = ({
   const state = useLoginForm({ callbackUrl, initialErrorCode, refCode });
 
   return (
-    <LoginCard>
+    <>
       {state.otpSent ? (
         <LoginOtpStep state={state} />
       ) : (
         <LoginEmailStep state={state} />
       )}
-    </LoginCard>
+    </>
   );
 };

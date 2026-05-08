@@ -22,14 +22,14 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
   const { emailForm, handleGoogleSignIn, isPending, rootError, t } = state;
 
   return (
-    <>
-      <CardHeader className="space-y-2 text-center">
-        <CardTitle className="text-2xl font-bold">{t('loginTitle')}</CardTitle>
-        <CardDescription className="text-base">
+    <div className="space-y-6 px-4">
+      <div className="space-y-2 text-center">
+        <h2 className="text-2xl font-bold">{t('loginTitle')}</h2>
+        <p className="text-base text-muted-foreground">
           {t('loginDescription')}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 shadow-none rounded-none">
+        </p>
+      </div>
+      <div className="space-y-6">
         <Button
           variant="outline"
           className="h-12 w-full text-base font-medium"
@@ -94,7 +94,7 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
         </emailForm.AppForm>
 
         <LoginErrorAlert message={rootError} />
-      </CardContent>
-    </>
+      </div>
+    </div>
   );
 };

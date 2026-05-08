@@ -28,19 +28,21 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
   } = state;
 
   return (
-    <>
-      <CardHeader className="space-y-4 text-center">
+    <div className="space-y-6 px-4">
+      <div className="space-y-3 text-center">
         <div className="bg-primary/10 mx-auto flex h-16 w-16 items-center justify-center rounded-full">
           <Mail className="text-primary h-8 w-8" />
         </div>
-        <CardTitle className="text-2xl">{t('enterCode')}</CardTitle>
-        <CardDescription className="text-base">
-          {t('codeSentTo')} <strong>{submittedEmail}</strong>
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">{t('enterCode')}</h2>
+          <p className="text-muted-foreground text-base">
+            {t('codeSentTo')} <strong>{submittedEmail}</strong>
+          </p>
+        </div>
+      </div>
+      <div className="space-y-2">
         <otpForm.AppForm>
-          <otpForm.Form className="space-y-4" formName="auth.login.otp">
+          <otpForm.Form className="space-y-6" formName="auth.login.otp">
             <otpForm.AppField name="otp">
               {(field) => (
                 <>
@@ -77,7 +79,7 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
         </Button>
 
         <LoginErrorAlert message={rootError} />
-      </CardContent>
-    </>
+      </div>
+    </div>
   );
 };
