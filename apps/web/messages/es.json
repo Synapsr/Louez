@@ -5069,5 +5069,83 @@
     "greeting": "Bienvenido a Louez.io",
     "tagline": "Tu tienda está lista",
     "skip": "Presione para continuar"
+  },
+  "legalPages": {
+    "back": "Volver",
+    "lastUpdated": "Última actualización: mayo de 2026",
+    "contactPrompt": "Para cualquier pregunta relativa a este documento, puede contactarnos en:",
+    "contactEmail": "contact@louez.io",
+    "terms": {
+      "title": "Condiciones de uso",
+      "intro": "Las presentes condiciones generales de uso rigen el acceso y la utilización de la plataforma Louez.io. Al crear una cuenta, usted acepta la totalidad de las presentes condiciones.",
+      "s1": {
+        "title": "Objeto del servicio",
+        "body": "Louez.io es una plataforma en línea destinada a los profesionales del alquiler que desean gestionar su catálogo de productos, sus reservas, sus clientes y su tienda en línea. El servicio es accesible mediante suscripción."
+      },
+      "s2": {
+        "title": "Cuenta de usuario",
+        "body": "El acceso a la plataforma requiere la creación de una cuenta con una dirección de correo electrónico válida. Usted es responsable de la confidencialidad de sus credenciales y de todas las actividades realizadas desde su cuenta. Se compromete a proporcionar información exacta y a mantenerla actualizada."
+      },
+      "s3": {
+        "title": "Uso del servicio",
+        "body": "Usted se compromete a utilizar la plataforma de conformidad con la ley y las presentes condiciones. Quedan especialmente prohibidos: la publicación de contenidos ilegales, el intento de acceso no autorizado a la plataforma, la perturbación del servicio, la recopilación abusiva de datos y el uso del servicio con fines fraudulentos."
+      },
+      "s4": {
+        "title": "Tarifas y pago",
+        "body": "El uso de Louez.io está sujeto a una suscripción cuyas condiciones tarifarias se especifican en el momento de la contratación. Los pagos se cobran según la periodicidad elegida. En caso de impago, el acceso al servicio podrá suspenderse hasta su regularización."
+      },
+      "s5": {
+        "title": "Propiedad intelectual",
+        "body": "El conjunto de elementos que componen la plataforma (logotipo, marca, código fuente, diseño, textos, ilustraciones) sigue siendo propiedad exclusiva de Louez.io o de sus socios. Cualquier reproducción o uso no autorizado queda estrictamente prohibido. Los contenidos que usted publique siguen siendo de su propiedad, pero concede a Louez.io una licencia no exclusiva para alojarlos y difundirlos en el marco del servicio."
+      },
+      "s6": {
+        "title": "Disponibilidad y responsabilidad",
+        "body": "Louez.io hace todo lo posible para garantizar una disponibilidad óptima de la plataforma, sin poder garantizar la ausencia total de interrupciones. No podrá exigirse nuestra responsabilidad en caso de fuerza mayor, fallo de un tercero o uso indebido del servicio. Usted sigue siendo el único responsable de las relaciones comerciales con sus propios clientes."
+      },
+      "s7": {
+        "title": "Resolución",
+        "body": "Puede cancelar su suscripción en cualquier momento desde los ajustes de su cuenta. En caso de incumplimiento grave de las presentes condiciones, Louez.io se reserva el derecho de suspender o cerrar su cuenta sin previo aviso. Sus datos se conservan y se restituyen de conformidad con nuestra política de privacidad."
+      },
+      "s8": {
+        "title": "Derecho aplicable",
+        "body": "Las presentes condiciones se rigen por el derecho francés. Cualquier litigio relativo a su ejecución o interpretación será competencia exclusiva de los tribunales franceses, previo intento de resolución amistosa."
+      }
+    },
+    "privacy": {
+      "title": "Política de privacidad",
+      "intro": "Louez.io concede una gran importancia a la protección de sus datos personales. La presente política describe los datos que recopilamos, las finalidades de su tratamiento y los derechos que le asisten, de conformidad con el Reglamento General de Protección de Datos (RGPD).",
+      "s1": {
+        "title": "Responsable del tratamiento",
+        "body": "El responsable del tratamiento de sus datos es Louez.io. Para cualquier pregunta relativa a sus datos personales o al ejercicio de sus derechos, puede escribirnos a contact@louez.io."
+      },
+      "s2": {
+        "title": "Datos recopilados",
+        "body": "Recopilamos los datos estrictamente necesarios para la prestación del servicio: su nombre, su dirección de correo electrónico, la información relativa a su tienda (nombre, dirección, logotipo), los datos de sus productos y reservas, así como los datos técnicos (dirección IP, registros de conexión, tipo de dispositivo). Los pagos son tratados por un proveedor especializado: nunca tenemos acceso a los números completos de tarjeta bancaria."
+      },
+      "s3": {
+        "title": "Finalidades del tratamiento",
+        "body": "Sus datos se utilizan para: crear y gestionar su cuenta, proporcionar las funcionalidades de la plataforma, enviarle las notificaciones necesarias para el servicio, garantizar la seguridad y la prevención del fraude, responder a sus solicitudes de soporte y mejorar nuestros servicios."
+      },
+      "s4": {
+        "title": "Base legal",
+        "body": "El tratamiento de sus datos se basa en: la ejecución del contrato que nos vincula (prestación del servicio), su consentimiento (comunicaciones de marketing facultativas), nuestras obligaciones legales (facturación, contabilidad) y nuestro interés legítimo (seguridad, prevención del fraude, mejora del servicio)."
+      },
+      "s5": {
+        "title": "Plazo de conservación",
+        "body": "Sus datos se conservan durante toda la duración de su suscripción. Tras la cancelación, se conservan durante un plazo máximo de tres años con fines probatorios, y posteriormente se eliminan o anonimizan. Los datos contables y fiscales se conservan durante diez años de conformidad con las obligaciones legales."
+      },
+      "s6": {
+        "title": "Sus derechos",
+        "body": "De conformidad con el RGPD, dispone de un derecho de acceso, rectificación, supresión, limitación, portabilidad y oposición al tratamiento de sus datos. Puede ejercer estos derechos en cualquier momento escribiéndonos a contact@louez.io. Asimismo, tiene derecho a presentar una reclamación ante la autoridad de protección de datos competente (en España, la AEPD)."
+      },
+      "s7": {
+        "title": "Cookies y rastreadores",
+        "body": "Utilizamos cookies esenciales para el funcionamiento de la plataforma (autenticación, preferencias de visualización) y herramientas de análisis anonimizadas para comprender el uso del servicio y mejorarlo. No se instala ninguna cookie publicitaria sin su consentimiento explícito."
+      },
+      "s8": {
+        "title": "Seguridad de los datos",
+        "body": "Implementamos medidas técnicas y organizativas adecuadas para proteger sus datos frente a la pérdida, el acceso no autorizado, la alteración o la divulgación: cifrado de las comunicaciones, control de acceso, copias de seguridad periódicas y alojamiento seguro dentro de la Unión Europea."
+      }
+    }
   }
 }

@@ -40,7 +40,7 @@ export const LoginOtpStep = ({ state }: LoginOtpStepProps) => {
       </CardHeader>
       <CardContent className="space-y-4">
         <otpForm.AppForm>
-          <otpForm.Form className="space-y-4">
+          <otpForm.Form className="space-y-4" formName="auth.login.otp">
             <otpForm.AppField name="otp">
               {(field) => (
                 <>

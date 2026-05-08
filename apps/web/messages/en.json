@@ -5106,5 +5106,83 @@
     "greeting": "Welcome to Louez.io",
     "tagline": "Your store is ready",
     "skip": "Press to continue"
+  },
+  "legalPages": {
+    "back": "Back",
+    "lastUpdated": "Last updated: May 2026",
+    "contactPrompt": "If you have any questions about this document, you can contact us at:",
+    "contactEmail": "contact@louez.io",
+    "terms": {
+      "title": "Terms of Service",
+      "intro": "These terms of service govern access to and use of the Louez.io platform. By creating an account, you agree to be bound by all of these terms.",
+      "s1": {
+        "title": "Purpose of the service",
+        "body": "Louez.io is an online platform designed for rental professionals who wish to manage their product catalogue, bookings, customers and online store. The service is available on a subscription basis."
+      },
+      "s2": {
+        "title": "User account",
+        "body": "Access to the platform requires the creation of an account with a valid email address. You are responsible for keeping your credentials confidential and for all activity carried out through your account. You agree to provide accurate information and keep it up to date."
+      },
+      "s3": {
+        "title": "Use of the service",
+        "body": "You agree to use the platform in compliance with the law and these terms. The following activities are strictly prohibited: uploading illegal content, attempting unauthorised access to the platform, disrupting the service, abusive data collection and using the service for fraudulent purposes."
+      },
+      "s4": {
+        "title": "Pricing and payment",
+        "body": "Use of Louez.io is subject to a subscription whose pricing terms are specified at the time of sign-up. Payments are charged according to the billing frequency you choose. In the event of non-payment, access to the service may be suspended until the situation is resolved."
+      },
+      "s5": {
+        "title": "Intellectual property",
+        "body": "All elements making up the platform (logo, brand, source code, design, text, illustrations) remain the exclusive property of Louez.io or its partners. Any unauthorised reproduction or use is strictly prohibited. The content you publish remains your property, but you grant Louez.io a non-exclusive licence to host and display it as part of the service."
+      },
+      "s6": {
+        "title": "Availability and liability",
+        "body": "Louez.io makes every effort to ensure optimal availability of the platform but cannot guarantee that it will be entirely free of interruption. We cannot be held liable in cases of force majeure, third-party failure or misuse of the service. You remain solely responsible for your commercial relationships with your own customers."
+      },
+      "s7": {
+        "title": "Termination",
+        "body": "You can cancel your subscription at any time from your account settings. In the event of a serious breach of these terms, Louez.io reserves the right to suspend or close your account without notice. Your data is retained and returned in accordance with our privacy policy."
+      },
+      "s8": {
+        "title": "Governing law",
+        "body": "These terms are governed by French law. Any dispute relating to their performance or interpretation shall fall under the exclusive jurisdiction of the French courts, after a prior attempt at amicable resolution."
+      }
+    },
+    "privacy": {
+      "title": "Privacy Policy",
+      "intro": "Louez.io places great importance on protecting your personal data. This policy describes the data we collect, the purposes for which it is processed and the rights available to you, in accordance with the General Data Protection Regulation (GDPR).",
+      "s1": {
+        "title": "Data controller",
+        "body": "The controller of your data is Louez.io. For any questions regarding your personal data or to exercise your rights, you can write to us at contact@louez.io."
+      },
+      "s2": {
+        "title": "Data collected",
+        "body": "We collect only the data strictly necessary to provide the service: your name, your email address, information about your store (name, address, logo), data relating to your products and bookings, as well as technical data (IP address, connection logs, device type). Payments are processed by a specialised provider: we never have access to full payment card numbers."
+      },
+      "s3": {
+        "title": "Purposes of processing",
+        "body": "Your data is used to: create and manage your account, provide the platform's features, send you notifications necessary for the service, ensure security and fraud prevention, respond to your support requests, and improve our services."
+      },
+      "s4": {
+        "title": "Legal basis",
+        "body": "The processing of your data is based on: the performance of the contract between us (provision of the service), your consent (optional marketing communications), our legal obligations (billing, accounting) and our legitimate interest (security, fraud prevention, service improvement)."
+      },
+      "s5": {
+        "title": "Retention period",
+        "body": "Your data is retained for the entire duration of your subscription. Upon termination, it is kept for a maximum period of three years for evidentiary purposes, then deleted or anonymised. Accounting and tax data is retained for ten years in accordance with legal obligations."
+      },
+      "s6": {
+        "title": "Your rights",
+        "body": "In accordance with the GDPR, you have the right to access, rectify, erase, restrict, port and object to the processing of your data. You can exercise these rights at any time by writing to us at contact@louez.io. You also have the right to lodge a complaint with the relevant data protection authority (CNIL in France)."
+      },
+      "s7": {
+        "title": "Cookies and trackers",
+        "body": "We use cookies that are essential to the operation of the platform (authentication, display preferences) and anonymised analytics tools to understand and improve usage of the service. No advertising cookies are placed without your explicit consent."
+      },
+      "s8": {
+        "title": "Data security",
+        "body": "We implement appropriate technical and organisational measures to protect your data against loss, unauthorised access, alteration or disclosure: encryption of communications, access controls, regular backups and secure hosting within the European Union."
+      }
+    }
   }
 }

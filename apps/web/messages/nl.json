@@ -5061,5 +5061,83 @@
     "greeting": "Welkom bij Louez.io",
     "tagline": "Uw winkel is klaar",
     "skip": "Druk om door te gaan"
+  },
+  "legalPages": {
+    "back": "Terug",
+    "lastUpdated": "Laatst bijgewerkt: mei 2026",
+    "contactPrompt": "Voor vragen over dit document kunt u contact met ons opnemen via:",
+    "contactEmail": "contact@louez.io",
+    "terms": {
+      "title": "Gebruiksvoorwaarden",
+      "intro": "Deze algemene gebruiksvoorwaarden regelen de toegang tot en het gebruik van het Louez.io-platform. Door een account aan te maken, gaat u volledig akkoord met deze voorwaarden.",
+      "s1": {
+        "title": "Doel van de dienst",
+        "body": "Louez.io is een online platform bestemd voor verhuurprofessionals die hun productcatalogus, reserveringen, klanten en webshop willen beheren. De dienst is toegankelijk via een abonnement."
+      },
+      "s2": {
+        "title": "Gebruikersaccount",
+        "body": "Toegang tot het platform vereist het aanmaken van een account met een geldig e-mailadres. U bent verantwoordelijk voor de vertrouwelijkheid van uw inloggegevens en voor alle activiteiten die vanuit uw account worden uitgevoerd. U verbindt zich ertoe juiste informatie te verstrekken en deze actueel te houden."
+      },
+      "s3": {
+        "title": "Gebruik van de dienst",
+        "body": "U verbindt zich ertoe het platform te gebruiken in overeenstemming met de wet en deze voorwaarden. Met name verboden zijn: het uploaden van illegale inhoud, pogingen tot ongeoorloofde toegang tot het platform, verstoring van de dienst, oneigenlijke gegevensverzameling en gebruik van de dienst voor frauduleuze doeleinden."
+      },
+      "s4": {
+        "title": "Tarieven en betaling",
+        "body": "Het gebruik van Louez.io is onderworpen aan een abonnement waarvan de tariefvoorwaarden bij inschrijving worden vermeld. Betalingen worden geïnd volgens de gekozen frequentie. Bij wanbetaling kan de toegang tot de dienst worden opgeschort tot regularisatie."
+      },
+      "s5": {
+        "title": "Intellectuele eigendom",
+        "body": "Alle elementen waaruit het platform bestaat (logo, merk, broncode, ontwerp, teksten, illustraties) blijven het exclusieve eigendom van Louez.io of van zijn partners. Elke ongeautoriseerde reproductie of gebruik is strikt verboden. De inhoud die u publiceert blijft uw eigendom, maar u verleent Louez.io een niet-exclusieve licentie om deze te hosten en te verspreiden in het kader van de dienst."
+      },
+      "s6": {
+        "title": "Beschikbaarheid en aansprakelijkheid",
+        "body": "Louez.io stelt alles in het werk om een optimale beschikbaarheid van het platform te waarborgen, zonder een volledige afwezigheid van onderbrekingen te kunnen garanderen. Onze aansprakelijkheid kan niet worden ingeroepen in geval van overmacht, het in gebreke blijven van een derde of oneigenlijk gebruik van de dienst. U blijft als enige verantwoordelijk voor de commerciële relaties met uw eigen klanten."
+      },
+      "s7": {
+        "title": "Beëindiging",
+        "body": "U kunt uw abonnement op elk moment opzeggen via de instellingen van uw account. In geval van een ernstige inbreuk op deze voorwaarden behoudt Louez.io zich het recht voor uw account zonder voorafgaande kennisgeving op te schorten of te sluiten. Uw gegevens worden bewaard en geretourneerd in overeenstemming met ons privacybeleid."
+      },
+      "s8": {
+        "title": "Toepasselijk recht",
+        "body": "Deze voorwaarden worden beheerst door het Franse recht. Elk geschil met betrekking tot de uitvoering of interpretatie ervan valt onder de exclusieve bevoegdheid van de Franse rechtbanken, na een voorafgaande poging tot minnelijke schikking."
+      }
+    },
+    "privacy": {
+      "title": "Privacybeleid",
+      "intro": "Louez.io hecht veel belang aan de bescherming van uw persoonsgegevens. Dit beleid beschrijft welke gegevens wij verzamelen, voor welke doeleinden ze worden verwerkt en welke rechten u heeft, in overeenstemming met de Algemene Verordening Gegevensbescherming (AVG/GDPR).",
+      "s1": {
+        "title": "Verwerkingsverantwoordelijke",
+        "body": "De verwerkingsverantwoordelijke voor uw gegevens is Louez.io. Voor vragen over uw persoonsgegevens of de uitoefening van uw rechten kunt u ons schrijven op contact@louez.io."
+      },
+      "s2": {
+        "title": "Verzamelde gegevens",
+        "body": "Wij verzamelen uitsluitend de gegevens die strikt noodzakelijk zijn voor de levering van de dienst: uw naam, uw e-mailadres, gegevens over uw winkel (naam, adres, logo), gegevens over uw producten en reserveringen, en technische gegevens (IP-adres, verbindingslogs, type apparaat). Betalingen worden verwerkt door een gespecialiseerde dienstverlener: wij hebben nooit toegang tot volledige creditcardnummers."
+      },
+      "s3": {
+        "title": "Doeleinden van de verwerking",
+        "body": "Uw gegevens worden gebruikt om: uw account aan te maken en te beheren, de functionaliteiten van het platform te leveren, u de voor de dienst noodzakelijke meldingen te sturen, de veiligheid en fraudepreventie te waarborgen, te reageren op uw supportverzoeken en onze diensten te verbeteren."
+      },
+      "s4": {
+        "title": "Rechtsgrondslag",
+        "body": "De verwerking van uw gegevens is gebaseerd op: de uitvoering van de overeenkomst die ons bindt (levering van de dienst), uw toestemming (optionele marketingcommunicatie), onze wettelijke verplichtingen (facturering, boekhouding) en ons gerechtvaardigd belang (veiligheid, fraudepreventie, verbetering van de dienst)."
+      },
+      "s5": {
+        "title": "Bewaartermijn",
+        "body": "Uw gegevens worden bewaard gedurende de gehele duur van uw abonnement. Bij beëindiging worden ze maximaal drie jaar bewaard voor bewijsdoeleinden en vervolgens verwijderd of geanonimiseerd. Boekhoudkundige en fiscale gegevens worden tien jaar bewaard in overeenstemming met de wettelijke verplichtingen."
+      },
+      "s6": {
+        "title": "Uw rechten",
+        "body": "In overeenstemming met de AVG heeft u recht op inzage, rectificatie, verwijdering, beperking, overdraagbaarheid en bezwaar tegen de verwerking van uw gegevens. U kunt deze rechten op elk moment uitoefenen door ons te schrijven op contact@louez.io. U heeft tevens het recht een klacht in te dienen bij de bevoegde toezichthouder voor gegevensbescherming (in Frankrijk de CNIL)."
+      },
+      "s7": {
+        "title": "Cookies en trackers",
+        "body": "Wij gebruiken cookies die essentieel zijn voor de werking van het platform (authenticatie, weergavevoorkeuren) en geanonimiseerde analysetools om het gebruik van de dienst te begrijpen en te verbeteren. Er worden geen advertentiecookies geplaatst zonder uw uitdrukkelijke toestemming."
+      },
+      "s8": {
+        "title": "Gegevensbeveiliging",
+        "body": "Wij implementeren passende technische en organisatorische maatregelen om uw gegevens te beschermen tegen verlies, ongeoorloofde toegang, wijziging of openbaarmaking: versleuteling van communicatie, toegangscontrole, regelmatige back-ups en beveiligde hosting binnen de Europese Unie."
+      }
+    }
   }
 }

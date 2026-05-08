@@ -12,6 +12,17 @@ Never read `process.env` directly — always import `env` from the owning packag
 
 Do not introduce libraries outside the imposed stack defined in [ARCHITECTURE.md](../ARCHITECTURE.md#imposed-stack) without explicit approval.
 
+### [GN-03] Application logging
+
+Use Evlog for application logs that matter for operations, debugging, support, or business-critical flows. Avoid `console.*` for important logs in production code because it bypasses structured context, local drains, request correlation, and structured errors.
+
+Use the appropriate Evlog entrypoint for the runtime:
+
+- Server route handlers and server-side application code: import from the app logging module (`@/lib/evlog`) and prefer `withEvlog()`, `useLogger().set()`, `useLogger().error()`, and `createError()`.
+- Client components: import from `evlog/next/client` and emit structured events with `log.info()`, `log.warn()`, or `log.error()`.
+
+`console.*` is acceptable only for temporary local debugging or build/tooling scripts where Evlog is not available. Remove temporary debug logs before merging.
+
 ---
 
 ## Related

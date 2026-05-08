@@ -94,6 +94,8 @@ export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
             {t('termsAgreement')}{' '}
             <Link
               href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
               {t('termsOfService')}
@@ -101,6 +103,8 @@ export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
             {t('and')}{' '}
             <Link
               href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
               {t('privacyPolicy')}

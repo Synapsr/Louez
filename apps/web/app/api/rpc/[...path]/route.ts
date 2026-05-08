@@ -9,6 +9,7 @@ import { getStorageKey, uploadFile } from '@/lib/storage/client';
 import { getCurrentStore } from '@/lib/store-context';
 
 import { getCustomerSession } from '@/app/(storefront)/[slug]/account/actions';
+import { log, useLogger, withEvlog } from '@/lib/evlog';
 import {
   assignUnitsToReservationItem,
   cancelReservation,
@@ -48,12 +49,29 @@ import {
 const handler = new RPCHandler(appRouter, {
   interceptors: [
     onError((error) => {
-      console.error('[oRPC Error]', error);
+      const rpcError =
+        error instanceof Error ? error : new Error('Unknown oRPC error');
+
+      try {
+        useLogger().error(rpcError, { step: 'orpc' });
+      } catch {
+        log.error('orpc', rpcError.message);
+      }
     }),
   ],
 });
 
 async function handleRequest(request: Request) {
+  const logger = useLogger();
+  const url = new URL(request.url);
+
+  logger.set({
+    rpc: {
+      path: url.pathname,
+      method: request.method,
+    },
+  });
+
   const { response } = await handler.handle(request, {
     prefix: '/api/rpc',
     context: {
@@ -131,5 +149,5 @@ async function handleRequest(request: Request) {
   return response ?? new Response('Not found', { status: 404 });
 }
 
-export const GET = handleRequest;
-export const POST = handleRequest;
+export const GET = withEvlog(handleRequest);
+export const POST = withEvlog(handleRequest);

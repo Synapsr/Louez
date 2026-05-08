@@ -7,6 +7,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 
 import { AnchoredToastProvider, ToastProvider } from '@louez/ui';
 
+import { EvlogProvider } from '@/components/evlog-provider';
 import { UmamiAnalytics } from '@/components/umami-analytics';
 
 import { env } from '@/env';
@@ -68,11 +69,13 @@ export default function RootLayout({
         </head>
         <body className={`${inter.variable} font-sans antialiased`}>
           <NuqsAdapter>
-            <ORPCProvider>
-              <ToastProvider position="top-center">
-                <AnchoredToastProvider>{children}</AnchoredToastProvider>
-              </ToastProvider>
-            </ORPCProvider>
+            <EvlogProvider>
+              <ORPCProvider>
+                <ToastProvider position="top-center">
+                  <AnchoredToastProvider>{children}</AnchoredToastProvider>
+                </ToastProvider>
+              </ORPCProvider>
+            </EvlogProvider>
           </NuqsAdapter>
         </body>
       </html>

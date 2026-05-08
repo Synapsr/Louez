@@ -69,7 +69,7 @@ export const LoginEmailStep = ({ state }: LoginEmailStepProps) => {
         </div>
 
         <emailForm.AppForm>
-          <emailForm.Form className="space-y-4">
+          <emailForm.Form className="space-y-4" formName="auth.login.email">
             <emailForm.AppField name="email">
               {(field) => (
                 <field.Input
