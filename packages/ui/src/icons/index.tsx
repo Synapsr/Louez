@@ -14,4 +14,5 @@ export {
   Settings as SettingsIcon,
   Sparkles as SparklesIcon,
   Users as UsersIcon,
+  Loader as LoaderIcon,
 } from 'lucide-react';
