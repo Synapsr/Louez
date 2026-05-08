@@ -70,14 +70,14 @@ import { WeekView } from './week-view';
 // =============================================================================
 
 const STATUS_COLORS: Record<ReservationStatus, string> = {
-  pending: 'bg-yellow-500',
-  confirmed: 'bg-green-500',
-  ongoing: 'bg-blue-500',
-  completed: 'bg-gray-400',
-  cancelled: 'bg-red-300',
-  rejected: 'bg-red-400',
-  quote: 'bg-violet-500',
-  declined: 'bg-slate-400',
+  pending: 'bg-reservation-pending',
+  confirmed: 'bg-reservation-confirmed',
+  ongoing: 'bg-reservation-ongoing',
+  completed: 'bg-reservation-completed',
+  cancelled: 'bg-reservation-cancelled',
+  rejected: 'bg-reservation-rejected',
+  quote: 'bg-reservation-quote',
+  declined: 'bg-reservation-declined',
 };
 
 const calendarDateParser = createParser({
