@@ -47,9 +47,11 @@ function getStoreStatus(businessHours: BusinessHours | undefined, timezone?: str
   const now = new Date()
 
   // Check closure periods
-  const closurePeriod = isInClosurePeriod(now, businessHours.closurePeriods)
+  const closurePeriod = isInClosurePeriod(now, businessHours.closurePeriods, timezone)
   if (closurePeriod) {
-    const nextOpening = findNextOpening(now, businessHours, timezone)
+    const nextOpening = closurePeriod.endTime
+      ? { day: now, time: closurePeriod.endTime }
+      : findNextOpening(now, businessHours, timezone)
     return { isOpen: false, reason: 'closure_period', nextOpening }
   }
 
@@ -111,7 +113,8 @@ function findNextOpening(
   for (let i = 0; i < 14; i++) {
     const checkDate = i === 0 ? fromDate : addDays(fromDate, i)
 
-    if (isInClosurePeriod(checkDate, businessHours.closurePeriods)) {
+    const closurePeriod = isInClosurePeriod(checkDate, businessHours.closurePeriods, timezone)
+    if (closurePeriod && !closurePeriod.startTime && !closurePeriod.endTime) {
       continue
     }
 

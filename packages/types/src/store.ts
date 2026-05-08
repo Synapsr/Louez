@@ -13,6 +13,8 @@ export interface ClosurePeriod {
   name: string
   startDate: string  // ISO date string
   endDate: string    // ISO date string
+  startTime?: string  // "HH:mm" for partial-day closures
+  endTime?: string    // "HH:mm" for partial-day closures
   reason?: string
 }
 
