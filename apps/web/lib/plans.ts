@@ -1,49 +1,53 @@
-import type { PlanFeatures } from '@louez/types'
-import { env } from '@/env'
+import type { PlanFeatures } from '@louez/types';
 
-export type Currency = 'eur' | 'usd'
+import { env } from '@/env';
 
-export const SUPPORTED_CURRENCIES: Currency[] = ['eur', 'usd']
+export type Currency = 'eur' | 'usd';
+
+export const SUPPORTED_CURRENCIES: Currency[] = ['eur', 'usd'];
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   eur: '€',
   usd: '$',
-}
+};
 
 // SMS top-up pricing per plan (in cents)
 export const SMS_TOPUP_PRICING: Record<string, number | null> = {
   start: null, // Cannot top-up
   pro: 15, // 0.15€ per SMS
   ultra: 7, // 0.07€ per SMS
-}
+};
 
 // Available SMS top-up packages
-export const SMS_TOPUP_PACKAGES = [50, 100, 250, 500] as const
-export type SmsTopupPackage = (typeof SMS_TOPUP_PACKAGES)[number]
+export const SMS_TOPUP_PACKAGES = [50, 100, 250, 500] as const;
+export type SmsTopupPackage = (typeof SMS_TOPUP_PACKAGES)[number];
 
 export interface PlanPrices {
-  monthly?: string
-  yearly?: string
+  monthly?: string;
+  yearly?: string;
 }
 
 export interface Plan {
-  slug: string
-  name: string
-  description: string
-  price: number // Monthly price (same in EUR and USD)
-  features: PlanFeatures
-  isPopular?: boolean
+  slug: string;
+  name: string;
+  description: string;
+  price: number; // Monthly price (same in EUR and USD)
+  features: PlanFeatures;
+  isPopular?: boolean;
   // Legacy fields for backwards compatibility
-  stripePriceMonthly?: string
-  stripePriceYearly?: string
+  stripePriceMonthly?: string;
+  stripePriceYearly?: string;
   // Multi-currency support
-  stripePrices?: Record<Currency, PlanPrices>
+  stripePrices?: Record<Currency, PlanPrices>;
 }
 
 /**
  * Base plan definitions (without Stripe IDs)
  */
-const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceYearly'>> = {
+const BASE_PLANS: Record<
+  string,
+  Omit<Plan, 'stripePriceMonthly' | 'stripePriceYearly'>
+> = {
   start: {
     slug: 'start',
     name: 'Start',
@@ -51,7 +55,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
     price: 0,
     features: {
       maxProducts: 5,
-      maxReservationsPerMonth: 10,
+      maxReservationsPerMonth: 2,
       maxCustomers: 50,
       maxCollaborators: 0,
       maxSmsPerMonth: 5,
@@ -117,7 +121,7 @@ const BASE_PLANS: Record<string, Omit<Plan, 'stripePriceMonthly' | 'stripePriceY
       dedicatedManager: false,
     },
   },
-}
+};
 
 /**
  * Get all active plans with Stripe price IDs injected at runtime
@@ -162,21 +166,21 @@ export function getPlans(): Plan[] {
         },
       },
     },
-  ]
+  ];
 }
 
 /**
  * Get a plan by slug with Stripe price IDs
  */
 export function getPlan(slug: string): Plan | undefined {
-  return getPlans().find((p) => p.slug === slug)
+  return getPlans().find((p) => p.slug === slug);
 }
 
 /**
  * Get the default (free) plan
  */
 export function getDefaultPlan(): Plan {
-  return { ...BASE_PLANS.start }
+  return { ...BASE_PLANS.start };
 }
 
 /**
@@ -187,7 +191,7 @@ export function isStripeConfigured(): boolean {
     env.STRIPE_SECRET_KEY &&
     env.STRIPE_PRICE_PRO_MONTHLY &&
     env.STRIPE_PRICE_ULTRA_MONTHLY
-  )
+  );
 }
 
 /**
@@ -196,11 +200,11 @@ export function isStripeConfigured(): boolean {
 export function isPlanAvailable(
   plan: Plan,
   interval: 'monthly' | 'yearly',
-  currency: Currency = 'eur'
+  currency: Currency = 'eur',
 ): boolean {
-  if (plan.price === 0) return false // Free plan - no purchase needed
-  const priceId = getPlanPriceId(plan, interval, currency)
-  return !!priceId
+  if (plan.price === 0) return false; // Free plan - no purchase needed
+  const priceId = getPlanPriceId(plan, interval, currency);
+  return !!priceId;
 }
 
 /**
@@ -209,35 +213,40 @@ export function isPlanAvailable(
 export function getPlanPriceId(
   plan: Plan,
   interval: 'monthly' | 'yearly',
-  currency: Currency = 'eur'
+  currency: Currency = 'eur',
 ): string | undefined {
   // Try multi-currency prices first
   if (plan.stripePrices?.[currency]) {
     return interval === 'monthly'
       ? plan.stripePrices[currency].monthly
-      : plan.stripePrices[currency].yearly
+      : plan.stripePrices[currency].yearly;
   }
   // Fallback to legacy EUR prices
   if (currency === 'eur') {
-    return interval === 'monthly' ? plan.stripePriceMonthly : plan.stripePriceYearly
+    return interval === 'monthly'
+      ? plan.stripePriceMonthly
+      : plan.stripePriceYearly;
   }
-  return undefined
+  return undefined;
 }
 
 /**
  * Get yearly price (2 months free)
  */
 export function getYearlyPrice(plan: Plan): number {
-  return plan.price * 10
+  return plan.price * 10;
 }
 
 /**
  * Format price with currency symbol
  */
-export function formatPlanPrice(price: number, currency: Currency = 'eur'): string {
-  const symbol = CURRENCY_SYMBOLS[currency]
+export function formatPlanPrice(
+  price: number,
+  currency: Currency = 'eur',
+): string {
+  const symbol = CURRENCY_SYMBOLS[currency];
   if (currency === 'eur') {
-    return `${price}${symbol}`
+    return `${price}${symbol}`;
   }
-  return `${symbol}${price}`
+  return `${symbol}${price}`;
 }

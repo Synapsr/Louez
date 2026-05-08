@@ -331,22 +331,6 @@ export function CalendarView({
                 >
                   <Download className="h-4 w-4" />
                 </Button>
-
-                <Button
-                  render={<Link href="/dashboard/reservations/new" />}
-                  size="icon"
-                  className="sm:hidden"
-                  title={t('new')}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <Button
-                  render={<Link href="/dashboard/reservations/new" />}
-                  className="hidden sm:inline-flex"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('new')}
-                </Button>
               </div>
             </div>
 
