@@ -221,6 +221,7 @@
       "dashboard": "Painel",
       "viewStore": "Ver loja",
       "newReservation": "Nova reserva",
+      "reservationLimitReached": "Limite atingido",
       "help": "Ajuda",
       "feedback": "Ajuda e feedback"
     },

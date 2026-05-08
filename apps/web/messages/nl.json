@@ -221,6 +221,7 @@
       "dashboard": "Dashboard",
       "viewStore": "Winkel bekijken",
       "newReservation": "Nieuwe reservering",
+      "reservationLimitReached": "Limiet bereikt",
       "help": "Hulp",
       "feedback": "Hulp en feedback"
     },

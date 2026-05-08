@@ -327,9 +327,14 @@ export async function syncSubscriptionFromStripe(stripeSubscriptionId: string) {
 export async function getCurrentPlanSlug(storeId: string): Promise<string> {
   const subscription = await db.query.subscriptions.findFirst({
     where: eq(subscriptions.storeId, storeId),
-    columns: { planSlug: true },
+    columns: { planSlug: true, status: true },
   })
-  return subscription?.planSlug || 'start'
+
+  if (!subscription || subscription.status === 'cancelled') {
+    return 'start'
+  }
+
+  return subscription.planSlug
 }
 
 export { getPlans, getPlan, type Plan }
