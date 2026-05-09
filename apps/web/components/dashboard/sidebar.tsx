@@ -144,7 +144,7 @@ const DashboardNavItem = ({
         isActive={active}
         tooltip={t(item.key)}
       >
-        <item.icon />
+        <item.icon className="" />
         <span>{t(item.key)}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>

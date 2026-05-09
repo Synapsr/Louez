@@ -1,8 +1,11 @@
-import { createEnv } from '@t3-oss/env-core'
-import { z } from 'zod'
+import { createEnv } from '@t3-oss/env-core';
+import { z } from 'zod';
 
 export const env = createEnv({
   server: {
+    NODE_ENV: z
+      .enum(['development', 'test', 'production'])
+      .default('development'),
     SMTP_HOST: z.string().min(1, 'SMTP_HOST is required'),
     SMTP_PORT: z.coerce.number().int().positive().default(587),
     SMTP_SECURE: z
@@ -14,6 +17,7 @@ export const env = createEnv({
     SMTP_FROM: z.string().min(1, 'SMTP_FROM is required'),
   },
   runtimeEnv: {
+    NODE_ENV: process.env.NODE_ENV,
     SMTP_HOST: process.env.SMTP_HOST,
     SMTP_PORT: process.env.SMTP_PORT,
     SMTP_SECURE: process.env.SMTP_SECURE,
@@ -22,4 +26,4 @@ export const env = createEnv({
     SMTP_FROM: process.env.SMTP_FROM,
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
-})
+});
