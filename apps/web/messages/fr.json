@@ -1419,7 +1419,7 @@
           "insufficientStock": "Stock insuffisant"
         },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé",
-        "sendAsQuote": "Envoyer comme devis",
+        "sendAsQuote": "Envoyer un devis",
         "quoteSent": "Devis envoyé au client"
       },
       "rejectDialog": {

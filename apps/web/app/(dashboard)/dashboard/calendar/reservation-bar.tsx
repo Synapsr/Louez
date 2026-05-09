@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@louez/ui';
-import { cn, formatDateShort } from '@louez/utils';
+import { cn, formatDateShort, formatTime } from '@louez/utils';
 
 import type { Reservation, ReservationStatus } from './types';
 
@@ -183,6 +183,7 @@ export const ReservationBar = forwardRef<
   return (
     <Tooltip>
       <TooltipTrigger
+        delay={75}
         render={
           <Link
             ref={ref}
@@ -312,12 +313,28 @@ function ReservationTooltipContent({
       )}
 
       {/* Footer: ref + dates */}
-      <div className="text-muted-foreground flex items-center justify-between gap-3 border-t pt-1.5 text-[11px]">
-        <span className="font-mono">#{reservation.number}</span>
-        <span>
-          {formatDateShort(reservation.startDate)} -{' '}
-          {formatDateShort(reservation.endDate)}
-        </span>
+      <div className="text-muted-foreground space-y-1 border-t pt-1.5 text-[11px]">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground/70">Départ</span>
+          <span>
+            {formatDateShort(reservation.startDate)}{' '}
+            <span className="tabular-nums">
+              {formatTime(reservation.startDate)}
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground/70">Arrivée</span>
+          <span>
+            {formatDateShort(reservation.endDate)}{' '}
+            <span className="tabular-nums">
+              {formatTime(reservation.endDate)}
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3 pt-0.5">
+          <span className="font-mono">#{reservation.number}</span>
+        </div>
       </div>
     </div>
   );

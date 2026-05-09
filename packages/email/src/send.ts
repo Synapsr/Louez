@@ -16,6 +16,11 @@ function toPort(value: unknown): number {
 
 const smtpPort = toPort(env.SMTP_PORT);
 const smtpSecure = toBoolean(env.SMTP_SECURE);
+const allowedDevRecipientDomain = '@lumy.bzh';
+
+function isAllowedDevRecipient(email: string) {
+  return email.trim().toLowerCase().endsWith(allowedDevRecipientDomain);
+}
 
 const transporter = nodemailer.createTransport({
   host: env.SMTP_HOST,
@@ -43,12 +48,18 @@ export async function sendEmail({
     from = `"${fromName.replace(/"/g, '')}" <${emailAddress}>`;
   }
 
-  if (process.env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === 'development') {
     console.log('[DEV] Email from:', from);
     console.log('[DEV] Email to:', to);
     console.log('[DEV] Subject:', subject);
 
-    //return { messageId: 'dev-' + Date.now(), success: true }
+    if (!isAllowedDevRecipient(to)) {
+      console.log(
+        `[DEV] Email skipped: recipient must end with ${allowedDevRecipientDomain}`,
+      );
+
+      return { messageId: `dev-skipped-${Date.now()}`, success: true };
+    }
   }
 
   const result = await transporter.sendMail({
