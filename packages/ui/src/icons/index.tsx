@@ -15,4 +15,5 @@ export {
   Sparkles as SparklesIcon,
   Users as UsersIcon,
   Loader as LoaderIcon,
+  Star as StarIcon,
 } from 'lucide-react';

@@ -3750,6 +3750,8 @@
       "readyToRent": "Listo para alquilar?",
       "readyToRentDesc": "Explore nuestro catalogo y reserve el equipo que necesita en unos clics.",
       "exploreCatalog": "Explorar catalogo",
+      "contactLabel": "Encontrarnos",
+      "contactTitle": "Ubicación y contacto",
       "findUs": "Encontrarnos",
       "findUsDesc": "Visitenos para recoger su equipo",
       "address": "Direccion",
@@ -3762,6 +3764,7 @@
       "accessAccount": "Acceder a mi cuenta"
     },
     "reviews": {
+      "label": "Testimonios",
       "title": "Resenas de clientes",
       "subtitle": "Vea lo que nuestros clientes dicen de nosotros",
       "viewOnGoogle": "Ver en Google",
@@ -4425,6 +4428,7 @@
       "legalInfo": "Informacion legal",
       "cgv": "Terminos de servicio",
       "legalNotice": "Aviso legal",
+      "signIn": "Iniciar sesion",
       "allRightsReserved": "Todos los derechos reservados.",
       "poweredBy": "Impulsado por"
     },

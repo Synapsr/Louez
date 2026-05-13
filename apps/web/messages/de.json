@@ -3742,6 +3742,8 @@
       "readyToRent": "Bereit zu mieten?",
       "readyToRentDesc": "Durchsuchen Sie unseren Katalog und buchen Sie die benötigte Ausrüstung in wenigen Klicks.",
       "exploreCatalog": "Katalog erkunden",
+      "contactLabel": "Finden Sie uns",
+      "contactTitle": "Standort & Kontakt",
       "findUs": "Finden Sie uns",
       "findUsDesc": "Besuchen Sie uns, um Ihre Ausrüstung abzuholen",
       "address": "Adresse",
@@ -3754,6 +3756,7 @@
       "accessAccount": "Auf mein Konto zugreifen"
     },
     "reviews": {
+      "label": "Testimonials",
       "title": "Kundenbewertungen",
       "subtitle": "Sehen Sie, was unsere Kunden über uns sagen",
       "viewOnGoogle": "Auf Google ansehen",
@@ -4417,6 +4420,7 @@
       "legalInfo": "Rechtliche Informationen",
       "cgv": "Allgemeine Geschäftsbedingungen",
       "legalNotice": "Impressum",
+      "signIn": "Anmelden",
       "allRightsReserved": "Alle Rechte vorbehalten.",
       "poweredBy": "Powered by"
     },

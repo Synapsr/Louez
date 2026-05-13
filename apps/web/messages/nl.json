@@ -3742,6 +3742,8 @@
       "readyToRent": "Klaar om te huren?",
       "readyToRentDesc": "Blader door onze catalogus en boek het materiaal dat u nodig heeft in een paar klikken.",
       "exploreCatalog": "Catalogus verkennen",
+      "contactLabel": "Vind ons",
+      "contactTitle": "Locatie & contact",
       "findUs": "Vind ons",
       "findUsDesc": "Bezoek ons om uw materiaal op te halen",
       "address": "Adres",
@@ -3754,6 +3756,7 @@
       "accessAccount": "Naar mijn account"
     },
     "reviews": {
+      "label": "Testimonials",
       "title": "Klantbeoordelingen",
       "subtitle": "Ontdek wat onze klanten over ons zeggen",
       "viewOnGoogle": "Bekijk op Google",
@@ -4417,6 +4420,7 @@
       "legalInfo": "Juridische informatie",
       "cgv": "Algemene voorwaarden",
       "legalNotice": "Juridische vermelding",
+      "signIn": "Inloggen",
       "allRightsReserved": "Alle rechten voorbehouden.",
       "poweredBy": "Mogelijk gemaakt door"
     },

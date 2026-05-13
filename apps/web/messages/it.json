@@ -3742,6 +3742,8 @@
       "readyToRent": "Pronto a noleggiare?",
       "readyToRentDesc": "Sfoglia il nostro catalogo e prenota l'attrezzatura di cui hai bisogno in pochi clic.",
       "exploreCatalog": "Esplora catalogo",
+      "contactLabel": "Trovaci",
+      "contactTitle": "Posizione e contatto",
       "findUs": "Trovaci",
       "findUsDesc": "Vieni a trovarci per ritirare la tua attrezzatura",
       "address": "Indirizzo",
@@ -3754,6 +3756,7 @@
       "accessAccount": "Accedi al mio account"
     },
     "reviews": {
+      "label": "Testimonianze",
       "title": "Recensioni clienti",
       "subtitle": "Scopri cosa dicono i nostri clienti di noi",
       "viewOnGoogle": "Vedi su Google",
@@ -4417,6 +4420,7 @@
       "legalInfo": "Informazioni legali",
       "cgv": "Termini di Servizio",
       "legalNotice": "Note Legali",
+      "signIn": "Accedi",
       "allRightsReserved": "Tutti i diritti riservati.",
       "poweredBy": "Powered by"
     },

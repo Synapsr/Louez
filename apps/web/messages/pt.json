@@ -3742,6 +3742,8 @@
       "readyToRent": "Pronto para alugar?",
       "readyToRentDesc": "Navegue pelo nosso catalogo e reserve o equipamento que precisa em poucos cliques.",
       "exploreCatalog": "Explorar catalogo",
+      "contactLabel": "Encontre-nos",
+      "contactTitle": "Localização e contato",
       "findUs": "Encontre-nos",
       "findUsDesc": "Visite-nos para retirar seu equipamento",
       "address": "Endereco",
@@ -3754,6 +3756,7 @@
       "accessAccount": "Acessar minha conta"
     },
     "reviews": {
+      "label": "Depoimentos",
       "title": "Avaliacoes de clientes",
       "subtitle": "Veja o que nossos clientes dizem sobre nos",
       "viewOnGoogle": "Ver no Google",
@@ -4417,6 +4420,7 @@
       "legalInfo": "Informacoes legais",
       "cgv": "Termos de Servico",
       "legalNotice": "Aviso Legal",
+      "signIn": "Entrar",
       "allRightsReserved": "Todos os direitos reservados.",
       "poweredBy": "Desenvolvido por"
     },

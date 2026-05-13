@@ -3777,6 +3777,8 @@
       "readyToRent": "Prêt à louer ?",
       "readyToRentDesc": "Parcourez notre catalogue et réservez le matériel dont vous avez besoin en quelques clics.",
       "exploreCatalog": "Explorer le catalogue",
+      "contactLabel": "Nous trouver",
+      "contactTitle": "Localisation & contact",
       "findUs": "Nous trouver",
       "findUsDesc": "Venez nous rendre visite pour récupérer votre matériel",
       "address": "Adresse",
@@ -3789,7 +3791,8 @@
       "accessAccount": "Accéder à mon compte"
     },
     "reviews": {
-      "title": "Avis clients",
+      "label": "Témoignages",
+      "title": "Avis membres",
       "subtitle": "Découvrez ce que nos clients disent de nous",
       "viewOnGoogle": "Voir sur Google",
       "basedOn": "sur {count} avis",
@@ -4458,6 +4461,7 @@
       "legalInfo": "Informations légales",
       "cgv": "Conditions générales de vente",
       "legalNotice": "Mentions légales",
+      "signIn": "Se connecter",
       "allRightsReserved": "Tous droits réservés.",
       "poweredBy": "Propulsé par"
     },
