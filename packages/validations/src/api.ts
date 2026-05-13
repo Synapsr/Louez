@@ -259,7 +259,7 @@ export const dashboardReservationCreateManualReservationInputSchema = z.object({
     customerId: z.string().length(21).optional(),
     newCustomer: z
       .object({
-        email: z.string().email().max(320),
+        email: z.email().max(320),
         firstName: z.string().trim().min(1).max(200),
         lastName: z.string().trim().min(1).max(200),
         phone: z.string().trim().max(50).optional(),

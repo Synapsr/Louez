@@ -184,23 +184,23 @@ export interface ReservationBarProps {
 // =============================================================================
 
 export const STATUS_COLORS: Record<ReservationStatus, string> = {
-  pending: 'bg-yellow-500',
-  confirmed: 'bg-green-500',
-  ongoing: 'bg-blue-500',
-  completed: 'bg-gray-400',
-  cancelled: 'bg-red-300',
-  rejected: 'bg-red-400',
-  quote: 'bg-violet-500',
-  declined: 'bg-slate-400',
+  pending: 'bg-reservation-pending',
+  confirmed: 'bg-reservation-confirmed',
+  ongoing: 'bg-reservation-ongoing',
+  completed: 'bg-reservation-completed',
+  cancelled: 'bg-reservation-cancelled',
+  rejected: 'bg-reservation-rejected',
+  quote: 'bg-reservation-quote',
+  declined: 'bg-reservation-declined',
 } as const
 
 export const STATUS_COLORS_LIGHT: Record<ReservationStatus, string> = {
-  pending: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-  confirmed: 'bg-green-100 border-green-300 text-green-800',
-  ongoing: 'bg-blue-100 border-blue-300 text-blue-800',
-  completed: 'bg-gray-100 border-gray-300 text-gray-600',
-  cancelled: 'bg-red-50 border-red-200 text-red-600',
-  rejected: 'bg-red-100 border-red-300 text-red-700',
-  quote: 'bg-violet-100 border-violet-300 text-violet-800',
-  declined: 'bg-slate-100 border-slate-300 text-slate-600',
+  pending: 'bg-reservation-pending-soft border-reservation-pending-border text-reservation-pending',
+  confirmed: 'bg-reservation-confirmed-soft border-reservation-confirmed-border text-reservation-confirmed',
+  ongoing: 'bg-reservation-ongoing-soft border-reservation-ongoing-border text-reservation-ongoing',
+  completed: 'bg-reservation-completed-soft border-reservation-completed-border text-reservation-completed',
+  cancelled: 'bg-reservation-cancelled-soft border-reservation-cancelled-border text-reservation-cancelled',
+  rejected: 'bg-reservation-rejected-soft border-reservation-rejected-border text-reservation-rejected',
+  quote: 'bg-reservation-quote-soft border-reservation-quote-border text-reservation-quote',
+  declined: 'bg-reservation-declined-soft border-reservation-declined-border text-reservation-declined',
 } as const

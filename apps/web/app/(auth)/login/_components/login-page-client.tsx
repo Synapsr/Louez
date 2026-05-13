@@ -1,18 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 import { BarChart3, Calendar, Package, Users } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
-import { Logo } from '@louez/ui';
+import { Logo, Separator } from '@louez/ui';
 
 import { LoginForm } from './login-form';
 
-export interface LoginPageClientProps {
+interface LoginPageClientProps {
   callbackUrl: string;
-  errorCode: string | null;
-  refCode: string | null;
 }
 
 const features = [
@@ -22,16 +21,16 @@ const features = [
   { icon: BarChart3, labelKey: 'featureStats' },
 ] as const;
 
-export function LoginPageClient({
-  callbackUrl,
-  errorCode,
-  refCode,
-}: LoginPageClientProps) {
+export const LoginPageClient = ({ callbackUrl }: LoginPageClientProps) => {
   const t = useTranslations('auth');
+  const searchParams = useSearchParams();
+
+  const errorCode = searchParams.get('error');
+  const refCode = searchParams.get('ref');
 
   return (
     <div className="flex min-h-screen">
-      <div className="from-primary via-primary/90 to-primary/80 text-primary-foreground relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br p-12 lg:flex lg:w-1/2">
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-primary p-12 text-primary-foreground lg:flex lg:w-1/2">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
           <div className="absolute right-0 bottom-0 h-96 w-96 translate-x-1/2 translate-y-1/2 rounded-full bg-white/20 blur-3xl" />
@@ -90,10 +89,13 @@ export function LoginPageClient({
             refCode={refCode}
           />
 
-          <p className="text-muted-foreground text-center text-sm">
+
+          <p className="text-muted-foreground text-center text-sm ">
             {t('termsAgreement')}{' '}
             <Link
               href="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
               {t('termsOfService')}
@@ -101,6 +103,8 @@ export function LoginPageClient({
             {t('and')}{' '}
             <Link
               href="/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="hover:text-primary underline underline-offset-4"
             >
               {t('privacyPolicy')}
@@ -110,4 +114,4 @@ export function LoginPageClient({
       </div>
     </div>
   );
-}
+};

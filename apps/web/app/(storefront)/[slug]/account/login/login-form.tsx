@@ -42,7 +42,7 @@ export function LoginForm({ storeId, storeSlug }: LoginFormProps) {
       : errorKey;
 
   const emailSchema = z.object({
-    email: z.string().email(t('codeError')),
+    email: z.email(t('codeError')),
   });
 
   const emailForm = useAppForm({

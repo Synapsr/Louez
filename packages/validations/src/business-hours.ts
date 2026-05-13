@@ -53,10 +53,18 @@ export const closurePeriodSchema = z
       .string()
       .datetime({ offset: true })
       .or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+    startTime: timeSchema.optional(),
+    endTime: timeSchema.optional(),
     reason: z.string().max(500).optional(),
   })
   .refine((data) => new Date(data.startDate) <= new Date(data.endDate), {
     message: 'End date must be after or equal to start date',
+  })
+  .refine((data) => Boolean(data.startTime) === Boolean(data.endTime), {
+    message: 'Both start and end times are required for partial-day closures',
+  })
+  .refine((data) => !data.startTime || !data.endTime || data.startTime < data.endTime, {
+    message: 'End time must be after start time',
   })
 
 export const businessHoursSchema = z.object({

@@ -1,25 +1,27 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { Plus, ArrowRight, Package } from 'lucide-react'
-import { Button } from '@louez/ui'
+import Link from 'next/link';
+
+import { ArrowRight, Package, Plus } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
 
 // Types defined inline to avoid server-only module import
-type StoreState = 'virgin' | 'building' | 'starting' | 'active' | 'established'
+type StoreState = 'virgin' | 'building' | 'starting' | 'active' | 'established';
 
 interface StoreMetrics {
-  activeProductCount: number
-  pendingReservations: number
-  todaysDepartures: number
-  todaysReturns: number
+  activeProductCount: number;
+  pendingReservations: number;
+  todaysDepartures: number;
+  todaysReturns: number;
 }
 
 interface AdaptiveHeaderProps {
-  firstName: string
-  timeOfDay: 'morning' | 'afternoon' | 'evening'
-  storeState: StoreState
-  metrics: StoreMetrics
+  firstName: string;
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+  storeState: StoreState;
+  metrics: StoreMetrics;
 }
 
 export function AdaptiveHeader({
@@ -28,62 +30,61 @@ export function AdaptiveHeader({
   storeState,
   metrics,
 }: AdaptiveHeaderProps) {
-  const t = useTranslations('dashboard.home')
+  const t = useTranslations('dashboard.home');
 
   // Determine greeting based on time of day and whether we have a name
   const greeting = firstName
     ? t(`header.greeting.${timeOfDay}`, { name: firstName })
-    : t(`header.greeting.${timeOfDay}Anonymous`)
+    : t(`header.greeting.${timeOfDay}Anonymous`);
 
   // Determine subtitle based on store state and metrics
   const getSubtitle = () => {
     if (storeState === 'virgin') {
-      return t('header.subtitle.virgin')
+      return t('header.subtitle.virgin');
     }
 
     if (storeState === 'building') {
-      return t('header.subtitle.building', { count: metrics.activeProductCount })
+      return t('header.subtitle.building', {
+        count: metrics.activeProductCount,
+      });
     }
 
     if (metrics.pendingReservations > 0) {
-      return t('header.subtitle.pending', { count: metrics.pendingReservations })
+      return t('header.subtitle.pending', {
+        count: metrics.pendingReservations,
+      });
     }
 
-    const todayOperations = metrics.todaysDepartures + metrics.todaysReturns
+    const todayOperations = metrics.todaysDepartures + metrics.todaysReturns;
     if (todayOperations > 0) {
-      return t('header.subtitle.operations', { count: todayOperations })
+      return t('header.subtitle.operations', { count: todayOperations });
     }
 
-    return t('header.subtitle.calm')
-  }
+    return t('header.subtitle.calm');
+  };
 
   // Determine primary CTA based on state
   const getPrimaryCTA = () => {
     if (storeState === 'virgin') {
       return (
         <Button render={<Link href="/dashboard/products/new" />}>
-            <Package className="mr-2 h-4 w-4" />
-            {t('header.cta.addFirstProduct')}
+          <Package className="mr-2 h-4 w-4" />
+          {t('header.cta.addFirstProduct')}
         </Button>
-      )
+      );
     }
 
     if (metrics.pendingReservations > 0) {
       return (
         <Button render={<Link href="/dashboard/reservations?status=pending" />}>
-            {t('header.cta.handleRequests', { count: metrics.pendingReservations })}
-            <ArrowRight className="ml-2 h-4 w-4" />
+          {t('header.cta.handleRequests', {
+            count: metrics.pendingReservations,
+          })}
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-      )
+      );
     }
-
-    return (
-      <Button render={<Link href="/dashboard/reservations/new" />}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('header.cta.addReservation')}
-      </Button>
-    )
-  }
+  };
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -93,5 +94,5 @@ export function AdaptiveHeader({
       </div>
       {getPrimaryCTA()}
     </div>
-  )
+  );
 }

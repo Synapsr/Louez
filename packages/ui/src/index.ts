@@ -64,6 +64,9 @@ export * from './components/select'
 // Separator
 export * from './components/separator'
 
+// Sidebar
+export * from './components/sidebar'
+
 // Sheet
 export * from './components/sheet'
 

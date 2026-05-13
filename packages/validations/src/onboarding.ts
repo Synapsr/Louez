@@ -1,5 +1,6 @@
-import { z } from 'zod'
-import { isValidImageUrl, isValidImageUrlClient } from './image'
+import { z } from 'zod';
+
+import { isValidImageUrl, isValidImageUrlClient } from './image';
 
 // ===== RESERVED SLUGS =====
 // These slugs are reserved to prevent namespace conflicts and potential phishing
@@ -96,19 +97,23 @@ export const RESERVED_SLUGS = [
   'nl',
   'pl',
   'pt',
-] as const
+] as const;
 
 /**
  * Check if a slug is reserved
  */
 export function isReservedSlug(slug: string): boolean {
-  return RESERVED_SLUGS.includes(slug.toLowerCase() as typeof RESERVED_SLUGS[number])
+  return RESERVED_SLUGS.includes(
+    slug.toLowerCase() as (typeof RESERVED_SLUGS)[number],
+  );
 }
 
 // ===== SCHEMA FACTORIES =====
 // These schemas accept a translation function for client-side validation with i18n
 
-export const createStoreInfoSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
+export const createStoreInfoSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
   z.object({
     name: z
       .string()
@@ -125,11 +130,13 @@ export const createStoreInfoSchema = (t: (key: string, params?: Record<string, s
     address: z.string().or(z.literal('')),
     latitude: z.number().nullable(),
     longitude: z.number().nullable(),
-    email: z.string().email(t('email')).or(z.literal('')),
+    email: z.email(t('email')).or(z.literal('')),
     phone: z.string().or(z.literal('')),
-  })
+  });
 
-export const createBrandingSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
+export const createBrandingSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
   z.object({
     // Client-safe validation: strict S3 check happens server-side in the action
     logoUrl: z
@@ -141,9 +148,11 @@ export const createBrandingSchema = (t: (key: string, params?: Record<string, st
       .or(z.literal('')),
     primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, t('color')),
     theme: z.enum(['light', 'dark']),
-  })
+  });
 
-export const createFirstProductSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
+export const createFirstProductSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
   z.object({
     name: z
       .string()
@@ -162,11 +171,11 @@ export const createFirstProductSchema = (t: (key: string, params?: Record<string
       .array(
         z.string().refine((val) => !val || isValidImageUrlClient(val), {
           message: t('invalidImageUrl'),
-        })
+        }),
       )
       .max(10)
       .optional(),
-  })
+  });
 
 // ===== SERVER-SIDE SCHEMAS =====
 // Default schemas for server-side validation without i18n
@@ -187,9 +196,9 @@ export const storeInfoSchema = z.object({
   address: z.string().optional().or(z.literal('')),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  email: z.string().email('validation.email').optional().or(z.literal('')),
+  email: z.email('validation.email').optional().or(z.literal('')),
   phone: z.string().optional().or(z.literal('')),
-})
+});
 
 export const brandingSchema = z.object({
   // SECURITY: Validate image URL to prevent malicious uploads
@@ -202,7 +211,7 @@ export const brandingSchema = z.object({
     .or(z.literal('')),
   primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'validation.color'),
   theme: z.enum(['light', 'dark']),
-})
+});
 
 export const firstProductSchema = z.object({
   name: z
@@ -222,17 +231,17 @@ export const firstProductSchema = z.object({
     .array(
       z.string().refine((val) => !val || isValidImageUrl(val), {
         message: 'validation.invalidImageUrl',
-      })
+      }),
     )
     .max(10)
     .optional(),
-})
+});
 
 export const stripeSetupSchema = z.object({
   reservationMode: z.enum(['payment', 'request']),
-})
+});
 
-export type StoreInfoInput = z.infer<typeof storeInfoSchema>
-export type BrandingInput = z.infer<typeof brandingSchema>
-export type FirstProductInput = z.infer<typeof firstProductSchema>
-export type StripeSetupInput = z.infer<typeof stripeSetupSchema>
+export type StoreInfoInput = z.infer<typeof storeInfoSchema>;
+export type BrandingInput = z.infer<typeof brandingSchema>;
+export type FirstProductInput = z.infer<typeof firstProductSchema>;
+export type StripeSetupInput = z.infer<typeof stripeSetupSchema>;

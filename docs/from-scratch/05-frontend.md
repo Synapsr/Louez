@@ -52,7 +52,7 @@ Don't wrap `useQuery` in custom hooks — it hides options, breaks type inferenc
 
 ```typescript
 // lib/queries/podcast.queries.ts
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions } from '@tanstack/react-query';
 
 export const podcastQueries = {
   list: (channelId: string) =>
@@ -126,6 +126,7 @@ export const usePlayerStore = create<PlayerState>((set) => ({
 ```
 
 Rules:
+
 - One store per domain/concern
 - Keep stores flat — no deep nesting
 - Derive computed values with selectors, not extra state
@@ -159,7 +160,7 @@ components/form/
 
 ```typescript
 // hooks/form/form-context.tsx
-import { createFormHookContexts } from "@tanstack/react-form";
+import { createFormHookContexts } from '@tanstack/react-form';
 
 export const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts();
@@ -167,9 +168,11 @@ export const { fieldContext, formContext, useFieldContext, useFormContext } =
 
 ```typescript
 // hooks/form/form.tsx
-import { createFormHook } from "@tanstack/react-form";
-import { FormForm } from "@/components/form/form-form";
-import { fieldContext, formContext } from "./form-context";
+import { createFormHook } from '@tanstack/react-form';
+
+import { FormForm } from '@/components/form/form-form';
+
+import { fieldContext, formContext } from './form-context';
 
 export const { useAppForm, withForm } = createFormHook({
   fieldComponents: {
@@ -189,14 +192,14 @@ export const { useAppForm, withForm } = createFormHook({
 Use Zod schemas with TanStack Form's `validators` option. Default to `revalidateLogic` for the best UX: quiet before first submit, real-time feedback after.
 
 ```typescript
-import { revalidateLogic } from "@tanstack/react-form";
+import { revalidateLogic } from '@tanstack/react-form';
 
 const form = useAppForm({
-  defaultValues: { email: "", password: "" },
+  defaultValues: { email: '', password: '' },
   validators: { onSubmit: schema },
   validationLogic: revalidateLogic({
-    mode: "submit",              // before first submit: validate on submit only
-    modeAfterSubmission: "change", // after first submit: validate on every change
+    mode: 'submit', // before first submit: validate on submit only
+    modeAfterSubmission: 'change', // after first submit: validate on every change
   }),
   onSubmit: async ({ value }) => {
     await mutation.mutateAsync(value);
@@ -205,6 +208,7 @@ const form = useAppForm({
 ```
 
 Where to put schemas:
+
 - Simple forms: inline schema is fine
 - Shared or complex schemas: extract to `lib/validators/validator.<name>.ts`
 
@@ -212,21 +216,21 @@ Where to put schemas:
 
 ```tsx
 const schema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
 export const LoginForm = () => {
   const mutation = useMutation(authMutations.login());
 
   const form = useAppForm({
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: '', password: '' },
     onSubmit: async ({ value }) => {
       await mutation.mutateAsync(value);
     },
     validationLogic: revalidateLogic({
-      mode: "submit",
-      modeAfterSubmission: "change",
+      mode: 'submit',
+      modeAfterSubmission: 'change',
     }),
     validators: { onSubmit: schema },
   });
@@ -235,7 +239,9 @@ export const LoginForm = () => {
     <form.AppForm>
       <form.Form>
         <form.AppField name="email">
-          {(field) => <field.Input label="Email" placeholder="johndoe@email.com" />}
+          {(field) => (
+            <field.Input label="Email" placeholder="johndoe@email.com" />
+          )}
         </form.AppField>
 
         <form.AppField name="password">

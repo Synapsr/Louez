@@ -1,13 +1,12 @@
-'use client'
+'use client';
 
-import { useState, useCallback, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
-import { useStore } from '@tanstack/react-form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { fr, enUS } from 'date-fns/locale'
-import { useLocale, useTranslations } from 'next-intl'
-import { formatStoreDate } from '@/lib/utils/store-date'
-import { useStoreTimezone } from '@/contexts/store-context'
+import { useCallback, useMemo, useRef, useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { useStore } from '@tanstack/react-form';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { enUS, fr } from 'date-fns/locale';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -17,59 +16,64 @@ import {
   Clock,
   FileText,
   Loader2,
-  Plus,
   PenLine,
+  Plus,
   ShieldCheckIcon,
-} from 'lucide-react'
-import { toastManager } from '@louez/ui'
+} from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 
-import { Button } from '@louez/ui'
-import { Input } from '@louez/ui'
-import { Textarea } from '@louez/ui'
+import type { PricingMode, UnitAttributes } from '@louez/types';
+import { toastManager } from '@louez/ui';
+import { Button } from '@louez/ui';
+import { Input } from '@louez/ui';
+import { Textarea } from '@louez/ui';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@louez/ui'
+} from '@louez/ui';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@louez/ui'
-import { Stepper, StepContent, StepActions } from '@louez/ui'
+} from '@louez/ui';
+import { StepActions, StepContent, Stepper } from '@louez/ui';
 import {
   Dialog,
-  DialogPopup,
-  DialogPanel,
   DialogDescription,
   DialogFooter,
   DialogHeader,
+  DialogPanel,
+  DialogPopup,
   DialogTitle,
-} from '@louez/ui'
-import { Label } from '@louez/ui'
-import { Checkbox } from '@louez/ui'
+} from '@louez/ui';
+import { Label } from '@louez/ui';
+import { Checkbox } from '@louez/ui';
+import { cn, formatCurrency } from '@louez/utils';
 
-import { cn, formatCurrency } from '@louez/utils'
-import type { PricingMode, UnitAttributes } from '@louez/types'
-import { useAppForm } from '@/hooks/form/form'
-import { orpc } from '@/lib/orpc/react'
-import { invalidateReservationList } from '@/lib/orpc/invalidation'
-import { NewReservationStepCustomer } from './components/new-reservation-step-customer'
-import { NewReservationStepDelivery } from './components/new-reservation-step-delivery'
-import { NewReservationStepProducts } from './components/new-reservation-step-products'
-import { NewReservationStepReview } from './components/new-reservation-step-review'
-import { useNewReservationDelivery } from './hooks/use-new-reservation-delivery'
-import { useNewReservationPricing } from './hooks/use-new-reservation-pricing'
-import { useNewReservationStepFlow } from './hooks/use-new-reservation-step-flow'
+import { invalidateReservationList } from '@/lib/orpc/invalidation';
+import { orpc } from '@/lib/orpc/react';
+import { formatStoreDate } from '@/lib/utils/store-date';
+
+import { useAppForm } from '@/hooks/form/form';
+
+import { useStoreTimezone } from '@/contexts/store-context';
+
+import { NewReservationStepCustomer } from './components/new-reservation-step-customer';
+import { NewReservationStepDelivery } from './components/new-reservation-step-delivery';
+import { NewReservationStepProducts } from './components/new-reservation-step-products';
+import { NewReservationStepReview } from './components/new-reservation-step-review';
+import { useNewReservationDelivery } from './hooks/use-new-reservation-delivery';
+import { useNewReservationPricing } from './hooks/use-new-reservation-pricing';
+import { useNewReservationStepFlow } from './hooks/use-new-reservation-step-flow';
 import {
   getPeriodAvailability,
   useNewReservationWarnings,
-} from './hooks/use-new-reservation-warnings'
-import { getLineQuantityConstraints } from './utils/variant-lines'
+} from './hooks/use-new-reservation-warnings';
 import type {
   CustomItem,
   NewReservationFormComponentApi,
@@ -78,20 +82,24 @@ import type {
   ProductPricingDetails,
   SelectedProduct,
   StepFieldName,
-} from './types'
+} from './types';
+import { getLineQuantityConstraints } from './utils/variant-lines';
 
 function createLineId() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
   }
 
-  return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  return `line_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
-  if (mode === 'hour') return 60
-  if (mode === 'week') return 10080
-  return 1440
+  if (mode === 'hour') return 60;
+  if (mode === 'week') return 10080;
+  return 1440;
 }
 
 export function NewReservationForm({
@@ -109,37 +117,41 @@ export function NewReservationForm({
   storeAddress,
   storeLocations,
 }: NewReservationFormProps) {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const locale = useLocale()
-  const timezone = useStoreTimezone()
-  const t = useTranslations('dashboard.reservations.manualForm')
-  const tCommon = useTranslations('common')
-  const tErrors = useTranslations('errors')
-  const tValidation = useTranslations('validation')
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const locale = useLocale();
+  const timezone = useStoreTimezone();
+  const t = useTranslations('dashboard.reservations.manualForm');
+  const tCommon = useTranslations('common');
+  const tErrors = useTranslations('errors');
+  const tValidation = useTranslations('validation');
 
-  const dateLocale = locale === 'fr' ? fr : enUS
-  const getTimeSlotsForDate = (date: Date | undefined): { minTime: string; maxTime: string } => {
-    void date
-    return { minTime: '00:00', maxTime: '23:30' }
-  }
+  const dateLocale = locale === 'fr' ? fr : enUS;
+  const getTimeSlotsForDate = (
+    date: Date | undefined,
+  ): { minTime: string; maxTime: string } => {
+    void date;
+    return { minTime: '00:00', maxTime: '23:30' };
+  };
 
-  const [endDatePickerOpen, setEndDatePickerOpen] = useState(false)
+  const [endDatePickerOpen, setEndDatePickerOpen] = useState(false);
 
   // Default time for new date selections: current time rounded up to next 30min slot
   const defaultTimeSlot = useMemo(() => {
-    const now = new Date()
-    const totalMinutes = now.getHours() * 60 + now.getMinutes()
-    const rounded = Math.ceil(totalMinutes / 30) * 30
-    const h = Math.floor(rounded / 60)
-    const m = rounded % 60
-    if (h >= 24) return '23:30'
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`
-  }, [])
+    const now = new Date();
+    const totalMinutes = now.getHours() * 60 + now.getMinutes();
+    const rounded = Math.ceil(totalMinutes / 30) * 30;
+    const h = Math.floor(rounded / 60);
+    const m = rounded % 60;
+    if (h >= 24) return '23:30';
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  }, []);
 
-  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([])
-  const [customItems, setCustomItems] = useState<CustomItem[]>([])
-  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false)
+  const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>(
+    [],
+  );
+  const [customItems, setCustomItems] = useState<CustomItem[]>([]);
+  const [showCustomItemDialog, setShowCustomItemDialog] = useState(false);
   const [customItemForm, setCustomItemForm] = useState({
     name: '',
     description: '',
@@ -148,27 +160,31 @@ export function NewReservationForm({
     deposit: '',
     quantity: '1',
     pricingMode: 'day' as PricingMode,
-  })
-  const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>('total')
-  const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true)
-  const sendAsQuoteRef = useRef(false)
+  });
+  const [priceInputMode, setPriceInputMode] = useState<'unit' | 'total'>(
+    'total',
+  );
+  const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true);
+  const sendAsQuoteRef = useRef(false);
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
     tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
-  )
+  );
 
   const isDeliveryEnabled = Boolean(
-    (deliverySettings?.enabled && storeLatitude != null && storeLongitude != null) ||
-      deliverySettings?.multiLocationEnabled,
-  )
+    (deliverySettings?.enabled &&
+      storeLatitude != null &&
+      storeLongitude != null) ||
+    deliverySettings?.multiLocationEnabled,
+  );
 
   // Price override dialog state
   const [priceOverrideDialog, setPriceOverrideDialog] = useState<{
-    isOpen: boolean
-    lineId: string | null
-    currentPrice: number
-    newPrice: string
-    pricingMode: PricingMode
-    duration: number
+    isOpen: boolean;
+    lineId: string | null;
+    currentPrice: number;
+    newPrice: string;
+    pricingMode: PricingMode;
+    duration: number;
   }>({
     isOpen: false,
     lineId: null,
@@ -176,30 +192,30 @@ export function NewReservationForm({
     newPrice: '',
     pricingMode: 'day',
     duration: 0,
-  })
+  });
 
   const createReservationMutation = useMutation({
     ...orpc.dashboard.reservations.createManualReservation.mutationOptions({
       onSuccess: async () => {
-        await invalidateReservationList(queryClient)
+        await invalidateReservationList(queryClient);
       },
     }),
-  })
+  });
 
   const getActionErrorMessage = (error: unknown) => {
     if (error instanceof Error) {
       if (error.message.startsWith('errors.')) {
-        return tErrors(error.message.replace('errors.', ''))
+        return tErrors(error.message.replace('errors.', ''));
       }
-      return error.message
+      return error.message;
     }
 
-    return tErrors('generic')
-  }
+    return tErrors('generic');
+  };
 
   const getFieldErrorMessage = (error: unknown) => {
     if (typeof error === 'string' && error.length > 0) {
-      return error
+      return error;
     }
 
     if (
@@ -208,99 +224,102 @@ export function NewReservationForm({
       'message' in error &&
       typeof error.message === 'string'
     ) {
-      return error.message
+      return error.message;
     }
 
-    return tErrors('generic')
-  }
+    return tErrors('generic');
+  };
 
   function validateCurrentStep(): boolean {
-    let isValid = true
-    const stepId = currentStepId
+    let isValid = true;
+    const stepId = currentStepId;
 
     switch (stepId) {
       case 'customer':
         if (watchCustomerType === 'existing') {
-          clearStepFieldError('email')
-          clearStepFieldError('firstName')
-          clearStepFieldError('lastName')
+          clearStepFieldError('email');
+          clearStepFieldError('firstName');
+          clearStepFieldError('lastName');
 
           if (!watchCustomerId?.trim()) {
-            setStepFieldError('customerId', tValidation('required'))
-            isValid = false
+            setStepFieldError('customerId', tValidation('required'));
+            isValid = false;
           } else {
-            clearStepFieldError('customerId')
+            clearStepFieldError('customerId');
           }
         } else {
-          clearStepFieldError('customerId')
+          clearStepFieldError('customerId');
 
-          const { email, firstName, lastName } = watchedValues
+          const { email, firstName, lastName } = watchedValues;
 
           if (!email?.trim()) {
-            setStepFieldError('email', tValidation('required'))
-            isValid = false
+            setStepFieldError('email', tValidation('required'));
+            isValid = false;
           } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setStepFieldError('email', tValidation('email'))
-            isValid = false
+            setStepFieldError('email', tValidation('email'));
+            isValid = false;
           } else {
-            clearStepFieldError('email')
+            clearStepFieldError('email');
           }
 
           if (!firstName?.trim()) {
-            setStepFieldError('firstName', tValidation('required'))
-            isValid = false
+            setStepFieldError('firstName', tValidation('required'));
+            isValid = false;
           } else {
-            clearStepFieldError('firstName')
+            clearStepFieldError('firstName');
           }
 
           if (!lastName?.trim()) {
-            setStepFieldError('lastName', tValidation('required'))
-            isValid = false
+            setStepFieldError('lastName', tValidation('required'));
+            isValid = false;
           } else {
-            clearStepFieldError('lastName')
+            clearStepFieldError('lastName');
           }
         }
 
         if (!isValid) {
-          toastManager.add({ title: t('fillCustomerInfoError'), type: 'error' })
+          toastManager.add({
+            title: t('fillCustomerInfoError'),
+            type: 'error',
+          });
         }
 
-        return isValid
+        return isValid;
       case 'period':
         if (!watchStartDate) {
-          setStepFieldError('startDate', tValidation('required'))
-          isValid = false
+          setStepFieldError('startDate', tValidation('required'));
+          isValid = false;
         } else {
-          clearStepFieldError('startDate')
+          clearStepFieldError('startDate');
         }
 
         if (!watchEndDate) {
-          setStepFieldError('endDate', tValidation('required'))
-          isValid = false
+          setStepFieldError('endDate', tValidation('required'));
+          isValid = false;
         } else if (watchStartDate && watchEndDate < watchStartDate) {
-          setStepFieldError('endDate', tValidation('endDateBeforeStart'))
-          isValid = false
+          setStepFieldError('endDate', tValidation('endDateBeforeStart'));
+          isValid = false;
         } else {
-          clearStepFieldError('endDate')
+          clearStepFieldError('endDate');
         }
 
         if (!isValid) {
-          toastManager.add({ title: t('selectDatesError'), type: 'error' })
+          toastManager.add({ title: t('selectDatesError'), type: 'error' });
         }
 
-        return isValid
+        return isValid;
       case 'products':
         if (selectedProducts.length === 0 && customItems.length === 0) {
-          toastManager.add({ title: t('addProductError'), type: 'error' })
-          return false
+          toastManager.add({ title: t('addProductError'), type: 'error' });
+          return false;
         }
-        return true
+        return true;
       case 'delivery':
-        return delivery.canContinue
+        return delivery.canContinue;
       case 'confirm':
-        return true
+        return true;
       default:
-        return true
+        return true;
     }
   }
 
@@ -315,11 +334,13 @@ export function NewReservationForm({
   } = useNewReservationStepFlow({
     validateCurrentStep,
     isDeliveryEnabled,
-  })
+  });
 
   const form = useAppForm({
     defaultValues: {
-      customerType: (customers.length > 0 ? 'existing' : 'new') as 'existing' | 'new',
+      customerType: (customers.length > 0 ? 'existing' : 'new') as
+        | 'existing'
+        | 'new',
       customerId: '',
       email: '',
       firstName: '',
@@ -331,10 +352,10 @@ export function NewReservationForm({
     },
     onSubmit: async ({ value }) => {
       if (currentStep !== steps.length - 1) {
-        return
+        return;
       }
 
-      if (!validateCurrentStep()) return
+      if (!validateCurrentStep()) return;
 
       try {
         const effectiveTulipInsuranceOptIn =
@@ -342,11 +363,12 @@ export function NewReservationForm({
             ? true
             : tulipInsuranceMode === 'optional'
               ? tulipInsuranceOptIn
-              : false
+              : false;
 
         const result = await createReservationMutation.mutateAsync({
           payload: {
-            customerId: value.customerType === 'existing' ? value.customerId : undefined,
+            customerId:
+              value.customerType === 'existing' ? value.customerId : undefined,
             newCustomer:
               value.customerType === 'new'
                 ? {
@@ -368,52 +390,86 @@ export function NewReservationForm({
               pricingMode: item.pricingMode,
             })),
             delivery: {
-              outbound: delivery.outboundMethod === 'address' && delivery.outboundAddress.latitude !== null && delivery.outboundAddress.longitude !== null
-                ? {
-                    method: 'address' as const,
-                    address: delivery.outboundAddress.address,
-                    city: delivery.outboundAddress.city,
-                    postalCode: delivery.outboundAddress.postalCode,
-                    country: delivery.outboundAddress.country,
-                    latitude: delivery.outboundAddress.latitude,
-                    longitude: delivery.outboundAddress.longitude,
-                  }
-                : { method: 'store' as const, locationId: delivery.pickupLocationId },
-              return: delivery.returnMethod === 'address' && delivery.returnAddress.latitude !== null && delivery.returnAddress.longitude !== null
-                ? {
-                    method: 'address' as const,
-                    address: delivery.returnAddress.address,
-                    city: delivery.returnAddress.city,
-                    postalCode: delivery.returnAddress.postalCode,
-                    country: delivery.returnAddress.country,
-                    latitude: delivery.returnAddress.latitude,
-                    longitude: delivery.returnAddress.longitude,
-                  }
-                : { method: 'store' as const, locationId: delivery.returnLocationId },
+              outbound:
+                delivery.outboundMethod === 'address' &&
+                delivery.outboundAddress.latitude !== null &&
+                delivery.outboundAddress.longitude !== null
+                  ? {
+                      method: 'address' as const,
+                      address: delivery.outboundAddress.address,
+                      city: delivery.outboundAddress.city,
+                      postalCode: delivery.outboundAddress.postalCode,
+                      country: delivery.outboundAddress.country,
+                      latitude: delivery.outboundAddress.latitude,
+                      longitude: delivery.outboundAddress.longitude,
+                    }
+                  : {
+                      method: 'store' as const,
+                      locationId: delivery.pickupLocationId,
+                    },
+              return:
+                delivery.returnMethod === 'address' &&
+                delivery.returnAddress.latitude !== null &&
+                delivery.returnAddress.longitude !== null
+                  ? {
+                      method: 'address' as const,
+                      address: delivery.returnAddress.address,
+                      city: delivery.returnAddress.city,
+                      postalCode: delivery.returnAddress.postalCode,
+                      country: delivery.returnAddress.country,
+                      latitude: delivery.returnAddress.latitude,
+                      longitude: delivery.returnAddress.longitude,
+                    }
+                  : {
+                      method: 'store' as const,
+                      locationId: delivery.returnLocationId,
+                    },
             },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
-            sendConfirmationEmail: sendAsQuoteRef.current ? true : sendConfirmationEmail,
+            sendConfirmationEmail: sendAsQuoteRef.current
+              ? true
+              : sendConfirmationEmail,
             sendAsQuote: sendAsQuoteRef.current,
           },
-        })
+        });
 
-        toastManager.add({ title: sendAsQuoteRef.current ? t('quoteSent') : t('reservationCreated'), type: 'success' })
-        router.push(`/dashboard/reservations/${result.reservationId}`)
+        toastManager.add({
+          title: sendAsQuoteRef.current
+            ? t('quoteSent')
+            : t('reservationCreated'),
+          type: 'success',
+        });
+        router.push(`/dashboard/reservations/${result.reservationId}`);
       } catch (error) {
-        toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
+        toastManager.add({
+          title: getActionErrorMessage(error),
+          type: 'error',
+        });
       }
     },
-  })
+  });
 
-  const watchCustomerType = useStore(form.store, (s) => s.values.customerType as NewReservationFormValues['customerType'])
-  const watchCustomerId = useStore(form.store, (s) => s.values.customerId)
-  const watchStartDate = useStore(form.store, (s) => s.values.startDate as Date | undefined)
-  const watchEndDate = useStore(form.store, (s) => s.values.endDate as Date | undefined)
-  const watchedValues = useStore(form.store, (s) => s.values as NewReservationFormValues)
-  const isSaving = createReservationMutation.isPending
+  const watchCustomerType = useStore(
+    form.store,
+    (s) => s.values.customerType as NewReservationFormValues['customerType'],
+  );
+  const watchCustomerId = useStore(form.store, (s) => s.values.customerId);
+  const watchStartDate = useStore(
+    form.store,
+    (s) => s.values.startDate as Date | undefined,
+  );
+  const watchEndDate = useStore(
+    form.store,
+    (s) => s.values.endDate as Date | undefined,
+  );
+  const watchedValues = useStore(
+    form.store,
+    (s) => s.values as NewReservationFormValues,
+  );
+  const isSaving = createReservationMutation.isPending;
 
-  const selectedCustomer = customers.find((c) => c.id === watchCustomerId)
+  const selectedCustomer = customers.find((c) => c.id === watchCustomerId);
 
   const { periodWarnings, availabilityWarnings } = useNewReservationWarnings({
     startDate: watchStartDate,
@@ -425,7 +481,7 @@ export function NewReservationForm({
     pendingBlocksAvailability,
     turnoverBufferMinutes,
     existingReservations,
-  })
+  });
   const periodAvailability = useMemo(
     () =>
       getPeriodAvailability({
@@ -435,8 +491,14 @@ export function NewReservationForm({
         turnoverBufferMinutes,
         existingReservations,
       }),
-    [existingReservations, pendingBlocksAvailability, turnoverBufferMinutes, watchEndDate, watchStartDate],
-  )
+    [
+      existingReservations,
+      pendingBlocksAvailability,
+      turnoverBufferMinutes,
+      watchEndDate,
+      watchStartDate,
+    ],
+  );
 
   const {
     calculateDurationForMode,
@@ -455,23 +517,24 @@ export function NewReservationForm({
     selectedProducts,
     customItems,
     products,
-  })
+  });
 
   const delivery = useNewReservationDelivery({
     deliverySettings,
     storeLatitude,
     storeLongitude,
     subtotal,
-  })
+  });
 
   const addProduct = (productId: string) => {
-    const product = products.find((item) => item.id === productId)
+    const product = products.find((item) => item.id === productId);
     if (!product) {
-      return
+      return;
     }
 
-    const bookingAttributeAxes = product.bookingAttributeAxes || []
-    const supportsOptionLines = product.trackUnits && bookingAttributeAxes.length > 0
+    const bookingAttributeAxes = product.bookingAttributeAxes || [];
+    const supportsOptionLines =
+      product.trackUnits && bookingAttributeAxes.length > 0;
 
     setSelectedProducts((prev) => {
       if (supportsOptionLines) {
@@ -479,163 +542,173 @@ export function NewReservationForm({
           lineId: createLineId(),
           productId,
           quantity: 1,
-        }
-        const productLines = [...prev.filter((line) => line.productId === productId), nextLine]
+        };
+        const productLines = [
+          ...prev.filter((line) => line.productId === productId),
+          nextLine,
+        ];
         const constraints = getLineQuantityConstraints(
           product,
           nextLine,
           productLines,
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
-        )
+        );
         if (constraints.lineMaxQuantity <= 0) {
-          return prev
+          return prev;
         }
 
-        return [
-          ...prev,
-          nextLine,
-        ]
+        return [...prev, nextLine];
       }
 
-      const existingLine = prev.find((line) => line.productId === productId)
+      const existingLine = prev.find((line) => line.productId === productId);
       if (!existingLine) {
         const nextLine: SelectedProduct = {
           lineId: createLineId(),
           productId,
           quantity: 1,
-        }
+        };
         const constraints = getLineQuantityConstraints(
           product,
           nextLine,
           [nextLine],
           periodAvailability.reservedByProduct.get(product.id) || 0,
           periodAvailability.reservedByProductCombination,
-        )
+        );
         if (constraints.lineMaxQuantity <= 0) {
-          return prev
+          return prev;
         }
 
-        return [
-          ...prev,
-          nextLine,
-        ]
+        return [...prev, nextLine];
       }
 
-      const productLines = prev.filter((line) => line.productId === productId)
+      const productLines = prev.filter((line) => line.productId === productId);
       const constraints = getLineQuantityConstraints(
         product,
         existingLine,
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
-      )
+      );
       const nextQuantity = Math.min(
         existingLine.quantity + 1,
         Math.max(existingLine.quantity, constraints.lineMaxQuantity),
-      )
+      );
 
       return prev.map((line) => {
         if (line.lineId !== existingLine.lineId) {
-          return line
+          return line;
         }
 
         return {
           ...line,
           quantity: nextQuantity,
-        }
-      })
-    })
-  }
+        };
+      });
+    });
+  };
 
   const updateQuantity = (lineId: string, delta: number) => {
     setSelectedProducts((prev) => {
-      const currentLine = prev.find((line) => line.lineId === lineId)
+      const currentLine = prev.find((line) => line.lineId === lineId);
       if (!currentLine) {
-        return prev
+        return prev;
       }
 
       if (delta < 0 && currentLine.quantity + delta <= 0) {
-        return prev.filter((line) => line.lineId !== lineId)
+        return prev.filter((line) => line.lineId !== lineId);
       }
 
-      const product = products.find((item) => item.id === currentLine.productId)
+      const product = products.find(
+        (item) => item.id === currentLine.productId,
+      );
       if (!product) {
-        return prev
+        return prev;
       }
 
-      const productLines = prev.filter((line) => line.productId === currentLine.productId)
+      const productLines = prev.filter(
+        (line) => line.productId === currentLine.productId,
+      );
       const constraints = getLineQuantityConstraints(
         product,
         currentLine,
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
-      )
+      );
       const nextQuantity = Math.max(
         1,
-        Math.min(currentLine.quantity + delta, Math.max(1, constraints.lineMaxQuantity)),
-      )
+        Math.min(
+          currentLine.quantity + delta,
+          Math.max(1, constraints.lineMaxQuantity),
+        ),
+      );
 
       if (nextQuantity === currentLine.quantity) {
-        return prev
+        return prev;
       }
 
       return prev.map((line) => {
         if (line.lineId !== lineId) {
-          return line
+          return line;
         }
 
         return {
           ...line,
           quantity: nextQuantity,
-        }
-      })
-    })
-  }
+        };
+      });
+    });
+  };
 
   const updateSelectedAttributes = (
     lineId: string,
     axisKey: string,
-    value: string | undefined
+    value: string | undefined,
   ) => {
     setSelectedProducts((prev) => {
-      const currentLine = prev.find((line) => line.lineId === lineId)
+      const currentLine = prev.find((line) => line.lineId === lineId);
       if (!currentLine) {
-        return prev
+        return prev;
       }
 
-      const product = products.find((item) => item.id === currentLine.productId)
+      const product = products.find(
+        (item) => item.id === currentLine.productId,
+      );
       if (!product) {
-        return prev
+        return prev;
       }
 
       const nextAttributes: UnitAttributes = {
         ...(currentLine.selectedAttributes || {}),
-      }
+      };
 
       if (!value || value === '__none__') {
-        delete nextAttributes[axisKey]
+        delete nextAttributes[axisKey];
       } else {
-        nextAttributes[axisKey] = value
+        nextAttributes[axisKey] = value;
       }
 
       const nextLine: SelectedProduct = {
         ...currentLine,
-        selectedAttributes: Object.keys(nextAttributes).length > 0 ? nextAttributes : undefined,
-      }
+        selectedAttributes:
+          Object.keys(nextAttributes).length > 0 ? nextAttributes : undefined,
+      };
 
       const productLines = prev
         .filter((line) => line.productId === currentLine.productId)
-        .map((line) => (line.lineId === lineId ? nextLine : line))
+        .map((line) => (line.lineId === lineId ? nextLine : line));
       const constraints = getLineQuantityConstraints(
         product,
         nextLine,
         productLines,
         periodAvailability.reservedByProduct.get(product.id) || 0,
         periodAvailability.reservedByProductCombination,
-      )
-      const nextQuantity = Math.min(nextLine.quantity, constraints.lineMaxQuantity)
+      );
+      const nextQuantity = Math.min(
+        nextLine.quantity,
+        constraints.lineMaxQuantity,
+      );
 
       const normalizedLine: SelectedProduct =
         nextQuantity > 0
@@ -646,17 +719,19 @@ export function NewReservationForm({
           : {
               ...nextLine,
               quantity: 0,
-            }
+            };
 
       return prev
         .map((line) => (line.lineId === lineId ? normalizedLine : line))
-        .filter((line) => line.quantity > 0)
-    })
-  }
+        .filter((line) => line.quantity > 0);
+    });
+  };
 
   const removeSelectedProductLine = (lineId: string) => {
-    setSelectedProducts((prev) => prev.filter((line) => line.lineId !== lineId))
-  }
+    setSelectedProducts((prev) =>
+      prev.filter((line) => line.lineId !== lineId),
+    );
+  };
 
   const updateProductTotalPrice = (
     lineId: string,
@@ -665,20 +740,20 @@ export function NewReservationForm({
   ) => {
     setSelectedProducts((prev) =>
       prev.map((line) => {
-        if (line.lineId !== lineId) return line
+        if (line.lineId !== lineId) return line;
 
-        const divisor = pricing.productDuration * line.quantity
-        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice
+        const divisor = pricing.productDuration * line.quantity;
+        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice;
         if (Math.abs(unitPrice - pricing.calculatedPrice) < 0.01) {
-          const nextLine = { ...line }
-          delete nextLine.priceOverride
-          return nextLine
+          const nextLine = { ...line };
+          delete nextLine.priceOverride;
+          return nextLine;
         }
 
-        return { ...line, priceOverride: { unitPrice } }
-      })
-    )
-  }
+        return { ...line, priceOverride: { unitPrice } };
+      }),
+    );
+  };
 
   // Custom item management
   const resetCustomItemForm = () => {
@@ -690,49 +765,53 @@ export function NewReservationForm({
       deposit: '',
       quantity: '1',
       pricingMode: 'day',
-    })
-  }
+    });
+  };
 
   const customItemDuration =
     watchStartDate && watchEndDate
-      ? calculateDurationForMode(watchStartDate, watchEndDate, customItemForm.pricingMode)
-      : 0
+      ? calculateDurationForMode(
+          watchStartDate,
+          watchEndDate,
+          customItemForm.pricingMode,
+        )
+      : 0;
 
   // Calculate unit price from total price
   const calculateUnitPriceFromTotal = (totalPrice: string, qty: string) => {
-    const total = parseFloat(totalPrice)
-    const quantity = parseInt(qty) || 1
-    if (isNaN(total) || total <= 0 || customItemDuration <= 0) return ''
-    return (total / (quantity * customItemDuration)).toFixed(2)
-  }
+    const total = parseFloat(totalPrice);
+    const quantity = parseInt(qty) || 1;
+    if (isNaN(total) || total <= 0 || customItemDuration <= 0) return '';
+    return (total / (quantity * customItemDuration)).toFixed(2);
+  };
 
   // Calculate total price from unit price
   const calculateTotalFromUnitPrice = (unitPrice: string, qty: string) => {
-    const unit = parseFloat(unitPrice)
-    const quantity = parseInt(qty) || 1
-    if (isNaN(unit) || unit <= 0 || customItemDuration <= 0) return ''
-    return (unit * quantity * customItemDuration).toFixed(2)
-  }
+    const unit = parseFloat(unitPrice);
+    const quantity = parseInt(qty) || 1;
+    if (isNaN(unit) || unit <= 0 || customItemDuration <= 0) return '';
+    return (unit * quantity * customItemDuration).toFixed(2);
+  };
 
   // Handle unit price change
   const handleUnitPriceChange = (value: string) => {
-    const quantity = customItemForm.quantity
+    const quantity = customItemForm.quantity;
     setCustomItemForm({
       ...customItemForm,
       unitPrice: value,
       totalPrice: calculateTotalFromUnitPrice(value, quantity),
-    })
-  }
+    });
+  };
 
   // Handle total price change
   const handleTotalPriceChange = (value: string) => {
-    const quantity = customItemForm.quantity
+    const quantity = customItemForm.quantity;
     setCustomItemForm({
       ...customItemForm,
       totalPrice: value,
       unitPrice: calculateUnitPriceFromTotal(value, quantity),
-    })
-  }
+    });
+  };
 
   // Handle quantity change for custom item form
   const handleCustomItemQuantityChange = (value: string) => {
@@ -741,48 +820,63 @@ export function NewReservationForm({
       setCustomItemForm({
         ...customItemForm,
         quantity: value,
-        unitPrice: calculateUnitPriceFromTotal(customItemForm.totalPrice, value),
-      })
+        unitPrice: calculateUnitPriceFromTotal(
+          customItemForm.totalPrice,
+          value,
+        ),
+      });
     } else {
       // Recalculate total based on unit price
       setCustomItemForm({
         ...customItemForm,
         quantity: value,
-        totalPrice: calculateTotalFromUnitPrice(customItemForm.unitPrice, value),
-      })
+        totalPrice: calculateTotalFromUnitPrice(
+          customItemForm.unitPrice,
+          value,
+        ),
+      });
     }
-  }
+  };
 
   const handleAddCustomItem = () => {
-    let unitPrice: number
+    let unitPrice: number;
 
     if (priceInputMode === 'total') {
       // Calculate unit price from total
-      const totalPrice = parseFloat(customItemForm.totalPrice)
-      const quantity = parseInt(customItemForm.quantity) || 1
+      const totalPrice = parseFloat(customItemForm.totalPrice);
+      const quantity = parseInt(customItemForm.quantity) || 1;
       if (isNaN(totalPrice) || totalPrice <= 0) {
-        toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
-        return
+        toastManager.add({
+          title: t('customItem.priceRequired'),
+          type: 'error',
+        });
+        return;
       }
       if (customItemDuration <= 0) {
-        toastManager.add({ title: t('customItem.selectPeriodFirst'), type: 'error' })
-        return
+        toastManager.add({
+          title: t('customItem.selectPeriodFirst'),
+          type: 'error',
+        });
+        return;
       }
-      unitPrice = totalPrice / (quantity * customItemDuration)
+      unitPrice = totalPrice / (quantity * customItemDuration);
     } else {
-      unitPrice = parseFloat(customItemForm.unitPrice)
+      unitPrice = parseFloat(customItemForm.unitPrice);
       if (isNaN(unitPrice) || unitPrice <= 0) {
-        toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
-        return
+        toastManager.add({
+          title: t('customItem.priceRequired'),
+          type: 'error',
+        });
+        return;
       }
     }
 
-    const deposit = parseFloat(customItemForm.deposit) || 0
-    const quantity = parseInt(customItemForm.quantity) || 1
+    const deposit = parseFloat(customItemForm.deposit) || 0;
+    const quantity = parseInt(customItemForm.quantity) || 1;
 
     if (!customItemForm.name.trim()) {
-      toastManager.add({ title: t('customItem.nameRequired'), type: 'error' })
-      return
+      toastManager.add({ title: t('customItem.nameRequired'), type: 'error' });
+      return;
     }
 
     const newItem: CustomItem = {
@@ -793,68 +887,74 @@ export function NewReservationForm({
       deposit,
       quantity,
       pricingMode: customItemForm.pricingMode,
-      basePeriodMinutes: pricingModeToBasePeriodMinutes(customItemForm.pricingMode),
-    }
+      basePeriodMinutes: pricingModeToBasePeriodMinutes(
+        customItemForm.pricingMode,
+      ),
+    };
 
-    setCustomItems([...customItems, newItem])
-    resetCustomItemForm()
-    setShowCustomItemDialog(false)
-    toastManager.add({ title: t('customItem.added'), type: 'success' })
-  }
+    setCustomItems([...customItems, newItem]);
+    resetCustomItemForm();
+    setShowCustomItemDialog(false);
+    toastManager.add({ title: t('customItem.added'), type: 'success' });
+  };
 
   const updateCustomItemQuantity = (id: string, delta: number) => {
     setCustomItems(
       customItems
         .map((item) => {
           if (item.id === id) {
-            const newQuantity = item.quantity + delta
-            return newQuantity > 0 ? { ...item, quantity: newQuantity } : null
+            const newQuantity = item.quantity + delta;
+            return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
           }
-          return item
+          return item;
         })
-        .filter(Boolean) as CustomItem[]
-    )
-  }
+        .filter(Boolean) as CustomItem[],
+    );
+  };
 
   const removeCustomItem = (id: string) => {
-    setCustomItems(customItems.filter((item) => item.id !== id))
-  }
+    setCustomItems(customItems.filter((item) => item.id !== id));
+  };
 
   const updateCustomItemTotalPrice = (id: string, totalPrice: number) => {
     setCustomItems((prev) =>
       prev.map((item) => {
-        if (item.id !== id || !watchStartDate || !watchEndDate) return item
+        if (item.id !== id || !watchStartDate || !watchEndDate) return item;
 
         const itemDuration = calculateDurationForMode(
           watchStartDate,
           watchEndDate,
           item.pricingMode,
-        )
-        const divisor = itemDuration * item.quantity
-        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice
+        );
+        const divisor = itemDuration * item.quantity;
+        const unitPrice = divisor > 0 ? totalPrice / divisor : totalPrice;
 
-        return { ...item, unitPrice }
-      })
-    )
-  }
+        return { ...item, unitPrice };
+      }),
+    );
+  };
 
   // Price override functions
   const openPriceOverrideDialog = (
     lineId: string,
     calculatedPrice: number,
     pricingMode: PricingMode,
-    duration: number
+    duration: number,
   ) => {
-    const existingOverride = selectedProducts.find((line) => line.lineId === lineId)?.priceOverride
+    const existingOverride = selectedProducts.find(
+      (line) => line.lineId === lineId,
+    )?.priceOverride;
     setPriceOverrideDialog({
       isOpen: true,
       lineId,
       currentPrice: calculatedPrice,
-      newPrice: existingOverride ? existingOverride.unitPrice.toString() : calculatedPrice.toString(),
+      newPrice: existingOverride
+        ? existingOverride.unitPrice.toString()
+        : calculatedPrice.toString(),
       pricingMode,
       duration,
-    })
-  }
+    });
+  };
 
   const closePriceOverrideDialog = () => {
     setPriceOverrideDialog({
@@ -864,16 +964,16 @@ export function NewReservationForm({
       newPrice: '',
       pricingMode: 'day',
       duration: 0,
-    })
-  }
+    });
+  };
 
   const applyPriceOverride = () => {
-    if (!priceOverrideDialog.lineId) return
+    if (!priceOverrideDialog.lineId) return;
 
-    const newPrice = parseFloat(priceOverrideDialog.newPrice)
+    const newPrice = parseFloat(priceOverrideDialog.newPrice);
     if (isNaN(newPrice)) {
-      toastManager.add({ title: t('customItem.priceRequired'), type: 'error' })
-      return
+      toastManager.add({ title: t('customItem.priceRequired'), type: 'error' });
+      return;
     }
 
     setSelectedProducts((prev) =>
@@ -881,19 +981,22 @@ export function NewReservationForm({
         if (line.lineId === priceOverrideDialog.lineId) {
           // Si le nouveau prix est égal au prix calculé, on supprime l'override
           if (Math.abs(newPrice - priceOverrideDialog.currentPrice) < 0.01) {
-            const nextLine = { ...line }
-            delete nextLine.priceOverride
-            return nextLine
+            const nextLine = { ...line };
+            delete nextLine.priceOverride;
+            return nextLine;
           }
-          return { ...line, priceOverride: { unitPrice: newPrice } }
+          return { ...line, priceOverride: { unitPrice: newPrice } };
         }
-        return line
-      })
-    )
+        return line;
+      }),
+    );
 
-    toastManager.add({ title: t('priceOverride.priceUpdated'), type: 'success' })
-    closePriceOverrideDialog()
-  }
+    toastManager.add({
+      title: t('priceOverride.priceUpdated'),
+      type: 'success',
+    });
+    closePriceOverrideDialog();
+  };
 
   const setStepFieldError = (name: StepFieldName, message: string) => {
     form.setFieldMeta(name, (prev) => ({
@@ -903,8 +1006,8 @@ export function NewReservationForm({
         ...prev?.errorMap,
         onSubmit: message,
       },
-    }))
-  }
+    }));
+  };
 
   const clearStepFieldError = (name: StepFieldName) => {
     form.setFieldMeta(name, (prev) => ({
@@ -913,377 +1016,461 @@ export function NewReservationForm({
         ...prev?.errorMap,
         onSubmit: undefined,
       },
-    }))
-  }
+    }));
+  };
 
   const getPricingUnitLabel = useCallback(
     (mode: PricingMode) => {
-      if (mode === 'hour') return t('perHour')
-      if (mode === 'week') return t('perWeek')
-      return t('perDay')
+      if (mode === 'hour') return t('perHour');
+      if (mode === 'week') return t('perWeek');
+      return t('perDay');
     },
-    [t]
-  )
+    [t],
+  );
 
   return (
     <>
       <form.AppForm>
         <form.Form className="space-y-6 pb-28">
-        {/* Stepper */}
-        <Card>
-          <CardContent className="pt-6">
-            <Stepper
-              steps={steps}
-              currentStep={currentStep}
-              onStepClick={goToStep}
-            />
-          </CardContent>
-        </Card>
-         {/* <Stepper
+          {/* Stepper */}
+          <Card>
+            <CardContent className="pt-6">
+              <Stepper
+                steps={steps}
+                currentStep={currentStep}
+                onStepClick={goToStep}
+              />
+            </CardContent>
+          </Card>
+          {/* <Stepper
               steps={steps}
               currentStep={currentStep}
               onStepClick={goToStep}
             /> */}
 
-        {/* Step: Customer */}
-        {currentStepId === 'customer' && (
-          <StepContent direction={stepDirection}>
-            <NewReservationStepCustomer
-              form={form as unknown as NewReservationFormComponentApi}
-              customers={customers}
-              customerType={watchCustomerType}
-              clearStepFieldError={clearStepFieldError}
-              getFieldErrorMessage={getFieldErrorMessage}
-            />
-          </StepContent>
-        )}
+          {/* Step: Customer */}
+          {currentStepId === 'customer' && (
+            <StepContent direction={stepDirection}>
+              <NewReservationStepCustomer
+                form={form as unknown as NewReservationFormComponentApi}
+                customers={customers}
+                customerType={watchCustomerType}
+                clearStepFieldError={clearStepFieldError}
+                getFieldErrorMessage={getFieldErrorMessage}
+              />
+            </StepContent>
+          )}
 
-        {/* Step: Period */}
-        {currentStepId === 'period' && (
-          <StepContent direction={stepDirection}>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  {t('period')}
-                </CardTitle>
-                <CardDescription>{t('periodStepDescription')}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <form.AppField name="startDate">
-                    {(field) => {
-                      const timeSlots = getTimeSlotsForDate(field.state.value)
-                      return (
-                        <field.ReservationDatePicker
-                          id="reservation-start-date"
-                          label={t('startDate')}
-                          minTime={timeSlots.minTime}
-                          maxTime={timeSlots.maxTime}
-                          timezone={timezone}
-                          autoCloseOnTimeSelect
-                          onChange={() => clearStepFieldError('startDate')}
-                          onAutoClose={() => {
-                            // Small delay to let the start popover close before opening end.
-                            setTimeout(() => setEndDatePickerOpen(true), 150)
-                          }}
-                          defaultTime={defaultTimeSlot}
-                        />
-                      )
-                    }}
-                  </form.AppField>
-                  <form.AppField name="endDate">
-                    {(field) => {
-                      const timeSlots = getTimeSlotsForDate(field.state.value)
-                      return (
-                        <field.ReservationDatePicker
-                          id="reservation-end-date"
-                          label={t('endDate')}
-                          disabledDates={(date) => {
-                            // Only block dates before start date (logical constraint).
-                            if (watchStartDate) {
-                              const startDay = new Date(watchStartDate)
-                              startDay.setHours(0, 0, 0, 0)
-                              return date < startDay
-                            }
-                            return false
-                          }}
-                          minTime={timeSlots.minTime}
-                          maxTime={timeSlots.maxTime}
-                          timezone={timezone}
-                          referenceDate={watchStartDate}
-                          autoCloseOnTimeSelect
-                          open={endDatePickerOpen}
-                          onOpenChange={setEndDatePickerOpen}
-                          onChange={() => clearStepFieldError('endDate')}
-                          defaultTime={defaultTimeSlot}
-                        />
-                      )
-                    }}
-                  </form.AppField>
-                </div>
-
-                {watchStartDate && watchEndDate && duration > 0 && (
-                  <div className="mt-6 space-y-2.5">
-                    <div className="flex items-center gap-4 rounded-xl border bg-card px-4 py-3 relative">
-                      <div className="min-w-0">
-                        <p className="text-xs font-medium tabular-nums">
-                          {formatStoreDate(watchStartDate, timezone, "d MMM yyyy")}
-                        </p>
-                        <p className="text-[11px] tabular-nums text-muted-foreground">
-                          {formatStoreDate(watchStartDate, timezone, "HH:mm")}
-                        </p>
-                      </div>
-
-                      <div className="relative flex h-3 flex-1 items-center justify-between">
-                        <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
-                        <div className="relative h-2 w-2 shrink-0">
-                          <span className="absolute inset-0 rounded-full bg-primary timeline-dot-pulse" />
-                          <span className="relative block h-2 w-2 rounded-full bg-primary ring-[3px] ring-primary/15" />
-                        </div>
-                        <div className="relative h-2 w-2 shrink-0">
-                          <span
-                            className="absolute inset-0 rounded-full bg-primary timeline-dot-pulse"
-                            style={{ animationDelay: '1.2s' }}
+          {/* Step: Period */}
+          {currentStepId === 'period' && (
+            <StepContent direction={stepDirection}>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    {t('period')}
+                  </CardTitle>
+                  <CardDescription>
+                    {t('periodStepDescription')}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <form.AppField name="startDate">
+                      {(field) => {
+                        const timeSlots = getTimeSlotsForDate(
+                          field.state.value,
+                        );
+                        return (
+                          <field.ReservationDatePicker
+                            id="reservation-start-date"
+                            label={t('startDate')}
+                            minTime={timeSlots.minTime}
+                            maxTime={timeSlots.maxTime}
+                            timezone={timezone}
+                            autoCloseOnTimeSelect
+                            onChange={() => clearStepFieldError('startDate')}
+                            onAutoClose={() => {
+                              // Small delay to let the start popover close before opening end.
+                              setTimeout(() => setEndDatePickerOpen(true), 150);
+                            }}
+                            defaultTime={defaultTimeSlot}
                           />
-                          <span className="relative block h-2 w-2 rounded-full bg-primary ring-[3px] ring-primary/15" />
+                        );
+                      }}
+                    </form.AppField>
+                    <form.AppField name="endDate">
+                      {(field) => {
+                        const timeSlots = getTimeSlotsForDate(
+                          field.state.value,
+                        );
+                        return (
+                          <field.ReservationDatePicker
+                            id="reservation-end-date"
+                            label={t('endDate')}
+                            disabledDates={(date) => {
+                              // Only block dates before start date (logical constraint).
+                              if (watchStartDate) {
+                                const startDay = new Date(watchStartDate);
+                                startDay.setHours(0, 0, 0, 0);
+                                return date < startDay;
+                              }
+                              return false;
+                            }}
+                            minTime={timeSlots.minTime}
+                            maxTime={timeSlots.maxTime}
+                            timezone={timezone}
+                            referenceDate={watchStartDate}
+                            autoCloseOnTimeSelect
+                            open={endDatePickerOpen}
+                            onOpenChange={setEndDatePickerOpen}
+                            onChange={() => clearStepFieldError('endDate')}
+                            defaultTime={defaultTimeSlot}
+                          />
+                        );
+                      }}
+                    </form.AppField>
+                  </div>
+
+                  {watchStartDate && watchEndDate && duration > 0 && (
+                    <div className="mt-6 space-y-2.5">
+                      <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium tabular-nums">
+                            {formatStoreDate(
+                              watchStartDate,
+                              timezone,
+                              'd MMM yyyy',
+                            )}
+                          </p>
+                          <p className="text-muted-foreground text-[11px] tabular-nums">
+                            {formatStoreDate(watchStartDate, timezone, 'HH:mm')}
+                          </p>
                         </div>
+
                         {detailedDuration && (
-                          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-card px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+                          <span className="bg-card max-w-20 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums sm:hidden">
                             {[
-                              detailedDuration.days > 0 && `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
-                              detailedDuration.hours > 0 && `${detailedDuration.hours}h`,
-                              detailedDuration.minutes > 0 && `${detailedDuration.minutes} min`,
-                            ].filter(Boolean).join(' · ') || `0 min`}
+                              detailedDuration.days > 0 &&
+                                `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
+                              detailedDuration.hours > 0 &&
+                                `${detailedDuration.hours}h`,
+                              detailedDuration.minutes > 0 &&
+                                `${detailedDuration.minutes} min`,
+                            ]
+                              .filter(Boolean)
+                              .join(' · ') || `0 min`}
                           </span>
                         )}
-                      </div>
 
-                      <div className="min-w-0 text-right">
-                        <p className="text-xs font-medium tabular-nums">
-                          {formatStoreDate(watchEndDate, timezone, "d MMM yyyy")}
-                        </p>
-                        <p className="text-[11px] tabular-nums text-muted-foreground">
-                          {formatStoreDate(watchEndDate, timezone, "HH:mm")}
-                        </p>
-                      </div>
-                    </div>
-
-                    {periodWarnings.length > 0 && (
-                      <div className="space-y-1.5">
-                        {periodWarnings.map((warning, index) => (
-                          <div
-                            key={`${warning.type}-${warning.field}-${index}`}
-                            className="flex items-start gap-2.5 rounded-lg bg-warning/10 px-3 py-2"
-                          >
-                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" />
-                            <div className="min-w-0 space-y-0.5">
-                              <p className="text-xs font-medium text-foreground">
-                                {warning.message}
-                              </p>
-                              {warning.details && (
-                                <p className="text-[11px] text-muted-foreground">
-                                  {warning.details}
-                                </p>
-                              )}
-                            </div>
+                        <div className="relative hidden h-3 flex-1 items-center justify-between sm:flex">
+                          <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
+                          <div className="relative h-2 w-2 shrink-0">
+                            <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full" />
+                            <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
                           </div>
-                        ))}
-                        <p className="flex items-center gap-1.5 px-1 pt-1 text-[11px] text-muted-foreground">
-                          <ShieldCheckIcon className="h-3 w-3" />
-                          {t('warnings.canContinue')}
-                        </p>
+                          <div className="relative h-2 w-2 shrink-0">
+                            <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full [animation-delay:1.2s]" />
+                            <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
+                          </div>
+                          {detailedDuration && (
+                            <span className="bg-card absolute top-1/2 left-1/2 max-w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums">
+                              {[
+                                detailedDuration.days > 0 &&
+                                  `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
+                                detailedDuration.hours > 0 &&
+                                  `${detailedDuration.hours}h`,
+                                detailedDuration.minutes > 0 &&
+                                  `${detailedDuration.minutes} min`,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ') || `0 min`}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 text-right">
+                          <p className="text-xs font-medium tabular-nums">
+                            {formatStoreDate(
+                              watchEndDate,
+                              timezone,
+                              'd MMM yyyy',
+                            )}
+                          </p>
+                          <p className="text-muted-foreground text-[11px] tabular-nums">
+                            {formatStoreDate(watchEndDate, timezone, 'HH:mm')}
+                          </p>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </StepContent>
-        )}
 
-        {/* Step: Products */}
-        {currentStepId === 'products' && (
-          <StepContent direction={stepDirection}>
-            <NewReservationStepProducts
-              products={products}
-              selectedProducts={selectedProducts}
-              customItems={customItems}
-              tulipInsuranceMode={tulipInsuranceMode}
-              tulipInsuranceOptIn={tulipInsuranceOptIn}
-              startDate={watchStartDate}
-              endDate={watchEndDate}
-              availabilityWarnings={availabilityWarnings}
-              periodAvailability={periodAvailability}
-              hasItems={hasItems}
-              subtotal={subtotal}
-              originalSubtotal={originalSubtotal}
-              totalSavings={totalSavings}
-              deposit={deposit}
-              addProduct={addProduct}
-              updateQuantity={updateQuantity}
-              updateSelectedAttributes={updateSelectedAttributes}
-              removeSelectedProductLine={removeSelectedProductLine}
-              onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
-              updateCustomItemQuantity={updateCustomItemQuantity}
-              removeCustomItem={removeCustomItem}
-              onTulipInsuranceOptInChange={setTulipInsuranceOptIn}
-              openPriceOverrideDialog={openPriceOverrideDialog}
-              calculateDurationForMode={calculateDurationForMode}
-              getProductPricingDetails={getProductPricingDetails}
-              getCustomItemTotal={getCustomItemTotal}
-            />
-          </StepContent>
-        )}
+                      {periodWarnings.length > 0 && (
+                        <div className="space-y-1.5">
+                          {periodWarnings.map((warning, index) => (
+                            <div
+                              key={`${warning.type}-${warning.field}-${index}`}
+                              className="bg-warning/10 flex items-start gap-2.5 rounded-lg px-3 py-2"
+                            >
+                              <AlertTriangle className="text-warning mt-0.5 h-3.5 w-3.5 shrink-0" />
+                              <div className="min-w-0 space-y-0.5">
+                                <p className="text-foreground text-xs font-medium">
+                                  {warning.message}
+                                </p>
+                                {warning.details && (
+                                  <p className="text-muted-foreground text-[11px]">
+                                    {warning.details}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          <p className="text-muted-foreground flex items-center gap-1.5 px-1 pt-1 text-[11px]">
+                            <ShieldCheckIcon className="h-3 w-3" />
+                            {t('warnings.canContinue')}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </StepContent>
+          )}
 
-        {/* Step: Delivery (conditional) */}
-        {currentStepId === 'delivery' && deliverySettings && (
-          <StepContent direction={stepDirection}>
-            <NewReservationStepDelivery
-              deliverySettings={deliverySettings}
-              subtotal={subtotal}
-              currency="EUR"
-              storeAddress={storeAddress}
-              locations={storeLocations}
-              isDeliveryForced={delivery.isDeliveryForced}
-              isDeliveryIncluded={delivery.isDeliveryIncluded}
-              outboundMethod={delivery.outboundMethod}
-              pickupLocationId={delivery.pickupLocationId}
-              outboundAddress={delivery.outboundAddress}
-              outboundDistance={delivery.outboundDistance}
-              outboundFee={delivery.outboundFee}
-              outboundError={delivery.outboundError}
-              onOutboundMethodChange={delivery.handleOutboundMethodChange}
-              onPickupLocationChange={delivery.handlePickupLocationChange}
-              onOutboundAddressChange={delivery.handleOutboundAddressChange}
-              returnMethod={delivery.returnMethod}
-              returnLocationId={delivery.returnLocationId}
-              returnAddress={delivery.returnAddress}
-              returnDistance={delivery.returnDistance}
-              returnFee={delivery.returnFee}
-              returnError={delivery.returnError}
-              onReturnMethodChange={delivery.handleReturnMethodChange}
-              onReturnLocationChange={delivery.handleReturnLocationChange}
-              onReturnAddressChange={delivery.handleReturnAddressChange}
-              totalFee={delivery.totalFee}
-            />
-          </StepContent>
-        )}
+          {/* Step: Products */}
+          {currentStepId === 'products' && (
+            <StepContent direction={stepDirection}>
+              <NewReservationStepProducts
+                products={products}
+                selectedProducts={selectedProducts}
+                customItems={customItems}
+                tulipInsuranceMode={tulipInsuranceMode}
+                tulipInsuranceOptIn={tulipInsuranceOptIn}
+                startDate={watchStartDate}
+                endDate={watchEndDate}
+                availabilityWarnings={availabilityWarnings}
+                periodAvailability={periodAvailability}
+                hasItems={hasItems}
+                subtotal={subtotal}
+                originalSubtotal={originalSubtotal}
+                totalSavings={totalSavings}
+                deposit={deposit}
+                addProduct={addProduct}
+                updateQuantity={updateQuantity}
+                updateSelectedAttributes={updateSelectedAttributes}
+                removeSelectedProductLine={removeSelectedProductLine}
+                onOpenCustomItemDialog={() => setShowCustomItemDialog(true)}
+                updateCustomItemQuantity={updateCustomItemQuantity}
+                removeCustomItem={removeCustomItem}
+                onTulipInsuranceOptInChange={setTulipInsuranceOptIn}
+                openPriceOverrideDialog={openPriceOverrideDialog}
+                calculateDurationForMode={calculateDurationForMode}
+                getProductPricingDetails={getProductPricingDetails}
+                getCustomItemTotal={getCustomItemTotal}
+              />
+            </StepContent>
+          )}
 
-        {/* Step: Confirmation */}
-        {currentStepId === 'confirm' && (
-          <StepContent direction={stepDirection}>
-            <NewReservationStepReview
-              form={form as unknown as NewReservationFormComponentApi}
-              customerType={watchCustomerType}
-              selectedCustomer={selectedCustomer}
-              values={watchedValues}
-              startDate={watchStartDate}
-              endDate={watchEndDate}
-              duration={duration}
-              detailedDuration={detailedDuration}
-              locale={locale}
-              dateLocale={dateLocale}
-              selectedProducts={selectedProducts}
-              customItems={customItems}
-              products={products}
-              tulipInsuranceMode={tulipInsuranceMode}
-              tulipInsuranceOptIn={tulipInsuranceOptIn}
-              subtotal={subtotal}
-              deposit={deposit}
-              getProductPricingDetails={getProductPricingDetails}
-              getCustomItemTotal={getCustomItemTotal}
-              onProductTotalChange={updateProductTotalPrice}
-              onCustomItemTotalChange={updateCustomItemTotalPrice}
-              hasDeliveryLegs={delivery.outboundMethod === 'address' || delivery.returnMethod === 'address'}
-              deliveryFee={delivery.totalFee}
-              isDeliveryIncluded={delivery.isDeliveryIncluded}
-              outboundMethod={delivery.outboundMethod}
-              outboundAddress={delivery.outboundAddress}
-              outboundDistance={delivery.outboundDistance}
-              returnMethod={delivery.returnMethod}
-              returnAddress={delivery.returnAddress}
-              returnDistance={delivery.returnDistance}
-              storeAddress={storeAddress}
-            />
-          </StepContent>
-        )}
+          {/* Step: Delivery (conditional) */}
+          {currentStepId === 'delivery' && deliverySettings && (
+            <StepContent direction={stepDirection}>
+              <NewReservationStepDelivery
+                deliverySettings={deliverySettings}
+                subtotal={subtotal}
+                currency="EUR"
+                storeAddress={storeAddress}
+                locations={storeLocations}
+                isDeliveryForced={delivery.isDeliveryForced}
+                isDeliveryIncluded={delivery.isDeliveryIncluded}
+                outboundMethod={delivery.outboundMethod}
+                pickupLocationId={delivery.pickupLocationId}
+                outboundAddress={delivery.outboundAddress}
+                outboundDistance={delivery.outboundDistance}
+                outboundFee={delivery.outboundFee}
+                outboundError={delivery.outboundError}
+                onOutboundMethodChange={delivery.handleOutboundMethodChange}
+                onPickupLocationChange={delivery.handlePickupLocationChange}
+                onOutboundAddressChange={delivery.handleOutboundAddressChange}
+                returnMethod={delivery.returnMethod}
+                returnLocationId={delivery.returnLocationId}
+                returnAddress={delivery.returnAddress}
+                returnDistance={delivery.returnDistance}
+                returnFee={delivery.returnFee}
+                returnError={delivery.returnError}
+                onReturnMethodChange={delivery.handleReturnMethodChange}
+                onReturnLocationChange={delivery.handleReturnLocationChange}
+                onReturnAddressChange={delivery.handleReturnAddressChange}
+                totalFee={delivery.totalFee}
+              />
+            </StepContent>
+          )}
 
-        {/* Navigation */}
-        <StepActions position="fixed" className="lg:left-64">
-          <div>
-            {currentStep > 0 ? (
-              <Button type="button" variant="outline" onClick={goToPreviousStep}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                {tCommon('previous')}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push('/dashboard/reservations')}
-              >
-                {tCommon('cancel')}
-              </Button>
+          {/* Step: Confirmation */}
+          {currentStepId === 'confirm' && (
+            <StepContent direction={stepDirection}>
+              <NewReservationStepReview
+                form={form as unknown as NewReservationFormComponentApi}
+                customerType={watchCustomerType}
+                selectedCustomer={selectedCustomer}
+                values={watchedValues}
+                startDate={watchStartDate}
+                endDate={watchEndDate}
+                duration={duration}
+                detailedDuration={detailedDuration}
+                locale={locale}
+                dateLocale={dateLocale}
+                selectedProducts={selectedProducts}
+                customItems={customItems}
+                products={products}
+                tulipInsuranceMode={tulipInsuranceMode}
+                tulipInsuranceOptIn={tulipInsuranceOptIn}
+                subtotal={subtotal}
+                deposit={deposit}
+                getProductPricingDetails={getProductPricingDetails}
+                getCustomItemTotal={getCustomItemTotal}
+                onProductTotalChange={updateProductTotalPrice}
+                onCustomItemTotalChange={updateCustomItemTotalPrice}
+                hasDeliveryLegs={
+                  delivery.outboundMethod === 'address' ||
+                  delivery.returnMethod === 'address'
+                }
+                deliveryFee={delivery.totalFee}
+                isDeliveryIncluded={delivery.isDeliveryIncluded}
+                outboundMethod={delivery.outboundMethod}
+                outboundAddress={delivery.outboundAddress}
+                outboundDistance={delivery.outboundDistance}
+                returnMethod={delivery.returnMethod}
+                returnAddress={delivery.returnAddress}
+                returnDistance={delivery.returnDistance}
+                storeAddress={storeAddress}
+              />
+            </StepContent>
+          )}
+
+          {/* Navigation */}
+          <StepActions
+            position="fixed"
+            className={cn(
+              'lg:left-64',
+              currentStep === steps.length - 1 &&
+                'flex-col items-stretch sm:flex-row sm:items-center',
             )}
-          </div>
+          >
+            <div
+              className={cn(
+                currentStep === steps.length - 1 &&
+                  'flex items-center gap-3 sm:shrink-0',
+              )}
+            >
+              {currentStep > 0 ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goToPreviousStep}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  {tCommon('previous')}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push('/dashboard/reservations')}
+                >
+                  {tCommon('cancel')}
+                </Button>
+              )}
 
-          <div className="flex items-center gap-3">
-            {currentStep < steps.length - 1 ? (
-              <Button type="button" onClick={goToNextStep}>
-                {tCommon('next')}
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <>
-                <div className="flex items-center space-x-2">
+              {currentStep === steps.length - 1 && (
+                <div className="flex min-w-0 flex-1 items-center space-x-2 sm:hidden">
                   <Checkbox
-                    id="sendConfirmationEmail"
+                    id="sendConfirmationEmailMobile"
                     checked={sendConfirmationEmail}
-                    onCheckedChange={(checked) => setSendConfirmationEmail(checked === true)}
+                    onCheckedChange={(checked) =>
+                      setSendConfirmationEmail(checked === true)
+                    }
                   />
                   <label
-                    htmlFor="sendConfirmationEmail"
-                    className="text-sm text-muted-foreground cursor-pointer"
+                    htmlFor="sendConfirmationEmailMobile"
+                    className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
                   >
                     {t('sendConfirmationEmail')}
                   </label>
                 </div>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={isSaving}
-                  onClick={() => { sendAsQuoteRef.current = true }}
-                  className=""
-                >
-                  {isSaving && sendAsQuoteRef.current ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileText className="mr-2 h-4 w-4" />
-                  )}
-                  {t('sendAsQuote')}
+              )}
+            </div>
+
+            <div
+              className={cn(
+                'flex items-center gap-3',
+                currentStep === steps.length - 1 &&
+                  'grid min-w-0 grid-cols-2 items-stretch sm:flex sm:items-center sm:justify-end',
+              )}
+            >
+              {currentStep < steps.length - 1 ? (
+                <Button type="button" onClick={goToNextStep}>
+                  {tCommon('next')}
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isSaving}
-                  onClick={() => { sendAsQuoteRef.current = false }}
-                >
-                  {isSaving && !sendAsQuoteRef.current ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Check className="mr-2 h-4 w-4" />
-                  )}
-                  {t('create')}
-                </Button>
-              </>
-            )}
-          </div>
-        </StepActions>
+              ) : (
+                <>
+                  <div className="hidden min-w-0 flex-1 items-center space-x-2 sm:flex sm:max-w-48">
+                    <Checkbox
+                      id="sendConfirmationEmail"
+                      checked={sendConfirmationEmail}
+                      onCheckedChange={(checked) =>
+                        setSendConfirmationEmail(checked === true)
+                      }
+                    />
+                    <label
+                      htmlFor="sendConfirmationEmail"
+                      className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
+                    >
+                      {t('sendConfirmationEmail')}
+                    </label>
+                  </div>
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={isSaving}
+                    onClick={() => {
+                      sendAsQuoteRef.current = true;
+                    }}
+                    className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+                  >
+                    {isSaving && sendAsQuoteRef.current ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <FileText className="mr-2 h-4 w-4" />
+                    )}
+                    {t('sendAsQuote')}
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSaving}
+                    onClick={() => {
+                      sendAsQuoteRef.current = false;
+                    }}
+                    className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+                  >
+                    {isSaving && !sendAsQuoteRef.current ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="mr-2 h-4 w-4" />
+                    )}
+                    {t('create')}
+                  </Button>
+                </>
+              )}
+            </div>
+          </StepActions>
         </form.Form>
       </form.AppForm>
 
       {/* Custom Item Dialog */}
-      <Dialog open={showCustomItemDialog} onOpenChange={setShowCustomItemDialog}>
+      <Dialog
+        open={showCustomItemDialog}
+        onOpenChange={setShowCustomItemDialog}
+      >
         <DialogPopup className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1295,163 +1482,203 @@ export function NewReservationForm({
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="custom-name">{t('customItem.name')} *</Label>
-              <Input
-                id="custom-name"
-                placeholder={t('customItem.namePlaceholder')}
-                value={customItemForm.name}
-                onChange={(e) => setCustomItemForm({ ...customItemForm, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custom-description">{t('customItem.description')}</Label>
-              <Textarea
-                id="custom-description"
-                placeholder={t('customItem.descriptionPlaceholder')}
-                value={customItemForm.description}
-                onChange={(e) => setCustomItemForm({ ...customItemForm, description: e.target.value })}
-                className="resize-none"
-                rows={2}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="custom-quantity">{t('customItem.quantity')}</Label>
+                <Label htmlFor="custom-name">{t('customItem.name')} *</Label>
                 <Input
-                  id="custom-quantity"
-                  type="number"
-                  min="1"
-                  value={customItemForm.quantity}
-                  onChange={(e) => handleCustomItemQuantityChange(e.target.value)}
-                  className="w-full"
+                  id="custom-name"
+                  placeholder={t('customItem.namePlaceholder')}
+                  value={customItemForm.name}
+                  onChange={(e) =>
+                    setCustomItemForm({
+                      ...customItemForm,
+                      name: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="custom-deposit">{t('customItem.deposit')}</Label>
-                <div className="relative">
+                <Label htmlFor="custom-description">
+                  {t('customItem.description')}
+                </Label>
+                <Textarea
+                  id="custom-description"
+                  placeholder={t('customItem.descriptionPlaceholder')}
+                  value={customItemForm.description}
+                  onChange={(e) =>
+                    setCustomItemForm({
+                      ...customItemForm,
+                      description: e.target.value,
+                    })
+                  }
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="custom-quantity">
+                    {t('customItem.quantity')}
+                  </Label>
                   <Input
-                    id="custom-deposit"
+                    id="custom-quantity"
                     type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={customItemForm.deposit}
-                    onChange={(e) => setCustomItemForm({ ...customItemForm, deposit: e.target.value })}
-                    className="pr-8"
+                    min="1"
+                    value={customItemForm.quantity}
+                    onChange={(e) =>
+                      handleCustomItemQuantityChange(e.target.value)
+                    }
+                    className="w-full"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    €
-                  </span>
                 </div>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="custom-pricing-mode">{t('customItem.pricingPeriod')}</Label>
-              <Select
-                value={customItemForm.pricingMode}
-                onValueChange={(value) =>
-                  setCustomItemForm({
-                    ...customItemForm,
-                    pricingMode: value as PricingMode,
-                  })
-                }
-              >
-                <SelectTrigger id="custom-pricing-mode">
-                  <SelectValue>
-                    {customItemForm.pricingMode === 'hour' && t('perHour')}
-                    {customItemForm.pricingMode === 'day' && t('perDay')}
-                    {customItemForm.pricingMode === 'week' && 'week'}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="hour" label={t('perHour')}>{t('perHour')}</SelectItem>
-                  <SelectItem value="day" label={t('perDay')}>{t('perDay')}</SelectItem>
-                  <SelectItem value="week" label="week">week</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {customItemDuration > 0 && (
-              <div className="rounded-lg border bg-muted/30 p-3 space-y-3">
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>{t('customItem.pricingPeriod')}</span>
-                  <span className="font-medium text-foreground">
-                    {customItemDuration}{' '}
-                    {customItemForm.pricingMode === 'hour'
-                      ? 'h'
-                      : customItemForm.pricingMode === 'week'
-                        ? 'sem'
-                        : 'j'} × {customItemForm.quantity || 1} unité(s)
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-total" className="text-xs">{t('customItem.totalPrice')} *</Label>
-                    <div className="relative">
-                      <Input
-                        id="custom-total"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={customItemForm.totalPrice}
-                        onChange={(e) => handleTotalPriceChange(e.target.value)}
-                        onFocus={() => setPriceInputMode('total')}
-                        className="pr-8"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        €
-                      </span>
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="custom-unit" className="text-xs">{t('customItem.unitPrice')}</Label>
-                    <div className="relative">
-                      <Input
-                        id="custom-unit"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        value={customItemForm.unitPrice}
-                        onChange={(e) => handleUnitPriceChange(e.target.value)}
-                        onFocus={() => setPriceInputMode('unit')}
-                        className="pr-12"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        €/
-                        {customItemForm.pricingMode === 'hour'
-                          ? t('perHour')
-                          : customItemForm.pricingMode === 'week'
-                            ? 'week'
-                            : t('perDay')}
-                      </span>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="custom-deposit">
+                    {t('customItem.deposit')}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="custom-deposit"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={customItemForm.deposit}
+                      onChange={(e) =>
+                        setCustomItemForm({
+                          ...customItemForm,
+                          deposit: e.target.value,
+                        })
+                      }
+                      className="pr-8"
+                    />
+                    <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                      €
+                    </span>
                   </div>
                 </div>
               </div>
-            )}
-            {customItemDuration === 0 && (
-              <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                {t('customItem.selectPeriodFirst')}
-              </p>
-            )}
-          </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom-pricing-mode">
+                  {t('customItem.pricingPeriod')}
+                </Label>
+                <Select
+                  value={customItemForm.pricingMode}
+                  onValueChange={(value) =>
+                    setCustomItemForm({
+                      ...customItemForm,
+                      pricingMode: value as PricingMode,
+                    })
+                  }
+                >
+                  <SelectTrigger id="custom-pricing-mode">
+                    <SelectValue>
+                      {customItemForm.pricingMode === 'hour' && t('perHour')}
+                      {customItemForm.pricingMode === 'day' && t('perDay')}
+                      {customItemForm.pricingMode === 'week' && 'week'}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hour" label={t('perHour')}>
+                      {t('perHour')}
+                    </SelectItem>
+                    <SelectItem value="day" label={t('perDay')}>
+                      {t('perDay')}
+                    </SelectItem>
+                    <SelectItem value="week" label="week">
+                      week
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {customItemDuration > 0 && (
+                <div className="bg-muted/30 space-y-3 rounded-lg border p-3">
+                  <div className="text-muted-foreground flex items-center justify-between text-sm">
+                    <span>{t('customItem.pricingPeriod')}</span>
+                    <span className="text-foreground font-medium">
+                      {customItemDuration}{' '}
+                      {customItemForm.pricingMode === 'hour'
+                        ? 'h'
+                        : customItemForm.pricingMode === 'week'
+                          ? 'sem'
+                          : 'j'}{' '}
+                      × {customItemForm.quantity || 1} unité(s)
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="custom-total" className="text-xs">
+                        {t('customItem.totalPrice')} *
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="custom-total"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={customItemForm.totalPrice}
+                          onChange={(e) =>
+                            handleTotalPriceChange(e.target.value)
+                          }
+                          onFocus={() => setPriceInputMode('total')}
+                          className="pr-8"
+                        />
+                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                          €
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="custom-unit" className="text-xs">
+                        {t('customItem.unitPrice')}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="custom-unit"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          value={customItemForm.unitPrice}
+                          onChange={(e) =>
+                            handleUnitPriceChange(e.target.value)
+                          }
+                          onFocus={() => setPriceInputMode('unit')}
+                          className="pr-12"
+                        />
+                        <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                          €/
+                          {customItemForm.pricingMode === 'hour'
+                            ? t('perHour')
+                            : customItemForm.pricingMode === 'week'
+                              ? 'week'
+                              : t('perDay')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {customItemDuration === 0 && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-600 dark:border-amber-800 dark:bg-amber-950/30">
+                  {t('customItem.selectPeriodFirst')}
+                </p>
+              )}
+            </div>
           </DialogPanel>
           <DialogFooter>
             <Button
               type="button"
               variant="outline"
               onClick={() => {
-                resetCustomItemForm()
-                setShowCustomItemDialog(false)
+                resetCustomItemForm();
+                setShowCustomItemDialog(false);
               }}
             >
               {tCommon('cancel')}
             </Button>
             <Button type="button" onClick={handleAddCustomItem}>
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="mr-1 h-4 w-4" />
               {t('customItem.addButton')}
             </Button>
           </DialogFooter>
@@ -1459,7 +1686,10 @@ export function NewReservationForm({
       </Dialog>
 
       {/* Price Override Dialog */}
-      <Dialog open={priceOverrideDialog.isOpen} onOpenChange={(open) => !open && closePriceOverrideDialog()}>
+      <Dialog
+        open={priceOverrideDialog.isOpen}
+        onOpenChange={(open) => !open && closePriceOverrideDialog()}
+      >
         <DialogPopup className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -1471,75 +1701,92 @@ export function NewReservationForm({
             </DialogDescription>
           </DialogHeader>
           <DialogPanel>
-          <div className="space-y-4">
-            {/* Display calculated price for reference */}
-            <div className="rounded-lg bg-muted/50 p-3">
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">{t('priceOverride.calculatedPrice')}</span>
-                <span className="font-medium">
-                  {formatCurrency(priceOverrideDialog.currentPrice)}/
-                  {getPricingUnitLabel(priceOverrideDialog.pricingMode)}
-                </span>
-              </div>
-            </div>
-
-            {/* New price input */}
-            <div className="space-y-2">
-              <Label htmlFor="override-price">{t('priceOverride.newPrice')} *</Label>
-              <div className="relative">
-                <Input
-                  id="override-price"
-                  type="number"
-                  step="0.01"
-                  placeholder={t('priceOverride.newPricePlaceholder')}
-                  value={priceOverrideDialog.newPrice}
-                  onChange={(e) => setPriceOverrideDialog({ ...priceOverrideDialog, newPrice: e.target.value })}
-                  className="pr-12"
-                  autoFocus
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                  €/{getPricingUnitLabel(priceOverrideDialog.pricingMode)}
-                </span>
-              </div>
-            </div>
-
-            {/* Total preview */}
-            {priceOverrideDialog.duration > 0 && priceOverrideDialog.newPrice && (
-              <div className="rounded-lg border p-3">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">{t('priceOverride.totalForPeriod')}</span>
+            <div className="space-y-4">
+              {/* Display calculated price for reference */}
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    {t('priceOverride.calculatedPrice')}
+                  </span>
                   <span className="font-medium">
-                    {formatCurrency(
-                      parseFloat(priceOverrideDialog.newPrice || '0') *
-                        priceOverrideDialog.duration
-                    )}
+                    {formatCurrency(priceOverrideDialog.currentPrice)}/
+                    {getPricingUnitLabel(priceOverrideDialog.pricingMode)}
                   </span>
                 </div>
-                {priceOverrideDialog.currentPrice !== parseFloat(priceOverrideDialog.newPrice || '0') && (
-                  <div className="flex justify-between items-center text-xs mt-1">
-                    <span className="text-muted-foreground">
-                      vs.{' '}
-                      {formatCurrency(
-                        priceOverrideDialog.currentPrice * priceOverrideDialog.duration
-                      )}
-                    </span>
-                    <span className={cn(
-                      parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
-                        ? 'text-green-600'
-                        : 'text-orange-600'
-                    )}>
-                      {parseFloat(priceOverrideDialog.newPrice || '0') < priceOverrideDialog.currentPrice
-                        ? `-${formatCurrency((priceOverrideDialog.currentPrice - parseFloat(priceOverrideDialog.newPrice || '0')) * priceOverrideDialog.duration)}`
-                        : `+${formatCurrency((parseFloat(priceOverrideDialog.newPrice || '0') - priceOverrideDialog.currentPrice) * priceOverrideDialog.duration)}`
-                      }
-                    </span>
+              </div>
+
+              {/* New price input */}
+              <div className="space-y-2">
+                <Label htmlFor="override-price">
+                  {t('priceOverride.newPrice')} *
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="override-price"
+                    type="number"
+                    step="0.01"
+                    placeholder={t('priceOverride.newPricePlaceholder')}
+                    value={priceOverrideDialog.newPrice}
+                    onChange={(e) =>
+                      setPriceOverrideDialog({
+                        ...priceOverrideDialog,
+                        newPrice: e.target.value,
+                      })
+                    }
+                    className="pr-12"
+                    autoFocus
+                  />
+                  <span className="text-muted-foreground absolute top-1/2 right-3 -translate-y-1/2 text-sm">
+                    €/{getPricingUnitLabel(priceOverrideDialog.pricingMode)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Total preview */}
+              {priceOverrideDialog.duration > 0 &&
+                priceOverrideDialog.newPrice && (
+                  <div className="rounded-lg border p-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {t('priceOverride.totalForPeriod')}
+                      </span>
+                      <span className="font-medium">
+                        {formatCurrency(
+                          parseFloat(priceOverrideDialog.newPrice || '0') *
+                            priceOverrideDialog.duration,
+                        )}
+                      </span>
+                    </div>
+                    {priceOverrideDialog.currentPrice !==
+                      parseFloat(priceOverrideDialog.newPrice || '0') && (
+                      <div className="mt-1 flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          vs.{' '}
+                          {formatCurrency(
+                            priceOverrideDialog.currentPrice *
+                              priceOverrideDialog.duration,
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            parseFloat(priceOverrideDialog.newPrice || '0') <
+                              priceOverrideDialog.currentPrice
+                              ? 'text-green-600'
+                              : 'text-orange-600',
+                          )}
+                        >
+                          {parseFloat(priceOverrideDialog.newPrice || '0') <
+                          priceOverrideDialog.currentPrice
+                            ? `-${formatCurrency((priceOverrideDialog.currentPrice - parseFloat(priceOverrideDialog.newPrice || '0')) * priceOverrideDialog.duration)}`
+                            : `+${formatCurrency((parseFloat(priceOverrideDialog.newPrice || '0') - priceOverrideDialog.currentPrice) * priceOverrideDialog.duration)}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
+            </div>
           </DialogPanel>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -1547,7 +1794,7 @@ export function NewReservationForm({
                 setPriceOverrideDialog({
                   ...priceOverrideDialog,
                   newPrice: priceOverrideDialog.currentPrice.toString(),
-                })
+                });
               }}
               className="sm:mr-auto"
             >
@@ -1567,5 +1814,5 @@ export function NewReservationForm({
         </DialogPopup>
       </Dialog>
     </>
-  )
+  );
 }

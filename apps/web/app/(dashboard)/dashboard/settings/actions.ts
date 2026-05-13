@@ -5,9 +5,12 @@ import { getCurrentStore } from '@/lib/store-context'
 import { stores } from '@louez/db'
 import { eq, and, ne } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { getTimezoneForCountry } from '@/lib/utils/countries'
 import { notifyStoreSettingsUpdated } from '@/lib/discord/platform-notifications'
 import { z } from 'zod'
+import {
+  buildStoreSettingsUpdate,
+  type StoreSettingsInput,
+} from './util.store-settings'
 
 // Slug validation schema
 const slugSchema = z.string()
@@ -16,33 +19,6 @@ const slugSchema = z.string()
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
     message: 'slug_format_invalid'
   })
-
-interface StoreSettingsInput {
-  name: string
-  description?: string
-  email?: string
-  phone?: string
-  address?: string
-  country: string
-  currency: string
-  latitude?: number | null
-  longitude?: number | null
-  // Billing address
-  billingAddressSameAsStore: boolean
-  billingAddress?: string
-  billingCity?: string
-  billingPostalCode?: string
-  billingCountry?: string
-  // Settings
-  reservationMode: 'payment' | 'request'
-  pendingBlocksAvailability: boolean
-  onlinePaymentDepositPercentage: number
-  minRentalMinutes: number
-  maxRentalMinutes: number | null
-  advanceNoticeMinutes: number
-  turnoverBufferMinutes: number
-  requireCustomerAddress: boolean
-}
 
 export async function updateStoreSettings(data: StoreSettingsInput) {
   try {
@@ -62,29 +38,7 @@ export async function updateStoreSettings(data: StoreSettingsInput) {
         address: data.address || null,
         latitude: data.latitude?.toString() || null,
         longitude: data.longitude?.toString() || null,
-        settings: {
-          reservationMode: data.reservationMode,
-          pendingBlocksAvailability: data.pendingBlocksAvailability,
-          onlinePaymentDepositPercentage: data.onlinePaymentDepositPercentage,
-          minRentalMinutes: data.minRentalMinutes,
-          maxRentalMinutes: data.maxRentalMinutes,
-          advanceNoticeMinutes: data.advanceNoticeMinutes,
-          turnoverBufferMinutes: data.turnoverBufferMinutes,
-          requireCustomerAddress: data.requireCustomerAddress,
-          businessHours: store.settings?.businessHours,
-          country: data.country,
-          timezone: getTimezoneForCountry(data.country),
-          currency: data.currency,
-          tax: store.settings?.tax,
-          integrationData: store.settings?.integrationData,
-          billingAddress: {
-            useSameAsStore: data.billingAddressSameAsStore,
-            address: data.billingAddressSameAsStore ? undefined : data.billingAddress,
-            city: data.billingAddressSameAsStore ? undefined : data.billingCity,
-            postalCode: data.billingAddressSameAsStore ? undefined : data.billingPostalCode,
-            country: data.billingAddressSameAsStore ? undefined : data.billingCountry,
-          },
-        },
+        settings: buildStoreSettingsUpdate(store.settings, data),
         updatedAt: new Date(),
       })
       .where(eq(stores.id, store.id))

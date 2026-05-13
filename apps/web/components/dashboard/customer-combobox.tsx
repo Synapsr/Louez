@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { Check, ChevronsUpDown, Search, User } from 'lucide-react';
+import { Check, ChevronsUpDown, Search } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
@@ -44,6 +44,7 @@ export function CustomerCombobox({
   const t = useTranslations('common.customerSearch');
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const scrollPositionRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const selectedCustomer = customers.find((customer) => customer.id === value);
 
@@ -69,8 +70,25 @@ export function CustomerCombobox({
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    if (nextOpen) {
+      scrollPositionRef.current = { x: window.scrollX, y: window.scrollY };
+      window.requestAnimationFrame(() => {
+        const scrollPosition = scrollPositionRef.current;
+
+        if (!scrollPosition) return;
+
+        window.scrollTo(scrollPosition.x, scrollPosition.y);
+      });
+    } else {
+      scrollPositionRef.current = null;
+    }
+
+    setOpen(nextOpen);
+  }, []);
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button
@@ -78,7 +96,7 @@ export function CustomerCombobox({
             role="combobox"
             aria-expanded={open}
             className={cn(
-              'h-auto min-h-[44px] w-full justify-between py-2',
+              'h-auto min-h-[44px] w-full min-w-0 justify-between py-2',
               !value && 'text-muted-foreground',
               className,
             )}
@@ -87,8 +105,8 @@ export function CustomerCombobox({
         }
       >
         {selectedCustomer ? (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar className="h-8 w-8 shrink-0">
               <AvatarFallback className="bg-primary/10 text-primary text-xs">
                 {getInitials(
                   selectedCustomer.firstName,
@@ -96,11 +114,11 @@ export function CustomerCombobox({
                 )}
               </AvatarFallback>
             </Avatar>
-            <div className="text-left">
-              <p className="text-foreground font-medium">
+            <div className="min-w-0 text-left">
+              <p className="text-foreground truncate font-medium">
                 {selectedCustomer.firstName} {selectedCustomer.lastName}
               </p>
-              <p className="text-muted-foreground text-xs">
+              <p className="text-muted-foreground truncate text-xs">
                 {selectedCustomer.email}
               </p>
             </div>
@@ -113,16 +131,19 @@ export function CustomerCombobox({
         )}
         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0 pt-2 *:p-0" align="start">
+      <PopoverContent
+        className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-(--available-width) p-0 pt-2 *:p-0 sm:w-[400px]"
+        align="start"
+      >
         <Command open items={filteredCustomers}>
           <CommandInput
-            className=""
+            autoFocus={false}
             placeholder={t('placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
           <CommandEmpty>{t('noResults')}</CommandEmpty>
-          <CommandList>
+          <CommandList className="max-h-[min(calc(100vh-12rem),22rem)]">
             <CommandGroup>
               {filteredCustomers.map((customer) => (
                 <CommandItem
@@ -135,7 +156,7 @@ export function CustomerCombobox({
                   }}
                   className="flex items-center gap-3 py-3"
                 >
-                  <Avatar className="h-8 w-8">
+                  <Avatar className="h-8 w-8 shrink-0">
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">
                       {getInitials(customer.firstName, customer.lastName)}
                     </AvatarFallback>
@@ -149,7 +170,7 @@ export function CustomerCombobox({
                     </p>
                   </div>
                   {customer.phone && (
-                    <span className="text-muted-foreground text-xs">
+                    <span className="text-muted-foreground max-w-24 truncate text-xs">
                       {customer.phone}
                     </span>
                   )}

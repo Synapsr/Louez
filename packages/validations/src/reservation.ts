@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from 'zod';
 
 export const reservationStatusSchema = z.enum([
   'pending',
@@ -9,21 +9,25 @@ export const reservationStatusSchema = z.enum([
   'rejected',
   'quote',
   'declined',
-])
+]);
 
 // Schema factories that accept translation function
-export const createReservationItemSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
+export const createReservationItemSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
   z.object({
     productId: z.string().min(1, t('required')),
     quantity: z.number().min(1, t('minValue', { min: 1 })),
-  })
+  });
 
-export const createManualReservationSchema = (t: (key: string, params?: Record<string, string | number | Date>) => string) =>
+export const createManualReservationSchema = (
+  t: (key: string, params?: Record<string, string | number | Date>) => string,
+) =>
   z.object({
     // Customer
     customerType: z.enum(['existing', 'new']),
     customerId: z.string().optional(),
-    email: z.string().email(t('email')).optional(),
+    email: z.email(t('email')).optional(),
     firstName: z.string().min(1, t('required')).optional(),
     lastName: z.string().min(1, t('required')).optional(),
     phone: z.string().optional(),
@@ -37,19 +41,19 @@ export const createManualReservationSchema = (t: (key: string, params?: Record<s
 
     // Notes
     internalNotes: z.string().optional(),
-  })
+  });
 
 // Default schemas for server-side validation
 export const reservationItemSchema = z.object({
   productId: z.string().min(1, 'validation.required'),
   quantity: z.number().min(1, 'validation.minValue'),
-})
+});
 
 export const manualReservationSchema = z.object({
   // Customer
   customerType: z.enum(['existing', 'new']),
   customerId: z.string().optional(),
-  email: z.string().email('validation.email').optional(),
+  email: z.email('validation.email').optional(),
   firstName: z.string().min(1, 'validation.required').optional(),
   lastName: z.string().min(1, 'validation.required').optional(),
   phone: z.string().optional(),
@@ -63,12 +67,12 @@ export const manualReservationSchema = z.object({
 
   // Notes
   internalNotes: z.string().optional(),
-})
+});
 
 export const updateReservationNotesSchema = z.object({
   internalNotes: z.string().optional(),
-})
+});
 
-export type ReservationStatus = z.infer<typeof reservationStatusSchema>
-export type ReservationItem = z.infer<typeof reservationItemSchema>
-export type ManualReservationInput = z.infer<typeof manualReservationSchema>
+export type ReservationStatus = z.infer<typeof reservationStatusSchema>;
+export type ReservationItem = z.infer<typeof reservationItemSchema>;
+export type ManualReservationInput = z.infer<typeof manualReservationSchema>;

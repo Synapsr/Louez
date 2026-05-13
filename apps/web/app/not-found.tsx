@@ -18,13 +18,13 @@ export default async function NotFound() {
           {t('notFoundDescription')}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button variant="default" render={<Link href="/" />}>
-              <Home className="mr-2 h-4 w-4" />
-              {t('goHome')}
-          </Button>
           <Button variant="outline" render={<Link href="javascript:history.back()" />}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               {t('goBack')}
+          </Button>
+          <Button variant="default" render={<Link href="/" />}>
+              <Home className="mr-2 h-4 w-4" />
+              {t('goHome')}
           </Button>
         </div>
       </div>
