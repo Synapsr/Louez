@@ -1,44 +1,57 @@
-import { tool } from 'ai'
+import { tool } from 'ai';
 import {
-  calculatePeakReservedQuantities,
-} from '@louez/utils'
+  and,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  like,
+  lt,
+  lte,
+  sql,
+  sum,
+} from 'drizzle-orm';
+import { z } from 'zod';
+
 import {
-  db,
-  products,
   categories,
-  reservations,
-  reservationItems,
   customers,
-  payments,
   dailyStats,
+  db,
+  payments,
   productStats,
+  products,
+  reservationItems,
+  reservations,
   stores,
-} from '@louez/db'
-import type { ApiKeyPermissions } from '@louez/db/schema'
-import { and, eq, like, sql, desc, gte, lte, gt, lt, sum, inArray } from 'drizzle-orm'
-import { z } from 'zod'
+} from '@louez/db';
+import type { ApiKeyPermissions } from '@louez/db/schema';
+import { calculatePeakReservedQuantities } from '@louez/utils';
 
 // ---------------------------------------------------------------------------
 // Context & permissions
 // ---------------------------------------------------------------------------
 
 export type AIChatContext = {
-  storeId: string
-  storeName: string
-  permissions: ApiKeyPermissions
-}
+  storeId: string;
+  storeName: string;
+  permissions: ApiKeyPermissions;
+};
 
 function requirePermission(
   ctx: AIChatContext,
   domain: keyof ApiKeyPermissions,
   level: 'read' | 'write',
 ) {
-  const perm = ctx.permissions[domain]
+  const perm = ctx.permissions[domain];
   if (perm === 'none') {
-    throw new Error(`Permission denied: requires ${domain}:${level}`)
+    throw new Error(`Permission denied: requires ${domain}:${level}`);
   }
   if (level === 'write' && perm === 'read') {
-    throw new Error(`Permission denied: requires ${domain}:write (current: read)`)
+    throw new Error(
+      `Permission denied: requires ${domain}:write (current: read)`,
+    );
   }
 }
 
@@ -53,17 +66,21 @@ export function createAITools(ctx: AIChatContext) {
     list_products: tool({
       description: 'List products in the store catalog with optional filters',
       inputSchema: z.object({
-        status: z.enum(['active', 'draft', 'archived', 'all']).optional().describe('Filter by status'),
+        status: z
+          .enum(['active', 'draft', 'archived', 'all'])
+          .optional()
+          .describe('Filter by status'),
         categoryId: z.string().optional().describe('Filter by category ID'),
         search: z.string().optional().describe('Search by product name'),
       }),
       execute: async ({ status, categoryId, search }) => {
-        requirePermission(ctx, 'products', 'read')
+        requirePermission(ctx, 'products', 'read');
 
-        const conditions = [eq(products.storeId, ctx.storeId)]
-        if (status && status !== 'all') conditions.push(eq(products.status, status))
-        if (categoryId) conditions.push(eq(products.categoryId, categoryId))
-        if (search) conditions.push(like(products.name, `%${search}%`))
+        const conditions = [eq(products.storeId, ctx.storeId)];
+        if (status && status !== 'all')
+          conditions.push(eq(products.status, status));
+        if (categoryId) conditions.push(eq(products.categoryId, categoryId));
+        if (search) conditions.push(like(products.name, `%${search}%`));
 
         const rows = await db
           .select({
@@ -80,14 +97,14 @@ export function createAITools(ctx: AIChatContext) {
           .leftJoin(categories, eq(products.categoryId, categories.id))
           .where(and(...conditions))
           .orderBy(products.displayOrder, products.name)
-          .limit(50)
+          .limit(50);
 
         const [countResult] = await db
           .select({ total: sql<number>`COUNT(*)` })
           .from(products)
-          .where(and(...conditions))
+          .where(and(...conditions));
 
-        return { products: rows, total: countResult?.total ?? 0 }
+        return { products: rows, total: countResult?.total ?? 0 };
       },
     }),
 
@@ -97,15 +114,18 @@ export function createAITools(ctx: AIChatContext) {
         productId: z.string().describe('The product ID'),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, 'products', 'read')
+        requirePermission(ctx, 'products', 'read');
 
         const product = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+          where: and(
+            eq(products.storeId, ctx.storeId),
+            eq(products.id, productId),
+          ),
           with: { category: true, pricingTiers: true, units: true },
-        })
+        });
 
-        if (!product) return { error: 'Product not found' }
-        return { product }
+        if (!product) return { error: 'Product not found' };
+        return { product };
       },
     }),
 
@@ -115,13 +135,29 @@ export function createAITools(ctx: AIChatContext) {
         name: z.string().min(1).describe('Product name'),
         description: z.string().optional().describe('Product description'),
         price: z.string().describe('Price per period (e.g. "25.00")'),
-        deposit: z.string().optional().describe('Deposit amount (e.g. "100.00")'),
+        deposit: z
+          .string()
+          .optional()
+          .describe('Deposit amount (e.g. "100.00")'),
         pricingMode: z.enum(['hour', 'day', 'week']).describe('Pricing period'),
-        quantity: z.number().int().min(1).optional().describe('Stock quantity (default 1)'),
+        quantity: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe('Stock quantity (default 1)'),
         categoryId: z.string().optional().describe('Category ID'),
       }),
-      execute: async ({ name, description, price, deposit, pricingMode, quantity, categoryId }) => {
-        requirePermission(ctx, 'products', 'write')
+      execute: async ({
+        name,
+        description,
+        price,
+        deposit,
+        pricingMode,
+        quantity,
+        categoryId,
+      }) => {
+        requirePermission(ctx, 'products', 'write');
 
         const [created] = await db
           .insert(products)
@@ -136,9 +172,15 @@ export function createAITools(ctx: AIChatContext) {
             categoryId: categoryId ?? null,
             status: 'active',
           })
-          .$returningId()
+          .$returningId();
 
-        return { id: created.id, name, price, pricingMode, quantity: quantity ?? 1 }
+        return {
+          id: created.id,
+          name,
+          price,
+          pricingMode,
+          quantity: quantity ?? 1,
+        };
       },
     }),
 
@@ -151,28 +193,37 @@ export function createAITools(ctx: AIChatContext) {
         price: z.string().optional().describe('New price'),
         deposit: z.string().optional().describe('New deposit amount'),
         quantity: z.number().int().optional().describe('New stock quantity'),
-        status: z.enum(['active', 'draft', 'archived']).optional().describe('New status'),
+        status: z
+          .enum(['active', 'draft', 'archived'])
+          .optional()
+          .describe('New status'),
       }),
       execute: async ({ productId, ...updates }) => {
-        requirePermission(ctx, 'products', 'write')
+        requirePermission(ctx, 'products', 'write');
 
         const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+          where: and(
+            eq(products.storeId, ctx.storeId),
+            eq(products.id, productId),
+          ),
           columns: { id: true },
-        })
-        if (!existing) return { error: 'Product not found' }
+        });
+        if (!existing) return { error: 'Product not found' };
 
-        const updateData: Record<string, unknown> = {}
+        const updateData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value
+          if (value !== undefined) updateData[key] = value;
         }
 
         if (Object.keys(updateData).length === 0) {
-          return { error: 'No fields to update' }
+          return { error: 'No fields to update' };
         }
 
-        await db.update(products).set(updateData).where(eq(products.id, productId))
-        return { success: true, productId }
+        await db
+          .update(products)
+          .set(updateData)
+          .where(eq(products.id, productId));
+        return { success: true, productId };
       },
     }),
 
@@ -182,56 +233,84 @@ export function createAITools(ctx: AIChatContext) {
         productId: z.string().describe('The product ID to archive'),
       }),
       execute: async ({ productId }) => {
-        requirePermission(ctx, 'products', 'write')
+        requirePermission(ctx, 'products', 'write');
 
         const existing = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+          where: and(
+            eq(products.storeId, ctx.storeId),
+            eq(products.id, productId),
+          ),
           columns: { id: true, name: true },
-        })
-        if (!existing) return { error: 'Product not found' }
+        });
+        if (!existing) return { error: 'Product not found' };
 
         const [activeCount] = await db
           .select({ count: sql<number>`COUNT(*)` })
           .from(reservationItems)
-          .innerJoin(reservations, eq(reservationItems.reservationId, reservations.id))
+          .innerJoin(
+            reservations,
+            eq(reservationItems.reservationId, reservations.id),
+          )
           .where(
             and(
               eq(reservationItems.productId, productId),
-              inArray(reservations.status, ['pending', 'confirmed', 'ongoing'] as const),
+              inArray(reservations.status, [
+                'pending',
+                'confirmed',
+                'ongoing',
+              ] as const),
             ),
-          )
+          );
 
         if (activeCount && activeCount.count > 0) {
-          return { error: `Cannot archive: ${activeCount.count} active reservation(s) use this product` }
+          return {
+            error: `Cannot archive: ${activeCount.count} active reservation(s) use this product`,
+          };
         }
 
-        await db.update(products).set({ status: 'archived' }).where(eq(products.id, productId))
-        return { success: true, name: existing.name }
+        await db
+          .update(products)
+          .set({ status: 'archived' })
+          .where(eq(products.id, productId));
+        return { success: true, name: existing.name };
       },
     }),
 
     // ── Reservations ─────────────────────────────────────────────────────
 
     list_reservations: tool({
-      description: 'List reservations with optional filters (status, period, search)',
+      description:
+        'List reservations with optional filters (status, period, search)',
       inputSchema: z.object({
-        status: z.enum(['pending', 'confirmed', 'ongoing', 'completed', 'cancelled', 'rejected']).optional(),
+        status: z
+          .enum([
+            'pending',
+            'confirmed',
+            'ongoing',
+            'completed',
+            'cancelled',
+            'rejected',
+          ])
+          .optional(),
         period: z.enum(['today', 'week', 'month']).optional(),
-        search: z.string().optional().describe('Search by reservation number or customer name'),
+        search: z
+          .string()
+          .optional()
+          .describe('Search by reservation number or customer name'),
       }),
       execute: async ({ status, period, search }) => {
-        requirePermission(ctx, 'reservations', 'read')
+        requirePermission(ctx, 'reservations', 'read');
 
-        const conditions = [eq(reservations.storeId, ctx.storeId)]
+        const conditions = [eq(reservations.storeId, ctx.storeId)];
 
-        if (status) conditions.push(eq(reservations.status, status))
+        if (status) conditions.push(eq(reservations.status, status));
 
         if (period) {
-          const start = new Date()
-          start.setHours(0, 0, 0, 0)
-          if (period === 'week') start.setDate(start.getDate() - 7)
-          if (period === 'month') start.setMonth(start.getMonth() - 1)
-          conditions.push(gte(reservations.createdAt, start))
+          const start = new Date();
+          start.setHours(0, 0, 0, 0);
+          if (period === 'week') start.setDate(start.getDate() - 7);
+          if (period === 'month') start.setMonth(start.getMonth() - 1);
+          conditions.push(gte(reservations.createdAt, start));
         }
 
         if (search) {
@@ -242,7 +321,7 @@ export function createAITools(ctx: AIChatContext) {
               AND (LOWER(c.first_name) LIKE ${`%${search.toLowerCase()}%`}
                    OR LOWER(c.last_name) LIKE ${`%${search.toLowerCase()}%`})
             ))`,
-          )
+          );
         }
 
         const rows = await db
@@ -260,14 +339,14 @@ export function createAITools(ctx: AIChatContext) {
           .leftJoin(customers, eq(reservations.customerId, customers.id))
           .where(and(...conditions))
           .orderBy(desc(reservations.createdAt))
-          .limit(50)
+          .limit(50);
 
         const [countResult] = await db
           .select({ total: sql<number>`COUNT(*)` })
           .from(reservations)
-          .where(and(...conditions))
+          .where(and(...conditions));
 
-        return { reservations: rows, total: countResult?.total ?? 0 }
+        return { reservations: rows, total: countResult?.total ?? 0 };
       },
     }),
 
@@ -277,53 +356,72 @@ export function createAITools(ctx: AIChatContext) {
         reservationId: z.string().describe('The reservation ID'),
       }),
       execute: async ({ reservationId }) => {
-        requirePermission(ctx, 'reservations', 'read')
+        requirePermission(ctx, 'reservations', 'read');
 
         const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           with: {
             customer: true,
             items: { with: { product: { columns: { id: true, name: true } } } },
             payments: true,
           },
-        })
+        });
 
-        if (!reservation) return { error: 'Reservation not found' }
-        return { reservation }
+        if (!reservation) return { error: 'Reservation not found' };
+        return { reservation };
       },
     }),
 
     update_reservation_status: tool({
-      description: 'Change the status of a reservation (confirm, reject, cancel, etc.)',
+      description:
+        'Change the status of a reservation (confirm, reject, cancel, etc.)',
       inputSchema: z.object({
         reservationId: z.string().describe('The reservation ID'),
-        status: z.enum(['confirmed', 'ongoing', 'completed', 'cancelled', 'rejected']).describe('New status'),
+        status: z
+          .enum(['confirmed', 'ongoing', 'completed', 'cancelled', 'rejected'])
+          .describe('New status'),
       }),
       execute: async ({ reservationId, status: newStatus }) => {
-        requirePermission(ctx, 'reservations', 'write')
+        requirePermission(ctx, 'reservations', 'write');
 
         const existing = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           columns: { id: true, number: true, status: true },
-        })
-        if (!existing) return { error: 'Reservation not found' }
+        });
+        if (!existing) return { error: 'Reservation not found' };
 
         const validTransitions: Record<string, string[]> = {
           pending: ['confirmed', 'rejected', 'cancelled'],
           confirmed: ['ongoing', 'cancelled'],
           ongoing: ['completed'],
-        }
-        const allowed = validTransitions[existing.status]
+        };
+        const allowed = validTransitions[existing.status];
         if (!allowed?.includes(newStatus)) {
-          return { error: `Invalid transition: ${existing.status} → ${newStatus}. Allowed: ${allowed?.join(', ') ?? 'none'}` }
+          return {
+            error: `Invalid transition: ${existing.status} → ${newStatus}. Allowed: ${allowed?.join(', ') ?? 'none'}`,
+          };
         }
 
-        const updateData: Record<string, unknown> = { status: newStatus }
-        if (newStatus === 'ongoing') updateData.pickedUpAt = new Date()
-        if (newStatus === 'completed') updateData.returnedAt = new Date()
+        const updateData: Record<string, unknown> = { status: newStatus };
+        if (newStatus === 'ongoing') updateData.pickedUpAt = new Date();
+        if (newStatus === 'completed') updateData.returnedAt = new Date();
 
-        await db.update(reservations).set(updateData).where(eq(reservations.id, reservationId))
-        return { success: true, number: existing.number, from: existing.status, to: newStatus }
+        await db
+          .update(reservations)
+          .set(updateData)
+          .where(eq(reservations.id, reservationId));
+        return {
+          success: true,
+          number: existing.number,
+          from: existing.status,
+          to: newStatus,
+        };
       },
     }),
 
@@ -334,58 +432,72 @@ export function createAITools(ctx: AIChatContext) {
         notes: z.string().describe('The new internal notes content'),
       }),
       execute: async ({ reservationId, notes }) => {
-        requirePermission(ctx, 'reservations', 'write')
+        requirePermission(ctx, 'reservations', 'write');
 
         const existing = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           columns: { id: true, number: true },
-        })
-        if (!existing) return { error: 'Reservation not found' }
+        });
+        if (!existing) return { error: 'Reservation not found' };
 
-        await db.update(reservations).set({ internalNotes: notes }).where(eq(reservations.id, reservationId))
-        return { success: true, number: existing.number }
+        await db
+          .update(reservations)
+          .set({ internalNotes: notes })
+          .where(eq(reservations.id, reservationId));
+        return { success: true, number: existing.number };
       },
     }),
 
     get_reservation_counters: tool({
-      description: 'Get quick reservation counters by status (pending, ongoing, etc.)',
+      description:
+        'Get quick reservation counters by status (pending, ongoing, etc.)',
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, 'reservations', 'read')
+        requirePermission(ctx, 'reservations', 'read');
 
         const rows = await db
           .select({ status: reservations.status, count: sql<number>`COUNT(*)` })
           .from(reservations)
           .where(eq(reservations.storeId, ctx.storeId))
-          .groupBy(reservations.status)
+          .groupBy(reservations.status);
 
-        const counts: Record<string, number> = {}
-        for (const row of rows) counts[row.status] = row.count
+        const counts: Record<string, number> = {};
+        for (const row of rows) counts[row.status] = row.count;
 
-        return { counts, total: Object.values(counts).reduce((a, b) => a + b, 0) }
+        return {
+          counts,
+          total: Object.values(counts).reduce((a, b) => a + b, 0),
+        };
       },
     }),
 
     // ── Customers ─────────────────────────────────────────────────────────
 
     list_customers: tool({
-      description: 'List customers with optional search, type filter, and date filter',
+      description:
+        'List customers with optional search, type filter, and date filter',
       inputSchema: z.object({
         search: z.string().optional().describe('Search by name or email'),
         type: z.enum(['individual', 'business']).optional(),
-        since: z.string().optional().describe('Only customers created after this date (YYYY-MM-DD)'),
+        since: z
+          .string()
+          .optional()
+          .describe('Only customers created after this date (YYYY-MM-DD)'),
       }),
       execute: async ({ search, type, since }) => {
-        requirePermission(ctx, 'customers', 'read')
+        requirePermission(ctx, 'customers', 'read');
 
-        const conditions = [eq(customers.storeId, ctx.storeId)]
-        if (type) conditions.push(eq(customers.customerType, type))
-        if (since) conditions.push(gte(customers.createdAt, new Date(since)))
+        const conditions = [eq(customers.storeId, ctx.storeId)];
+        if (type) conditions.push(eq(customers.customerType, type));
+        if (since) conditions.push(gte(customers.createdAt, new Date(since)));
         if (search) {
-          const s = `%${search.toLowerCase()}%`
+          const s = `%${search.toLowerCase()}%`;
           conditions.push(
             sql`(LOWER(${customers.firstName}) LIKE ${s} OR LOWER(${customers.lastName}) LIKE ${s} OR LOWER(${customers.email}) LIKE ${s})`,
-          )
+          );
         }
 
         const rows = await db
@@ -402,14 +514,14 @@ export function createAITools(ctx: AIChatContext) {
           .from(customers)
           .where(and(...conditions))
           .orderBy(desc(customers.createdAt))
-          .limit(50)
+          .limit(50);
 
         const [countResult] = await db
           .select({ total: sql<number>`COUNT(*)` })
           .from(customers)
-          .where(and(...conditions))
+          .where(and(...conditions));
 
-        return { customers: rows, total: countResult?.total ?? 0 }
+        return { customers: rows, total: countResult?.total ?? 0 };
       },
     }),
 
@@ -419,38 +531,55 @@ export function createAITools(ctx: AIChatContext) {
         customerId: z.string().describe('The customer ID'),
       }),
       execute: async ({ customerId }) => {
-        requirePermission(ctx, 'customers', 'read')
+        requirePermission(ctx, 'customers', 'read');
 
         const customer = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.id, customerId),
+          ),
           with: {
-            reservations: { orderBy: [desc(reservations.createdAt)], limit: 10 },
+            reservations: {
+              orderBy: [desc(reservations.createdAt)],
+              limit: 10,
+            },
           },
-        })
+        });
 
-        if (!customer) return { error: 'Customer not found' }
-        return { customer }
+        if (!customer) return { error: 'Customer not found' };
+        return { customer };
       },
     }),
 
     create_customer: tool({
       description: 'Create a new customer',
       inputSchema: z.object({
-        email: z.string().email(),
+        email: z.email(),
         firstName: z.string().min(1),
         lastName: z.string().min(1),
         phone: z.string().optional(),
         customerType: z.enum(['individual', 'business']).optional(),
         companyName: z.string().optional(),
       }),
-      execute: async ({ email, firstName, lastName, phone, customerType, companyName }) => {
-        requirePermission(ctx, 'customers', 'write')
+      execute: async ({
+        email,
+        firstName,
+        lastName,
+        phone,
+        customerType,
+        companyName,
+      }) => {
+        requirePermission(ctx, 'customers', 'write');
 
         const existing = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, email)),
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.email, email),
+          ),
           columns: { id: true },
-        })
-        if (existing) return { error: 'A customer with this email already exists' }
+        });
+        if (existing)
+          return { error: 'A customer with this email already exists' };
 
         const [created] = await db
           .insert(customers)
@@ -463,9 +592,9 @@ export function createAITools(ctx: AIChatContext) {
             customerType: customerType ?? 'individual',
             companyName: companyName ?? null,
           })
-          .$returningId()
+          .$returningId();
 
-        return { id: created.id, firstName, lastName, email }
+        return { id: created.id, firstName, lastName, email };
       },
     }),
 
@@ -475,7 +604,7 @@ export function createAITools(ctx: AIChatContext) {
         customerId: z.string().describe('The customer ID'),
         firstName: z.string().optional(),
         lastName: z.string().optional(),
-        email: z.string().email().optional(),
+        email: z.email().optional(),
         phone: z.string().optional(),
         address: z.string().optional(),
         city: z.string().optional(),
@@ -483,33 +612,43 @@ export function createAITools(ctx: AIChatContext) {
         notes: z.string().optional(),
       }),
       execute: async ({ customerId, ...updates }) => {
-        requirePermission(ctx, 'customers', 'write')
+        requirePermission(ctx, 'customers', 'write');
 
         const existing = await db.query.customers.findFirst({
-          where: and(eq(customers.storeId, ctx.storeId), eq(customers.id, customerId)),
+          where: and(
+            eq(customers.storeId, ctx.storeId),
+            eq(customers.id, customerId),
+          ),
           columns: { id: true, email: true },
-        })
-        if (!existing) return { error: 'Customer not found' }
+        });
+        if (!existing) return { error: 'Customer not found' };
 
         if (updates.email && updates.email !== existing.email) {
           const emailTaken = await db.query.customers.findFirst({
-            where: and(eq(customers.storeId, ctx.storeId), eq(customers.email, updates.email)),
+            where: and(
+              eq(customers.storeId, ctx.storeId),
+              eq(customers.email, updates.email),
+            ),
             columns: { id: true },
-          })
-          if (emailTaken) return { error: 'A customer with this email already exists' }
+          });
+          if (emailTaken)
+            return { error: 'A customer with this email already exists' };
         }
 
-        const updateData: Record<string, unknown> = {}
+        const updateData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value
+          if (value !== undefined) updateData[key] = value;
         }
 
         if (Object.keys(updateData).length === 0) {
-          return { error: 'No fields to update' }
+          return { error: 'No fields to update' };
         }
 
-        await db.update(customers).set(updateData).where(eq(customers.id, customerId))
-        return { success: true, customerId }
+        await db
+          .update(customers)
+          .set(updateData)
+          .where(eq(customers.id, customerId));
+        return { success: true, customerId };
       },
     }),
 
@@ -521,20 +660,23 @@ export function createAITools(ctx: AIChatContext) {
         reservationId: z.string().describe('The reservation ID'),
       }),
       execute: async ({ reservationId }) => {
-        requirePermission(ctx, 'payments', 'read')
+        requirePermission(ctx, 'payments', 'read');
 
         const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           columns: { id: true, number: true },
-        })
-        if (!reservation) return { error: 'Reservation not found' }
+        });
+        if (!reservation) return { error: 'Reservation not found' };
 
         const rows = await db.query.payments.findMany({
           where: eq(payments.reservationId, reservationId),
           orderBy: [payments.createdAt],
-        })
+        });
 
-        return { payments: rows, reservationNumber: reservation.number }
+        return { payments: rows, reservationNumber: reservation.number };
       },
     }),
 
@@ -542,27 +684,41 @@ export function createAITools(ctx: AIChatContext) {
       description: 'Record a manual payment for a reservation',
       inputSchema: z.object({
         reservationId: z.string(),
-        type: z.enum(['rental', 'deposit', 'deposit_return', 'damage', 'adjustment']),
+        type: z.enum([
+          'rental',
+          'deposit',
+          'deposit_return',
+          'damage',
+          'adjustment',
+        ]),
         amount: z.string().describe('Amount (e.g. "150.00")'),
         method: z.enum(['cash', 'card', 'transfer', 'check', 'other']),
         notes: z.string().optional(),
       }),
       execute: async ({ reservationId, type, amount, method, notes }) => {
-        requirePermission(ctx, 'payments', 'write')
+        requirePermission(ctx, 'payments', 'write');
 
-        const numAmount = parseFloat(amount)
+        const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount === 0) {
-          return { error: 'Amount must be a non-zero number' }
+          return { error: 'Amount must be a non-zero number' };
         }
 
         const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           columns: { id: true, number: true, status: true },
-        })
-        if (!reservation) return { error: 'Reservation not found' }
+        });
+        if (!reservation) return { error: 'Reservation not found' };
 
-        if (reservation.status === 'cancelled' || reservation.status === 'rejected') {
-          return { error: `Cannot record payment on a ${reservation.status} reservation` }
+        if (
+          reservation.status === 'cancelled' ||
+          reservation.status === 'rejected'
+        ) {
+          return {
+            error: `Cannot record payment on a ${reservation.status} reservation`,
+          };
         }
 
         await db.insert(payments).values({
@@ -573,73 +729,94 @@ export function createAITools(ctx: AIChatContext) {
           status: 'completed',
           paidAt: new Date(),
           notes: notes ?? null,
-        })
+        });
 
-        return { success: true, reservationNumber: reservation.number, type, amount, method }
+        return {
+          success: true,
+          reservationNumber: reservation.number,
+          type,
+          amount,
+          method,
+        };
       },
     }),
 
     delete_payment: tool({
-      description: 'Delete a manual payment record (cannot delete Stripe payments)',
+      description:
+        'Delete a manual payment record (cannot delete Stripe payments)',
       inputSchema: z.object({
         paymentId: z.string().describe('The payment ID to delete'),
       }),
       execute: async ({ paymentId }) => {
-        requirePermission(ctx, 'payments', 'write')
+        requirePermission(ctx, 'payments', 'write');
 
         const payment = await db.query.payments.findFirst({
           where: eq(payments.id, paymentId),
           with: { reservation: { columns: { storeId: true, number: true } } },
-        })
+        });
 
         if (!payment || payment.reservation?.storeId !== ctx.storeId) {
-          return { error: 'Payment not found' }
+          return { error: 'Payment not found' };
         }
 
         if (payment.method === 'stripe') {
-          return { error: 'Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.' }
+          return {
+            error:
+              'Cannot delete a Stripe payment. Use the Stripe dashboard for refunds.',
+          };
         }
 
-        await db.delete(payments).where(eq(payments.id, paymentId))
-        return { success: true, reservationNumber: payment.reservation?.number }
+        await db.delete(payments).where(eq(payments.id, paymentId));
+        return {
+          success: true,
+          reservationNumber: payment.reservation?.number,
+        };
       },
     }),
 
     return_deposit: tool({
-      description: 'Record a deposit return for a reservation (validates max returnable amount)',
+      description:
+        'Record a deposit return for a reservation (validates max returnable amount)',
       inputSchema: z.object({
         reservationId: z.string().describe('The reservation ID'),
         amount: z.string().describe('Amount to return (e.g. "100.00")'),
-        method: z.enum(['cash', 'card', 'transfer', 'check', 'other']).describe('Return method'),
+        method: z
+          .enum(['cash', 'card', 'transfer', 'check', 'other'])
+          .describe('Return method'),
         notes: z.string().optional(),
       }),
       execute: async ({ reservationId, amount, method, notes }) => {
-        requirePermission(ctx, 'payments', 'write')
+        requirePermission(ctx, 'payments', 'write');
 
-        const numAmount = parseFloat(amount)
+        const numAmount = parseFloat(amount);
         if (isNaN(numAmount) || numAmount <= 0) {
-          return { error: 'Amount must be greater than zero' }
+          return { error: 'Amount must be greater than zero' };
         }
 
         const reservation = await db.query.reservations.findFirst({
-          where: and(eq(reservations.storeId, ctx.storeId), eq(reservations.id, reservationId)),
+          where: and(
+            eq(reservations.storeId, ctx.storeId),
+            eq(reservations.id, reservationId),
+          ),
           columns: { id: true, number: true },
           with: { payments: true },
-        })
-        if (!reservation) return { error: 'Reservation not found' }
+        });
+        if (!reservation) return { error: 'Reservation not found' };
 
         const depositCollected = reservation.payments
           .filter((p) => p.type === 'deposit' && p.status === 'completed')
-          .reduce((s, p) => s + parseFloat(p.amount), 0)
+          .reduce((s, p) => s + parseFloat(p.amount), 0);
         const depositReturned = reservation.payments
-          .filter((p) => p.type === 'deposit_return' && p.status === 'completed')
-          .reduce((s, p) => s + parseFloat(p.amount), 0)
-        const maxReturnable = depositCollected - depositReturned
+          .filter(
+            (p) => p.type === 'deposit_return' && p.status === 'completed',
+          )
+          .reduce((s, p) => s + parseFloat(p.amount), 0);
+        const maxReturnable = depositCollected - depositReturned;
 
         if (numAmount > maxReturnable) {
           return {
             error: `Amount exceeds returnable deposit. Collected: ${depositCollected.toFixed(2)}, already returned: ${depositReturned.toFixed(2)}, max returnable: ${maxReturnable.toFixed(2)}`,
-          }
+          };
         }
 
         await db.insert(payments).values({
@@ -650,29 +827,46 @@ export function createAITools(ctx: AIChatContext) {
           status: 'completed',
           paidAt: new Date(),
           notes: notes ?? null,
-        })
+        });
 
-        return { success: true, reservationNumber: reservation.number, amount, method }
+        return {
+          success: true,
+          reservationNumber: reservation.number,
+          amount,
+          method,
+        };
       },
     }),
 
     // ── Analytics ─────────────────────────────────────────────────────────
 
     get_dashboard_stats: tool({
-      description: 'Get key dashboard metrics (revenue, reservations, visitors) for a given period',
+      description:
+        'Get key dashboard metrics (revenue, reservations, visitors) for a given period',
       inputSchema: z.object({
-        period: z.enum(['7d', '30d', '90d', '12m']).optional().describe('Time period (default 30d)'),
+        period: z
+          .enum(['7d', '30d', '90d', '12m'])
+          .optional()
+          .describe('Time period (default 30d)'),
       }),
       execute: async ({ period }) => {
-        requirePermission(ctx, 'analytics', 'read')
+        requirePermission(ctx, 'analytics', 'read');
 
-        const end = new Date()
-        const start = new Date()
+        const end = new Date();
+        const start = new Date();
         switch (period ?? '30d') {
-          case '7d': start.setDate(start.getDate() - 7); break
-          case '30d': start.setDate(start.getDate() - 30); break
-          case '90d': start.setDate(start.getDate() - 90); break
-          case '12m': start.setMonth(start.getMonth() - 12); break
+          case '7d':
+            start.setDate(start.getDate() - 7);
+            break;
+          case '30d':
+            start.setDate(start.getDate() - 30);
+            break;
+          case '90d':
+            start.setDate(start.getDate() - 90);
+            break;
+          case '12m':
+            start.setMonth(start.getMonth() - 12);
+            break;
         }
 
         const stats = await db
@@ -684,19 +878,23 @@ export function createAITools(ctx: AIChatContext) {
             totalPageViews: sum(dailyStats.pageViews),
           })
           .from(dailyStats)
-          .where(and(
-            eq(dailyStats.storeId, ctx.storeId),
-            gte(dailyStats.date, start),
-            lte(dailyStats.date, end),
-          ))
+          .where(
+            and(
+              eq(dailyStats.storeId, ctx.storeId),
+              gte(dailyStats.date, start),
+              lte(dailyStats.date, end),
+            ),
+          );
 
         const [activeCount] = await db
           .select({ count: sql<number>`COUNT(*)` })
           .from(reservations)
-          .where(and(
-            eq(reservations.storeId, ctx.storeId),
-            sql`${reservations.status} IN ('pending', 'confirmed', 'ongoing')`,
-          ))
+          .where(
+            and(
+              eq(reservations.storeId, ctx.storeId),
+              sql`${reservations.status} IN ('pending', 'confirmed', 'ongoing')`,
+            ),
+          );
 
         return {
           period: period ?? '30d',
@@ -704,7 +902,7 @@ export function createAITools(ctx: AIChatContext) {
           endDate: end.toISOString(),
           ...stats[0],
           activeReservations: activeCount?.count ?? 0,
-        }
+        };
       },
     }),
 
@@ -712,20 +910,31 @@ export function createAITools(ctx: AIChatContext) {
       description: 'Get top-performing products by revenue',
       inputSchema: z.object({
         period: z.enum(['7d', '30d', '90d', '12m']).optional(),
-        limit: z.number().optional().describe('Number of products (default 10)'),
+        limit: z
+          .number()
+          .optional()
+          .describe('Number of products (default 10)'),
       }),
       execute: async ({ period, limit: maxResults }) => {
-        requirePermission(ctx, 'analytics', 'read')
+        requirePermission(ctx, 'analytics', 'read');
 
-        const end = new Date()
-        const start = new Date()
+        const end = new Date();
+        const start = new Date();
         switch (period ?? '30d') {
-          case '7d': start.setDate(start.getDate() - 7); break
-          case '30d': start.setDate(start.getDate() - 30); break
-          case '90d': start.setDate(start.getDate() - 90); break
-          case '12m': start.setMonth(start.getMonth() - 12); break
+          case '7d':
+            start.setDate(start.getDate() - 7);
+            break;
+          case '30d':
+            start.setDate(start.getDate() - 30);
+            break;
+          case '90d':
+            start.setDate(start.getDate() - 90);
+            break;
+          case '12m':
+            start.setMonth(start.getMonth() - 12);
+            break;
         }
-        const lim = Math.min(maxResults ?? 10, 50)
+        const lim = Math.min(maxResults ?? 10, 50);
 
         const rows = await db
           .select({
@@ -737,30 +946,33 @@ export function createAITools(ctx: AIChatContext) {
           })
           .from(productStats)
           .innerJoin(products, eq(productStats.productId, products.id))
-          .where(and(
-            eq(productStats.storeId, ctx.storeId),
-            gte(productStats.date, start),
-            lte(productStats.date, end),
-          ))
+          .where(
+            and(
+              eq(productStats.storeId, ctx.storeId),
+              gte(productStats.date, start),
+              lte(productStats.date, end),
+            ),
+          )
           .groupBy(productStats.productId, products.name)
           .orderBy(desc(sum(productStats.revenue)))
-          .limit(lim)
+          .limit(lim);
 
-        return { products: rows, period: period ?? '30d' }
+        return { products: rows, period: period ?? '30d' };
       },
     }),
 
     get_revenue_report: tool({
-      description: 'Get a day-by-day revenue breakdown over a custom date range',
+      description:
+        'Get a day-by-day revenue breakdown over a custom date range',
       inputSchema: z.object({
         startDate: z.string().describe('Start date (YYYY-MM-DD)'),
         endDate: z.string().describe('End date (YYYY-MM-DD)'),
       }),
       execute: async ({ startDate, endDate }) => {
-        requirePermission(ctx, 'analytics', 'read')
+        requirePermission(ctx, 'analytics', 'read');
 
-        const start = new Date(startDate)
-        const end = new Date(endDate)
+        const start = new Date(startDate);
+        const end = new Date(endDate);
 
         const rows = await db
           .select({
@@ -771,15 +983,23 @@ export function createAITools(ctx: AIChatContext) {
             uniqueVisitors: dailyStats.uniqueVisitors,
           })
           .from(dailyStats)
-          .where(and(
-            eq(dailyStats.storeId, ctx.storeId),
-            gte(dailyStats.date, start),
-            lte(dailyStats.date, end),
-          ))
-          .orderBy(dailyStats.date)
+          .where(
+            and(
+              eq(dailyStats.storeId, ctx.storeId),
+              gte(dailyStats.date, start),
+              lte(dailyStats.date, end),
+            ),
+          )
+          .orderBy(dailyStats.date);
 
-        const totalRevenue = rows.reduce((acc, r) => acc + parseFloat(r.revenue ?? '0'), 0)
-        const totalReservations = rows.reduce((acc, r) => acc + (r.reservationsCreated ?? 0), 0)
+        const totalRevenue = rows.reduce(
+          (acc, r) => acc + parseFloat(r.revenue ?? '0'),
+          0,
+        );
+        const totalReservations = rows.reduce(
+          (acc, r) => acc + (r.reservationsCreated ?? 0),
+          0,
+        );
 
         return {
           startDate,
@@ -788,7 +1008,7 @@ export function createAITools(ctx: AIChatContext) {
           totalReservations,
           daysWithData: rows.length,
           daily: rows,
-        }
+        };
       },
     }),
 
@@ -797,15 +1017,18 @@ export function createAITools(ctx: AIChatContext) {
     calendar_upcoming: tool({
       description: 'Get upcoming pickups and returns for the next N days',
       inputSchema: z.object({
-        days: z.number().optional().describe('Number of days to look ahead (default 7)'),
+        days: z
+          .number()
+          .optional()
+          .describe('Number of days to look ahead (default 7)'),
       }),
       execute: async ({ days }) => {
-        requirePermission(ctx, 'reservations', 'read')
+        requirePermission(ctx, 'reservations', 'read');
 
-        const lookAhead = Math.min(days ?? 7, 90)
-        const now = new Date()
-        const future = new Date()
-        future.setDate(future.getDate() + lookAhead)
+        const lookAhead = Math.min(days ?? 7, 90);
+        const now = new Date();
+        const future = new Date();
+        future.setDate(future.getDate() + lookAhead);
 
         const pickups = await db
           .select({
@@ -818,14 +1041,16 @@ export function createAITools(ctx: AIChatContext) {
           })
           .from(reservations)
           .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(and(
-            eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'confirmed'),
-            gte(reservations.startDate, now),
-            lte(reservations.startDate, future),
-          ))
+          .where(
+            and(
+              eq(reservations.storeId, ctx.storeId),
+              eq(reservations.status, 'confirmed'),
+              gte(reservations.startDate, now),
+              lte(reservations.startDate, future),
+            ),
+          )
           .orderBy(reservations.startDate)
-          .limit(50)
+          .limit(50);
 
         const returns = await db
           .select({
@@ -838,26 +1063,29 @@ export function createAITools(ctx: AIChatContext) {
           })
           .from(reservations)
           .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(and(
-            eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'ongoing'),
-            gte(reservations.endDate, now),
-            lte(reservations.endDate, future),
-          ))
+          .where(
+            and(
+              eq(reservations.storeId, ctx.storeId),
+              eq(reservations.status, 'ongoing'),
+              gte(reservations.endDate, now),
+              lte(reservations.endDate, future),
+            ),
+          )
           .orderBy(reservations.endDate)
-          .limit(50)
+          .limit(50);
 
-        return { pickups, returns, days: lookAhead }
+        return { pickups, returns, days: lookAhead };
       },
     }),
 
     calendar_overdue: tool({
-      description: 'Get overdue returns (ongoing reservations past their end date)',
+      description:
+        'Get overdue returns (ongoing reservations past their end date)',
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, 'reservations', 'read')
+        requirePermission(ctx, 'reservations', 'read');
 
-        const now = new Date()
+        const now = new Date();
         const overdue = await db
           .select({
             id: reservations.id,
@@ -869,15 +1097,17 @@ export function createAITools(ctx: AIChatContext) {
           })
           .from(reservations)
           .leftJoin(customers, eq(reservations.customerId, customers.id))
-          .where(and(
-            eq(reservations.storeId, ctx.storeId),
-            eq(reservations.status, 'ongoing'),
-            lte(reservations.endDate, now),
-          ))
+          .where(
+            and(
+              eq(reservations.storeId, ctx.storeId),
+              eq(reservations.status, 'ongoing'),
+              lte(reservations.endDate, now),
+            ),
+          )
           .orderBy(reservations.endDate)
-          .limit(50)
+          .limit(50);
 
-        return { overdue }
+        return { overdue };
       },
     }),
 
@@ -889,28 +1119,33 @@ export function createAITools(ctx: AIChatContext) {
         endDate: z.string().describe('End date (YYYY-MM-DD)'),
       }),
       execute: async ({ productId, startDate, endDate }) => {
-        requirePermission(ctx, 'products', 'read')
+        requirePermission(ctx, 'products', 'read');
 
-        const start = new Date(startDate)
-        const end = new Date(endDate)
+        const start = new Date(startDate);
+        const end = new Date(endDate);
 
         const product = await db.query.products.findFirst({
-          where: and(eq(products.storeId, ctx.storeId), eq(products.id, productId)),
+          where: and(
+            eq(products.storeId, ctx.storeId),
+            eq(products.id, productId),
+          ),
           columns: { id: true, name: true, quantity: true },
-        })
-        if (!product) return { error: 'Product not found' }
+        });
+        if (!product) return { error: 'Product not found' };
 
         const store = await db.query.stores.findFirst({
           where: eq(stores.id, ctx.storeId),
           columns: { settings: true },
-        })
-        const pendingBlocksAvailability = store?.settings?.pendingBlocksAvailability ?? true
-        const turnoverBufferMinutes = store?.settings?.turnoverBufferMinutes ?? 0
-        const bufferMs = Math.max(0, turnoverBufferMinutes) * 60 * 1000
+        });
+        const pendingBlocksAvailability =
+          store?.settings?.pendingBlocksAvailability ?? true;
+        const turnoverBufferMinutes =
+          store?.settings?.turnoverBufferMinutes ?? 0;
+        const bufferMs = Math.max(0, turnoverBufferMinutes) * 60 * 1000;
         const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
           pendingBlocksAvailability
             ? ['pending', 'confirmed', 'ongoing']
-            : ['confirmed', 'ongoing']
+            : ['confirmed', 'ongoing'];
 
         const overlappingReservations = await db.query.reservations.findMany({
           where: and(
@@ -929,16 +1164,16 @@ export function createAITools(ctx: AIChatContext) {
               },
             },
           },
-        })
+        });
 
         const { reservedByProduct } = calculatePeakReservedQuantities({
           reservations: overlappingReservations,
           startDate: start,
           endDate: end,
           turnoverBufferMinutes,
-        })
-        const reserved = reservedByProduct.get(productId) ?? 0
-        const available = Math.max(0, product.quantity - reserved)
+        });
+        const reserved = reservedByProduct.get(productId) ?? 0;
+        const available = Math.max(0, product.quantity - reserved);
 
         return {
           product: product.name,
@@ -948,7 +1183,7 @@ export function createAITools(ctx: AIChatContext) {
           turnoverBufferMinutes,
           startDate,
           endDate,
-        }
+        };
       },
     }),
 
@@ -958,13 +1193,13 @@ export function createAITools(ctx: AIChatContext) {
       description: 'List all product categories',
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, 'categories', 'read')
+        requirePermission(ctx, 'categories', 'read');
 
         const rows = await db.query.categories.findMany({
           where: eq(categories.storeId, ctx.storeId),
           with: { products: { columns: { id: true } } },
           orderBy: [categories.order, categories.name],
-        })
+        });
 
         return {
           categories: rows.map((c) => ({
@@ -973,7 +1208,7 @@ export function createAITools(ctx: AIChatContext) {
             description: c.description,
             productCount: c.products.length,
           })),
-        }
+        };
       },
     }),
 
@@ -984,14 +1219,18 @@ export function createAITools(ctx: AIChatContext) {
         description: z.string().optional(),
       }),
       execute: async ({ name, description }) => {
-        requirePermission(ctx, 'categories', 'write')
+        requirePermission(ctx, 'categories', 'write');
 
         const [created] = await db
           .insert(categories)
-          .values({ storeId: ctx.storeId, name, description: description ?? null })
-          .$returningId()
+          .values({
+            storeId: ctx.storeId,
+            name,
+            description: description ?? null,
+          })
+          .$returningId();
 
-        return { id: created.id, name }
+        return { id: created.id, name };
       },
     }),
 
@@ -1003,24 +1242,30 @@ export function createAITools(ctx: AIChatContext) {
         description: z.string().optional().describe('New description'),
       }),
       execute: async ({ categoryId, name, description }) => {
-        requirePermission(ctx, 'categories', 'write')
+        requirePermission(ctx, 'categories', 'write');
 
         const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
+          where: and(
+            eq(categories.storeId, ctx.storeId),
+            eq(categories.id, categoryId),
+          ),
           columns: { id: true },
-        })
-        if (!existing) return { error: 'Category not found' }
+        });
+        if (!existing) return { error: 'Category not found' };
 
-        const updateData: Record<string, unknown> = {}
-        if (name !== undefined) updateData.name = name
-        if (description !== undefined) updateData.description = description
+        const updateData: Record<string, unknown> = {};
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
 
         if (Object.keys(updateData).length === 0) {
-          return { error: 'No fields to update' }
+          return { error: 'No fields to update' };
         }
 
-        await db.update(categories).set(updateData).where(eq(categories.id, categoryId))
-        return { success: true, categoryId }
+        await db
+          .update(categories)
+          .set(updateData)
+          .where(eq(categories.id, categoryId));
+        return { success: true, categoryId };
       },
     }),
 
@@ -1030,16 +1275,19 @@ export function createAITools(ctx: AIChatContext) {
         categoryId: z.string().describe('The category ID to delete'),
       }),
       execute: async ({ categoryId }) => {
-        requirePermission(ctx, 'categories', 'write')
+        requirePermission(ctx, 'categories', 'write');
 
         const existing = await db.query.categories.findFirst({
-          where: and(eq(categories.storeId, ctx.storeId), eq(categories.id, categoryId)),
+          where: and(
+            eq(categories.storeId, ctx.storeId),
+            eq(categories.id, categoryId),
+          ),
           columns: { id: true, name: true },
-        })
-        if (!existing) return { error: 'Category not found' }
+        });
+        if (!existing) return { error: 'Category not found' };
 
-        await db.delete(categories).where(eq(categories.id, categoryId))
-        return { success: true, name: existing.name }
+        await db.delete(categories).where(eq(categories.id, categoryId));
+        return { success: true, name: existing.name };
       },
     }),
 
@@ -1049,13 +1297,13 @@ export function createAITools(ctx: AIChatContext) {
       description: 'Get complete store configuration (name, contact, settings)',
       inputSchema: z.object({}),
       execute: async () => {
-        requirePermission(ctx, 'settings', 'read')
+        requirePermission(ctx, 'settings', 'read');
 
         const store = await db.query.stores.findFirst({
           where: eq(stores.id, ctx.storeId),
-        })
+        });
 
-        if (!store) return { error: 'Store not found' }
+        if (!store) return { error: 'Store not found' };
         return {
           name: store.name,
           slug: store.slug,
@@ -1067,7 +1315,7 @@ export function createAITools(ctx: AIChatContext) {
           theme: store.theme,
           emailSettings: store.emailSettings,
           stripeConnected: !!store.stripeOnboardingComplete,
-        }
+        };
       },
     }),
 
@@ -1075,26 +1323,29 @@ export function createAITools(ctx: AIChatContext) {
       description: 'Update store contact information',
       inputSchema: z.object({
         name: z.string().optional(),
-        email: z.string().email().optional(),
+        email: z.email().optional(),
         phone: z.string().optional(),
         address: z.string().optional(),
         description: z.string().optional(),
       }),
       execute: async (updates) => {
-        requirePermission(ctx, 'settings', 'write')
+        requirePermission(ctx, 'settings', 'write');
 
-        const updateData: Record<string, unknown> = {}
+        const updateData: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(updates)) {
-          if (value !== undefined) updateData[key] = value
+          if (value !== undefined) updateData[key] = value;
         }
 
         if (Object.keys(updateData).length === 0) {
-          return { error: 'No fields to update' }
+          return { error: 'No fields to update' };
         }
 
-        await db.update(stores).set(updateData).where(eq(stores.id, ctx.storeId))
-        return { success: true }
+        await db
+          .update(stores)
+          .set(updateData)
+          .where(eq(stores.id, ctx.storeId));
+        return { success: true };
       },
     }),
-  }
+  };
 }

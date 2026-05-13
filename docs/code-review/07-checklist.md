@@ -39,6 +39,7 @@
 - [ ] No `as` casting — prefer `satisfies`
 - [ ] Zod schemas at system boundaries, types inferred with `z.infer<>`
 - [ ] No non-null assertions (`!`) in business logic
+- [ ] Important application logs use Evlog, not `console.*`
 
 ## React
 

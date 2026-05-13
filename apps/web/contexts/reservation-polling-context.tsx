@@ -18,6 +18,7 @@ import { orpc } from '@/lib/orpc/react'
 
 interface ReservationPollingContextValue {
   pendingCount: number
+  pendingReservations: ReservationPollResponse['pendingReservations']
   isPolling: boolean
   lastUpdated: Date | null
   refresh: () => Promise<void>
@@ -46,6 +47,9 @@ export function ReservationPollingProvider({
   const t = useTranslations('dashboard.notifications')
 
   const [pendingCount, setPendingCount] = useState(0)
+  const [pendingReservations, setPendingReservations] = useState<
+    ReservationPollResponse['pendingReservations']
+  >([])
   const [isPolling, setIsPolling] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -85,6 +89,7 @@ export function ReservationPollingProvider({
 
       // Always update pending count
       setPendingCount(data.pendingCount)
+      setPendingReservations(data.pendingReservations)
       setLastUpdated(new Date())
 
       // On first poll, just store the reference values
@@ -160,6 +165,7 @@ export function ReservationPollingProvider({
     <ReservationPollingContext.Provider
       value={{
         pendingCount,
+        pendingReservations,
         isPolling,
         lastUpdated,
         refresh,

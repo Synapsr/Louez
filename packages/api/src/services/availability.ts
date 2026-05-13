@@ -96,6 +96,7 @@ function getClosureReason(
   }
 
   const dayKey = getDateKeyInTimezone(date, timezone)
+  const { time } = getWeekdayAndTimeInTimezone(date, timezone)
 
   for (const period of businessHours.closurePeriods) {
     if (!period.startDate || !period.endDate) {
@@ -103,6 +104,14 @@ function getClosureReason(
     }
 
     if (dayKey >= period.startDate && dayKey <= period.endDate) {
+      if (period.startTime && period.endTime) {
+        if (time >= period.startTime && time <= period.endTime) {
+          return 'closure_period'
+        }
+
+        continue
+      }
+
       return 'closure_period'
     }
   }

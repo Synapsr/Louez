@@ -6,7 +6,11 @@ import { normalizeDaySchedule } from '@louez/utils'
 /**
  * Check if a date falls within any closure period.
  */
-export function isInClosurePeriod(date: Date, closurePeriods: ClosurePeriod[] | undefined): ClosurePeriod | null {
+export function isInClosurePeriod(
+  date: Date,
+  closurePeriods: ClosurePeriod[] | undefined,
+  timezone?: string
+): ClosurePeriod | null {
   if (!closurePeriods || closurePeriods.length === 0) {
     return null
   }
@@ -21,6 +25,17 @@ export function isInClosurePeriod(date: Date, closurePeriods: ClosurePeriod[] | 
       const periodEnd = endOfDay(parseISO(period.endDate))
 
       if (isWithinInterval(dateStart, { start: periodStart, end: periodEnd })) {
+        if (period.startTime && period.endTime) {
+          const time = timezone
+            ? formatInTimeZone(date, timezone, 'HH:mm')
+            : format(date, 'HH:mm')
+          if (time >= period.startTime && time <= period.endTime) {
+            return period
+          }
+
+          continue
+        }
+
         return period
       }
     } catch {
@@ -54,7 +69,7 @@ export function isWithinBusinessHours(
     return { valid: true }
   }
 
-  const closurePeriod = isInClosurePeriod(date, businessHours.closurePeriods)
+  const closurePeriod = isInClosurePeriod(date, businessHours.closurePeriods, timezone)
   if (closurePeriod) {
     return { valid: false, reason: 'closure_period', closurePeriod }
   }
@@ -92,8 +107,8 @@ export function isDateAvailable(
     return { available: true }
   }
 
-  const closurePeriod = isInClosurePeriod(date, businessHours.closurePeriods)
-  if (closurePeriod) {
+  const closurePeriod = isInClosurePeriod(date, businessHours.closurePeriods, timezone)
+  if (closurePeriod && !closurePeriod.startTime && !closurePeriod.endTime) {
     return { available: false, reason: 'closure_period', closurePeriod }
   }
 
@@ -134,7 +149,10 @@ export function getAvailableTimeSlots(
     allSlots.push(...generateTimeSlots(range.openTime, range.closeTime, intervalMinutes))
   }
 
-  return allSlots
+  return allSlots.filter((slot) => {
+    const slotDate = buildStoreDate(date, slot, timezone)
+    return !isInClosurePeriod(slotDate, businessHours.closurePeriods, timezone)
+  })
 }
 
 /**

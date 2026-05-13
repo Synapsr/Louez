@@ -4,6 +4,7 @@ import { processReminders } from '@/lib/reminders/automation'
 import { refreshAllStoresCache, cleanExpiredCache } from '@/lib/google-places/cache'
 import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytics/aggregation'
 import { env } from '@/env'
+import { createError, useLogger, withEvlog } from '@/lib/evlog'
 
 /**
  * Unified cron endpoint - called every minute
@@ -23,7 +24,9 @@ import { env } from '@/env'
  * - CRON_SECRET: Required secret to authenticate cron requests
  * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 120 = 5 days)
  */
-export async function GET(request: Request) {
+async function handleCron(request: Request) {
+  const logger = useLogger()
+
   // Verify cron secret - required
   const authHeader = request.headers.get('authorization')
 
@@ -37,10 +40,17 @@ export async function GET(request: Request) {
   const day = now.getDate()
 
   const tasks: string[] = []
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const results: Record<string, any> = {
+  const results: Record<string, unknown> = {
     timestamp: now.toISOString(),
   }
+
+  logger.set({
+    cron: {
+      minute,
+      hour,
+      day,
+    },
+  })
 
   try {
     // Review requests: every minute
@@ -77,23 +87,42 @@ export async function GET(request: Request) {
       results.cacheCleanup = { cleaned }
     }
 
+    logger.set({
+      cron: {
+        tasks,
+        success: true,
+      },
+    })
+
     return NextResponse.json({
       success: true,
       tasks,
       ...results,
     })
   } catch (error) {
-    console.error('Cron error:', error)
-    return NextResponse.json(
-      {
-        success: false,
+    const cronError =
+      error instanceof Error ? error : new Error('Unknown cron error')
+
+    logger.error(cronError, { tasks })
+    logger.set({
+      cron: {
         tasks,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        ...results,
+        success: false,
       },
-      { status: 500 }
-    )
+    })
+
+    throw createError({
+      status: 500,
+      message: 'Cron execution failed',
+      why: cronError.message,
+      fix: 'Check the Evlog request event for the failed cron task list and stack trace.',
+      internal: {
+        tasks,
+        results,
+      },
+    })
   }
 }
 
+export const GET = withEvlog(handleCron)
 export const dynamic = 'force-dynamic'

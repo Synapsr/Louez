@@ -157,15 +157,11 @@
     "termsOfService": "Conditions d'utilisation",
     "and": "et",
     "privacyPolicy": "Politique de confidentialité",
-    "verifyRequest": {
-      "title": "Vérifiez votre email",
-      "description": "Un lien de connexion a été envoyé à votre adresse email.",
-      "checkSpam": "Cliquez sur le lien dans l'email pour vous connecter. Si vous ne le voyez pas, vérifiez votre dossier spam."
-    },
     "errors": {
       "invalidCredentials": "Identifiants invalides",
       "accountNotFound": "Compte non trouvé",
       "emailAlreadyExists": "Cet email est déjà utilisé",
+      "invalidEmail": "Entrez une adresse email valide.",
       "accountNotLinked": "Un compte existe déjà avec cet email. Veuillez vous connecter avec votre email.",
       "oauthError": "Une erreur est survenue lors de la connexion. Veuillez réessayer.",
       "accessDenied": "Accès refusé. Vous n'avez pas la permission de vous connecter.",
@@ -213,6 +209,7 @@
       "clickToView": "Cliquer pour traiter"
     },
     "theme": {
+      "label": "Thème",
       "light": "Clair",
       "dark": "Sombre",
       "system": "Système"
@@ -232,7 +229,9 @@
       "dashboard": "Dashboard",
       "viewStore": "Voir la boutique",
       "newReservation": "Nouvelle réservation",
-      "help": "Aide"
+      "reservationLimitReached": "Limite atteinte",
+      "help": "Aide",
+      "feedback": "Aide et feedback"
     },
     "storeSwitcher": {
       "selectStore": "Sélectionner une boutique",
@@ -1420,7 +1419,7 @@
           "insufficientStock": "Stock insuffisant"
         },
         "addItemError": "Veuillez ajouter au moins un produit ou article personnalisé",
-        "sendAsQuote": "Envoyer comme devis",
+        "sendAsQuote": "Envoyer un devis",
         "quoteSent": "Devis envoyé au client"
       },
       "rejectDialog": {
@@ -3042,6 +3041,9 @@
           "namePlaceholder": "Ex: Vacances d'été, Noël...",
           "startDate": "Date de début",
           "endDate": "Date de fin",
+          "startTime": "Heure de début",
+          "endTime": "Heure de fin",
+          "timeRangeRequired": "Renseignez l'heure de début et l'heure de fin, ou laissez les deux champs vides.",
           "reason": "Raison (optionnel)",
           "reasonPlaceholder": "Ex: Fermeture annuelle",
           "add": "Ajouter la fermeture",
@@ -3678,6 +3680,47 @@
         "products": "Quels sont les produits les plus loués ?",
         "customers": "Combien de nouveaux clients ce mois-ci ?"
       }
+    },
+    "breadcrumbs": {
+      "label": "Fil d'Ariane",
+      "home": "Accueil",
+      "products": "Produits",
+      "productsNew": "Nouveau produit",
+      "reservations": "Réservations",
+      "reservationsNew": "Nouvelle réservation",
+      "customers": "Clients",
+      "customersNew": "Nouveau client",
+      "calendar": "Calendrier",
+      "analytics": "Analyses",
+      "team": "Équipe",
+      "referrals": "Parrainage",
+      "sms": "SMS",
+      "subscription": "Abonnement",
+      "account": "Compte",
+      "settings": "Paramètres",
+      "settingsAdmin": "Administration",
+      "settingsApi": "API",
+      "settingsAppearance": "Apparence",
+      "settingsDelivery": "Livraison",
+      "settingsEmbed": "Intégration",
+      "settingsExport": "Export des données",
+      "settingsHours": "Horaires",
+      "settingsInspections": "États des lieux",
+      "settingsIntegrations": "Intégrations",
+      "settingsLegal": "Pages légales",
+      "settingsNotifications": "Notifications",
+      "settingsPayments": "Paiements",
+      "settingsPromoCodes": "Codes promo",
+      "settingsReviewBooster": "Booster d'avis",
+      "settingsTaxes": "Taxes"
+    },
+    "notificationsCenter": {
+      "title": "Notifications",
+      "description": "Ce qui demande votre attention",
+      "pendingReservations": "Demandes en attente",
+      "emptyTitle": "Rien à traiter",
+      "emptyDescription": "Les nouvelles demandes apparaîtront ici.",
+      "viewAllPending": "Voir toutes les demandes en attente"
     }
   },
   "storefront": {
@@ -3734,6 +3777,8 @@
       "readyToRent": "Prêt à louer ?",
       "readyToRentDesc": "Parcourez notre catalogue et réservez le matériel dont vous avez besoin en quelques clics.",
       "exploreCatalog": "Explorer le catalogue",
+      "contactLabel": "Nous trouver",
+      "contactTitle": "Localisation & contact",
       "findUs": "Nous trouver",
       "findUsDesc": "Venez nous rendre visite pour récupérer votre matériel",
       "address": "Adresse",
@@ -3746,7 +3791,8 @@
       "accessAccount": "Accéder à mon compte"
     },
     "reviews": {
-      "title": "Avis clients",
+      "label": "Témoignages",
+      "title": "Avis membres",
       "subtitle": "Découvrez ce que nos clients disent de nous",
       "viewOnGoogle": "Voir sur Google",
       "basedOn": "sur {count} avis",
@@ -4415,6 +4461,7 @@
       "legalInfo": "Informations légales",
       "cgv": "Conditions générales de vente",
       "legalNotice": "Mentions légales",
+      "signIn": "Se connecter",
       "allRightsReserved": "Tous droits réservés.",
       "poweredBy": "Propulsé par"
     },
@@ -5110,5 +5157,83 @@
     "greeting": "Bienvenue sur Louez.io",
     "tagline": "Votre boutique est prête",
     "skip": "Appuyez pour continuer"
+  },
+  "legalPages": {
+    "back": "Retour",
+    "lastUpdated": "Dernière mise à jour : mai 2026",
+    "contactPrompt": "Pour toute question concernant ce document, vous pouvez nous contacter à :",
+    "contactEmail": "contact@louez.io",
+    "terms": {
+      "title": "Conditions d'utilisation",
+      "intro": "Les présentes conditions générales d'utilisation régissent l'accès et l'utilisation de la plateforme Louez.io. En créant un compte, vous acceptez l'intégralité des présentes conditions.",
+      "s1": {
+        "title": "Objet du service",
+        "body": "Louez.io est une plateforme en ligne destinée aux professionnels de la location qui souhaitent gérer leur catalogue de produits, leurs réservations, leurs clients et leur boutique en ligne. Le service est accessible par abonnement."
+      },
+      "s2": {
+        "title": "Compte utilisateur",
+        "body": "L'accès à la plateforme nécessite la création d'un compte avec une adresse email valide. Vous êtes responsable de la confidentialité de vos identifiants et de toutes les activités effectuées depuis votre compte. Vous vous engagez à fournir des informations exactes et à les maintenir à jour."
+      },
+      "s3": {
+        "title": "Utilisation du service",
+        "body": "Vous vous engagez à utiliser la plateforme conformément à la loi et aux présentes conditions. Sont notamment interdits : la mise en ligne de contenus illégaux, la tentative d'accès non autorisé à la plateforme, la perturbation du service, la collecte abusive de données et l'utilisation du service à des fins frauduleuses."
+      },
+      "s4": {
+        "title": "Tarifs et paiement",
+        "body": "L'utilisation de Louez.io est soumise à un abonnement dont les conditions tarifaires sont précisées lors de la souscription. Les paiements sont prélevés selon la périodicité choisie. En cas de défaut de paiement, l'accès au service peut être suspendu jusqu'à régularisation."
+      },
+      "s5": {
+        "title": "Propriété intellectuelle",
+        "body": "L'ensemble des éléments composant la plateforme (logo, marque, code source, design, textes, illustrations) demeure la propriété exclusive de Louez.io ou de ses partenaires. Toute reproduction ou utilisation non autorisée est strictement interdite. Les contenus que vous publiez restent votre propriété, mais vous accordez à Louez.io une licence non exclusive pour les héberger et les diffuser dans le cadre du service."
+      },
+      "s6": {
+        "title": "Disponibilité et responsabilité",
+        "body": "Louez.io met tout en œuvre pour assurer une disponibilité optimale de la plateforme, sans pouvoir garantir une absence totale d'interruption. Notre responsabilité ne saurait être engagée en cas de force majeure, de défaillance d'un tiers ou de mauvaise utilisation du service. Vous demeurez seul responsable des relations commerciales avec vos propres clients."
+      },
+      "s7": {
+        "title": "Résiliation",
+        "body": "Vous pouvez résilier votre abonnement à tout moment depuis les paramètres de votre compte. En cas de manquement grave aux présentes conditions, Louez.io se réserve le droit de suspendre ou de fermer votre compte sans préavis. Vos données sont conservées et restituées conformément à notre politique de confidentialité."
+      },
+      "s8": {
+        "title": "Droit applicable",
+        "body": "Les présentes conditions sont régies par le droit français. Tout litige relatif à leur exécution ou à leur interprétation relèvera de la compétence exclusive des tribunaux français, après tentative préalable de résolution amiable."
+      }
+    },
+    "privacy": {
+      "title": "Politique de confidentialité",
+      "intro": "Louez.io accorde une grande importance à la protection de vos données personnelles. La présente politique décrit les données que nous collectons, les finalités de leur traitement et les droits dont vous disposez, conformément au Règlement général sur la protection des données (RGPD).",
+      "s1": {
+        "title": "Responsable du traitement",
+        "body": "Le responsable du traitement de vos données est Louez.io. Pour toute question relative à vos données personnelles ou à l'exercice de vos droits, vous pouvez nous écrire à contact@louez.io."
+      },
+      "s2": {
+        "title": "Données collectées",
+        "body": "Nous collectons les données strictement nécessaires à la fourniture du service : votre nom, votre adresse email, les informations relatives à votre boutique (nom, adresse, logo), les données de vos produits et de vos réservations, ainsi que les données techniques (adresse IP, journaux de connexion, type d'appareil). Les paiements sont traités par un prestataire spécialisé : nous n'avons jamais accès aux numéros de carte bancaire complets."
+      },
+      "s3": {
+        "title": "Finalités du traitement",
+        "body": "Vos données sont utilisées pour : créer et gérer votre compte, fournir les fonctionnalités de la plateforme, vous envoyer les notifications nécessaires au service, assurer la sécurité et la prévention de la fraude, répondre à vos demandes de support, et améliorer nos services."
+      },
+      "s4": {
+        "title": "Base légale",
+        "body": "Le traitement de vos données repose sur : l'exécution du contrat qui nous lie (fourniture du service), votre consentement (communications marketing facultatives), nos obligations légales (facturation, comptabilité) et notre intérêt légitime (sécurité, prévention de la fraude, amélioration du service)."
+      },
+      "s5": {
+        "title": "Durée de conservation",
+        "body": "Vos données sont conservées pendant toute la durée de votre abonnement. À la résiliation, elles sont conservées pendant une durée maximale de trois ans à des fins probatoires, puis supprimées ou anonymisées. Les données comptables et fiscales sont conservées dix ans conformément aux obligations légales."
+      },
+      "s6": {
+        "title": "Vos droits",
+        "body": "Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, de suppression, de limitation, de portabilité et d'opposition au traitement de vos données. Vous pouvez exercer ces droits à tout moment en nous écrivant à contact@louez.io. Vous avez également le droit d'introduire une réclamation auprès de la CNIL."
+      },
+      "s7": {
+        "title": "Cookies et traceurs",
+        "body": "Nous utilisons des cookies essentiels au fonctionnement de la plateforme (authentification, préférences d'affichage) et des outils d'analyse anonymisés pour comprendre l'usage du service et l'améliorer. Aucun cookie publicitaire n'est déposé sans votre consentement explicite."
+      },
+      "s8": {
+        "title": "Sécurité des données",
+        "body": "Nous mettons en œuvre des mesures techniques et organisationnelles adaptées pour protéger vos données contre la perte, l'accès non autorisé, l'altération ou la divulgation : chiffrement des communications, contrôle d'accès, sauvegardes régulières et hébergement sécurisé au sein de l'Union européenne."
+      }
+    }
   }
 }

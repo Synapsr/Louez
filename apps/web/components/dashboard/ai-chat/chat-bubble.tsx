@@ -1,84 +1,63 @@
-'use client'
+'use client';
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react';
 
-import { Sparkles, X } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl';
 
-import { cn } from '@louez/utils'
+import { Button } from '@louez/ui';
+import { SparklesIcon } from '@louez/ui/icons';
+import { cn } from '@louez/utils';
 
-import { ChatModal } from './chat-modal'
+import { ChatModal } from './chat-modal';
 
 export function ChatBubble() {
-  const [open, setOpen] = useState(false)
-  const [dismissed, setDismissed] = useState(false)
-  const t = useTranslations('dashboard.aiChat')
+  const [open, setOpen] = useState(false);
+  const t = useTranslations('dashboard.aiChat');
 
-  // ⌘K / Ctrl+K shortcut (always active even when bar is hidden)
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        setOpen((prev) => !prev)
+        e.preventDefault();
+        setOpen((prev) => !prev);
       }
-    }
-    document.addEventListener('keydown', down)
-    return () => document.removeEventListener('keydown', down)
-  }, [])
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
 
   return (
     <>
-      {!dismissed && (
-        <div className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center lg:left-64">
-          <div className="pointer-events-auto group relative flex items-center">
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className={cn(
-                'flex items-center gap-2.5 rounded-full',
-                'border border-primary/20 bg-background/80 px-5 py-2.5 text-sm backdrop-blur-xl',
-                'text-muted-foreground transition-all duration-300',
-                'hover:text-foreground hover:border-primary/40 hover:bg-background/95',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-                // Constant subtle glow, amplified on hover
-                'shadow-[0_0_20px_-5px] shadow-primary/15',
-                'hover:shadow-[0_0_30px_-5px] hover:shadow-primary/30',
-                // Pulse animation on the glow
-                'animate-[ai-glow_4s_ease-in-out_infinite]',
-              )}
-            >
-              <Sparkles className="h-4 w-4 text-primary transition-transform group-hover:scale-110" />
-              <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                {t('badge')}
-              </span>
-              <span className="hidden sm:inline">{t('placeholder')}</span>
-              <kbd className="bg-muted text-muted-foreground/70 ml-2 hidden rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium sm:inline-block">
-                ⌘K
-              </kbd>
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                setDismissed(true)
-              }}
-              className={cn(
-                'ml-1.5 flex h-6 w-6 items-center justify-center rounded-full',
-                'border border-primary/20 bg-background/80 backdrop-blur-xl',
-                'text-muted-foreground transition-all duration-200',
-                'hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30',
-                'opacity-0 group-hover:opacity-100',
-                'focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
-              )}
-              aria-label={t('dismiss')}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-      )}
-
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className={cn(
+          'bg-background/70 text-muted-foreground hidden h-9 min-w-48 justify-start gap-2 lg:flex',
+          'hover:bg-background hover:text-foreground',
+        )}
+      >
+        <SparklesIcon className="size-4" />
+        <span className="min-w-0 flex-1 truncate text-left">
+          {t('placeholder')}
+        </span>
+        {/* <span className="bg-primary/10 text-primary rounded-md px-1.5 py-0.5 text-[10px] font-semibold">
+          {t('badge')}
+        </span> */}
+        <kbd className="bg-muted text-muted-foreground/70 rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium">
+          ⌘K
+        </kbd>
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={() => setOpen(true)}
+        className="lg:hidden"
+        aria-label={t('title')}
+      >
+        <SparklesIcon className="size-4" />
+      </Button>
       <ChatModal open={open} onOpenChange={setOpen} />
     </>
-  )
+  );
 }

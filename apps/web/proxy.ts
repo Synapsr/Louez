@@ -23,7 +23,6 @@ const PREVIEW_STORE_SLUG = env.PREVIEW_STORE_SLUG
 // Routes that should never be rewritten to storefront (dashboard/auth routes)
 const DASHBOARD_ROUTES = [
   '/login',
-  '/verify-request',
   '/register',
   '/dashboard',
   '/onboarding',

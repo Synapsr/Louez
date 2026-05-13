@@ -12,8 +12,9 @@ import { ThemeWrapper } from '@/components/storefront/theme-wrapper'
 import { CartProvider } from '@/contexts/cart-context'
 import { StoreProvider } from '@/contexts/store-context'
 import { AnalyticsProvider } from '@/contexts/analytics-context'
+import { OpenReplayProvider } from '@/components/openreplay-provider'
 import { PostHogProvider } from '@/components/posthog-provider'
-import { generateStoreMetadata, getCanonicalUrl, stripHtml } from '@/lib/seo'
+import { generateStoreMetadata, stripHtml } from '@/lib/seo'
 import type { StoreTheme, StoreSettings } from '@louez/types'
 
 interface StorefrontLayoutProps {
@@ -121,29 +122,34 @@ export default async function StorefrontLayout({
   return (
     <NextIntlClientProvider messages={messages}>
       <PostHogProvider>
-        <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
-          <CartProvider>
-            <AnalyticsProvider storeSlug={store.slug}>
-              <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
-                  <div className="flex min-h-screen flex-col bg-background">
-                    <StoreHeaderWrapper
-                      storeName={store.name}
-                      storeSlug={store.slug}
-                      logoUrl={store.logoUrl}
-                    />
-                    <main className="flex-1 pt-20 md:pt-24">{children}</main>
-                    <StoreFooter
-                      storeName={store.name}
-                      storeSlug={store.slug}
-                      email={store.email}
-                      phone={store.phone}
-                      address={store.address}
-                    />
-                  </div>
-              </ThemeWrapper>
-            </AnalyticsProvider>
-          </CartProvider>
-        </StoreProvider>
+        <OpenReplayProvider
+          surface="storefront"
+          store={{ id: store.id, name: store.name, slug: store.slug }}
+        >
+          <StoreProvider currency={currency} storeSlug={store.slug} storeName={store.name} timezone={settings.timezone} maxDiscountPercent={theme.maxDiscountPercent}>
+            <CartProvider>
+              <AnalyticsProvider storeSlug={store.slug}>
+                <ThemeWrapper mode={theme.mode} primaryColor={theme.primaryColor}>
+                    <div className="flex min-h-screen flex-col bg-background">
+                      <StoreHeaderWrapper
+                        storeName={store.name}
+                        storeSlug={store.slug}
+                        logoUrl={store.logoUrl}
+                      />
+                      <main className="flex-1 pt-20 md:pt-24">{children}</main>
+                      <StoreFooter
+                        storeName={store.name}
+                        storeSlug={store.slug}
+                        email={store.email}
+                        phone={store.phone}
+                        address={store.address}
+                      />
+                    </div>
+                </ThemeWrapper>
+              </AnalyticsProvider>
+            </CartProvider>
+          </StoreProvider>
+        </OpenReplayProvider>
       </PostHogProvider>
     </NextIntlClientProvider>
   )

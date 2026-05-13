@@ -19,7 +19,7 @@ export function createCheckoutSchemaWithOptions(
 ) {
   return z
     .object({
-      email: z.string().email(t('errors.invalidEmail')),
+      email: z.email(t('errors.invalidEmail')),
       firstName: z.string().min(1, t('errors.firstNameRequired')),
       lastName: z.string().min(1, t('errors.lastNameRequired')),
       phone: z

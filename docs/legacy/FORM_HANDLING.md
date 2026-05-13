@@ -155,7 +155,7 @@ const loginSchema = z.object({
 
 // Signup — validate on change
 const signupSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
@@ -182,7 +182,7 @@ import { z } from 'zod';
 import { useAppForm } from '@/hooks/form/form';
 
 const schema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  email: z.email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 

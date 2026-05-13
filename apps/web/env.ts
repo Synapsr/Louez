@@ -151,10 +151,11 @@ export const env = createEnv({
     // ===== Gleap (Required for feedback) =====
     NEXT_PUBLIC_GLEAP_API_KEY: z.string().optional(),
 
-    // ===== OpenReplay (Optional — dashboard session replay) =====
+    // ===== OpenReplay (Optional — session replay) =====
     NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY: z
       .string()
       .default('W9AU13WEWMDZ4m8KQzWZ'),
+    NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY: z.string().optional(),
     NEXT_PUBLIC_OPENREPLAY_INGEST_POINT: z
       .url('NEXT_PUBLIC_OPENREPLAY_INGEST_POINT must be a valid URL')
       .default('https://replay.lumy.cloud/ingest'),
@@ -222,6 +223,8 @@ export const env = createEnv({
     NEXT_PUBLIC_GLEAP_API_KEY: process.env.NEXT_PUBLIC_GLEAP_API_KEY,
     NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY:
       process.env.NEXT_PUBLIC_OPENREPLAY_PROJECT_KEY,
+    NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY:
+      process.env.NEXT_PUBLIC_OPENREPLAY_STOREFRONT_PROJECT_KEY,
     NEXT_PUBLIC_OPENREPLAY_INGEST_POINT:
       process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
     NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,

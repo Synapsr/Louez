@@ -207,11 +207,12 @@ export function NewReservationStepProducts({
             onClear={() => setProductSearchQuery('')}
             placeholder={t('searchProductsPlaceholder', { count: products.length })}
             clearLabel={t('clearProductSearch')}
-            groupClassName="h-10"
+            groupClassName="h-10 w-full min-w-0"
+            className="min-w-0"
           />
         )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           {filteredProducts.map((product) => {
             const productLines = selectedProducts.filter((line) => line.productId === product.id)
             const selectedQuantity = productLines.reduce((sum, line) => sum + line.quantity, 0)
@@ -292,14 +293,14 @@ export function NewReservationStepProducts({
               <div
                 key={product.id}
                 className={cn(
-                  'rounded-lg border p-4 transition-colors',
+                  'min-w-0 rounded-lg border p-3 transition-colors sm:p-4',
                   isOutOfStock && 'bg-muted/30 opacity-60',
                   selectedQuantity > 0 && 'border-primary bg-primary/5'
                 )}
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted sm:h-12 sm:w-12">
                       {product.images && product.images.length > 0 ? (
                         // Product thumbnails already use direct URLs in this feature.
                         // eslint-disable-next-line @next/next/no-img-element
@@ -315,8 +316,10 @@ export function NewReservationStepProducts({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate font-medium">{product.name}</p>
+                      <div className="flex min-w-0 flex-wrap items-start gap-2">
+                        <p className="min-w-0 flex-1 text-sm font-medium leading-tight sm:text-base">
+                          {product.name}
+                        </p>
                         {product.tulipInsurable && (
                           <Badge
                             variant="outline"
@@ -330,7 +333,7 @@ export function NewReservationStepProducts({
                       <div className="mt-0.5">
                         {summaryPricing.productDuration > 0 ? (
                           <>
-                            <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                               <span className="text-sm font-semibold text-primary">
                                 {formatCurrency(summaryPricing.lineSubtotal)}
                               </span>
@@ -347,7 +350,7 @@ export function NewReservationStepProducts({
                                 </>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="break-words text-xs text-muted-foreground">
                               {summaryPricing.isRateBased && summaryPricing.ratePlan && summaryPricing.ratePlan.length > 0
                                 ? formatRatePlanBreakdown(summaryPricing.ratePlan, summaryPricing.lineSubtotal)
                                 : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
@@ -361,7 +364,7 @@ export function NewReservationStepProducts({
                           </div>
                         )}
                       </div>
-                      <div className="mt-1 flex items-center gap-2">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                         {isOutOfStock ? (
                           <Badge variant="error" className="text-xs">
                             {t('outOfStock')}
@@ -382,13 +385,14 @@ export function NewReservationStepProducts({
                       </div>
                     </div>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-2 sm:justify-end">
                     {productLines.length === 0 ? (
                       <Button
                         type="button"
                         variant={isOutOfStock ? 'ghost' : 'outline'}
                         onClick={() => addProduct(product.id)}
                         disabled={isOutOfStock}
+                        className="w-full sm:w-auto"
                       >
                         <Plus className="mr-1 h-4 w-4" />
                         {t('add')}
@@ -399,6 +403,7 @@ export function NewReservationStepProducts({
                         variant="outline"
                         onClick={() => addProduct(product.id)}
                         disabled={remainingStock <= 0}
+                        className="w-full sm:w-auto"
                       >
                         <Plus className="mr-1 h-4 w-4" />
                         {t('addOptionLine')}
@@ -416,7 +421,7 @@ export function NewReservationStepProducts({
 
                       return (
                         <div key={line.lineId} className="space-y-3 rounded-md border bg-background/70 p-3">
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="text-xs font-medium text-muted-foreground">
                                 {t('lineLabel', { index: index + 1 })}
@@ -430,7 +435,7 @@ export function NewReservationStepProducts({
                                     </Badge>
                                   ))}
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 self-start sm:self-auto">
                               <Button
                                 type="button"
                                 variant="outline"
@@ -512,9 +517,9 @@ export function NewReservationStepProducts({
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-2">
-                              <span className="text-muted-foreground">
+                          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="min-w-0 break-words text-muted-foreground">
                                 {pricing.isRateBased && pricing.ratePlan && pricing.ratePlan.length > 0 ? (
                                   <>
                                     {line.quantity > 1 && `${line.quantity} × `}
@@ -543,9 +548,9 @@ export function NewReservationStepProducts({
                                 <PenLine className="h-3 w-3" />
                               </Button>
                             </div>
-                            <div className="text-right">
+                            <div className="text-left sm:text-right">
                               {pricing.hasPriceOverride ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                   <span className="text-xs text-muted-foreground line-through">
                                     {formatCurrency(pricing.calculatedPrice * line.quantity * pricing.productDuration)}
                                   </span>
@@ -561,7 +566,7 @@ export function NewReservationStepProducts({
                                   </span>
                                 </div>
                               ) : pricing.hasDiscount ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                   <span className="text-xs text-muted-foreground line-through">
                                     {formatCurrency(pricing.lineOriginalSubtotal)}
                                   </span>

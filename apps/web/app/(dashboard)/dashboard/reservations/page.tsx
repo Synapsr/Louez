@@ -1,10 +1,12 @@
-import { Suspense } from 'react'
-import { getCurrentStore } from '@/lib/store-context'
+import { Suspense } from 'react';
 
-import { getStoreLimits, getStorePlan } from '@/lib/plan-limits'
-import { getDashboardReservationsList } from '@louez/api/services'
-import { Skeleton } from '@louez/ui'
-import { ReservationsPageContent } from './reservations-page-content'
+import { getDashboardReservationsList } from '@louez/api/services';
+import { Skeleton } from '@louez/ui';
+
+import { getStoreLimits, getStorePlan } from '@/lib/plan-limits';
+import { getCurrentStore } from '@/lib/store-context';
+
+import { ReservationsPageContent } from './reservations-page-content';
 
 function ReservationsTableSkeleton() {
   return (
@@ -14,7 +16,7 @@ function ReservationsTableSkeleton() {
         <Skeleton className="h-10 w-32" />
       </div>
       <div className="rounded-md border">
-        <div className="p-4 space-y-4">
+        <div className="space-y-4 p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-4">
               <Skeleton className="h-4 w-16" />
@@ -27,20 +29,20 @@ function ReservationsTableSkeleton() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 interface ReservationsPageProps {
   searchParams: Promise<{
-    status?: string
-    period?: string
-    search?: string
-    sort?: string
-    sortDirection?: string
-    page?: string
-    pageSize?: string
-    view?: string
-  }>
+    status?: string;
+    period?: string;
+    search?: string;
+    sort?: string;
+    sortDirection?: string;
+    page?: string;
+    pageSize?: string;
+    view?: string;
+  }>;
 }
 
 function normalizeStatus(value: string | undefined) {
@@ -53,45 +55,53 @@ function normalizeStatus(value: string | undefined) {
     value === 'cancelled' ||
     value === 'rejected'
   ) {
-    return value
+    return value;
   }
-  return undefined
+  return undefined;
 }
 
 function normalizePeriod(value: string | undefined) {
-  if (value === 'today' || value === 'week' || value === 'month') return value
-  return undefined
+  if (value === 'today' || value === 'week' || value === 'month') return value;
+  return undefined;
 }
 
 function normalizeSort(value: string | undefined) {
-  if (value === 'startDate' || value === 'amount' || value === 'status' || value === 'number') return value
-  return undefined
+  if (
+    value === 'startDate' ||
+    value === 'amount' ||
+    value === 'status' ||
+    value === 'number'
+  )
+    return value;
+  return undefined;
 }
 
 function normalizeSortDirection(value: string | undefined) {
-  if (value === 'asc' || value === 'desc') return value
-  return undefined
+  if (value === 'asc' || value === 'desc') return value;
+  return undefined;
 }
 
-export default async function ReservationsPage({ searchParams }: ReservationsPageProps) {
-  const store = await getCurrentStore()
-  if (!store) return null
+export default async function ReservationsPage({
+  searchParams,
+}: ReservationsPageProps) {
+  const store = await getCurrentStore();
+  if (!store) return null;
 
-  const params = await searchParams
-  const status = normalizeStatus(params.status)
-  const period = normalizePeriod(params.period)
-  const search = params.search?.trim() || undefined
-  const sort = normalizeSort(params.sort)
-  const sortDirection = normalizeSortDirection(params.sortDirection)
-  const page = params.page ? parseInt(params.page, 10) : 1
-  const pageSize = params.pageSize ? parseInt(params.pageSize, 10) : 25
-  const currency = store.settings?.currency || 'EUR'
-  const timezone = store.settings?.timezone
+  const params = await searchParams;
+  const status = normalizeStatus(params.status);
+  const period = normalizePeriod(params.period);
+  const search = params.search?.trim() || undefined;
+  const sort = normalizeSort(params.sort);
+  const sortDirection = normalizeSortDirection(params.sortDirection);
+  const page = params.page ? parseInt(params.page, 10) : 1;
+  const pageSize = params.pageSize ? parseInt(params.pageSize, 10) : 25;
+  const currency = store.settings?.currency || 'EUR';
+  const timezone = store.settings?.timezone;
 
   const [limits, plan] = await Promise.all([
     getStoreLimits(store.id),
     getStorePlan(store.id),
-  ])
+  ]);
 
   const initialData = await getDashboardReservationsList({
     storeId: store.id,
@@ -103,7 +113,9 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
     sortDirection,
     page,
     pageSize,
-  })
+  });
+
+  console.log({ limits });
 
   return (
     <Suspense fallback={<ReservationsTableSkeleton />}>
@@ -117,5 +129,5 @@ export default async function ReservationsPage({ searchParams }: ReservationsPag
         timezone={timezone}
       />
     </Suspense>
-  )
+  );
 }
