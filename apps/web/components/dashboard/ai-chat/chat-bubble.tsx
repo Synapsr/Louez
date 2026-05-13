@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
+import { useIsMobile } from '@louez/ui/hooks/use-mobile';
 import { SparklesIcon } from '@louez/ui/icons';
 import { cn } from '@louez/utils';
 
@@ -24,6 +25,8 @@ export function ChatBubble() {
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
+
+  const isMobile = useIsMobile();
 
   return (
     <>
@@ -50,7 +53,7 @@ export function ChatBubble() {
       <Button
         type="button"
         variant="outline"
-        size="icon"
+        size="icon-lg"
         onClick={() => setOpen(true)}
         className="lg:hidden"
         aria-label={t('title')}

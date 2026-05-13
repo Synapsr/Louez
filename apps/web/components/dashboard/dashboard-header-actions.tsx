@@ -8,6 +8,7 @@ import { Lock, Plus } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 import { Button } from '@louez/ui';
+import { useIsMobile } from '@louez/ui/hooks/use-mobile';
 
 import { UpgradeModal } from '@/components/dashboard/upgrade-modal';
 
@@ -29,18 +30,25 @@ export const DashboardHeaderActions = ({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const isAtReservationLimit = reservationLimits.isAtLimit;
 
+  const isMobile = useIsMobile();
+
   return (
     <>
       <div className="ml-auto flex shrink-0 items-center gap-2">
         {showAIChat && <ChatBubble />}
         <DashboardNotificationsButton />
         {isAtReservationLimit ? (
-          <Button variant="outline" onClick={() => setShowUpgradeModal(true)}>
+          <Button
+            size={isMobile ? 'icon-lg' : 'default'}
+            variant="outline"
+            onClick={() => setShowUpgradeModal(true)}
+          >
             <Lock className="h-4 w-4" />
             <span className="max-md:hidden">{t('newReservation')}</span>
           </Button>
         ) : (
           <Button
+            size={isMobile ? 'icon-lg' : 'default'}
             render={<Link href="/dashboard/reservations/new" />}
             variant="outline"
           >
