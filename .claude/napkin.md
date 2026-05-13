@@ -202,6 +202,7 @@
 - For feature-local client hooks that render UI-related copy, prefer calling `useTranslations()` inside the hook rather than threading `t` callbacks through parent components.
 
 ## Patterns That Work
+- For ICS calendar feed changes that alter existing event rendering without touching reservation rows, bump an explicit event-format version into `SEQUENCE`; relying only on `reservation.updatedAt` can leave subscribed calendar clients with stale titles/descriptions.
 - For storefront date pickers, decide same-day eligibility from store rental rules (`minRentalMinutes < 1440`, with hourly pricing as fallback), not from shared page `pricingMode` alone; home/catalog/rental pages can run with `pricingMode='day'` while still allowing valid same-day rentals.
 - For storefront same-day return time popovers, filter available end slots from the real minimum end datetime (`pickup + minRentalMinutes`) instead of only hiding slots `<= startTime`; otherwise invalid same-day return times still appear selectable.
 - Production store cloning to dev is handled by `packages/db/src/scripts/store-clone.ts` with the package script `pnpm --filter=@louez/db run store:clone`; source DB comes from `--source-db-url`/`SOURCE_DATABASE_URL`, target DB from `--target-db-url`/`TARGET_DATABASE_URL` or fallback `DATABASE_URL`.
