@@ -718,7 +718,7 @@ export function ProductModal({
   const sortedLegacyTiers =
     legacyTiers.length > 0 ? sortTiersByDuration(legacyTiers) : [];
 
-  const rateRows = useMemo(() => {
+  const rateRows = (() => {
     if (!isRateBased || !product.basePeriodMinutes) return [];
     const basePeriod = product.basePeriodMinutes;
     const baseRow = {
@@ -742,9 +742,9 @@ export function ProductModal({
       }
       return a.price - b.price;
     });
-  }, [isRateBased, effectiveBasePrice, product.basePeriodMinutes, effectiveRateTiers]);
+  })();
 
-  const contextualPeriodMinutes = useMemo(() => {
+  const contextualPeriodMinutes = (() => {
     if (!isRateBased || rateRows.length === 0) return null;
     const periods = [...new Set(rateRows.map((row) => row.periodMinutes))]
       .filter((period) => period > 0)
@@ -756,9 +756,9 @@ export function ProductModal({
     return periodWithinDuration.length > 0
       ? periodWithinDuration[periodWithinDuration.length - 1]
       : periods[0];
-  }, [durationMinutes, isRateBased, rateRows]);
+  })();
 
-  const contextualDisplay = useMemo(() => {
+  const contextualDisplay = (() => {
     if (!isRateBased || !contextualPeriodMinutes || rateRows.length === 0) {
       return null;
     }
@@ -786,7 +786,7 @@ export function ProductModal({
       isFrom: false,
       selectedRateId: baseRow.id,
     };
-  }, [contextualPeriodMinutes, isRateBased, rateRows]);
+  })();
 
   const formatPeriodLabel = (
     periodMinutes: number,

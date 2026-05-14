@@ -24,6 +24,8 @@
     "@louez/config": "workspace:*",
     "@types/nodemailer": "^7.0.4",
     "@types/react": "^19",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "typescript": "^5"
   },
   "peerDependencies": {
