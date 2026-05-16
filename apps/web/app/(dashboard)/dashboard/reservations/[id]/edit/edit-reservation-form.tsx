@@ -383,6 +383,8 @@ export function EditReservationForm({
 
     return legacyInsuranceAmount;
   })();
+  const hasPersistedTulipInsurance =
+    reservation.tulipInsuranceOptIn === true || initialTulipInsuranceAmount > 0;
   const originalItemsSubtotal = editableReservationItems.reduce((sum, item) => {
     const parsed = Number(item.totalPrice);
     if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -401,11 +403,7 @@ export function EditReservationForm({
     null,
   );
   const initialTulipInsuranceOptIn =
-    tulipInsuranceMode === 'required'
-      ? true
-      : tulipInsuranceMode === 'optional'
-        ? reservation.tulipInsuranceOptIn === true
-        : false;
+    tulipInsuranceMode === 'no_public' ? false : hasPersistedTulipInsurance;
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
     initialTulipInsuranceOptIn,
   );
@@ -426,11 +424,7 @@ export function EditReservationForm({
         tulipInsurableProductIds.has(item.productId)),
   );
   const effectiveTulipInsuranceOptIn =
-    tulipInsuranceMode === 'required'
-      ? true
-      : tulipInsuranceMode === 'optional'
-        ? tulipInsuranceOptIn
-        : false;
+    tulipInsuranceMode === 'no_public' ? false : tulipInsuranceOptIn;
   const showTulipPastStartWarning =
     effectiveTulipInsuranceOptIn &&
     startDate instanceof Date &&
@@ -504,6 +498,10 @@ export function EditReservationForm({
     hasTulipEligibleProducts &&
     effectiveTulipInsuranceOptIn &&
     !showTulipPastStartWarning;
+  const showTulipInsuranceCard =
+    tulipInsuranceMode === 'optional' ||
+    showTulipInsurancePreview ||
+    showTulipPastStartWarning;
   const isTulipInsuranceLoading =
     tulipQuoteRequest !== null &&
     (tulipQuoteQuery.isLoading ||
@@ -1395,7 +1393,7 @@ export function EditReservationForm({
 
             {/* Sidebar */}
             <div className="min-w-0 space-y-4 sm:space-y-6">
-              {tulipInsuranceMode !== 'no_public' && (
+              {showTulipInsuranceCard && (
                 <Card>
                   <CardContent className="space-y-3 p-4 sm:p-6">
                     <h2 className="text-sm font-medium">
