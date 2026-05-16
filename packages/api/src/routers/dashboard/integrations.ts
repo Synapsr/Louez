@@ -22,6 +22,39 @@ import {
 import { dashboardProcedure, requirePermission } from '../../procedures';
 import { toORPCError } from '../../utils/orpc-error';
 
+type ActionErrorResult = {
+  error: string;
+  details?: string;
+};
+
+function readActionErrorDetails(result: unknown): string | undefined {
+  if (
+    typeof result === 'object' &&
+    result !== null &&
+    'details' in result &&
+    typeof result.details === 'string'
+  ) {
+    const normalized = result.details.trim();
+    return normalized || undefined;
+  }
+
+  return undefined;
+}
+
+function throwActionError(result: ActionErrorResult): never {
+  throw new ORPCError('BAD_REQUEST', {
+    message: result.error,
+    data: result.details ? { details: result.details } : undefined,
+  });
+}
+
+function throwResultError(result: { error?: string }): never {
+  throwActionError({
+    error: result.error ?? 'errors.generic',
+    details: readActionErrorDetails(result),
+  });
+}
+
 const listCatalog = dashboardProcedure
   .input(dashboardIntegrationsListCatalogInputSchema)
   .handler(async ({ context, input }) => {
@@ -37,7 +70,7 @@ const listCatalog = dashboardProcedure
 
       const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -61,7 +94,7 @@ const listCategory = dashboardProcedure
 
       const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -85,7 +118,7 @@ const getDetail = dashboardProcedure
 
       const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -109,7 +142,7 @@ const setEnabled = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -133,7 +166,7 @@ const getTulipState = dashboardProcedure
 
       const result = await fn();
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -157,7 +190,7 @@ const getTulipProductState = dashboardProcedure
 
       const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -181,7 +214,7 @@ const connectTulip = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -205,7 +238,7 @@ const updateTulipConfiguration = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -229,7 +262,7 @@ const upsertTulipProductMapping = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -259,9 +292,10 @@ const pushTulipProductUpdate = requirePermission('write')
             storeId: context.store.id,
             productId: input.productId,
             error: result.error,
+            details: readActionErrorDetails(result),
           },
         );
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -291,9 +325,10 @@ const createTulipProduct = requirePermission('write')
             storeId: context.store.id,
             productId: input.productId,
             error: result.error,
+            details: readActionErrorDetails(result),
           },
         );
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -316,7 +351,7 @@ const disconnectTulip = requirePermission('write')
 
       const result = await fn();
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -341,7 +376,7 @@ const getCalendarState = dashboardProcedure
 
       const result = await fn();
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -366,7 +401,7 @@ const updateGoogleCalendarSettings = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };
@@ -390,7 +425,7 @@ const resyncGoogleCalendar = requirePermission('write')
 
       const result = await fn();
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return result;
@@ -414,7 +449,7 @@ const disconnectGoogleCalendar = requirePermission('write')
 
       const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error });
+        throwResultError(result);
       }
 
       return { success: true as const };

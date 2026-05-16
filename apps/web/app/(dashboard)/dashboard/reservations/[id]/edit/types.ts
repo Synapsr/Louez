@@ -94,8 +94,16 @@ export interface Reservation {
   delivery: ReservationDelivery
   items: ReservationItem[]
   customer: {
+    customerType?: 'individual' | 'business'
+    companyName?: string | null
     firstName: string
     lastName: string
+    email: string
+    phone?: string | null
+    address?: string | null
+    city?: string | null
+    postalCode?: string | null
+    country?: string | null
   }
 }
 
@@ -139,6 +147,7 @@ export interface ReservationLocationOption {
 }
 
 export interface EditReservationFormProps {
+  storeId: string
   reservation: Reservation
   availableProducts: Product[]
   existingReservations: ExistingReservation[]
