@@ -198,6 +198,9 @@ function buildProductPayload(
           // before Tulip pricing/contract calls, so we keep a synthetic product_marked fallback.
           product_marked: productMarked,
           louez_product_ID: item.productId,
+          ...(item.margin != null && item.margin > 0
+            ? { margin: item.margin }
+            : {}),
         },
       });
 

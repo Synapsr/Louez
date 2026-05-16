@@ -375,6 +375,7 @@ export type TulipContractProduct = {
     product_marked?: string;
     louez_product_ID?: string;
     internal_id?: string;
+    margin?: number | string | null;
   };
   price?: number;
   replaced_by?: string;

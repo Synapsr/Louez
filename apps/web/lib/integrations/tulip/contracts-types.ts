@@ -22,6 +22,7 @@ export type ResolvedTulipItemInput = {
   productId: string;
   tulipProductId: string;
   quantity: number;
+  margin?: number | null;
   productMarkedValues?: string[];
 };
 
