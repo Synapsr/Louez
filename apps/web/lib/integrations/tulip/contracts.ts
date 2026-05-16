@@ -92,6 +92,7 @@ type TargetTulipContractProductEntry = {
   louezProductId: string;
   productMarked: string;
   userName: string;
+  margin: number | null;
 };
 
 type CurrentTulipContractProductEntry = {
@@ -100,6 +101,7 @@ type CurrentTulipContractProductEntry = {
   louezProductId: string;
   productMarked: string;
   userName: string;
+  margin: number | null;
   status: string;
 };
 
@@ -110,6 +112,11 @@ type TulipContractDelta = {
   }>;
   additions: TargetTulipContractProductEntry[];
   removals: CurrentTulipContractProductEntry[];
+};
+
+type TulipProductContractMetadata = {
+  productType: string;
+  marginPerDay: number | null;
 };
 
 function assertDashboardTulipContractCreationSource(source: string) {
@@ -125,9 +132,84 @@ function assertDashboardTulipContractCreationSource(source: string) {
   }
 }
 
-async function assertTulipProductContractCompatibility(params: {
+function parseTulipProductMargin(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(',', '.'));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
+async function loadTulipProductMetadataById(params: {
   apiKey: string;
   renterUid: string;
+}): Promise<Map<string, TulipProductContractMetadata>> {
+  const catalog = await tulipListProducts(params.apiKey, {
+    renterUid: params.renterUid,
+  });
+
+  return new Map(
+    catalog
+      .map((product): [string, TulipProductContractMetadata] | null => {
+        const productId = product.id?.trim();
+        if (!productId) {
+          return null;
+        }
+
+        return [
+          productId,
+          {
+            productType: product.productType?.trim() || '',
+            marginPerDay: parseTulipProductMargin(product.data?.margin),
+          },
+        ];
+      })
+      .filter(
+        (
+          entry,
+        ): entry is [string, TulipProductContractMetadata] => entry !== null,
+      ),
+  );
+}
+
+function getTulipMarginDayCount(startDate: Date, endDate: Date): number {
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (durationMs <= 0) {
+    return 1;
+  }
+
+  return Math.max(1, Math.ceil(durationMs / (24 * 60 * 60 * 1000)));
+}
+
+function applyTulipProductMargins(params: {
+  insuredItems: ResolvedTulipItemInput[];
+  productMetadataById: Map<string, TulipProductContractMetadata>;
+  startDate: Date;
+  endDate: Date;
+}): ResolvedTulipItemInput[] {
+  const marginDays = getTulipMarginDayCount(params.startDate, params.endDate);
+
+  return params.insuredItems.map((item) => {
+    const marginPerDay =
+      params.productMetadataById.get(item.tulipProductId)?.marginPerDay ?? null;
+    if (marginPerDay == null || marginPerDay <= 0) {
+      return item;
+    }
+
+    return {
+      ...item,
+      margin: Math.round(marginPerDay * marginDays * 100) / 100,
+    };
+  });
+}
+
+async function assertTulipProductContractCompatibility(params: {
+  productMetadataById: Map<string, TulipProductContractMetadata>;
   insuredItems: ResolvedTulipItemInput[];
   contractType: TulipContractType;
 }) {
@@ -135,26 +217,13 @@ async function assertTulipProductContractCompatibility(params: {
     return;
   }
 
-  const catalog = await tulipListProducts(params.apiKey, {
-    renterUid: params.renterUid,
-  });
-  const productTypeById = new Map<string, string>();
-
-  for (const product of catalog) {
-    const productId = product.id?.trim();
-    const productType = product.productType?.trim() || '';
-
-    if (productId && productType) {
-      productTypeById.set(productId, productType);
-    }
-  }
-
   const uniqueInsuredProductIds = new Set(
     params.insuredItems.map((item) => item.tulipProductId),
   );
 
   for (const tulipProductId of uniqueInsuredProductIds) {
-    const productType = productTypeById.get(tulipProductId);
+    const productType =
+      params.productMetadataById.get(tulipProductId)?.productType ?? '';
     if (!productType) {
       continue;
     }
@@ -292,6 +361,7 @@ function toTargetTulipContractProductEntries(
       typeof dataObj?.louez_product_ID === 'string'
         ? dataObj.louez_product_ID.trim()
         : '';
+    const margin = parseTulipProductMargin(dataObj?.margin);
 
     if (!tulipProductId || !productMarked) {
       continue;
@@ -302,6 +372,7 @@ function toTargetTulipContractProductEntries(
       louezProductId: louezProductIdValue,
       productMarked,
       userName,
+      margin,
     });
   }
 
@@ -343,6 +414,7 @@ function toCurrentTulipContractProductEntries(
         : typeof dataObj?.internal_id === 'string'
           ? dataObj.internal_id.trim()
           : '';
+    const margin = parseTulipProductMargin(dataObj?.margin);
 
     if (!tulipProductId || status !== 'open') {
       continue;
@@ -354,6 +426,7 @@ function toCurrentTulipContractProductEntries(
       louezProductId,
       productMarked,
       userName,
+      margin,
       status,
     });
   }
@@ -390,7 +463,8 @@ function buildTulipContractDelta(params: {
         current.tulipProductId === target.tulipProductId &&
         current.louezProductId === target.louezProductId &&
         current.productMarked === target.productMarked &&
-        current.userName === target.userName,
+        current.userName === target.userName &&
+        current.margin === target.margin,
     );
 
     if (exactMatch) {
@@ -539,11 +613,21 @@ export async function previewTulipQuoteForCheckout(params: {
     fallbackKey: 'errors.tulipQuoteFailed',
   });
 
-  await assertTulipProductContractCompatibility({
+  const productMetadataById = await loadTulipProductMetadataById({
     apiKey,
     renterUid: tulipSettings.renterUid,
+  });
+
+  await assertTulipProductContractCompatibility({
+    productMetadataById,
     insuredItems: coverage.insuredItems,
     contractType: resolvedContractType,
+  });
+  const insuredItemsWithMargins = applyTulipProductMargins({
+    insuredItems: coverage.insuredItems,
+    productMetadataById,
+    startDate: params.startDate,
+    endDate: params.endDate,
   });
 
   const payload = buildContractPayload({
@@ -552,7 +636,7 @@ export async function previewTulipQuoteForCheckout(params: {
     startDate: params.startDate,
     endDate: params.endDate,
     customer: params.customer,
-    insuredItems: coverage.insuredItems,
+    insuredItems: insuredItemsWithMargins,
     preview: true,
   });
 
@@ -808,11 +892,21 @@ export async function createTulipContractForReservation(params: {
       coverage.insuredItems,
     );
 
-    await assertTulipProductContractCompatibility({
+    const productMetadataById = await loadTulipProductMetadataById({
       apiKey,
       renterUid: tulipSettings.renterUid,
+    });
+
+    await assertTulipProductContractCompatibility({
+      productMetadataById,
       insuredItems,
       contractType: resolvedContractType,
+    });
+    const insuredItemsWithMargins = applyTulipProductMargins({
+      insuredItems,
+      productMetadataById,
+      startDate: reservation.startDate,
+      endDate: reservation.endDate,
     });
 
     console.info('[tulip][contract-create] coverage resolved', {
@@ -848,7 +942,7 @@ export async function createTulipContractForReservation(params: {
       startDate: reservation.startDate,
       endDate: reservation.endDate,
       customer: toTulipCustomerInput(reservation.customer),
-      insuredItems,
+      insuredItems: insuredItemsWithMargins,
     });
 
     const contract = await tulipCreateContractWithOptionsFallback({
@@ -1040,11 +1134,21 @@ export async function syncTulipContractForReservation(params: {
     coverage.insuredItems,
   );
 
-  await assertTulipProductContractCompatibility({
+  const productMetadataById = await loadTulipProductMetadataById({
     apiKey,
     renterUid,
+  });
+
+  await assertTulipProductContractCompatibility({
+    productMetadataById,
     insuredItems,
     contractType: resolvedContractType,
+  });
+  const insuredItemsWithMargins = applyTulipProductMargins({
+    insuredItems,
+    productMetadataById,
+    startDate: reservation.startDate,
+    endDate: reservation.endDate,
   });
 
   if (coverage.insuredProductCount === 0) {
@@ -1076,7 +1180,7 @@ export async function syncTulipContractForReservation(params: {
     startDate: reservation.startDate,
     endDate: reservation.endDate,
     customer: toTulipCustomerInput(reservation.customer),
-    insuredItems,
+    insuredItems: insuredItemsWithMargins,
   });
   const currentContract = await tulipGetContract(apiKey, contractId);
   if (currentContract.status !== 'open') {
@@ -1114,7 +1218,8 @@ export async function syncTulipContractForReservation(params: {
           current.tulipProductId !== target.tulipProductId ||
           current.productMarked !== target.productMarked ||
           current.userName !== target.userName ||
-          current.louezProductId !== target.louezProductId,
+          current.louezProductId !== target.louezProductId ||
+          current.margin !== target.margin,
       )
       .map(({ current, target }) => [
         current.contractProductId,
@@ -1123,6 +1228,11 @@ export async function syncTulipContractForReservation(params: {
           product_marked: target.productMarked,
           user_name: target.userName,
           louez_product_ID: target.louezProductId,
+          ...(target.margin != null && target.margin > 0
+            ? { margin: target.margin }
+            : current.margin != null
+              ? { margin: 0 }
+              : {}),
         },
       ]),
   );
@@ -1216,6 +1326,9 @@ export async function syncTulipContractForReservation(params: {
           user_name: product.userName,
           product_marked: product.productMarked,
           louez_product_ID: product.louezProductId,
+          ...(product.margin != null && product.margin > 0
+            ? { margin: product.margin }
+            : {}),
         },
       })),
     };
