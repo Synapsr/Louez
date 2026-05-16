@@ -6,12 +6,35 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { db, products, productsTulip, stores } from '@louez/db';
-import type {
-  StoreSettings,
-  TulipPublicMode,
-} from '@louez/types';
+import {
+  db,
+  integrationCredentials,
+  products,
+  productsTulip,
+  storeIntegrations,
+  stores,
+} from '@louez/db';
+import type { StoreSettings, TulipPublicMode } from '@louez/types';
 
+import {
+  getCalendarIntegrationState,
+  updateGoogleCalendarSettings,
+} from '@/lib/integrations/calendar/state';
+import { ICS_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/calendar/state';
+import { enqueueCalendarBackfill } from '@/lib/integrations/calendar/sync';
+import { GOOGLE_CALENDAR_PROVIDER_KEY } from '@/lib/integrations/providers/google-calendar/google-calendar-client';
+import {
+  getIntegration,
+  getIntegrationDetail,
+  listByCategory,
+  listCategories,
+  listIntegrations,
+} from '@/lib/integrations/registry';
+import type {
+  IntegrationCatalogItem,
+  IntegrationCategorySummary,
+  IntegrationDetail,
+} from '@/lib/integrations/registry/types';
 import {
   TulipApiError,
   type TulipProduct,
@@ -25,18 +48,6 @@ import {
   getTulipSettings,
   mergeTulipSettings,
 } from '@/lib/integrations/tulip/settings';
-import {
-  getIntegration,
-  getIntegrationDetail,
-  listByCategory,
-  listCategories,
-  listIntegrations,
-} from '@/lib/integrations/registry';
-import type {
-  IntegrationCatalogItem,
-  IntegrationCategorySummary,
-  IntegrationDetail,
-} from '@/lib/integrations/registry/types';
 import { getCurrentStore } from '@/lib/store-context';
 import type { StoreWithFullData } from '@/lib/store-context';
 
@@ -122,8 +133,7 @@ const TULIP_PRODUCT_SUBTYPES = [
 type TulipProductTypeValue = (typeof TULIP_PRODUCT_TYPES)[number];
 type TulipProductSubtypeValue = (typeof TULIP_PRODUCT_SUBTYPES)[number];
 const TULIP_LOUEZ_ORIGIN_TAG = '[louez-origin]';
-const TULIP_LOUEZ_ORIGIN_FALLBACK_DESCRIPTION =
-  `${TULIP_LOUEZ_ORIGIN_TAG} from Louez`;
+const TULIP_LOUEZ_ORIGIN_FALLBACK_DESCRIPTION = `${TULIP_LOUEZ_ORIGIN_TAG} from Louez`;
 
 const TULIP_SUBTYPES_BY_TYPE: Record<
   TulipProductTypeValue,
@@ -181,7 +191,9 @@ function getDefaultSubtypeForType(
   return TULIP_SUBTYPES_BY_TYPE[productType][0] ?? 'standard';
 }
 
-function getTulipProductId(value: { product_id?: string | null }): string | null {
+function getTulipProductId(value: {
+  product_id?: string | null;
+}): string | null {
   const id =
     typeof value.product_id === 'string' ? value.product_id.trim() : '';
   return id || null;
@@ -298,9 +310,7 @@ async function upsertTulipMappingRow(params: {
     });
 }
 
-function toValidIsoDateString(
-  value: string | null | undefined,
-): string | null {
+function toValidIsoDateString(value: string | null | undefined): string | null {
   const normalized = normalizeTulipOptionalText(value);
   if (!normalized) return null;
 
@@ -404,7 +414,8 @@ async function resolveCreatedTulipProductId({
       if (candidate.title !== normalizedExpectedTitle) return false;
       if (expectedBrand && candidate.brand !== expectedBrand) return false;
       if (expectedModel && candidate.model !== expectedModel) return false;
-      if (createResponseUid && candidate.uid !== createResponseUid) return false;
+      if (createResponseUid && candidate.uid !== createResponseUid)
+        return false;
       return true;
     });
 
@@ -472,12 +483,17 @@ function normalizeTulipCatalog(rawProducts: unknown): TulipCatalogItem[] {
           translations?: unknown;
         };
         const subtypeType =
-          typeof subtypeRecord.type === 'string' ? subtypeRecord.type.trim() : '';
+          typeof subtypeRecord.type === 'string'
+            ? subtypeRecord.type.trim()
+            : '';
         if (!subtypeType) continue;
 
         subtypeMap.set(subtypeType, {
           type: subtypeType,
-          label: pickTulipTranslationLabel(subtypeRecord.translations, subtypeType),
+          label: pickTulipTranslationLabel(
+            subtypeRecord.translations,
+            subtypeType,
+          ),
         });
       }
 
@@ -613,12 +629,42 @@ const createTulipProductSchema = z.object({
 
 const disconnectTulipSchema = z.object({});
 
+const updateGoogleCalendarSettingsSchema = z.object({
+  syncPendingReservations: z.boolean(),
+  cancelledReservationBehavior: z.enum(['show', 'hide']),
+});
+
+const disconnectGoogleCalendarSchema = z.object({
+  deleteEvents: z.boolean().default(false),
+});
+
 function toErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
 
   return String(error);
+}
+
+function redactSensitiveErrorParts(message: string): string {
+  return message
+    .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [redacted]')
+    .replace(
+      /(authorization|cookie|password|secret|token|api[_-]?key|client[_-]?secret)(["'\s:=]+)([^"',\s]+)/gi,
+      '$1$2[redacted]',
+    );
+}
+
+function toDebugErrorMessage(error: unknown): string {
+  const message =
+    error instanceof Error
+      ? `${error.name}: ${error.message}`
+      : toErrorMessage(error);
+  const redactedMessage = redactSensitiveErrorParts(message);
+
+  return redactedMessage.length > 500
+    ? `${redactedMessage.slice(0, 500)}...`
+    : redactedMessage;
 }
 
 function getTulipErrorCode(payload: unknown): number | null {
@@ -671,6 +717,12 @@ function toActionError(error: unknown): ActionError {
     return { error: error.message };
   }
 
+  console.error('[integrations] unexpected action error', error);
+
+  if (process.env.NODE_ENV !== 'production') {
+    return { error: toDebugErrorMessage(error) };
+  }
+
   return { error: 'errors.generic' };
 }
 
@@ -684,6 +736,55 @@ async function getStoreOrError(): Promise<
   }
 
   return { store };
+}
+
+function userCanManageIntegrations(store: StoreWithFullData): boolean {
+  return store.role === 'owner' || store.role === 'platform_admin';
+}
+
+async function applyCalendarRuntimeToCatalog(
+  store: StoreWithFullData,
+  integrations: IntegrationCatalogItem[],
+): Promise<IntegrationCatalogItem[]> {
+  const calendarState = await getCalendarIntegrationState({
+    storeId: store.id,
+    icsToken: store.icsToken,
+  });
+
+  return integrations.map((integration) => {
+    if (integration.id === GOOGLE_CALENDAR_PROVIDER_KEY) {
+      return {
+        ...integration,
+        enabled: calendarState.google.enabled,
+        connected: calendarState.google.connected,
+        configured: calendarState.google.configured,
+        connectionIssue: calendarState.google.lastError,
+      };
+    }
+
+    if (integration.id === ICS_CALENDAR_PROVIDER_KEY) {
+      return {
+        ...integration,
+        enabled: calendarState.ics.connected,
+        connected: calendarState.ics.connected,
+        configured: calendarState.ics.connected,
+        connectionIssue: null,
+      };
+    }
+
+    return integration;
+  });
+}
+
+async function applyCalendarRuntimeToDetail(
+  store: StoreWithFullData,
+  integration: IntegrationDetail,
+): Promise<IntegrationDetail> {
+  const [item] = await applyCalendarRuntimeToCatalog(store, [integration]);
+  return {
+    ...integration,
+    ...item,
+  };
 }
 
 async function getProductsWithMappings(
@@ -788,11 +889,16 @@ export async function listIntegrationsCatalogAction(
       return { error: storeResult.error };
     }
 
-    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+    const { store } = storeResult;
+    const settings = (store.settings as StoreSettings | null) || null;
+    const integrations = await applyCalendarRuntimeToCatalog(
+      store,
+      listIntegrations(settings),
+    );
 
     return {
       categories: listCategories(settings),
-      integrations: listIntegrations(settings),
+      integrations,
     };
   } catch (error) {
     return toActionError(error);
@@ -810,11 +916,18 @@ export async function listIntegrationsCategoryAction(
       return { error: storeResult.error };
     }
 
-    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+    const { store } = storeResult;
+    const settings = (store.settings as StoreSettings | null) || null;
     const categories = listCategories(settings);
-    const integrations = listByCategory(settings, validated.category);
+    const integrations = await applyCalendarRuntimeToCatalog(
+      store,
+      listByCategory(settings, validated.category),
+    );
 
-    if (integrations.length === 0 && !categories.some((item) => item.id === validated.category)) {
+    if (
+      integrations.length === 0 &&
+      !categories.some((item) => item.id === validated.category)
+    ) {
       return { error: 'errors.integrationCategoryNotFound' };
     }
 
@@ -839,14 +952,17 @@ export async function getIntegrationDetailAction(
       return { error: storeResult.error };
     }
 
-    const settings = (storeResult.store.settings as StoreSettings | null) || null;
+    const { store } = storeResult;
+    const settings = (store.settings as StoreSettings | null) || null;
     const integration = getIntegrationDetail(settings, validated.integrationId);
 
     if (!integration) {
       return { error: 'errors.integrationNotFound' };
     }
 
-    return { integration };
+    return {
+      integration: await applyCalendarRuntimeToDetail(store, integration),
+    };
   } catch (error) {
     return toActionError(error);
   }
@@ -864,9 +980,63 @@ export async function setIntegrationEnabledAction(
     }
 
     const { store } = storeResult;
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
     const integration = getIntegration(validated.integrationId);
     if (!integration) {
       return { error: 'errors.integrationNotFound' };
+    }
+
+    if (validated.integrationId === GOOGLE_CALENDAR_PROVIDER_KEY) {
+      const existing = await db.query.storeIntegrations.findFirst({
+        where: and(
+          eq(storeIntegrations.storeId, store.id),
+          eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
+        ),
+      });
+
+      if (!existing) {
+        return { error: 'errors.integrationNotConnected' };
+      }
+
+      await db
+        .update(storeIntegrations)
+        .set({
+          enabled: validated.enabled,
+          status: validated.enabled ? 'active' : 'disabled',
+          updatedAt: new Date(),
+        })
+        .where(eq(storeIntegrations.id, existing.id));
+
+      revalidatePath('/dashboard/settings/integrations');
+      revalidatePath(
+        '/dashboard/settings/integrations/[integrationId]',
+        'page',
+      );
+
+      return { success: true };
+    }
+
+    if (validated.integrationId === ICS_CALENDAR_PROVIDER_KEY) {
+      if (validated.enabled && !store.icsToken) {
+        await db
+          .update(stores)
+          .set({
+            icsToken: nanoid(32),
+            updatedAt: new Date(),
+          })
+          .where(eq(stores.id, store.id));
+      }
+
+      revalidatePath('/dashboard/settings/integrations');
+      revalidatePath(
+        '/dashboard/settings/integrations/[integrationId]',
+        'page',
+      );
+
+      return { success: true };
     }
 
     const currentSettings = (store.settings as StoreSettings | null) || null;
@@ -884,9 +1054,157 @@ export async function setIntegrationEnabledAction(
       .where(eq(stores.id, store.id));
 
     revalidatePath('/dashboard/settings/integrations');
-    revalidatePath('/dashboard/settings/integrations/categories/[category]', 'page');
+    revalidatePath(
+      '/dashboard/settings/integrations/categories/[category]',
+      'page',
+    );
     revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
 
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function getCalendarIntegrationStateAction(): Promise<
+  Awaited<ReturnType<typeof getCalendarIntegrationState>> | ActionError
+> {
+  try {
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    return getCalendarIntegrationState({
+      storeId: storeResult.store.id,
+      icsToken: storeResult.store.icsToken,
+    });
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function updateGoogleCalendarSettingsAction(
+  input: z.infer<typeof updateGoogleCalendarSettingsSchema>,
+): Promise<{ success: true } | ActionError> {
+  try {
+    const validated = updateGoogleCalendarSettingsSchema.parse(input);
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    if (!userCanManageIntegrations(storeResult.store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
+    const result = await updateGoogleCalendarSettings({
+      storeId: storeResult.store.id,
+      syncPendingReservations: validated.syncPendingReservations,
+      cancelledReservationBehavior: validated.cancelledReservationBehavior,
+    });
+    if ('error' in result) return result;
+
+    revalidatePath('/dashboard/settings/integrations/google-calendar');
+    return { success: true };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function resyncGoogleCalendarAction(): Promise<
+  { success: true; enqueued: number } | ActionError
+> {
+  try {
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    if (!userCanManageIntegrations(storeResult.store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
+    const integration = await db.query.storeIntegrations.findFirst({
+      where: and(
+        eq(storeIntegrations.storeId, storeResult.store.id),
+        eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
+      ),
+      with: {
+        calendarSettings: true,
+      },
+    });
+
+    if (!integration?.calendarSettings) {
+      return { error: 'errors.integrationNotConnected' };
+    }
+
+    const result = await enqueueCalendarBackfill({
+      storeId: storeResult.store.id,
+      integrationId: integration.id,
+      futureMonths: integration.calendarSettings.backfillMonths,
+      pastDays: integration.calendarSettings.backfillPastDays,
+    });
+
+    await db
+      .update(storeIntegrations)
+      .set({ status: 'syncing', updatedAt: new Date() })
+      .where(eq(storeIntegrations.id, integration.id));
+
+    revalidatePath('/dashboard/settings/integrations/google-calendar');
+    return { success: true, enqueued: result.enqueued };
+  } catch (error) {
+    return toActionError(error);
+  }
+}
+
+export async function disconnectGoogleCalendarAction(
+  input: z.infer<typeof disconnectGoogleCalendarSchema>,
+): Promise<{ success: true } | ActionError> {
+  try {
+    const validated = disconnectGoogleCalendarSchema.parse(input);
+    const storeResult = await getStoreOrError();
+    if ('error' in storeResult) {
+      return { error: storeResult.error };
+    }
+
+    if (!userCanManageIntegrations(storeResult.store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
+    if (validated.deleteEvents) {
+      return { error: 'errors.unsupportedOperation' };
+    }
+
+    const integration = await db.query.storeIntegrations.findFirst({
+      where: and(
+        eq(storeIntegrations.storeId, storeResult.store.id),
+        eq(storeIntegrations.providerKey, GOOGLE_CALENDAR_PROVIDER_KEY),
+      ),
+    });
+
+    if (!integration) {
+      return { success: true };
+    }
+
+    await db
+      .delete(integrationCredentials)
+      .where(eq(integrationCredentials.integrationId, integration.id));
+    await db
+      .update(storeIntegrations)
+      .set({
+        enabled: false,
+        connectedByUserId: null,
+        providerAccountEmail: null,
+        status: 'disabled',
+        lastErrorCode: null,
+        lastErrorMessage: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(storeIntegrations.id, integration.id));
+
+    revalidatePath('/dashboard/settings/integrations');
+    revalidatePath('/dashboard/settings/integrations/google-calendar');
     return { success: true };
   } catch (error) {
     return toActionError(error);
@@ -932,7 +1250,9 @@ export async function getTulipIntegrationStateAction(): Promise<
         connected = true;
         supportsMargin = renterResult.value.options?.option === true;
         inclusionEnabled = renterResult.value.options?.inclusion === true;
-        tulipCatalog = normalizeTulipCatalog(renterResult.value.options?.products);
+        tulipCatalog = normalizeTulipCatalog(
+          renterResult.value.options?.products,
+        );
       } else if (renterResult.status === 'fulfilled') {
         connectionIssue = 'errors.tulipRenterNotFound';
       } else {
@@ -976,7 +1296,9 @@ export async function getTulipIntegrationStateAction(): Promise<
     const rawProducts = await productsListPromise;
     const products = didLoadTulipProducts
       ? (() => {
-          const validTulipProductIds = new Set(tulipProducts.map((tp) => tp.id));
+          const validTulipProductIds = new Set(
+            tulipProducts.map((tp) => tp.id),
+          );
           return rawProducts.map((product) => {
             if (
               product.tulipProductId &&
@@ -1172,14 +1494,11 @@ export async function connectTulipApiKeyAction(
       return { error: 'errors.tulipRenterNotFound' };
     }
 
-    const patchedSettings = mergeTulipSettings(
-      storeSettings,
-      {
-        connectedAt: new Date().toISOString(),
-        renterUid: renter.uid,
-        archivedRenterUid: undefined,
-      },
-    );
+    const patchedSettings = mergeTulipSettings(storeSettings, {
+      connectedAt: new Date().toISOString(),
+      renterUid: renter.uid,
+      archivedRenterUid: undefined,
+    });
 
     await db
       .update(stores)
@@ -1264,7 +1583,9 @@ export async function upsertTulipProductMappingAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const existingMapping = await readTulipMappingByProductId(validated.productId);
+    const existingMapping = await readTulipMappingByProductId(
+      validated.productId,
+    );
     if (existingMapping?.tulipProductId === validated.tulipProductId) {
       return { success: true };
     }
@@ -1298,7 +1619,8 @@ export async function upsertTulipProductMappingAction(
 
       if (!isLouezManagedTulipProduct(selectedTulipProduct)) {
         const resolvedProductType =
-          normalizeTulipOptionalText(selectedTulipProduct.product_type) || 'event';
+          normalizeTulipOptionalText(selectedTulipProduct.product_type) ||
+          'event';
         const selectedSubtype = normalizeTulipOptionalText(
           selectedTulipProduct.data?.product_subtype,
         );
@@ -1322,9 +1644,12 @@ export async function upsertTulipProductMappingAction(
         const selectedModel = normalizeTulipOptionalText(
           selectedTulipProduct.data?.model,
         );
-        const selectedMargin = parseTulipMargin(selectedTulipProduct.data?.margin);
+        const selectedMargin = parseTulipMargin(
+          selectedTulipProduct.data?.margin,
+        );
         const selectedTitle =
-          normalizeTulipOptionalText(selectedTulipProduct.title) ?? product.name;
+          normalizeTulipOptionalText(selectedTulipProduct.title) ??
+          product.name;
         const selectedPurchasedDate = toValidIsoDateString(
           selectedTulipProduct.purchased_date,
         );
@@ -1400,8 +1725,7 @@ export async function pushTulipProductUpdateAction(
     if (!apiKey) {
       return { error: 'errors.tulipNotConfigured' };
     }
-    const renterUid =
-      getTulipSettings(storeSettings).renterUid?.trim() || null;
+    const renterUid = getTulipSettings(storeSettings).renterUid?.trim() || null;
     if (!renterUid) {
       return { error: 'errors.tulipNotConfigured' };
     }
@@ -1446,12 +1770,15 @@ export async function pushTulipProductUpdateAction(
         isKnownTulipProductSubtype(resolvedSubtype) &&
         !isSubtypeAllowedForType(productType, resolvedSubtype)
       ) {
-        console.warn('[tulip][update-product] subtype incompatible with selected product type, using default subtype', {
-          storeId: store.id,
-          productId: product.id,
-          productType,
-          requestedSubtype: resolvedSubtype,
-        });
+        console.warn(
+          '[tulip][update-product] subtype incompatible with selected product type, using default subtype',
+          {
+            storeId: store.id,
+            productId: product.id,
+            productType,
+            requestedSubtype: resolvedSubtype,
+          },
+        );
         resolvedSubtype = getDefaultSubtypeForType(productType);
       }
     }
@@ -1478,21 +1805,30 @@ export async function pushTulipProductUpdateAction(
     try {
       await tulipUpdateProduct(apiKey, resolvedTulipProductId, payload);
     } catch (error) {
-      if (error instanceof TulipApiError && getTulipErrorCode(error.payload) === 4999) {
-        console.warn('[tulip][update-product] mapped product id not found, attempting mapping repair', {
-          storeId: store.id,
-          productId: product.id,
-          mappedTulipProductId: resolvedTulipProductId,
-        });
+      if (
+        error instanceof TulipApiError &&
+        getTulipErrorCode(error.payload) === 4999
+      ) {
+        console.warn(
+          '[tulip][update-product] mapped product id not found, attempting mapping repair',
+          {
+            storeId: store.id,
+            productId: product.id,
+            mappedTulipProductId: resolvedTulipProductId,
+          },
+        );
 
         const rawCatalog = await tulipListProducts(apiKey, { renterUid });
-        const payloadTitle = typeof payload.title === 'string' ? payload.title : product.name;
+        const payloadTitle =
+          typeof payload.title === 'string' ? payload.title : product.name;
         const payloadData =
           payload.data && typeof payload.data === 'object'
             ? (payload.data as { brand?: string; model?: string })
             : {};
-        const payloadBrand = typeof payloadData.brand === 'string' ? payloadData.brand : null;
-        const payloadModel = typeof payloadData.model === 'string' ? payloadData.model : null;
+        const payloadBrand =
+          typeof payloadData.brand === 'string' ? payloadData.brand : null;
+        const payloadModel =
+          typeof payloadData.model === 'string' ? payloadData.model : null;
 
         const candidates = rawCatalog
           .map((candidate) => {
@@ -1504,11 +1840,13 @@ export async function pushTulipProductUpdateAction(
               uid: getTulipLegacyUid(candidate),
               title: candidate.title || id,
               brand:
-                candidate.data?.brand && typeof candidate.data.brand === 'string'
+                candidate.data?.brand &&
+                typeof candidate.data.brand === 'string'
                   ? candidate.data.brand
                   : null,
               model:
-                candidate.data?.model && typeof candidate.data.model === 'string'
+                candidate.data?.model &&
+                typeof candidate.data.model === 'string'
                   ? candidate.data.model
                   : null,
             };
@@ -1525,13 +1863,11 @@ export async function pushTulipProductUpdateAction(
             } => candidate !== null,
           );
 
-        const matchesPayload = (
-          candidate: {
-            title: string;
-            brand: string | null;
-            model: string | null;
-          },
-        ) => {
+        const matchesPayload = (candidate: {
+          title: string;
+          brand: string | null;
+          model: string | null;
+        }) => {
           if (candidate.title !== payloadTitle) return false;
           if (payloadBrand && candidate.brand !== payloadBrand) return false;
           if (payloadModel && candidate.model !== payloadModel) return false;
@@ -1541,7 +1877,8 @@ export async function pushTulipProductUpdateAction(
         const candidatesFromLegacyUid = candidates.filter(
           (candidate) => candidate.uid === resolvedTulipProductId,
         );
-        const candidatesFromLegacyUidAndPayload = candidatesFromLegacyUid.filter(matchesPayload);
+        const candidatesFromLegacyUidAndPayload =
+          candidatesFromLegacyUid.filter(matchesPayload);
         const candidatesFromPayload = candidates.filter(matchesPayload);
 
         const repairedTulipProductId =
@@ -1551,7 +1888,9 @@ export async function pushTulipProductUpdateAction(
           (candidatesFromLegacyUid.length === 1
             ? candidatesFromLegacyUid[0]?.id
             : null) ??
-          (candidatesFromPayload.length === 1 ? candidatesFromPayload[0]?.id : null);
+          (candidatesFromPayload.length === 1
+            ? candidatesFromPayload[0]?.id
+            : null);
 
         if (repairedTulipProductId) {
           resolvedTulipProductId = repairedTulipProductId;
@@ -1567,11 +1906,14 @@ export async function pushTulipProductUpdateAction(
               retryError instanceof TulipApiError &&
               getTulipErrorCode(retryError.payload) === 4999
             ) {
-              console.warn('[tulip][update-product] repaired mapping still points to missing product; clearing mapping', {
-                storeId: store.id,
-                productId: product.id,
-                repairedTulipProductId: resolvedTulipProductId,
-              });
+              console.warn(
+                '[tulip][update-product] repaired mapping still points to missing product; clearing mapping',
+                {
+                  storeId: store.id,
+                  productId: product.id,
+                  repairedTulipProductId: resolvedTulipProductId,
+                },
+              );
               await db
                 .delete(productsTulip)
                 .where(eq(productsTulip.productId, product.id));
@@ -1583,13 +1925,16 @@ export async function pushTulipProductUpdateAction(
           }
           revalidatePath('/dashboard/settings/integrations');
         } else {
-          console.warn('[tulip][update-product] unable to repair mapping automatically; clearing stale mapping', {
-            storeId: store.id,
-            productId: product.id,
-            mappedTulipProductId: resolvedTulipProductId,
-            legacyUidCandidates: candidatesFromLegacyUid.length,
-            payloadCandidates: candidatesFromPayload.length,
-          });
+          console.warn(
+            '[tulip][update-product] unable to repair mapping automatically; clearing stale mapping',
+            {
+              storeId: store.id,
+              productId: product.id,
+              mappedTulipProductId: resolvedTulipProductId,
+              legacyUidCandidates: candidatesFromLegacyUid.length,
+              payloadCandidates: candidatesFromPayload.length,
+            },
+          );
           await db
             .delete(productsTulip)
             .where(eq(productsTulip.productId, product.id));
@@ -1674,8 +2019,12 @@ export async function createTulipProductAction(
       return { error: 'errors.productNotFound' };
     }
 
-    const requestedProductType = normalizeTulipOptionalText(validated.productType);
-    const requestedSubtype = normalizeTulipOptionalText(validated.productSubtype);
+    const requestedProductType = normalizeTulipOptionalText(
+      validated.productType,
+    );
+    const requestedSubtype = normalizeTulipOptionalText(
+      validated.productSubtype,
+    );
     const resolvedProductType = requestedProductType || 'event';
     let resolvedSubtype = requestedSubtype;
 
@@ -1687,12 +2036,15 @@ export async function createTulipProductAction(
       isKnownTulipProductSubtype(resolvedSubtype) &&
       !isSubtypeAllowedForType(resolvedProductType, resolvedSubtype)
     ) {
-      console.warn('[tulip][create-product] subtype incompatible with selected product type, using default subtype', {
-        storeId: store.id,
-        productId: product.id,
-        productType: resolvedProductType,
-        requestedSubtype,
-      });
+      console.warn(
+        '[tulip][create-product] subtype incompatible with selected product type, using default subtype',
+        {
+          storeId: store.id,
+          productId: product.id,
+          productType: resolvedProductType,
+          requestedSubtype,
+        },
+      );
       resolvedSubtype = getDefaultSubtypeForType(resolvedProductType);
     }
 
@@ -1767,11 +2119,14 @@ export async function createTulipProductAction(
     });
 
     if (!resolvedTulipProductId) {
-      console.error('[tulip][create-product] unable to resolve Tulip product_id from create response', {
-        storeId: store.id,
-        productId: product.id,
-        createResponse: createdProduct,
-      });
+      console.error(
+        '[tulip][create-product] unable to resolve Tulip product_id from create response',
+        {
+          storeId: store.id,
+          productId: product.id,
+          createResponse: createdProduct,
+        },
+      );
       return { error: 'errors.tulipInvalidProductResponse' };
     }
 
@@ -1800,7 +2155,8 @@ export async function disconnectTulipAction(
 
     const { store } = storeResult;
     const currentSettings = (store.settings as StoreSettings | null) || null;
-    const activeRenterUid = getTulipSettings(currentSettings).renterUid?.trim() || null;
+    const activeRenterUid =
+      getTulipSettings(currentSettings).renterUid?.trim() || null;
     const nextSettings = mergeTulipSettings(currentSettings, {
       connectedAt: undefined,
       renterUid: undefined,
@@ -1824,19 +2180,20 @@ export async function disconnectTulipAction(
       });
 
       if (storeProducts.length > 0) {
-        await tx
-          .delete(productsTulip)
-          .where(
-            inArray(
-              productsTulip.productId,
-              storeProducts.map((item) => item.id),
-            ),
-          );
+        await tx.delete(productsTulip).where(
+          inArray(
+            productsTulip.productId,
+            storeProducts.map((item) => item.id),
+          ),
+        );
       }
     });
 
     revalidatePath('/dashboard/settings/integrations');
-    revalidatePath('/dashboard/settings/integrations/categories/[category]', 'page');
+    revalidatePath(
+      '/dashboard/settings/integrations/categories/[category]',
+      'page',
+    );
     revalidatePath('/dashboard/settings/integrations/[integrationId]', 'page');
 
     return { success: true };

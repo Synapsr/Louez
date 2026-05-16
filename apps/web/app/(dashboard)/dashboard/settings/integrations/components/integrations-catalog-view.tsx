@@ -1,27 +1,27 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
+import Link from 'next/link';
 
-import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Braces, Code, Terminal } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, ArrowRight, Braces, Code, Terminal } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
-import { Badge, Card, Skeleton } from '@louez/ui'
+import { Alert, AlertDescription, Badge, Card, Skeleton } from '@louez/ui';
 
-import type { IntegrationCatalogItem } from '@/lib/integrations/registry/types'
-import { orpc } from '@/lib/orpc/react'
+import type { IntegrationCatalogItem } from '@/lib/integrations/registry/types';
+import { orpc } from '@/lib/orpc/react';
 
 type BuiltInItem = {
-  id: string
-  href: string
-  icon: React.ElementType
-  nameKey: string
-  descriptionKey: string
+  id: string;
+  href: string;
+  icon: React.ElementType;
+  nameKey: string;
+  descriptionKey: string;
   badge?: {
-    labelKey: string
-    variant: 'default' | 'secondary' | 'outline'
-  }
-}
+    labelKey: string;
+    variant: 'default' | 'secondary' | 'outline';
+  };
+};
 
 const LOUEZ_ITEMS: BuiltInItem[] = [
   {
@@ -56,7 +56,7 @@ const LOUEZ_ITEMS: BuiltInItem[] = [
       variant: 'secondary',
     },
   },
-]
+];
 
 function IntegrationItemCard({
   href,
@@ -66,16 +66,19 @@ function IntegrationItemCard({
   description,
   badge,
 }: {
-  href: string
-  icon?: React.ElementType
-  logo?: string
-  name: string
-  description: string
-  badge?: { label: string; variant: 'default' | 'secondary' | 'outline' | 'success' }
+  href: string;
+  icon?: React.ElementType;
+  logo?: string;
+  name: string;
+  description: string;
+  badge?: {
+    label: string;
+    variant: 'default' | 'secondary' | 'outline' | 'success';
+  };
 }) {
   return (
     <Link href={href}>
-      <Card className="group h-full px-5 py-4 transition hover:border-primary/40 hover:bg-muted/30">
+      <Card className="group hover:border-primary/40 hover:bg-muted/30 h-full px-5 py-4 transition">
         <div className="flex items-start gap-4">
           {Icon ? (
             <div className="bg-primary/10 text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
@@ -110,40 +113,47 @@ function IntegrationItemCard({
         </div>
       </Card>
     </Link>
-  )
+  );
 }
 
 export function IntegrationsCatalogView() {
-  const t = useTranslations()
+  const t = useTranslations();
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
-      const value = t(key as never)
-      if (!value || value === key) return fallback
-      return value
+      const value = t(key as never);
+      if (!value || value === key) return fallback;
+      return value;
     } catch {
-      return fallback
+      return fallback;
     }
-  }
+  };
 
   const catalogQuery = useQuery({
     ...orpc.dashboard.integrations.listCatalog.queryOptions({ input: {} }),
-  })
+  });
+
+  const catalogLoadError =
+    catalogQuery.isError ||
+    (catalogQuery.data ? 'error' in catalogQuery.data : false);
 
   const integrations: IntegrationCatalogItem[] =
     catalogQuery.data && !('error' in catalogQuery.data)
       ? (catalogQuery.data.integrations as unknown as IntegrationCatalogItem[])
-      : []
+      : [];
 
   const insuranceIntegrations = integrations.filter(
     (i) => i.category === 'insurance',
-  )
+  );
+  const calendarIntegrations = integrations.filter(
+    (i) => i.category === 'calendar',
+  );
 
   return (
     <div className="space-y-10">
       {/* Built-in by Louez.io */}
       <section className="space-y-3">
-        <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+        <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
           {resolveMessage(
             'dashboard.settings.integrationsHub.sections.byLouez',
             'By Louez.io',
@@ -170,51 +180,115 @@ export function IntegrationsCatalogView() {
         </div>
       </section>
 
-      {/* Insurance */}
-      <section className="space-y-3">
-        <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-          {resolveMessage(
-            'dashboard.settings.integrationsHub.sections.insurance',
-            'Insurance',
-          )}
-        </h3>
-        {catalogQuery.isLoading ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Skeleton className="h-[84px] rounded-lg" />
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {insuranceIntegrations.map((item) => (
-              <IntegrationItemCard
-                key={item.id}
-                href={`/dashboard/settings/integrations/${item.id}`}
-                logo={item.logoPath}
-                name={resolveMessage(item.nameKey, item.id)}
-                description={resolveMessage(item.descriptionKey, '')}
-                badge={
-                  item.enabled
-                    ? {
-                        label: resolveMessage(
-                          'dashboard.settings.integrationsHub.statusLabels.enabled',
-                          'Enabled',
-                        ),
-                        variant: 'success',
-                      }
-                    : undefined
-                }
-              />
-            ))}
-            {!catalogQuery.isLoading && insuranceIntegrations.length === 0 && (
-              <p className="text-muted-foreground text-sm">
-                {resolveMessage(
-                  'dashboard.settings.integrationsHub.noIntegrations',
-                  'No integrations available yet.',
-                )}
-              </p>
+      {catalogLoadError && (
+        <Alert variant="error">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.loadError',
+              'Unable to load integrations.',
             )}
-          </div>
-        )}
-      </section>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Calendar */}
+      {!catalogLoadError && (
+        <section className="space-y-3">
+          <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.sections.calendar',
+              'Calendar',
+            )}
+          </h3>
+          {catalogQuery.isLoading ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-[84px] rounded-lg" />
+              <Skeleton className="h-[84px] rounded-lg" />
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {calendarIntegrations.map((item) => (
+                <IntegrationItemCard
+                  key={item.id}
+                  href={`/dashboard/settings/integrations/${item.id}`}
+                  logo={item.logoPath}
+                  name={resolveMessage(item.nameKey, item.id)}
+                  description={resolveMessage(item.descriptionKey, '')}
+                  badge={
+                    item.connected
+                      ? {
+                          label: resolveMessage(
+                            'dashboard.settings.integrationsHub.statusLabels.connected',
+                            'Connected',
+                          ),
+                          variant: 'success',
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+              {!catalogQuery.isLoading && calendarIntegrations.length === 0 && (
+                <p className="text-muted-foreground text-sm">
+                  {resolveMessage(
+                    'dashboard.settings.integrationsHub.noIntegrations',
+                    'No integrations available yet.',
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Insurance */}
+      {!catalogLoadError && (
+        <section className="space-y-3">
+          <h3 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+            {resolveMessage(
+              'dashboard.settings.integrationsHub.sections.insurance',
+              'Insurance',
+            )}
+          </h3>
+          {catalogQuery.isLoading ? (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-[84px] rounded-lg" />
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {insuranceIntegrations.map((item) => (
+                <IntegrationItemCard
+                  key={item.id}
+                  href={`/dashboard/settings/integrations/${item.id}`}
+                  logo={item.logoPath}
+                  name={resolveMessage(item.nameKey, item.id)}
+                  description={resolveMessage(item.descriptionKey, '')}
+                  badge={
+                    item.enabled
+                      ? {
+                          label: resolveMessage(
+                            'dashboard.settings.integrationsHub.statusLabels.enabled',
+                            'Enabled',
+                          ),
+                          variant: 'success',
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+              {!catalogQuery.isLoading &&
+                insuranceIntegrations.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    {resolveMessage(
+                      'dashboard.settings.integrationsHub.noIntegrations',
+                      'No integrations available yet.',
+                    )}
+                  </p>
+                )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
-  )
+  );
 }

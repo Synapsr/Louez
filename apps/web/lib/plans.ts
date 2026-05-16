@@ -55,7 +55,7 @@ const BASE_PLANS: Record<
     price: 0,
     features: {
       maxProducts: 5,
-      maxReservationsPerMonth: process.env.NODE_ENV === 'development' ? 2 : 10,
+      maxReservationsPerMonth: process.env.NODE_ENV === 'development' ? 10 : 10,
       maxCustomers: 50,
       maxCollaborators: 0,
       maxSmsPerMonth: 5,

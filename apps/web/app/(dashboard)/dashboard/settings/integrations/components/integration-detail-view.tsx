@@ -38,7 +38,7 @@ export function IntegrationDetailView({
 }: IntegrationDetailViewProps) {
   const t = useTranslations();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<IntegrationTab>('features');
+  const [selectedTab, setSelectedTab] = useState<IntegrationTab | null>(null);
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
@@ -101,9 +101,15 @@ export function IntegrationDetailView({
     detailQuery.data && !('error' in detailQuery.data)
       ? (detailQuery.data.integration as unknown as IntegrationDetail)
       : null;
-  const usesConnectionAsEnabledState = integration?.id === 'tulip';
+  const usesConnectionAsEnabledState =
+    integration?.id === 'tulip' || integration?.category === 'calendar';
   const showConfigurationLockedCard =
     !usesConnectionAsEnabledState && !integration?.enabled;
+  const initialTab: IntegrationTab =
+    integration && (integration.enabled || integration.connected)
+      ? 'configuration'
+      : 'features';
+  const activeTab = selectedTab ?? initialTab;
   const registration = useMemo(
     () => getIntegration(integrationId),
     [integrationId],
@@ -159,7 +165,7 @@ export function IntegrationDetailView({
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1fr_auto] lg:items-start">
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="bg-background h-14 w-14 overflow-hidden rounded-lg border p-2">
+              <div className="bg-background h-14 w-14 shrink-0 overflow-hidden rounded-lg border p-2">
                 <img
                   src={integration.logoPath}
                   alt={resolveMessage(integration.nameKey, integration.id)}
@@ -195,7 +201,9 @@ export function IntegrationDetailView({
                     )}
               </Badge>
               {!usesConnectionAsEnabledState && (
-                <Badge variant={integration.connected ? 'success' : 'secondary'}>
+                <Badge
+                  variant={integration.connected ? 'success' : 'secondary'}
+                >
                   {integration.connected
                     ? resolveMessage(
                         'dashboard.settings.integrationsHub.statusLabels.connected',
@@ -219,11 +227,15 @@ export function IntegrationDetailView({
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant={integration.enabled || usesConnectionAsEnabledState ? 'outline' : 'default'}
+              variant={
+                integration.enabled || usesConnectionAsEnabledState
+                  ? 'outline'
+                  : 'default'
+              }
               disabled={setEnabledMutation.isPending}
               onClick={() => {
                 if (integration.enabled || usesConnectionAsEnabledState) {
-                  setActiveTab('configuration');
+                  setSelectedTab('configuration');
                   return;
                 }
 
@@ -273,7 +285,7 @@ export function IntegrationDetailView({
               value === 'configuration' ||
               value === 'about'
             ) {
-              setActiveTab(value);
+              setSelectedTab(value);
             }
           }}
           className="space-y-4"

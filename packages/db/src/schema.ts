@@ -1,39 +1,43 @@
+import { relations } from 'drizzle-orm';
 import {
-  mysqlTable,
-  mysqlEnum,
-  varchar,
-  text,
-  longtext,
-  timestamp,
-  date,
   boolean,
-  int,
+  date,
   decimal,
-  json,
-  unique,
   index,
-} from 'drizzle-orm/mysql-core'
-import { relations } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
+  int,
+  json,
+  longtext,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  unique,
+  varchar,
+} from 'drizzle-orm/mysql-core';
+import { nanoid } from 'nanoid';
+
 import type {
-  StoreSettings,
-  StoreTheme,
   BookingAttributeAxis,
+  CustomerNotificationSettings,
   EmailSettings,
-  ProductSnapshot,
-  PricingBreakdown,
-  ProductTaxSettings,
-  ReviewBoosterSettings,
   GoogleReview,
   NotificationSettings,
-  CustomerNotificationSettings,
-  UnitAttributes,
+  PricingBreakdown,
+  ProductSnapshot,
+  ProductTaxSettings,
   PromoCodeSnapshot,
   ReservationLocationSnapshot,
-} from '@louez/types'
+  ReviewBoosterSettings,
+  StoreSettings,
+  StoreTheme,
+  UnitAttributes,
+} from '@louez/types';
 
 // Helper for generating IDs
-const id = () => varchar('id', { length: 21 }).primaryKey().$defaultFn(() => nanoid())
+const id = () =>
+  varchar('id', { length: 21 })
+    .primaryKey()
+    .$defaultFn(() => nanoid());
 
 // ============================================================================
 // Better Auth Tables
@@ -47,7 +51,7 @@ export const users = mysqlTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 export const accounts = mysqlTable(
   'accounts',
@@ -58,8 +62,12 @@ export const accounts = mysqlTable(
     accountId: varchar('provider_account_id', { length: 255 }).notNull(),
     accessToken: text('access_token'),
     refreshToken: text('refresh_token'),
-    accessTokenExpiresAt: timestamp('access_token_expires_at', { mode: 'date' }),
-    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { mode: 'date' }),
+    accessTokenExpiresAt: timestamp('access_token_expires_at', {
+      mode: 'date',
+    }),
+    refreshTokenExpiresAt: timestamp('refresh_token_expires_at', {
+      mode: 'date',
+    }),
     scope: varchar('scope', { length: 255 }),
     idToken: text('id_token'),
     password: text('password'),
@@ -69,11 +77,11 @@ export const accounts = mysqlTable(
   (table) => ({
     providerIdx: unique('accounts_provider_idx').on(
       table.providerId,
-      table.accountId
+      table.accountId,
     ),
     userIdx: index('accounts_user_idx').on(table.userId),
-  })
-)
+  }),
+);
 
 export const sessions = mysqlTable(
   'sessions',
@@ -90,8 +98,8 @@ export const sessions = mysqlTable(
   (table) => ({
     userIdx: index('sessions_user_idx').on(table.userId),
     tokenIdx: index('sessions_token_idx').on(table.token),
-  })
-)
+  }),
+);
 
 export const verification = mysqlTable('verification', {
   id: id(),
@@ -100,7 +108,7 @@ export const verification = mysqlTable('verification', {
   expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow(),
-})
+});
 
 // ============================================================================
 // Subscriptions (simplified - plans defined in code)
@@ -111,7 +119,7 @@ export const subscriptionStatus = mysqlEnum('subscription_status', [
   'cancelled',
   'past_due',
   'trialing',
-])
+]);
 
 export const subscriptions = mysqlTable(
   'subscriptions',
@@ -126,7 +134,9 @@ export const subscriptions = mysqlTable(
     status: subscriptionStatus.default('active').notNull(),
 
     // Stripe (optional - only if Stripe is configured)
-    stripeSubscriptionId: varchar('stripe_subscription_id', { length: 255 }).unique(),
+    stripeSubscriptionId: varchar('stripe_subscription_id', {
+      length: 255,
+    }).unique(),
     stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
 
     // Billing period
@@ -142,17 +152,19 @@ export const subscriptions = mysqlTable(
   (table) => ({
     storeIdx: index('subscriptions_store_idx').on(table.storeId),
     stripeSubscriptionIdx: index('subscriptions_stripe_subscription_idx').on(
-      table.stripeSubscriptionId
+      table.stripeSubscriptionId,
     ),
-    stripeCustomerIdx: index('subscriptions_stripe_customer_idx').on(table.stripeCustomerId),
-  })
-)
+    stripeCustomerIdx: index('subscriptions_stripe_customer_idx').on(
+      table.stripeCustomerId,
+    ),
+  }),
+);
 
 // ============================================================================
 // Store Members (Multi-store support)
 // ============================================================================
 
-export const memberRole = mysqlEnum('member_role', ['owner', 'member'])
+export const memberRole = mysqlEnum('member_role', ['owner', 'member']);
 
 export const storeMembers = mysqlTable(
   'store_members',
@@ -166,13 +178,21 @@ export const storeMembers = mysqlTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    uniqueMembership: unique('store_members_unique').on(table.storeId, table.userId),
+    uniqueMembership: unique('store_members_unique').on(
+      table.storeId,
+      table.userId,
+    ),
     storeIdx: index('store_members_store_idx').on(table.storeId),
     userIdx: index('store_members_user_idx').on(table.userId),
-  })
-)
+  }),
+);
 
-export const invitationStatus = mysqlEnum('invitation_status', ['pending', 'accepted', 'expired', 'cancelled'])
+export const invitationStatus = mysqlEnum('invitation_status', [
+  'pending',
+  'accepted',
+  'expired',
+  'cancelled',
+]);
 
 export const storeInvitations = mysqlTable(
   'store_invitations',
@@ -192,8 +212,8 @@ export const storeInvitations = mysqlTable(
     storeIdx: index('store_invitations_store_idx').on(table.storeId),
     emailIdx: index('store_invitations_email_idx').on(table.email),
     tokenIdx: index('store_invitations_token_idx').on(table.token),
-  })
-)
+  }),
+);
 
 // ============================================================================
 // Core Tables
@@ -239,11 +259,15 @@ export const stores = mysqlTable(
     // Legal
     cgv: text('cgv'),
     legalNotice: text('legal_notice'),
-    includeCgvInContract: boolean('include_cgv_in_contract').default(false).notNull(),
+    includeCgvInContract: boolean('include_cgv_in_contract')
+      .default(false)
+      .notNull(),
 
     // Stripe Connect
     stripeAccountId: varchar('stripe_account_id', { length: 255 }),
-    stripeOnboardingComplete: boolean('stripe_onboarding_complete').default(false),
+    stripeOnboardingComplete: boolean('stripe_onboarding_complete').default(
+      false,
+    ),
     stripeChargesEnabled: boolean('stripe_charges_enabled').default(false),
 
     // Email settings
@@ -255,15 +279,21 @@ export const stores = mysqlTable(
     }),
 
     // Review Booster settings
-    reviewBoosterSettings: json('review_booster_settings').$type<ReviewBoosterSettings>(),
+    reviewBoosterSettings: json(
+      'review_booster_settings',
+    ).$type<ReviewBoosterSettings>(),
 
     // Notification settings (admin notifications)
-    notificationSettings: json('notification_settings').$type<NotificationSettings>(),
+    notificationSettings: json(
+      'notification_settings',
+    ).$type<NotificationSettings>(),
     discordWebhookUrl: varchar('discord_webhook_url', { length: 500 }),
     ownerPhone: varchar('owner_phone', { length: 20 }),
 
     // Customer notification settings (notifications sent to customers)
-    customerNotificationSettings: json('customer_notification_settings').$type<CustomerNotificationSettings>(),
+    customerNotificationSettings: json(
+      'customer_notification_settings',
+    ).$type<CustomerNotificationSettings>(),
 
     // Calendar export
     icsToken: varchar('ics_token', { length: 32 }),
@@ -278,7 +308,9 @@ export const stores = mysqlTable(
 
     // Subscription discount (platform admin only)
     discountPercent: int('discount_percent').default(0).notNull(),
-    discountDurationMonths: int('discount_duration_months').default(0).notNull(),
+    discountDurationMonths: int('discount_duration_months')
+      .default(0)
+      .notNull(),
     stripeCouponId: varchar('stripe_coupon_id', { length: 255 }),
 
     // Metadata
@@ -290,8 +322,143 @@ export const stores = mysqlTable(
     slugIdx: index('stores_slug_idx').on(table.slug),
     userIdx: index('stores_user_idx').on(table.userId),
     referralCodeIdx: index('stores_referral_code_idx').on(table.referralCode),
-  })
-)
+  }),
+);
+
+// ============================================================================
+// Integrations
+// ============================================================================
+
+export const storeIntegrations = mysqlTable(
+  'store_integrations',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    providerKey: varchar('provider_key', { length: 80 }).notNull(),
+    category: varchar('category', { length: 60 }).notNull(),
+    enabled: boolean('enabled').default(false).notNull(),
+    connectedByUserId: varchar('connected_by_user_id', { length: 21 }),
+    providerAccountEmail: varchar('provider_account_email', { length: 255 }),
+    status: mysqlEnum('status', [
+      'disabled',
+      'active',
+      'needs_reconnect',
+      'error',
+      'syncing',
+    ])
+      .default('disabled')
+      .notNull(),
+    lastHealthCheckAt: timestamp('last_health_check_at', { mode: 'date' }),
+    lastErrorCode: varchar('last_error_code', { length: 120 }),
+    lastErrorMessage: text('last_error_message'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeProviderUnique: unique('store_integrations_store_provider_unique').on(
+      table.storeId,
+      table.providerKey,
+    ),
+    storeIdx: index('store_integrations_store_idx').on(table.storeId),
+    providerIdx: index('store_integrations_provider_idx').on(table.providerKey),
+    statusIdx: index('store_integrations_status_idx').on(table.status),
+  }),
+);
+
+export const integrationCredentials = mysqlTable(
+  'integration_credentials',
+  {
+    id: id(),
+    integrationId: varchar('integration_id', { length: 21 }).notNull(),
+    credentialKind: mysqlEnum('credential_kind', ['oauth', 'api_key'])
+      .default('oauth')
+      .notNull(),
+    accessTokenEncrypted: text('access_token_encrypted'),
+    refreshTokenEncrypted: text('refresh_token_encrypted'),
+    expiresAt: timestamp('expires_at', { mode: 'date' }),
+    scopes: text('scopes'),
+    keyVersion: int('key_version').default(1).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    integrationUnique: unique('integration_credentials_integration_unique').on(
+      table.integrationId,
+    ),
+    integrationIdx: index('integration_credentials_integration_idx').on(
+      table.integrationId,
+    ),
+  }),
+);
+
+export const storeCalendarIntegrations = mysqlTable(
+  'store_calendar_integrations',
+  {
+    id: id(),
+    integrationId: varchar('integration_id', { length: 21 }).notNull(),
+    calendarId: varchar('calendar_id', { length: 255 }),
+    calendarName: varchar('calendar_name', { length: 255 }),
+    syncPendingReservations: boolean('sync_pending_reservations')
+      .default(true)
+      .notNull(),
+    cancelledReservationBehavior: mysqlEnum('cancelled_reservation_behavior', [
+      'show',
+      'hide',
+    ])
+      .default('show')
+      .notNull(),
+    backfillMonths: int('backfill_months').default(12).notNull(),
+    backfillPastDays: int('backfill_past_days').default(30).notNull(),
+    lastSyncAt: timestamp('last_sync_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    integrationUnique: unique(
+      'store_calendar_integrations_integration_unique',
+    ).on(table.integrationId),
+    integrationIdx: index('store_calendar_integrations_integration_idx').on(
+      table.integrationId,
+    ),
+  }),
+);
+
+export const reservationCalendarEvents = mysqlTable(
+  'reservation_calendar_events',
+  {
+    id: id(),
+    reservationId: varchar('reservation_id', { length: 21 }).notNull(),
+    integrationId: varchar('integration_id', { length: 21 }).notNull(),
+    providerEventId: varchar('provider_event_id', { length: 255 }),
+    payloadHash: varchar('payload_hash', { length: 64 }),
+    syncStatus: mysqlEnum('sync_status', ['pending', 'synced', 'failed'])
+      .default('pending')
+      .notNull(),
+    attemptCount: int('attempt_count').default(0).notNull(),
+    nextAttemptAt: timestamp('next_attempt_at', { mode: 'date' })
+      .defaultNow()
+      .notNull(),
+    lastSyncedAt: timestamp('last_synced_at', { mode: 'date' }),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    reservationIntegrationUnique: unique(
+      'reservation_calendar_events_reservation_integration_unique',
+    ).on(table.reservationId, table.integrationId),
+    reservationIdx: index('reservation_calendar_events_reservation_idx').on(
+      table.reservationId,
+    ),
+    integrationIdx: index('reservation_calendar_events_integration_idx').on(
+      table.integrationId,
+    ),
+    syncIdx: index('reservation_calendar_events_sync_idx').on(
+      table.syncStatus,
+      table.nextAttemptAt,
+    ),
+  }),
+);
 
 export const storeLocations = mysqlTable(
   'store_locations',
@@ -313,9 +480,12 @@ export const storeLocations = mysqlTable(
   },
   (table) => ({
     storeIdx: index('store_locations_store_idx').on(table.storeId),
-    activeIdx: index('store_locations_active_idx').on(table.storeId, table.isActive),
-  })
-)
+    activeIdx: index('store_locations_active_idx').on(
+      table.storeId,
+      table.isActive,
+    ),
+  }),
+);
 
 export const categories = mysqlTable(
   'categories',
@@ -331,11 +501,19 @@ export const categories = mysqlTable(
   },
   (table) => ({
     storeIdx: index('categories_store_idx').on(table.storeId),
-  })
-)
+  }),
+);
 
-export const productStatus = mysqlEnum('product_status', ['draft', 'active', 'archived'])
-export const pricingModeEnum = mysqlEnum('pricing_mode', ['hour', 'day', 'week'])
+export const productStatus = mysqlEnum('product_status', [
+  'draft',
+  'active',
+  'archived',
+]);
+export const pricingModeEnum = mysqlEnum('pricing_mode', [
+  'hour',
+  'day',
+  'week',
+]);
 
 export const products = mysqlTable(
   'products',
@@ -367,7 +545,9 @@ export const products = mysqlTable(
 
     // Pricing tier enforcement: when true, customers can only book
     // for the exact durations defined by pricing tiers (package pricing)
-    enforceStrictTiers: boolean('enforce_strict_tiers').notNull().default(false),
+    enforceStrictTiers: boolean('enforce_strict_tiers')
+      .notNull()
+      .default(false),
 
     // Stock
     quantity: int('quantity').notNull().default(1),
@@ -378,7 +558,9 @@ export const products = mysqlTable(
 
     // Booking attributes (advanced mode with trackUnits=true)
     // Example: [{ key: 'size', label: 'Size', position: 0 }, ...]
-    bookingAttributeAxes: json('booking_attribute_axes').$type<BookingAttributeAxis[]>(),
+    bookingAttributeAxes: json('booking_attribute_axes').$type<
+      BookingAttributeAxis[]
+    >(),
 
     // Display order (for manual sorting)
     displayOrder: int('display_order').default(0),
@@ -395,9 +577,13 @@ export const products = mysqlTable(
     categoryIdx: index('products_category_idx').on(table.categoryId),
     statusIdx: index('products_status_idx').on(table.status),
     // Composite index for queries: WHERE store_id = ? AND status = ? ORDER BY name
-    storeStatusNameIdx: index('products_store_status_name_idx').on(table.storeId, table.status, table.name),
-  })
-)
+    storeStatusNameIdx: index('products_store_status_name_idx').on(
+      table.storeId,
+      table.status,
+      table.name,
+    ),
+  }),
+);
 
 // ============================================================================
 // Product Pricing Tiers (Tiered/Progressive Pricing)
@@ -428,14 +614,14 @@ export const productPricingTiers = mysqlTable(
     productIdx: index('product_pricing_tiers_product_idx').on(table.productId),
     uniqueProductDuration: unique('product_pricing_tiers_unique').on(
       table.productId,
-      table.minDuration
+      table.minDuration,
     ),
     uniqueProductPeriod: unique('product_pricing_tiers_unique_period').on(
       table.productId,
-      table.period
+      table.period,
     ),
-  })
-)
+  }),
+);
 
 // ============================================================================
 // Product Seasonal Pricing
@@ -454,14 +640,16 @@ export const productSeasonalPricing = mysqlTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    productIdx: index('product_seasonal_pricing_product_idx').on(table.productId),
+    productIdx: index('product_seasonal_pricing_product_idx').on(
+      table.productId,
+    ),
     productDateIdx: index('product_seasonal_pricing_product_date_idx').on(
       table.productId,
       table.startDate,
-      table.endDate
+      table.endDate,
     ),
-  })
-)
+  }),
+);
 
 export const productSeasonalPricingTiers = mysqlTable(
   'product_seasonal_pricing_tiers',
@@ -486,12 +674,15 @@ export const productSeasonalPricingTiers = mysqlTable(
   },
   (table) => ({
     seasonalPricingIdx: index('seasonal_pricing_tiers_seasonal_idx').on(
-      table.seasonalPricingId
+      table.seasonalPricingId,
     ),
-  })
-)
+  }),
+);
 
-export const customerType = mysqlEnum('customer_type', ['individual', 'business'])
+export const customerType = mysqlEnum('customer_type', [
+  'individual',
+  'business',
+]);
 
 export const customers = mysqlTable(
   'customers',
@@ -527,12 +718,12 @@ export const customers = mysqlTable(
   (table) => ({
     uniqueEmailPerStore: unique('customers_unique_email_per_store').on(
       table.storeId,
-      table.email
+      table.email,
     ),
     storeIdx: index('customers_store_idx').on(table.storeId),
     emailIdx: index('customers_email_idx').on(table.email),
-  })
-)
+  }),
+);
 
 export const customerSessions = mysqlTable('customer_sessions', {
   id: id(),
@@ -540,7 +731,7 @@ export const customerSessions = mysqlTable('customer_sessions', {
   token: varchar('token', { length: 255 }).notNull().unique(),
   expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 export const verificationCodes = mysqlTable('verification_codes', {
   id: id(),
@@ -553,7 +744,7 @@ export const verificationCodes = mysqlTable('verification_codes', {
   expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
   usedAt: timestamp('used_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 export const reservationStatus = mysqlEnum('reservation_status', [
   'pending',
@@ -564,7 +755,7 @@ export const reservationStatus = mysqlEnum('reservation_status', [
   'rejected',
   'quote',
   'declined',
-])
+]);
 
 export const depositStatus = mysqlEnum('deposit_status', [
   'none', // No deposit required
@@ -574,7 +765,7 @@ export const depositStatus = mysqlEnum('deposit_status', [
   'captured', // Deposit captured (damage/loss)
   'released', // Authorization released
   'failed', // Authorization failed
-])
+]);
 
 export const reservations = mysqlTable(
   'reservations',
@@ -594,8 +785,14 @@ export const reservations = mysqlTable(
     endDate: timestamp('end_date', { mode: 'date' }).notNull(),
 
     // Amounts
-    subtotalAmount: decimal('subtotal_amount', { precision: 10, scale: 2 }).notNull(),
-    depositAmount: decimal('deposit_amount', { precision: 10, scale: 2 }).notNull(),
+    subtotalAmount: decimal('subtotal_amount', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
+    depositAmount: decimal('deposit_amount', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
     totalAmount: decimal('total_amount', { precision: 10, scale: 2 }).notNull(),
 
     // Tax amounts
@@ -609,8 +806,13 @@ export const reservations = mysqlTable(
 
     // Deposit (caution) management
     depositStatus: depositStatus.default('pending'),
-    depositPaymentIntentId: varchar('deposit_payment_intent_id', { length: 255 }),
-    depositAuthorizationExpiresAt: timestamp('deposit_authorization_expires_at', { mode: 'date' }),
+    depositPaymentIntentId: varchar('deposit_payment_intent_id', {
+      length: 255,
+    }),
+    depositAuthorizationExpiresAt: timestamp(
+      'deposit_authorization_expires_at',
+      { mode: 'date' },
+    ),
     stripeCustomerId: varchar('stripe_customer_id', { length: 255 }),
     stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
 
@@ -623,17 +825,31 @@ export const reservations = mysqlTable(
     internalNotes: text('internal_notes'),
 
     // Delivery — leg-based model (outbound = receive equipment, return = give back)
-    outboundMethod: varchar('outbound_method', { length: 20 }).notNull().default('store'), // 'store' | 'address'
-    returnMethod: varchar('return_method', { length: 20 }).notNull().default('store'), // 'store' | 'address'
-    deliveryOption: varchar('delivery_option', { length: 20 }).default('pickup'), // Legacy: 'pickup' | 'delivery' — kept for backward compat
+    outboundMethod: varchar('outbound_method', { length: 20 })
+      .notNull()
+      .default('store'), // 'store' | 'address'
+    returnMethod: varchar('return_method', { length: 20 })
+      .notNull()
+      .default('store'), // 'store' | 'address'
+    deliveryOption: varchar('delivery_option', { length: 20 }).default(
+      'pickup',
+    ), // Legacy: 'pickup' | 'delivery' — kept for backward compat
     deliveryAddress: text('delivery_address'), // Outbound leg address (when outboundMethod = 'address')
     deliveryCity: varchar('delivery_city', { length: 255 }),
     deliveryPostalCode: varchar('delivery_postal_code', { length: 20 }),
     deliveryCountry: varchar('delivery_country', { length: 2 }),
     deliveryLatitude: decimal('delivery_latitude', { precision: 10, scale: 7 }),
-    deliveryLongitude: decimal('delivery_longitude', { precision: 10, scale: 7 }),
-    deliveryDistanceKm: decimal('delivery_distance_km', { precision: 8, scale: 2 }),
-    deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default('0'),
+    deliveryLongitude: decimal('delivery_longitude', {
+      precision: 10,
+      scale: 7,
+    }),
+    deliveryDistanceKm: decimal('delivery_distance_km', {
+      precision: 8,
+      scale: 2,
+    }),
+    deliveryFee: decimal('delivery_fee', { precision: 10, scale: 2 }).default(
+      '0',
+    ),
 
     // Return leg address (when returnMethod = 'address')
     returnAddress: text('return_address'),
@@ -647,12 +863,19 @@ export const reservations = mysqlTable(
     // Store pickup/return location snapshots. Null id means the store primary location.
     pickupLocationId: varchar('pickup_location_id', { length: 21 }),
     returnLocationId: varchar('return_location_id', { length: 21 }),
-    pickupLocationSnapshot: json('pickup_location_snapshot').$type<ReservationLocationSnapshot>(),
-    returnLocationSnapshot: json('return_location_snapshot').$type<ReservationLocationSnapshot>(),
+    pickupLocationSnapshot: json(
+      'pickup_location_snapshot',
+    ).$type<ReservationLocationSnapshot>(),
+    returnLocationSnapshot: json(
+      'return_location_snapshot',
+    ).$type<ReservationLocationSnapshot>(),
 
     // Promo code
     promoCodeId: varchar('promo_code_id', { length: 21 }),
-    discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0'),
+    discountAmount: decimal('discount_amount', {
+      precision: 10,
+      scale: 2,
+    }).default('0'),
     promoCodeSnapshot: json('promo_code_snapshot').$type<PromoCodeSnapshot>(),
 
     // Source
@@ -660,7 +883,10 @@ export const reservations = mysqlTable(
 
     // Tulip insurance contract
     tulipInsuranceOptIn: boolean('tulip_insurance_opt_in'),
-    tulipInsuranceAmount: decimal('tulip_insurance_amount', { precision: 10, scale: 2 }),
+    tulipInsuranceAmount: decimal('tulip_insurance_amount', {
+      precision: 10,
+      scale: 2,
+    }),
     tulipContractId: varchar('tulip_contract_id', { length: 50 }),
     tulipContractStatus: varchar('tulip_contract_status', { length: 20 }),
 
@@ -673,8 +899,8 @@ export const reservations = mysqlTable(
     customerIdx: index('reservations_customer_idx').on(table.customerId),
     statusIdx: index('reservations_status_idx').on(table.status),
     dateIdx: index('reservations_date_idx').on(table.startDate, table.endDate),
-  })
-)
+  }),
+);
 
 // ============================================================================
 // Product Tulip Mapping
@@ -691,9 +917,11 @@ export const productsTulip = mysqlTable(
   },
   (table) => ({
     productIdx: unique('products_tulip_product_idx').on(table.productId),
-    tulipProductIdx: index('products_tulip_tulip_product_idx').on(table.tulipProductId),
+    tulipProductIdx: index('products_tulip_tulip_product_idx').on(
+      table.tulipProductId,
+    ),
   }),
-)
+);
 
 export const reservationItems = mysqlTable(
   'reservation_items',
@@ -708,7 +936,10 @@ export const reservationItems = mysqlTable(
     // Quantity and price at reservation time
     quantity: int('quantity').notNull(),
     unitPrice: decimal('unit_price', { precision: 10, scale: 2 }).notNull(),
-    depositPerUnit: decimal('deposit_per_unit', { precision: 10, scale: 2 }).notNull(),
+    depositPerUnit: decimal('deposit_per_unit', {
+      precision: 10,
+      scale: 2,
+    }).notNull(),
     totalPrice: decimal('total_price', { precision: 10, scale: 2 }).notNull(),
 
     // Tax fields per item
@@ -721,7 +952,9 @@ export const reservationItems = mysqlTable(
     pricingBreakdown: json('pricing_breakdown').$type<PricingBreakdown>(),
 
     // Product snapshot (for history) - also used for custom item name/description
-    productSnapshot: json('product_snapshot').$type<ProductSnapshot>().notNull(),
+    productSnapshot: json('product_snapshot')
+      .$type<ProductSnapshot>()
+      .notNull(),
 
     // Resolved combination key and selected attributes for tracked-unit products.
     // Null for non-tracked products and custom items.
@@ -732,14 +965,13 @@ export const reservationItems = mysqlTable(
   },
   (table) => ({
     reservationIdx: index('reservation_items_reservation_idx').on(
-      table.reservationId
+      table.reservationId,
     ),
-    productCombinationIdx: index('reservation_items_product_combination_idx').on(
-      table.productId,
-      table.combinationKey
-    ),
-  })
-)
+    productCombinationIdx: index(
+      'reservation_items_product_combination_idx',
+    ).on(table.productId, table.combinationKey),
+  }),
+);
 
 export const paymentType = mysqlEnum('payment_type', [
   'rental',
@@ -749,7 +981,7 @@ export const paymentType = mysqlEnum('payment_type', [
   'deposit_return',
   'damage',
   'adjustment', // Price adjustment (positive or negative)
-])
+]);
 
 export const paymentMethod = mysqlEnum('payment_method', [
   'stripe',
@@ -758,7 +990,7 @@ export const paymentMethod = mysqlEnum('payment_method', [
   'transfer',
   'check',
   'other',
-])
+]);
 
 export const paymentStatus = mysqlEnum('payment_status', [
   'pending',
@@ -767,7 +999,7 @@ export const paymentStatus = mysqlEnum('payment_status', [
   'failed',
   'cancelled', // Authorization cancelled (released)
   'refunded',
-])
+]);
 
 export const payments = mysqlTable(
   'payments',
@@ -786,12 +1018,16 @@ export const payments = mysqlTable(
     // Stripe (if online payment)
     stripePaymentIntentId: varchar('stripe_payment_intent_id', { length: 255 }),
     stripeChargeId: varchar('stripe_charge_id', { length: 255 }),
-    stripeCheckoutSessionId: varchar('stripe_checkout_session_id', { length: 255 }),
+    stripeCheckoutSessionId: varchar('stripe_checkout_session_id', {
+      length: 255,
+    }),
     stripeRefundId: varchar('stripe_refund_id', { length: 255 }),
     stripePaymentMethodId: varchar('stripe_payment_method_id', { length: 255 }),
 
     // Authorization hold (empreinte)
-    authorizationExpiresAt: timestamp('authorization_expires_at', { mode: 'date' }),
+    authorizationExpiresAt: timestamp('authorization_expires_at', {
+      mode: 'date',
+    }),
     capturedAmount: decimal('captured_amount', { precision: 10, scale: 2 }),
 
     // Currency (for multi-currency support)
@@ -807,10 +1043,10 @@ export const payments = mysqlTable(
   },
   (table) => ({
     reservationIdx: index('payments_reservation_idx').on(table.reservationId),
-  })
-)
+  }),
+);
 
-export const documentType = mysqlEnum('document_type', ['contract', 'invoice'])
+export const documentType = mysqlEnum('document_type', ['contract', 'invoice']);
 
 // ============================================================================
 // Reservation Activity Log (Audit Trail)
@@ -845,7 +1081,7 @@ export const activityType = mysqlEnum('activity_type', [
   'inspection_signed', // Customer signed the inspection
   'quote_accepted', // Customer accepted a quote
   'quote_declined', // Customer declined a quote
-])
+]);
 
 export const reservationActivity = mysqlTable(
   'reservation_activity',
@@ -862,10 +1098,12 @@ export const reservationActivity = mysqlTable(
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    reservationIdx: index('reservation_activity_reservation_idx').on(table.reservationId),
+    reservationIdx: index('reservation_activity_reservation_idx').on(
+      table.reservationId,
+    ),
     userIdx: index('reservation_activity_user_idx').on(table.userId),
-  })
-)
+  }),
+);
 
 export const documents = mysqlTable('documents', {
   id: id(),
@@ -880,9 +1118,11 @@ export const documents = mysqlTable('documents', {
   cgvSnapshot: longtext('cgv_snapshot'),
 
   // Metadata
-  generatedAt: timestamp('generated_at', { mode: 'date' }).defaultNow().notNull(),
+  generatedAt: timestamp('generated_at', { mode: 'date' })
+    .defaultNow()
+    .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 export const emailLogs = mysqlTable('email_logs', {
   id: id(),
@@ -901,7 +1141,7 @@ export const emailLogs = mysqlTable('email_logs', {
   error: text('error'),
 
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 export const smsLogs = mysqlTable('sms_logs', {
   id: id(),
@@ -923,7 +1163,7 @@ export const smsLogs = mysqlTable('sms_logs', {
   creditSource: varchar('credit_source', { length: 20 }).default('plan'), // 'plan' or 'topup'
 
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 // ============================================================================
 // Discord Logs (Admin notification logs)
@@ -942,7 +1182,7 @@ export const discordLogs = mysqlTable('discord_logs', {
   error: text('error'),
 
   sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
-})
+});
 
 // ============================================================================
 // SMS Credits (Prepaid SMS Balance)
@@ -965,15 +1205,15 @@ export const smsCredits = mysqlTable(
   },
   (table) => ({
     storeIdx: index('sms_credits_store_idx').on(table.storeId),
-  })
-)
+  }),
+);
 
 export const smsTopupStatus = mysqlEnum('sms_topup_status', [
   'pending',
   'completed',
   'failed',
   'refunded',
-])
+]);
 
 export const smsTopupTransactions = mysqlTable(
   'sms_topup_transactions',
@@ -1001,15 +1241,20 @@ export const smsTopupTransactions = mysqlTable(
   (table) => ({
     storeIdx: index('sms_topup_store_idx').on(table.storeId),
     statusIdx: index('sms_topup_status_idx').on(table.status),
-    stripeSessionIdx: index('sms_topup_stripe_session_idx').on(table.stripeSessionId),
-  })
-)
+    stripeSessionIdx: index('sms_topup_stripe_session_idx').on(
+      table.stripeSessionId,
+    ),
+  }),
+);
 
 // ============================================================================
 // Review Booster Tables
 // ============================================================================
 
-export const reviewRequestChannel = mysqlEnum('review_request_channel', ['email', 'sms'])
+export const reviewRequestChannel = mysqlEnum('review_request_channel', [
+  'email',
+  'sms',
+]);
 
 export const reviewRequestLogs = mysqlTable(
   'review_request_logs',
@@ -1022,17 +1267,19 @@ export const reviewRequestLogs = mysqlTable(
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    reservationIdx: index('review_request_logs_reservation_idx').on(table.reservationId),
+    reservationIdx: index('review_request_logs_reservation_idx').on(
+      table.reservationId,
+    ),
     storeIdx: index('review_request_logs_store_idx').on(table.storeId),
-  })
-)
+  }),
+);
 
 // ============================================================================
 // Reminder Logs (Automatic pickup/return reminders)
 // ============================================================================
 
-export const reminderType = mysqlEnum('reminder_type', ['pickup', 'return'])
-export const reminderChannel = mysqlEnum('reminder_channel', ['email', 'sms'])
+export const reminderType = mysqlEnum('reminder_type', ['pickup', 'return']);
+export const reminderChannel = mysqlEnum('reminder_channel', ['email', 'sms']);
 
 export const reminderLogs = mysqlTable(
   'reminder_logs',
@@ -1046,16 +1293,18 @@ export const reminderLogs = mysqlTable(
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    reservationIdx: index('reminder_logs_reservation_idx').on(table.reservationId),
+    reservationIdx: index('reminder_logs_reservation_idx').on(
+      table.reservationId,
+    ),
     storeIdx: index('reminder_logs_store_idx').on(table.storeId),
     // Prevent duplicate reminders
     uniqueReminder: unique('reminder_logs_unique').on(
       table.reservationId,
       table.type,
-      table.channel
+      table.channel,
     ),
-  })
-)
+  }),
+);
 
 export const googlePlacesCache = mysqlTable(
   'google_places_cache',
@@ -1073,9 +1322,11 @@ export const googlePlacesCache = mysqlTable(
   },
   (table) => ({
     placeIdIdx: index('google_places_cache_place_id_idx').on(table.placeId),
-    expiresAtIdx: index('google_places_cache_expires_at_idx').on(table.expiresAt),
-  })
-)
+    expiresAtIdx: index('google_places_cache_expires_at_idx').on(
+      table.expiresAt,
+    ),
+  }),
+);
 
 // ============================================================================
 // Payment Requests
@@ -1092,23 +1343,30 @@ export const paymentRequests = mysqlTable(
     currency: varchar('currency', { length: 3 }).notNull().default('EUR'),
     description: varchar('description', { length: 255 }).notNull(),
     type: mysqlEnum('type', ['rental', 'custom']).notNull(),
-    status: mysqlEnum('status', ['pending', 'completed', 'cancelled']).notNull().default('pending'),
+    status: mysqlEnum('status', ['pending', 'completed', 'cancelled'])
+      .notNull()
+      .default('pending'),
     expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
     completedAt: timestamp('completed_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
     storeIdx: index('payment_requests_store_idx').on(table.storeId),
-    reservationIdx: index('payment_requests_reservation_idx').on(table.reservationId),
+    reservationIdx: index('payment_requests_reservation_idx').on(
+      table.reservationId,
+    ),
     tokenIdx: index('payment_requests_token_idx').on(table.token),
-  })
-)
+  }),
+);
 
 // ============================================================================
 // Promo Codes
 // ============================================================================
 
-export const promoCodeType = mysqlEnum('promo_code_type', ['percentage', 'fixed'])
+export const promoCodeType = mysqlEnum('promo_code_type', [
+  'percentage',
+  'fixed',
+]);
 
 export const promoCodes = mysqlTable(
   'promo_codes',
@@ -1130,10 +1388,16 @@ export const promoCodes = mysqlTable(
   },
   (table) => ({
     storeIdx: index('promo_codes_store_idx').on(table.storeId),
-    uniqueCodePerStore: unique('promo_codes_unique_code').on(table.storeId, table.code),
-    activeIdx: index('promo_codes_active_idx').on(table.storeId, table.isActive),
-  })
-)
+    uniqueCodePerStore: unique('promo_codes_unique_code').on(
+      table.storeId,
+      table.code,
+    ),
+    activeIdx: index('promo_codes_active_idx').on(
+      table.storeId,
+      table.isActive,
+    ),
+  }),
+);
 
 // ============================================================================
 // Relations
@@ -1144,28 +1408,28 @@ export const usersRelations = relations(users, ({ many }) => ({
   memberships: many(storeMembers),
   accounts: many(accounts),
   sessions: many(sessions),
-}))
+}));
 
 export const accountsRelations = relations(accounts, ({ one }) => ({
   user: one(users, {
     fields: [accounts.userId],
     references: [users.id],
   }),
-}))
+}));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, {
     fields: [sessions.userId],
     references: [users.id],
   }),
-}))
+}));
 
 export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   store: one(stores, {
     fields: [subscriptions.storeId],
     references: [stores.id],
   }),
-}))
+}));
 
 export const storeMembersRelations = relations(storeMembers, ({ one }) => ({
   store: one(stores, {
@@ -1181,18 +1445,21 @@ export const storeMembersRelations = relations(storeMembers, ({ one }) => ({
     references: [users.id],
     relationName: 'addedByUser',
   }),
-}))
+}));
 
-export const storeInvitationsRelations = relations(storeInvitations, ({ one }) => ({
-  store: one(stores, {
-    fields: [storeInvitations.storeId],
-    references: [stores.id],
+export const storeInvitationsRelations = relations(
+  storeInvitations,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [storeInvitations.storeId],
+      references: [stores.id],
+    }),
+    invitedByUser: one(users, {
+      fields: [storeInvitations.invitedBy],
+      references: [users.id],
+    }),
   }),
-  invitedByUser: one(users, {
-    fields: [storeInvitations.invitedBy],
-    references: [users.id],
-  }),
-}))
+);
 
 export const storesRelations = relations(stores, ({ one, many }) => ({
   owner: one(users, {
@@ -1216,26 +1483,70 @@ export const storesRelations = relations(stores, ({ one, many }) => ({
   categories: many(categories),
   products: many(products),
   locations: many(storeLocations),
+  integrations: many(storeIntegrations),
   customers: many(customers),
   reservations: many(reservations),
   promoCodes: many(promoCodes),
   emailLogs: many(emailLogs),
   smsLogs: many(smsLogs),
-}))
+}));
+
+export const storeIntegrationsRelations = relations(
+  storeIntegrations,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [storeIntegrations.storeId],
+      references: [stores.id],
+    }),
+    connectedByUser: one(users, {
+      fields: [storeIntegrations.connectedByUserId],
+      references: [users.id],
+    }),
+    credentials: one(integrationCredentials, {
+      fields: [storeIntegrations.id],
+      references: [integrationCredentials.integrationId],
+    }),
+    calendarSettings: one(storeCalendarIntegrations, {
+      fields: [storeIntegrations.id],
+      references: [storeCalendarIntegrations.integrationId],
+    }),
+    calendarEvents: many(reservationCalendarEvents),
+  }),
+);
+
+export const integrationCredentialsRelations = relations(
+  integrationCredentials,
+  ({ one }) => ({
+    integration: one(storeIntegrations, {
+      fields: [integrationCredentials.integrationId],
+      references: [storeIntegrations.id],
+    }),
+  }),
+);
+
+export const storeCalendarIntegrationsRelations = relations(
+  storeCalendarIntegrations,
+  ({ one }) => ({
+    integration: one(storeIntegrations, {
+      fields: [storeCalendarIntegrations.integrationId],
+      references: [storeIntegrations.id],
+    }),
+  }),
+);
 
 export const storeLocationsRelations = relations(storeLocations, ({ one }) => ({
   store: one(stores, {
     fields: [storeLocations.storeId],
     references: [stores.id],
   }),
-}))
+}));
 
 export const promoCodesRelations = relations(promoCodes, ({ one }) => ({
   store: one(stores, {
     fields: [promoCodes.storeId],
     references: [stores.id],
   }),
-}))
+}));
 
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
   store: one(stores, {
@@ -1243,7 +1554,7 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
     references: [stores.id],
   }),
   products: many(products),
-}))
+}));
 
 export const productsRelations = relations(products, ({ one, many }) => ({
   store: one(stores, {
@@ -1264,42 +1575,55 @@ export const productsRelations = relations(products, ({ one, many }) => ({
     fields: [products.id],
     references: [productsTulip.productId],
   }),
-}))
+}));
 
 export const productsTulipRelations = relations(productsTulip, ({ one }) => ({
   product: one(products, {
     fields: [productsTulip.productId],
     references: [products.id],
   }),
-}))
+}));
 
-export const productPricingTiersRelations = relations(productPricingTiers, ({ one }) => ({
-  product: one(products, {
-    fields: [productPricingTiers.productId],
-    references: [products.id],
+export const productPricingTiersRelations = relations(
+  productPricingTiers,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productPricingTiers.productId],
+      references: [products.id],
+    }),
   }),
-}))
+);
 
-export const productSeasonalPricingRelations = relations(productSeasonalPricing, ({ one, many }) => ({
-  product: one(products, {
-    fields: [productSeasonalPricing.productId],
-    references: [products.id],
+export const productSeasonalPricingRelations = relations(
+  productSeasonalPricing,
+  ({ one, many }) => ({
+    product: one(products, {
+      fields: [productSeasonalPricing.productId],
+      references: [products.id],
+    }),
+    tiers: many(productSeasonalPricingTiers),
   }),
-  tiers: many(productSeasonalPricingTiers),
-}))
+);
 
-export const productSeasonalPricingTiersRelations = relations(productSeasonalPricingTiers, ({ one }) => ({
-  seasonalPricing: one(productSeasonalPricing, {
-    fields: [productSeasonalPricingTiers.seasonalPricingId],
-    references: [productSeasonalPricing.id],
+export const productSeasonalPricingTiersRelations = relations(
+  productSeasonalPricingTiers,
+  ({ one }) => ({
+    seasonalPricing: one(productSeasonalPricing, {
+      fields: [productSeasonalPricingTiers.seasonalPricingId],
+      references: [productSeasonalPricing.id],
+    }),
   }),
-}))
+);
 
 // ============================================================================
 // Product Units (Individual Unit Tracking)
 // ============================================================================
 
-export const unitStatus = mysqlEnum('unit_status', ['available', 'maintenance', 'retired'])
+export const unitStatus = mysqlEnum('unit_status', [
+  'available',
+  'maintenance',
+  'retired',
+]);
 
 export const productUnits = mysqlTable(
   'product_units',
@@ -1318,7 +1642,9 @@ export const productUnits = mysqlTable(
 
     // Canonical key derived from product booking axes + unit attributes
     // "__default" is used when no booking axes are configured
-    combinationKey: varchar('combination_key', { length: 255 }).notNull().default('__default'),
+    combinationKey: varchar('combination_key', { length: 255 })
+      .notNull()
+      .default('__default'),
 
     // Unit lifecycle status
     // Note: "rented" is derived from reservation assignments, not stored here
@@ -1333,25 +1659,31 @@ export const productUnits = mysqlTable(
     // Enforce unique identifier per product (same identifier can exist on different products)
     uniqueIdentifierPerProduct: unique('product_units_unique_identifier').on(
       table.productId,
-      table.identifier
+      table.identifier,
     ),
     // For quick lookups of available units
-    statusIdx: index('product_units_status_idx').on(table.productId, table.status),
+    statusIdx: index('product_units_status_idx').on(
+      table.productId,
+      table.status,
+    ),
     statusCombinationIdx: index('product_units_status_combination_idx').on(
       table.productId,
       table.status,
-      table.combinationKey
+      table.combinationKey,
     ),
-  })
-)
-
-export const productUnitsRelations = relations(productUnits, ({ one, many }) => ({
-  product: one(products, {
-    fields: [productUnits.productId],
-    references: [products.id],
   }),
-  reservationAssignments: many(reservationItemUnits),
-}))
+);
+
+export const productUnitsRelations = relations(
+  productUnits,
+  ({ one, many }) => ({
+    product: one(products, {
+      fields: [productUnits.productId],
+      references: [products.id],
+    }),
+    reservationAssignments: many(reservationItemUnits),
+  }),
+);
 
 // ============================================================================
 // Reservation Item Units (Unit Assignment to Reservations)
@@ -1366,32 +1698,43 @@ export const reservationItemUnits = mysqlTable(
 
     // Snapshot of identifier at assignment time (for contract/history accuracy
     // even if the unit is renamed later)
-    identifierSnapshot: varchar('identifier_snapshot', { length: 255 }).notNull(),
+    identifierSnapshot: varchar('identifier_snapshot', {
+      length: 255,
+    }).notNull(),
 
     // When the unit was assigned
-    assignedAt: timestamp('assigned_at', { mode: 'date' }).defaultNow().notNull(),
+    assignedAt: timestamp('assigned_at', { mode: 'date' })
+      .defaultNow()
+      .notNull(),
   },
   (table) => ({
-    reservationItemIdx: index('reservation_item_units_item_idx').on(table.reservationItemId),
-    productUnitIdx: index('reservation_item_units_unit_idx').on(table.productUnitId),
+    reservationItemIdx: index('reservation_item_units_item_idx').on(
+      table.reservationItemId,
+    ),
+    productUnitIdx: index('reservation_item_units_unit_idx').on(
+      table.productUnitId,
+    ),
     // Prevent assigning the same unit twice to the same reservation item
     uniqueAssignment: unique('reservation_item_units_unique').on(
       table.reservationItemId,
-      table.productUnitId
+      table.productUnitId,
     ),
-  })
-)
+  }),
+);
 
-export const reservationItemUnitsRelations = relations(reservationItemUnits, ({ one }) => ({
-  reservationItem: one(reservationItems, {
-    fields: [reservationItemUnits.reservationItemId],
-    references: [reservationItems.id],
+export const reservationItemUnitsRelations = relations(
+  reservationItemUnits,
+  ({ one }) => ({
+    reservationItem: one(reservationItems, {
+      fields: [reservationItemUnits.reservationItemId],
+      references: [reservationItems.id],
+    }),
+    productUnit: one(productUnits, {
+      fields: [reservationItemUnits.productUnitId],
+      references: [productUnits.id],
+    }),
   }),
-  productUnit: one(productUnits, {
-    fields: [reservationItemUnits.productUnitId],
-    references: [productUnits.id],
-  }),
-}))
+);
 
 // ============================================================================
 // Product Accessories (Upsell/Cross-sell)
@@ -1410,23 +1753,26 @@ export const productAccessories = mysqlTable(
     productIdx: index('product_accessories_product_idx').on(table.productId),
     uniqueProductAccessory: unique('product_accessories_unique').on(
       table.productId,
-      table.accessoryId
+      table.accessoryId,
     ),
-  })
-)
+  }),
+);
 
-export const productAccessoriesRelations = relations(productAccessories, ({ one }) => ({
-  product: one(products, {
-    fields: [productAccessories.productId],
-    references: [products.id],
-    relationName: 'productAccessories',
+export const productAccessoriesRelations = relations(
+  productAccessories,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productAccessories.productId],
+      references: [products.id],
+      relationName: 'productAccessories',
+    }),
+    accessory: one(products, {
+      fields: [productAccessories.accessoryId],
+      references: [products.id],
+      relationName: 'accessoryOf',
+    }),
   }),
-  accessory: one(products, {
-    fields: [productAccessories.accessoryId],
-    references: [products.id],
-    relationName: 'accessoryOf',
-  }),
-}))
+);
 
 export const customersRelations = relations(customers, ({ one, many }) => ({
   store: one(stores, {
@@ -1435,70 +1781,97 @@ export const customersRelations = relations(customers, ({ one, many }) => ({
   }),
   reservations: many(reservations),
   sessions: many(customerSessions),
-}))
+}));
 
-export const customerSessionsRelations = relations(customerSessions, ({ one }) => ({
-  customer: one(customers, {
-    fields: [customerSessions.customerId],
-    references: [customers.id],
+export const customerSessionsRelations = relations(
+  customerSessions,
+  ({ one }) => ({
+    customer: one(customers, {
+      fields: [customerSessions.customerId],
+      references: [customers.id],
+    }),
   }),
-}))
+);
 
-export const reservationsRelations = relations(reservations, ({ one, many }) => ({
-  store: one(stores, {
-    fields: [reservations.storeId],
-    references: [stores.id],
+export const reservationsRelations = relations(
+  reservations,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [reservations.storeId],
+      references: [stores.id],
+    }),
+    customer: one(customers, {
+      fields: [reservations.customerId],
+      references: [customers.id],
+    }),
+    promoCode: one(promoCodes, {
+      fields: [reservations.promoCodeId],
+      references: [promoCodes.id],
+    }),
+    items: many(reservationItems),
+    payments: many(payments),
+    documents: many(documents),
+    activity: many(reservationActivity),
+    calendarEvents: many(reservationCalendarEvents),
   }),
-  customer: one(customers, {
-    fields: [reservations.customerId],
-    references: [customers.id],
-  }),
-  promoCode: one(promoCodes, {
-    fields: [reservations.promoCodeId],
-    references: [promoCodes.id],
-  }),
-  items: many(reservationItems),
-  payments: many(payments),
-  documents: many(documents),
-  activity: many(reservationActivity),
-}))
+);
 
-export const reservationItemsRelations = relations(reservationItems, ({ one, many }) => ({
-  reservation: one(reservations, {
-    fields: [reservationItems.reservationId],
-    references: [reservations.id],
+export const reservationCalendarEventsRelations = relations(
+  reservationCalendarEvents,
+  ({ one }) => ({
+    reservation: one(reservations, {
+      fields: [reservationCalendarEvents.reservationId],
+      references: [reservations.id],
+    }),
+    integration: one(storeIntegrations, {
+      fields: [reservationCalendarEvents.integrationId],
+      references: [storeIntegrations.id],
+    }),
   }),
-  product: one(products, {
-    fields: [reservationItems.productId],
-    references: [products.id],
+);
+
+export const reservationItemsRelations = relations(
+  reservationItems,
+  ({ one, many }) => ({
+    reservation: one(reservations, {
+      fields: [reservationItems.reservationId],
+      references: [reservations.id],
+    }),
+    product: one(products, {
+      fields: [reservationItems.productId],
+      references: [products.id],
+    }),
+    assignedUnits: many(reservationItemUnits),
   }),
-  assignedUnits: many(reservationItemUnits),
-}))
+);
 
 export const paymentsRelations = relations(payments, ({ one }) => ({
   reservation: one(reservations, {
     fields: [payments.reservationId],
     references: [reservations.id],
   }),
-}))
+}));
 
 export const documentsRelations = relations(documents, ({ one }) => ({
   reservation: one(reservations, {
     fields: [documents.reservationId],
     references: [reservations.id],
   }),
-}))
+}));
 
-export const reservationActivityRelations = relations(reservationActivity, ({ one }) => ({
-  reservation: one(reservations, {
-    fields: [reservationActivity.reservationId],
-    references: [reservations.id],
+export const reservationActivityRelations = relations(
+  reservationActivity,
+  ({ one }) => ({
+    reservation: one(reservations, {
+      fields: [reservationActivity.reservationId],
+      references: [reservations.id],
+    }),
+    user: one(users, {
+      fields: [reservationActivity.userId],
+      references: [users.id],
+    }),
   }),
-  user: one(users, {
-    fields: [reservationActivity.userId],
-    references: [users.id],
-  }),
-}))
+);
 
 export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
   store: one(stores, {
@@ -1513,7 +1886,7 @@ export const emailLogsRelations = relations(emailLogs, ({ one }) => ({
     fields: [emailLogs.customerId],
     references: [customers.id],
   }),
-}))
+}));
 
 export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
   store: one(stores, {
@@ -1528,7 +1901,7 @@ export const smsLogsRelations = relations(smsLogs, ({ one }) => ({
     fields: [smsLogs.customerId],
     references: [customers.id],
   }),
-}))
+}));
 
 export const discordLogsRelations = relations(discordLogs, ({ one }) => ({
   store: one(stores, {
@@ -1539,36 +1912,42 @@ export const discordLogsRelations = relations(discordLogs, ({ one }) => ({
     fields: [discordLogs.reservationId],
     references: [reservations.id],
   }),
-}))
+}));
 
 export const smsCreditsRelations = relations(smsCredits, ({ one }) => ({
   store: one(stores, {
     fields: [smsCredits.storeId],
     references: [stores.id],
   }),
-}))
+}));
 
-export const smsTopupTransactionsRelations = relations(smsTopupTransactions, ({ one }) => ({
-  store: one(stores, {
-    fields: [smsTopupTransactions.storeId],
-    references: [stores.id],
+export const smsTopupTransactionsRelations = relations(
+  smsTopupTransactions,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [smsTopupTransactions.storeId],
+      references: [stores.id],
+    }),
   }),
-}))
+);
 
-export const reviewRequestLogsRelations = relations(reviewRequestLogs, ({ one }) => ({
-  reservation: one(reservations, {
-    fields: [reviewRequestLogs.reservationId],
-    references: [reservations.id],
+export const reviewRequestLogsRelations = relations(
+  reviewRequestLogs,
+  ({ one }) => ({
+    reservation: one(reservations, {
+      fields: [reviewRequestLogs.reservationId],
+      references: [reservations.id],
+    }),
+    store: one(stores, {
+      fields: [reviewRequestLogs.storeId],
+      references: [stores.id],
+    }),
+    customer: one(customers, {
+      fields: [reviewRequestLogs.customerId],
+      references: [customers.id],
+    }),
   }),
-  store: one(stores, {
-    fields: [reviewRequestLogs.storeId],
-    references: [stores.id],
-  }),
-  customer: one(customers, {
-    fields: [reviewRequestLogs.customerId],
-    references: [customers.id],
-  }),
-}))
+);
 
 export const reminderLogsRelations = relations(reminderLogs, ({ one }) => ({
   reservation: one(reservations, {
@@ -1583,7 +1962,7 @@ export const reminderLogsRelations = relations(reminderLogs, ({ one }) => ({
     fields: [reminderLogs.customerId],
     references: [customers.id],
   }),
-}))
+}));
 
 // ============================================================================
 // Analytics Tables
@@ -1598,9 +1977,13 @@ export const pageType = mysqlEnum('page_type', [
   'confirmation',
   'account',
   'rental',
-])
+]);
 
-export const deviceType = mysqlEnum('device_type', ['mobile', 'tablet', 'desktop'])
+export const deviceType = mysqlEnum('device_type', [
+  'mobile',
+  'tablet',
+  'desktop',
+]);
 
 export const pageViews = mysqlTable(
   'page_views',
@@ -1618,10 +2001,13 @@ export const pageViews = mysqlTable(
   (table) => ({
     storeIdx: index('page_views_store_idx').on(table.storeId),
     sessionIdx: index('page_views_session_idx').on(table.sessionId),
-    storeCreatedIdx: index('page_views_store_created_idx').on(table.storeId, table.createdAt),
+    storeCreatedIdx: index('page_views_store_created_idx').on(
+      table.storeId,
+      table.createdAt,
+    ),
     productIdx: index('page_views_product_idx').on(table.productId),
-  })
-)
+  }),
+);
 
 export const storefrontEventType = mysqlEnum('storefront_event_type', [
   'product_view',
@@ -1636,7 +2022,7 @@ export const storefrontEventType = mysqlEnum('storefront_event_type', [
   'payment_failed',
   'login_requested',
   'login_completed',
-])
+]);
 
 export const storefrontEvents = mysqlTable(
   'storefront_events',
@@ -1654,11 +2040,11 @@ export const storefrontEvents = mysqlTable(
     sessionIdx: index('storefront_events_session_idx').on(table.sessionId),
     storeCreatedIdx: index('storefront_events_store_created_idx').on(
       table.storeId,
-      table.createdAt
+      table.createdAt,
     ),
     eventTypeIdx: index('storefront_events_type_idx').on(table.eventType),
-  })
-)
+  }),
+);
 
 export const dailyStats = mysqlTable(
   'daily_stats',
@@ -1674,8 +2060,13 @@ export const dailyStats = mysqlTable(
     checkoutCompleted: int('checkout_completed').default(0).notNull(),
     reservationsCreated: int('reservations_created').default(0).notNull(),
     reservationsConfirmed: int('reservations_confirmed').default(0).notNull(),
-    revenue: decimal('revenue', { precision: 10, scale: 2 }).default('0').notNull(),
-    averageCartValue: decimal('average_cart_value', { precision: 10, scale: 2 }).default('0'),
+    revenue: decimal('revenue', { precision: 10, scale: 2 })
+      .default('0')
+      .notNull(),
+    averageCartValue: decimal('average_cart_value', {
+      precision: 10,
+      scale: 2,
+    }).default('0'),
     mobileVisitors: int('mobile_visitors').default(0).notNull(),
     tabletVisitors: int('tablet_visitors').default(0).notNull(),
     desktopVisitors: int('desktop_visitors').default(0).notNull(),
@@ -1683,12 +2074,18 @@ export const dailyStats = mysqlTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    uniqueStoreDate: unique('daily_stats_unique_store_date').on(table.storeId, table.date),
+    uniqueStoreDate: unique('daily_stats_unique_store_date').on(
+      table.storeId,
+      table.date,
+    ),
     storeIdx: index('daily_stats_store_idx').on(table.storeId),
     dateIdx: index('daily_stats_date_idx').on(table.date),
-    storeDateIdx: index('daily_stats_store_date_idx').on(table.storeId, table.date),
-  })
-)
+    storeDateIdx: index('daily_stats_store_date_idx').on(
+      table.storeId,
+      table.date,
+    ),
+  }),
+);
 
 export const productStats = mysqlTable(
   'product_stats',
@@ -1700,17 +2097,23 @@ export const productStats = mysqlTable(
     views: int('views').default(0).notNull(),
     cartAdditions: int('cart_additions').default(0).notNull(),
     reservations: int('reservations').default(0).notNull(),
-    revenue: decimal('revenue', { precision: 10, scale: 2 }).default('0').notNull(),
+    revenue: decimal('revenue', { precision: 10, scale: 2 })
+      .default('0')
+      .notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    uniqueProductDate: unique('product_stats_unique').on(table.storeId, table.productId, table.date),
+    uniqueProductDate: unique('product_stats_unique').on(
+      table.storeId,
+      table.productId,
+      table.date,
+    ),
     storeIdx: index('product_stats_store_idx').on(table.storeId),
     productIdx: index('product_stats_product_idx').on(table.productId),
     dateIdx: index('product_stats_date_idx').on(table.date),
-  })
-)
+  }),
+);
 
 // Analytics Relations
 export const pageViewsRelations = relations(pageViews, ({ one }) => ({
@@ -1726,25 +2129,28 @@ export const pageViewsRelations = relations(pageViews, ({ one }) => ({
     fields: [pageViews.categoryId],
     references: [categories.id],
   }),
-}))
+}));
 
-export const storefrontEventsRelations = relations(storefrontEvents, ({ one }) => ({
-  store: one(stores, {
-    fields: [storefrontEvents.storeId],
-    references: [stores.id],
+export const storefrontEventsRelations = relations(
+  storefrontEvents,
+  ({ one }) => ({
+    store: one(stores, {
+      fields: [storefrontEvents.storeId],
+      references: [stores.id],
+    }),
+    customer: one(customers, {
+      fields: [storefrontEvents.customerId],
+      references: [customers.id],
+    }),
   }),
-  customer: one(customers, {
-    fields: [storefrontEvents.customerId],
-    references: [customers.id],
-  }),
-}))
+);
 
 export const dailyStatsRelations = relations(dailyStats, ({ one }) => ({
   store: one(stores, {
     fields: [dailyStats.storeId],
     references: [stores.id],
   }),
-}))
+}));
 
 export const productStatsRelations = relations(productStats, ({ one }) => ({
   store: one(stores, {
@@ -1755,7 +2161,7 @@ export const productStatsRelations = relations(productStats, ({ one }) => ({
     fields: [productStats.productId],
     references: [products.id],
   }),
-}))
+}));
 
 // ============================================================================
 // Inspection Tables (Etat des lieux)
@@ -1771,7 +2177,7 @@ export const inspectionTemplateScope = mysqlEnum('inspection_template_scope', [
   'store',
   'category',
   'product',
-])
+]);
 
 /**
  * Field types for inspection template fields
@@ -1782,7 +2188,7 @@ export const inspectionFieldType = mysqlEnum('inspection_field_type', [
   'text', // Free text notes
   'number', // Numeric value (e.g., "Operating hours: 150")
   'select', // Dropdown options (e.g., "Good/Fair/Poor")
-])
+]);
 
 /**
  * Inspection type: departure (pickup) or return
@@ -1790,7 +2196,7 @@ export const inspectionFieldType = mysqlEnum('inspection_field_type', [
 export const inspectionType = mysqlEnum('inspection_type', [
   'departure', // Check-out inspection when customer picks up
   'return', // Check-in inspection when customer returns
-])
+]);
 
 /**
  * Inspection status workflow
@@ -1799,7 +2205,7 @@ export const inspectionStatus = mysqlEnum('inspection_status', [
   'draft', // In progress, not yet completed
   'completed', // Inspection finished by staff
   'signed', // Customer signed the inspection
-])
+]);
 
 /**
  * Overall condition rating for quick assessment
@@ -1809,7 +2215,7 @@ export const conditionRating = mysqlEnum('condition_rating', [
   'good', // Minor wear, acceptable
   'fair', // Noticeable wear, still functional
   'damaged', // Damage detected, needs attention
-])
+]);
 
 /**
  * Inspection templates define what points to check for products
@@ -1831,17 +2237,19 @@ export const inspectionTemplates = mysqlTable(
   },
   (table) => ({
     storeIdx: index('inspection_templates_store_idx').on(table.storeId),
-    categoryIdx: index('inspection_templates_category_idx').on(table.categoryId),
+    categoryIdx: index('inspection_templates_category_idx').on(
+      table.categoryId,
+    ),
     productIdx: index('inspection_templates_product_idx').on(table.productId),
     // One template per scope/target combination
     uniqueScope: unique('inspection_templates_unique_scope').on(
       table.storeId,
       table.scope,
       table.categoryId,
-      table.productId
+      table.productId,
     ),
-  })
-)
+  }),
+);
 
 /**
  * Individual inspection points within a template
@@ -1864,13 +2272,15 @@ export const inspectionTemplateFields = mysqlTable(
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    templateIdx: index('inspection_template_fields_template_idx').on(table.templateId),
+    templateIdx: index('inspection_template_fields_template_idx').on(
+      table.templateId,
+    ),
     orderIdx: index('inspection_template_fields_order_idx').on(
       table.templateId,
-      table.displayOrder
+      table.displayOrder,
     ),
-  })
-)
+  }),
+);
 
 /**
  * Inspection records for reservations
@@ -1886,19 +2296,19 @@ export const inspections = mysqlTable(
     // Template reference (snapshot stored for historical accuracy)
     templateId: varchar('template_id', { length: 21 }),
     templateSnapshot: json('template_snapshot').$type<{
-      id: string
-      name: string
+      id: string;
+      name: string;
       fields: Array<{
-        id: string
-        name: string
-        fieldType: string
-        options?: string[]
-        ratingMin?: number
-        ratingMax?: number
-        numberUnit?: string
-        isRequired: boolean
-        sectionName?: string
-      }>
+        id: string;
+        name: string;
+        fieldType: string;
+        options?: string[];
+        ratingMin?: number;
+        ratingMax?: number;
+        numberUnit?: string;
+        isRequired: boolean;
+        sectionName?: string;
+      }>;
     }>(),
     // General notes
     notes: text('notes'),
@@ -1912,7 +2322,10 @@ export const inspections = mysqlTable(
     // Damage assessment
     hasDamage: boolean('has_damage').default(false).notNull(),
     damageDescription: text('damage_description'),
-    estimatedDamageCost: decimal('estimated_damage_cost', { precision: 10, scale: 2 }),
+    estimatedDamageCost: decimal('estimated_damage_cost', {
+      precision: 10,
+      scale: 2,
+    }),
     damagePaymentId: varchar('damage_payment_id', { length: 21 }), // Link to payment if charged
     // Timestamps
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
@@ -1920,14 +2333,16 @@ export const inspections = mysqlTable(
   },
   (table) => ({
     storeIdx: index('inspections_store_idx').on(table.storeId),
-    reservationIdx: index('inspections_reservation_idx').on(table.reservationId),
+    reservationIdx: index('inspections_reservation_idx').on(
+      table.reservationId,
+    ),
     // One inspection per type per reservation
     uniqueTypePerReservation: unique('inspections_unique_type').on(
       table.reservationId,
-      table.type
+      table.type,
     ),
-  })
-)
+  }),
+);
 
 /**
  * Per-item inspection within a reservation
@@ -1942,8 +2357,8 @@ export const inspectionItems = mysqlTable(
     // Product snapshot for historical reference
     productSnapshot: json('product_snapshot')
       .$type<{
-        name: string
-        unitIdentifier?: string
+        name: string;
+        unitIdentifier?: string;
       }>()
       .notNull(),
     // Overall quick assessment
@@ -1952,13 +2367,15 @@ export const inspectionItems = mysqlTable(
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    inspectionIdx: index('inspection_items_inspection_idx').on(table.inspectionId),
+    inspectionIdx: index('inspection_items_inspection_idx').on(
+      table.inspectionId,
+    ),
     reservationItemIdx: index('inspection_items_reservation_item_idx').on(
-      table.reservationItemId
+      table.reservationItemId,
     ),
     unitIdx: index('inspection_items_unit_idx').on(table.productUnitId),
-  })
-)
+  }),
+);
 
 /**
  * Field values recorded during inspection
@@ -1972,9 +2389,9 @@ export const inspectionFieldValues = mysqlTable(
     // Field snapshot for historical reference
     fieldSnapshot: json('field_snapshot')
       .$type<{
-        name: string
-        fieldType: string
-        sectionName?: string
+        name: string;
+        fieldType: string;
+        sectionName?: string;
       }>()
       .notNull(),
     // Values (only one used based on type)
@@ -1988,14 +2405,18 @@ export const inspectionFieldValues = mysqlTable(
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    itemIdx: index('inspection_field_values_item_idx').on(table.inspectionItemId),
-    fieldIdx: index('inspection_field_values_field_idx').on(table.templateFieldId),
+    itemIdx: index('inspection_field_values_item_idx').on(
+      table.inspectionItemId,
+    ),
+    fieldIdx: index('inspection_field_values_field_idx').on(
+      table.templateFieldId,
+    ),
     issueIdx: index('inspection_field_values_issue_idx').on(
       table.inspectionItemId,
-      table.hasIssue
+      table.hasIssue,
     ),
-  })
-)
+  }),
+);
 
 /**
  * Photos taken during inspection
@@ -2018,29 +2439,34 @@ export const inspectionPhotos = mysqlTable(
   },
   (table) => ({
     itemIdx: index('inspection_photos_item_idx').on(table.inspectionItemId),
-    fieldValueIdx: index('inspection_photos_field_value_idx').on(table.fieldValueId),
-  })
-)
+    fieldValueIdx: index('inspection_photos_field_value_idx').on(
+      table.fieldValueId,
+    ),
+  }),
+);
 
 // ============================================================================
 // Inspection Relations
 // ============================================================================
 
-export const inspectionTemplatesRelations = relations(inspectionTemplates, ({ one, many }) => ({
-  store: one(stores, {
-    fields: [inspectionTemplates.storeId],
-    references: [stores.id],
+export const inspectionTemplatesRelations = relations(
+  inspectionTemplates,
+  ({ one, many }) => ({
+    store: one(stores, {
+      fields: [inspectionTemplates.storeId],
+      references: [stores.id],
+    }),
+    category: one(categories, {
+      fields: [inspectionTemplates.categoryId],
+      references: [categories.id],
+    }),
+    product: one(products, {
+      fields: [inspectionTemplates.productId],
+      references: [products.id],
+    }),
+    fields: many(inspectionTemplateFields),
   }),
-  category: one(categories, {
-    fields: [inspectionTemplates.categoryId],
-    references: [categories.id],
-  }),
-  product: one(products, {
-    fields: [inspectionTemplates.productId],
-    references: [products.id],
-  }),
-  fields: many(inspectionTemplateFields),
-}))
+);
 
 export const inspectionTemplateFieldsRelations = relations(
   inspectionTemplateFields,
@@ -2049,8 +2475,8 @@ export const inspectionTemplateFieldsRelations = relations(
       fields: [inspectionTemplateFields.templateId],
       references: [inspectionTemplates.id],
     }),
-  })
-)
+  }),
+);
 
 export const inspectionsRelations = relations(inspections, ({ one, many }) => ({
   store: one(stores, {
@@ -2074,24 +2500,27 @@ export const inspectionsRelations = relations(inspections, ({ one, many }) => ({
     references: [payments.id],
   }),
   items: many(inspectionItems),
-}))
+}));
 
-export const inspectionItemsRelations = relations(inspectionItems, ({ one, many }) => ({
-  inspection: one(inspections, {
-    fields: [inspectionItems.inspectionId],
-    references: [inspections.id],
+export const inspectionItemsRelations = relations(
+  inspectionItems,
+  ({ one, many }) => ({
+    inspection: one(inspections, {
+      fields: [inspectionItems.inspectionId],
+      references: [inspections.id],
+    }),
+    reservationItem: one(reservationItems, {
+      fields: [inspectionItems.reservationItemId],
+      references: [reservationItems.id],
+    }),
+    productUnit: one(productUnits, {
+      fields: [inspectionItems.productUnitId],
+      references: [productUnits.id],
+    }),
+    fieldValues: many(inspectionFieldValues),
+    photos: many(inspectionPhotos),
   }),
-  reservationItem: one(reservationItems, {
-    fields: [inspectionItems.reservationItemId],
-    references: [reservationItems.id],
-  }),
-  productUnit: one(productUnits, {
-    fields: [inspectionItems.productUnitId],
-    references: [productUnits.id],
-  }),
-  fieldValues: many(inspectionFieldValues),
-  photos: many(inspectionPhotos),
-}))
+);
 
 export const inspectionFieldValuesRelations = relations(
   inspectionFieldValues,
@@ -2105,33 +2534,36 @@ export const inspectionFieldValuesRelations = relations(
       references: [inspectionTemplateFields.id],
     }),
     photos: many(inspectionPhotos),
-  })
-)
+  }),
+);
 
-export const inspectionPhotosRelations = relations(inspectionPhotos, ({ one }) => ({
-  inspectionItem: one(inspectionItems, {
-    fields: [inspectionPhotos.inspectionItemId],
-    references: [inspectionItems.id],
+export const inspectionPhotosRelations = relations(
+  inspectionPhotos,
+  ({ one }) => ({
+    inspectionItem: one(inspectionItems, {
+      fields: [inspectionPhotos.inspectionItemId],
+      references: [inspectionItems.id],
+    }),
+    fieldValue: one(inspectionFieldValues, {
+      fields: [inspectionPhotos.fieldValueId],
+      references: [inspectionFieldValues.id],
+    }),
   }),
-  fieldValue: one(inspectionFieldValues, {
-    fields: [inspectionPhotos.fieldValueId],
-    references: [inspectionFieldValues.id],
-  }),
-}))
+);
 
 // ============================================================================
 // API Keys (for MCP Server & future REST API)
 // ============================================================================
 
 export type ApiKeyPermissions = {
-  reservations: 'none' | 'read' | 'write'
-  products: 'none' | 'read' | 'write'
-  customers: 'none' | 'read' | 'write'
-  categories: 'none' | 'read' | 'write'
-  payments: 'none' | 'read' | 'write'
-  analytics: 'none' | 'read'
-  settings: 'none' | 'read' | 'write'
-}
+  reservations: 'none' | 'read' | 'write';
+  products: 'none' | 'read' | 'write';
+  customers: 'none' | 'read' | 'write';
+  categories: 'none' | 'read' | 'write';
+  payments: 'none' | 'read' | 'write';
+  analytics: 'none' | 'read';
+  settings: 'none' | 'read' | 'write';
+};
 
 export const apiKeys = mysqlTable(
   'api_keys',
@@ -2155,8 +2587,8 @@ export const apiKeys = mysqlTable(
     storeIdx: index('api_keys_store_idx').on(table.storeId),
     keyHashUnique: unique('api_keys_key_hash_unique').on(table.keyHash),
     prefixIdx: index('api_keys_prefix_idx').on(table.keyPrefix),
-  })
-)
+  }),
+);
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   store: one(stores, {
@@ -2167,7 +2599,7 @@ export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
     fields: [apiKeys.userId],
     references: [users.id],
   }),
-}))
+}));
 
 // ============================================================================
 // AI Chat
@@ -2184,9 +2616,12 @@ export const aiChats = mysqlTable(
     updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
-    storeUserIdx: index('ai_chats_store_user_idx').on(table.storeId, table.userId),
-  })
-)
+    storeUserIdx: index('ai_chats_store_user_idx').on(
+      table.storeId,
+      table.userId,
+    ),
+  }),
+);
 
 export const aiChatMessages = mysqlTable(
   'ai_chat_messages',
@@ -2200,8 +2635,8 @@ export const aiChatMessages = mysqlTable(
   },
   (table) => ({
     chatIdx: index('ai_chat_messages_chat_idx').on(table.chatId),
-  })
-)
+  }),
+);
 
 export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
   store: one(stores, {
@@ -2213,11 +2648,11 @@ export const aiChatsRelations = relations(aiChats, ({ one, many }) => ({
     references: [users.id],
   }),
   messages: many(aiChatMessages),
-}))
+}));
 
 export const aiChatMessagesRelations = relations(aiChatMessages, ({ one }) => ({
   chat: one(aiChats, {
     fields: [aiChatMessages.chatId],
     references: [aiChats.id],
   }),
-}))
+}));
