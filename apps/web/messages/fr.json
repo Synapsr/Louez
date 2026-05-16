@@ -1953,13 +1953,22 @@
         "noProducts": "Aucun produit à afficher"
       },
       "export": {
-        "button": "Exporter le calendrier",
-        "title": "Exporter vers un calendrier",
-        "description": "Synchronisez vos reservations avec votre calendrier favori en copiant le lien ci-dessous.",
+        "button": "Synchroniser le calendrier",
+        "title": "Synchroniser le calendrier",
+        "description": "Connectez une intégration calendrier ou utilisez le lien ICS universel.",
+        "integration": {
+          "title": "Intégration calendrier recommandée",
+          "description": "Connectez Google Calendar pour synchroniser les réservations automatiquement, avec couleurs, statut privé, disponibilité et relances automatiques.",
+          "button": "Configurer Google Calendar"
+        },
+        "ics": {
+          "title": "Lien ICS universel",
+          "description": "Option compatible Apple Calendar, Outlook et autres agendas. La fraîcheur dépend de l'application abonnée."
+        },
         "urlLabel": "Lien du calendrier ICS",
         "loading": "Chargement...",
         "instructions": {
-          "title": "Comment ajouter ce calendrier ?",
+          "title": "Ajouter le lien ICS manuellement",
           "google": {
             "step1": "Ouvrez Google Agenda",
             "step2": "Cliquez sur le + a cote de \"Autres agendas\" puis \"A partir de l'URL\"",
@@ -2260,12 +2269,41 @@
           "resources": "Ressources"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendrier",
+            "description": "Synchronisez vos réservations vers des agendas externes."
+          },
           "insurance": {
             "name": "Assurance",
             "description": "Protégez les réservations et synchronisez les contrats d'assurance."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Connectez Google Calendar en OAuth pour synchroniser les réservations dans un agenda dédié.",
+            "about": "Louez crée un agenda Google dédié à votre boutique, puis pousse les créations, modifications et annulations de réservations de façon asynchrone.",
+            "features": {
+              "oauth": "Connexion OAuth Google dédiée, séparée de la connexion utilisateur.",
+              "sync": "Synchronisation one-way des réservations Louez vers un agenda Google dédié.",
+              "retry": "File de synchronisation avec relances automatiques en cas d'erreur fournisseur."
+            },
+            "resources": {
+              "help": "Aide Google Calendar"
+            }
+          },
+          "icsCalendar": {
+            "name": "Lien ICS",
+            "description": "Publiez un lien calendrier compatible Apple Calendar, Outlook et Google Calendar.",
+            "about": "Le lien ICS reste disponible comme option simple et universelle, mais sa fraîcheur dépend de l'application d'agenda abonnée.",
+            "features": {
+              "link": "Lien d'abonnement calendrier généré par boutique.",
+              "compatibility": "Compatible avec les principaux agendas qui acceptent les abonnements ICS."
+            },
+            "resources": {
+              "help": "Référence iCalendar"
+            }
+          },
           "tulip": {
             "name": "Assurance Tulip",
             "description": "Connectez Tulip pour estimer et générer les contrats d'assurance location.",
@@ -2286,6 +2324,7 @@
         "noIntegrations": "Aucune intégration disponible pour le moment.",
         "sections": {
           "byLouez": "Par Louez.io",
+          "calendar": "Calendrier",
           "insurance": "Assurance"
         },
         "builtIn": {
@@ -5034,6 +5073,9 @@
     "categoryNotFound": "Catégorie introuvable",
     "integrationNotFound": "Intégration introuvable",
     "integrationCategoryNotFound": "Catégorie d'intégration introuvable",
+    "integrationNotConnected": "Intégration non connectée",
+    "unsupportedOperation": "Opération non prise en charge",
+    "permissionDenied": "Permission insuffisante",
     "customerNotFound": "Client introuvable",
     "reservationNotFound": "Réservation introuvable",
     "emailAlreadyExists": "Un client avec cet email existe déjà",

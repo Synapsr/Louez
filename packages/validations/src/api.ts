@@ -422,6 +422,23 @@ export const dashboardIntegrationsCreateTulipProductInputSchema = z.object({
 
 export const dashboardIntegrationsDisconnectTulipInputSchema = z.object({});
 
+export const dashboardIntegrationsGetCalendarStateInputSchema = z.object({});
+
+export const dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema =
+  z.object({
+    syncPendingReservations: z.boolean(),
+    cancelledReservationBehavior: z.enum(['show', 'hide']),
+  });
+
+export const dashboardIntegrationsResyncGoogleCalendarInputSchema = z.object(
+  {},
+);
+
+export const dashboardIntegrationsDisconnectGoogleCalendarInputSchema =
+  z.object({
+    deleteEvents: z.boolean().default(false),
+  });
+
 export const addressAutocompleteInputSchema = z.object({
   query: z.string().trim().min(3).max(200),
 });
@@ -564,6 +581,18 @@ export type DashboardIntegrationsCreateTulipProductInput = z.infer<
 >;
 export type DashboardIntegrationsDisconnectTulipInput = z.infer<
   typeof dashboardIntegrationsDisconnectTulipInputSchema
+>;
+export type DashboardIntegrationsGetCalendarStateInput = z.infer<
+  typeof dashboardIntegrationsGetCalendarStateInputSchema
+>;
+export type DashboardIntegrationsUpdateGoogleCalendarSettingsInput = z.infer<
+  typeof dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema
+>;
+export type DashboardIntegrationsResyncGoogleCalendarInput = z.infer<
+  typeof dashboardIntegrationsResyncGoogleCalendarInputSchema
+>;
+export type DashboardIntegrationsDisconnectGoogleCalendarInput = z.infer<
+  typeof dashboardIntegrationsDisconnectGoogleCalendarInputSchema
 >;
 export type AddressAutocompleteInput = z.infer<
   typeof addressAutocompleteInputSchema

@@ -1,148 +1,201 @@
-'use server'
+'use server';
 
-import { db } from '@louez/db'
-import { getRouteDistance } from '@louez/api/services'
-import { customers, reservations, reservationItems, products, productUnits, stores, storeMembers, users, payments, reservationActivity, promoCodes, productSeasonalPricing, productSeasonalPricingTiers } from '@louez/db'
-import { eq, and, inArray, lt, gt, sql } from 'drizzle-orm'
-import { nanoid } from 'nanoid'
-import type { BookingAttributeAxis, ProductSnapshot, UnitAttributes, PromoCodeSnapshot } from '@louez/types'
-import type { TaxSettings, ProductTaxSettings, StoreSettings, TulipPublicMode } from '@louez/types'
-import type { Rate } from '@louez/types'
-import { sendNewRequestLandlordEmail } from '@/lib/email/send'
-import { createCheckoutSession, toStripeCents } from '@/lib/stripe'
-import { dispatchNotification } from '@/lib/notifications/dispatcher'
-import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher'
-import { notifyNewReservation } from '@/lib/discord/platform-notifications'
-import { getLocaleFromCountry } from '@/lib/email/i18n'
-import { validateRentalPeriod } from '@/lib/utils/business-hours'
-import { getMinStartDateTime } from '@/lib/utils/duration'
+import { and, eq, gt, inArray, lt, sql } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+import { getRouteDistance } from '@louez/api/services';
+import { db } from '@louez/db';
 import {
-  formatDurationFromMinutes,
-  getMinRentalMinutes,
-  getMaxRentalMinutes,
-  validateMinRentalDurationMinutes,
-  validateMaxRentalDurationMinutes,
-} from '@/lib/utils/rental-duration'
-import { getEffectiveTaxRate, extractExclusiveFromInclusive, calculateTaxFromExclusive } from '@louez/utils'
+  customers,
+  payments,
+  productSeasonalPricing,
+  productSeasonalPricingTiers,
+  productUnits,
+  products,
+  promoCodes,
+  reservationActivity,
+  reservationItems,
+  reservations,
+  storeMembers,
+  stores,
+  users,
+} from '@louez/db';
+import type {
+  BookingAttributeAxis,
+  ProductSnapshot,
+  PromoCodeSnapshot,
+  UnitAttributes,
+} from '@louez/types';
+import type {
+  ProductTaxSettings,
+  StoreSettings,
+  TaxSettings,
+  TulipPublicMode,
+} from '@louez/types';
+import type { Rate } from '@louez/types';
 import {
+  calculateTaxFromExclusive,
+  extractExclusiveFromInclusive,
+  getEffectiveTaxRate,
+} from '@louez/utils';
+import {
+  DEFAULT_COMBINATION_KEY,
+  calculateDuration as calcDuration,
   calculatePeakReservedQuantities,
   calculateSeasonalAwarePrice,
-  calculateDuration as calcDuration,
   getDeterministicCombinationSortValue,
   getProductCombinationAvailabilityKey,
   matchesSelectedAttributes,
-  DEFAULT_COMBINATION_KEY,
-} from '@louez/utils'
-import type { SeasonalPricingConfig } from '@louez/utils'
-import type { PricingMode } from '@louez/utils'
+} from '@louez/utils';
+import type { SeasonalPricingConfig } from '@louez/utils';
+import type { PricingMode } from '@louez/utils';
+
+import { notifyNewReservation } from '@/lib/discord/platform-notifications';
+import { getLocaleFromCountry } from '@/lib/email/i18n';
+import { sendNewRequestLandlordEmail } from '@/lib/email/send';
+import { markReservationForCalendarSync } from '@/lib/integrations/calendar/sync';
+import {
+  getTulipCoverageSummary,
+  previewTulipQuoteForCheckout,
+} from '@/lib/integrations/tulip/contracts';
+import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
+import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
+import { createCheckoutSession, toStripeCents } from '@/lib/stripe';
+import { validateRentalPeriod } from '@/lib/utils/business-hours';
+import { getMinStartDateTime } from '@/lib/utils/duration';
 import {
   calculateTotalDeliveryFee,
   isDeliveryOrderAmountEligible,
   validateDelivery,
-} from '@/lib/utils/geo'
+} from '@/lib/utils/geo';
 import {
-  getTulipCoverageSummary,
-  previewTulipQuoteForCheckout,
-} from '@/lib/integrations/tulip/contracts'
-import { getTulipSettings } from '@/lib/integrations/tulip/settings'
-import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots'
-import { env } from '@/env'
+  formatDurationFromMinutes,
+  getMaxRentalMinutes,
+  getMinRentalMinutes,
+  validateMaxRentalDurationMinutes,
+  validateMinRentalDurationMinutes,
+} from '@/lib/utils/rental-duration';
+
+import { env } from '@/env';
 
 interface ReservationItem {
-  lineId?: string
-  productId: string
-  selectedAttributes?: UnitAttributes
-  resolvedCombinationKey?: string
-  resolvedAttributes?: UnitAttributes
-  quantity: number
-  startDate: string
-  endDate: string
-  unitPrice: number
-  depositPerUnit: number
-  productSnapshot: ProductSnapshot
+  lineId?: string;
+  productId: string;
+  selectedAttributes?: UnitAttributes;
+  resolvedCombinationKey?: string;
+  resolvedAttributes?: UnitAttributes;
+  quantity: number;
+  startDate: string;
+  endDate: string;
+  unitPrice: number;
+  depositPerUnit: number;
+  productSnapshot: ProductSnapshot;
 }
 
 interface DeliveryLegInput {
-  method: 'store' | 'address'
-  locationId?: string | null
-  address?: string
-  city?: string
-  postalCode?: string
-  country?: string
-  latitude?: number
-  longitude?: number
+  method: 'store' | 'address';
+  locationId?: string | null;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 interface DeliveryInput {
-  outbound: DeliveryLegInput
-  return: DeliveryLegInput
+  outbound: DeliveryLegInput;
+  return: DeliveryLegInput;
 }
 
 interface CreateReservationInput {
-  storeId: string
+  storeId: string;
   customer: {
-    email: string
-    firstName: string
-    lastName: string
-    phone?: string
-    customerType?: 'individual' | 'business'
-    companyName?: string
-    address?: string
-    city?: string
-    postalCode?: string
-  }
-  items: ReservationItem[]
-  customerNotes?: string
-  subtotalAmount: number
-  depositAmount: number
-  totalAmount: number
-  tulipInsuranceOptIn?: boolean
-  locale?: 'fr' | 'en'
-  delivery?: DeliveryInput
-  promoCode?: string
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    customerType?: 'individual' | 'business';
+    companyName?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  };
+  items: ReservationItem[];
+  customerNotes?: string;
+  subtotalAmount: number;
+  depositAmount: number;
+  totalAmount: number;
+  tulipInsuranceOptIn?: boolean;
+  locale?: 'fr' | 'en';
+  delivery?: DeliveryInput;
+  promoCode?: string;
 }
 
 function getErrorKey(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.startsWith('errors.')) {
-    return error.message
+    return error.message;
   }
 
-  return fallback
+  return fallback;
 }
 
-async function generateUniqueReservationNumber(storeId: string, maxRetries = 5): Promise<string> {
-  const date = new Date()
-  const year = date.getFullYear().toString().slice(-2)
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const prefix = `R${year}${month}-`
+async function queueReservationCalendarSync(
+  storeId: string,
+  reservationId: string,
+) {
+  try {
+    await markReservationForCalendarSync(storeId, reservationId);
+  } catch (error) {
+    console.error('[calendar] Failed to enqueue reservation sync:', {
+      storeId,
+      reservationId,
+      error,
+    });
+  }
+}
+
+async function generateUniqueReservationNumber(
+  storeId: string,
+  maxRetries = 5,
+): Promise<string> {
+  const date = new Date();
+  const year = date.getFullYear().toString().slice(-2);
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const prefix = `R${year}${month}-`;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     // Use crypto for better randomness
-    const randomBytes = new Uint32Array(1)
-    crypto.getRandomValues(randomBytes)
-    const random = (randomBytes[0] % 10000).toString().padStart(4, '0')
-    const number = `${prefix}${random}`
+    const randomBytes = new Uint32Array(1);
+    crypto.getRandomValues(randomBytes);
+    const random = (randomBytes[0] % 10000).toString().padStart(4, '0');
+    const number = `${prefix}${random}`;
 
     // Check if this number already exists for this store
     const existing = await db.query.reservations.findFirst({
       where: and(
         eq(reservations.storeId, storeId),
-        eq(reservations.number, number)
+        eq(reservations.number, number),
       ),
-    })
+    });
 
     if (!existing) {
-      return number
+      return number;
     }
   }
 
   // If all retries failed, use timestamp + nanoid for guaranteed uniqueness
-  const fallbackRandom = nanoid(6).toUpperCase()
-  return `${prefix}${fallbackRandom}`
+  const fallbackRandom = nanoid(6).toUpperCase();
+  return `${prefix}${fallbackRandom}`;
 }
 
-function getReservationItemResolutionKey(item: ReservationItem, index: number): string {
-  return item.lineId || `${item.productId}:${index}`
+function getReservationItemResolutionKey(
+  item: ReservationItem,
+  index: number,
+): string {
+  return item.lineId || `${item.productId}:${index}`;
 }
 
 function toResolvedAttributes(
@@ -152,66 +205,66 @@ function toResolvedAttributes(
   return {
     ...(selected || {}),
     ...resolved,
-  }
+  };
 }
 
 type CheckoutTulipQuoteInput = {
-  storeId: string
-  storeSettings: StoreSettings | null
+  storeId: string;
+  storeSettings: StoreSettings | null;
   customer: {
-    customerType?: 'individual' | 'business'
-    companyName?: string
-    firstName: string
-    lastName: string
-    email: string
-    phone?: string
-    address?: string
-    city?: string
-    postalCode?: string
-  }
-  items: Array<{ productId: string; quantity: number }>
-  startDate: Date
-  endDate: Date
-  tulipInsuranceOptIn?: boolean
-  fallbackCountry: string
-}
+    customerType?: 'individual' | 'business';
+    companyName?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  };
+  items: Array<{ productId: string; quantity: number }>;
+  startDate: Date;
+  endDate: Date;
+  tulipInsuranceOptIn?: boolean;
+  fallbackCountry: string;
+};
 
 type CheckoutTulipQuoteResult = {
-  mode: TulipPublicMode
-  connected: boolean
-  inclusionEnabled: boolean
-  quoteUnavailable: boolean
-  quoteError: string | null
-  requestedOptIn: boolean
-  appliedOptIn: boolean
-  amount: number
-  insuredProductCount: number
-  uninsuredProductCount: number
-  insuredProductIds: string[]
-}
+  mode: TulipPublicMode;
+  connected: boolean;
+  inclusionEnabled: boolean;
+  quoteUnavailable: boolean;
+  quoteError: string | null;
+  requestedOptIn: boolean;
+  appliedOptIn: boolean;
+  amount: number;
+  insuredProductCount: number;
+  uninsuredProductCount: number;
+  insuredProductIds: string[];
+};
 
 function getCheckoutTulipMode(storeSettings: StoreSettings | null): {
-  mode: TulipPublicMode
-  connected: boolean
+  mode: TulipPublicMode;
+  connected: boolean;
 } {
-  const tulipSettings = getTulipSettings(storeSettings)
-  const connected = tulipSettings.enabled
+  const tulipSettings = getTulipSettings(storeSettings);
+  const connected = tulipSettings.enabled;
   return {
     mode: connected ? tulipSettings.publicMode : 'no_public',
     connected,
-  }
+  };
 }
 
 async function resolveCheckoutTulipQuote(
   input: CheckoutTulipQuoteInput,
 ): Promise<CheckoutTulipQuoteResult> {
-  const modeInfo = getCheckoutTulipMode(input.storeSettings)
+  const modeInfo = getCheckoutTulipMode(input.storeSettings);
   const requestedOptIn =
     modeInfo.mode === 'required'
       ? true
       : modeInfo.mode === 'optional'
         ? input.tulipInsuranceOptIn !== false
-        : false
+        : false;
 
   if (modeInfo.mode === 'no_public') {
     return {
@@ -226,7 +279,7 @@ async function resolveCheckoutTulipQuote(
       insuredProductCount: 0,
       uninsuredProductCount: 0,
       insuredProductIds: [],
-    }
+    };
   }
 
   try {
@@ -249,17 +302,17 @@ async function resolveCheckoutTulipQuote(
       startDate: input.startDate,
       endDate: input.endDate,
       optIn: requestedOptIn,
-    })
+    });
 
-    const inclusionEnabled = preview.inclusionEnabled === true
+    const inclusionEnabled = preview.inclusionEnabled === true;
     const amount =
       !inclusionEnabled &&
       preview.shouldApply &&
       Number.isFinite(preview.amount) &&
       preview.amount > 0
         ? Math.round(preview.amount * 100) / 100
-        : 0
-    const appliedOptIn = requestedOptIn && preview.shouldApply
+        : 0;
+    const appliedOptIn = requestedOptIn && preview.shouldApply;
 
     console.info('[tulip][checkout-quote] resolved', {
       storeId: input.storeId,
@@ -271,7 +324,7 @@ async function resolveCheckoutTulipQuote(
       insuredProductCount: preview.insuredProductCount,
       uninsuredProductCount: preview.uninsuredProductCount,
       insuredProductIds: preview.insuredProductIds,
-    })
+    });
 
     return {
       mode: modeInfo.mode,
@@ -285,19 +338,22 @@ async function resolveCheckoutTulipQuote(
       insuredProductCount: preview.insuredProductCount,
       uninsuredProductCount: preview.uninsuredProductCount,
       insuredProductIds: preview.insuredProductIds,
-    }
+    };
   } catch (error) {
-    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed')
+    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
     if (modeInfo.mode === 'optional') {
-      const coverageSummary = await getTulipCoverageSummary(input.items)
-      console.warn('[tulip][checkout-quote] optional fallback without insurance', {
-        storeId: input.storeId,
-        mode: modeInfo.mode,
-        requestedOptIn,
-        error: errorKey,
-        insuredProductCount: coverageSummary.insuredProductCount,
-        uninsuredProductCount: coverageSummary.uninsuredProductCount,
-      })
+      const coverageSummary = await getTulipCoverageSummary(input.items);
+      console.warn(
+        '[tulip][checkout-quote] optional fallback without insurance',
+        {
+          storeId: input.storeId,
+          mode: modeInfo.mode,
+          requestedOptIn,
+          error: errorKey,
+          insuredProductCount: coverageSummary.insuredProductCount,
+          uninsuredProductCount: coverageSummary.uninsuredProductCount,
+        },
+      );
 
       return {
         mode: modeInfo.mode,
@@ -311,35 +367,35 @@ async function resolveCheckoutTulipQuote(
         insuredProductCount: coverageSummary.insuredProductCount,
         uninsuredProductCount: coverageSummary.uninsuredProductCount,
         insuredProductIds: coverageSummary.insuredProductIds,
-      }
+      };
     }
 
     console.error('[tulip][checkout-quote] required mode failed', {
       storeId: input.storeId,
       mode: modeInfo.mode,
       error: errorKey,
-    })
-    throw new Error(errorKey)
+    });
+    throw new Error(errorKey);
   }
 }
 
 export async function getTulipQuotePreview(input: {
-  storeId: string
+  storeId: string;
   customer: {
-    customerType?: 'individual' | 'business'
-    companyName?: string
-    firstName: string
-    lastName: string
-    email: string
-    phone?: string
-    address?: string
-    city?: string
-    postalCode?: string
-  }
-  items: Array<{ productId: string; quantity: number }>
-  startDate: string
-  endDate: string
-  tulipInsuranceOptIn?: boolean
+    customerType?: 'individual' | 'business';
+    companyName?: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    postalCode?: string;
+  };
+  items: Array<{ productId: string; quantity: number }>;
+  startDate: string;
+  endDate: string;
+  tulipInsuranceOptIn?: boolean;
 }): Promise<CheckoutTulipQuoteResult & { error: string | null }> {
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, input.storeId),
@@ -347,7 +403,7 @@ export async function getTulipQuotePreview(input: {
       id: true,
       settings: true,
     },
-  })
+  });
 
   if (!store) {
     return {
@@ -363,10 +419,10 @@ export async function getTulipQuotePreview(input: {
       uninsuredProductCount: 0,
       insuredProductIds: [],
       error: 'errors.storeNotFound',
-    }
+    };
   }
 
-  const storeSettings = store.settings as StoreSettings | null
+  const storeSettings = store.settings as StoreSettings | null;
 
   try {
     const quote = await resolveCheckoutTulipQuote({
@@ -378,16 +434,16 @@ export async function getTulipQuotePreview(input: {
       endDate: new Date(input.endDate),
       tulipInsuranceOptIn: input.tulipInsuranceOptIn,
       fallbackCountry: store.settings?.country || 'FR',
-    })
+    });
 
     return {
       ...quote,
       error: null,
-    }
+    };
   } catch (error) {
-    const modeInfo = getCheckoutTulipMode(storeSettings)
-    const coverageSummary = await getTulipCoverageSummary(input.items)
-    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed')
+    const modeInfo = getCheckoutTulipMode(storeSettings);
+    const coverageSummary = await getTulipCoverageSummary(input.items);
+    const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
 
     return {
       mode: modeInfo.mode,
@@ -407,7 +463,7 @@ export async function getTulipQuotePreview(input: {
       uninsuredProductCount: coverageSummary.uninsuredProductCount,
       insuredProductIds: coverageSummary.insuredProductIds,
       error: errorKey,
-    }
+    };
   }
 }
 
@@ -416,109 +472,119 @@ export async function createReservation(input: CreateReservationInput) {
     // Get store to validate business hours
     const store = await db.query.stores.findFirst({
       where: eq(stores.id, input.storeId),
-    })
+    });
 
     if (!store) {
-      return { error: 'errors.storeNotFound' }
+      return { error: 'errors.storeNotFound' };
     }
 
     // Calculate the overall rental period from items
-    const itemStartDates = input.items.map((item) => new Date(item.startDate))
-    const itemEndDates = input.items.map((item) => new Date(item.endDate))
-    const rentalStartDate = new Date(Math.min(...itemStartDates.map((d) => d.getTime())))
-    const rentalEndDate = new Date(Math.max(...itemEndDates.map((d) => d.getTime())))
+    const itemStartDates = input.items.map((item) => new Date(item.startDate));
+    const itemEndDates = input.items.map((item) => new Date(item.endDate));
+    const rentalStartDate = new Date(
+      Math.min(...itemStartDates.map((d) => d.getTime())),
+    );
+    const rentalEndDate = new Date(
+      Math.max(...itemEndDates.map((d) => d.getTime())),
+    );
 
     // Validate business hours for the rental period (using store's timezone for proper time comparison)
     const businessHoursValidation = validateRentalPeriod(
       rentalStartDate,
       rentalEndDate,
       store.settings?.businessHours,
-      store.settings?.timezone
-    )
+      store.settings?.timezone,
+    );
 
     if (!businessHoursValidation.valid) {
       return {
         error: 'errors.businessHoursViolation',
         errorParams: { reasons: businessHoursValidation.errors.join(', ') },
-      }
+      };
     }
 
     // Validate advance notice
-    const advanceNoticeMinutes = store.settings?.advanceNoticeMinutes || 0
+    const advanceNoticeMinutes = store.settings?.advanceNoticeMinutes || 0;
     if (advanceNoticeMinutes > 0) {
-      const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes)
+      const minimumStartTime = getMinStartDateTime(advanceNoticeMinutes);
       if (rentalStartDate < minimumStartTime) {
         return {
           error: 'errors.advanceNoticeViolation',
-          errorParams: { duration: formatDurationFromMinutes(advanceNoticeMinutes) },
-        }
+          errorParams: {
+            duration: formatDurationFromMinutes(advanceNoticeMinutes),
+          },
+        };
       }
     }
 
     // Validate minimum rental duration
     const minRentalMinutes = getMinRentalMinutes(
-      store.settings as StoreSettings | null
-    )
+      store.settings as StoreSettings | null,
+    );
     if (minRentalMinutes > 0) {
       const durationCheck = validateMinRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
-        minRentalMinutes
-      )
+        minRentalMinutes,
+      );
       if (!durationCheck.valid) {
         return {
           error: 'errors.minRentalDurationViolation',
-          errorParams: { duration: formatDurationFromMinutes(minRentalMinutes) },
-        }
+          errorParams: {
+            duration: formatDurationFromMinutes(minRentalMinutes),
+          },
+        };
       }
     }
 
     // Validate maximum rental duration
     const maxRentalMinutes = getMaxRentalMinutes(
-      store.settings as StoreSettings | null
-    )
+      store.settings as StoreSettings | null,
+    );
     if (maxRentalMinutes !== null) {
       const maxCheck = validateMaxRentalDurationMinutes(
         rentalStartDate,
         rentalEndDate,
-        maxRentalMinutes
-      )
+        maxRentalMinutes,
+      );
       if (!maxCheck.valid) {
         return {
           error: 'errors.maxRentalDurationViolation',
-          errorParams: { duration: formatDurationFromMinutes(maxRentalMinutes) },
-        }
+          errorParams: {
+            duration: formatDurationFromMinutes(maxRentalMinutes),
+          },
+        };
       }
     }
 
     // ===== SERVER-SIDE PRICE CALCULATION =====
     // Never trust client-provided prices - always recalculate from database
 
-    const storeSettings = store.settings as StoreSettings | null
+    const storeSettings = store.settings as StoreSettings | null;
 
     // Structure to hold server-calculated prices
     interface ServerCalculatedItem {
-      productId: string
-      quantity: number
-      unitPrice: number // Server-calculated effective price per unit
-      depositPerUnit: number // Server-calculated deposit
-      subtotal: number // Server-calculated subtotal
-      totalDeposit: number // Server-calculated total deposit
+      productId: string;
+      quantity: number;
+      unitPrice: number; // Server-calculated effective price per unit
+      depositPerUnit: number; // Server-calculated deposit
+      subtotal: number; // Server-calculated subtotal
+      totalDeposit: number; // Server-calculated total deposit
     }
-    const serverCalculatedItems: ServerCalculatedItem[] = []
+    const serverCalculatedItems: ServerCalculatedItem[] = [];
     const productsForReservation = new Map<
       string,
       {
-        id: string
-        name: string
-        quantity: number
-        trackUnits: boolean
-        bookingAttributeAxes: BookingAttributeAxis[] | null
-        taxSettings: unknown
+        id: string;
+        name: string;
+        quantity: number;
+        trackUnits: boolean;
+        bookingAttributeAxes: BookingAttributeAxis[] | null;
+        taxSettings: unknown;
       }
-    >()
-    let serverSubtotal = 0
-    let serverTotalDeposit = 0
+    >();
+    let serverSubtotal = 0;
+    let serverTotalDeposit = 0;
 
     // Validate products exist, check stock, and calculate prices from DB
     for (const item of input.items) {
@@ -526,15 +592,18 @@ export async function createReservation(input: CreateReservationInput) {
         where: and(
           eq(products.id, item.productId),
           eq(products.storeId, input.storeId),
-          eq(products.status, 'active')
+          eq(products.status, 'active'),
         ),
         with: {
           pricingTiers: true, // Get pricing tiers for this product
         },
-      })
+      });
 
       if (!product) {
-        return { error: 'errors.productUnavailable', errorParams: { name: item.productSnapshot.name } }
+        return {
+          error: 'errors.productUnavailable',
+          errorParams: { name: item.productSnapshot.name },
+        };
       }
 
       if (product.trackUnits) {
@@ -546,19 +615,25 @@ export async function createReservation(input: CreateReservationInput) {
               eq(productUnits.productId, product.id),
               eq(productUnits.status, 'available'),
             ),
-          )
+          );
 
         if (availableUnits.length < item.quantity) {
           return {
             error: 'errors.insufficientStock',
-            errorParams: { name: item.productSnapshot.name, count: availableUnits.length },
-          }
+            errorParams: {
+              name: item.productSnapshot.name,
+              count: availableUnits.length,
+            },
+          };
         }
       } else if (product.quantity < item.quantity) {
         return {
           error: 'errors.insufficientStock',
-          errorParams: { name: item.productSnapshot.name, count: product.quantity },
-        }
+          errorParams: {
+            name: item.productSnapshot.name,
+            count: product.quantity,
+          },
+        };
       }
 
       productsForReservation.set(product.id, {
@@ -566,37 +641,43 @@ export async function createReservation(input: CreateReservationInput) {
         name: product.name,
         quantity: product.quantity,
         trackUnits: product.trackUnits,
-        bookingAttributeAxes: (product.bookingAttributeAxes as BookingAttributeAxis[] | null) || null,
+        bookingAttributeAxes:
+          (product.bookingAttributeAxes as BookingAttributeAxis[] | null) ||
+          null,
         taxSettings: product.taxSettings,
-      })
+      });
 
       // Calculate price from database values (NOT from client input)
-      const productPricingMode = product.pricingMode as PricingMode
-      const duration = calcDuration(item.startDate, item.endDate, productPricingMode)
+      const productPricingMode = product.pricingMode as PricingMode;
+      const duration = calcDuration(
+        item.startDate,
+        item.endDate,
+        productPricingMode,
+      );
 
       // Fetch seasonal pricings for this product
       const seasonalPricingsRaw = await db
         .select()
         .from(productSeasonalPricing)
-        .where(eq(productSeasonalPricing.productId, product.id))
+        .where(eq(productSeasonalPricing.productId, product.id));
 
-      let seasonalPricingConfigs: SeasonalPricingConfig[] = []
+      let seasonalPricingConfigs: SeasonalPricingConfig[] = [];
       if (seasonalPricingsRaw.length > 0) {
-        const spIds = seasonalPricingsRaw.map((sp) => sp.id)
+        const spIds = seasonalPricingsRaw.map((sp) => sp.id);
         const spTiersRaw = await db
           .select()
           .from(productSeasonalPricingTiers)
-          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds))
+          .where(inArray(productSeasonalPricingTiers.seasonalPricingId, spIds));
 
-        const spTiersByPricingId = new Map<string, typeof spTiersRaw>()
+        const spTiersByPricingId = new Map<string, typeof spTiersRaw>();
         for (const tier of spTiersRaw) {
-          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || []
-          tiers.push(tier)
-          spTiersByPricingId.set(tier.seasonalPricingId, tiers)
+          const tiers = spTiersByPricingId.get(tier.seasonalPricingId) || [];
+          tiers.push(tier);
+          spTiersByPricingId.set(tier.seasonalPricingId, tiers);
         }
 
         seasonalPricingConfigs = seasonalPricingsRaw.map((sp) => {
-          const spTiers = spTiersByPricingId.get(sp.id) || []
+          const spTiers = spTiersByPricingId.get(sp.id) || [];
           return {
             id: sp.id,
             name: sp.name,
@@ -604,7 +685,9 @@ export async function createReservation(input: CreateReservationInput) {
             endDate: sp.endDate,
             basePrice: Number(sp.price),
             tiers: spTiers
-              .filter((t) => t.minDuration !== null && t.discountPercent !== null)
+              .filter(
+                (t) => t.minDuration !== null && t.discountPercent !== null,
+              )
               .map((t) => ({
                 id: t.id,
                 minDuration: t.minDuration!,
@@ -619,32 +702,34 @@ export async function createReservation(input: CreateReservationInput) {
                 price: Number(t.price!),
                 displayOrder: t.displayOrder ?? 0,
               })),
-          }
-        })
+          };
+        });
       }
 
       // Use seasonal-aware pricing (short-circuits to normal pricing when no seasonal configs)
-      const baseTiers = product.pricingTiers?.map((tier) => ({
-        id: tier.id,
-        minDuration: tier.minDuration ?? 1,
-        discountPercent: Number(tier.discountPercent ?? 0),
-        displayOrder: tier.displayOrder || 0,
-      })) || []
-      const baseRates: Rate[] = product.pricingTiers
-        ?.filter(
-          (tier): tier is typeof tier & { period: number; price: string } =>
-            typeof tier.period === 'number' &&
-            tier.period > 0 &&
-            typeof tier.price === 'string',
-        )
-        .map(
-          (tier, index): Rate => ({
-            id: tier.id,
-            period: tier.period,
-            price: Number(tier.price),
-            displayOrder: tier.displayOrder ?? index,
-          }),
-        ) || []
+      const baseTiers =
+        product.pricingTiers?.map((tier) => ({
+          id: tier.id,
+          minDuration: tier.minDuration ?? 1,
+          discountPercent: Number(tier.discountPercent ?? 0),
+          displayOrder: tier.displayOrder || 0,
+        })) || [];
+      const baseRates: Rate[] =
+        product.pricingTiers
+          ?.filter(
+            (tier): tier is typeof tier & { period: number; price: string } =>
+              typeof tier.period === 'number' &&
+              tier.period > 0 &&
+              typeof tier.price === 'string',
+          )
+          .map(
+            (tier, index): Rate => ({
+              id: tier.id,
+              period: tier.period,
+              price: Number(tier.price),
+              displayOrder: tier.displayOrder ?? index,
+            }),
+          ) || [];
 
       const seasonalResult = calculateSeasonalAwarePrice(
         {
@@ -660,15 +745,16 @@ export async function createReservation(input: CreateReservationInput) {
         item.startDate,
         item.endDate,
         item.quantity,
-      )
+      );
 
       const pricingResult = {
         subtotal: seasonalResult.subtotal,
         originalSubtotal: seasonalResult.originalSubtotal,
         savings: seasonalResult.savings,
         deposit: seasonalResult.deposit,
-        effectivePricePerUnit: seasonalResult.subtotal / Math.max(1, item.quantity),
-      }
+        effectivePricePerUnit:
+          seasonalResult.subtotal / Math.max(1, item.quantity),
+      };
 
       serverCalculatedItems.push({
         productId: item.productId,
@@ -677,99 +763,115 @@ export async function createReservation(input: CreateReservationInput) {
         depositPerUnit: Number(product.deposit || 0),
         subtotal: pricingResult.subtotal,
         totalDeposit: pricingResult.deposit,
-      })
+      });
 
-      serverSubtotal += pricingResult.subtotal
-      serverTotalDeposit += pricingResult.deposit
+      serverSubtotal += pricingResult.subtotal;
+      serverTotalDeposit += pricingResult.deposit;
 
       // Log price mismatch for monitoring (potential fraud attempt)
-      const clientItemSubtotal = item.unitPrice * item.quantity * duration
+      const clientItemSubtotal = item.unitPrice * item.quantity * duration;
       if (Math.abs(clientItemSubtotal - pricingResult.subtotal) > 0.01) {
         console.warn('[SECURITY] Price mismatch detected', {
           productId: item.productId,
           clientSubtotal: clientItemSubtotal,
           serverSubtotal: pricingResult.subtotal,
           difference: clientItemSubtotal - pricingResult.subtotal,
-        })
+        });
       }
     }
 
     // ===== DELIVERY VALIDATION AND FEE CALCULATION =====
-    let deliveryFee = 0
-    let deliveryDistanceKm: number | null = null
-    let returnDistanceKm: number | null = null
-    const deliverySettings = storeSettings?.delivery
-    const deliveryMode = deliverySettings?.mode || 'optional'
-    const isDeliveryForced = deliveryMode === 'required' || deliveryMode === 'included'
-    const isDeliveryIncluded = deliveryMode === 'included'
-    const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled)
+    let deliveryFee = 0;
+    let deliveryDistanceKm: number | null = null;
+    let returnDistanceKm: number | null = null;
+    const deliverySettings = storeSettings?.delivery;
+    const deliveryMode = deliverySettings?.mode || 'optional';
+    const isDeliveryForced =
+      deliveryMode === 'required' || deliveryMode === 'included';
+    const isDeliveryIncluded = deliveryMode === 'included';
+    const isMultiLocationEnabled = Boolean(
+      deliverySettings?.multiLocationEnabled,
+    );
 
-    const outboundLeg = input.delivery?.outbound
-    const returnLeg = input.delivery?.return
-    const hasOutboundDelivery = outboundLeg?.method === 'address'
-    const hasReturnDelivery = returnLeg?.method === 'address'
-    const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery
-    const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store'
-    const hasReturnStore = !returnLeg || returnLeg.method === 'store'
+    const outboundLeg = input.delivery?.outbound;
+    const returnLeg = input.delivery?.return;
+    const hasOutboundDelivery = outboundLeg?.method === 'address';
+    const hasReturnDelivery = returnLeg?.method === 'address';
+    const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery;
+    const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store';
+    const hasReturnStore = !returnLeg || returnLeg.method === 'store';
 
-    let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null
-    let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null
+    let pickupLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
+    let returnLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
 
     try {
       pickupLocation = hasOutboundStore
         ? await resolveReservationLocationSnapshot({
             store,
-            locationId: isMultiLocationEnabled ? outboundLeg?.locationId ?? null : null,
+            locationId: isMultiLocationEnabled
+              ? (outboundLeg?.locationId ?? null)
+              : null,
           })
-        : null
+        : null;
       returnLocation = hasReturnStore
         ? await resolveReservationLocationSnapshot({
             store,
-            locationId: isMultiLocationEnabled ? returnLeg?.locationId ?? null : null,
+            locationId: isMultiLocationEnabled
+              ? (returnLeg?.locationId ?? null)
+              : null,
           })
-        : null
+        : null;
     } catch (error) {
-      return { error: getErrorKey(error, 'errors.locationInvalid') }
+      return { error: getErrorKey(error, 'errors.locationInvalid') };
     }
 
     // Validate that outbound delivery is selected when mode is forced
     if (isDeliveryForced && deliverySettings?.enabled && !hasOutboundDelivery) {
-      return { error: 'errors.deliveryRequired' }
+      return { error: 'errors.deliveryRequired' };
     }
 
     if (hasAnyDelivery) {
       // Validate delivery is enabled for this store
       if (!deliverySettings?.enabled) {
-        return { error: 'errors.deliveryNotEnabled' }
+        return { error: 'errors.deliveryNotEnabled' };
       }
 
       // Validate store has coordinates for distance calculation
       if (!store.latitude || !store.longitude) {
-        return { error: 'errors.storeCoordinatesNotConfigured' }
+        return { error: 'errors.storeCoordinatesNotConfigured' };
       }
 
-      const storeLatitude = parseFloat(store.latitude)
-      const storeLongitude = parseFloat(store.longitude)
+      const storeLatitude = parseFloat(store.latitude);
+      const storeLongitude = parseFloat(store.longitude);
 
       if (
-        !isFinite(storeLatitude) || !isFinite(storeLongitude) ||
-        storeLatitude < -90 || storeLatitude > 90 ||
-        storeLongitude < -180 || storeLongitude > 180
+        !isFinite(storeLatitude) ||
+        !isFinite(storeLongitude) ||
+        storeLatitude < -90 ||
+        storeLatitude > 90 ||
+        storeLongitude < -180 ||
+        storeLongitude > 180
       ) {
-        return { error: 'errors.storeCoordinatesInvalid' }
+        return { error: 'errors.storeCoordinatesInvalid' };
       }
 
       // --- Outbound leg validation ---
       if (hasOutboundDelivery) {
         if (!outboundLeg.latitude || !outboundLeg.longitude) {
-          return { error: 'errors.deliveryAddressRequired' }
+          return { error: 'errors.deliveryAddressRequired' };
         }
 
         if (
-          outboundLeg.latitude < -90 || outboundLeg.latitude > 90 ||
-          outboundLeg.longitude < -180 || outboundLeg.longitude > 180
+          outboundLeg.latitude < -90 ||
+          outboundLeg.latitude > 90 ||
+          outboundLeg.longitude < -180 ||
+          outboundLeg.longitude > 180
         ) {
-          return { error: 'errors.deliveryAddressInvalid' }
+          return { error: 'errors.deliveryAddressInvalid' };
         }
 
         const outboundDistance = await getRouteDistance({
@@ -777,29 +879,34 @@ export async function createReservation(input: CreateReservationInput) {
           originLongitude: storeLongitude,
           destinationLatitude: outboundLeg.latitude,
           destinationLongitude: outboundLeg.longitude,
-        })
-        deliveryDistanceKm = outboundDistance.distanceKm
+        });
+        deliveryDistanceKm = outboundDistance.distanceKm;
 
-        const outboundValidation = validateDelivery(deliveryDistanceKm, deliverySettings)
+        const outboundValidation = validateDelivery(
+          deliveryDistanceKm,
+          deliverySettings,
+        );
         if (!outboundValidation.valid) {
           return {
             error: outboundValidation.errorKey || 'errors.deliveryTooFar',
             errorParams: outboundValidation.errorParams,
-          }
+          };
         }
       }
 
       // --- Return leg validation ---
       if (hasReturnDelivery) {
         if (!returnLeg.latitude || !returnLeg.longitude) {
-          return { error: 'errors.returnAddressRequired' }
+          return { error: 'errors.returnAddressRequired' };
         }
 
         if (
-          returnLeg.latitude < -90 || returnLeg.latitude > 90 ||
-          returnLeg.longitude < -180 || returnLeg.longitude > 180
+          returnLeg.latitude < -90 ||
+          returnLeg.latitude > 90 ||
+          returnLeg.longitude < -180 ||
+          returnLeg.longitude > 180
         ) {
-          return { error: 'errors.returnAddressInvalid' }
+          return { error: 'errors.returnAddressInvalid' };
         }
 
         const inboundDistance = await getRouteDistance({
@@ -807,41 +914,44 @@ export async function createReservation(input: CreateReservationInput) {
           originLongitude: storeLongitude,
           destinationLatitude: returnLeg.latitude,
           destinationLongitude: returnLeg.longitude,
-        })
-        returnDistanceKm = inboundDistance.distanceKm
+        });
+        returnDistanceKm = inboundDistance.distanceKm;
 
-        const returnValidation = validateDelivery(returnDistanceKm, deliverySettings)
+        const returnValidation = validateDelivery(
+          returnDistanceKm,
+          deliverySettings,
+        );
         if (!returnValidation.valid) {
           return {
             error: 'errors.returnAddressTooFar',
             errorParams: returnValidation.errorParams,
-          }
+          };
         }
       }
 
       // Calculate delivery fee (server-side, never trust client)
       if (isDeliveryIncluded) {
-        deliveryFee = 0
+        deliveryFee = 0;
       } else {
         const feeResult = calculateTotalDeliveryFee(
           deliveryDistanceKm,
           returnDistanceKm,
           deliverySettings,
           serverSubtotal,
-        )
-        deliveryFee = feeResult.totalFee
+        );
+        deliveryFee = feeResult.totalFee;
       }
     }
 
     // Client `totalAmount` excludes deposit and includes delivery fee.
-    const serverClientComparableTotal = serverSubtotal + deliveryFee
+    const serverClientComparableTotal = serverSubtotal + deliveryFee;
 
     if (Math.abs(input.subtotalAmount - serverSubtotal) > 0.01) {
       console.warn('[SECURITY] Subtotal mismatch detected', {
         clientSubtotal: input.subtotalAmount,
         serverSubtotal,
         difference: input.subtotalAmount - serverSubtotal,
-      })
+      });
     }
 
     if (Math.abs(input.depositAmount - serverTotalDeposit) > 0.01) {
@@ -849,7 +959,7 @@ export async function createReservation(input: CreateReservationInput) {
         clientDeposit: input.depositAmount,
         serverDeposit: serverTotalDeposit,
         difference: input.depositAmount - serverTotalDeposit,
-      })
+      });
     }
 
     // Log total mismatch for monitoring (client total = subtotal + delivery, without deposit)
@@ -862,15 +972,15 @@ export async function createReservation(input: CreateReservationInput) {
         clientDeposit: input.depositAmount,
         serverDeposit: serverTotalDeposit,
         serverDeliveryFee: deliveryFee,
-      })
+      });
     }
 
     // ===== TULIP INSURANCE PREVIEW =====
-    let tulipInsuranceAmount = 0
-    let tulipInsuranceOptIn = false
-    let tulipInsuredProductCount = 0
-    let tulipUninsuredProductCount = 0
-    let tulipQuoteFallbackError: string | null = null
+    let tulipInsuranceAmount = 0;
+    let tulipInsuranceOptIn = false;
+    let tulipInsuredProductCount = 0;
+    let tulipUninsuredProductCount = 0;
+    let tulipQuoteFallbackError: string | null = null;
 
     try {
       const quote = await resolveCheckoutTulipQuote({
@@ -885,21 +995,23 @@ export async function createReservation(input: CreateReservationInput) {
         endDate: rentalEndDate,
         tulipInsuranceOptIn: input.tulipInsuranceOptIn,
         fallbackCountry: store.settings?.country || 'FR',
-      })
+      });
 
-      tulipInsuranceAmount = quote.amount
-      tulipInsuranceOptIn = quote.appliedOptIn
-      tulipInsuredProductCount = quote.insuredProductCount
-      tulipUninsuredProductCount = quote.uninsuredProductCount
-      tulipQuoteFallbackError = quote.quoteUnavailable ? quote.quoteError : null
+      tulipInsuranceAmount = quote.amount;
+      tulipInsuranceOptIn = quote.appliedOptIn;
+      tulipInsuredProductCount = quote.insuredProductCount;
+      tulipUninsuredProductCount = quote.uninsuredProductCount;
+      tulipQuoteFallbackError = quote.quoteUnavailable
+        ? quote.quoteError
+        : null;
     } catch (error) {
-      return { error: getErrorKey(error, 'errors.tulipQuoteFailed') }
+      return { error: getErrorKey(error, 'errors.tulipQuoteFailed') };
     }
 
     // ========== Promo code validation ==========
-    let serverDiscountAmount = 0
-    let validatedPromoCodeId: string | null = null
-    let promoCodeSnapshotData: PromoCodeSnapshot | null = null
+    let serverDiscountAmount = 0;
+    let validatedPromoCodeId: string | null = null;
+    let promoCodeSnapshotData: PromoCodeSnapshot | null = null;
 
     if (input.promoCode) {
       const [promoRow] = await db
@@ -909,51 +1021,51 @@ export async function createReservation(input: CreateReservationInput) {
           and(
             eq(promoCodes.storeId, input.storeId),
             sql`UPPER(${promoCodes.code}) = UPPER(${input.promoCode})`,
-            eq(promoCodes.isActive, true)
-          )
+            eq(promoCodes.isActive, true),
+          ),
         )
-        .for('update')
+        .for('update');
 
       if (!promoRow) {
-        return { error: 'errors.promoCodeInvalid' }
+        return { error: 'errors.promoCodeInvalid' };
       }
 
-      const now = new Date()
+      const now = new Date();
       if (promoRow.startsAt && promoRow.startsAt > now) {
-        return { error: 'errors.promoCodeNotStarted' }
+        return { error: 'errors.promoCodeNotStarted' };
       }
       if (promoRow.expiresAt && promoRow.expiresAt < now) {
-        return { error: 'errors.promoCodeExpired' }
+        return { error: 'errors.promoCodeExpired' };
       }
       if (
         promoRow.maxUsageCount !== null &&
         promoRow.currentUsageCount >= promoRow.maxUsageCount
       ) {
-        return { error: 'errors.promoCodeExhausted' }
+        return { error: 'errors.promoCodeExhausted' };
       }
 
       const minAmount = promoRow.minimumAmount
         ? parseFloat(promoRow.minimumAmount)
-        : 0
+        : 0;
       if (minAmount > 0 && serverSubtotal < minAmount) {
         return {
           error: 'errors.promoCodeMinimumNotMet',
           errorParams: {
             amount: minAmount.toFixed(2),
           },
-        }
+        };
       }
 
-      const promoValue = parseFloat(promoRow.value)
+      const promoValue = parseFloat(promoRow.value);
       if (promoRow.type === 'percentage') {
         serverDiscountAmount = Math.min(
           (serverSubtotal * promoValue) / 100,
-          serverSubtotal
-        )
+          serverSubtotal,
+        );
       } else {
-        serverDiscountAmount = Math.min(promoValue, serverSubtotal)
+        serverDiscountAmount = Math.min(promoValue, serverSubtotal);
       }
-      serverDiscountAmount = Math.round(serverDiscountAmount * 100) / 100
+      serverDiscountAmount = Math.round(serverDiscountAmount * 100) / 100;
 
       await db
         .update(promoCodes)
@@ -961,75 +1073,84 @@ export async function createReservation(input: CreateReservationInput) {
           currentUsageCount: sql`${promoCodes.currentUsageCount} + 1`,
           updatedAt: new Date(),
         })
-        .where(eq(promoCodes.id, promoRow.id))
+        .where(eq(promoCodes.id, promoRow.id));
 
-      validatedPromoCodeId = promoRow.id
+      validatedPromoCodeId = promoRow.id;
       promoCodeSnapshotData = {
         code: promoRow.code,
         type: promoRow.type,
         value: promoValue,
-      }
+      };
     }
 
     const deliveryEligibilitySubtotal =
-      Math.round((serverSubtotal - serverDiscountAmount) * 100) / 100
+      Math.round((serverSubtotal - serverDiscountAmount) * 100) / 100;
     if (
       hasAnyDelivery &&
       deliverySettings &&
-      !isDeliveryOrderAmountEligible(deliveryEligibilitySubtotal, deliverySettings)
+      !isDeliveryOrderAmountEligible(
+        deliveryEligibilitySubtotal,
+        deliverySettings,
+      )
     ) {
       return {
         error: 'errors.deliveryMinimumOrderAmountNotMet',
         errorParams: {
-          amount: (deliverySettings.minimumOrderAmountForDelivery ?? 0).toFixed(2),
+          amount: (deliverySettings.minimumOrderAmountForDelivery ?? 0).toFixed(
+            2,
+          ),
         },
-      }
+      };
     }
 
     // Use server-calculated values for all monetary operations
-    const finalSubtotal = serverSubtotal + tulipInsuranceAmount
-    const finalDiscount = serverDiscountAmount
-    const finalDeposit = serverTotalDeposit
-    const finalDeliveryFee = deliveryFee
+    const finalSubtotal = serverSubtotal + tulipInsuranceAmount;
+    const finalDiscount = serverDiscountAmount;
+    const finalDeposit = serverTotalDeposit;
+    const finalDeliveryFee = deliveryFee;
     // totalAmount excludes deposit — deposit is tracked separately in depositAmount
-    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee
+    const finalTotal = finalSubtotal - finalDiscount + finalDeliveryFee;
 
-    const startDates = input.items.map((item) => new Date(item.startDate))
-    const endDates = input.items.map((item) => new Date(item.endDate))
-    const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())))
-    const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())))
+    const startDates = input.items.map((item) => new Date(item.startDate));
+    const endDates = input.items.map((item) => new Date(item.endDate));
+    const startDate = new Date(Math.min(...startDates.map((d) => d.getTime())));
+    const endDate = new Date(Math.max(...endDates.map((d) => d.getTime())));
 
     // Get tax settings from store
-    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined
-    const taxEnabled = storeTaxSettings?.enabled ?? false
-    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0
-    const displayMode = storeTaxSettings?.displayMode ?? 'inclusive'
+    const storeTaxSettings = store.settings?.tax as TaxSettings | undefined;
+    const taxEnabled = storeTaxSettings?.enabled ?? false;
+    const storeTaxRate = storeTaxSettings?.defaultRate ?? 0;
+    const displayMode = storeTaxSettings?.displayMode ?? 'inclusive';
 
-    const pendingBlocksAvailability = store.settings?.pendingBlocksAvailability ?? true
-    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0
+    const pendingBlocksAvailability =
+      store.settings?.pendingBlocksAvailability ?? true;
+    const turnoverBufferMinutes = store.settings?.turnoverBufferMinutes ?? 0;
     const bufferedQueryStart = new Date(
-      rentalStartDate.getTime() - Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-    )
+      rentalStartDate.getTime() -
+        Math.max(0, turnoverBufferMinutes) * 60 * 1000,
+    );
     const bufferedQueryEnd = new Date(
       rentalEndDate.getTime() + Math.max(0, turnoverBufferMinutes) * 60 * 1000,
-    )
+    );
     const blockingStatuses: ('pending' | 'confirmed' | 'ongoing')[] =
       pendingBlocksAvailability
         ? ['pending', 'confirmed', 'ongoing']
-        : ['confirmed', 'ongoing']
+        : ['confirmed', 'ongoing'];
 
     const reservationWriteResult = await db.transaction(async (tx) => {
-      const requestedProductIds = [...new Set(input.items.map((item) => item.productId))]
+      const requestedProductIds = [
+        ...new Set(input.items.map((item) => item.productId)),
+      ];
 
       // Serialize competing checkout writes for the same products.
       if (requestedProductIds.length > 0) {
         const requestedProductIdSql = sql.join(
           requestedProductIds.map((productId) => sql`${productId}`),
           sql`, `,
-        )
+        );
         await tx.execute(
           sql`SELECT id FROM ${products} WHERE id IN (${requestedProductIdSql}) FOR UPDATE`,
-        )
+        );
       }
 
       // Recompute overlap and availability inside the transaction after row locks are acquired.
@@ -1043,7 +1164,7 @@ export async function createReservation(input: CreateReservationInput) {
         with: {
           items: true,
         },
-      })
+      });
 
       const { reservedByProduct, reservedByProductCombination } =
         calculatePeakReservedQuantities({
@@ -1051,86 +1172,93 @@ export async function createReservation(input: CreateReservationInput) {
           startDate: rentalStartDate,
           endDate: rentalEndDate,
           turnoverBufferMinutes,
-        })
+        });
 
       const trackedProductIds = [...productsForReservation.values()]
         .filter((product) => product.trackUnits)
-        .map((product) => product.id)
+        .map((product) => product.id);
 
-      const availableUnits = trackedProductIds.length > 0
-        ? await tx
-            .select({
-              productId: productUnits.productId,
-              combinationKey: productUnits.combinationKey,
-              attributes: productUnits.attributes,
-            })
-            .from(productUnits)
-            .where(
-              and(
-                inArray(productUnits.productId, trackedProductIds),
-                eq(productUnits.status, 'available'),
-              ),
-            )
-        : []
+      const availableUnits =
+        trackedProductIds.length > 0
+          ? await tx
+              .select({
+                productId: productUnits.productId,
+                combinationKey: productUnits.combinationKey,
+                attributes: productUnits.attributes,
+              })
+              .from(productUnits)
+              .where(
+                and(
+                  inArray(productUnits.productId, trackedProductIds),
+                  eq(productUnits.status, 'available'),
+                ),
+              )
+          : [];
 
       const combinationsByProduct = new Map<
         string,
-        Map<string, { totalQuantity: number; selectedAttributes: UnitAttributes }>
-      >()
+        Map<
+          string,
+          { totalQuantity: number; selectedAttributes: UnitAttributes }
+        >
+      >();
 
       for (const unit of availableUnits) {
-        const productCombinations = combinationsByProduct.get(unit.productId) || new Map()
-        const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY
-        const current = productCombinations.get(combinationKey)
+        const productCombinations =
+          combinationsByProduct.get(unit.productId) || new Map();
+        const combinationKey = unit.combinationKey || DEFAULT_COMBINATION_KEY;
+        const current = productCombinations.get(combinationKey);
 
         if (!current) {
           productCombinations.set(combinationKey, {
             totalQuantity: 1,
-            selectedAttributes: (unit.attributes as UnitAttributes | null) || {},
-          })
+            selectedAttributes:
+              (unit.attributes as UnitAttributes | null) || {},
+          });
         } else {
-          current.totalQuantity += 1
+          current.totalQuantity += 1;
           if (
             Object.keys(current.selectedAttributes).length === 0 &&
             unit.attributes
           ) {
-            current.selectedAttributes = unit.attributes as UnitAttributes
+            current.selectedAttributes = unit.attributes as UnitAttributes;
           }
-          productCombinations.set(combinationKey, current)
+          productCombinations.set(combinationKey, current);
         }
 
-        combinationsByProduct.set(unit.productId, productCombinations)
+        combinationsByProduct.set(unit.productId, productCombinations);
       }
 
       const resolvedCombinationByItemKey = new Map<
         string,
         { combinationKey: string; selectedAttributes: UnitAttributes }
-      >()
+      >();
 
       for (let i = 0; i < input.items.length; i++) {
-        const item = input.items[i]
-        const product = productsForReservation.get(item.productId)
-        if (!product) continue
+        const item = input.items[i];
+        const product = productsForReservation.get(item.productId);
+        if (!product) continue;
 
         if (!product.trackUnits) {
-          const reserved = reservedByProduct.get(item.productId) || 0
-          const available = Math.max(0, product.quantity - reserved)
+          const reserved = reservedByProduct.get(item.productId) || 0;
+          const available = Math.max(0, product.quantity - reserved);
 
           if (item.quantity > available) {
             return {
               ok: false as const,
               error: 'errors.productNoLongerAvailable' as const,
               productName: item.productSnapshot.name,
-            }
+            };
           }
 
-          reservedByProduct.set(item.productId, reserved + item.quantity)
-          continue
+          reservedByProduct.set(item.productId, reserved + item.quantity);
+          continue;
         }
 
-        const axes = product.bookingAttributeAxes || []
-        const productCombinations = combinationsByProduct.get(product.id) || new Map()
-        const selectedAttributes = item.selectedAttributes || {}
+        const axes = product.bookingAttributeAxes || [];
+        const productCombinations =
+          combinationsByProduct.get(product.id) || new Map();
+        const selectedAttributes = item.selectedAttributes || {};
 
         const candidates = [...productCombinations.entries()]
           .map(([combinationKey, combinationData]) => ({
@@ -1138,41 +1266,62 @@ export async function createReservation(input: CreateReservationInput) {
             ...combinationData,
           }))
           .filter((combination) =>
-            matchesSelectedAttributes(selectedAttributes, combination.selectedAttributes),
+            matchesSelectedAttributes(
+              selectedAttributes,
+              combination.selectedAttributes,
+            ),
           )
           .sort((a, b) => {
-            const sortA = getDeterministicCombinationSortValue(axes, a.selectedAttributes)
-            const sortB = getDeterministicCombinationSortValue(axes, b.selectedAttributes)
-            return sortA.localeCompare(sortB, 'en')
-          })
+            const sortA = getDeterministicCombinationSortValue(
+              axes,
+              a.selectedAttributes,
+            );
+            const sortB = getDeterministicCombinationSortValue(
+              axes,
+              b.selectedAttributes,
+            );
+            return sortA.localeCompare(sortB, 'en');
+          });
 
         const resolvedCombination = candidates.find((candidate) => {
-          const key = getProductCombinationAvailabilityKey(product.id, candidate.combinationKey)
-          const reserved = reservedByProductCombination.get(key) || 0
-          const available = Math.max(0, candidate.totalQuantity - reserved)
-          return available >= item.quantity
-        })
+          const key = getProductCombinationAvailabilityKey(
+            product.id,
+            candidate.combinationKey,
+          );
+          const reserved = reservedByProductCombination.get(key) || 0;
+          const available = Math.max(0, candidate.totalQuantity - reserved);
+          return available >= item.quantity;
+        });
 
         if (!resolvedCombination) {
           return {
             ok: false as const,
             error: 'errors.productNoLongerAvailable' as const,
             productName: item.productSnapshot.name,
-          }
+          };
         }
 
-        const key = getProductCombinationAvailabilityKey(product.id, resolvedCombination.combinationKey)
-        const reserved = reservedByProductCombination.get(key) || 0
-        reservedByProductCombination.set(key, reserved + item.quantity)
-        reservedByProduct.set(item.productId, (reservedByProduct.get(item.productId) || 0) + item.quantity)
+        const key = getProductCombinationAvailabilityKey(
+          product.id,
+          resolvedCombination.combinationKey,
+        );
+        const reserved = reservedByProductCombination.get(key) || 0;
+        reservedByProductCombination.set(key, reserved + item.quantity);
+        reservedByProduct.set(
+          item.productId,
+          (reservedByProduct.get(item.productId) || 0) + item.quantity,
+        );
 
-        resolvedCombinationByItemKey.set(getReservationItemResolutionKey(item, i), {
-          combinationKey: resolvedCombination.combinationKey,
-          selectedAttributes: toResolvedAttributes(
-            selectedAttributes,
-            resolvedCombination.selectedAttributes,
-          ),
-        })
+        resolvedCombinationByItemKey.set(
+          getReservationItemResolutionKey(item, i),
+          {
+            combinationKey: resolvedCombination.combinationKey,
+            selectedAttributes: toResolvedAttributes(
+              selectedAttributes,
+              resolvedCombination.selectedAttributes,
+            ),
+          },
+        );
       }
 
       let customer = await tx.query.customers.findFirst({
@@ -1180,7 +1329,7 @@ export async function createReservation(input: CreateReservationInput) {
           eq(customers.storeId, input.storeId),
           eq(customers.email, input.customer.email),
         ),
-      })
+      });
 
       if (!customer) {
         const [newCustomer] = await tx
@@ -1198,11 +1347,11 @@ export async function createReservation(input: CreateReservationInput) {
             postalCode: input.customer.postalCode || null,
             country: store.settings?.country || 'FR',
           })
-          .$returningId()
+          .$returningId();
 
         customer = await tx.query.customers.findFirst({
           where: eq(customers.id, newCustomer.id),
-        })
+        });
       } else {
         await tx
           .update(customers)
@@ -1217,33 +1366,38 @@ export async function createReservation(input: CreateReservationInput) {
             postalCode: input.customer.postalCode || customer.postalCode,
             updatedAt: new Date(),
           })
-          .where(eq(customers.id, customer.id))
+          .where(eq(customers.id, customer.id));
       }
 
       if (!customer) {
         return {
           ok: false as const,
           error: 'errors.createCustomerError' as const,
-        }
+        };
       }
 
-      let subtotalExclTax: number | null = null
-      let taxAmount: number | null = null
-      let taxRate: number | null = null
+      let subtotalExclTax: number | null = null;
+      let taxAmount: number | null = null;
+      let taxRate: number | null = null;
 
       if (taxEnabled && storeTaxRate > 0) {
-        taxRate = storeTaxRate
+        taxRate = storeTaxRate;
         if (displayMode === 'inclusive') {
-          subtotalExclTax = extractExclusiveFromInclusive(finalSubtotal, storeTaxRate)
-          taxAmount = finalSubtotal - subtotalExclTax
+          subtotalExclTax = extractExclusiveFromInclusive(
+            finalSubtotal,
+            storeTaxRate,
+          );
+          taxAmount = finalSubtotal - subtotalExclTax;
         } else {
-          subtotalExclTax = finalSubtotal
-          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate)
+          subtotalExclTax = finalSubtotal;
+          taxAmount = calculateTaxFromExclusive(finalSubtotal, storeTaxRate);
         }
       }
 
-      const reservationId = nanoid()
-      const reservationNumber = await generateUniqueReservationNumber(input.storeId)
+      const reservationId = nanoid();
+      const reservationNumber = await generateUniqueReservationNumber(
+        input.storeId,
+      );
 
       await tx.insert(reservations).values({
         id: reservationId,
@@ -1268,8 +1422,12 @@ export async function createReservation(input: CreateReservationInput) {
         deliveryCity: hasOutboundDelivery ? outboundLeg.city : null,
         deliveryPostalCode: hasOutboundDelivery ? outboundLeg.postalCode : null,
         deliveryCountry: hasOutboundDelivery ? outboundLeg.country : null,
-        deliveryLatitude: hasOutboundDelivery ? outboundLeg.latitude?.toString() : null,
-        deliveryLongitude: hasOutboundDelivery ? outboundLeg.longitude?.toString() : null,
+        deliveryLatitude: hasOutboundDelivery
+          ? outboundLeg.latitude?.toString()
+          : null,
+        deliveryLongitude: hasOutboundDelivery
+          ? outboundLeg.longitude?.toString()
+          : null,
         deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
         deliveryFee: finalDeliveryFee.toFixed(2),
         tulipInsuranceOptIn,
@@ -1278,58 +1436,88 @@ export async function createReservation(input: CreateReservationInput) {
         promoCodeId: validatedPromoCodeId,
         discountAmount: finalDiscount.toFixed(2),
         promoCodeSnapshot: promoCodeSnapshotData,
-        returnAddress: hasReturnDelivery ? returnLeg.address ?? null : null,
-        returnCity: hasReturnDelivery ? returnLeg.city ?? null : null,
-        returnPostalCode: hasReturnDelivery ? returnLeg.postalCode ?? null : null,
-        returnCountry: hasReturnDelivery ? returnLeg.country ?? null : null,
-        returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
-        returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
+        returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
+        returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
+        returnPostalCode: hasReturnDelivery
+          ? (returnLeg.postalCode ?? null)
+          : null,
+        returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
+        returnLatitude:
+          hasReturnDelivery && returnLeg.latitude != null
+            ? returnLeg.latitude.toString()
+            : null,
+        returnLongitude:
+          hasReturnDelivery && returnLeg.longitude != null
+            ? returnLeg.longitude.toString()
+            : null,
         returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
         pickupLocationId: pickupLocation?.locationId ?? null,
         returnLocationId: returnLocation?.locationId ?? null,
         pickupLocationSnapshot: pickupLocation?.snapshot ?? null,
         returnLocationSnapshot: returnLocation?.snapshot ?? null,
-      })
+      });
 
       for (let i = 0; i < input.items.length; i++) {
-        const item = input.items[i]
-        const serverItem = serverCalculatedItems[i]
-        const totalPrice = serverItem.subtotal
+        const item = input.items[i];
+        const serverItem = serverCalculatedItems[i];
+        const totalPrice = serverItem.subtotal;
 
-        const productInfo = productsForReservation.get(item.productId)
-        const productTaxSettings = productInfo?.taxSettings as ProductTaxSettings | undefined
+        const productInfo = productsForReservation.get(item.productId);
+        const productTaxSettings = productInfo?.taxSettings as
+          | ProductTaxSettings
+          | undefined;
         const resolvedCombination = resolvedCombinationByItemKey.get(
           getReservationItemResolutionKey(item, i),
-        )
-        const combinationKey = resolvedCombination?.combinationKey || item.resolvedCombinationKey || null
-        const selectedAttributes = resolvedCombination?.selectedAttributes || item.resolvedAttributes || item.selectedAttributes || null
+        );
+        const combinationKey =
+          resolvedCombination?.combinationKey ||
+          item.resolvedCombinationKey ||
+          null;
+        const selectedAttributes =
+          resolvedCombination?.selectedAttributes ||
+          item.resolvedAttributes ||
+          item.selectedAttributes ||
+          null;
         const snapshot: ProductSnapshot = {
           ...item.productSnapshot,
-          combinationKey: combinationKey || item.productSnapshot.combinationKey || null,
-          selectedAttributes: selectedAttributes || item.productSnapshot.selectedAttributes || null,
-        }
+          combinationKey:
+            combinationKey || item.productSnapshot.combinationKey || null,
+          selectedAttributes:
+            selectedAttributes ||
+            item.productSnapshot.selectedAttributes ||
+            null,
+        };
 
-        let itemTaxRate: number | null = null
-        let itemTaxAmount: number | null = null
-        let itemPriceExclTax: number | null = null
-        let itemTotalExclTax: number | null = null
+        let itemTaxRate: number | null = null;
+        let itemTaxAmount: number | null = null;
+        let itemPriceExclTax: number | null = null;
+        let itemTotalExclTax: number | null = null;
 
         if (taxEnabled) {
           const effectiveRate = getEffectiveTaxRate(
             { enabled: true, rate: storeTaxRate, displayMode },
             productTaxSettings,
-          )
+          );
 
           if (effectiveRate !== null && effectiveRate > 0) {
-            itemTaxRate = effectiveRate
+            itemTaxRate = effectiveRate;
             if (displayMode === 'inclusive') {
-              itemPriceExclTax = extractExclusiveFromInclusive(serverItem.unitPrice, effectiveRate)
-              itemTotalExclTax = extractExclusiveFromInclusive(totalPrice, effectiveRate)
-              itemTaxAmount = totalPrice - itemTotalExclTax
+              itemPriceExclTax = extractExclusiveFromInclusive(
+                serverItem.unitPrice,
+                effectiveRate,
+              );
+              itemTotalExclTax = extractExclusiveFromInclusive(
+                totalPrice,
+                effectiveRate,
+              );
+              itemTaxAmount = totalPrice - itemTotalExclTax;
             } else {
-              itemPriceExclTax = serverItem.unitPrice
-              itemTotalExclTax = totalPrice
-              itemTaxAmount = calculateTaxFromExclusive(totalPrice, effectiveRate)
+              itemPriceExclTax = serverItem.unitPrice;
+              itemTotalExclTax = totalPrice;
+              itemTaxAmount = calculateTaxFromExclusive(
+                totalPrice,
+                effectiveRate,
+              );
             }
           }
         }
@@ -1348,7 +1536,7 @@ export async function createReservation(input: CreateReservationInput) {
           taxAmount: itemTaxAmount?.toFixed(2) ?? null,
           priceExclTax: itemPriceExclTax?.toFixed(2) ?? null,
           totalExclTax: itemTotalExclTax?.toFixed(2) ?? null,
-        })
+        });
       }
 
       if (tulipInsuranceAmount > 0) {
@@ -1365,7 +1553,7 @@ export async function createReservation(input: CreateReservationInput) {
             description: 'Garantie casse/vol',
             images: [],
           },
-        })
+        });
       }
 
       await tx.insert(reservationActivity).values({
@@ -1387,7 +1575,7 @@ export async function createReservation(input: CreateReservationInput) {
           }),
         },
         createdAt: new Date(),
-      })
+      });
 
       return {
         ok: true as const,
@@ -1398,18 +1586,18 @@ export async function createReservation(input: CreateReservationInput) {
         taxRate,
         subtotalExclTax,
         taxAmount,
-      }
-    })
+      };
+    });
 
     if (!reservationWriteResult.ok) {
       if (reservationWriteResult.error === 'errors.productNoLongerAvailable') {
         return {
           error: reservationWriteResult.error,
           errorParams: { name: reservationWriteResult.productName || '' },
-        }
+        };
       }
 
-      return { error: reservationWriteResult.error }
+      return { error: reservationWriteResult.error };
     }
 
     const {
@@ -1420,19 +1608,23 @@ export async function createReservation(input: CreateReservationInput) {
       taxRate,
       subtotalExclTax,
       taxAmount,
-    } = reservationWriteResult
+    } = reservationWriteResult;
+
+    await queueReservationCalendarSync(input.storeId, reservationId);
 
     // Get store owner for fallback email
     const ownerMember = await db
       .select({ email: users.email })
       .from(storeMembers)
       .innerJoin(users, eq(storeMembers.userId, users.id))
-      .where(and(
-        eq(storeMembers.storeId, input.storeId),
-        eq(storeMembers.role, 'owner')
-      ))
+      .where(
+        and(
+          eq(storeMembers.storeId, input.storeId),
+          eq(storeMembers.role, 'owner'),
+        ),
+      )
       .limit(1)
-      .then(res => res[0])
+      .then((res) => res[0]);
 
     // Send confirmation emails (non-blocking)
     if (store) {
@@ -1445,7 +1637,7 @@ export async function createReservation(input: CreateReservationInput) {
         phone: store.phone,
         address: store.address,
         theme: store.theme,
-      }
+      };
 
       const customerData = {
         firstName: input.customer.firstName,
@@ -1453,7 +1645,7 @@ export async function createReservation(input: CreateReservationInput) {
         email: input.customer.email,
         customerType: input.customer.customerType || 'individual',
         companyName: input.customer.companyName || null,
-      }
+      };
 
       // Use SERVER-CALCULATED amounts for all notifications
       const reservationData = {
@@ -1467,7 +1659,7 @@ export async function createReservation(input: CreateReservationInput) {
         taxRate,
         subtotalExclTax,
         taxAmount,
-      }
+      };
 
       // Dispatch customer notification (email/SMS based on store preferences)
       dispatchCustomerNotification('customer_request_received', {
@@ -1505,13 +1697,16 @@ export async function createReservation(input: CreateReservationInput) {
           taxAmount,
         },
       }).catch((error: unknown) => {
-        console.error('Failed to dispatch customer request received notification:', error)
-      })
+        console.error(
+          'Failed to dispatch customer request received notification:',
+          error,
+        );
+      });
 
       // Send email to landlord (new request notification) - always in French for landlord
-      const landlordEmail = store.email || ownerMember?.email
+      const landlordEmail = store.email || ownerMember?.email;
       if (landlordEmail) {
-        const dashboardUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservationId}`
+        const dashboardUrl = `${env.NEXT_PUBLIC_APP_URL}/dashboard/reservations/${reservationId}`;
         sendNewRequestLandlordEmail({
           to: landlordEmail,
           store: storeData,
@@ -1520,8 +1715,8 @@ export async function createReservation(input: CreateReservationInput) {
           dashboardUrl,
           locale: getLocaleFromCountry(store.settings?.country),
         }).catch((error) => {
-          console.error('Failed to send new request landlord email:', error)
-        })
+          console.error('Failed to send new request landlord email:', error);
+        });
       }
 
       // Dispatch admin notifications (SMS, Discord) for new reservation
@@ -1549,8 +1744,11 @@ export async function createReservation(input: CreateReservationInput) {
           phone: input.customer.phone,
         },
       }).catch((error) => {
-        console.error('Failed to dispatch new reservation notification:', error)
-      })
+        console.error(
+          'Failed to dispatch new reservation notification:',
+          error,
+        );
+      });
 
       // Platform admin notification
       notifyNewReservation(
@@ -1560,77 +1758,94 @@ export async function createReservation(input: CreateReservationInput) {
           customerName: `${input.customer.firstName} ${input.customer.lastName}`,
           totalAmount: finalTotal,
           currency: store.settings?.currency,
-        }
-      ).catch(() => {})
+        },
+      ).catch(() => {});
     }
 
     // Check if we should process payment via Stripe
     const shouldProcessPayment =
       store.settings?.reservationMode === 'payment' &&
       store.stripeAccountId &&
-      store.stripeChargesEnabled
+      store.stripeChargesEnabled;
 
-    let paymentUrl: string | null = null
+    let paymentUrl: string | null = null;
 
     if (shouldProcessPayment) {
       try {
-        const currency = store.settings?.currency || 'EUR'
-        const domain = env.NEXT_PUBLIC_APP_DOMAIN
-        const protocol = domain.includes('localhost') ? 'http' : 'https'
-        const baseUrl = `${protocol}://${store.slug}.${domain}`
+        const currency = store.settings?.currency || 'EUR';
+        const domain = env.NEXT_PUBLIC_APP_DOMAIN;
+        const protocol = domain.includes('localhost') ? 'http' : 'https';
+        const baseUrl = `${protocol}://${store.slug}.${domain}`;
 
         // Get deposit percentage (default 100% = full payment)
-        const depositPercentage = store.settings?.onlinePaymentDepositPercentage ?? 100
-        const isPartialPayment = depositPercentage < 100
+        const depositPercentage =
+          store.settings?.onlinePaymentDepositPercentage ?? 100;
+        const isPartialPayment = depositPercentage < 100;
 
         // Calculate the amount to charge now (after promo discount, including delivery)
         // Round to 2 decimal places to avoid floating point issues
-        const chargeableTotal = finalSubtotal - finalDiscount + finalDeliveryFee
+        const chargeableTotal =
+          finalSubtotal - finalDiscount + finalDeliveryFee;
         const amountToCharge = isPartialPayment
           ? Math.round(chargeableTotal * depositPercentage) / 100
-          : chargeableTotal
+          : chargeableTotal;
 
         // Ensure minimum Stripe amount (50 cents for most currencies)
-        const MINIMUM_STRIPE_AMOUNT = 0.50
-        const effectiveChargeAmount = Math.max(amountToCharge, MINIMUM_STRIPE_AMOUNT)
+        const MINIMUM_STRIPE_AMOUNT = 0.5;
+        const effectiveChargeAmount = Math.max(
+          amountToCharge,
+          MINIMUM_STRIPE_AMOUNT,
+        );
         // Don't exceed the full amount (after discount)
-        const finalChargeAmount = Math.min(effectiveChargeAmount, chargeableTotal)
+        const finalChargeAmount = Math.min(
+          effectiveChargeAmount,
+          chargeableTotal,
+        );
 
         // Build line items for Stripe
         // For partial payments, create a single line item for the deposit
         // For full payments, itemize each product
         const lineItems = isPartialPayment
-          ? [{
-              name: `Acompte (${depositPercentage}%)`,
-              description: `Acompte pour la réservation ${reservationNumber}`,
-              quantity: 1,
-              unitAmount: toStripeCents(finalChargeAmount, currency),
-            }]
+          ? [
+              {
+                name: `Acompte (${depositPercentage}%)`,
+                description: `Acompte pour la réservation ${reservationNumber}`,
+                quantity: 1,
+                unitAmount: toStripeCents(finalChargeAmount, currency),
+              },
+            ]
           : [
               ...input.items.map((item, idx) => {
-                const serverItem = serverCalculatedItems[idx]
+                const serverItem = serverCalculatedItems[idx];
                 return {
                   name: item.productSnapshot.name,
                   quantity: item.quantity,
-                  unitAmount: toStripeCents(serverItem.subtotal / item.quantity, currency),
-                }
+                  unitAmount: toStripeCents(
+                    serverItem.subtotal / item.quantity,
+                    currency,
+                  ),
+                };
               }),
               ...(tulipInsuranceAmount > 0
-                ? [{
-                    name: 'Garantie casse/vol',
-                    description: `Garantie casse/vol - réservation ${reservationNumber}`,
-                    quantity: 1,
-                    unitAmount: toStripeCents(tulipInsuranceAmount, currency),
-                  }]
+                ? [
+                    {
+                      name: 'Garantie casse/vol',
+                      description: `Garantie casse/vol - réservation ${reservationNumber}`,
+                      quantity: 1,
+                      unitAmount: toStripeCents(tulipInsuranceAmount, currency),
+                    },
+                  ]
                 : []),
               ...(finalDeliveryFee > 0
-                ? [{
-                    name: 'Livraison',
-                    quantity: 1,
-                    unitAmount: toStripeCents(finalDeliveryFee, currency),
-                  }]
+                ? [
+                    {
+                      name: 'Livraison',
+                      quantity: 1,
+                      unitAmount: toStripeCents(finalDeliveryFee, currency),
+                    },
+                  ]
                 : []),
-            ]
+            ];
 
         // Create checkout session
         const { url, sessionId } = await createCheckoutSession({
@@ -1645,9 +1860,9 @@ export async function createReservation(input: CreateReservationInput) {
           successUrl: `${baseUrl}/checkout/success?reservation=${reservationId}`,
           cancelUrl: `${baseUrl}/checkout?cancelled=true`,
           locale: input.locale,
-        })
+        });
 
-        paymentUrl = url
+        paymentUrl = url;
 
         // Create a pending payment record with the amount being charged
         await db.insert(payments).values({
@@ -1662,7 +1877,7 @@ export async function createReservation(input: CreateReservationInput) {
           notes: isPartialPayment ? `Acompte ${depositPercentage}%` : null,
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
+        });
 
         // Log payment initiated activity
         await db.insert(reservationActivity).values({
@@ -1680,9 +1895,9 @@ export async function createReservation(input: CreateReservationInput) {
             method: 'stripe',
           },
           createdAt: new Date(),
-        })
+        });
       } catch (error) {
-        console.error('Failed to create Stripe checkout session:', error)
+        console.error('Failed to create Stripe checkout session:', error);
         // Don't fail the reservation, store owner can send payment link manually
       }
     }
@@ -1692,9 +1907,9 @@ export async function createReservation(input: CreateReservationInput) {
       reservationId,
       reservationNumber,
       paymentUrl,
-    }
+    };
   } catch (error) {
-    console.error('Error creating reservation:', error)
-    return { error: 'errors.createReservationError' }
+    console.error('Error creating reservation:', error);
+    return { error: 'errors.createReservationError' };
   }
 }

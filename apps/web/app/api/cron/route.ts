@@ -1,10 +1,19 @@
-import { NextResponse } from 'next/server'
-import { processReviewRequests } from '@/lib/review-booster/automation'
-import { processReminders } from '@/lib/reminders/automation'
-import { refreshAllStoresCache, cleanExpiredCache } from '@/lib/google-places/cache'
-import { aggregateDailyAnalytics, cleanupOldAnalyticsData } from '@/lib/analytics/aggregation'
-import { env } from '@/env'
-import { createError, useLogger, withEvlog } from '@/lib/evlog'
+import { NextResponse } from 'next/server';
+
+import {
+  aggregateDailyAnalytics,
+  cleanupOldAnalyticsData,
+} from '@/lib/analytics/aggregation';
+import { createError, useLogger, withEvlog } from '@/lib/evlog';
+import {
+  cleanExpiredCache,
+  refreshAllStoresCache,
+} from '@/lib/google-places/cache';
+import { processCalendarSyncQueue } from '@/lib/integrations/calendar/sync';
+import { processReminders } from '@/lib/reminders/automation';
+import { processReviewRequests } from '@/lib/review-booster/automation';
+
+import { env } from '@/env';
 
 /**
  * Unified cron endpoint - called every minute
@@ -12,6 +21,7 @@ import { createError, useLogger, withEvlog } from '@/lib/evlog'
  * Tasks and their frequencies:
  * - Review requests: every minute (checks for eligible reservations)
  * - Automatic reminders: every minute (checks for upcoming pickups/returns)
+ * - Calendar sync: every minute (pushes reservation updates to calendar providers)
  * - Analytics aggregation: daily at 2:00 AM UTC (aggregates yesterday's data)
  * - Google Places cache refresh: every 5 days (day 1, 6, 11, 16, 21, 26 at 3:00 AM UTC)
  * - Analytics cleanup: daily at 3:30 AM UTC (removes raw data older than 90 days)
@@ -25,24 +35,24 @@ import { createError, useLogger, withEvlog } from '@/lib/evlog'
  * - GOOGLE_PLACES_CACHE_TTL_HOURS: Cache TTL in hours (default: 120 = 5 days)
  */
 async function handleCron(request: Request) {
-  const logger = useLogger()
+  const logger = useLogger();
 
   // Verify cron secret - required
-  const authHeader = request.headers.get('authorization')
+  const authHeader = request.headers.get('authorization');
 
   if (authHeader !== `Bearer ${env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const now = new Date()
-  const minute = now.getMinutes()
-  const hour = now.getHours()
-  const day = now.getDate()
+  const now = new Date();
+  const minute = now.getMinutes();
+  const hour = now.getHours();
+  const day = now.getDate();
 
-  const tasks: string[] = []
+  const tasks: string[] = [];
   const results: Record<string, unknown> = {
     timestamp: now.toISOString(),
-  }
+  };
 
   logger.set({
     cron: {
@@ -50,41 +60,45 @@ async function handleCron(request: Request) {
       hour,
       day,
     },
-  })
+  });
 
   try {
     // Review requests: every minute
-    tasks.push('review-requests')
-    results.reviewRequests = await processReviewRequests()
+    tasks.push('review-requests');
+    results.reviewRequests = await processReviewRequests();
 
     // Automatic reminders: every minute
-    tasks.push('reminders')
-    results.reminders = await processReminders()
+    tasks.push('reminders');
+    results.reminders = await processReminders();
+
+    // Calendar sync: every minute
+    tasks.push('calendar-sync');
+    results.calendarSync = await processCalendarSyncQueue();
 
     // Analytics aggregation: daily at 2:00 AM
     if (hour === 2 && minute === 0) {
-      tasks.push('analytics-aggregation')
-      results.analyticsAggregation = await aggregateDailyAnalytics()
+      tasks.push('analytics-aggregation');
+      results.analyticsAggregation = await aggregateDailyAnalytics();
     }
 
     // Google Places cache refresh: every 5 days at 3:00 AM
     // Days 1, 6, 11, 16, 21, 26 of each month
     if (hour === 3 && minute === 0 && [1, 6, 11, 16, 21, 26].includes(day)) {
-      tasks.push('google-places-refresh')
-      results.googlePlacesRefresh = await refreshAllStoresCache()
+      tasks.push('google-places-refresh');
+      results.googlePlacesRefresh = await refreshAllStoresCache();
     }
 
     // Analytics cleanup: daily at 3:30 AM (removes raw data older than 90 days)
     if (hour === 3 && minute === 30) {
-      tasks.push('analytics-cleanup')
-      results.analyticsCleanup = await cleanupOldAnalyticsData()
+      tasks.push('analytics-cleanup');
+      results.analyticsCleanup = await cleanupOldAnalyticsData();
     }
 
     // Cache cleanup: daily at 4:00 AM
     if (hour === 4 && minute === 0) {
-      tasks.push('cache-cleanup')
-      const cleaned = await cleanExpiredCache()
-      results.cacheCleanup = { cleaned }
+      tasks.push('cache-cleanup');
+      const cleaned = await cleanExpiredCache();
+      results.cacheCleanup = { cleaned };
     }
 
     logger.set({
@@ -92,24 +106,24 @@ async function handleCron(request: Request) {
         tasks,
         success: true,
       },
-    })
+    });
 
     return NextResponse.json({
       success: true,
       tasks,
       ...results,
-    })
+    });
   } catch (error) {
     const cronError =
-      error instanceof Error ? error : new Error('Unknown cron error')
+      error instanceof Error ? error : new Error('Unknown cron error');
 
-    logger.error(cronError, { tasks })
+    logger.error(cronError, { tasks });
     logger.set({
       cron: {
         tasks,
         success: false,
       },
-    })
+    });
 
     throw createError({
       status: 500,
@@ -120,9 +134,9 @@ async function handleCron(request: Request) {
         tasks,
         results,
       },
-    })
+    });
   }
 }
 
-export const GET = withEvlog(handleCron)
-export const dynamic = 'force-dynamic'
+export const GET = withEvlog(handleCron);
+export const dynamic = 'force-dynamic';

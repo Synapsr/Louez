@@ -101,13 +101,22 @@ export const env = createEnv({
       .url('TULIP_CALENDLY_URL must be a valid URL')
       .optional(),
 
+    // ===== Integrations (Optional until a provider is configured) =====
+    INTEGRATION_ENCRYPTION_KEY: z
+      .string()
+      .regex(
+        /^[A-Za-z0-9_-]{43}=$|^[A-Za-z0-9_-]{43}$/,
+        'INTEGRATION_ENCRYPTION_KEY must be a base64url-encoded 32-byte key',
+      )
+      .optional(),
+    GOOGLE_CALENDAR_CLIENT_ID: z.string().optional(),
+    GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional(),
+
     // ===== Cron Jobs (Required) =====
     CRON_SECRET: z.string().min(1, 'CRON_SECRET is required'),
 
     // ===== AI Chat Assistant (Optional) =====
-    AI_PROVIDER: z
-      .enum(['anthropic', 'openai', 'google'])
-      .optional(),
+    AI_PROVIDER: z.enum(['anthropic', 'openai', 'google']).optional(),
     AI_MODEL: z.string().optional(),
     AI_API_KEY: z.string().optional(),
 
@@ -200,6 +209,9 @@ export const env = createEnv({
     TULIP_API_BASE_URL: process.env.TULIP_API_BASE_URL,
     TULIP_API_KEY: process.env.TULIP_API_KEY,
     TULIP_CALENDLY_URL: process.env.TULIP_CALENDLY_URL,
+    INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
+    GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+    GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
     CRON_SECRET: process.env.CRON_SECRET,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_MODEL: process.env.AI_MODEL,
@@ -229,7 +241,8 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_OPENREPLAY_INGEST_POINT,
     NEXT_PUBLIC_FROMHELLO_API_URL: process.env.NEXT_PUBLIC_FROMHELLO_API_URL,
     NEXT_PUBLIC_FROMHELLO_KEY: process.env.NEXT_PUBLIC_FROMHELLO_KEY,
-    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN: process.env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
+    NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN:
+      process.env.NEXT_PUBLIC_FROMHELLO_COOKIE_DOMAIN,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,

@@ -1,242 +1,257 @@
-import { ORPCError } from '@orpc/server'
+import { ORPCError } from '@orpc/server';
+
 import {
-  dashboardIntegrationsCreateTulipProductInputSchema,
   dashboardIntegrationsConnectTulipInputSchema,
-  dashboardIntegrationsGetDetailInputSchema,
+  dashboardIntegrationsCreateTulipProductInputSchema,
+  dashboardIntegrationsDisconnectGoogleCalendarInputSchema,
   dashboardIntegrationsDisconnectTulipInputSchema,
+  dashboardIntegrationsGetCalendarStateInputSchema,
+  dashboardIntegrationsGetDetailInputSchema,
   dashboardIntegrationsGetTulipProductStateInputSchema,
   dashboardIntegrationsGetTulipStateInputSchema,
   dashboardIntegrationsListCatalogInputSchema,
   dashboardIntegrationsListCategoryInputSchema,
   dashboardIntegrationsPushTulipProductUpdateInputSchema,
+  dashboardIntegrationsResyncGoogleCalendarInputSchema,
   dashboardIntegrationsSetEnabledInputSchema,
+  dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema,
   dashboardIntegrationsUpdateTulipConfigurationInputSchema,
   dashboardIntegrationsUpsertTulipProductMappingInputSchema,
-} from '@louez/validations'
+} from '@louez/validations';
 
-import { dashboardProcedure, requirePermission } from '../../procedures'
-import { toORPCError } from '../../utils/orpc-error'
+import { dashboardProcedure, requirePermission } from '../../procedures';
+import { toORPCError } from '../../utils/orpc-error';
 
 const listCatalog = dashboardProcedure
   .input(dashboardIntegrationsListCatalogInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.listIntegrationsCatalog
+      const fn = context.dashboardIntegrationActions?.listIntegrationsCatalog;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.listIntegrationsCatalog not provided',
-        })
+          message:
+            'dashboardIntegrationActions.listIntegrationsCatalog not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return result
+      return result;
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const listCategory = dashboardProcedure
   .input(dashboardIntegrationsListCategoryInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.listIntegrationsCategory
+      const fn = context.dashboardIntegrationActions?.listIntegrationsCategory;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.listIntegrationsCategory not provided',
-        })
+          message:
+            'dashboardIntegrationActions.listIntegrationsCategory not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return result
+      return result;
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const getDetail = dashboardProcedure
   .input(dashboardIntegrationsGetDetailInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.getIntegrationDetail
+      const fn = context.dashboardIntegrationActions?.getIntegrationDetail;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.getIntegrationDetail not provided',
-        })
+          message:
+            'dashboardIntegrationActions.getIntegrationDetail not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return result
+      return result;
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const setEnabled = requirePermission('write')
   .input(dashboardIntegrationsSetEnabledInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.setIntegrationEnabled
+      const fn = context.dashboardIntegrationActions?.setIntegrationEnabled;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.setIntegrationEnabled not provided',
-        })
+          message:
+            'dashboardIntegrationActions.setIntegrationEnabled not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const getTulipState = dashboardProcedure
   .input(dashboardIntegrationsGetTulipStateInputSchema)
   .handler(async ({ context }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.getTulipIntegrationState
+      const fn = context.dashboardIntegrationActions?.getTulipIntegrationState;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.getTulipIntegrationState not provided',
-        })
+          message:
+            'dashboardIntegrationActions.getTulipIntegrationState not provided',
+        });
       }
 
-      const result = await fn()
+      const result = await fn();
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return result
+      return result;
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const getTulipProductState = dashboardProcedure
   .input(dashboardIntegrationsGetTulipProductStateInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.getTulipProductState
+      const fn = context.dashboardIntegrationActions?.getTulipProductState;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.getTulipProductState not provided',
-        })
+          message:
+            'dashboardIntegrationActions.getTulipProductState not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if ('error' in result && result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return result
+      return result;
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const connectTulip = requirePermission('write')
   .input(dashboardIntegrationsConnectTulipInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.connectTulipApiKey
+      const fn = context.dashboardIntegrationActions?.connectTulipApiKey;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.connectTulipApiKey not provided',
-        })
+          message:
+            'dashboardIntegrationActions.connectTulipApiKey not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const updateTulipConfiguration = requirePermission('write')
   .input(dashboardIntegrationsUpdateTulipConfigurationInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.updateTulipConfiguration
+      const fn = context.dashboardIntegrationActions?.updateTulipConfiguration;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.updateTulipConfiguration not provided',
-        })
+          message:
+            'dashboardIntegrationActions.updateTulipConfiguration not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const upsertTulipProductMapping = requirePermission('write')
   .input(dashboardIntegrationsUpsertTulipProductMappingInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.upsertTulipProductMapping
+      const fn = context.dashboardIntegrationActions?.upsertTulipProductMapping;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.upsertTulipProductMapping not provided',
-        })
+          message:
+            'dashboardIntegrationActions.upsertTulipProductMapping not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const pushTulipProductUpdate = requirePermission('write')
   .input(dashboardIntegrationsPushTulipProductUpdateInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.pushTulipProductUpdate
+      const fn = context.dashboardIntegrationActions?.pushTulipProductUpdate;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.pushTulipProductUpdate not provided',
-        })
+          message:
+            'dashboardIntegrationActions.pushTulipProductUpdate not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
         console.error(
           '[orpc][dashboard.integrations.pushTulipProductUpdate] action failed',
@@ -245,72 +260,178 @@ const pushTulipProductUpdate = requirePermission('write')
             productId: input.productId,
             error: result.error,
           },
-        )
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        );
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const createTulipProduct = requirePermission('write')
   .input(dashboardIntegrationsCreateTulipProductInputSchema)
   .handler(async ({ context, input }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.createTulipProduct
+      const fn = context.dashboardIntegrationActions?.createTulipProduct;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
-          message: 'dashboardIntegrationActions.createTulipProduct not provided',
-        })
+          message:
+            'dashboardIntegrationActions.createTulipProduct not provided',
+        });
       }
 
-      const result = await fn(input)
+      const result = await fn(input);
       if (result.error) {
-        console.error('[orpc][dashboard.integrations.createTulipProduct] action failed', {
-          storeId: context.store.id,
-          productId: input.productId,
-          error: result.error,
-        })
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        console.error(
+          '[orpc][dashboard.integrations.createTulipProduct] action failed',
+          {
+            storeId: context.store.id,
+            productId: input.productId,
+            error: result.error,
+          },
+        );
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
 
 const disconnectTulip = requirePermission('write')
   .input(dashboardIntegrationsDisconnectTulipInputSchema)
   .handler(async ({ context }) => {
     try {
-      const fn = context.dashboardIntegrationActions?.disconnectTulip
+      const fn = context.dashboardIntegrationActions?.disconnectTulip;
 
       if (!fn) {
         throw new ORPCError('INTERNAL_SERVER_ERROR', {
           message: 'dashboardIntegrationActions.disconnectTulip not provided',
-        })
+        });
       }
 
-      const result = await fn()
+      const result = await fn();
       if (result.error) {
-        throw new ORPCError('BAD_REQUEST', { message: result.error })
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
       }
 
-      return { success: true as const }
+      return { success: true as const };
     } catch (error) {
-      throw toORPCError(error)
+      throw toORPCError(error);
     }
-  })
+  });
+
+const getCalendarState = dashboardProcedure
+  .input(dashboardIntegrationsGetCalendarStateInputSchema)
+  .handler(async ({ context }) => {
+    try {
+      const fn =
+        context.dashboardIntegrationActions?.getCalendarIntegrationState;
+
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardIntegrationActions.getCalendarIntegrationState not provided',
+        });
+      }
+
+      const result = await fn();
+      if ('error' in result && result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+
+      return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const updateGoogleCalendarSettings = requirePermission('write')
+  .input(dashboardIntegrationsUpdateGoogleCalendarSettingsInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn =
+        context.dashboardIntegrationActions?.updateGoogleCalendarSettings;
+
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardIntegrationActions.updateGoogleCalendarSettings not provided',
+        });
+      }
+
+      const result = await fn(input);
+      if (result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+
+      return { success: true as const };
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const resyncGoogleCalendar = requirePermission('write')
+  .input(dashboardIntegrationsResyncGoogleCalendarInputSchema)
+  .handler(async ({ context }) => {
+    try {
+      const fn = context.dashboardIntegrationActions?.resyncGoogleCalendar;
+
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardIntegrationActions.resyncGoogleCalendar not provided',
+        });
+      }
+
+      const result = await fn();
+      if ('error' in result && result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+
+      return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const disconnectGoogleCalendar = requirePermission('write')
+  .input(dashboardIntegrationsDisconnectGoogleCalendarInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardIntegrationActions?.disconnectGoogleCalendar;
+
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardIntegrationActions.disconnectGoogleCalendar not provided',
+        });
+      }
+
+      const result = await fn(input);
+      if (result.error) {
+        throw new ORPCError('BAD_REQUEST', { message: result.error });
+      }
+
+      return { success: true as const };
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
 
 export const dashboardIntegrationsRouter = {
   listCatalog,
   listCategory,
   getDetail,
   setEnabled,
+  getCalendarState,
+  updateGoogleCalendarSettings,
+  resyncGoogleCalendar,
+  disconnectGoogleCalendar,
   getTulipState,
   getTulipProductState,
   connectTulip,
@@ -319,4 +440,4 @@ export const dashboardIntegrationsRouter = {
   upsertTulipProductMapping,
   pushTulipProductUpdate,
   createTulipProduct,
-}
+};

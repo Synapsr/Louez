@@ -1953,13 +1953,22 @@
         "noProducts": "No products to display"
       },
       "export": {
-        "button": "Export calendar",
-        "title": "Export to calendar",
-        "description": "Sync your reservations with your favorite calendar by copying the link below.",
+        "button": "Sync calendar",
+        "title": "Sync calendar",
+        "description": "Connect a calendar integration or use the universal ICS link.",
+        "integration": {
+          "title": "Recommended calendar integration",
+          "description": "Connect Google Calendar to sync reservations automatically, with colors, private visibility, availability and retries.",
+          "button": "Configure Google Calendar"
+        },
+        "ics": {
+          "title": "Universal ICS link",
+          "description": "Compatible with Apple Calendar, Outlook and other calendars. Freshness depends on the subscribed app."
+        },
         "urlLabel": "ICS calendar link",
         "loading": "Loading...",
         "instructions": {
-          "title": "How to add this calendar?",
+          "title": "Add the ICS link manually",
           "google": {
             "step1": "Open Google Calendar",
             "step2": "Click the + next to \"Other calendars\" then \"From URL\"",
@@ -2260,12 +2269,41 @@
           "resources": "Resources"
         },
         "categories": {
+          "calendar": {
+            "name": "Calendar",
+            "description": "Synchronize reservations to external calendars."
+          },
           "insurance": {
             "name": "Insurance",
             "description": "Protect reservations and synchronize insurance contracts."
           }
         },
         "providers": {
+          "googleCalendar": {
+            "name": "Google Calendar",
+            "description": "Connect Google Calendar with OAuth to synchronize reservations into a dedicated calendar.",
+            "about": "Louez creates a dedicated Google calendar for your store, then pushes reservation creations, updates, and cancellations asynchronously.",
+            "features": {
+              "oauth": "Dedicated Google OAuth connection, separate from user sign-in.",
+              "sync": "One-way synchronization from Louez reservations to a dedicated Google calendar.",
+              "retry": "Synchronization queue with automatic retries when the provider fails."
+            },
+            "resources": {
+              "help": "Google Calendar help"
+            }
+          },
+          "icsCalendar": {
+            "name": "ICS link",
+            "description": "Publish a calendar link compatible with Apple Calendar, Outlook, and Google Calendar.",
+            "about": "The ICS link remains available as a simple universal option, but freshness depends on the subscribed calendar application.",
+            "features": {
+              "link": "Calendar subscription link generated per store.",
+              "compatibility": "Compatible with major calendars that accept ICS subscriptions."
+            },
+            "resources": {
+              "help": "iCalendar reference"
+            }
+          },
           "tulip": {
             "name": "Tulip Insurance",
             "description": "Connect Tulip to quote and generate rental insurance contracts.",
@@ -2286,6 +2324,7 @@
         "noIntegrations": "No integrations available yet.",
         "sections": {
           "byLouez": "By Louez.io",
+          "calendar": "Calendar",
           "insurance": "Insurance"
         },
         "builtIn": {
@@ -5034,6 +5073,9 @@
     "categoryNotFound": "Category not found",
     "integrationNotFound": "Integration not found",
     "integrationCategoryNotFound": "Integration category not found",
+    "integrationNotConnected": "Integration not connected",
+    "unsupportedOperation": "Unsupported operation",
+    "permissionDenied": "Insufficient permission",
     "customerNotFound": "Customer not found",
     "reservationNotFound": "Reservation not found",
     "emailAlreadyExists": "A customer with this email already exists",
