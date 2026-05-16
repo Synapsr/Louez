@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
 import { useStore } from '@tanstack/react-form';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { enUS, fr } from 'date-fns/locale';
 import {
   AlertTriangle,
@@ -18,7 +18,6 @@ import {
   Loader2,
   PenLine,
   Plus,
-  ShieldCheckIcon,
 } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -53,7 +52,10 @@ import {
 } from '@louez/ui';
 import { Label } from '@louez/ui';
 import { Checkbox } from '@louez/ui';
+import { Alert, AlertDescription } from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
+
+import { DateTimePicker } from '@/components/ui/date-time-picker';
 
 import { invalidateReservationList } from '@/lib/orpc/invalidation';
 import { orpc } from '@/lib/orpc/react';
@@ -62,6 +64,8 @@ import { formatStoreDate } from '@/lib/utils/store-date';
 import { useAppForm } from '@/hooks/form/form';
 
 import { useStoreTimezone } from '@/contexts/store-context';
+
+import { getTulipQuotePreview } from '@/app/(storefront)/[slug]/checkout/actions';
 
 import { NewReservationStepCustomer } from './components/new-reservation-step-customer';
 import { NewReservationStepDelivery } from './components/new-reservation-step-delivery';
@@ -103,9 +107,11 @@ function pricingModeToBasePeriodMinutes(mode: PricingMode): number {
 }
 
 export function NewReservationForm({
+  storeId,
   customers,
   products,
   tulipInsuranceMode,
+  tulipInsuranceDefaultOptIn,
   businessHours,
   advanceNoticeMinutes = 0,
   pendingBlocksAvailability = true,
@@ -167,14 +173,17 @@ export function NewReservationForm({
   const [sendConfirmationEmail, setSendConfirmationEmail] = useState(true);
   const sendAsQuoteRef = useRef(false);
   const [tulipInsuranceOptIn, setTulipInsuranceOptIn] = useState(
-    tulipInsuranceMode === 'required' || tulipInsuranceMode === 'optional',
+    tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceDefaultOptIn
+        : false,
   );
 
   const isDeliveryEnabled = Boolean(
-    (deliverySettings?.enabled &&
-      storeLatitude != null &&
-      storeLongitude != null) ||
-    deliverySettings?.multiLocationEnabled,
+    deliverySettings?.enabled &&
+    storeLatitude != null &&
+    storeLongitude != null,
   );
 
   // Price override dialog state
@@ -358,13 +367,6 @@ export function NewReservationForm({
       if (!validateCurrentStep()) return;
 
       try {
-        const effectiveTulipInsuranceOptIn =
-          tulipInsuranceMode === 'required'
-            ? true
-            : tulipInsuranceMode === 'optional'
-              ? tulipInsuranceOptIn
-              : false;
-
         const result = await createReservationMutation.mutateAsync({
           payload: {
             customerId:
@@ -403,10 +405,7 @@ export function NewReservationForm({
                       latitude: delivery.outboundAddress.latitude,
                       longitude: delivery.outboundAddress.longitude,
                     }
-                  : {
-                      method: 'store' as const,
-                      locationId: delivery.pickupLocationId,
-                    },
+                  : { method: 'store' as const },
               return:
                 delivery.returnMethod === 'address' &&
                 delivery.returnAddress.latitude !== null &&
@@ -420,10 +419,7 @@ export function NewReservationForm({
                       latitude: delivery.returnAddress.latitude,
                       longitude: delivery.returnAddress.longitude,
                     }
-                  : {
-                      method: 'store' as const,
-                      locationId: delivery.returnLocationId,
-                    },
+                  : { method: 'store' as const },
             },
             internalNotes: value.internalNotes || undefined,
             tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
@@ -468,8 +464,112 @@ export function NewReservationForm({
     (s) => s.values as NewReservationFormValues,
   );
   const isSaving = createReservationMutation.isPending;
+  const [currentTimeMs] = useState(() => Date.now());
 
+  const hasTulipEligibleProducts = selectedProducts.some((item) => {
+    const product = products.find(
+      (candidate) => candidate.id === item.productId,
+    );
+    return product?.tulipInsurable === true;
+  });
   const selectedCustomer = customers.find((c) => c.id === watchCustomerId);
+  const showTulipPastStartWarning =
+    hasTulipEligibleProducts &&
+    watchStartDate instanceof Date &&
+    watchStartDate.getTime() < currentTimeMs;
+
+  useEffect(() => {
+    if (
+      tulipInsuranceMode === 'optional' &&
+      showTulipPastStartWarning &&
+      tulipInsuranceOptIn
+    ) {
+      setTulipInsuranceOptIn(false);
+    }
+  }, [showTulipPastStartWarning, tulipInsuranceMode, tulipInsuranceOptIn]);
+
+  const effectiveTulipInsuranceOptIn = showTulipPastStartWarning
+    ? false
+    : tulipInsuranceMode === 'required'
+      ? true
+      : tulipInsuranceMode === 'optional'
+        ? tulipInsuranceOptIn
+        : false;
+  const tulipQuoteItems = useMemo(
+    () =>
+      selectedProducts.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+      })),
+    [selectedProducts],
+  );
+  const tulipQuoteCustomer =
+    watchCustomerType === 'existing' && selectedCustomer
+      ? {
+          firstName: selectedCustomer.firstName,
+          lastName: selectedCustomer.lastName,
+          email: selectedCustomer.email,
+          phone: selectedCustomer.phone ?? undefined,
+        }
+      : {
+          firstName: watchedValues.firstName,
+          lastName: watchedValues.lastName,
+          email: watchedValues.email,
+          phone: watchedValues.phone || undefined,
+        };
+  const tulipQuoteRequest =
+    !effectiveTulipInsuranceOptIn ||
+    showTulipPastStartWarning ||
+    tulipInsuranceMode === 'no_public' ||
+    !hasTulipEligibleProducts ||
+    !watchStartDate ||
+    !watchEndDate ||
+    tulipQuoteItems.length === 0 ||
+    !tulipQuoteCustomer.firstName ||
+    !tulipQuoteCustomer.lastName ||
+    !tulipQuoteCustomer.email
+      ? null
+      : {
+          storeId,
+          modeOverride: tulipInsuranceMode,
+          customer: tulipQuoteCustomer,
+          items: tulipQuoteItems,
+          startDate: watchStartDate.toISOString(),
+          endDate: watchEndDate.toISOString(),
+          tulipInsuranceOptIn: effectiveTulipInsuranceOptIn,
+        };
+  const tulipQuoteQuery = useQuery({
+    queryKey: [
+      'dashboard-new-reservation-tulip-quote',
+      storeId,
+      tulipQuoteRequest,
+    ],
+    enabled: tulipQuoteRequest !== null,
+    queryFn: async () => {
+      if (!tulipQuoteRequest) {
+        return null;
+      }
+
+      return getTulipQuotePreview(tulipQuoteRequest);
+    },
+    staleTime: 30_000,
+  });
+  const liveTulipInsuranceAmount =
+    tulipQuoteQuery.data?.appliedOptIn && (tulipQuoteQuery.data.amount ?? 0) > 0
+      ? Math.round((tulipQuoteQuery.data.amount ?? 0) * 100) / 100
+      : 0;
+  const showTulipInsurancePreview =
+    tulipInsuranceMode !== 'no_public' &&
+    hasTulipEligibleProducts &&
+    !showTulipPastStartWarning;
+  const isTulipInsuranceLoading =
+    tulipQuoteRequest !== null &&
+    (tulipQuoteQuery.isLoading ||
+      (tulipQuoteQuery.isFetching && !tulipQuoteQuery.data));
+  const fixedTulipInsuranceAmount =
+    showTulipInsurancePreview && effectiveTulipInsuranceOptIn
+      ? liveTulipInsuranceAmount
+      : 0;
 
   const { periodWarnings, availabilityWarnings } = useNewReservationWarnings({
     startDate: watchStartDate,
@@ -551,8 +651,6 @@ export function NewReservationForm({
           product,
           nextLine,
           productLines,
-          periodAvailability.reservedByProduct.get(product.id) || 0,
-          periodAvailability.reservedByProductCombination,
         );
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
@@ -568,13 +666,9 @@ export function NewReservationForm({
           productId,
           quantity: 1,
         };
-        const constraints = getLineQuantityConstraints(
-          product,
+        const constraints = getLineQuantityConstraints(product, nextLine, [
           nextLine,
-          [nextLine],
-          periodAvailability.reservedByProduct.get(product.id) || 0,
-          periodAvailability.reservedByProductCombination,
-        );
+        ]);
         if (constraints.lineMaxQuantity <= 0) {
           return prev;
         }
@@ -587,8 +681,6 @@ export function NewReservationForm({
         product,
         existingLine,
         productLines,
-        periodAvailability.reservedByProduct.get(product.id) || 0,
-        periodAvailability.reservedByProductCombination,
       );
       const nextQuantity = Math.min(
         existingLine.quantity + 1,
@@ -633,8 +725,6 @@ export function NewReservationForm({
         product,
         currentLine,
         productLines,
-        periodAvailability.reservedByProduct.get(product.id) || 0,
-        periodAvailability.reservedByProductCombination,
       );
       const nextQuantity = Math.max(
         1,
@@ -702,8 +792,6 @@ export function NewReservationForm({
         product,
         nextLine,
         productLines,
-        periodAvailability.reservedByProduct.get(product.id) || 0,
-        periodAvailability.reservedByProductCombination,
       );
       const nextQuantity = Math.min(
         nextLine.quantity,
@@ -1031,7 +1119,7 @@ export function NewReservationForm({
   return (
     <>
       <form.AppForm>
-        <form.Form className="space-y-6 pb-28">
+        <form.Form className="space-y-6">
           {/* Stepper */}
           <Card>
             <CardContent className="pt-6">
@@ -1042,11 +1130,6 @@ export function NewReservationForm({
               />
             </CardContent>
           </Card>
-          {/* <Stepper
-              steps={steps}
-              currentStep={currentStep}
-              onStepClick={goToStep}
-            /> */}
 
           {/* Step: Customer */}
           {currentStepId === 'customer' && (
@@ -1076,105 +1159,121 @@ export function NewReservationForm({
                 </CardHeader>
                 <CardContent>
                   <div className="grid gap-6 sm:grid-cols-2">
-                    <form.AppField name="startDate">
+                    <form.Field name="startDate">
                       {(field) => {
                         const timeSlots = getTimeSlotsForDate(
                           field.state.value,
                         );
                         return (
-                          <field.ReservationDatePicker
-                            id="reservation-start-date"
-                            label={t('startDate')}
-                            minTime={timeSlots.minTime}
-                            maxTime={timeSlots.maxTime}
-                            timezone={timezone}
-                            autoCloseOnTimeSelect
-                            onChange={() => clearStepFieldError('startDate')}
-                            onAutoClose={() => {
-                              // Small delay to let the start popover close before opening end.
-                              setTimeout(() => setEndDatePickerOpen(true), 150);
-                            }}
-                            defaultTime={defaultTimeSlot}
-                          />
+                          <div className="flex flex-col space-y-2">
+                            <Label>{t('startDate')}</Label>
+                            <DateTimePicker
+                              date={field.state.value}
+                              setDate={(date) => {
+                                field.handleChange(date);
+                                clearStepFieldError('startDate');
+                              }}
+                              placeholder={t('pickDate')}
+                              showTime={true}
+                              minTime={timeSlots.minTime}
+                              maxTime={timeSlots.maxTime}
+                              timezone={timezone}
+                              autoCloseOnTimeSelect
+                              onAutoClose={() => {
+                                // Small delay to let the start popover close before opening end
+                                setTimeout(
+                                  () => setEndDatePickerOpen(true),
+                                  150,
+                                );
+                              }}
+                              defaultTime={defaultTimeSlot}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm font-medium">
+                                {getFieldErrorMessage(
+                                  field.state.meta.errors[0],
+                                )}
+                              </p>
+                            )}
+                          </div>
                         );
                       }}
-                    </form.AppField>
-                    <form.AppField name="endDate">
+                    </form.Field>
+                    <form.Field name="endDate">
                       {(field) => {
                         const timeSlots = getTimeSlotsForDate(
                           field.state.value,
                         );
                         return (
-                          <field.ReservationDatePicker
-                            id="reservation-end-date"
-                            label={t('endDate')}
-                            disabledDates={(date) => {
-                              // Only block dates before start date (logical constraint).
-                              if (watchStartDate) {
-                                const startDay = new Date(watchStartDate);
-                                startDay.setHours(0, 0, 0, 0);
-                                return date < startDay;
-                              }
-                              return false;
-                            }}
-                            minTime={timeSlots.minTime}
-                            maxTime={timeSlots.maxTime}
-                            timezone={timezone}
-                            referenceDate={watchStartDate}
-                            autoCloseOnTimeSelect
-                            open={endDatePickerOpen}
-                            onOpenChange={setEndDatePickerOpen}
-                            onChange={() => clearStepFieldError('endDate')}
-                            defaultTime={defaultTimeSlot}
-                          />
+                          <div className="flex flex-col space-y-2">
+                            <Label>{t('endDate')}</Label>
+                            <DateTimePicker
+                              date={field.state.value}
+                              setDate={(date) => {
+                                field.handleChange(date);
+                                clearStepFieldError('endDate');
+                              }}
+                              placeholder={t('pickDate')}
+                              disabledDates={(date) => {
+                                // Only block dates before start date (logical constraint)
+                                if (watchStartDate) {
+                                  const startDay = new Date(watchStartDate);
+                                  startDay.setHours(0, 0, 0, 0);
+                                  return date < startDay;
+                                }
+                                return false;
+                              }}
+                              showTime={true}
+                              minTime={timeSlots.minTime}
+                              maxTime={timeSlots.maxTime}
+                              timezone={timezone}
+                              autoCloseOnTimeSelect
+                              open={endDatePickerOpen}
+                              onOpenChange={setEndDatePickerOpen}
+                              defaultTime={defaultTimeSlot}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-destructive text-sm font-medium">
+                                {getFieldErrorMessage(
+                                  field.state.meta.errors[0],
+                                )}
+                              </p>
+                            )}
+                          </div>
                         );
                       }}
-                    </form.AppField>
+                    </form.Field>
                   </div>
 
                   {watchStartDate && watchEndDate && duration > 0 && (
-                    <div className="mt-6 space-y-2.5">
-                      <div className="bg-card relative flex items-center justify-between gap-3 rounded-xl border px-4 py-3 sm:gap-4">
-                        <div className="min-w-0">
-                          <p className="text-xs font-medium tabular-nums">
-                            {formatStoreDate(
-                              watchStartDate,
-                              timezone,
-                              'd MMM yyyy',
-                            )}
-                          </p>
-                          <p className="text-muted-foreground text-[11px] tabular-nums">
-                            {formatStoreDate(watchStartDate, timezone, 'HH:mm')}
-                          </p>
+                    <div className="bg-primary/5 border-primary/20 mt-6 rounded-lg border p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-full">
+                            <Calendar className="text-primary h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {t('duration')}
+                            </p>
+                            <p className="text-muted-foreground text-xs">
+                              {formatStoreDate(
+                                watchStartDate,
+                                timezone,
+                                'd MMMM yyyy HH:mm',
+                              )}{' '}
+                              &rarr;{' '}
+                              {formatStoreDate(
+                                watchEndDate,
+                                timezone,
+                                'd MMMM yyyy HH:mm',
+                              )}
+                            </p>
+                          </div>
                         </div>
-
                         {detailedDuration && (
-                          <span className="bg-card max-w-20 shrink-0 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums sm:hidden">
-                            {[
-                              detailedDuration.days > 0 &&
-                                `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
-                              detailedDuration.hours > 0 &&
-                                `${detailedDuration.hours}h`,
-                              detailedDuration.minutes > 0 &&
-                                `${detailedDuration.minutes} min`,
-                            ]
-                              .filter(Boolean)
-                              .join(' · ') || `0 min`}
-                          </span>
-                        )}
-
-                        <div className="relative hidden h-3 flex-1 items-center justify-between sm:flex">
-                          <div className="timeline-dash-flow absolute inset-x-0 top-1/2 h-px -translate-y-1/2" />
-                          <div className="relative h-2 w-2 shrink-0">
-                            <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full" />
-                            <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
-                          </div>
-                          <div className="relative h-2 w-2 shrink-0">
-                            <span className="bg-primary timeline-dot-pulse absolute inset-0 rounded-full [animation-delay:1.2s]" />
-                            <span className="bg-primary ring-primary/15 relative block h-2 w-2 rounded-full ring-[3px]" />
-                          </div>
-                          {detailedDuration && (
-                            <span className="bg-card absolute top-1/2 left-1/2 max-w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-center text-[11px] leading-tight font-semibold text-balance tabular-nums">
+                          <div className="shrink-0 text-right">
+                            <p className="text-primary text-sm font-bold">
                               {[
                                 detailedDuration.days > 0 &&
                                   `${detailedDuration.days} ${tCommon('dayUnit', { count: detailedDuration.days })}`,
@@ -1184,51 +1283,41 @@ export function NewReservationForm({
                                   `${detailedDuration.minutes} min`,
                               ]
                                 .filter(Boolean)
-                                .join(' · ') || `0 min`}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="min-w-0 text-right">
-                          <p className="text-xs font-medium tabular-nums">
-                            {formatStoreDate(
-                              watchEndDate,
-                              timezone,
-                              'd MMM yyyy',
-                            )}
-                          </p>
-                          <p className="text-muted-foreground text-[11px] tabular-nums">
-                            {formatStoreDate(watchEndDate, timezone, 'HH:mm')}
-                          </p>
-                        </div>
+                                .join(', ') || `0 min`}
+                            </p>
+                          </div>
+                        )}
                       </div>
+                    </div>
+                  )}
 
-                      {periodWarnings.length > 0 && (
-                        <div className="space-y-1.5">
-                          {periodWarnings.map((warning, index) => (
-                            <div
-                              key={`${warning.type}-${warning.field}-${index}`}
-                              className="bg-warning/10 flex items-start gap-2.5 rounded-lg px-3 py-2"
-                            >
-                              <AlertTriangle className="text-warning mt-0.5 h-3.5 w-3.5 shrink-0" />
-                              <div className="min-w-0 space-y-0.5">
-                                <p className="text-foreground text-xs font-medium">
-                                  {warning.message}
-                                </p>
-                                {warning.details && (
-                                  <p className="text-muted-foreground text-[11px]">
-                                    {warning.details}
-                                  </p>
-                                )}
-                              </div>
+                  {/* Period Warnings - Shown when dates are outside normal business conditions */}
+                  {periodWarnings.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      {periodWarnings.map((warning, index) => (
+                        <Alert
+                          key={`${warning.type}-${warning.field}-${index}`}
+                          className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                        >
+                          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                          <AlertDescription className="ml-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="font-medium text-amber-800 dark:text-amber-200">
+                                {warning.message}
+                              </span>
+                              {warning.details && (
+                                <span className="text-sm text-amber-700 dark:text-amber-300">
+                                  {warning.details}
+                                </span>
+                              )}
                             </div>
-                          ))}
-                          <p className="text-muted-foreground flex items-center gap-1.5 px-1 pt-1 text-[11px]">
-                            <ShieldCheckIcon className="h-3 w-3" />
-                            {t('warnings.canContinue')}
-                          </p>
-                        </div>
-                      )}
+                          </AlertDescription>
+                        </Alert>
+                      ))}
+                      <p className="text-muted-foreground mt-2 flex items-center gap-1 text-xs">
+                        <Clock className="h-3 w-3" />
+                        {t('warnings.canContinue')}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -1245,8 +1334,23 @@ export function NewReservationForm({
                 customItems={customItems}
                 tulipInsuranceMode={tulipInsuranceMode}
                 tulipInsuranceOptIn={tulipInsuranceOptIn}
+                tulipQuoteUnavailable={
+                  tulipQuoteQuery.data?.quoteUnavailable ?? false
+                }
+                tulipQuoteErrorMessage={
+                  tulipQuoteQuery.data?.error
+                    ? getActionErrorMessage(
+                        new Error(tulipQuoteQuery.data.error),
+                      )
+                    : null
+                }
                 startDate={watchStartDate}
                 endDate={watchEndDate}
+                hasTulipEligibleProducts={hasTulipEligibleProducts}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceSummary={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
+                showTulipPastStartWarning={showTulipPastStartWarning}
                 availabilityWarnings={availabilityWarnings}
                 periodAvailability={periodAvailability}
                 hasItems={hasItems}
@@ -1323,6 +1427,26 @@ export function NewReservationForm({
                 products={products}
                 tulipInsuranceMode={tulipInsuranceMode}
                 tulipInsuranceOptIn={tulipInsuranceOptIn}
+                tulipInsuranceAmount={fixedTulipInsuranceAmount}
+                showTulipInsuranceSummary={showTulipInsurancePreview}
+                isTulipInsuranceLoading={isTulipInsuranceLoading}
+                insuredProductCount={
+                  tulipQuoteQuery.data?.insuredProductCount ?? null
+                }
+                uninsuredProductCount={
+                  tulipQuoteQuery.data?.uninsuredProductCount ?? null
+                }
+                showTulipPastStartWarning={showTulipPastStartWarning}
+                tulipQuoteUnavailable={
+                  tulipQuoteQuery.data?.quoteUnavailable ?? false
+                }
+                tulipQuoteErrorMessage={
+                  tulipQuoteQuery.data?.error
+                    ? getActionErrorMessage(
+                        new Error(tulipQuoteQuery.data.error),
+                      )
+                    : null
+                }
                 subtotal={subtotal}
                 deposit={deposit}
                 getProductPricingDetails={getProductPricingDetails}
@@ -1347,20 +1471,8 @@ export function NewReservationForm({
           )}
 
           {/* Navigation */}
-          <StepActions
-            position="fixed"
-            className={cn(
-              'lg:left-64',
-              currentStep === steps.length - 1 &&
-                'flex-col items-stretch sm:flex-row sm:items-center',
-            )}
-          >
-            <div
-              className={cn(
-                currentStep === steps.length - 1 &&
-                  'flex items-center gap-3 sm:shrink-0',
-              )}
-            >
+          <StepActions>
+            <div>
               {currentStep > 0 ? (
                 <Button
                   type="button"
@@ -1379,33 +1491,9 @@ export function NewReservationForm({
                   {tCommon('cancel')}
                 </Button>
               )}
-
-              {currentStep === steps.length - 1 && (
-                <div className="flex min-w-0 flex-1 items-center space-x-2 sm:hidden">
-                  <Checkbox
-                    id="sendConfirmationEmailMobile"
-                    checked={sendConfirmationEmail}
-                    onCheckedChange={(checked) =>
-                      setSendConfirmationEmail(checked === true)
-                    }
-                  />
-                  <label
-                    htmlFor="sendConfirmationEmailMobile"
-                    className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
-                  >
-                    {t('sendConfirmationEmail')}
-                  </label>
-                </div>
-              )}
             </div>
 
-            <div
-              className={cn(
-                'flex items-center gap-3',
-                currentStep === steps.length - 1 &&
-                  'grid min-w-0 grid-cols-2 items-stretch sm:flex sm:items-center sm:justify-end',
-              )}
-            >
+            <div className="flex items-center gap-3">
               {currentStep < steps.length - 1 ? (
                 <Button type="button" onClick={goToNextStep}>
                   {tCommon('next')}
@@ -1413,7 +1501,7 @@ export function NewReservationForm({
                 </Button>
               ) : (
                 <>
-                  <div className="hidden min-w-0 flex-1 items-center space-x-2 sm:flex sm:max-w-48">
+                  <div className="flex items-center space-x-2">
                     <Checkbox
                       id="sendConfirmationEmail"
                       checked={sendConfirmationEmail}
@@ -1423,7 +1511,7 @@ export function NewReservationForm({
                     />
                     <label
                       htmlFor="sendConfirmationEmail"
-                      className="text-muted-foreground min-w-0 cursor-pointer text-sm leading-tight"
+                      className="text-muted-foreground cursor-pointer text-sm"
                     >
                       {t('sendConfirmationEmail')}
                     </label>
@@ -1435,7 +1523,7 @@ export function NewReservationForm({
                     onClick={() => {
                       sendAsQuoteRef.current = true;
                     }}
-                    className="min-w-0 flex-1 sm:w-auto sm:flex-none"
+                    className=""
                   >
                     {isSaving && sendAsQuoteRef.current ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1450,7 +1538,6 @@ export function NewReservationForm({
                     onClick={() => {
                       sendAsQuoteRef.current = false;
                     }}
-                    className="min-w-0 flex-1 sm:w-auto sm:flex-none"
                   >
                     {isSaving && !sendAsQuoteRef.current ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

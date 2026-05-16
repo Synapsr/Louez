@@ -44,6 +44,7 @@ type InspectionMode = 'optional' | 'recommended' | 'required'
 type ActionWarning = {
   key: string
   params?: Record<string, string | number>
+  details?: string
 }
 
 interface SmartReservationActionsProps {
@@ -105,7 +106,8 @@ export function SmartReservationActions({
 
   const formatWarning = (warning: ActionWarning) => {
     const key = warning.key.replace('errors.', '')
-    return tErrors(key, warning.params || {})
+    const translated = tErrors(key, warning.params || {})
+    return warning.details ? `${translated} Cause: ${warning.details}` : translated
   }
 
   const showWarnings = (warnings: unknown, newStatus: ReservationStatus) => {
@@ -124,6 +126,10 @@ export function SmartReservationActions({
       .map((warning) => ({
         key: warning.key,
         params: warning.params,
+        details:
+          typeof warning.details === 'string' && warning.details.trim().length > 0
+            ? warning.details.trim()
+            : undefined,
       }))
 
     if (parsedWarnings.length === 0) {
@@ -267,12 +273,51 @@ export function SmartReservationActions({
 
       toastManager.add({ title: t('statusUpdated'), type: 'success' })
       await invalidateReservationAll(queryClient, reservationId)
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
     } finally {
       setIsLoading(false)
       setAcknowledgeWarnings(false)
     }
+  }
+
+  const getActionErrorMessage = (error: unknown) => {
+    const errorDetails =
+      typeof error === 'object' &&
+      error !== null &&
+      'data' in error &&
+      typeof error.data === 'object' &&
+      error.data !== null &&
+      'details' in error.data &&
+      typeof error.data.details === 'string' &&
+      error.data.details.trim().length > 0
+        ? error.data.details.trim()
+        : null
+
+    if (error instanceof Error) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'message' in error &&
+      typeof error.message === 'string'
+    ) {
+      if (error.message.startsWith('errors.')) {
+        const translatedMessage = tErrors(error.message.replace('errors.', ''))
+        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
+      }
+
+      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
+    }
+
+    return tErrors('generic')
   }
 
   const handleReject = async () => {
@@ -287,8 +332,8 @@ export function SmartReservationActions({
       await cancelMutation.mutateAsync({ reservationId })
       toastManager.add({ title: t('reservationCancelled'), type: 'success' })
       await invalidateReservationAll(queryClient, reservationId)
-    } catch {
-      toastManager.add({ title: tErrors('generic'), type: 'error' })
+    } catch (error) {
+      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
     } finally {
       setIsLoading(false)
       setCancelDialogOpen(false)

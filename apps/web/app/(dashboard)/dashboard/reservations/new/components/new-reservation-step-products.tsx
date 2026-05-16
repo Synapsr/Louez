@@ -1,6 +1,7 @@
-'use client'
+'use client';
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react';
+
 import {
   AlertTriangle,
   ImageIcon,
@@ -12,9 +13,10 @@ import {
   Shield,
   ShoppingCart,
   Trash2,
-} from 'lucide-react'
-import { useTranslations } from 'next-intl'
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
+import type { PricingMode } from '@louez/types';
 import {
   Alert,
   AlertDescription,
@@ -22,71 +24,84 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   CardDescription,
   CardHeader,
   CardTitle,
+  Checkbox,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   Separator,
-} from '@louez/ui'
-import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils'
+} from '@louez/ui';
+import { cn, formatCurrency, minutesToPriceDuration } from '@louez/utils';
 
-import { SearchInput } from '@/components/ui/search-input'
+import { SearchInput } from '@/components/ui/search-input';
 
-import type { PricingMode } from '@louez/types'
-import {
-  buildProductCombinations,
-  getLineQuantityConstraints,
-} from '../utils/variant-lines'
-
+import type { PeriodAvailability } from '../hooks/use-new-reservation-warnings';
 import type {
   AvailabilityWarning,
   CustomItem,
   Product,
   ProductPricingDetails,
   SelectedProduct,
-} from '../types'
-import type { PeriodAvailability } from '../hooks/use-new-reservation-warnings'
+} from '../types';
+import {
+  buildProductCombinations,
+  getLineQuantityConstraints,
+} from '../utils/variant-lines';
 
 interface NewReservationStepProductsProps {
-  products: Product[]
-  selectedProducts: SelectedProduct[]
-  customItems: CustomItem[]
-  tulipInsuranceMode: 'required' | 'optional' | 'no_public'
-  tulipInsuranceOptIn: boolean
-  startDate: Date | undefined
-  endDate: Date | undefined
-  availabilityWarnings: AvailabilityWarning[]
-  periodAvailability: PeriodAvailability
-  hasItems: boolean
-  subtotal: number
-  originalSubtotal: number
-  totalSavings: number
-  deposit: number
-  addProduct: (productId: string) => void
-  updateQuantity: (lineId: string, delta: number) => void
-  updateSelectedAttributes: (lineId: string, axisKey: string, value: string | undefined) => void
-  removeSelectedProductLine: (lineId: string) => void
-  onOpenCustomItemDialog: () => void
-  updateCustomItemQuantity: (id: string, delta: number) => void
-  removeCustomItem: (id: string) => void
-  onTulipInsuranceOptInChange: (value: boolean) => void
+  products: Product[];
+  selectedProducts: SelectedProduct[];
+  customItems: CustomItem[];
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public';
+  tulipInsuranceOptIn: boolean;
+  tulipQuoteUnavailable: boolean;
+  tulipQuoteErrorMessage: string | null;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  hasTulipEligibleProducts: boolean;
+  tulipInsuranceAmount: number;
+  showTulipInsuranceSummary: boolean;
+  isTulipInsuranceLoading: boolean;
+  showTulipPastStartWarning: boolean;
+  availabilityWarnings: AvailabilityWarning[];
+  periodAvailability: PeriodAvailability;
+  hasItems: boolean;
+  subtotal: number;
+  originalSubtotal: number;
+  totalSavings: number;
+  deposit: number;
+  addProduct: (productId: string) => void;
+  updateQuantity: (lineId: string, delta: number) => void;
+  updateSelectedAttributes: (
+    lineId: string,
+    axisKey: string,
+    value: string | undefined,
+  ) => void;
+  removeSelectedProductLine: (lineId: string) => void;
+  onOpenCustomItemDialog: () => void;
+  updateCustomItemQuantity: (id: string, delta: number) => void;
+  removeCustomItem: (id: string) => void;
+  onTulipInsuranceOptInChange: (value: boolean) => void;
   openPriceOverrideDialog: (
     lineId: string,
     calculatedPrice: number,
     pricingMode: PricingMode,
-    duration: number
-  ) => void
-  calculateDurationForMode: (startDate: Date, endDate: Date, mode: PricingMode) => number
+    duration: number,
+  ) => void;
+  calculateDurationForMode: (
+    startDate: Date,
+    endDate: Date,
+    mode: PricingMode,
+  ) => number;
   getProductPricingDetails: (
     product: Product,
-    selectedItem?: SelectedProduct
-  ) => ProductPricingDetails
-  getCustomItemTotal: (item: CustomItem) => number
+    selectedItem?: SelectedProduct,
+  ) => ProductPricingDetails;
+  getCustomItemTotal: (item: CustomItem) => number;
 }
 
 export function NewReservationStepProducts({
@@ -95,8 +110,15 @@ export function NewReservationStepProducts({
   customItems,
   tulipInsuranceMode,
   tulipInsuranceOptIn,
+  tulipQuoteUnavailable,
+  tulipQuoteErrorMessage,
   startDate,
   endDate,
+  hasTulipEligibleProducts,
+  tulipInsuranceAmount,
+  showTulipInsuranceSummary,
+  isTulipInsuranceLoading,
+  showTulipPastStartWarning,
   availabilityWarnings,
   periodAvailability,
   hasItems,
@@ -117,77 +139,97 @@ export function NewReservationStepProducts({
   getProductPricingDetails,
   getCustomItemTotal,
 }: NewReservationStepProductsProps) {
-  const t = useTranslations('dashboard.reservations.manualForm')
-  const tCommon = useTranslations('common')
-  const [productSearchQuery, setProductSearchQuery] = useState('')
+  const t = useTranslations('dashboard.reservations.manualForm');
+  const tCommon = useTranslations('common');
+  const tCheckout = useTranslations('storefront.checkout');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
 
-  const normalizedProductSearchQuery = productSearchQuery.trim().toLowerCase()
+  const normalizedProductSearchQuery = productSearchQuery.trim().toLowerCase();
   const filteredProducts = useMemo(() => {
     if (!normalizedProductSearchQuery) {
-      return products
+      return products;
     }
 
     return products.filter((product) => {
       const searchableText = [
         product.name,
         product.description,
-        ...(product.bookingAttributeAxes || []).flatMap((axis) => [axis.key, axis.label]),
-        ...product.units.flatMap((unit) => Object.values(unit.attributes || {})),
+        ...(product.bookingAttributeAxes || []).flatMap((axis) => [
+          axis.key,
+          axis.label,
+        ]),
+        ...product.units.flatMap((unit) =>
+          Object.values(unit.attributes || {}),
+        ),
       ]
-        .filter((value): value is string => typeof value === 'string' && value.length > 0)
+        .filter(
+          (value): value is string =>
+            typeof value === 'string' && value.length > 0,
+        )
         .join(' ')
-        .toLowerCase()
+        .toLowerCase();
 
-      return searchableText.includes(normalizedProductSearchQuery)
-    })
-  }, [normalizedProductSearchQuery, products])
+      return searchableText.includes(normalizedProductSearchQuery);
+    });
+  }, [normalizedProductSearchQuery, products]);
 
   const getPricingUnitLabel = (mode: PricingMode) => {
-    if (mode === 'hour') return t('perHour')
-    if (mode === 'week') return t('perWeek')
-    return t('perDay')
-  }
+    if (mode === 'hour') return t('perHour');
+    if (mode === 'week') return t('perWeek');
+    return t('perDay');
+  };
 
   const getDurationLabel = (mode: PricingMode, count: number) => {
-    if (mode === 'hour') return tCommon('hourUnit', { count })
-    if (mode === 'week') return tCommon('weekUnit', { count })
-    return tCommon('dayUnit', { count })
-  }
+    if (mode === 'hour') return tCommon('hourUnit', { count });
+    if (mode === 'week') return tCommon('weekUnit', { count });
+    return tCommon('dayUnit', { count });
+  };
 
   const formatPeriodLabel = (periodMinutes: number) => {
-    const period = minutesToPriceDuration(periodMinutes)
-    if (period.unit === 'minute') return `${period.duration} min`
-    if (period.duration === 1) return getPricingUnitLabel(period.unit as PricingMode)
-    return `${period.duration} ${getDurationLabel(period.unit as PricingMode, period.duration)}`
-  }
+    const period = minutesToPriceDuration(periodMinutes);
+    if (period.unit === 'minute') return `${period.duration} min`;
+    if (period.duration === 1)
+      return getPricingUnitLabel(period.unit as PricingMode);
+    return `${period.duration} ${getDurationLabel(period.unit as PricingMode, period.duration)}`;
+  };
 
   const getProductPeriodLabel = (product: Product, mode: PricingMode) => {
     if (product.basePeriodMinutes && product.basePeriodMinutes > 0) {
-      return formatPeriodLabel(product.basePeriodMinutes)
+      return formatPeriodLabel(product.basePeriodMinutes);
     }
-    return getPricingUnitLabel(mode)
-  }
+    return getPricingUnitLabel(mode);
+  };
 
   const formatRatePlanBreakdown = (
     plan: Array<{ rate: { period: number; price: number }; quantity: number }>,
-    lineSubtotal?: number
+    lineSubtotal?: number,
   ) => {
     if (plan.length === 1) {
-      const entry = plan[0]
-      const periodLabel = formatPeriodLabel(entry.rate.period)
+      const entry = plan[0];
+      const periodLabel = formatPeriodLabel(entry.rate.period);
       // Show the applied tier period and the actual charged amount
-      return `${periodLabel} · ${formatCurrency(lineSubtotal ?? entry.rate.price)}`
+      return `${periodLabel} · ${formatCurrency(lineSubtotal ?? entry.rate.price)}`;
     }
     return plan
       .sort((a, b) => b.rate.period - a.rate.period)
       .map((entry) => {
-        const periodLabel = formatPeriodLabel(entry.rate.period)
-        const price = entry.rate.price * entry.quantity
-        const qtyPrefix = entry.quantity > 1 ? `${entry.quantity}× ` : ''
-        return `${qtyPrefix}${periodLabel} · ${formatCurrency(price)}`
+        const periodLabel = formatPeriodLabel(entry.rate.period);
+        const price = entry.rate.price * entry.quantity;
+        const qtyPrefix = entry.quantity > 1 ? `${entry.quantity}× ` : '';
+        return `${qtyPrefix}${periodLabel} · ${formatCurrency(price)}`;
       })
-      .join(' + ')
-  }
+      .join(' + ');
+  };
+
+  const totalWithInsurance =
+    subtotal +
+    (showTulipInsuranceSummary && tulipInsuranceOptIn
+      ? tulipInsuranceAmount
+      : 0);
+  const showTulipInsuranceAmountLine =
+    showTulipInsuranceSummary &&
+    (isTulipInsuranceLoading || tulipInsuranceAmount > 0);
+  const isTulipInsuranceSelectionDisabled = showTulipPastStartWarning;
 
   return (
     <Card>
@@ -205,7 +247,9 @@ export function NewReservationStepProducts({
             value={productSearchQuery}
             onChange={(event) => setProductSearchQuery(event.target.value)}
             onClear={() => setProductSearchQuery('')}
-            placeholder={t('searchProductsPlaceholder', { count: products.length })}
+            placeholder={t('searchProductsPlaceholder', {
+              count: products.length,
+            })}
             clearLabel={t('clearProductSearch')}
             groupClassName="h-10 w-full min-w-0"
             className="min-w-0"
@@ -214,51 +258,65 @@ export function NewReservationStepProducts({
 
         <div className="grid min-w-0 gap-3 sm:grid-cols-2">
           {filteredProducts.map((product) => {
-            const productLines = selectedProducts.filter((line) => line.productId === product.id)
-            const selectedQuantity = productLines.reduce((sum, line) => sum + line.quantity, 0)
+            const productLines = selectedProducts.filter(
+              (line) => line.productId === product.id,
+            );
+            const selectedQuantity = productLines.reduce(
+              (sum, line) => sum + line.quantity,
+              0,
+            );
             const productReservedQuantity =
-              periodAvailability.reservedByProduct.get(product.id) || 0
+              periodAvailability.reservedByProduct.get(product.id) || 0;
             const productCombinations = buildProductCombinations(
               product,
               periodAvailability.reservedByProductCombination,
-            )
+            );
             const productCapacity = product.trackUnits
               ? productCombinations.reduce(
-                  (sum, combination) => sum + Math.max(0, combination.availableQuantity || 0),
+                  (sum, combination) =>
+                    sum + Math.max(0, combination.availableQuantity || 0),
                   0,
                 )
-              : Math.max(0, product.quantity - productReservedQuantity)
-            const isOutOfStock = productCapacity === 0
-            const remainingStock = Math.max(0, productCapacity - selectedQuantity)
+              : Math.max(0, product.quantity - productReservedQuantity);
+            const isOutOfStock = productCapacity === 0;
+            const remainingStock = Math.max(
+              0,
+              productCapacity - selectedQuantity,
+            );
             const bookingAttributeAxes = (product.bookingAttributeAxes || [])
               .slice()
-              .sort((a, b) => a.position - b.position)
-            const hasBookingAttributes = product.trackUnits && bookingAttributeAxes.length > 0
-            const bookingAttributeValues = bookingAttributeAxes.reduce<Record<string, string[]>>(
-              (acc, axis) => {
-                const values = new Set<string>()
-                for (const unit of product.units || []) {
-                  if ((unit.status || 'available') !== 'available') {
-                    continue
-                  }
-                  const rawValue = unit.attributes?.[axis.key]
-                  if (rawValue && rawValue.trim()) {
-                    values.add(rawValue.trim())
-                  }
+              .sort((a, b) => a.position - b.position);
+            const hasBookingAttributes =
+              product.trackUnits && bookingAttributeAxes.length > 0;
+            const bookingAttributeValues = bookingAttributeAxes.reduce<
+              Record<string, string[]>
+            >((acc, axis) => {
+              const values = new Set<string>();
+              for (const unit of product.units || []) {
+                if ((unit.status || 'available') !== 'available') {
+                  continue;
                 }
-                for (const line of productLines) {
-                  const selectedValue = line.selectedAttributes?.[axis.key]
-                  if (selectedValue && selectedValue.trim()) {
-                    values.add(selectedValue.trim())
-                  }
+                const rawValue = unit.attributes?.[axis.key];
+                if (rawValue && rawValue.trim()) {
+                  values.add(rawValue.trim());
                 }
-                acc[axis.key] = [...values].sort((a, b) => a.localeCompare(b, 'en'))
-                return acc
-              },
-              {}
-            )
+              }
+              for (const line of productLines) {
+                const selectedValue = line.selectedAttributes?.[axis.key];
+                if (selectedValue && selectedValue.trim()) {
+                  values.add(selectedValue.trim());
+                }
+              }
+              acc[axis.key] = [...values].sort((a, b) =>
+                a.localeCompare(b, 'en'),
+              );
+              return acc;
+            }, {});
 
-            const summaryPricing = getProductPricingDetails(product, productLines[0])
+            const summaryPricing = getProductPricingDetails(
+              product,
+              productLines[0],
+            );
             const {
               productPricingMode,
               basePrice,
@@ -266,28 +324,29 @@ export function NewReservationStepProducts({
               applicableTierDiscountPercent,
               hasTieredPricing,
               reductionPercent,
-            } = summaryPricing
-            const discountDisplay = applicableTierDiscountPercent ?? reductionPercent
+            } = summaryPricing;
+            const discountDisplay =
+              applicableTierDiscountPercent ?? reductionPercent;
 
             const lineStates = productLines.map((line) => {
-              const pricing = getProductPricingDetails(product, line)
+              const pricing = getProductPricingDetails(product, line);
               const constraints = getLineQuantityConstraints(
                 product,
                 line,
                 productLines,
                 productReservedQuantity,
                 periodAvailability.reservedByProductCombination,
-              )
+              );
 
               return {
                 line,
                 pricing,
                 constraints,
-              }
-            })
+              };
+            });
             const hasFullSelectionLine = lineStates.some(
-              (lineState) => lineState.constraints.selectionMode === 'full'
-            )
+              (lineState) => lineState.constraints.selectionMode === 'full',
+            );
 
             return (
               <div
@@ -295,12 +354,12 @@ export function NewReservationStepProducts({
                 className={cn(
                   'min-w-0 rounded-lg border p-3 transition-colors sm:p-4',
                   isOutOfStock && 'bg-muted/30 opacity-60',
-                  selectedQuantity > 0 && 'border-primary bg-primary/5'
+                  selectedQuantity > 0 && 'border-primary bg-primary/5',
                 )}
               >
                 <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted sm:h-12 sm:w-12">
+                    <div className="bg-muted relative h-10 w-10 shrink-0 overflow-hidden rounded-md sm:h-12 sm:w-12">
                       {product.images && product.images.length > 0 ? (
                         // Product thumbnails already use direct URLs in this feature.
                         // eslint-disable-next-line @next/next/no-img-element
@@ -311,13 +370,13 @@ export function NewReservationStepProducts({
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center">
-                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                          <ImageIcon className="text-muted-foreground h-4 w-4" />
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 flex-wrap items-start gap-2">
-                        <p className="min-w-0 flex-1 text-sm font-medium leading-tight sm:text-base">
+                        <p className="min-w-0 flex-1 text-sm leading-tight font-medium sm:text-base">
                           {product.name}
                         </p>
                         {product.tulipInsurable && (
@@ -334,32 +393,47 @@ export function NewReservationStepProducts({
                         {summaryPricing.productDuration > 0 ? (
                           <>
                             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                              <span className="text-sm font-semibold text-primary">
+                              <span className="text-primary text-sm font-semibold">
                                 {formatCurrency(summaryPricing.lineSubtotal)}
                               </span>
                               {summaryPricing.lineSavings > 0 && (
                                 <>
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    {formatCurrency(summaryPricing.lineOriginalSubtotal)}
+                                  <span className="text-muted-foreground text-xs line-through">
+                                    {formatCurrency(
+                                      summaryPricing.lineOriginalSubtotal,
+                                    )}
                                   </span>
-                                  {discountDisplay != null && discountDisplay > 0 && (
-                                    <Badge variant="success" className="text-xs">
-                                      -{Math.floor(discountDisplay)}%
-                                    </Badge>
-                                  )}
+                                  {discountDisplay != null &&
+                                    discountDisplay > 0 && (
+                                      <Badge
+                                        variant="success"
+                                        className="text-xs"
+                                      >
+                                        -{Math.floor(discountDisplay)}%
+                                      </Badge>
+                                    )}
                                 </>
                               )}
                             </div>
-                            <p className="break-words text-xs text-muted-foreground">
-                              {summaryPricing.isRateBased && summaryPricing.ratePlan && summaryPricing.ratePlan.length > 0
-                                ? formatRatePlanBreakdown(summaryPricing.ratePlan, summaryPricing.lineSubtotal)
+                            <p className="text-muted-foreground text-xs break-words">
+                              {summaryPricing.isRateBased &&
+                              summaryPricing.ratePlan &&
+                              summaryPricing.ratePlan.length > 0
+                                ? formatRatePlanBreakdown(
+                                    summaryPricing.ratePlan,
+                                    summaryPricing.lineSubtotal,
+                                  )
                                 : `${formatCurrency(basePrice)}/${getProductPeriodLabel(product, productPricingMode)}`}
                             </p>
                           </>
                         ) : (
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm text-muted-foreground">
-                              {formatCurrency(basePrice)}/{getProductPeriodLabel(product, productPricingMode)}
+                            <span className="text-muted-foreground text-sm">
+                              {formatCurrency(basePrice)}/
+                              {getProductPeriodLabel(
+                                product,
+                                productPricingMode,
+                              )}
                             </span>
                           </div>
                         )}
@@ -373,14 +447,18 @@ export function NewReservationStepProducts({
                           <span
                             className={cn(
                               'text-xs',
-                              remainingStock <= 2 ? 'text-orange-600' : 'text-muted-foreground'
+                              remainingStock <= 2
+                                ? 'text-orange-600'
+                                : 'text-muted-foreground',
                             )}
                           >
                             {remainingStock} {t('available')}
                           </span>
                         )}
                         {hasTieredPricing && !hasDiscount && (
-                          <span className="text-xs text-muted-foreground">• {t('tieredPricing')}</span>
+                          <span className="text-muted-foreground text-xs">
+                            • {t('tieredPricing')}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -412,200 +490,270 @@ export function NewReservationStepProducts({
                   </div>
                 </div>
 
-                {productLines.length > 0 && summaryPricing.productDuration > 0 && (
-                  <div className="mt-3 space-y-3 border-t pt-3">
-                    {lineStates.map(({ line, pricing, constraints }, index) => {
-                      const lineMaxQuantity = constraints.lineMaxQuantity
-                      const canIncreaseLine = line.quantity < lineMaxQuantity
-                      const lineReachedMax = lineMaxQuantity > 0 && line.quantity >= lineMaxQuantity
+                {productLines.length > 0 &&
+                  summaryPricing.productDuration > 0 && (
+                    <div className="mt-3 space-y-3 border-t pt-3">
+                      {lineStates.map(
+                        ({ line, pricing, constraints }, index) => {
+                          const lineMaxQuantity = constraints.lineMaxQuantity;
+                          const canIncreaseLine =
+                            line.quantity < lineMaxQuantity;
+                          const lineReachedMax =
+                            lineMaxQuantity > 0 &&
+                            line.quantity >= lineMaxQuantity;
 
-                      return (
-                        <div key={line.lineId} className="space-y-3 rounded-md border bg-background/70 p-3">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-xs font-medium text-muted-foreground">
-                                {t('lineLabel', { index: index + 1 })}
-                              </span>
-                              {line.selectedAttributes &&
-                                Object.entries(line.selectedAttributes)
-                                  .sort(([a], [b]) => a.localeCompare(b, 'en'))
-                                  .map(([key, value]) => (
-                                    <Badge key={`${line.lineId}-${key}`} variant="outline" className="text-xs">
-                                      {key}: {value}
-                                    </Badge>
-                                  ))}
-                            </div>
-                            <div className="flex items-center gap-1 self-start sm:self-auto">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(line.lineId, -1)}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center font-medium">{line.quantity}</span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(line.lineId, 1)}
-                                disabled={!canIncreaseLine}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={() => removeSelectedProductLine(line.lineId)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          </div>
+                          return (
+                            <div
+                              key={line.lineId}
+                              className="bg-background/70 space-y-3 rounded-md border p-3"
+                            >
+                              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-muted-foreground text-xs font-medium">
+                                    {t('lineLabel', { index: index + 1 })}
+                                  </span>
+                                  {line.selectedAttributes &&
+                                    Object.entries(line.selectedAttributes)
+                                      .sort(([a], [b]) =>
+                                        a.localeCompare(b, 'en'),
+                                      )
+                                      .map(([key, value]) => (
+                                        <Badge
+                                          key={`${line.lineId}-${key}`}
+                                          variant="outline"
+                                          className="text-xs"
+                                        >
+                                          {key}: {value}
+                                        </Badge>
+                                      ))}
+                                </div>
+                                <div className="flex items-center gap-1 self-start sm:self-auto">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() =>
+                                      updateQuantity(line.lineId, -1)
+                                    }
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </Button>
+                                  <span className="w-8 text-center font-medium">
+                                    {line.quantity}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() =>
+                                      updateQuantity(line.lineId, 1)
+                                    }
+                                    disabled={!canIncreaseLine}
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive h-8 w-8"
+                                    onClick={() =>
+                                      removeSelectedProductLine(line.lineId)
+                                    }
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
 
-                          {hasBookingAttributes && (
-                            <div className="space-y-2">
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {bookingAttributeAxes.map((axis) => (
-                                  <Select
-                                    key={`${line.lineId}-${axis.key}`}
-                                    value={line.selectedAttributes?.[axis.key] || '__none__'}
-                                    onValueChange={(value) =>
-                                      updateSelectedAttributes(
+                              {hasBookingAttributes && (
+                                <div className="space-y-2">
+                                  <div className="grid gap-2 sm:grid-cols-2">
+                                    {bookingAttributeAxes.map((axis) => (
+                                      <Select
+                                        key={`${line.lineId}-${axis.key}`}
+                                        value={
+                                          line.selectedAttributes?.[axis.key] ||
+                                          '__none__'
+                                        }
+                                        onValueChange={(value) =>
+                                          updateSelectedAttributes(
+                                            line.lineId,
+                                            axis.key,
+                                            value && value !== '__none__'
+                                              ? value
+                                              : undefined,
+                                          )
+                                        }
+                                      >
+                                        <SelectTrigger className="h-8">
+                                          <SelectValue placeholder={axis.label}>
+                                            {line.selectedAttributes?.[
+                                              axis.key
+                                            ] || axis.label}
+                                          </SelectValue>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem
+                                            value="__none__"
+                                            label={t('bookingAttributeNone')}
+                                          >
+                                            {t('bookingAttributeNone')}
+                                          </SelectItem>
+                                          {(
+                                            bookingAttributeValues[axis.key] ||
+                                            []
+                                          ).length > 0 ? (
+                                            (
+                                              bookingAttributeValues[
+                                                axis.key
+                                              ] || []
+                                            ).map((value) => (
+                                              <SelectItem
+                                                key={value}
+                                                value={value}
+                                                label={value}
+                                              >
+                                                {value}
+                                              </SelectItem>
+                                            ))
+                                          ) : (
+                                            <SelectItem
+                                              value={`__empty_${axis.key}`}
+                                              label={axis.label}
+                                              disabled
+                                            >
+                                              {t('bookingAttributesNoOptions', {
+                                                attribute: axis.label,
+                                              })}
+                                            </SelectItem>
+                                          )}
+                                        </SelectContent>
+                                      </Select>
+                                    ))}
+                                  </div>
+                                  <p className="text-muted-foreground text-xs">
+                                    {t('availableForSelection', {
+                                      count: lineMaxQuantity,
+                                    })}
+                                  </p>
+                                </div>
+                              )}
+
+                              <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <span className="text-muted-foreground min-w-0 break-words">
+                                    {pricing.isRateBased &&
+                                    pricing.ratePlan &&
+                                    pricing.ratePlan.length > 0 ? (
+                                      <>
+                                        {line.quantity > 1 &&
+                                          `${line.quantity} × `}
+                                        {formatRatePlanBreakdown(
+                                          pricing.ratePlan,
+                                          pricing.lineSubtotal /
+                                            Math.max(1, line.quantity),
+                                        )}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {line.quantity} ×{' '}
+                                        {pricing.productDuration}{' '}
+                                        {getDurationLabel(
+                                          pricing.productPricingMode,
+                                          pricing.productDuration,
+                                        )}
+                                      </>
+                                    )}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-foreground h-6 w-6 p-0"
+                                    onClick={() =>
+                                      openPriceOverrideDialog(
                                         line.lineId,
-                                        axis.key,
-                                        value && value !== '__none__' ? value : undefined
+                                        pricing.calculatedPrice,
+                                        pricing.productPricingMode,
+                                        pricing.productDuration,
                                       )
                                     }
                                   >
-                                    <SelectTrigger className="h-8">
-                                      <SelectValue placeholder={axis.label}>
-                                        {line.selectedAttributes?.[axis.key] || axis.label}
-                                      </SelectValue>
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="__none__" label={t('bookingAttributeNone')}>
-                                        {t('bookingAttributeNone')}
-                                      </SelectItem>
-                                      {(bookingAttributeValues[axis.key] || []).length > 0 ? (
-                                        (bookingAttributeValues[axis.key] || []).map((value) => (
-                                          <SelectItem key={value} value={value} label={value}>
-                                            {value}
-                                          </SelectItem>
-                                        ))
-                                      ) : (
-                                        <SelectItem
-                                          value={`__empty_${axis.key}`}
-                                          label={axis.label}
-                                          disabled
-                                        >
-                                          {t('bookingAttributesNoOptions', { attribute: axis.label })}
-                                        </SelectItem>
-                                      )}
-                                    </SelectContent>
-                                  </Select>
-                                ))}
+                                    <PenLine className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                                <div className="text-left sm:text-right">
+                                  {pricing.hasPriceOverride ? (
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <span className="text-muted-foreground text-xs line-through">
+                                        {formatCurrency(
+                                          pricing.calculatedPrice *
+                                            line.quantity *
+                                            pricing.productDuration,
+                                        )}
+                                      </span>
+                                      <span
+                                        className={cn(
+                                          'font-medium',
+                                          pricing.effectivePrice <
+                                            pricing.calculatedPrice
+                                            ? 'text-green-600'
+                                            : 'text-orange-600',
+                                        )}
+                                      >
+                                        {formatCurrency(pricing.lineSubtotal)}
+                                      </span>
+                                    </div>
+                                  ) : pricing.hasDiscount ? (
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                      <span className="text-muted-foreground text-xs line-through">
+                                        {formatCurrency(
+                                          pricing.lineOriginalSubtotal,
+                                        )}
+                                      </span>
+                                      <span className="font-medium text-green-600">
+                                        {formatCurrency(pricing.lineSubtotal)}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="font-medium">
+                                      {formatCurrency(pricing.lineSubtotal)}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {t('availableForSelection', { count: lineMaxQuantity })}
-                              </p>
-                            </div>
-                          )}
 
-                          <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="min-w-0 break-words text-muted-foreground">
-                                {pricing.isRateBased && pricing.ratePlan && pricing.ratePlan.length > 0 ? (
-                                  <>
-                                    {line.quantity > 1 && `${line.quantity} × `}
-                                    {formatRatePlanBreakdown(pricing.ratePlan, pricing.lineSubtotal / Math.max(1, line.quantity))}
-                                  </>
-                                ) : (
-                                  <>
-                                    {line.quantity} × {pricing.productDuration}{' '}
-                                    {getDurationLabel(pricing.productPricingMode, pricing.productDuration)}
-                                  </>
-                                )}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                                onClick={() =>
-                                  openPriceOverrideDialog(
-                                    line.lineId,
-                                    pricing.calculatedPrice,
-                                    pricing.productPricingMode,
-                                    pricing.productDuration
-                                  )
-                                }
-                              >
-                                <PenLine className="h-3 w-3" />
-                              </Button>
-                            </div>
-                            <div className="text-left sm:text-right">
-                              {pricing.hasPriceOverride ? (
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    {formatCurrency(pricing.calculatedPrice * line.quantity * pricing.productDuration)}
-                                  </span>
-                                  <span
-                                    className={cn(
-                                      'font-medium',
-                                      pricing.effectivePrice < pricing.calculatedPrice
-                                        ? 'text-green-600'
-                                        : 'text-orange-600'
-                                    )}
-                                  >
-                                    {formatCurrency(pricing.lineSubtotal)}
-                                  </span>
-                                </div>
-                              ) : pricing.hasDiscount ? (
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                  <span className="text-xs text-muted-foreground line-through">
-                                    {formatCurrency(pricing.lineOriginalSubtotal)}
-                                  </span>
-                                  <span className="font-medium text-green-600">
-                                    {formatCurrency(pricing.lineSubtotal)}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="font-medium">
-                                  {formatCurrency(pricing.lineSubtotal)}
-                                </span>
+                              {lineReachedMax && (
+                                <p className="text-xs text-amber-600">
+                                  {t('lineMaxReached')}
+                                </p>
                               )}
                             </div>
-                          </div>
+                          );
+                        },
+                      )}
 
-                          {lineReachedMax && (
-                            <p className="text-xs text-amber-600">{t('lineMaxReached')}</p>
-                          )}
-                        </div>
-                      )
-                    })}
-
-                    {hasBookingAttributes && (
-                      <p className="text-xs text-muted-foreground">
-                        {hasFullSelectionLine ? t('quantityPerCombinationHint') : t('quantityCanSplitHint')}
-                      </p>
-                    )}
-                  </div>
-                )}
+                      {hasBookingAttributes && (
+                        <p className="text-muted-foreground text-xs">
+                          {hasFullSelectionLine
+                            ? t('quantityPerCombinationHint')
+                            : t('quantityCanSplitHint')}
+                        </p>
+                      )}
+                    </div>
+                  )}
               </div>
-            )
+            );
           })}
         </div>
 
         {products.length > 0 && filteredProducts.length === 0 && (
           <div className="py-8 text-center">
-            <PackageX className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <PackageX className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
             <p className="text-muted-foreground">{t('noProductsFound')}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               {t('noProductsFoundHint', { search: productSearchQuery.trim() })}
             </p>
           </div>
@@ -613,9 +761,11 @@ export function NewReservationStepProducts({
 
         {products.length === 0 && customItems.length === 0 && (
           <div className="py-8 text-center">
-            <ShoppingCart className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <ShoppingCart className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
             <p className="text-muted-foreground">{t('noProducts')}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{t('noProductsHint')}</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {t('noProductsHint')}
+            </p>
           </div>
         )}
 
@@ -625,7 +775,11 @@ export function NewReservationStepProducts({
               <PenLine className="h-4 w-4" />
               {t('customItem.title')}
             </h4>
-            <Button type="button" variant="outline" onClick={onOpenCustomItemDialog}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onOpenCustomItemDialog}
+            >
               <Plus className="mr-1 h-4 w-4" />
               {t('customItem.add')}
             </Button>
@@ -636,7 +790,7 @@ export function NewReservationStepProducts({
               {customItems.map((item) => (
                 <div
                   key={item.id}
-                  className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-4"
+                  className="border-primary/30 bg-primary/5 rounded-lg border border-dashed p-4"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -646,7 +800,7 @@ export function NewReservationStepProducts({
                           {t('customItem.badge')}
                         </Badge>
                       </div>
-                      <p className="mt-0.5 text-sm text-muted-foreground">
+                      <p className="text-muted-foreground mt-0.5 text-sm">
                         {formatCurrency(item.unitPrice)}/
                         {item.pricingMode === 'hour'
                           ? t('perHour')
@@ -655,7 +809,7 @@ export function NewReservationStepProducts({
                             : t('perDay')}
                       </p>
                       {item.description && (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
                           {item.description}
                         </p>
                       )}
@@ -670,7 +824,9 @@ export function NewReservationStepProducts({
                       >
                         <Minus className="h-3 w-3" />
                       </Button>
-                      <span className="w-8 text-center font-medium">{item.quantity}</span>
+                      <span className="w-8 text-center font-medium">
+                        {item.quantity}
+                      </span>
                       <Button
                         type="button"
                         variant="outline"
@@ -684,7 +840,7 @@ export function NewReservationStepProducts({
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-8 w-8"
                         onClick={() => removeCustomItem(item.id)}
                       >
                         <Trash2 className="h-3 w-3" />
@@ -692,12 +848,23 @@ export function NewReservationStepProducts({
                     </div>
                   </div>
                   {startDate && endDate && (
-                    <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm">
+                    <div className="border-border mt-3 flex items-center justify-between border-t pt-3 text-sm">
                       <span className="text-muted-foreground">
-                        {item.quantity} × {calculateDurationForMode(startDate, endDate, item.pricingMode)}{' '}
-                        {item.pricingMode === 'hour' ? 'h' : item.pricingMode === 'week' ? 'sem' : 'j'}
+                        {item.quantity} ×{' '}
+                        {calculateDurationForMode(
+                          startDate,
+                          endDate,
+                          item.pricingMode,
+                        )}{' '}
+                        {item.pricingMode === 'hour'
+                          ? 'h'
+                          : item.pricingMode === 'week'
+                            ? 'sem'
+                            : 'j'}
                       </span>
-                      <span className="font-medium">{formatCurrency(getCustomItemTotal(item))}</span>
+                      <span className="font-medium">
+                        {formatCurrency(getCustomItemTotal(item))}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -706,7 +873,7 @@ export function NewReservationStepProducts({
           )}
 
           {customItems.length === 0 && (
-            <p className="rounded-lg border border-dashed py-4 text-center text-sm text-muted-foreground">
+            <p className="text-muted-foreground rounded-lg border border-dashed py-4 text-center text-sm">
               {t('customItem.empty')}
             </p>
           )}
@@ -723,7 +890,9 @@ export function NewReservationStepProducts({
                 <AlertDescription className="ml-2">
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium text-amber-800 dark:text-amber-200">
-                      {t('warnings.productConflict', { name: warning.productName })}
+                      {t('warnings.productConflict', {
+                        name: warning.productName,
+                      })}
                     </span>
                     <span className="text-sm text-amber-700 dark:text-amber-300">
                       {t('warnings.productConflictDetails', {
@@ -742,7 +911,7 @@ export function NewReservationStepProducts({
                 </AlertDescription>
               </Alert>
             ))}
-            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground flex items-center gap-1 text-xs">
               <AlertTriangle className="h-3 w-3" />
               {t('warnings.conflictCanContinue')}
             </p>
@@ -751,10 +920,12 @@ export function NewReservationStepProducts({
 
         {hasItems && (
           <div className="space-y-3">
-            <div className="space-y-2 rounded-lg bg-muted/50 p-4">
+            <div className="bg-muted/50 space-y-2 rounded-lg p-4">
               {totalSavings > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{t('originalPrice')}</span>
+                  <span className="text-muted-foreground">
+                    {t('originalPrice')}
+                  </span>
                   <span className="text-muted-foreground line-through">
                     {formatCurrency(originalSubtotal)}
                   </span>
@@ -762,53 +933,137 @@ export function NewReservationStepProducts({
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('subtotal')}</span>
-                <span className={totalSavings > 0 ? 'font-medium text-green-600' : ''}>
+                <span
+                  className={
+                    totalSavings > 0 ? 'font-medium text-green-600' : ''
+                  }
+                >
                   {formatCurrency(subtotal)}
                 </span>
               </div>
               {totalSavings > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-green-600">{t('totalSavings')}</span>
-                  <span className="font-medium text-green-600">-{formatCurrency(totalSavings)}</span>
+                  <span className="font-medium text-green-600">
+                    -{formatCurrency(totalSavings)}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('deposit')}</span>
                 <span>{formatCurrency(deposit)}</span>
               </div>
+              {showTulipInsuranceAmountLine &&
+                tulipInsuranceMode === 'optional' && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      {tCheckout('insuranceLineLabel')}
+                    </span>
+                    <span>
+                      {tulipInsuranceOptIn
+                        ? isTulipInsuranceLoading
+                          ? tCheckout('insuranceEstimating')
+                          : formatCurrency(tulipInsuranceAmount)
+                        : tCheckout('insuranceOptionalDisabled')}
+                    </span>
+                  </div>
+                )}
               <Separator className="my-2" />
               <div className="flex justify-between font-medium">
                 <span>{t('total')}</span>
-                <span>{formatCurrency(subtotal)}</span>
+                <span>{formatCurrency(totalWithInsurance)}</span>
               </div>
             </div>
 
             {tulipInsuranceMode !== 'no_public' && (
               <div className="rounded-lg border p-4">
-                <p className="text-sm font-medium">{t('tulipInsurance.title')}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="text-sm font-medium">
+                  {t('tulipInsurance.title')}
+                </p>
+                <p className="text-muted-foreground mt-1 text-xs">
                   {t('tulipInsurance.appliesMappedProducts')}
                 </p>
 
                 {tulipInsuranceMode === 'required' ? (
-                  <p className="mt-3 text-sm font-medium text-emerald-700">
-                    {t('tulipInsurance.required')}
-                  </p>
+                  <div className="mt-3 space-y-3">
+                    {showTulipPastStartWarning ? (
+                      <Alert variant="warning">
+                        <AlertDescription>
+                          {t('tulipInsurance.pastStartWarning')}
+                        </AlertDescription>
+                      </Alert>
+                    ) : (
+                      <p className="text-sm font-medium text-emerald-700">
+                        {t('tulipInsurance.required')}
+                      </p>
+                    )}
+                    {!showTulipPastStartWarning &&
+                      tulipQuoteUnavailable &&
+                      tulipQuoteErrorMessage && (
+                        <Alert variant="warning">
+                          <AlertDescription>
+                            {tulipQuoteErrorMessage}
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                  </div>
                 ) : (
-                  <div className="mt-3 flex items-center space-x-2">
-                    <Checkbox
-                      id="manual-form-tulip-insurance-opt-in"
-                      checked={tulipInsuranceOptIn}
-                      onCheckedChange={(checked) =>
-                        onTulipInsuranceOptInChange(checked === true)
-                      }
-                    />
-                    <label
-                      htmlFor="manual-form-tulip-insurance-opt-in"
-                      className="cursor-pointer text-sm"
-                    >
-                      {t('tulipInsurance.optionalLabel')}
-                    </label>
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="manual-form-tulip-insurance-opt-in"
+                        checked={tulipInsuranceOptIn}
+                        disabled={isTulipInsuranceSelectionDisabled}
+                        onCheckedChange={(checked) =>
+                          onTulipInsuranceOptInChange(checked === true)
+                        }
+                      />
+                      <label
+                        htmlFor="manual-form-tulip-insurance-opt-in"
+                        className={cn(
+                          'cursor-pointer text-sm font-medium',
+                          isTulipInsuranceSelectionDisabled &&
+                            'cursor-not-allowed opacity-60',
+                        )}
+                      >
+                        {t('tulipInsurance.optionalLabel')}
+                      </label>
+                    </div>
+                    <p className="text-muted-foreground text-xs">
+                      {t('tulipInsurance.optionalHelp')}
+                    </p>
+                    {showTulipPastStartWarning && (
+                      <Alert variant="warning">
+                        <AlertDescription>
+                          {t('tulipInsurance.pastStartWarning')}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    {hasTulipEligibleProducts &&
+                      !showTulipPastStartWarning &&
+                      showTulipInsuranceAmountLine && (
+                        <div className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-2 text-sm">
+                          <span className="text-muted-foreground">
+                            {tCheckout('insuranceLineLabel')}
+                          </span>
+                          <span className="font-medium">
+                            {tulipInsuranceOptIn
+                              ? isTulipInsuranceLoading
+                                ? tCheckout('insuranceEstimating')
+                                : formatCurrency(tulipInsuranceAmount)
+                              : tCheckout('insuranceOptionalDisabled')}
+                          </span>
+                        </div>
+                      )}
+                    {!showTulipPastStartWarning &&
+                      tulipQuoteUnavailable &&
+                      tulipQuoteErrorMessage && (
+                        <Alert variant="warning">
+                          <AlertDescription>
+                            {tulipQuoteErrorMessage}
+                          </AlertDescription>
+                        </Alert>
+                      )}
                   </div>
                 )}
               </div>
@@ -817,5 +1072,5 @@ export function NewReservationStepProducts({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

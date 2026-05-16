@@ -14,7 +14,7 @@ export interface TulipResolvedSettings {
 }
 
 export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'connectedAt' | 'renterUid'> = {
-  publicMode: 'required',
+  publicMode: 'optional',
 }
 
 export function getTulipSettings(settings: StoreSettings | null | undefined): TulipResolvedSettings {
@@ -97,4 +97,40 @@ export function shouldApplyTulipInsurance(
   if (mode === 'no_public') return false
   if (mode === 'required') return true
   return optIn !== false
+}
+
+export function getDashboardTulipInsuranceMode(
+  settings: StoreSettings | null | undefined,
+): TulipPublicMode {
+  const tulipSettings = getTulipSettings(settings)
+  if (!tulipSettings.enabled) {
+    return 'no_public'
+  }
+
+  // Option A: hidden on the public storefront still remains activable by the landlord.
+  if (tulipSettings.publicMode === 'required') {
+    return 'required'
+  }
+
+  return 'optional'
+}
+
+export function getDashboardTulipInsuranceDefaultOptIn(
+  settings: StoreSettings | null | undefined,
+): boolean {
+  const tulipSettings = getTulipSettings(settings)
+  if (!tulipSettings.enabled) {
+    return false
+  }
+
+  if (tulipSettings.publicMode === 'required') {
+    return true
+  }
+
+  // Option A: hidden publicly, but opt-in stays a landlord decision.
+  if (tulipSettings.publicMode === 'no_public') {
+    return false
+  }
+
+  return true
 }

@@ -211,6 +211,7 @@ function toResolvedAttributes(
 type CheckoutTulipQuoteInput = {
   storeId: string;
   storeSettings: StoreSettings | null;
+  modeOverride?: TulipPublicMode;
   customer: {
     customerType?: 'individual' | 'business';
     companyName?: string;
@@ -243,14 +244,17 @@ type CheckoutTulipQuoteResult = {
   insuredProductIds: string[];
 };
 
-function getCheckoutTulipMode(storeSettings: StoreSettings | null): {
+function getCheckoutTulipMode(
+  storeSettings: StoreSettings | null,
+  modeOverride?: TulipPublicMode,
+): {
   mode: TulipPublicMode;
   connected: boolean;
 } {
   const tulipSettings = getTulipSettings(storeSettings);
   const connected = tulipSettings.enabled;
   return {
-    mode: connected ? tulipSettings.publicMode : 'no_public',
+    mode: connected ? (modeOverride ?? tulipSettings.publicMode) : 'no_public',
     connected,
   };
 }
@@ -258,7 +262,10 @@ function getCheckoutTulipMode(storeSettings: StoreSettings | null): {
 async function resolveCheckoutTulipQuote(
   input: CheckoutTulipQuoteInput,
 ): Promise<CheckoutTulipQuoteResult> {
-  const modeInfo = getCheckoutTulipMode(input.storeSettings);
+  const modeInfo = getCheckoutTulipMode(
+    input.storeSettings,
+    input.modeOverride,
+  );
   const requestedOptIn =
     modeInfo.mode === 'required'
       ? true
@@ -286,6 +293,7 @@ async function resolveCheckoutTulipQuote(
     const preview = await previewTulipQuoteForCheckout({
       storeId: input.storeId,
       storeSettings: input.storeSettings,
+      modeOverride: modeInfo.mode,
       customer: {
         customerType: input.customer.customerType || 'individual',
         companyName: input.customer.companyName || null,
@@ -381,6 +389,7 @@ async function resolveCheckoutTulipQuote(
 
 export async function getTulipQuotePreview(input: {
   storeId: string;
+  modeOverride?: TulipPublicMode;
   customer: {
     customerType?: 'individual' | 'business';
     companyName?: string;
@@ -397,6 +406,17 @@ export async function getTulipQuotePreview(input: {
   endDate: string;
   tulipInsuranceOptIn?: boolean;
 }): Promise<CheckoutTulipQuoteResult & { error: string | null }> {
+  console.info('[tulip][dashboard-preview] request', {
+    storeId: input.storeId,
+    modeOverride: input.modeOverride ?? null,
+    itemCount: input.items.length,
+    items: input.items,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    tulipInsuranceOptIn: input.tulipInsuranceOptIn ?? null,
+    customerEmail: input.customer.email,
+  });
+
   const store = await db.query.stores.findFirst({
     where: eq(stores.id, input.storeId),
     columns: {
@@ -428,6 +448,7 @@ export async function getTulipQuotePreview(input: {
     const quote = await resolveCheckoutTulipQuote({
       storeId: store.id,
       storeSettings,
+      modeOverride: input.modeOverride,
       customer: input.customer,
       items: input.items,
       startDate: new Date(input.startDate),
@@ -436,16 +457,29 @@ export async function getTulipQuotePreview(input: {
       fallbackCountry: store.settings?.country || 'FR',
     });
 
+    console.info('[tulip][dashboard-preview] success', {
+      storeId: input.storeId,
+      mode: quote.mode,
+      modeOverride: input.modeOverride ?? null,
+      requestedOptIn: quote.requestedOptIn,
+      appliedOptIn: quote.appliedOptIn,
+      amount: quote.amount,
+      insuredProductCount: quote.insuredProductCount,
+      uninsuredProductCount: quote.uninsuredProductCount,
+      insuredProductIds: quote.insuredProductIds,
+      quoteUnavailable: quote.quoteUnavailable,
+    });
+
     return {
       ...quote,
       error: null,
     };
   } catch (error) {
-    const modeInfo = getCheckoutTulipMode(storeSettings);
+    const modeInfo = getCheckoutTulipMode(storeSettings, input.modeOverride);
     const coverageSummary = await getTulipCoverageSummary(input.items);
     const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
 
-    return {
+    const fallbackResult = {
       mode: modeInfo.mode,
       connected: modeInfo.connected,
       inclusionEnabled: false,
@@ -464,6 +498,21 @@ export async function getTulipQuotePreview(input: {
       insuredProductIds: coverageSummary.insuredProductIds,
       error: errorKey,
     };
+
+    console.warn('[tulip][dashboard-preview] fallback', {
+      storeId: input.storeId,
+      mode: fallbackResult.mode,
+      modeOverride: input.modeOverride ?? null,
+      requestedOptIn: fallbackResult.requestedOptIn,
+      appliedOptIn: fallbackResult.appliedOptIn,
+      amount: fallbackResult.amount,
+      insuredProductCount: fallbackResult.insuredProductCount,
+      uninsuredProductCount: fallbackResult.uninsuredProductCount,
+      insuredProductIds: fallbackResult.insuredProductIds,
+      error: errorKey,
+    });
+
+    return fallbackResult;
   }
 }
 
