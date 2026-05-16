@@ -362,6 +362,7 @@ function isLouezManagedTulipProduct(product: TulipProduct): boolean {
 async function resolveCreatedTulipProductId({
   apiKey,
   createdProduct,
+  expectedRenterUid,
   expectedLouezProductId,
   expectedTitle,
   expectedBrand,
@@ -369,6 +370,7 @@ async function resolveCreatedTulipProductId({
 }: {
   apiKey: string;
   createdProduct: TulipProduct | null;
+  expectedRenterUid: string;
   expectedLouezProductId: string;
   expectedTitle: string;
   expectedBrand: string | null;
@@ -384,7 +386,9 @@ async function resolveCreatedTulipProductId({
     return null;
   }
 
-  const catalog = await tulipListProducts(apiKey);
+  const catalog = await tulipListProducts(apiKey, {
+    renterUid: expectedRenterUid,
+  });
 
   const candidates = catalog
     .map((candidate) => {
@@ -1308,7 +1312,7 @@ export async function getTulipIntegrationStateAction(): Promise<
     if (apiKey && renterUid) {
       const [renterResult, tulipProductsResult] = await Promise.allSettled([
         tulipGetRenter(apiKey, renterUid),
-        tulipListProducts(apiKey),
+        tulipListProducts(apiKey, { renterUid }),
       ]);
 
       if (renterResult.status === 'fulfilled' && renterResult.value?.uid) {
@@ -1462,7 +1466,7 @@ export async function getTulipProductStateAction(
 
     if (connected && apiKey) {
       try {
-        const rawProducts = await tulipListProducts(apiKey);
+        const rawProducts = await tulipListProducts(apiKey, { renterUid });
         tulipProducts = normalizeTulipProducts(rawProducts);
       } catch (error) {
         if (
@@ -1675,7 +1679,7 @@ export async function upsertTulipProductMappingAction(
         return { error: 'errors.tulipNotConfigured' };
       }
 
-      const tulipCatalog = await tulipListProducts(apiKey);
+      const tulipCatalog = await tulipListProducts(apiKey, { renterUid });
       const selectedTulipProduct =
         tulipCatalog.find(
           (candidate) => candidate.id === validated.tulipProductId,
@@ -1752,6 +1756,7 @@ export async function upsertTulipProductMappingAction(
         const clonedProductId = await resolveCreatedTulipProductId({
           apiKey,
           createdProduct: createdClone,
+          expectedRenterUid: renterUid,
           expectedLouezProductId: product.id,
           expectedTitle: selectedTitle,
           expectedBrand: selectedBrand,
@@ -1889,7 +1894,7 @@ export async function pushTulipProductUpdateAction(
           },
         );
 
-        const rawCatalog = await tulipListProducts(apiKey);
+        const rawCatalog = await tulipListProducts(apiKey, { renterUid });
         const payloadTitle =
           typeof payload.title === 'string' ? payload.title : product.name;
         const payloadData =
@@ -2188,6 +2193,7 @@ export async function createTulipProductAction(
     const resolvedTulipProductId = await resolveCreatedTulipProductId({
       apiKey,
       createdProduct,
+      expectedRenterUid: renterUid,
       expectedLouezProductId: product.id,
       expectedTitle: resolvedTitle,
       expectedBrand: resolvedBrand,

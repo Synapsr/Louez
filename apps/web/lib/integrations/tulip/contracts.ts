@@ -127,6 +127,7 @@ function assertDashboardTulipContractCreationSource(source: string) {
 
 async function assertTulipProductContractCompatibility(params: {
   apiKey: string;
+  renterUid: string;
   insuredItems: ResolvedTulipItemInput[];
   contractType: TulipContractType;
 }) {
@@ -134,7 +135,9 @@ async function assertTulipProductContractCompatibility(params: {
     return;
   }
 
-  const catalog = await tulipListProducts(params.apiKey);
+  const catalog = await tulipListProducts(params.apiKey, {
+    renterUid: params.renterUid,
+  });
   const productTypeById = new Map<string, string>();
 
   for (const product of catalog) {
@@ -538,6 +541,7 @@ export async function previewTulipQuoteForCheckout(params: {
 
   await assertTulipProductContractCompatibility({
     apiKey,
+    renterUid: tulipSettings.renterUid,
     insuredItems: coverage.insuredItems,
     contractType: resolvedContractType,
   });
@@ -806,6 +810,7 @@ export async function createTulipContractForReservation(params: {
 
     await assertTulipProductContractCompatibility({
       apiKey,
+      renterUid: tulipSettings.renterUid,
       insuredItems,
       contractType: resolvedContractType,
     });
@@ -1037,6 +1042,7 @@ export async function syncTulipContractForReservation(params: {
 
   await assertTulipProductContractCompatibility({
     apiKey,
+    renterUid,
     insuredItems,
     contractType: resolvedContractType,
   });
