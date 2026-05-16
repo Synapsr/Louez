@@ -210,6 +210,7 @@ function applyTulipProductMargins(params: {
 
 async function assertTulipProductContractCompatibility(params: {
   productMetadataById: Map<string, TulipProductContractMetadata>;
+  enabledProductTypes: Set<string> | null;
   insuredItems: ResolvedTulipItemInput[];
   contractType: TulipContractType;
 }) {
@@ -228,6 +229,13 @@ async function assertTulipProductContractCompatibility(params: {
       continue;
     }
 
+    if (
+      params.enabledProductTypes &&
+      !params.enabledProductTypes.has(productType)
+    ) {
+      throw new Error('errors.tulipProductTypeDisabled');
+    }
+
     const allowedContractTypes =
       TULIP_ALLOWED_CONTRACT_TYPES_BY_PRODUCT_TYPE[
         productType as keyof typeof TULIP_ALLOWED_CONTRACT_TYPES_BY_PRODUCT_TYPE
@@ -242,6 +250,25 @@ async function assertTulipProductContractCompatibility(params: {
       throw new Error('errors.tulipContractProductsIncompatible');
     }
   }
+}
+
+function getEnabledTulipProductTypes(
+  renter: Awaited<ReturnType<typeof assertTulipContractTypeEnabled>>,
+): Set<string> | null {
+  const products = renter?.options?.products;
+  if (!Array.isArray(products)) {
+    return null;
+  }
+
+  const enabledTypes = products
+    .map((product) =>
+      typeof product.product_type === 'string'
+        ? product.product_type.trim()
+        : '',
+    )
+    .filter((productType) => productType.length > 0);
+
+  return enabledTypes.length > 0 ? new Set(enabledTypes) : null;
 }
 
 function toTulipCustomerInput(customer: ReservationCustomerLike): TulipCustomerInput {
@@ -620,6 +647,7 @@ export async function previewTulipQuoteForCheckout(params: {
 
   await assertTulipProductContractCompatibility({
     productMetadataById,
+    enabledProductTypes: getEnabledTulipProductTypes(renter),
     insuredItems: coverage.insuredItems,
     contractType: resolvedContractType,
   });
@@ -877,7 +905,7 @@ export async function createTulipContractForReservation(params: {
       reservation.endDate,
     );
 
-    await assertTulipContractTypeEnabled({
+    const renter = await assertTulipContractTypeEnabled({
       apiKey,
       renterUid: tulipSettings.renterUid,
       contractType: resolvedContractType,
@@ -899,6 +927,7 @@ export async function createTulipContractForReservation(params: {
 
     await assertTulipProductContractCompatibility({
       productMetadataById,
+      enabledProductTypes: getEnabledTulipProductTypes(renter),
       insuredItems,
       contractType: resolvedContractType,
     });
@@ -1119,7 +1148,7 @@ export async function syncTulipContractForReservation(params: {
     reservation.endDate,
   );
 
-  await assertTulipContractTypeEnabled({
+  const renter = await assertTulipContractTypeEnabled({
     apiKey,
     renterUid,
     contractType: resolvedContractType,
@@ -1141,6 +1170,7 @@ export async function syncTulipContractForReservation(params: {
 
   await assertTulipProductContractCompatibility({
     productMetadataById,
+    enabledProductTypes: getEnabledTulipProductTypes(renter),
     insuredItems,
     contractType: resolvedContractType,
   });
