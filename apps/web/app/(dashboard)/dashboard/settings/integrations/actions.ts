@@ -42,7 +42,6 @@ import {
   tulipCreateProduct,
   tulipGetRenter,
   tulipListProducts,
-  tulipListRenters,
   tulipUpdateProduct,
 } from '@/lib/integrations/tulip/client';
 import {
@@ -765,6 +764,39 @@ function toActionError(error: unknown): ActionError {
   }
 
   return { error: 'errors.generic' };
+}
+
+function toTulipRenterAttachError(error: unknown): ActionError {
+  if (error instanceof TulipApiError) {
+    const payloadDetails = stringifyTulipErrorPayload(error.payload);
+
+    console.error('[tulip][connect] renter attach failed', {
+      status: error.status,
+      message: error.message,
+      payload: error.payload,
+    });
+
+    if (error.status === 401) {
+      return {
+        error: 'errors.tulipApiKeyInvalid',
+        details: payloadDetails,
+      };
+    }
+
+    if (error.status === 403) {
+      return {
+        error: 'errors.tulipActionForbidden',
+        details: payloadDetails,
+      };
+    }
+
+    return {
+      error: 'errors.tulipRenterAttachFailed',
+      details: payloadDetails,
+    };
+  }
+
+  return toActionError(error);
 }
 
 async function getStoreOrError(): Promise<
@@ -1508,31 +1540,15 @@ export async function connectTulipApiKeyAction(
       return { error: 'errors.tulipRenterNotFound' };
     }
 
-    console.info('[tulip][connect] validating renter uid', {
+    console.info('[tulip][connect] attaching renter uid', {
       storeId: store.id,
       renterUid,
     });
 
-    const connectedRenters = await tulipListRenters(apiKey);
-    const isRenterAlreadyAttached = connectedRenters.some(
-      (renter) => renter.uid === renterUid && renter.enabled,
-    );
-
-    if (!isRenterAlreadyAttached) {
-      console.info('[tulip][connect] attaching renter', {
-        storeId: store.id,
-        renterUid,
-      });
-
-      try {
-        await tulipAddRenter(apiKey, renterUid);
-      } catch (error) {
-        if (error instanceof TulipApiError && error.status === 400) {
-          return { error: 'errors.tulipRenterAttachFailed' };
-        }
-
-        throw error;
-      }
+    try {
+      await tulipAddRenter(apiKey, renterUid);
+    } catch (error) {
+      return toTulipRenterAttachError(error);
     }
 
     let renter: Awaited<ReturnType<typeof tulipGetRenter>> = null;
@@ -1540,21 +1556,13 @@ export async function connectTulipApiKeyAction(
       renter = await tulipGetRenter(apiKey, renterUid);
     } catch (error) {
       if (error instanceof TulipApiError && error.status === 404) {
-        return {
-          error: isRenterAlreadyAttached
-            ? 'errors.tulipRenterNotFound'
-            : 'errors.tulipRenterAttachFailed',
-        };
+        return { error: 'errors.tulipRenterAttachFailed' };
       }
 
       throw error;
     }
     if (!renter?.uid) {
-      return {
-        error: isRenterAlreadyAttached
-          ? 'errors.tulipRenterNotFound'
-          : 'errors.tulipRenterAttachFailed',
-      };
+      return { error: 'errors.tulipRenterAttachFailed' };
     }
 
     const patchedSettings = mergeTulipSettings(storeSettings, {
