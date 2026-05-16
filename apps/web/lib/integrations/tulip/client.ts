@@ -106,6 +106,7 @@ async function request<T>(
 
 export type TulipProduct = {
   id: string;
+  renterUid?: string;
   title?: string;
   description?: string;
   productType?: string;
@@ -137,6 +138,22 @@ function parseTulipProduct(payload: unknown): TulipProduct | null {
     return null;
   }
 
+  const renterUid =
+    typeof record.uuid === 'string'
+      ? record.uuid.trim()
+      : typeof record.renter_uid === 'string'
+        ? record.renter_uid.trim()
+        : typeof record.renterUid === 'string'
+          ? record.renterUid.trim()
+          : typeof record.renter_id === 'string'
+            ? record.renter_id.trim()
+            : typeof record.renterId === 'string'
+              ? record.renterId.trim()
+              : typeof record.product_id === 'string' &&
+                  typeof record.uid === 'string'
+                ? record.uid.trim()
+                : '';
+
   const data =
     record.data && typeof record.data === 'object'
       ? (record.data as TulipRecord)
@@ -149,6 +166,7 @@ function parseTulipProduct(payload: unknown): TulipProduct | null {
 
   return {
     id,
+    ...(renterUid ? { renterUid } : {}),
     title: typeof record.title === 'string' ? record.title : undefined,
     description:
       typeof record.description === 'string' ? record.description : undefined,
@@ -258,6 +276,7 @@ export async function tulipAddRenter(
 
 export async function tulipListProducts(
   apiKey: string,
+  options?: { renterUid?: string | null },
 ): Promise<TulipProduct[]> {
   const payload = await request<unknown>('/products', apiKey);
   const envelope = unwrapEnvelope(payload);
@@ -274,9 +293,16 @@ export async function tulipListProducts(
     }
   }
 
-  return productsPayload
+  const products = productsPayload
     .map((product) => parseTulipProduct(product))
     .filter((product): product is TulipProduct => product !== null);
+  const renterUid = options?.renterUid?.trim() || null;
+
+  if (!renterUid || !products.some((product) => product.renterUid)) {
+    return products;
+  }
+
+  return products.filter((product) => product.renterUid === renterUid);
 }
 
 export async function tulipCreateProduct(
