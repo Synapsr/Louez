@@ -5219,6 +5219,7 @@
     "tulipContractValidationFailed": "Tulip a refusé cette action à cause d'une erreur de validation métier sur le contrat.",
     "tulipContractTypeDisabled": "Le type de contrat Tulip requis pour cette durée n'est pas activé pour cette boutique.",
     "tulipContractProductsIncompatible": "Les produits Tulip assurés de cette réservation ne sont pas tous compatibles avec ce type de contrat.",
+    "tulipProductTypeDisabled": "Cette catégorie de produit Tulip n'est pas activée pour cette boutique.",
     "promoCodeInvalid": "Ce code promo est invalide ou n'existe pas",
     "promoCodeExpired": "Ce code promo a expiré",
     "promoCodeExhausted": "Ce code promo a atteint sa limite d'utilisation",
