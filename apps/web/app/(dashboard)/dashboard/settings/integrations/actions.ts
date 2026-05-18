@@ -772,8 +772,6 @@ function toActionError(error: unknown): ActionError {
 
 function toTulipRenterAttachError(error: unknown): ActionError {
   if (error instanceof TulipApiError) {
-    const payloadDetails = stringifyTulipErrorPayload(error.payload);
-
     console.error('[tulip][connect] renter attach failed', {
       status: error.status,
       message: error.message,
@@ -783,20 +781,17 @@ function toTulipRenterAttachError(error: unknown): ActionError {
     if (error.status === 401) {
       return {
         error: 'errors.tulipApiKeyInvalid',
-        details: payloadDetails,
       };
     }
 
     if (error.status === 403) {
       return {
         error: 'errors.tulipActionForbidden',
-        details: payloadDetails,
       };
     }
 
     return {
       error: 'errors.tulipRenterAttachFailed',
-      details: payloadDetails,
     };
   }
 

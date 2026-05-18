@@ -50,11 +50,53 @@ function truncateTulipResponseBody(body: string): string {
   return `${body.slice(0, TULIP_ERROR_BODY_MAX_LENGTH)}...`;
 }
 
+function summarizeTulipRequestBody(body: unknown): TulipRecord | null {
+  if (body === undefined) {
+    return null;
+  }
+
+  if (typeof body === 'string') {
+    return {
+      type: 'string',
+      value: body,
+    };
+  }
+
+  if (!body || typeof body !== 'object') {
+    return {
+      type: typeof body,
+    };
+  }
+
+  if (Array.isArray(body)) {
+    return {
+      type: 'array',
+      length: body.length,
+    };
+  }
+
+  return {
+    type: 'object',
+    keys: Object.keys(body as TulipRecord).sort(),
+  };
+}
+
+function serializeTulipResponseHeaders(headers: Headers): Record<string, string> {
+  const serialized: Record<string, string> = {};
+
+  headers.forEach((value, key) => {
+    serialized[key] = value;
+  });
+
+  return serialized;
+}
+
 function buildTulipDiagnosticPayload(
   response: Response,
   path: string,
   method: string,
   bodyText: string,
+  requestBody: unknown,
 ): TulipRecord {
   const normalizedBody = bodyText.trim();
 
@@ -66,11 +108,14 @@ function buildTulipDiagnosticPayload(
     request: {
       method,
       path,
+      url: response.url || `${env.TULIP_API_BASE_URL}${path}`,
+      body: summarizeTulipRequestBody(requestBody),
     },
     response: {
       status: response.status,
       statusText: response.statusText,
       contentType: response.headers.get('content-type'),
+      headers: serializeTulipResponseHeaders(response.headers),
       rawBody: normalizedBody
         ? truncateTulipResponseBody(normalizedBody)
         : null,
@@ -132,19 +177,38 @@ async function request<T>(
 
   const bodyText = await response.text();
   let payload: unknown = bodyText.trim()
-    ? buildTulipDiagnosticPayload(response, path, method, bodyText)
+    ? buildTulipDiagnosticPayload(
+        response,
+        path,
+        method,
+        bodyText,
+        options?.body,
+      )
     : null;
   try {
     if (bodyText.trim()) {
       payload = JSON.parse(bodyText) as unknown;
     }
   } catch {
-    payload = buildTulipDiagnosticPayload(response, path, method, bodyText);
+    payload = buildTulipDiagnosticPayload(
+      response,
+      path,
+      method,
+      bodyText,
+      options?.body,
+    );
   }
 
   if (!response.ok) {
     const errorPayload =
-      payload ?? buildTulipDiagnosticPayload(response, path, method, bodyText);
+      payload ??
+      buildTulipDiagnosticPayload(
+        response,
+        path,
+        method,
+        bodyText,
+        options?.body,
+      );
 
     throw new TulipApiError(
       `Tulip API request failed (${response.status}): ${extractMessage(errorPayload)}`,
