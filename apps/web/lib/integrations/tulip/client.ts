@@ -2,6 +2,7 @@ import { env } from '@/env';
 
 type TulipRecord = Record<string, unknown>;
 const TULIP_API_TIMEOUT_MS = 20_000;
+const TULIP_ERROR_BODY_MAX_LENGTH = 2_000;
 
 export class TulipApiError extends Error {
   status: number;
@@ -22,16 +23,59 @@ function unwrapEnvelope(payload: unknown): unknown {
 }
 
 function extractMessage(payload: unknown): string {
+  if (typeof payload === 'string') {
+    return payload.trim() || 'Unknown error';
+  }
   if (!payload || typeof payload !== 'object') {
     return 'Unknown error';
   }
   const obj = payload as TulipRecord;
   if (typeof obj.message === 'string') return obj.message;
+  if (typeof obj.error === 'string') return obj.error;
+  if (typeof obj.detail === 'string') return obj.detail;
+  if (typeof obj.title === 'string') return obj.title;
   if (obj.error && typeof obj.error === 'object') {
     const errorObj = obj.error as TulipRecord;
     if (typeof errorObj.message === 'string') return errorObj.message;
+    if (typeof errorObj.detail === 'string') return errorObj.detail;
   }
   return 'Unknown error';
+}
+
+function truncateTulipResponseBody(body: string): string {
+  if (body.length <= TULIP_ERROR_BODY_MAX_LENGTH) {
+    return body;
+  }
+
+  return `${body.slice(0, TULIP_ERROR_BODY_MAX_LENGTH)}...`;
+}
+
+function buildTulipDiagnosticPayload(
+  response: Response,
+  path: string,
+  method: string,
+  bodyText: string,
+): TulipRecord {
+  const normalizedBody = bodyText.trim();
+
+  return {
+    message:
+      normalizedBody ||
+      response.statusText ||
+      `Tulip API request failed with status ${response.status}`,
+    request: {
+      method,
+      path,
+    },
+    response: {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get('content-type'),
+      rawBody: normalizedBody
+        ? truncateTulipResponseBody(normalizedBody)
+        : null,
+    },
+  };
 }
 
 async function request<T>(
@@ -86,18 +130,26 @@ async function request<T>(
     clearTimeout(timeoutId);
   }
 
-  let payload: unknown = null;
+  const bodyText = await response.text();
+  let payload: unknown = bodyText.trim()
+    ? buildTulipDiagnosticPayload(response, path, method, bodyText)
+    : null;
   try {
-    payload = await response.json();
+    if (bodyText.trim()) {
+      payload = JSON.parse(bodyText) as unknown;
+    }
   } catch {
-    payload = null;
+    payload = buildTulipDiagnosticPayload(response, path, method, bodyText);
   }
 
   if (!response.ok) {
+    const errorPayload =
+      payload ?? buildTulipDiagnosticPayload(response, path, method, bodyText);
+
     throw new TulipApiError(
-      `Tulip API request failed (${response.status}): ${extractMessage(payload)}`,
+      `Tulip API request failed (${response.status}): ${extractMessage(errorPayload)}`,
       response.status,
-      payload,
+      errorPayload,
     );
   }
 
