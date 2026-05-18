@@ -41,6 +41,7 @@ import {
   tulipAddRenter,
   tulipCreateProduct,
   tulipGetRenter,
+  tulipListRenters,
   tulipListProducts,
   tulipUpdateProduct,
 } from '@/lib/integrations/tulip/client';
@@ -1549,10 +1550,22 @@ export async function connectTulipApiKeyAction(
       renterUid,
     });
 
-    try {
-      await tulipAddRenter(apiKey, renterUid);
-    } catch (error) {
-      return toTulipRenterAttachError(error);
+    const renters = await tulipListRenters(apiKey);
+    const isRenterAlreadyAttached = renters.some(
+      (renter) => renter.uid === renterUid && renter.enabled,
+    );
+
+    if (isRenterAlreadyAttached) {
+      console.info('[tulip][connect] renter uid already attached', {
+        storeId: store.id,
+        renterUid,
+      });
+    } else {
+      try {
+        await tulipAddRenter(apiKey, renterUid);
+      } catch (error) {
+        return toTulipRenterAttachError(error);
+      }
     }
 
     let renter: Awaited<ReturnType<typeof tulipGetRenter>> = null;
