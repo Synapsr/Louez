@@ -683,7 +683,7 @@ function getTulipErrorCode(payload: unknown): number | null {
   return typeof code === 'number' ? code : null;
 }
 
-function stringifyTulipErrorPayload(payload: unknown): string | undefined {
+function stringifyTulipPayload(payload: unknown): string | undefined {
   if (payload == null) {
     return undefined;
   }
@@ -693,10 +693,15 @@ function stringifyTulipErrorPayload(payload: unknown): string | undefined {
   }
 
   try {
-    return `payload: ${JSON.stringify(payload, null, 2)}`;
+    return JSON.stringify(payload, null, 2);
   } catch {
     return undefined;
   }
+}
+
+function stringifyTulipErrorPayload(payload: unknown): string | undefined {
+  const serialized = stringifyTulipPayload(payload);
+  return serialized ? `payload: ${serialized}` : undefined;
 }
 
 function toActionError(error: unknown): ActionError {
@@ -775,7 +780,7 @@ function toTulipRenterAttachError(error: unknown): ActionError {
     console.error('[tulip][connect] renter attach failed', {
       status: error.status,
       message: error.message,
-      payload: error.payload,
+      payload: stringifyTulipPayload(error.payload) ?? error.payload,
     });
 
     if (error.status === 401) {
