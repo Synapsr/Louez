@@ -394,7 +394,11 @@ export async function tulipListProducts(
   apiKey: string,
   options?: { renterUid?: string | null },
 ): Promise<TulipProduct[]> {
-  const payload = await request<unknown>('/products', apiKey);
+  const renterUid = options?.renterUid?.trim() || null;
+  const path = renterUid
+    ? `/products?uid=${encodeURIComponent(renterUid)}`
+    : '/products';
+  const payload = await request<unknown>(path, apiKey);
   const envelope = unwrapEnvelope(payload);
   let productsPayload: unknown[] = [];
 
@@ -412,7 +416,6 @@ export async function tulipListProducts(
   const products = productsPayload
     .map((product) => parseTulipProduct(product))
     .filter((product): product is TulipProduct => product !== null);
-  const renterUid = options?.renterUid?.trim() || null;
 
   if (!renterUid || !products.some((product) => product.renterUid)) {
     return products;
