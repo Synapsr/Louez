@@ -1343,21 +1343,25 @@ export async function getTulipIntegrationStateAction(): Promise<
       ) {
         const productsError = tulipProductsResult.reason;
 
-        if (
-          productsError instanceof TulipApiError &&
-          (productsError.status === 401 || productsError.status === 403)
-        ) {
-          connectionIssue = toActionError(productsError).error;
-          connected = false;
-        } else {
-          console.warn(
-            '[tulip] Unable to load Tulip products catalog, continuing without catalog',
-            {
-              storeId: store.id,
-              error: productsError,
-            },
-          );
-        }
+        console.warn(
+          '[tulip] Unable to load Tulip products catalog, continuing without catalog',
+          {
+            storeId: store.id,
+            renterUid,
+            status:
+              productsError instanceof TulipApiError
+                ? productsError.status
+                : null,
+            payload:
+              productsError instanceof TulipApiError
+                ? productsError.payload
+                : null,
+            error:
+              productsError instanceof Error
+                ? productsError.message
+                : productsError,
+          },
+        );
       }
     } else if (renterUid && !apiKey) {
       connectionIssue = 'errors.tulipNotConfigured';
@@ -1470,21 +1474,17 @@ export async function getTulipProductStateAction(
         const rawProducts = await tulipListProducts(apiKey, { renterUid });
         tulipProducts = normalizeTulipProducts(rawProducts);
       } catch (error) {
-        if (
-          error instanceof TulipApiError &&
-          (error.status === 401 || error.status === 403)
-        ) {
-          connectionIssue = toActionError(error).error;
-        } else {
-          console.warn(
-            '[tulip] Unable to load Tulip products catalog for product assurance section',
-            {
-              storeId: store.id,
-              productId: product.id,
-              error,
-            },
-          );
-        }
+        console.warn(
+          '[tulip] Unable to load Tulip products catalog for product assurance section',
+          {
+            storeId: store.id,
+            productId: product.id,
+            renterUid,
+            status: error instanceof TulipApiError ? error.status : null,
+            payload: error instanceof TulipApiError ? error.payload : null,
+            error: error instanceof Error ? error.message : error,
+          },
+        );
       }
     }
 
