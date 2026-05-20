@@ -254,6 +254,8 @@ export function ProductAssuranceSection({
     ? (tulipItems.find((item) => item.value === state.product.tulipProductId) ??
       null)
     : null;
+  const hasTulipProductCatalogIssue =
+    state.connectionIssue === 'errors.tulipProductCatalogUnavailable';
   const isMappingBusy =
     mappingMutation.isPending || productStateQuery.isRefetching;
   const isDialogBusy =
@@ -384,7 +386,11 @@ export function ProductAssuranceSection({
                       disabled={isMappingBusy}
                     />
                     <ComboboxPopup>
-                      <ComboboxEmpty>{t('noResults')}</ComboboxEmpty>
+                      <ComboboxEmpty>
+                        {hasTulipProductCatalogIssue
+                          ? tErrors('tulipProductCatalogUnavailable')
+                          : t('noResults')}
+                      </ComboboxEmpty>
                       <ComboboxList>
                         {(item) => (
                           <ComboboxItem key={item.value} value={item}>

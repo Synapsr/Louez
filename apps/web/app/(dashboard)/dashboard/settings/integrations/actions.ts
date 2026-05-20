@@ -1362,6 +1362,12 @@ export async function getTulipIntegrationStateAction(): Promise<
                 : productsError,
           },
         );
+        if (
+          productsError instanceof TulipApiError &&
+          (productsError.status === 401 || productsError.status === 403)
+        ) {
+          connectionIssue = 'errors.tulipProductCatalogUnavailable';
+        }
       }
     } else if (renterUid && !apiKey) {
       connectionIssue = 'errors.tulipNotConfigured';
@@ -1485,6 +1491,12 @@ export async function getTulipProductStateAction(
             error: error instanceof Error ? error.message : error,
           },
         );
+        if (
+          error instanceof TulipApiError &&
+          (error.status === 401 || error.status === 403)
+        ) {
+          connectionIssue = 'errors.tulipProductCatalogUnavailable';
+        }
       }
     }
 
