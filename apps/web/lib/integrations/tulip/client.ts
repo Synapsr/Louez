@@ -384,9 +384,10 @@ export async function tulipAddRenter(
   apiKey: string,
   renterUid: string,
 ): Promise<void> {
+  // Tulip's live API expects `renter_id` even though the published schema says string.
   await request<unknown>('/renters', apiKey, {
     method: 'POST',
-    body: renterUid,
+    body: { renter_id: renterUid },
   });
 }
 

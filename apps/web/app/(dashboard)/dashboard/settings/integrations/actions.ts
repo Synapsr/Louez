@@ -1564,7 +1564,18 @@ export async function connectTulipApiKeyAction(
       try {
         await tulipAddRenter(apiKey, renterUid);
       } catch (error) {
-        return toTulipRenterAttachError(error);
+        if (
+          error instanceof TulipApiError &&
+          error.status === 400 &&
+          getTulipErrorCode(error.payload) === 2002
+        ) {
+          console.info('[tulip][connect] renter uid already registered', {
+            storeId: store.id,
+            renterUid,
+          });
+        } else {
+          return toTulipRenterAttachError(error);
+        }
       }
     }
 
