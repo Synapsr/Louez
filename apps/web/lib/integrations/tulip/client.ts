@@ -396,10 +396,7 @@ export async function tulipListProducts(
   options?: { renterUid?: string | null },
 ): Promise<TulipProduct[]> {
   const renterUid = options?.renterUid?.trim() || null;
-  const path = renterUid
-    ? `/products?uid=${encodeURIComponent(renterUid)}`
-    : '/products';
-  const payload = await request<unknown>(path, apiKey);
+  const payload = await request<unknown>('/products', apiKey);
   const envelope = unwrapEnvelope(payload);
   let productsPayload: unknown[] = [];
 
