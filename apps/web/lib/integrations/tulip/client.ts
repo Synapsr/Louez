@@ -419,7 +419,28 @@ export async function tulipListProducts(
     return products;
   }
 
-  return products.filter((product) => product.renterUid === renterUid);
+  const filteredProducts = products.filter(
+    (product) => product.renterUid === renterUid,
+  );
+
+  if (filteredProducts.length === 0 && products.length > 0) {
+    const productCountsByRenterUid = products.reduce<Record<string, number>>(
+      (counts, product) => {
+        const key = product.renterUid || 'unknown';
+        counts[key] = (counts[key] ?? 0) + 1;
+        return counts;
+      },
+      {},
+    );
+
+    console.warn('[tulip] No products matched renter uid', {
+      renterUid,
+      totalProducts: products.length,
+      productCountsByRenterUid,
+    });
+  }
+
+  return filteredProducts;
 }
 
 export async function tulipCreateProduct(

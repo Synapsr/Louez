@@ -897,6 +897,7 @@
           "mappingPlaceholder": "Non associato",
           "mappingSaving": "Salvataggio...",
           "noResults": "Nessun prodotto Tulip trovato",
+          "noRenterProducts": "Nessun prodotto Tulip trovato per questo locatore",
           "dialog": {
             "description": "Configuri i dettagli del prodotto Tulip e invii gli aggiornamenti.",
             "cancel": "Annulla",

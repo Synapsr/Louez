@@ -944,6 +944,7 @@
           "mappingPlaceholder": "No mapeado",
           "mappingSaving": "Guardando...",
           "noResults": "No se encontraron productos Tulip",
+          "noRenterProducts": "No se encontraron productos Tulip para este arrendador",
           "dialog": {
             "description": "Configure los detalles del producto Tulip y envie actualizaciones.",
             "cancel": "Cancelar",

@@ -945,6 +945,7 @@
           "mappingSaving": "Saving...",
           "dropdownValueExclTax": "{value} excl. tax",
           "noResults": "No Tulip products found",
+          "noRenterProducts": "No Tulip products found for this renter",
           "dialog": {
             "description": "Configure Tulip product details and push updates.",
             "cancel": "Cancel",
