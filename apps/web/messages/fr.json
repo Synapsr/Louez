@@ -907,6 +907,7 @@
           "mappingSaving": "Enregistrement...",
           "dropdownValueExclTax": "{value} HT",
           "noResults": "Aucun produit Tulip trouvé",
+          "noRenterProducts": "Aucun produit Tulip trouvé pour ce loueur",
           "dialog": {
             "description": "Configurez les détails du produit Tulip et poussez les mises à jour.",
             "cancel": "Annuler",

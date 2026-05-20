@@ -256,6 +256,10 @@ export function ProductAssuranceSection({
     : null;
   const hasTulipProductCatalogIssue =
     state.connectionIssue === 'errors.tulipProductCatalogUnavailable';
+  const hasEmptyTulipProductsForRenter =
+    state.connected &&
+    state.tulipProducts.length === 0 &&
+    !hasTulipProductCatalogIssue;
   const isMappingBusy =
     mappingMutation.isPending || productStateQuery.isRefetching;
   const isDialogBusy =
@@ -389,6 +393,8 @@ export function ProductAssuranceSection({
                       <ComboboxEmpty>
                         {hasTulipProductCatalogIssue
                           ? tErrors('tulipProductCatalogUnavailable')
+                          : hasEmptyTulipProductsForRenter
+                            ? t('noRenterProducts')
                           : t('noResults')}
                       </ComboboxEmpty>
                       <ComboboxList>

@@ -897,6 +897,7 @@
           "mappingPlaceholder": "Niezmapowano",
           "mappingSaving": "Zapisywanie...",
           "noResults": "Nie znaleziono produktów Tulip",
+          "noRenterProducts": "Nie znaleziono produktów Tulip dla tego wynajmującego",
           "dialog": {
             "description": "Skonfiguruj szczegóły produktu Tulip i wyślij aktualizacje.",
             "cancel": "Anuluj",

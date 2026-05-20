@@ -936,6 +936,7 @@
           "mappingPlaceholder": "Nicht zugeordnet",
           "mappingSaving": "Wird gespeichert...",
           "noResults": "Keine Tulip-Produkte gefunden",
+          "noRenterProducts": "Keine Tulip-Produkte fur diesen Vermieter gefunden",
           "dialog": {
             "description": "Tulip-Produktdetails konfigurieren und Aktualisierungen übertragen.",
             "cancel": "Abbrechen",

@@ -897,6 +897,7 @@
           "mappingPlaceholder": "Niet gekoppeld",
           "mappingSaving": "Opslaan...",
           "noResults": "Geen Tulip producten gevonden",
+          "noRenterProducts": "Geen Tulip producten gevonden voor deze verhuurder",
           "dialog": {
             "description": "Configureer Tulip productdetails en push updates.",
             "cancel": "Annuleren",
