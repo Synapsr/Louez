@@ -5201,6 +5201,7 @@
     "tulipProductRequiredFieldsMissing": "Category, subtype, brand, model, and purchase price before tax are required to create a Tulip product.",
     "tulipProductPayloadInvalid": "Tulip rejected product data. Check category/subtype and required fields.",
     "tulipProductNotFound": "Tulip product not found. Refresh Tulip products and remap this item.",
+    "tulipProductCatalogUnavailable": "The Tulip product catalog is unavailable for this account. You can create a new Tulip product or ask Tulip to enable catalog access.",
     "tulipNotConfigured": "Tulip is not configured yet.",
     "tulipProductNotMapped": "Some products are not mapped to Tulip products.",
     "tulipProductAlreadyMapped": "This product is already mapped to a Tulip product.",
