@@ -58,6 +58,7 @@ export const dashboardReservationsListInputSchema = z.object({
     ])
     .optional(),
   period: z.enum(['today', 'week', 'month']).optional(),
+  operation: z.enum(['departure', 'return']).optional(),
   limit: z.number().int().min(1).max(500).optional(),
   search: z.string().max(100).optional(),
   sort: z.enum(['startDate', 'amount', 'status', 'number']).optional(),

@@ -66,6 +66,7 @@ export function ReservationsPageContent({
   // Read URL params
   const status = searchParams.get('status') || currentStatus || undefined;
   const period = searchParams.get('period') || currentPeriod || undefined;
+  const operation = searchParams.get('operation') || undefined;
   const search = searchParams.get('search') || undefined;
   const view = searchParams.get('view') || 'cards';
   const sortParam = searchParams.get('sort') as SortField | null;
@@ -125,6 +126,10 @@ export function ReservationsPageContent({
           period === 'today' || period === 'week' || period === 'month'
             ? period
             : undefined,
+        operation:
+          operation === 'departure' || operation === 'return'
+            ? operation
+            : undefined,
         search: search || undefined,
         sort: currentSort,
         sortDirection: currentSortDirection as 'asc' | 'desc',
@@ -146,7 +151,7 @@ export function ReservationsPageContent({
     cancelled: 0,
     quote: 0,
   };
-  const totalCount = (reservationsQuery.data as any)?.totalCount ?? null;
+  const totalCount = reservationsQuery.data?.totalCount ?? null;
 
   // Determine which reservations to show vs blur
   const displayLimit = limits.limit;

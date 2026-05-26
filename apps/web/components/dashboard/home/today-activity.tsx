@@ -1,49 +1,51 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
+import Link from 'next/link';
+
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import {
-  ArrowUpRight,
   ArrowDownRight,
-  CheckCircle,
   ArrowRight,
-  Package,
+  ArrowUpRight,
+  CheckCircle,
   Clock,
-} from 'lucide-react'
-import { cn, formatCurrency } from '@louez/utils'
-import { Button } from '@louez/ui'
+  Package,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Button } from '@louez/ui';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@louez/ui'
+} from '@louez/ui';
+import { cn, formatCurrency } from '@louez/utils';
 
 interface ReservationWithDetails {
-  id: string
-  number: string
-  startDate: Date
-  endDate: Date
-  totalAmount: string
+  id: string;
+  number: string;
+  startDate: Date;
+  endDate: Date;
+  totalAmount: string;
   customer: {
-    firstName: string
-    lastName: string
-  }
+    firstName: string;
+    lastName: string;
+  };
   items: Array<{
-    id: string
+    id: string;
     product: {
-      name: string
-    } | null
-  }>
+      name: string;
+    } | null;
+  }>;
 }
 
 interface ActivityListItemProps {
-  reservation: ReservationWithDetails
-  showPeriod?: boolean
-  showAmount?: boolean
+  reservation: ReservationWithDetails;
+  showPeriod?: boolean;
+  showAmount?: boolean;
 }
 
 function ActivityListItem({
@@ -54,23 +56,22 @@ function ActivityListItem({
   const productNames = reservation.items
     .map((item) => item.product?.name)
     .filter(Boolean)
-    .slice(0, 2)
+    .slice(0, 2);
 
-  const remainingCount = reservation.items.length - 2
+  const remainingCount = reservation.items.length - 2;
 
   // Get customer initials
-  const initials = `${reservation.customer.firstName.charAt(0)}${reservation.customer.lastName.charAt(0)}`.toUpperCase()
+  const initials =
+    `${reservation.customer.firstName.charAt(0)}${reservation.customer.lastName.charAt(0)}`.toUpperCase();
 
   return (
     <Link
       href={`/dashboard/reservations/${reservation.id}`}
-      className="list-item-hover group border-b border-transparent pr-12 last:border-b-0 hover:border-border/50"
+      className="list-item-hover group hover:border-border/50 border-b border-transparent pr-12 last:border-b-0"
     >
       {/* Customer Avatar with Initials */}
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/20 to-primary/10 ring-2 ring-primary/5">
-        <span className="text-sm font-semibold text-primary">
-          {initials}
-        </span>
+      <div className="from-primary/20 to-primary/10 ring-primary/5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ring-2">
+        <span className="text-primary text-sm font-semibold">{initials}</span>
       </div>
 
       {/* Main Content */}
@@ -80,13 +81,13 @@ function ActivityListItem({
           <span className="font-medium">
             {reservation.customer.firstName} {reservation.customer.lastName}
           </span>
-          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+          <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[10px] font-medium">
             #{reservation.number}
           </span>
         </div>
 
         {/* Products or Period/Amount */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
           {showPeriod ? (
             <>
               <Clock className="h-3.5 w-3.5" />
@@ -97,7 +98,7 @@ function ActivityListItem({
               {showAmount && (
                 <>
                   <span className="text-muted-foreground/40">•</span>
-                  <span className="font-medium text-foreground">
+                  <span className="text-foreground font-medium">
                     {formatCurrency(parseFloat(reservation.totalAmount))}
                   </span>
                 </>
@@ -110,7 +111,8 @@ function ActivityListItem({
                 {productNames.join(', ')}
                 {remainingCount > 0 && (
                   <span className="text-muted-foreground/60">
-                    {' '}+{remainingCount}
+                    {' '}
+                    +{remainingCount}
                   </span>
                 )}
               </span>
@@ -120,25 +122,25 @@ function ActivityListItem({
       </div>
 
       {/* Reveal Action Button */}
-      <div className="reveal-action flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <div className="reveal-action bg-primary/10 text-primary flex h-8 w-8 items-center justify-center rounded-lg">
         <ArrowRight className="h-4 w-4" />
       </div>
     </Link>
-  )
+  );
 }
 
 interface ActivityCardProps {
-  title: string
-  description: string
-  icon: React.ElementType
-  iconColor: string
-  iconBgColor: string
-  reservations: ReservationWithDetails[]
-  emptyMessage: string
-  viewAllHref: string
-  showPeriod?: boolean
-  showAmount?: boolean
-  className?: string
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  iconColor: string;
+  iconBgColor: string;
+  reservations: ReservationWithDetails[];
+  emptyMessage: string;
+  viewAllHref: string;
+  showPeriod?: boolean;
+  showAmount?: boolean;
+  className?: string;
 }
 
 function ActivityCard({
@@ -154,13 +156,18 @@ function ActivityCard({
   showAmount = false,
   className,
 }: ActivityCardProps) {
-  const t = useTranslations('dashboard.home')
+  const t = useTranslations('dashboard.home');
 
   return (
     <Card className={cn('stat-card flex flex-col', className)}>
       <CardHeader className="flex flex-row items-center justify-between pb-3">
         <div className="flex items-center gap-3">
-          <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg', iconBgColor)}>
+          <div
+            className={cn(
+              'flex h-10 w-10 items-center justify-center rounded-lg',
+              iconBgColor,
+            )}
+          >
             <Icon className={cn('h-5 w-5', iconColor)} />
           </div>
           <div>
@@ -168,18 +175,22 @@ function ActivityCard({
             <CardDescription className="text-sm">{description}</CardDescription>
           </div>
         </div>
-        <Button variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" render={<Link href={viewAllHref} />}>
-            {t('viewAll')}
-            <ArrowRight className="ml-1 h-3 w-3" />
+        <Button
+          variant="ghost"
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          render={<Link href={viewAllHref} />}
+        >
+          {t('viewAll')}
+          <ArrowRight className="ml-1 h-3 w-3" />
         </Button>
       </CardHeader>
       <CardContent className="flex-1 pt-0">
         {reservations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="rounded-full bg-muted p-3">
-              <CheckCircle className="h-6 w-6 text-muted-foreground/50" />
+            <div className="bg-muted rounded-full p-3">
+              <CheckCircle className="text-muted-foreground/50 h-6 w-6" />
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">{emptyMessage}</p>
+            <p className="text-muted-foreground mt-3 text-sm">{emptyMessage}</p>
           </div>
         ) : (
           <div className="-mx-1 space-y-0.5">
@@ -195,13 +206,13 @@ function ActivityCard({
         )}
       </CardContent>
     </Card>
-  )
+  );
 }
 
 interface TodayActivityProps {
-  departures: ReservationWithDetails[]
-  returns: ReservationWithDetails[]
-  className?: string
+  departures: ReservationWithDetails[];
+  returns: ReservationWithDetails[];
+  className?: string;
 }
 
 export function TodayActivity({
@@ -209,23 +220,23 @@ export function TodayActivity({
   returns,
   className,
 }: TodayActivityProps) {
-  const t = useTranslations('dashboard.home')
+  const t = useTranslations('dashboard.home');
 
   // If no activity today, show a simpler view
   if (departures.length === 0 && returns.length === 0) {
     return (
       <Card className={cn('stat-card', className)}>
         <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-          <div className="rounded-full bg-muted p-4">
-            <CheckCircle className="h-8 w-8 text-muted-foreground/50" />
+          <div className="bg-muted rounded-full p-4">
+            <CheckCircle className="text-muted-foreground/50 h-8 w-8" />
           </div>
           <h3 className="mt-4 font-medium">{t('activity.noActivityTitle')}</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-muted-foreground mt-1 text-sm">
             {t('activity.noActivityDescription')}
           </p>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -238,7 +249,7 @@ export function TodayActivity({
         iconBgColor="bg-emerald-100 dark:bg-emerald-900/30"
         reservations={departures}
         emptyMessage={t('activity.noDepartures')}
-        viewAllHref="/dashboard/reservations?status=confirmed"
+        viewAllHref="/dashboard/reservations?status=confirmed&period=today&operation=departure"
       />
       <ActivityCard
         title={t('activity.returns')}
@@ -248,23 +259,23 @@ export function TodayActivity({
         iconBgColor="bg-blue-100 dark:bg-blue-900/30"
         reservations={returns}
         emptyMessage={t('activity.noReturns')}
-        viewAllHref="/dashboard/reservations?status=ongoing"
+        viewAllHref="/dashboard/reservations?status=ongoing&period=today&operation=return"
       />
     </div>
-  )
+  );
 }
 
 interface PendingRequestsProps {
-  pending: ReservationWithDetails[]
-  className?: string
+  pending: ReservationWithDetails[];
+  className?: string;
 }
 
 export function PendingRequests({ pending, className }: PendingRequestsProps) {
-  const t = useTranslations('dashboard.home')
+  const t = useTranslations('dashboard.home');
 
   // Don't render if no pending requests
   if (pending.length === 0) {
-    return null
+    return null;
   }
 
   return (
@@ -281,5 +292,5 @@ export function PendingRequests({ pending, className }: PendingRequestsProps) {
       showAmount
       className={className}
     />
-  )
+  );
 }

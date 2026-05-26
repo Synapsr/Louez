@@ -49,13 +49,13 @@ export function ReservationsFilters({
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const currentView = searchParams.get('view') || 'cards'
-  const currentSearch = searchParams.get('search') || ''
-  const [searchQuery, setSearchQuery] = useState(currentSearch)
+  const currentView = searchParams.get('view') || 'cards';
+  const currentSearch = searchParams.get('search') || '';
+  const [searchQuery, setSearchQuery] = useState(currentSearch);
 
   useEffect(() => {
-    setSearchQuery(currentSearch)
-  }, [currentSearch])
+    setSearchQuery(currentSearch);
+  }, [currentSearch]);
 
   const createQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -76,6 +76,7 @@ export function ReservationsFilters({
     router.push(
       `/dashboard/reservations?${createQueryString({
         status: value === 'all' ? null : value,
+        operation: null,
         page: null, // reset page when changing filters
       })}`,
     );
@@ -86,6 +87,7 @@ export function ReservationsFilters({
     router.push(
       `/dashboard/reservations?${createQueryString({
         period: value === 'all' ? null : value,
+        operation: null,
         page: null,
       })}`,
     );
@@ -101,28 +103,30 @@ export function ReservationsFilters({
   }, 300);
 
   const updateSearchQuery = (term: string) => {
-    setSearchQuery(term)
-    handleSearch(term)
-  }
+    setSearchQuery(term);
+    handleSearch(term);
+  };
 
   const clearSearchQuery = () => {
-    setSearchQuery('')
-    handleSearch.cancel()
+    setSearchQuery('');
+    handleSearch.cancel();
     router.push(
       `/dashboard/reservations?${createQueryString({
         search: null,
         page: null,
       })}`,
-    )
-  }
+    );
+  };
 
   const handleViewChange = (value: any[]) => {
-    const selected = value[0] as string | undefined
-    if (!selected) return
-    router.push(`/dashboard/reservations?${createQueryString({
-      view: selected === 'cards' ? null : selected,
-    })}`)
-  }
+    const selected = value[0] as string | undefined;
+    if (!selected) return;
+    router.push(
+      `/dashboard/reservations?${createQueryString({
+        view: selected === 'cards' ? null : selected,
+      })}`,
+    );
+  };
 
   const getCount = (status: string): number => {
     if (status === 'all') return counts.all;

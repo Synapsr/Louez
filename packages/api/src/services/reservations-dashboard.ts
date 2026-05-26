@@ -1,12 +1,26 @@
+import { ORPCError } from '@orpc/server';
 import {
-  db,
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  inArray,
+  like,
+  lte,
+  not,
+  or,
+  sql,
+} from 'drizzle-orm';
+
+import {
   customers,
+  db,
   productsTulip,
   reservationActivity,
   reservations,
-} from '@louez/db'
-import { and, asc, count, desc, eq, gte, inArray, like, lte, not, or, sql } from 'drizzle-orm'
-import { ORPCError } from '@orpc/server'
+} from '@louez/db';
 
 type ReservationStatus =
   | 'pending'
@@ -16,22 +30,34 @@ type ReservationStatus =
   | 'cancelled'
   | 'rejected'
   | 'quote'
-  | 'declined'
+  | 'declined';
 
 export async function getDashboardReservationsList(params: {
-  storeId: string
-  status?: 'all' | ReservationStatus
-  period?: 'today' | 'week' | 'month'
-  limit: number
-  search?: string
-  sort?: 'startDate' | 'amount' | 'status' | 'number'
-  sortDirection?: 'asc' | 'desc'
-  page?: number
-  pageSize?: number
+  storeId: string;
+  status?: 'all' | ReservationStatus;
+  period?: 'today' | 'week' | 'month';
+  operation?: 'departure' | 'return';
+  limit: number;
+  search?: string;
+  sort?: 'startDate' | 'amount' | 'status' | 'number';
+  sortDirection?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
 }) {
-  const { storeId, status, period, limit, search, sort, sortDirection, page, pageSize } = params
-  const conditions = [eq(reservations.storeId, storeId)]
-  const needsSearch = search && search.trim()
+  const {
+    storeId,
+    status,
+    period,
+    operation,
+    limit,
+    search,
+    sort,
+    sortDirection,
+    page,
+    pageSize,
+  } = params;
+  const conditions = [eq(reservations.storeId, storeId)];
+  const needsSearch = search && search.trim();
 
   if (status && status !== 'all') {
     if (status === 'cancelled') {
@@ -41,10 +67,10 @@ export async function getDashboardReservationsList(params: {
           eq(reservations.status, 'cancelled'),
           eq(reservations.status, 'rejected'),
           eq(reservations.status, 'declined'),
-        )!
-      )
+        )!,
+      );
     } else {
-      conditions.push(eq(reservations.status, status))
+      conditions.push(eq(reservations.status, status));
     }
   } else if (!needsSearch) {
     // Default "all" view focuses the active workflow. Global search must still
@@ -53,74 +79,76 @@ export async function getDashboardReservationsList(params: {
       not(eq(reservations.status, 'cancelled')),
       not(eq(reservations.status, 'rejected')),
       not(eq(reservations.status, 'declined')),
-    )
+    );
   }
 
-  const now = new Date()
+  const now = new Date();
+  const dateColumn =
+    operation === 'return' ? reservations.endDate : reservations.startDate;
   if (period === 'today') {
-    const startOfDay = new Date(now)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(now)
-    endOfDay.setHours(23, 59, 59, 999)
-    conditions.push(gte(reservations.startDate, startOfDay))
-    conditions.push(lte(reservations.startDate, endOfDay))
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
+    conditions.push(gte(dateColumn, startOfDay));
+    conditions.push(lte(dateColumn, endOfDay));
   } else if (period === 'week') {
-    const startOfWeek = new Date(now)
-    startOfWeek.setDate(now.getDate() - now.getDay())
-    startOfWeek.setHours(0, 0, 0, 0)
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    endOfWeek.setHours(23, 59, 59, 999)
-    conditions.push(gte(reservations.startDate, startOfWeek))
-    conditions.push(lte(reservations.startDate, endOfWeek))
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+    conditions.push(gte(dateColumn, startOfWeek));
+    conditions.push(lte(dateColumn, endOfWeek));
   } else if (period === 'month') {
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-    endOfMonth.setHours(23, 59, 59, 999)
-    conditions.push(gte(reservations.startDate, startOfMonth))
-    conditions.push(lte(reservations.startDate, endOfMonth))
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    endOfMonth.setHours(23, 59, 59, 999);
+    conditions.push(gte(dateColumn, startOfMonth));
+    conditions.push(lte(dateColumn, endOfMonth));
   }
 
   // Determine sort order
-  const sortDir = sortDirection === 'asc' ? asc : desc
-  let orderByClause
+  const sortDir = sortDirection === 'asc' ? asc : desc;
+  let orderByClause;
   switch (sort) {
     case 'amount':
-      orderByClause = [sortDir(reservations.totalAmount)]
-      break
+      orderByClause = [sortDir(reservations.totalAmount)];
+      break;
     case 'status':
-      orderByClause = [sortDir(reservations.status)]
-      break
+      orderByClause = [sortDir(reservations.status)];
+      break;
     case 'number':
-      orderByClause = [sortDir(reservations.number)]
-      break
+      orderByClause = [sortDir(reservations.number)];
+      break;
     case 'startDate':
-      orderByClause = [sortDir(reservations.startDate)]
-      break
+      orderByClause = [sortDir(reservations.startDate)];
+      break;
     default:
-      orderByClause = [desc(reservations.startDate)]
-      break
+      orderByClause = [desc(reservations.startDate)];
+      break;
   }
 
   // Pagination
-  const usePagination = page != null && pageSize != null
-  const effectiveLimit = usePagination ? pageSize : limit
-  const offset = usePagination ? (page - 1) * pageSize : 0
+  const usePagination = page != null && pageSize != null;
+  const effectiveLimit = usePagination ? pageSize : limit;
+  const offset = usePagination ? (page - 1) * pageSize : 0;
 
   // When searching, we need to join with customers table.
   // Drizzle relational queries don't support cross-table WHERE, so we use a
   // two-step approach: first find matching IDs via a join query, then load
   // full relational data for those IDs.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let reservationsList: any[]
+  let reservationsList: any[];
   if (needsSearch) {
-    const term = `%${search.trim()}%`
+    const term = `%${search.trim()}%`;
     const searchCondition = or(
       like(reservations.number, term),
       like(customers.firstName, term),
       like(customers.lastName, term),
       sql`CONCAT(${customers.firstName}, ' ', ${customers.lastName}) LIKE ${term}`,
-    )!
+    )!;
 
     const matchingIds = await db
       .select({ id: reservations.id })
@@ -129,20 +157,23 @@ export async function getDashboardReservationsList(params: {
       .where(and(...conditions, searchCondition))
       .orderBy(...orderByClause)
       .limit(effectiveLimit)
-      .offset(offset)
+      .offset(offset);
 
     if (matchingIds.length === 0) {
-      reservationsList = []
+      reservationsList = [];
     } else {
       reservationsList = await db.query.reservations.findMany({
-        where: inArray(reservations.id, matchingIds.map(r => r.id)),
+        where: inArray(
+          reservations.id,
+          matchingIds.map((r) => r.id),
+        ),
         with: {
           customer: true,
           items: { with: { product: true } },
           payments: true,
         },
         orderBy: orderByClause,
-      })
+      });
     }
   } else {
     reservationsList = await db.query.reservations.findMany({
@@ -155,7 +186,7 @@ export async function getDashboardReservationsList(params: {
       orderBy: orderByClause,
       limit: effectiveLimit,
       offset,
-    })
+    });
   }
 
   // Count queries (run in parallel)
@@ -174,32 +205,40 @@ export async function getDashboardReservationsList(params: {
               .select({ count: count() })
               .from(reservations)
               .innerJoin(customers, eq(reservations.customerId, customers.id))
-              .where(and(...conditions, or(
-                like(reservations.number, `%${search!.trim()}%`),
-                like(customers.firstName, `%${search!.trim()}%`),
-                like(customers.lastName, `%${search!.trim()}%`),
-                sql`CONCAT(${customers.firstName}, ' ', ${customers.lastName}) LIKE ${`%${search!.trim()}%`}`,
-              )!))
+              .where(
+                and(
+                  ...conditions,
+                  or(
+                    like(reservations.number, `%${search!.trim()}%`),
+                    like(customers.firstName, `%${search!.trim()}%`),
+                    like(customers.lastName, `%${search!.trim()}%`),
+                    sql`CONCAT(${customers.firstName}, ' ', ${customers.lastName}) LIKE ${`%${search!.trim()}%`}`,
+                  )!,
+                ),
+              )
           : db
               .select({ count: count() })
               .from(reservations)
               .where(and(...conditions))
         ).then((r) => r[0]?.count ?? 0)
       : Promise.resolve(null),
-  ])
+  ]);
 
-  const counts: Record<string, number> = {}
+  const counts: Record<string, number> = {};
   for (const row of countsByStatus) {
-    counts[row.status] = row.count
+    counts[row.status] = row.count;
   }
 
-  const cancelledCount = (counts['cancelled'] || 0) + (counts['rejected'] || 0) + (counts['declined'] || 0)
+  const cancelledCount =
+    (counts['cancelled'] || 0) +
+    (counts['rejected'] || 0) +
+    (counts['declined'] || 0);
   const activeTotal =
     (counts['pending'] || 0) +
     (counts['confirmed'] || 0) +
     (counts['ongoing'] || 0) +
     (counts['completed'] || 0) +
-    (counts['quote'] || 0)
+    (counts['quote'] || 0);
 
   return {
     reservations: reservationsList,
@@ -213,12 +252,12 @@ export async function getDashboardReservationsList(params: {
       quote: counts['quote'] || 0,
     },
     totalCount: totalCountResult,
-  }
+  };
 }
 
 export async function getDashboardReservationById(params: {
-  storeId: string
-  reservationId: string
+  storeId: string;
+  reservationId: string;
 }) {
   const reservation = await db.query.reservations.findFirst({
     where: and(
@@ -242,21 +281,21 @@ export async function getDashboardReservationById(params: {
         orderBy: [desc(reservationActivity.createdAt)],
       },
     },
-  })
+  });
 
   if (!reservation) {
-    throw new ORPCError('NOT_FOUND', { message: 'errors.reservationNotFound' })
+    throw new ORPCError('NOT_FOUND', { message: 'errors.reservationNotFound' });
   }
 
   const reservationProductIds = reservation.items
     .map((item) => item.productId)
-    .filter((productId): productId is string => typeof productId === 'string')
+    .filter((productId): productId is string => typeof productId === 'string');
 
   if (reservationProductIds.length === 0) {
     return {
       ...reservation,
       insuredProductIds: [],
-    }
+    };
   }
 
   const mappedProducts = await db.query.productsTulip.findMany({
@@ -264,7 +303,7 @@ export async function getDashboardReservationById(params: {
     columns: {
       productId: true,
     },
-  })
+  });
 
   const insuredProductIds = Array.from(
     new Set(
@@ -274,10 +313,10 @@ export async function getDashboardReservationById(params: {
           (productId): productId is string => typeof productId === 'string',
         ),
     ),
-  )
+  );
 
   return {
     ...reservation,
     insuredProductIds,
-  }
+  };
 }
