@@ -117,11 +117,9 @@ export interface DeliveryLegState {
 }
 
 export interface NewReservationFormProps {
-  storeId: string;
   customers: Customer[];
   products: Product[];
   tulipInsuranceMode: TulipPublicMode;
-  tulipInsuranceDefaultOptIn: boolean;
   businessHours?: BusinessHours;
   advanceNoticeMinutes?: number;
   pendingBlocksAvailability?: boolean;

@@ -190,7 +190,7 @@ const StoreHeader = ({
   const t = useTranslations('dashboard.sidebar');
   return (
     <SidebarHeader className="border-sidebar-border gap-3 border-b px-0">
-      <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4">
+      <div className="flex min-w-0 items-center justify-between gap-2 group-data-[collapsible=icon]:flex-col group-data-[state=expanded]:pl-4 max-md:pl-4">
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
             <Logo className="h-5 w-auto shrink-0 group-data-[collapsible=icon]:hidden" />
