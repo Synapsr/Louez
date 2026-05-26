@@ -940,6 +940,7 @@
           "mappedTo": "Mapped to {title}",
           "linkOrCreateHelper": "Link an existing Tulip product or add a new Tulip product and link it.",
           "addNewProductButton": "Add a new product",
+          "editMappedProductButton": "Edit product",
           "mappingLabel": "Tulip product",
           "mappingPlaceholder": "Not mapped",
           "mappingSaving": "Saving...",
@@ -969,7 +970,7 @@
             "purchasePriceRequired": "Enter the purchase price before tax.",
             "invalidPurchasePrice": "Enter a valid purchase price.",
             "invalidMargin": "Enter a valid margin.",
-            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
+            "marginTooltip": "Additional daily margin added to the purchase price for insurance valuation.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "fields": {
               "productTitle": "Product name (optional)",
@@ -979,7 +980,7 @@
               "model": "Model",
               "purchasedDate": "Purchase date",
               "purchasePriceHt": "Purchase price (excl. tax)",
-              "margin": "Margin"
+              "margin": "Margin / day"
             }
           }
         }
@@ -2184,7 +2185,7 @@
             "purchasePriceRequired": "Enter the purchase price before tax.",
             "invalidPurchasePrice": "Enter a valid purchase price.",
             "invalidMargin": "Enter a valid margin.",
-            "marginTooltip": "Additional margin added to the purchase price for insurance valuation.",
+            "marginTooltip": "Additional daily margin added to the purchase price for insurance valuation.",
             "invalidPurchasedDate": "Select a valid purchase date.",
             "createButton": "Create in Tulip",
             "creatingButton": "Creating...",
@@ -2222,7 +2223,7 @@
               "model": "Model",
               "purchasedDate": "Purchase date",
               "purchasePriceHt": "Purchase price (excl. tax)",
-              "margin": "Margin"
+              "margin": "Margin / day"
             }
           }
         }

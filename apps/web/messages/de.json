@@ -932,6 +932,7 @@
           "mappedTo": "Zugeordnet zu {title}",
           "linkOrCreateHelper": "Ein bestehendes Tulip-Produkt verknüpfen oder ein neues Tulip-Produkt erstellen und verknüpfen.",
           "addNewProductButton": "Neues Produkt hinzufügen",
+          "editMappedProductButton": "Produkt bearbeiten",
           "mappingLabel": "Tulip-Produkt",
           "mappingPlaceholder": "Nicht zugeordnet",
           "mappingSaving": "Wird gespeichert...",
@@ -955,7 +956,7 @@
             "noModelResults": "Keine Modellvorschläge",
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
-            "marginTooltip": "Zusätzliche Marge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "fields": {
               "productTitle": "Produktname (optional)",
@@ -965,7 +966,7 @@
               "model": "Modell",
               "purchasedDate": "Kaufdatum",
               "purchasePriceHt": "Kaufpreis (netto)",
-              "margin": "Marge"
+              "margin": "Marge / Tag"
             }
           }
         }
@@ -3570,7 +3571,7 @@
             "noModelResults": "Keine Modellvorschläge",
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
-            "marginTooltip": "Zusätzliche Marge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "createButton": "In Tulip erstellen",
             "creatingButton": "Wird erstellt...",
@@ -3607,7 +3608,7 @@
               "model": "Modell",
               "purchasedDate": "Kaufdatum",
               "purchasePriceHt": "Kaufpreis (netto)",
-              "margin": "Marge"
+              "margin": "Marge / Tag"
             }
           }
         }

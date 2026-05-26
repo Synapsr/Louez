@@ -149,6 +149,10 @@ export function resolveProductSubtype(
   const normalized = normalizeCatalogValue(value)
   const subtypeList =
     catalog.find((item) => item.type === productType)?.subtypes ?? []
+  const preferredSubtype =
+    productType === 'bike'
+      ? subtypeList.find((item) => item.type === 'electric')?.type
+      : null
 
   if (normalized) {
     if (subtypeList.length === 0) {
@@ -160,7 +164,7 @@ export function resolveProductSubtype(
     }
   }
 
-  return subtypeList[0]?.type || normalized || 'standard'
+  return preferredSubtype || subtypeList[0]?.type || normalized || 'standard'
 }
 
 export function toUniqueSortedOptions(

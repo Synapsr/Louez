@@ -893,6 +893,7 @@
           "mappedTo": "Zmapowano do {title}",
           "linkOrCreateHelper": "Połącz istniejący produkt Tulip lub dodaj nowy produkt Tulip i połącz go.",
           "addNewProductButton": "Dodaj nowy produkt",
+          "editMappedProductButton": "Edytuj produkt",
           "mappingLabel": "Produkt Tulip",
           "mappingPlaceholder": "Niezmapowano",
           "mappingSaving": "Zapisywanie...",
@@ -916,7 +917,7 @@
             "noModelResults": "Brak sugestii modeli",
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
-            "marginTooltip": "Dodatkowa marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "fields": {
               "productTitle": "Nazwa produktu (opcjonalna)",
@@ -926,7 +927,7 @@
               "model": "Model",
               "purchasedDate": "Data zakupu",
               "purchasePriceHt": "Cena zakupu (netto)",
-              "margin": "Marża"
+              "margin": "Marża / dzień"
             }
           }
         }
@@ -3570,7 +3571,7 @@
             "noModelResults": "Brak sugestii modeli",
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
-            "marginTooltip": "Dodatkowa marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "createButton": "Utwórz w Tulip",
             "creatingButton": "Tworzenie...",
@@ -3607,7 +3608,7 @@
               "model": "Model",
               "purchasedDate": "Data zakupu",
               "purchasePriceHt": "Cena zakupu (netto)",
-              "margin": "Marża"
+              "margin": "Marża / dzień"
             }
           }
         }
