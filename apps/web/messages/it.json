@@ -893,6 +893,7 @@
           "mappedTo": "Associato a {title}",
           "linkOrCreateHelper": "Colleghi un prodotto Tulip esistente oppure ne aggiunga uno nuovo e lo colleghi.",
           "addNewProductButton": "Aggiungi un nuovo prodotto",
+          "editMappedProductButton": "Modifica prodotto",
           "mappingLabel": "Prodotto Tulip",
           "mappingPlaceholder": "Non associato",
           "mappingSaving": "Salvataggio...",
@@ -916,7 +917,7 @@
             "noModelResults": "Nessun suggerimento di modello",
             "invalidPurchasePrice": "Inserisca un prezzo di acquisto valido.",
             "invalidMargin": "Inserisca un margine valido.",
-            "marginTooltip": "Margine aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
+            "marginTooltip": "Margine giornaliero aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
             "invalidPurchasedDate": "Selezioni una data di acquisto valida.",
             "fields": {
               "productTitle": "Nome prodotto (opzionale)",
@@ -926,7 +927,7 @@
               "model": "Modello",
               "purchasedDate": "Data di acquisto",
               "purchasePriceHt": "Prezzo di acquisto (IVA esclusa)",
-              "margin": "Margine"
+              "margin": "Margine / giorno"
             }
           }
         }
@@ -3570,7 +3571,7 @@
             "noModelResults": "Nessun suggerimento di modello",
             "invalidPurchasePrice": "Inserisca un prezzo di acquisto valido.",
             "invalidMargin": "Inserisca un margine valido.",
-            "marginTooltip": "Margine aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
+            "marginTooltip": "Margine giornaliero aggiuntivo applicato al prezzo di acquisto per la valutazione assicurativa.",
             "invalidPurchasedDate": "Selezioni una data di acquisto valida.",
             "createButton": "Crea in Tulip",
             "creatingButton": "Creazione in corso...",
@@ -3607,7 +3608,7 @@
               "model": "Modello",
               "purchasedDate": "Data di acquisto",
               "purchasePriceHt": "Prezzo di acquisto (IVA esclusa)",
-              "margin": "Margine"
+              "margin": "Margine / giorno"
             }
           }
         }

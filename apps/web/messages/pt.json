@@ -893,6 +893,7 @@
           "mappedTo": "Mapeado para {title}",
           "linkOrCreateHelper": "Associe um produto Tulip existente ou adicione um novo produto Tulip e associe-o.",
           "addNewProductButton": "Adicionar um novo produto",
+          "editMappedProductButton": "Editar produto",
           "mappingLabel": "Produto Tulip",
           "mappingPlaceholder": "Não mapeado",
           "mappingSaving": "A guardar...",
@@ -916,7 +917,7 @@
             "noModelResults": "Nenhuma sugestão de modelo",
             "invalidPurchasePrice": "Introduza um preço de compra válido.",
             "invalidMargin": "Introduza uma margem válida.",
-            "marginTooltip": "Margem adicional adicionada ao preço de compra para avaliação do seguro.",
+            "marginTooltip": "Margem diária adicional adicionada ao preço de compra para avaliação do seguro.",
             "invalidPurchasedDate": "Selecione uma data de compra válida.",
             "fields": {
               "productTitle": "Nome do produto (opcional)",
@@ -926,7 +927,7 @@
               "model": "Modelo",
               "purchasedDate": "Data de compra",
               "purchasePriceHt": "Preço de compra (s/ IVA)",
-              "margin": "Margem"
+              "margin": "Margem / dia"
             }
           }
         }
@@ -3570,7 +3571,7 @@
             "noModelResults": "Nenhuma sugestão de modelo",
             "invalidPurchasePrice": "Introduza um preço de compra válido.",
             "invalidMargin": "Introduza uma margem válida.",
-            "marginTooltip": "Margem adicional adicionada ao preço de compra para avaliação do seguro.",
+            "marginTooltip": "Margem diária adicional adicionada ao preço de compra para avaliação do seguro.",
             "invalidPurchasedDate": "Selecione uma data de compra válida.",
             "createButton": "Criar no Tulip",
             "creatingButton": "A criar...",
@@ -3607,7 +3608,7 @@
               "model": "Modelo",
               "purchasedDate": "Data de compra",
               "purchasePriceHt": "Preço de compra (s/ IVA)",
-              "margin": "Margem"
+              "margin": "Margem / dia"
             }
           }
         }

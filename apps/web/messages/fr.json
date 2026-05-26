@@ -902,6 +902,7 @@
           "mappedTo": "Mappé vers {title}",
           "linkOrCreateHelper": "Je lie un produit Tulip existant ou j'ajoute un nouveau produit Tulip puis je le lie.",
           "addNewProductButton": "Ajouter un nouveau produit",
+          "editMappedProductButton": "Modifier le produit",
           "mappingLabel": "Produit Tulip",
           "mappingPlaceholder": "Non mappé",
           "mappingSaving": "Enregistrement...",
@@ -931,7 +932,7 @@
             "purchasePriceRequired": "Renseignez le prix d'achat HT.",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
             "invalidMargin": "Saisissez une marge valide.",
-            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginTooltip": "Marge journalière supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "fields": {
               "productTitle": "Nom du produit (optionnel)",
@@ -941,7 +942,7 @@
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
               "purchasePriceHt": "Prix d'achat HT",
-              "margin": "Marge"
+              "margin": "Marge / jour"
             }
           }
         },
@@ -2184,7 +2185,7 @@
             "purchasePriceRequired": "Renseignez le prix d'achat HT.",
             "invalidPurchasePrice": "Saisissez un prix d'achat valide.",
             "invalidMargin": "Saisissez une marge valide.",
-            "marginTooltip": "Marge supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
+            "marginTooltip": "Marge journalière supplémentaire ajoutée au prix d'achat pour la valorisation de l'assurance.",
             "invalidPurchasedDate": "Sélectionnez une date d'achat valide.",
             "createButton": "Créer dans Tulip",
             "creatingButton": "Création...",
@@ -2222,7 +2223,7 @@
               "model": "Modèle",
               "purchasedDate": "Date d'achat",
               "purchasePriceHt": "Prix d'achat HT",
-              "margin": "Marge"
+              "margin": "Marge / jour"
             }
           }
         }

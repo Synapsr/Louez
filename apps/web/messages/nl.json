@@ -893,6 +893,7 @@
           "mappedTo": "Gekoppeld aan {title}",
           "linkOrCreateHelper": "Koppel een bestaand Tulip product of voeg een nieuw Tulip product toe en koppel het.",
           "addNewProductButton": "Nieuw product toevoegen",
+          "editMappedProductButton": "Product bewerken",
           "mappingLabel": "Tulip product",
           "mappingPlaceholder": "Niet gekoppeld",
           "mappingSaving": "Opslaan...",
@@ -916,7 +917,7 @@
             "noModelResults": "Geen modelsuggesties",
             "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
             "invalidMargin": "Voer een geldige marge in.",
-            "marginTooltip": "Extra marge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "marginTooltip": "Extra dagmarge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
             "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
             "fields": {
               "productTitle": "Productnaam (optioneel)",
@@ -926,7 +927,7 @@
               "model": "Model",
               "purchasedDate": "Aankoopdatum",
               "purchasePriceHt": "Aankoopprijs (excl. btw)",
-              "margin": "Marge"
+              "margin": "Marge / dag"
             }
           }
         }
@@ -3570,7 +3571,7 @@
             "noModelResults": "Geen modelsuggesties",
             "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
             "invalidMargin": "Voer een geldige marge in.",
-            "marginTooltip": "Extra marge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "marginTooltip": "Extra dagmarge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
             "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
             "createButton": "Aanmaken in Tulip",
             "creatingButton": "Aanmaken...",
@@ -3607,7 +3608,7 @@
               "model": "Model",
               "purchasedDate": "Aankoopdatum",
               "purchasePriceHt": "Aankoopprijs (excl. btw)",
-              "margin": "Marge"
+              "margin": "Marge / dag"
             }
           }
         }

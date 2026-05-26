@@ -15,6 +15,7 @@ import {
   Label,
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@louez/ui'
 
@@ -435,14 +436,16 @@ export function TulipProductFormFields({
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
             <Label>{t('fields.margin')}</Label>
-            <Tooltip>
-              <TooltipTrigger className="text-muted-foreground hover:text-foreground transition-colors">
-                <Info className="size-3.5" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{t('marginTooltip')}</p>
-              </TooltipContent>
-            </Tooltip>
+            <TooltipProvider delay={100}>
+              <Tooltip>
+                <TooltipTrigger className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Info className="size-3.5" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{t('marginTooltip')}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <Input
             value={draft.margin}

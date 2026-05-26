@@ -940,6 +940,7 @@
           "mappedTo": "Mapeado a {title}",
           "linkOrCreateHelper": "Vincule un producto Tulip existente o agregue un nuevo producto Tulip y vinculelo.",
           "addNewProductButton": "Agregar un nuevo producto",
+          "editMappedProductButton": "Editar producto",
           "mappingLabel": "Producto Tulip",
           "mappingPlaceholder": "No mapeado",
           "mappingSaving": "Guardando...",
@@ -963,7 +964,7 @@
             "noModelResults": "No hay sugerencias de modelo",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
-            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "fields": {
               "productTitle": "Nombre del producto (opcional)",
@@ -973,7 +974,7 @@
               "model": "Modelo",
               "purchasedDate": "Fecha de compra",
               "purchasePriceHt": "Precio de compra (sin IVA)",
-              "margin": "Margen"
+              "margin": "Margen / día"
             }
           }
         }
@@ -3578,7 +3579,7 @@
             "noModelResults": "No hay sugerencias de modelo",
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
-            "marginTooltip": "Margen adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "createButton": "Crear en Tulip",
             "creatingButton": "Creando...",
@@ -3615,7 +3616,7 @@
               "model": "Modelo",
               "purchasedDate": "Fecha de compra",
               "purchasePriceHt": "Precio de compra (sin IVA)",
-              "margin": "Margen"
+              "margin": "Margen / día"
             }
           }
         }
