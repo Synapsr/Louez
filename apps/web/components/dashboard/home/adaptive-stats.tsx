@@ -1,73 +1,70 @@
-'use client'
+'use client';
 
-import Link from 'next/link'
-import { useTranslations } from 'next-intl'
+import Link from 'next/link';
+
 import {
-  ArrowUpRight,
   ArrowDownRight,
+  ArrowUpRight,
   Clock,
   Euro,
   Package,
-  Users,
-  TrendingUp,
   TrendingDown,
-} from 'lucide-react'
-import { formatCurrency, cn } from '@louez/utils'
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@louez/ui'
-import { Badge } from '@louez/ui'
+  TrendingUp,
+  Users,
+} from 'lucide-react';
+import { useTranslations } from 'next-intl';
+
+import { Card, CardContent, CardHeader, CardTitle } from '@louez/ui';
+import { Badge } from '@louez/ui';
+import { cn, formatCurrency } from '@louez/utils';
 
 // Types imported inline to avoid server-only module
 interface StoreMetrics {
-  productCount: number
-  activeProductCount: number
-  draftProductCount: number
-  customerCount: number
-  newCustomersThisMonth: number
-  totalReservations: number
-  completedReservations: number
-  pendingReservations: number
-  confirmedReservations: number
-  ongoingReservations: number
-  todaysDepartures: number
-  todaysReturns: number
-  monthlyRevenue: number
-  lastMonthRevenue: number
-  allTimeRevenue: number
+  productCount: number;
+  activeProductCount: number;
+  draftProductCount: number;
+  customerCount: number;
+  newCustomersThisMonth: number;
+  totalReservations: number;
+  completedReservations: number;
+  pendingReservations: number;
+  confirmedReservations: number;
+  ongoingReservations: number;
+  todaysDepartures: number;
+  todaysReturns: number;
+  monthlyRevenue: number;
+  lastMonthRevenue: number;
+  allTimeRevenue: number;
 }
 
-type StoreState = 'virgin' | 'building' | 'starting' | 'active' | 'established'
+type StoreState = 'virgin' | 'building' | 'starting' | 'active' | 'established';
 
 /**
  * Calculate revenue growth percentage
  */
 function calculateGrowth(current: number, previous: number): number | null {
   if (previous === 0) {
-    return current > 0 ? 100 : null
+    return current > 0 ? 100 : null;
   }
-  return Math.round(((current - previous) / previous) * 100)
+  return Math.round(((current - previous) / previous) * 100);
 }
 
 interface AdaptiveStatsProps {
-  metrics: StoreMetrics
-  storeState: StoreState
+  metrics: StoreMetrics;
+  storeState: StoreState;
 }
 
-type IconVariant = 'emerald' | 'blue' | 'orange' | 'purple' | 'primary'
+type IconVariant = 'emerald' | 'blue' | 'orange' | 'purple' | 'primary';
 
 interface StatCardProps {
-  title: string
-  value: string | number
-  icon: React.ElementType
-  iconVariant?: IconVariant
-  subtitle?: string
-  badge?: string
-  trend?: number | null
-  href?: string
+  title: string;
+  value: string | number;
+  icon: React.ElementType;
+  iconVariant?: IconVariant;
+  subtitle?: string;
+  badge?: string;
+  trend?: number | null;
+  href?: string;
 }
 
 const iconTextColors: Record<IconVariant, string> = {
@@ -76,7 +73,7 @@ const iconTextColors: Record<IconVariant, string> = {
   orange: 'text-orange-600 dark:text-orange-400',
   purple: 'text-purple-600 dark:text-purple-400',
   primary: 'text-primary',
-}
+};
 
 const StatCard = ({
   title,
@@ -92,11 +89,11 @@ const StatCard = ({
     <Card
       className={cn(
         'stat-card h-full',
-        href && 'cursor-pointer transition-colors group-hover:bg-muted/50'
+        href && 'group-hover:bg-muted/50 cursor-pointer transition-colors',
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-muted-foreground text-sm font-medium">
           {title}
         </CardTitle>
         <div className={cn('stat-icon-bg', `stat-icon-bg--${iconVariant}`)}>
@@ -123,7 +120,7 @@ const StatCard = ({
                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                   : trend < 0
                     ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                    : 'bg-muted text-muted-foreground'
+                    : 'bg-muted text-muted-foreground',
               )}
             >
               {trend > 0 ? (
@@ -137,28 +134,28 @@ const StatCard = ({
           )}
         </div>
         {subtitle && (
-          <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-muted-foreground mt-1 text-xs">{subtitle}</p>
         )}
       </CardContent>
     </Card>
-  )
+  );
 
   if (href) {
     return (
       <Link
         href={href}
-        className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="group focus-visible:ring-ring block h-full rounded-lg focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
       >
         {card}
       </Link>
-    )
+    );
   }
 
-  return card
-}
+  return card;
+};
 
 export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
-  const t = useTranslations('dashboard.home')
+  const t = useTranslations('dashboard.home');
 
   // For virgin/building stores, show catalog-focused stats
   if (storeState === 'virgin' || storeState === 'building') {
@@ -184,7 +181,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
           href="/dashboard/customers"
         />
       </div>
-    )
+    );
   }
 
   // For starting stores, show a mix of operational and growth stats
@@ -196,7 +193,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
           value={metrics.todaysDepartures}
           icon={ArrowUpRight}
           iconVariant="emerald"
-          href="/dashboard/reservations?status=confirmed"
+          href="/dashboard/reservations?status=confirmed&period=today&operation=departure"
           subtitle={t('stats.toDeliver')}
         />
         <StatCard
@@ -204,7 +201,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
           value={metrics.todaysReturns}
           icon={ArrowDownRight}
           iconVariant="blue"
-          href="/dashboard/reservations?status=ongoing"
+          href="/dashboard/reservations?status=ongoing&period=today&operation=return"
           subtitle={t('stats.toRecover')}
         />
         <StatCard
@@ -223,17 +220,19 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
           icon={Package}
           iconVariant="primary"
           href="/dashboard/reservations"
-          subtitle={t('stats.completed', { count: metrics.completedReservations })}
+          subtitle={t('stats.completed', {
+            count: metrics.completedReservations,
+          })}
         />
       </div>
-    )
+    );
   }
 
   // For active/established stores, show full operational stats with trends
   const revenueGrowth = calculateGrowth(
     metrics.monthlyRevenue,
-    metrics.lastMonthRevenue
-  )
+    metrics.lastMonthRevenue,
+  );
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -242,7 +241,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
         value={metrics.todaysDepartures}
         icon={ArrowUpRight}
         iconVariant="emerald"
-        href="/dashboard/reservations?status=confirmed"
+        href="/dashboard/reservations?status=confirmed&period=today&operation=departure"
         subtitle={t('stats.toDeliver')}
       />
       <StatCard
@@ -250,7 +249,7 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
         value={metrics.todaysReturns}
         icon={ArrowDownRight}
         iconVariant="blue"
-        href="/dashboard/reservations?status=ongoing"
+        href="/dashboard/reservations?status=ongoing&period=today&operation=return"
         subtitle={t('stats.toRecover')}
       />
       <StatCard
@@ -273,5 +272,5 @@ export const AdaptiveStats = ({ metrics, storeState }: AdaptiveStatsProps) => {
         subtitle={t('stats.vsLastMonth')}
       />
     </div>
-  )
-}
+  );
+};

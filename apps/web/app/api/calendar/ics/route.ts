@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const CALENDAR_REFRESH_INTERVAL = 'PT5M';
+const CALENDAR_EVENT_FORMAT_VERSION = 2;
 
 // Format date to ICS format (YYYYMMDDTHHMMSS)
 function formatICSDate(date: Date): string {
@@ -58,12 +59,14 @@ function foldLine(line: string): string {
 }
 
 function getReservationSequence(updatedAt: Date | string | null): number {
-  if (!updatedAt) return 0;
+  if (!updatedAt) return CALENDAR_EVENT_FORMAT_VERSION;
 
   const timestamp = new Date(updatedAt).getTime();
-  if (!Number.isFinite(timestamp)) return 0;
+  if (!Number.isFinite(timestamp)) return CALENDAR_EVENT_FORMAT_VERSION;
 
-  return Math.max(0, Math.floor(timestamp / 1000));
+  return (
+    Math.max(0, Math.floor(timestamp / 1000)) + CALENDAR_EVENT_FORMAT_VERSION
+  );
 }
 
 function buildWeakEtag(content: string): string {
@@ -80,6 +83,110 @@ function requestHasMatchingEtag(request: Request, etag: string): boolean {
     .split(',')
     .map((value) => value.trim())
     .includes(etag);
+}
+
+function joinAddressParts(
+  parts: Array<string | null | undefined>,
+): string | null {
+  const address = parts
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part))
+    .join(', ');
+
+  return address || null;
+}
+
+function formatReservationLocationSnapshotAddress(
+  snapshot: {
+    address: string | null;
+    postalCode: string | null;
+    city: string | null;
+    country: string | null;
+  } | null,
+): string | null {
+  if (!snapshot) return null;
+
+  return joinAddressParts([
+    snapshot.address,
+    joinAddressParts([snapshot.postalCode, snapshot.city]),
+    snapshot.country,
+  ]);
+}
+
+function formatOutboundAddress(
+  reservation: typeof reservations.$inferSelect,
+): string | null {
+  return joinAddressParts([
+    reservation.deliveryAddress,
+    joinAddressParts([
+      reservation.deliveryPostalCode,
+      reservation.deliveryCity,
+    ]),
+    reservation.deliveryCountry,
+  ]);
+}
+
+function formatReturnAddress(
+  reservation: typeof reservations.$inferSelect,
+): string | null {
+  return joinAddressParts([
+    reservation.returnAddress,
+    joinAddressParts([reservation.returnPostalCode, reservation.returnCity]),
+    reservation.returnCountry,
+  ]);
+}
+
+function hasOutboundDelivery(
+  reservation: typeof reservations.$inferSelect,
+): boolean {
+  return (
+    reservation.outboundMethod === 'address' ||
+    (reservation.deliveryOption === 'delivery' &&
+      Boolean(formatOutboundAddress(reservation)))
+  );
+}
+
+function hasReturnCollection(
+  reservation: typeof reservations.$inferSelect,
+): boolean {
+  return reservation.returnMethod === 'address';
+}
+
+function buildSummaryPrefix(
+  reservation: typeof reservations.$inferSelect,
+): string | null {
+  const isOutboundDelivery = hasOutboundDelivery(reservation);
+  const isReturnCollection = hasReturnCollection(reservation);
+
+  if (isOutboundDelivery && isReturnCollection) {
+    return 'LIVRAISON + RETOUR CLIENT';
+  }
+
+  if (isOutboundDelivery) {
+    return 'LIVRAISON';
+  }
+
+  if (isReturnCollection) {
+    return 'RETOUR CLIENT';
+  }
+
+  return null;
+}
+
+function getReservationLocation(
+  reservation: typeof reservations.$inferSelect,
+): string | null {
+  if (hasOutboundDelivery(reservation)) {
+    return formatOutboundAddress(reservation);
+  }
+
+  if (hasReturnCollection(reservation)) {
+    return formatReturnAddress(reservation);
+  }
+
+  return formatReservationLocationSnapshotAddress(
+    reservation.pickupLocationSnapshot,
+  );
 }
 
 export async function GET(request: Request) {
@@ -162,7 +269,10 @@ export async function GET(request: Request) {
       declined: '[X]',
     };
 
-    const summary = `${statusEmoji[reservation.status || 'pending']} ${reservation.customer.firstName} ${reservation.customer.lastName} - ${productNames}`;
+    const summaryPrefix = buildSummaryPrefix(reservation);
+    const summaryPrefixText = summaryPrefix ? `${summaryPrefix} - ` : '';
+    const summary = `${statusEmoji[reservation.status || 'pending']} ${summaryPrefixText}${reservation.customer.firstName} ${reservation.customer.lastName} - ${productNames}`;
+    const location = getReservationLocation(reservation);
 
     const isCancelled =
       reservation.status === 'cancelled' || reservation.status === 'rejected';
@@ -190,6 +300,9 @@ export async function GET(request: Request) {
     lines.push(`DTEND:${formatICSDate(endDate)}`);
     lines.push(foldLine(`SUMMARY:${escapeICSText(summary)}`));
     lines.push(foldLine(`DESCRIPTION:${escapeICSText(description)}`));
+    if (location) {
+      lines.push(foldLine(`LOCATION:${escapeICSText(location)}`));
+    }
     lines.push(`STATUS:${icsStatus}`);
     lines.push(`TRANSP:${isCancelled ? 'TRANSPARENT' : 'OPAQUE'}`);
 

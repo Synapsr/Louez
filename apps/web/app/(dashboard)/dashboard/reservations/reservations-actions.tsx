@@ -42,7 +42,6 @@ interface ConfirmDialogsProps {
 type ActionWarning = {
   key: string
   params?: Record<string, string | number>
-  details?: string
 }
 
 export function useReservationActions(): UseReservationActionsReturn {
@@ -58,45 +57,7 @@ export function useReservationActions(): UseReservationActionsReturn {
 
   const formatWarning = (warning: ActionWarning) => {
     const key = warning.key.replace('errors.', '')
-    const translated = tErrors(key, warning.params || {})
-    return warning.details ? `${translated} Cause: ${warning.details}` : translated
-  }
-
-  const getActionErrorMessage = (error: unknown) => {
-    const errorDetails =
-      typeof error === 'object' &&
-      error !== null &&
-      'data' in error &&
-      typeof error.data === 'object' &&
-      error.data !== null &&
-      'details' in error.data &&
-      typeof error.data.details === 'string' &&
-      error.data.details.trim().length > 0
-        ? error.data.details.trim()
-        : null
-
-    if (error instanceof Error) {
-      if (error.message.startsWith('errors.')) {
-        const translatedMessage = tErrors(error.message.replace('errors.', ''))
-        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
-      }
-      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
-    }
-
-    if (
-      typeof error === 'object' &&
-      error !== null &&
-      'message' in error &&
-      typeof error.message === 'string'
-    ) {
-      if (error.message.startsWith('errors.')) {
-        const translatedMessage = tErrors(error.message.replace('errors.', ''))
-        return errorDetails ? `${translatedMessage} Cause: ${errorDetails}` : translatedMessage
-      }
-      return errorDetails ? `${error.message} Cause: ${errorDetails}` : error.message
-    }
-
-    return tErrors('generic')
+    return tErrors(key, warning.params || {})
   }
 
   const showWarnings = (warnings: unknown, newStatus: ReservationStatus) => {
@@ -115,10 +76,6 @@ export function useReservationActions(): UseReservationActionsReturn {
       .map((warning) => ({
         key: warning.key,
         params: warning.params,
-        details:
-          typeof warning.details === 'string' && warning.details.trim().length > 0
-            ? warning.details.trim()
-            : undefined,
       }))
 
     if (parsedWarnings.length === 0) {
@@ -248,8 +205,8 @@ export function useReservationActions(): UseReservationActionsReturn {
 
       toastManager.add({ title: t('statusUpdated'), type: 'success' })
       await invalidateReservationAll(queryClient, reservation.id)
-    } catch (error) {
-      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
+    } catch {
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
     }
@@ -270,8 +227,8 @@ export function useReservationActions(): UseReservationActionsReturn {
 
       toastManager.add({ title: t('reservationRejected'), type: 'success' })
       await invalidateReservationAll(queryClient, selectedReservation.id)
-    } catch (error) {
-      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
+    } catch {
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
       setRejectDialogOpen(false)
@@ -287,8 +244,8 @@ export function useReservationActions(): UseReservationActionsReturn {
       await cancelMutation.mutateAsync({ reservationId: selectedReservation.id })
       toastManager.add({ title: t('reservationCancelled'), type: 'success' })
       await invalidateReservationAll(queryClient, selectedReservation.id)
-    } catch (error) {
-      toastManager.add({ title: getActionErrorMessage(error), type: 'error' })
+    } catch {
+      toastManager.add({ title: tErrors('generic'), type: 'error' })
     } finally {
       setLoadingAction(null)
       setCancelDialogOpen(false)

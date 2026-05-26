@@ -1,31 +1,22 @@
-import { redirect } from 'next/navigation';
+import { db } from '@louez/db'
+import { getCurrentStore } from '@/lib/store-context'
+import { customers, products, reservations, storeLocations } from '@louez/db'
+import { eq, and, inArray, gte } from 'drizzle-orm'
+import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
+import { subDays } from 'date-fns'
 
-import { subDays } from 'date-fns';
-import { and, eq, gte, inArray } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
-
-import { db } from '@louez/db';
-import { customers, products, reservations, storeLocations } from '@louez/db';
-
-import {
-  getDashboardTulipInsuranceDefaultOptIn,
-  getDashboardTulipInsuranceMode,
-} from '@/lib/integrations/tulip/settings';
-import { getCurrentStore } from '@/lib/store-context';
-
-import { NewReservationForm } from './new-reservation-form';
+import { getTulipSettings } from '@/lib/integrations/tulip/settings'
+import { NewReservationForm } from './new-reservation-form'
 
 async function getCustomers(storeId: string) {
   return db.query.customers.findMany({
     where: eq(customers.storeId, storeId),
     orderBy: (customers, { desc }) => [desc(customers.createdAt)],
-  });
+  })
 }
 
-async function getProductsWithTiers(
-  storeId: string,
-  tulipInsuranceEnabled: boolean,
-) {
+async function getProductsWithTiers(storeId: string) {
   // Fetch products with their pricing tiers and seasonal pricings
   const result = await db.query.products.findMany({
     where: and(eq(products.storeId, storeId), eq(products.status, 'active')),
@@ -47,12 +38,11 @@ async function getProductsWithTiers(
       },
     },
     limit: 500,
-  });
+  })
   return result
     .map((p) => ({
       ...p,
-      tulipInsurable:
-        tulipInsuranceEnabled && Boolean(p.tulipMapping?.productId),
+      tulipInsurable: Boolean(p.tulipMapping?.productId),
       seasonalPricings: p.seasonalPricings.map((sp) => ({
         id: sp.id,
         name: sp.name,
@@ -77,20 +67,20 @@ async function getProductsWithTiers(
           })),
       })),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+    .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 }
 
 // Fetch existing reservations for availability conflict checking
 async function getActiveReservations(storeId: string) {
   // Get reservations that are active or upcoming (not cancelled/rejected/completed)
   // Only look at reservations from 30 days ago to avoid loading too much data
-  const thirtyDaysAgo = subDays(new Date(), 30);
+  const thirtyDaysAgo = subDays(new Date(), 30)
 
   return db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
-      gte(reservations.endDate, thirtyDaysAgo),
+      gte(reservations.endDate, thirtyDaysAgo)
     ),
     with: {
       items: {
@@ -107,44 +97,36 @@ async function getActiveReservations(storeId: string) {
       endDate: true,
       status: true,
     },
-  });
+  })
 }
 
 export default async function NewReservationPage() {
-  const t = await getTranslations('dashboard.reservations');
-  const store = await getCurrentStore();
+  const t = await getTranslations('dashboard.reservations')
+  const store = await getCurrentStore()
 
   if (!store) {
-    redirect('/onboarding');
+    redirect('/onboarding')
   }
 
-  const tulipInsuranceMode = getDashboardTulipInsuranceMode(
-    store.settings || null,
-  );
-  const tulipInsuranceDefaultOptIn = getDashboardTulipInsuranceDefaultOptIn(
-    store.settings || null,
-  );
-  const deliverySettings = store.settings?.delivery;
-
-  const [
-    customersList,
-    productsList,
-    activeReservations,
-    activeStoreLocations,
-  ] = await Promise.all([
+  const deliverySettings = store.settings?.delivery
+  const [customersList, productsList, activeReservations, activeStoreLocations] = await Promise.all([
     getCustomers(store.id),
-    getProductsWithTiers(store.id, tulipInsuranceMode !== 'no_public'),
+    getProductsWithTiers(store.id),
     getActiveReservations(store.id),
     deliverySettings?.multiLocationEnabled
       ? db.query.storeLocations.findMany({
-          where: and(
-            eq(storeLocations.storeId, store.id),
-            eq(storeLocations.isActive, true),
-          ),
+          where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
           orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
         })
       : Promise.resolve([]),
-  ]);
+  ])
+  const tulipSettings = getTulipSettings(store.settings || null)
+  const tulipInsuranceMode =
+    !tulipSettings.enabled
+      ? 'no_public'
+      : tulipSettings.publicMode === 'required'
+        ? 'required'
+        : 'optional'
 
   return (
     <div className="space-y-6">
@@ -152,20 +134,18 @@ export default async function NewReservationPage() {
         <h1 className="text-2xl font-bold tracking-tight">
           {t('addReservation')}
         </h1>
-        <p className="text-muted-foreground">{t('createManually')}</p>
+        <p className="text-muted-foreground">
+          {t('createManually')}
+        </p>
       </div>
 
       <NewReservationForm
-        storeId={store.id}
         customers={customersList}
         products={productsList}
         tulipInsuranceMode={tulipInsuranceMode}
-        tulipInsuranceDefaultOptIn={tulipInsuranceDefaultOptIn}
         businessHours={store.settings?.businessHours}
         advanceNoticeMinutes={store.settings?.advanceNoticeMinutes || 0}
-        pendingBlocksAvailability={
-          store.settings?.pendingBlocksAvailability ?? true
-        }
+        pendingBlocksAvailability={store.settings?.pendingBlocksAvailability ?? true}
         turnoverBufferMinutes={store.settings?.turnoverBufferMinutes ?? 0}
         existingReservations={activeReservations}
         deliverySettings={deliverySettings}
@@ -192,5 +172,5 @@ export default async function NewReservationPage() {
         ]}
       />
     </div>
-  );
+  )
 }

@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@louez/config": "workspace:*",
+    "next": "16.2.6",
     "typescript": "^5"
   }
 }
