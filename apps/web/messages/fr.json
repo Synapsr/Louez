@@ -2325,12 +2325,12 @@
           },
           "tulip": {
             "name": "Assurance Tulip",
-            "description": "Connectez Tulip pour estimer et générer les contrats d'assurance location.",
-            "about": "Tulip centralise les opérations d'assurance du loueur : estimation lors du checkout, création de contrat et mapping entre votre catalogue et les produits assurables.",
+            "description": "Connectez Tulip pour proposer une assurance casse, vol et vandalisme sur vos locations.",
+            "about": "Comment ça marche : la garantie est proposée au moment de la réservation ou de la signature du contrat de location. Le locataire peut souscrire en quelques clics selon les garanties choisies. En cas de sinistre, le loueur déclare le sinistre sur la plateforme Tulip. Comment configurer : contractualisez avec Tulip et définissez si l’assurance est incluse dans la location ou proposée en option au moment de la réservation. Activez l’intégration Tulip dans Louez.io grâce à votre clé d’accès à demander à Tulip. Paramétrez votre compte et commencez à proposer ce service. À propos : Tulip est spécialisé dans la location de matériel et d’équipements professionnels et travaille avec plus de 500 loueurs. Tulip est une entreprise française inscrite à l’Orias depuis 2019 (19001215).",
             "features": {
-              "sync": "Connectez votre compte Tulip avec validation de l'identifiant de compte.",
-              "checkout": "Appliquez l'assurance au checkout (mode obligatoire, optionnel ou masqué).",
-              "mapping": "Mappez les produits Louez avec les produits Tulip et poussez les mises à jour."
+              "sync": "Sécurisez vos locations : protection contre la casse, le vol et le vandalisme sur les équipements loués.",
+              "checkout": "Générez un revenu complémentaire : marge possible jusqu’à x2 sur le prix de l’assurance.",
+              "mapping": "Améliorez la satisfaction de vos clients, sans ajouter d’opérationnel."
             },
             "resources": {
               "website": "Site web",
