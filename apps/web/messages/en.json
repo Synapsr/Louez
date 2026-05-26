@@ -2327,6 +2327,25 @@
             "name": "Tulip Insurance",
             "description": "Connect Tulip to offer breakage, theft, and vandalism insurance on your rentals.",
             "about": "How it works: the coverage is offered during reservation or when signing the rental contract. The renter can subscribe in a few clicks depending on the selected guarantees. In case of a claim, the rental company reports it on the Tulip platform. How to configure: contract with Tulip and define whether insurance is included in the rental or offered as an option during reservation. Enable the Tulip integration in Louez.io with your access key from Tulip. Configure your account and start offering the service. About: Tulip specializes in professional equipment rental and works with more than 500 rental companies. Tulip is a French company registered with Orias since 2019 (19001215).",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "How it works",
+                "reservation": "The coverage is offered during reservation or when signing the rental contract.",
+                "subscription": "The renter can subscribe in a few clicks depending on the selected guarantees.",
+                "claim": "In case of a claim, the rental company reports it on the Tulip platform."
+              },
+              "configure": {
+                "title": "How to configure",
+                "contract": "Contract with Tulip and define whether insurance is included in the rental or offered as an option during reservation.",
+                "enable": "Enable the Tulip integration in Louez.io with your access key from Tulip.",
+                "start": "Configure your account and start offering the service."
+              },
+              "about": {
+                "title": "About",
+                "market": "Tulip specializes in professional equipment rental and works with more than 500 rental companies.",
+                "orias": "Tulip is a French company registered with Orias since 2019 (19001215)."
+              }
+            },
             "features": {
               "sync": "Secure your rentals: protection against breakage, theft, and vandalism on rented equipment.",
               "checkout": "Generate additional revenue: possible margin up to x2 on the insurance price.",

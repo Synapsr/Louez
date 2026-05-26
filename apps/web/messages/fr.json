@@ -2327,6 +2327,25 @@
             "name": "Assurance Tulip",
             "description": "Connectez Tulip pour proposer une assurance casse, vol et vandalisme sur vos locations.",
             "about": "Comment ça marche : la garantie est proposée au moment de la réservation ou de la signature du contrat de location. Le locataire peut souscrire en quelques clics selon les garanties choisies. En cas de sinistre, le loueur déclare le sinistre sur la plateforme Tulip. Comment configurer : contractualisez avec Tulip et définissez si l’assurance est incluse dans la location ou proposée en option au moment de la réservation. Activez l’intégration Tulip dans Louez.io grâce à votre clé d’accès à demander à Tulip. Paramétrez votre compte et commencez à proposer ce service. À propos : Tulip est spécialisé dans la location de matériel et d’équipements professionnels et travaille avec plus de 500 loueurs. Tulip est une entreprise française inscrite à l’Orias depuis 2019 (19001215).",
+            "aboutSections": {
+              "howItWorks": {
+                "title": "Comment ça marche",
+                "reservation": "La garantie est proposée au moment de la réservation ou de la signature du contrat de location.",
+                "subscription": "Le locataire peut souscrire en quelques clics selon les garanties choisies.",
+                "claim": "En cas de sinistre, le loueur déclare le sinistre sur la plateforme Tulip."
+              },
+              "configure": {
+                "title": "Comment configurer",
+                "contract": "Contractualisez avec Tulip et définissez si l’assurance est incluse dans la location ou proposée en option au moment de la réservation.",
+                "enable": "Activez l’intégration Tulip dans Louez.io grâce à votre clé d’accès, à demander à Tulip.",
+                "start": "Paramétrez votre compte et commencez à proposer ce service."
+              },
+              "about": {
+                "title": "À propos",
+                "market": "Tulip est spécialisé dans la location de matériel et d’équipements professionnels et travaille avec plus de 500 loueurs.",
+                "orias": "Tulip est une entreprise française inscrite à l’Orias depuis 2019 (19001215)."
+              }
+            },
             "features": {
               "sync": "Sécurisez vos locations : protection contre la casse, le vol et le vandalisme sur les équipements loués.",
               "checkout": "Générez un revenu complémentaire : marge possible jusqu’à x2 sur le prix de l’assurance.",

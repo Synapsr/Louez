@@ -468,10 +468,27 @@ export function IntegrationDetailView({
                   )}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-muted-foreground space-y-3 text-sm">
-                <p>
-                  {resolveMessage(integration.aboutKey, integration.aboutKey)}
-                </p>
+              <CardContent className="space-y-5 text-sm">
+                {integration.aboutSections?.length ? (
+                  integration.aboutSections.map((section) => (
+                    <section key={section.titleKey} className="space-y-2">
+                      <h3 className="text-foreground font-medium">
+                        {resolveMessage(section.titleKey, section.titleKey)}
+                      </h3>
+                      <ul className="text-muted-foreground list-disc space-y-1.5 pl-5">
+                        {section.bodyKeys.map((bodyKey) => (
+                          <li key={bodyKey}>
+                            {resolveMessage(bodyKey, bodyKey)}
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))
+                ) : (
+                  <p className="text-muted-foreground">
+                    {resolveMessage(integration.aboutKey, integration.aboutKey)}
+                  </p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
