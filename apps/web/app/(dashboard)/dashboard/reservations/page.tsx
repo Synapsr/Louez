@@ -36,6 +36,7 @@ interface ReservationsPageProps {
   searchParams: Promise<{
     status?: string;
     period?: string;
+    operation?: string;
     search?: string;
     sort?: string;
     sortDirection?: string;
@@ -65,6 +66,11 @@ function normalizePeriod(value: string | undefined) {
   return undefined;
 }
 
+function normalizeOperation(value: string | undefined) {
+  if (value === 'departure' || value === 'return') return value;
+  return undefined;
+}
+
 function normalizeSort(value: string | undefined) {
   if (
     value === 'startDate' ||
@@ -90,6 +96,7 @@ export default async function ReservationsPage({
   const params = await searchParams;
   const status = normalizeStatus(params.status);
   const period = normalizePeriod(params.period);
+  const operation = normalizeOperation(params.operation);
   const search = params.search?.trim() || undefined;
   const sort = normalizeSort(params.sort);
   const sortDirection = normalizeSortDirection(params.sortDirection);
@@ -107,6 +114,7 @@ export default async function ReservationsPage({
     storeId: store.id,
     status,
     period,
+    operation,
     limit: 100,
     search,
     sort,
@@ -114,8 +122,6 @@ export default async function ReservationsPage({
     page,
     pageSize,
   });
-
-  console.log({ limits });
 
   return (
     <Suspense fallback={<ReservationsTableSkeleton />}>

@@ -81,7 +81,9 @@ function summarizeTulipRequestBody(body: unknown): TulipRecord | null {
   };
 }
 
-function serializeTulipResponseHeaders(headers: Headers): Record<string, string> {
+function serializeTulipResponseHeaders(
+  headers: Headers,
+): Record<string, string> {
   const serialized: Record<string, string> = {};
 
   headers.forEach((value, key) => {
@@ -144,7 +146,7 @@ async function request<T>(
       method,
       headers: {
         key: apiKey,
-        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+        'Content-Type': 'application/json',
       },
       body: hasBody ? JSON.stringify(options?.body) : undefined,
       cache: 'no-store',
@@ -308,7 +310,8 @@ function parseTulipProduct(payload: unknown): TulipProduct | null {
         }
       : undefined,
     valueExcl:
-      typeof record.value_excl === 'number' && Number.isFinite(record.value_excl)
+      typeof record.value_excl === 'number' &&
+      Number.isFinite(record.value_excl)
         ? record.value_excl
         : undefined,
   };
@@ -404,7 +407,11 @@ export async function tulipListProducts(
     productsPayload = envelope;
   }
 
-  if (productsPayload.length === 0 && envelope && typeof envelope === 'object') {
+  if (
+    productsPayload.length === 0 &&
+    envelope &&
+    typeof envelope === 'object'
+  ) {
     const obj = envelope as TulipRecord;
     if (Array.isArray(obj.products)) {
       productsPayload = obj.products;
