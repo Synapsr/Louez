@@ -1268,6 +1268,7 @@
         "perHour": "h",
         "perDay": "d",
         "perWeek": "week",
+        "pricingMode": "Pricing unit",
         "available": "available",
         "outOfStock": "Out of stock",
         "add": "Add",
@@ -1296,7 +1297,11 @@
           "optionalHelp": "Protect equipment against breakage and theft with Tulip coverage.",
           "insurableProduct": "Insurable",
           "assuredProduct": "Insured",
-          "pastStartWarning": "This reservation starts in the past: no Tulip contract can be created unless the rental period is moved back into the future."
+          "pastStartWarning": "This period starts in the past. Tulip cannot create or update insurance on these dates, so protection is removed from this change.",
+          "disabledPastStart": "Tulip protection disabled for this past period.",
+          "calculating": "Calculating coverage...",
+          "estimatedAmount": "Estimated coverage: {amount}",
+          "previewUnavailable": "Tulip amount could not be recalculated."
         },
         "duration": "Duration",
         "exact": "exact",
@@ -5233,6 +5238,7 @@
     "tulipContractUpdateFailed": "Reservation updated, but Tulip contract synchronization failed.",
     "tulipContractCancellationFailed": "Reservation cancelled, but Tulip contract termination failed.",
     "tulipQuoteFailed": "Unable to calculate breakage/theft coverage for this reservation.",
+    "tulipInsuranceDisabledPastDate": "Reservation updated, but Tulip protection was disabled because the dates are in the past.",
     "tulipContractPastDate": "Tulip refused contract creation: contract dates cannot be in the past.",
     "tulipContractDatesInvalid": "Tulip refused the contract: the start and end dates are inconsistent for this contract type.",
     "tulipContractActionForbidden": "Tulip refused this action for the current account configuration.",

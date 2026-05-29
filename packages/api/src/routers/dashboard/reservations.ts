@@ -13,6 +13,7 @@ import {
   dashboardReservationGetByIdInputSchema,
   dashboardReservationGetPaymentMethodInputSchema,
   dashboardReservationPollInputSchema,
+  dashboardReservationPreviewTulipQuoteInputSchema,
   dashboardReservationRecordDamageInputSchema,
   dashboardReservationRecordPaymentInputSchema,
   dashboardReservationReleaseDepositHoldInputSchema,
@@ -195,6 +196,30 @@ const updateReservation = requirePermission('write')
         });
       }
       return result;
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const previewTulipQuote = requirePermission('write')
+  .input(dashboardReservationPreviewTulipQuoteInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn =
+        context.dashboardReservationActions?.previewReservationTulipQuote;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardReservationActions.previewReservationTulipQuote not provided',
+        });
+      }
+
+      const payload = input.payload;
+      return await fn(input.reservationId, {
+        ...payload,
+        startDate: toDate(payload.startDate)!,
+        endDate: toDate(payload.endDate)!,
+      });
     } catch (error) {
       throw toORPCError(error);
     }
@@ -572,6 +597,7 @@ export const dashboardReservationsRouter = {
   getAvailableUnitsForItem,
   createManualReservation,
   updateReservation,
+  previewTulipQuote,
   updateNotes,
   updateStatus,
   cancel,
