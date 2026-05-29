@@ -5,14 +5,14 @@ import type { TulipPublicMode } from '@louez/types';
 
 import {
   TulipApiError,
+  type TulipContract,
+  type TulipContractProduct,
   tulipAddProductsToContract,
   tulipCancelContract,
   tulipDeleteProductsFromContract,
   tulipGetContract,
   tulipListProducts,
   tulipUpdateContract,
-  type TulipContract,
-  type TulipContractProduct,
 } from './client';
 import {
   getTulipCoverageSummary,
@@ -31,20 +31,19 @@ import {
 import { assertTulipContractTypeEnabled } from './contracts-renter';
 import type {
   ResolvedTulipItemInput,
-  TulipCustomerInput,
   TulipContractType,
+  TulipCustomerInput,
   TulipItemInput,
   TulipQuotePreviewResult,
 } from './contracts-types';
-import {
-  getTulipApiKey,
-  getTulipRenterUidForContracts,
-  getTulipSettings,
-  shouldApplyTulipInsurance,
-} from './settings';
+import { getTulipApiKey, shouldApplyTulipInsurance } from './settings';
+import { resolveTulipIntegrationForStore } from './state';
 
 export { getTulipCoverageSummary };
-export type { TulipCoverageSummary, TulipQuotePreviewResult } from './contracts-types';
+export type {
+  TulipCoverageSummary,
+  TulipQuotePreviewResult,
+} from './contracts-types';
 
 type ReservationCustomerLike = {
   customerType?: 'individual' | 'business' | null;
@@ -170,9 +169,8 @@ async function loadTulipProductMetadataById(params: {
         ];
       })
       .filter(
-        (
-          entry,
-        ): entry is [string, TulipProductContractMetadata] => entry !== null,
+        (entry): entry is [string, TulipProductContractMetadata] =>
+          entry !== null,
       ),
   );
 }
@@ -271,7 +269,9 @@ function getEnabledTulipProductTypes(
   return enabledTypes.length > 0 ? new Set(enabledTypes) : null;
 }
 
-function toTulipCustomerInput(customer: ReservationCustomerLike): TulipCustomerInput {
+function toTulipCustomerInput(
+  customer: ReservationCustomerLike,
+): TulipCustomerInput {
   return {
     customerType: customer.customerType,
     companyName: customer.companyName,
@@ -286,7 +286,9 @@ function toTulipCustomerInput(customer: ReservationCustomerLike): TulipCustomerI
   };
 }
 
-function toInsuranceCandidateItems(items: ReservationItemLike[]): TulipItemInput[] {
+function toInsuranceCandidateItems(
+  items: ReservationItemLike[],
+): TulipItemInput[] {
   return items
     .filter((item) => item.productId && !item.isCustomItem)
     .map((item) => ({
@@ -339,7 +341,9 @@ function applyReservationUnitIdentifiersToCoverage(
   return insuredItemsWithProductMarkedValues;
 }
 
-function getTulipTerminationReason(context: 'reservation_cancelled' | 'coverage_removed') {
+function getTulipTerminationReason(
+  context: 'reservation_cancelled' | 'coverage_removed',
+) {
   if (context === 'reservation_cancelled') {
     return 'Reservation cancelled in Louez';
   }
@@ -377,7 +381,9 @@ function toTargetTulipContractProductEntries(
         : null;
 
     const tulipProductId =
-      typeof productObj.product_id === 'string' ? productObj.product_id.trim() : '';
+      typeof productObj.product_id === 'string'
+        ? productObj.product_id.trim()
+        : '';
     const productMarked =
       typeof dataObj?.product_marked === 'string'
         ? dataObj.product_marked.trim()
@@ -425,9 +431,12 @@ function toCurrentTulipContractProductEntries(
       productObj.data && typeof productObj.data === 'object'
         ? productObj.data
         : undefined;
-    const status = typeof productObj.status === 'string' ? productObj.status : '';
+    const status =
+      typeof productObj.status === 'string' ? productObj.status : '';
     const tulipProductId =
-      typeof productObj.product_id === 'string' ? productObj.product_id.trim() : '';
+      typeof productObj.product_id === 'string'
+        ? productObj.product_id.trim()
+        : '';
     const productMarked =
       typeof dataObj?.product_marked === 'string'
         ? dataObj.product_marked.trim()
@@ -437,8 +446,8 @@ function toCurrentTulipContractProductEntries(
     const louezProductId =
       typeof dataObj?.louez_product_ID === 'string'
         ? dataObj.louez_product_ID.trim()
-        // Legacy fallback: older Tulip contracts stored the Louez id in internal_id.
-        : typeof dataObj?.internal_id === 'string'
+        : // Legacy fallback: older Tulip contracts stored the Louez id in internal_id.
+          typeof dataObj?.internal_id === 'string'
           ? dataObj.internal_id.trim()
           : '';
     const margin = parseTulipProductMargin(dataObj?.margin);
@@ -507,9 +516,8 @@ function buildTulipContractDelta(params: {
   ) => {
     for (let index = remainingTarget.length - 1; index >= 0; index--) {
       const target = remainingTarget[index];
-      const current = takeFirstMatchingEntry(
-        remainingCurrent,
-        (entry) => predicate(entry, target),
+      const current = takeFirstMatchingEntry(remainingCurrent, (entry) =>
+        predicate(entry, target),
       );
 
       if (!current) {
@@ -531,7 +539,9 @@ function buildTulipContractDelta(params: {
       current.productMarked.length > 0 &&
       current.productMarked === target.productMarked,
   );
-  matchBy((current, target) => current.tulipProductId === target.tulipProductId);
+  matchBy(
+    (current, target) => current.tulipProductId === target.tulipProductId,
+  );
 
   return {
     updates,
@@ -580,7 +590,6 @@ function shouldIncludeTulipIdentityPayload(
 
 export async function previewTulipQuoteForCheckout(params: {
   storeId: string;
-  storeSettings: any;
   modeOverride?: TulipPublicMode;
   customer: TulipCustomerInput;
   items: TulipItemInput[];
@@ -590,7 +599,8 @@ export async function previewTulipQuoteForCheckout(params: {
 }): Promise<TulipQuotePreviewResult> {
   const coverage = await resolveTulipCoverage(params.items);
 
-  const tulipSettings = getTulipSettings(params.storeSettings);
+  const tulipSettings = (await resolveTulipIntegrationForStore(params.storeId))
+    .settings;
   const effectiveMode = params.modeOverride ?? tulipSettings.publicMode;
   if (!tulipSettings.enabled) {
     return {
@@ -603,10 +613,7 @@ export async function previewTulipQuoteForCheckout(params: {
     };
   }
 
-  const shouldApply = shouldApplyTulipInsurance(
-    effectiveMode,
-    params.optIn,
-  );
+  const shouldApply = shouldApplyTulipInsurance(effectiveMode, params.optIn);
 
   if (!shouldApply || coverage.insuredProductCount === 0) {
     return {
@@ -623,7 +630,7 @@ export async function previewTulipQuoteForCheckout(params: {
     throw new Error('errors.tulipContractPastDate');
   }
 
-  const apiKey = getTulipApiKey(params.storeSettings);
+  const apiKey = getTulipApiKey();
   if (!apiKey || !tulipSettings.renterUid) {
     throw new Error('errors.tulipNotConfigured');
   }
@@ -686,13 +693,16 @@ export async function previewTulipQuoteForCheckout(params: {
     };
   } catch (error) {
     if (error instanceof TulipApiError) {
-      console.error('[tulip][checkout-quote] tulip API rejected quote request', {
-        storeId: params.storeId,
-        status: error.status,
-        message: error.message,
-        request: summarizeContractPayloadForLogs(payload),
-        payload: error.payload,
-      });
+      console.error(
+        '[tulip][checkout-quote] tulip API rejected quote request',
+        {
+          storeId: params.storeId,
+          status: error.status,
+          message: error.message,
+          request: summarizeContractPayloadForLogs(payload),
+          payload: error.payload,
+        },
+      );
     } else {
       console.error('[tulip][checkout-quote] unexpected quote error', {
         storeId: params.storeId,
@@ -752,11 +762,14 @@ export async function createTulipContractForReservation(params: {
   }
 
   if (reservation.status !== 'confirmed' && reservation.status !== 'ongoing') {
-    console.info('[tulip][contract-create] skipped: reservation not accepted yet', {
-      reservationId: reservation.id,
-      status: reservation.status,
-      source: params.source,
-    });
+    console.info(
+      '[tulip][contract-create] skipped: reservation not accepted yet',
+      {
+        reservationId: reservation.id,
+        status: reservation.status,
+        source: params.source,
+      },
+    );
     return {
       contractId: null,
       created: false,
@@ -812,20 +825,26 @@ export async function createTulipContractForReservation(params: {
     });
 
     if (lockedReservation?.tulipContractId) {
-      console.info('[tulip][contract-create] skipped: contract already attached', {
-        reservationId: reservation.id,
-        contractId: lockedReservation.tulipContractId,
-      });
+      console.info(
+        '[tulip][contract-create] skipped: contract already attached',
+        {
+          reservationId: reservation.id,
+          contractId: lockedReservation.tulipContractId,
+        },
+      );
       return {
         contractId: lockedReservation.tulipContractId,
         created: false,
       };
     }
 
-    console.info('[tulip][contract-create] skipped: creation already in progress', {
-      reservationId: reservation.id,
-      status: lockedReservation?.tulipContractStatus ?? null,
-    });
+    console.info(
+      '[tulip][contract-create] skipped: creation already in progress',
+      {
+        reservationId: reservation.id,
+        status: lockedReservation?.tulipContractStatus ?? null,
+      },
+    );
     return {
       contractId: null,
       created: false,
@@ -858,11 +877,14 @@ export async function createTulipContractForReservation(params: {
     });
 
     if (!insuranceSelection.optIn) {
-      console.info('[tulip][contract-create] marked not required: opt-in disabled', {
-        reservationId: reservation.id,
-        optIn: insuranceSelection.optIn,
-        amount: insuranceSelection.amount,
-      });
+      console.info(
+        '[tulip][contract-create] marked not required: opt-in disabled',
+        {
+          reservationId: reservation.id,
+          optIn: insuranceSelection.optIn,
+          amount: insuranceSelection.amount,
+        },
+      );
       await db
         .update(reservations)
         .set({
@@ -877,8 +899,9 @@ export async function createTulipContractForReservation(params: {
       };
     }
 
-    const storeSettings = reservation.store.settings as any;
-    const tulipSettings = getTulipSettings(storeSettings);
+    const tulipSettings = (
+      await resolveTulipIntegrationForStore(reservation.storeId)
+    ).settings;
 
     if (!tulipSettings.enabled) {
       await db
@@ -895,7 +918,7 @@ export async function createTulipContractForReservation(params: {
       };
     }
 
-    const apiKey = getTulipApiKey(storeSettings);
+    const apiKey = getTulipApiKey();
     if (!apiKey || !tulipSettings.renterUid) {
       throw new Error('errors.tulipNotConfigured');
     }
@@ -1096,14 +1119,18 @@ export async function syncTulipContractForReservation(params: {
 
     return {
       synced: true,
-      action: createdResult.created ? ('created' as const) : ('not_required' as const),
+      action: createdResult.created
+        ? ('created' as const)
+        : ('not_required' as const),
       contractId: createdResult.contractId,
     };
   }
 
-  const storeSettings = reservation.store.settings as any;
-  const tulipSettings = getTulipSettings(storeSettings);
-  const apiKey = getTulipApiKey(storeSettings);
+  const tulipIntegration = await resolveTulipIntegrationForStore(
+    reservation.storeId,
+  );
+  const tulipSettings = tulipIntegration.settings;
+  const apiKey = getTulipApiKey();
   if (!apiKey) {
     throw new Error('errors.tulipNotConfigured');
   }
@@ -1138,7 +1165,8 @@ export async function syncTulipContractForReservation(params: {
     };
   }
 
-  const renterUid = getTulipRenterUidForContracts(storeSettings);
+  const renterUid =
+    tulipSettings.renterUid?.trim() || tulipIntegration.archivedRenterUid;
   if (!renterUid) {
     throw new Error('errors.tulipNotConfigured');
   }
@@ -1384,7 +1412,12 @@ export async function syncTulipContractForReservation(params: {
     };
 
     try {
-      await tulipDeleteProductsFromContract(apiKey, contractId, deletePayload, false);
+      await tulipDeleteProductsFromContract(
+        apiKey,
+        contractId,
+        deletePayload,
+        false,
+      );
     } catch (error) {
       console.warn('[tulip][contract-sync] remove products failed', {
         reservationId: reservation.id,
@@ -1408,7 +1441,9 @@ export async function syncTulipContractForReservation(params: {
   return {
     synced: true,
     action:
-      shouldPatchContract || delta.additions.length > 0 || delta.removals.length > 0
+      shouldPatchContract ||
+      delta.additions.length > 0 ||
+      delta.removals.length > 0
         ? ('updated' as const)
         : ('unchanged' as const),
     contractId,
@@ -1435,8 +1470,7 @@ export async function cancelTulipContractForReservation(params: {
     };
   }
 
-  const storeSettings = reservation.store.settings as any;
-  const apiKey = getTulipApiKey(storeSettings);
+  const apiKey = getTulipApiKey();
   if (!apiKey) {
     throw new Error('errors.tulipNotConfigured');
   }

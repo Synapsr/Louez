@@ -116,7 +116,7 @@ Optional:
 - `getConfigurationPanel()`
   - Returns a React component rendered on the integration detail page when enabled
 
-The current TypeScript interface still accepts `StoreSettings` because legacy Tulip state is stored there. Do not copy that storage model for new providers that need durable integration state.
+Runtime status should come from integration records or workflow services. Do not use `stores.settings` as integration state for providers that need durable runtime configuration.
 
 ## Optional Backend Wiring (oRPC)
 

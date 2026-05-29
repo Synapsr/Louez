@@ -1,136 +1,69 @@
-import type {
-  StoreSettings,
-  TulipIntegrationSettings,
-  TulipPublicMode,
-} from '@louez/types'
+import type { TulipPublicMode } from '@louez/types';
 
-import { env } from '@/env'
+import { env } from '@/env';
 
 export interface TulipResolvedSettings {
-  enabled: boolean
-  connectedAt: string | null
-  publicMode: TulipPublicMode
-  renterUid: string | null
+  enabled: boolean;
+  connectedAt: string | null;
+  publicMode: TulipPublicMode;
+  renterUid: string | null;
 }
 
-export const DEFAULT_TULIP_SETTINGS: Omit<TulipResolvedSettings, 'enabled' | 'connectedAt' | 'renterUid'> = {
+export const DEFAULT_TULIP_SETTINGS: Omit<
+  TulipResolvedSettings,
+  'enabled' | 'connectedAt' | 'renterUid'
+> = {
   publicMode: 'optional',
-}
+};
 
-export function getTulipSettings(settings: StoreSettings | null | undefined): TulipResolvedSettings {
-  const raw = settings?.integrationData?.tulip || {}
-  const apiKey = getTulipApiKey(settings)
-  const isConnected = Boolean(apiKey && raw.renterUid)
-  const enabled = isConnected
-  const storedPublicMode = raw.publicMode ?? DEFAULT_TULIP_SETTINGS.publicMode
-
-  return {
-    enabled,
-    connectedAt: raw.connectedAt ?? null,
-    publicMode: enabled ? storedPublicMode : 'no_public',
-    renterUid: raw.renterUid ?? null,
-  }
-}
-
-function getTulipArchivedRenterUid(settings: StoreSettings | null | undefined): string | null {
-  const raw = settings?.integrationData?.tulip
-  const archivedRenterUid =
-    typeof raw?.archivedRenterUid === 'string' ? raw.archivedRenterUid.trim() : ''
-  return archivedRenterUid.length > 0 ? archivedRenterUid : null
-}
-
-export function mergeTulipSettings(
-  current: StoreSettings | null | undefined,
-  patch: Partial<TulipIntegrationSettings>,
-): StoreSettings {
-  const base: StoreSettings = current ? { ...current } : {
-    reservationMode: 'payment',
-    advanceNoticeMinutes: 1440,
-  }
-
-  const previousTulip = base.integrationData?.tulip || {}
-  return {
-    ...base,
-    integrationData: {
-      ...(base.integrationData || {}),
-      tulip: {
-        ...previousTulip,
-        ...patch,
-      },
-    },
-  }
-}
-
-export function getTulipApiKey(settings?: StoreSettings | null | undefined): string | null {
-  void settings
-  const apiKey = env.TULIP_API_KEY?.trim()
+export function getTulipApiKey(): string | null {
+  const apiKey = env.TULIP_API_KEY?.trim();
   if (!apiKey) {
-    return null
+    return null;
   }
 
-  return apiKey
-}
-
-export function isTulipConnected(settings: StoreSettings | null | undefined): boolean {
-  const tulipSettings = getTulipSettings(settings)
-  return Boolean(
-    getTulipApiKey(settings) &&
-      tulipSettings.renterUid,
-  )
-}
-
-export function getTulipRenterUidForContracts(
-  settings: StoreSettings | null | undefined,
-): string | null {
-  const activeRenterUid = getTulipSettings(settings).renterUid?.trim() || null
-  if (activeRenterUid) {
-    return activeRenterUid
-  }
-
-  return getTulipArchivedRenterUid(settings)
+  return apiKey;
 }
 
 export function shouldApplyTulipInsurance(
   mode: TulipPublicMode,
   optIn: boolean | undefined,
 ): boolean {
-  if (mode === 'no_public') return false
-  if (mode === 'required') return true
-  return optIn !== false
+  if (mode === 'no_public') return false;
+  if (mode === 'required') return true;
+  return optIn !== false;
 }
 
-export function getDashboardTulipInsuranceMode(
-  settings: StoreSettings | null | undefined,
+export function getDashboardTulipInsuranceModeFromSettings(
+  settings: Pick<TulipResolvedSettings, 'enabled' | 'publicMode'>,
 ): TulipPublicMode {
-  const tulipSettings = getTulipSettings(settings)
-  if (!tulipSettings.enabled) {
-    return 'no_public'
+  if (!settings.enabled) {
+    return 'no_public';
   }
 
   // Option A: hidden on the public storefront still remains activable by the landlord.
-  if (tulipSettings.publicMode === 'required') {
-    return 'required'
+  if (settings.publicMode === 'required') {
+    return 'required';
   }
 
-  return 'optional'
+  return 'optional';
 }
 
-export function getDashboardTulipInsuranceDefaultOptIn(
-  settings: StoreSettings | null | undefined,
+export function getDashboardTulipInsuranceDefaultOptInFromSettings(
+  settings: Pick<TulipResolvedSettings, 'enabled' | 'publicMode'>,
 ): boolean {
-  const tulipSettings = getTulipSettings(settings)
-  if (!tulipSettings.enabled) {
-    return false
+  if (!settings.enabled) {
+    return false;
   }
 
-  if (tulipSettings.publicMode === 'required') {
-    return true
+  if (settings.publicMode === 'required') {
+    return true;
   }
 
   // Option A: hidden publicly, but opt-in stays a landlord decision.
-  if (tulipSettings.publicMode === 'no_public') {
-    return false
+  if (settings.publicMode === 'no_public') {
+    return false;
   }
 
-  return true
+  return true;
 }

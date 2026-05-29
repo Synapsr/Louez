@@ -288,6 +288,13 @@
       "when": 1778630400000,
       "tag": "0037_add_integrations",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1779893253000,
+      "tag": "0038_add_tulip_integration_state",
+      "breakpoints": true
     }
   ]
 }
