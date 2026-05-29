@@ -423,6 +423,33 @@ export const storeCalendarIntegrations = mysqlTable(
   }),
 );
 
+export const storeTulipIntegrations = mysqlTable(
+  'store_tulip_integrations',
+  {
+    id: id(),
+    integrationId: varchar('integration_id', { length: 21 }).notNull(),
+    renterUid: varchar('renter_uid', { length: 120 }),
+    archivedRenterUid: varchar('archived_renter_uid', { length: 120 }),
+    publicMode: mysqlEnum('public_mode', ['required', 'optional', 'no_public'])
+      .default('optional')
+      .notNull(),
+    connectedAt: timestamp('connected_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    integrationUnique: unique('store_tulip_integrations_integration_unique').on(
+      table.integrationId,
+    ),
+    integrationIdx: index('store_tulip_integrations_integration_idx').on(
+      table.integrationId,
+    ),
+    renterUidIdx: index('store_tulip_integrations_renter_uid_idx').on(
+      table.renterUid,
+    ),
+  }),
+);
+
 export const reservationCalendarEvents = mysqlTable(
   'reservation_calendar_events',
   {
@@ -1510,6 +1537,10 @@ export const storeIntegrationsRelations = relations(
       fields: [storeIntegrations.id],
       references: [storeCalendarIntegrations.integrationId],
     }),
+    tulipSettings: one(storeTulipIntegrations, {
+      fields: [storeIntegrations.id],
+      references: [storeTulipIntegrations.integrationId],
+    }),
     calendarEvents: many(reservationCalendarEvents),
   }),
 );
@@ -1529,6 +1560,16 @@ export const storeCalendarIntegrationsRelations = relations(
   ({ one }) => ({
     integration: one(storeIntegrations, {
       fields: [storeCalendarIntegrations.integrationId],
+      references: [storeIntegrations.id],
+    }),
+  }),
+);
+
+export const storeTulipIntegrationsRelations = relations(
+  storeTulipIntegrations,
+  ({ one }) => ({
+    integration: one(storeIntegrations, {
+      fields: [storeTulipIntegrations.integrationId],
       references: [storeIntegrations.id],
     }),
   }),

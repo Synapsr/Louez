@@ -159,7 +159,7 @@ The dashboard calendar should provide a contextual entry point, not own integrat
 
 Insurance providers can share common activation and workflow concepts, but product mapping, quote contracts, and provider payloads belong to the insurance workflow or provider-specific modules.
 
-The existing Tulip integration currently stores legacy state in `stores.settings`; do not use that as the pattern for new providers.
+Tulip uses the common `store_integrations` record plus provider-specific insurance configuration in `store_tulip_integrations`. Product mapping remains in `products_tulip`, and reservation contract state remains on reservations because it belongs to the reservation lifecycle.
 
 ## Registry and Adapter Model
 

@@ -58,7 +58,7 @@ import {
   getTulipCoverageSummary,
   previewTulipQuoteForCheckout,
 } from '@/lib/integrations/tulip/contracts';
-import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
@@ -210,7 +210,6 @@ function toResolvedAttributes(
 
 type CheckoutTulipQuoteInput = {
   storeId: string;
-  storeSettings: StoreSettings | null;
   modeOverride?: TulipPublicMode;
   customer: {
     customerType?: 'individual' | 'business';
@@ -244,14 +243,15 @@ type CheckoutTulipQuoteResult = {
   insuredProductIds: string[];
 };
 
-function getCheckoutTulipMode(
-  storeSettings: StoreSettings | null,
+async function getCheckoutTulipMode(
+  storeId: string,
   modeOverride?: TulipPublicMode,
-): {
+): Promise<{
   mode: TulipPublicMode;
   connected: boolean;
-} {
-  const tulipSettings = getTulipSettings(storeSettings);
+}> {
+  const tulipSettings = (await resolveTulipIntegrationForStore(storeId))
+    .settings;
   const connected = tulipSettings.enabled;
   return {
     mode: connected ? (modeOverride ?? tulipSettings.publicMode) : 'no_public',
@@ -262,8 +262,8 @@ function getCheckoutTulipMode(
 async function resolveCheckoutTulipQuote(
   input: CheckoutTulipQuoteInput,
 ): Promise<CheckoutTulipQuoteResult> {
-  const modeInfo = getCheckoutTulipMode(
-    input.storeSettings,
+  const modeInfo = await getCheckoutTulipMode(
+    input.storeId,
     input.modeOverride,
   );
   const requestedOptIn =
@@ -292,7 +292,6 @@ async function resolveCheckoutTulipQuote(
   try {
     const preview = await previewTulipQuoteForCheckout({
       storeId: input.storeId,
-      storeSettings: input.storeSettings,
       modeOverride: modeInfo.mode,
       customer: {
         customerType: input.customer.customerType || 'individual',
@@ -442,12 +441,9 @@ export async function getTulipQuotePreview(input: {
     };
   }
 
-  const storeSettings = store.settings as StoreSettings | null;
-
   try {
     const quote = await resolveCheckoutTulipQuote({
       storeId: store.id,
-      storeSettings,
       modeOverride: input.modeOverride,
       customer: input.customer,
       items: input.items,
@@ -475,7 +471,7 @@ export async function getTulipQuotePreview(input: {
       error: null,
     };
   } catch (error) {
-    const modeInfo = getCheckoutTulipMode(storeSettings, input.modeOverride);
+    const modeInfo = await getCheckoutTulipMode(store.id, input.modeOverride);
     const coverageSummary = await getTulipCoverageSummary(input.items);
     const errorKey = getErrorKey(error, 'errors.tulipQuoteFailed');
 
@@ -1034,7 +1030,6 @@ export async function createReservation(input: CreateReservationInput) {
     try {
       const quote = await resolveCheckoutTulipQuote({
         storeId: store.id,
-        storeSettings: storeSettings as StoreSettings | null,
         customer: input.customer,
         items: input.items.map((item) => ({
           productId: item.productId,

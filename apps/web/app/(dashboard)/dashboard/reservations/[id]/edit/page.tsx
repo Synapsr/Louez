@@ -1,29 +1,42 @@
-import { db } from '@louez/db'
-import { getCurrentStore } from '@/lib/store-context'
-import { reservations, products, storeLocations } from '@louez/db'
-import { eq, and, inArray, gte, ne } from 'drizzle-orm'
-import { redirect, notFound } from 'next/navigation'
-import { subDays } from 'date-fns'
-import type { DeliverySettings, LegMethod } from '@louez/types'
-import type { SeasonalPricingConfig } from '@louez/utils'
-import { getTulipSettings } from '@/lib/integrations/tulip/settings'
-import { EditReservationForm } from './edit-reservation-form'
-import type { PricingTier, Product, ReservationLocationOption, StoreDeliveryInfo } from './types'
+import { notFound, redirect } from 'next/navigation';
+
+import { subDays } from 'date-fns';
+import { and, eq, gte, inArray, ne } from 'drizzle-orm';
+
+import { db } from '@louez/db';
+import { products, reservations, storeLocations } from '@louez/db';
+import type { DeliverySettings, LegMethod } from '@louez/types';
+import type { SeasonalPricingConfig } from '@louez/utils';
+
+import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
+import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
+import { getCurrentStore } from '@/lib/store-context';
+
+import { EditReservationForm } from './edit-reservation-form';
+import type {
+  PricingTier,
+  Product,
+  ReservationLocationOption,
+  StoreDeliveryInfo,
+} from './types';
 
 interface EditReservationPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 // Fetch existing reservations for availability conflict checking (excluding current reservation)
-async function getActiveReservations(storeId: string, excludeReservationId: string) {
-  const thirtyDaysAgo = subDays(new Date(), 30)
+async function getActiveReservations(
+  storeId: string,
+  excludeReservationId: string,
+) {
+  const thirtyDaysAgo = subDays(new Date(), 30);
 
   return db.query.reservations.findMany({
     where: and(
       eq(reservations.storeId, storeId),
       ne(reservations.id, excludeReservationId),
       inArray(reservations.status, ['pending', 'confirmed', 'ongoing']),
-      gte(reservations.endDate, thirtyDaysAgo)
+      gte(reservations.endDate, thirtyDaysAgo),
     ),
     with: {
       items: {
@@ -39,7 +52,7 @@ async function getActiveReservations(storeId: string, excludeReservationId: stri
       endDate: true,
       status: true,
     },
-  })
+  });
 }
 
 /**
@@ -49,12 +62,12 @@ async function getActiveReservations(storeId: string, excludeReservationId: stri
  */
 function mapPricingTiers(
   tiers: Array<{
-    id: string
-    minDuration: number | null
-    discountPercent: string | null
-    period: number | null
-    price: string | null
-    displayOrder: number | null
+    id: string;
+    minDuration: number | null;
+    discountPercent: string | null;
+    period: number | null;
+    price: string | null;
+    displayOrder: number | null;
   }>,
 ): PricingTier[] {
   return tiers.map((tier, index) => ({
@@ -64,7 +77,7 @@ function mapPricingTiers(
     period: tier.period ?? null,
     price: tier.price !== null ? parseFloat(tier.price) : null,
     displayOrder: tier.displayOrder ?? index,
-  }))
+  }));
 }
 
 /**
@@ -73,19 +86,19 @@ function mapPricingTiers(
  */
 function mapSeasonalPricings(
   seasonalPricings: Array<{
-    id: string
-    name: string
-    startDate: string
-    endDate: string
-    price: string
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    price: string;
     tiers: Array<{
-      id: string
-      minDuration: number | null
-      discountPercent: string | null
-      period: number | null
-      price: string | null
-      displayOrder: number | null
-    }>
+      id: string;
+      minDuration: number | null;
+      discountPercent: string | null;
+      period: number | null;
+      price: string | null;
+      displayOrder: number | null;
+    }>;
   }>,
 ): SeasonalPricingConfig[] {
   return seasonalPricings.map((sp) => ({
@@ -115,48 +128,46 @@ function mapSeasonalPricings(
         price: parseFloat(t.price),
         displayOrder: t.displayOrder ?? i,
       })),
-  }))
+  }));
 }
 
 /**
  * Map a raw DB product (with relations) to the Product shape for the edit form.
  */
-function mapProduct(
-  p: {
-    id: string
-    name: string
-    price: string
-    deposit: string | null
-    quantity: number
-    pricingMode: string | null
-    basePeriodMinutes: number | null
-    enforceStrictTiers: boolean
-    pricingTiers: Array<{
-      id: string
-      minDuration: number | null
-      discountPercent: string | null
-      period: number | null
-      price: string | null
-      displayOrder: number | null
-    }>
-    seasonalPricings: Array<{
-      id: string
-      name: string
-      startDate: string
-      endDate: string
-      price: string
-      tiers: Array<{
-        id: string
-        minDuration: number | null
-        discountPercent: string | null
-        period: number | null
-        price: string | null
-        displayOrder: number | null
-      }>
-    }>
-    tulipMapping?: { productId: string } | null
-  },
-): Product {
+function mapProduct(p: {
+  id: string;
+  name: string;
+  price: string;
+  deposit: string | null;
+  quantity: number;
+  pricingMode: string | null;
+  basePeriodMinutes: number | null;
+  enforceStrictTiers: boolean;
+  pricingTiers: Array<{
+    id: string;
+    minDuration: number | null;
+    discountPercent: string | null;
+    period: number | null;
+    price: string | null;
+    displayOrder: number | null;
+  }>;
+  seasonalPricings: Array<{
+    id: string;
+    name: string;
+    startDate: string;
+    endDate: string;
+    price: string;
+    tiers: Array<{
+      id: string;
+      minDuration: number | null;
+      discountPercent: string | null;
+      period: number | null;
+      price: string | null;
+      displayOrder: number | null;
+    }>;
+  }>;
+  tulipMapping?: { productId: string } | null;
+}): Product {
   return {
     id: p.id,
     name: p.name,
@@ -169,19 +180,19 @@ function mapProduct(
     tulipInsurable: Boolean(p.tulipMapping?.productId),
     pricingTiers: mapPricingTiers(p.pricingTiers),
     seasonalPricings: mapSeasonalPricings(p.seasonalPricings),
-  }
+  };
 }
 
 export default async function EditReservationPage({
   params,
 }: EditReservationPageProps) {
-  const store = await getCurrentStore()
+  const store = await getCurrentStore();
 
   if (!store) {
-    redirect('/onboarding')
+    redirect('/onboarding');
   }
 
-  const { id } = await params
+  const { id } = await params;
 
   const reservation = await db.query.reservations.findFirst({
     where: and(eq(reservations.id, id), eq(reservations.storeId, store.id)),
@@ -205,53 +216,59 @@ export default async function EditReservationPage({
         },
       },
     },
-  })
+  });
 
   if (!reservation) {
-    notFound()
+    notFound();
   }
 
   // Cannot edit completed, cancelled or rejected reservations
   if (['completed', 'cancelled', 'rejected'].includes(reservation.status)) {
-    redirect(`/dashboard/reservations/${id}`)
+    redirect(`/dashboard/reservations/${id}`);
   }
 
   // Fetch products and existing reservations in parallel
   const deliverySettings = (store.settings as Record<string, unknown> | null)
-    ?.delivery as DeliverySettings | undefined
-  const [availableProducts, existingReservations, activeStoreLocations] = await Promise.all([
-    db.query.products.findMany({
-      where: and(eq(products.storeId, store.id), eq(products.status, 'active')),
-      with: {
-        pricingTiers: true,
-        seasonalPricings: {
-          with: { tiers: true },
-        },
-        tulipMapping: {
-          columns: {
-            productId: true,
+    ?.delivery as DeliverySettings | undefined;
+  const [availableProducts, existingReservations, activeStoreLocations] =
+    await Promise.all([
+      db.query.products.findMany({
+        where: and(
+          eq(products.storeId, store.id),
+          eq(products.status, 'active'),
+        ),
+        with: {
+          pricingTiers: true,
+          seasonalPricings: {
+            with: { tiers: true },
+          },
+          tulipMapping: {
+            columns: {
+              productId: true,
+            },
           },
         },
-      },
-      orderBy: (products, { asc }) => [asc(products.name)],
-    }),
-    getActiveReservations(store.id, id),
-    deliverySettings?.multiLocationEnabled
-      ? db.query.storeLocations.findMany({
-          where: and(eq(storeLocations.storeId, store.id), eq(storeLocations.isActive, true)),
-          orderBy: (storeLocations, { asc }) => [asc(storeLocations.createdAt)],
-        })
-      : Promise.resolve([]),
-  ])
+        orderBy: (products, { asc }) => [asc(products.name)],
+      }),
+      getActiveReservations(store.id, id),
+      deliverySettings?.multiLocationEnabled
+        ? db.query.storeLocations.findMany({
+            where: and(
+              eq(storeLocations.storeId, store.id),
+              eq(storeLocations.isActive, true),
+            ),
+            orderBy: (storeLocations, { asc }) => [
+              asc(storeLocations.createdAt),
+            ],
+          })
+        : Promise.resolve([]),
+    ]);
 
-  const currency = store.settings?.currency || 'EUR'
-  const tulipSettings = getTulipSettings(store.settings || null)
+  const currency = store.settings?.currency || 'EUR';
+  const tulipSettings = (await resolveTulipIntegrationForStore(store.id))
+    .settings;
   const tulipInsuranceMode =
-    !tulipSettings.enabled
-      ? 'no_public'
-      : tulipSettings.publicMode === 'required'
-        ? 'required'
-        : 'optional'
+    getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 
   const locationOptions: ReservationLocationOption[] = [
     {
@@ -270,19 +287,19 @@ export default async function EditReservationPage({
       postalCode: location.postalCode,
       country: location.country,
     })),
-  ]
+  ];
 
   // Build delivery info from store settings
   const storeDelivery: StoreDeliveryInfo | null =
     deliverySettings?.enabled || deliverySettings?.multiLocationEnabled
-    ? {
-        settings: deliverySettings,
-        latitude: store.latitude ? parseFloat(store.latitude) : null,
-        longitude: store.longitude ? parseFloat(store.longitude) : null,
-        address: store.address ?? null,
-        locations: locationOptions,
-      }
-    : null
+      ? {
+          settings: deliverySettings,
+          latitude: store.latitude ? parseFloat(store.latitude) : null,
+          longitude: store.longitude ? parseFloat(store.longitude) : null,
+          address: store.address ?? null,
+          locations: locationOptions,
+        }
+      : null;
 
   return (
     <EditReservationForm
@@ -332,9 +349,7 @@ export default async function EditReservationPage({
           isCustomItem: item.isCustomItem,
           pricingBreakdown: item.pricingBreakdown,
           productSnapshot: item.productSnapshot,
-          product: item.product
-            ? mapProduct(item.product)
-            : null,
+          product: item.product ? mapProduct(item.product) : null,
         })),
         customer: {
           firstName: reservation.customer.firstName,
@@ -348,5 +363,5 @@ export default async function EditReservationPage({
       storeSettings={store.settings || null}
       storeDelivery={storeDelivery}
     />
-  )
+  );
 }

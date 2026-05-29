@@ -12,6 +12,6 @@ We will model integrations with a static provider catalog in code, store-specifi
 
 ## Consequences
 
-New integrations need schema work when they persist durable state, but their ownership is clearer and contributors do not have to reverse-engineer large provider-specific JSON blobs. Providers are added through normal code review with manifest, adapter, assets, translations, and workflow documentation. Existing Tulip state can remain legacy until a separate migration is worth the churn.
+New integrations need schema work when they persist durable state, but their ownership is clearer and contributors do not have to reverse-engineer large provider-specific JSON blobs. Providers are added through normal code review with manifest, adapter, assets, translations, and workflow documentation. Tulip follows this model through `store_integrations` and `store_tulip_integrations`; existing legacy Tulip JSON in `stores.settings` is backfilled into the new tables during migration, then stops being a runtime source of truth.
 
 The first calendar provider will use its reservation-event mapping table as a workflow-specific durable outbox instead of introducing a generic integration job queue. A shared queue can be extracted later if multiple workflows prove they need the same retry machinery.

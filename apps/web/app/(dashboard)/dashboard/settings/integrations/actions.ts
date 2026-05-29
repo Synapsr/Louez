@@ -41,15 +41,16 @@ import {
   tulipAddRenter,
   tulipCreateProduct,
   tulipGetRenter,
-  tulipListRenters,
   tulipListProducts,
+  tulipListRenters,
   tulipUpdateProduct,
 } from '@/lib/integrations/tulip/client';
+import { getTulipApiKey } from '@/lib/integrations/tulip/settings';
 import {
-  getTulipApiKey,
-  getTulipSettings,
-  mergeTulipSettings,
-} from '@/lib/integrations/tulip/settings';
+  TULIP_PROVIDER_KEY,
+  resolveTulipIntegrationForStore,
+  saveTulipIntegrationForStore,
+} from '@/lib/integrations/tulip/state';
 import { getCurrentStore } from '@/lib/store-context';
 import type { StoreWithFullData } from '@/lib/store-context';
 
@@ -854,11 +855,49 @@ async function applyCalendarRuntimeToCatalog(
   });
 }
 
-async function applyCalendarRuntimeToDetail(
+async function applyTulipRuntimeToCatalog(
+  store: StoreWithFullData,
+  integrations: IntegrationCatalogItem[],
+): Promise<IntegrationCatalogItem[]> {
+  if (
+    !integrations.some((integration) => integration.id === TULIP_PROVIDER_KEY)
+  ) {
+    return integrations;
+  }
+
+  const resolved = await resolveTulipIntegrationForStore(store.id);
+
+  return integrations.map((integration) => {
+    if (integration.id !== TULIP_PROVIDER_KEY) {
+      return integration;
+    }
+
+    return {
+      ...integration,
+      enabled: resolved.settings.enabled,
+      connected: resolved.connected,
+      configured: resolved.connected,
+      connectionIssue: resolved.connectionIssue,
+    };
+  });
+}
+
+async function applyRuntimeToCatalog(
+  store: StoreWithFullData,
+  integrations: IntegrationCatalogItem[],
+): Promise<IntegrationCatalogItem[]> {
+  const withCalendarRuntime = await applyCalendarRuntimeToCatalog(
+    store,
+    integrations,
+  );
+  return applyTulipRuntimeToCatalog(store, withCalendarRuntime);
+}
+
+async function applyRuntimeToDetail(
   store: StoreWithFullData,
   integration: IntegrationDetail,
 ): Promise<IntegrationDetail> {
-  const [item] = await applyCalendarRuntimeToCatalog(store, [integration]);
+  const [item] = await applyRuntimeToCatalog(store, [integration]);
   return {
     ...integration,
     ...item,
@@ -961,7 +1000,7 @@ export async function listIntegrationsCatalogAction(
 
     const { store } = storeResult;
     const settings = (store.settings as StoreSettings | null) || null;
-    const integrations = await applyCalendarRuntimeToCatalog(
+    const integrations = await applyRuntimeToCatalog(
       store,
       listIntegrations(settings),
     );
@@ -989,7 +1028,7 @@ export async function listIntegrationsCategoryAction(
     const { store } = storeResult;
     const settings = (store.settings as StoreSettings | null) || null;
     const categories = listCategories(settings);
-    const integrations = await applyCalendarRuntimeToCatalog(
+    const integrations = await applyRuntimeToCatalog(
       store,
       listByCategory(settings, validated.category),
     );
@@ -1031,7 +1070,7 @@ export async function getIntegrationDetailAction(
     }
 
     return {
-      integration: await applyCalendarRuntimeToDetail(store, integration),
+      integration: await applyRuntimeToDetail(store, integration),
     };
   } catch (error) {
     return toActionError(error);
@@ -1057,6 +1096,37 @@ export async function setIntegrationEnabledAction(
     const integration = getIntegration(validated.integrationId);
     if (!integration) {
       return { error: 'errors.integrationNotFound' };
+    }
+
+    if (validated.integrationId === TULIP_PROVIDER_KEY) {
+      const resolved = await resolveTulipIntegrationForStore(store.id);
+
+      if (validated.enabled && !resolved.connected) {
+        return { error: 'errors.integrationNotConnected' };
+      }
+
+      await saveTulipIntegrationForStore({
+        storeId: store.id,
+        connectedByUserId: store.userId,
+        enabled: validated.enabled,
+        status: validated.enabled ? 'active' : 'disabled',
+        publicMode: resolved.storedPublicMode,
+        renterUid: resolved.settings.renterUid,
+        archivedRenterUid: resolved.archivedRenterUid,
+        connectedAt: resolved.settings.connectedAt,
+      });
+
+      revalidatePath('/dashboard/settings/integrations');
+      revalidatePath(
+        '/dashboard/settings/integrations/categories/[category]',
+        'page',
+      );
+      revalidatePath(
+        '/dashboard/settings/integrations/[integrationId]',
+        'page',
+      );
+
+      return { success: true };
     }
 
     if (validated.integrationId === GOOGLE_CALENDAR_PROVIDER_KEY) {
@@ -1291,9 +1361,8 @@ export async function getTulipIntegrationStateAction(): Promise<
     }
 
     const { store } = storeResult;
-    const settings = getTulipSettings(
-      (store.settings as StoreSettings | null) || null,
-    );
+    const resolved = await resolveTulipIntegrationForStore(store.id);
+    const settings = resolved.settings;
 
     const productsListPromise = getProductsWithMappings(store.id);
 
@@ -1306,11 +1375,9 @@ export async function getTulipIntegrationStateAction(): Promise<
     let supportsMargin = false;
     let inclusionEnabled = false;
 
-    const apiKey = getTulipApiKey(
-      (store.settings as StoreSettings | null) || null,
-    );
+    const apiKey = getTulipApiKey();
     const renterUid = settings.renterUid?.trim() || null;
-    if (apiKey && renterUid) {
+    if (apiKey && renterUid && settings.enabled) {
       const [renterResult, tulipProductsResult] = await Promise.allSettled([
         tulipGetRenter(apiKey, renterUid),
         tulipListProducts(apiKey, { renterUid }),
@@ -1394,7 +1461,7 @@ export async function getTulipIntegrationStateAction(): Promise<
 
     return {
       connected,
-      enabled: connected,
+      enabled: settings.enabled && connected,
       supportsMargin,
       inclusionEnabled,
       connectedAt: settings.connectedAt,
@@ -1426,8 +1493,8 @@ export async function getTulipProductStateAction(
     }
 
     const { store } = storeResult;
-    const storeSettings = (store.settings as StoreSettings | null) || null;
-    const settings = getTulipSettings(storeSettings);
+    const resolved = await resolveTulipIntegrationForStore(store.id);
+    const settings = resolved.settings;
 
     const product = await db.query.products.findFirst({
       where: and(
@@ -1453,9 +1520,9 @@ export async function getTulipProductStateAction(
     let connected = false;
     let supportsMargin = false;
 
-    const apiKey = getTulipApiKey(storeSettings);
+    const apiKey = getTulipApiKey();
     const renterUid = settings.renterUid?.trim() || null;
-    if (apiKey && renterUid) {
+    if (apiKey && renterUid && settings.enabled) {
       try {
         const renter = await tulipGetRenter(apiKey, renterUid);
         if (!renter?.uid) {
@@ -1475,7 +1542,7 @@ export async function getTulipProductStateAction(
       connectionIssue = 'errors.tulipNotConfigured';
     }
 
-    if (connected && apiKey) {
+    if (connected && apiKey && settings.enabled) {
       try {
         const rawProducts = await tulipListProducts(apiKey, { renterUid });
         tulipProducts = normalizeTulipProducts(rawProducts);
@@ -1546,8 +1613,11 @@ export async function connectTulipApiKeyAction(
     }
 
     const { store } = storeResult;
-    const storeSettings = (store.settings as StoreSettings | null) || null;
-    const apiKey = getTulipApiKey(storeSettings);
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
+    const apiKey = getTulipApiKey();
     if (!apiKey) {
       return { error: 'errors.tulipNotConfigured' };
     }
@@ -1605,19 +1675,18 @@ export async function connectTulipApiKeyAction(
       return { error: 'errors.tulipRenterAttachFailed' };
     }
 
-    const patchedSettings = mergeTulipSettings(storeSettings, {
-      connectedAt: new Date().toISOString(),
+    const connectedAt = new Date();
+    const resolvedBeforeSave = await resolveTulipIntegrationForStore(store.id);
+    await saveTulipIntegrationForStore({
+      storeId: store.id,
+      connectedByUserId: store.userId,
+      enabled: true,
+      status: 'active',
+      publicMode: resolvedBeforeSave.storedPublicMode,
       renterUid: renter.uid,
-      archivedRenterUid: undefined,
+      archivedRenterUid: null,
+      connectedAt,
     });
-
-    await db
-      .update(stores)
-      .set({
-        settings: patchedSettings,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
 
     console.info('[tulip][connect] renter saved', {
       storeId: store.id,
@@ -1643,20 +1712,22 @@ export async function updateTulipConfigurationAction(
     }
 
     const { store } = storeResult;
-    const nextSettings = mergeTulipSettings(
-      (store.settings as StoreSettings | null) || null,
-      {
-        publicMode: validated.publicMode,
-      },
-    );
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
 
-    await db
-      .update(stores)
-      .set({
-        settings: nextSettings,
-        updatedAt: new Date(),
-      })
-      .where(eq(stores.id, store.id));
+    const resolved = await resolveTulipIntegrationForStore(store.id);
+
+    await saveTulipIntegrationForStore({
+      storeId: store.id,
+      connectedByUserId: store.userId,
+      enabled: resolved.settings.enabled,
+      status: resolved.settings.enabled ? 'active' : 'disabled',
+      publicMode: validated.publicMode,
+      renterUid: resolved.settings.renterUid,
+      archivedRenterUid: resolved.archivedRenterUid,
+      connectedAt: resolved.settings.connectedAt,
+    });
 
     revalidatePath('/dashboard/settings/integrations');
     return { success: true };
@@ -1706,12 +1777,11 @@ export async function upsertTulipProductMappingAction(
         .delete(productsTulip)
         .where(eq(productsTulip.productId, validated.productId));
     } else {
-      const storeSettings = (store.settings as StoreSettings | null) || null;
-      const tulipSettings = getTulipSettings(storeSettings);
-      const apiKey = getTulipApiKey(storeSettings);
-      const renterUid = tulipSettings.renterUid?.trim() || null;
+      const tulipIntegration = await resolveTulipIntegrationForStore(store.id);
+      const apiKey = getTulipApiKey();
+      const renterUid = tulipIntegration.settings.renterUid?.trim() || null;
 
-      if (!apiKey || !renterUid) {
+      if (!apiKey || !renterUid || !tulipIntegration.settings.enabled) {
         return { error: 'errors.tulipNotConfigured' };
       }
 
@@ -1831,14 +1901,13 @@ export async function pushTulipProductUpdateAction(
     }
 
     const { store } = storeResult;
-    const storeSettings = (store.settings as StoreSettings | null) || null;
-
-    const apiKey = getTulipApiKey(storeSettings);
+    const tulipIntegration = await resolveTulipIntegrationForStore(store.id);
+    const apiKey = getTulipApiKey();
     if (!apiKey) {
       return { error: 'errors.tulipNotConfigured' };
     }
-    const renterUid = getTulipSettings(storeSettings).renterUid?.trim() || null;
-    if (!renterUid) {
+    const renterUid = tulipIntegration.settings.renterUid?.trim() || null;
+    if (!renterUid || !tulipIntegration.settings.enabled) {
       return { error: 'errors.tulipNotConfigured' };
     }
 
@@ -2068,17 +2137,17 @@ export async function createTulipProductAction(
     }
 
     const { store } = storeResult;
-    const storeSettings = (store.settings as StoreSettings | null) || null;
-    const tulipSettings = getTulipSettings(storeSettings);
+    const tulipSettings = (await resolveTulipIntegrationForStore(store.id))
+      .settings;
     console.info('[tulip][create-product] start', {
       storeId: store.id,
       productId: validated.productId,
-      hasApiKey: !!getTulipApiKey(storeSettings),
+      hasApiKey: !!getTulipApiKey(),
       connectedAt: tulipSettings.connectedAt,
       renterUid: tulipSettings.renterUid,
     });
 
-    const apiKey = getTulipApiKey(storeSettings);
+    const apiKey = getTulipApiKey();
     if (!apiKey) {
       console.warn('[tulip][create-product] api key missing after resolution', {
         storeId: store.id,
@@ -2088,7 +2157,7 @@ export async function createTulipProductAction(
     }
 
     const renterUid = tulipSettings.renterUid?.trim() || null;
-    if (!renterUid) {
+    if (!renterUid || !tulipSettings.enabled) {
       console.warn(
         '[tulip][create-product] missing renter uid in tulip settings',
         {
@@ -2272,24 +2341,24 @@ export async function disconnectTulipAction(
     }
 
     const { store } = storeResult;
-    const currentSettings = (store.settings as StoreSettings | null) || null;
-    const activeRenterUid =
-      getTulipSettings(currentSettings).renterUid?.trim() || null;
-    const nextSettings = mergeTulipSettings(currentSettings, {
-      connectedAt: undefined,
-      renterUid: undefined,
-      archivedRenterUid: activeRenterUid || undefined,
+    if (!userCanManageIntegrations(store)) {
+      return { error: 'errors.permissionDenied' };
+    }
+
+    const resolved = await resolveTulipIntegrationForStore(store.id);
+    const activeRenterUid = resolved.settings.renterUid?.trim() || null;
+    await saveTulipIntegrationForStore({
+      storeId: store.id,
+      connectedByUserId: null,
+      enabled: false,
+      status: 'disabled',
+      publicMode: resolved.storedPublicMode,
+      renterUid: null,
+      archivedRenterUid: activeRenterUid || resolved.archivedRenterUid,
+      connectedAt: null,
     });
 
     await db.transaction(async (tx) => {
-      await tx
-        .update(stores)
-        .set({
-          settings: nextSettings,
-          updatedAt: new Date(),
-        })
-        .where(eq(stores.id, store.id));
-
       const storeProducts = await tx.query.products.findMany({
         where: eq(products.storeId, store.id),
         columns: {

@@ -6,7 +6,6 @@ import { and, eq, inArray, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 import { getRouteDistance } from '@louez/api/services';
-import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import { db } from '@louez/db';
 import {
   customers,
@@ -29,7 +28,6 @@ import type {
   DeliverySettings,
   PricingBreakdown,
   PricingMode,
-  StoreSettings,
   TulipPublicMode,
   UnitAttributes,
 } from '@louez/types';
@@ -80,17 +78,11 @@ import {
   getReservationInsuranceSelection,
   isLegacyTulipInsuranceItem,
 } from '@/lib/integrations/tulip/contracts-insurance';
-
-function getActionErrorKey(error: unknown, fallback: string): string {
-  if (error instanceof Error && error.message.startsWith('errors.')) {
-    return error.message;
-  }
-
-  return fallback;
-}
-import { getTulipSettings } from '@/lib/integrations/tulip/settings';
+import { getDashboardTulipInsuranceModeFromSettings } from '@/lib/integrations/tulip/settings';
+import { resolveTulipIntegrationForStore } from '@/lib/integrations/tulip/state';
 import { dispatchCustomerNotification } from '@/lib/notifications/customer-dispatcher';
 import { dispatchNotification } from '@/lib/notifications/dispatcher';
+import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots';
 import {
   isSmsConfigured,
   sendAccessLinkSms,
@@ -112,13 +104,18 @@ import {
   toStripeCents,
 } from '@/lib/stripe';
 import { getContrastColorHex } from '@/lib/utils/colors';
-import {
-  calculateTotalDeliveryFee,
-  validateDelivery,
-} from '@/lib/utils/geo';
+import { calculateTotalDeliveryFee, validateDelivery } from '@/lib/utils/geo';
 import { evaluateReservationRules } from '@/lib/utils/reservation-rules';
 
 import { env } from '@/env';
+
+function getActionErrorKey(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.startsWith('errors.')) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 async function getStoreForUser() {
   return getCurrentStore();
@@ -236,19 +233,12 @@ function resolveTulipInsuranceOptIn(params: {
   return params.defaultOptional ?? true;
 }
 
-function getDashboardTulipInsuranceMode(
-  settings: StoreSettings | null | undefined,
-): TulipPublicMode {
-  const tulipSettings = getTulipSettings(settings || null);
-  if (!tulipSettings.enabled) {
-    return 'no_public';
-  }
-
-  if (tulipSettings.publicMode === 'required') {
-    return 'required';
-  }
-
-  return 'optional';
+async function getDashboardTulipInsuranceMode(
+  storeId: string,
+): Promise<TulipPublicMode> {
+  const tulipSettings = (await resolveTulipIntegrationForStore(storeId))
+    .settings;
+  return getDashboardTulipInsuranceModeFromSettings(tulipSettings);
 }
 
 async function logReservationActivity(
@@ -349,19 +339,15 @@ export async function updateReservationStatus(
   };
 
   if (activityMap[status]) {
-    await logReservationActivity(
-      reservationId,
-      activityMap[status],
-      {
-        previousStatus,
-        newStatus: status,
-        ...(status === 'rejected' && rejectionReason && { rejectionReason }),
-        ...(validationWarnings.length > 0 && {
-          validationWarnings,
-          validationWarningsCount: validationWarnings.length,
-        }),
-      },
-    );
+    await logReservationActivity(reservationId, activityMap[status], {
+      previousStatus,
+      newStatus: status,
+      ...(status === 'rejected' && rejectionReason && { rejectionReason }),
+      ...(validationWarnings.length > 0 && {
+        validationWarnings,
+        validationWarningsCount: validationWarnings.length,
+      }),
+    });
   }
 
   let tulipWarning: {
@@ -436,7 +422,10 @@ export async function updateReservationStatus(
   };
 
   // Dispatch customer notification based on status change
-  if ((previousStatus === 'pending' || previousStatus === 'quote') && status === 'confirmed') {
+  if (
+    (previousStatus === 'pending' || previousStatus === 'quote') &&
+    status === 'confirmed'
+  ) {
     // Request/quote accepted - build items for email
     const emailItems = reservation.items.map((item) => ({
       name: item.productSnapshot?.name || 'Product',
@@ -561,7 +550,9 @@ export async function cancelReservation(reservationId: string) {
   }
 
   if (
-    ['cancelled', 'completed', 'rejected', 'declined'].includes(reservation.status || '')
+    ['cancelled', 'completed', 'rejected', 'declined'].includes(
+      reservation.status || '',
+    )
   ) {
     return { error: 'errors.cannotCancelReservation' };
   }
@@ -757,9 +748,7 @@ export async function createManualReservation(data: CreateReservationData) {
     return { error: 'errors.customerRequired' };
   }
 
-  const tulipMode = getDashboardTulipInsuranceMode(
-    store.settings as StoreSettings | null,
-  );
+  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const tulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
@@ -997,21 +986,31 @@ export async function createManualReservation(data: CreateReservationData) {
   const hasAnyDelivery = hasOutboundDelivery || hasReturnDelivery;
   const hasOutboundStore = !outboundLeg || outboundLeg.method === 'store';
   const hasReturnStore = !returnLeg || returnLeg.method === 'store';
-  const isMultiLocationEnabled = Boolean(storeDeliverySettings?.multiLocationEnabled);
-  let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
-  let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+  const isMultiLocationEnabled = Boolean(
+    storeDeliverySettings?.multiLocationEnabled,
+  );
+  let pickupLocation: Awaited<
+    ReturnType<typeof resolveReservationLocationSnapshot>
+  > | null = null;
+  let returnLocation: Awaited<
+    ReturnType<typeof resolveReservationLocationSnapshot>
+  > | null = null;
 
   try {
     pickupLocation = hasOutboundStore
       ? await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? outboundLeg?.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (outboundLeg?.locationId ?? null)
+            : null,
         })
       : null;
     returnLocation = hasReturnStore
       ? await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? returnLeg?.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (returnLeg?.locationId ?? null)
+            : null,
         })
       : null;
   } catch (error) {
@@ -1044,7 +1043,10 @@ export async function createManualReservation(data: CreateReservationData) {
       });
       deliveryDistanceKm = outboundDistance.distanceKm;
 
-      const validation = validateDelivery(deliveryDistanceKm, storeDeliverySettings);
+      const validation = validateDelivery(
+        deliveryDistanceKm,
+        storeDeliverySettings,
+      );
       if (!validation.valid) {
         return { error: validation.errorKey || 'errors.deliveryTooFar' };
       }
@@ -1064,7 +1066,10 @@ export async function createManualReservation(data: CreateReservationData) {
       });
       returnDistanceKm = inboundDistance.distanceKm;
 
-      const returnValidation = validateDelivery(returnDistanceKm, storeDeliverySettings);
+      const returnValidation = validateDelivery(
+        returnDistanceKm,
+        storeDeliverySettings,
+      );
       if (!returnValidation.valid) {
         return { error: 'errors.returnAddressTooFar' };
       }
@@ -1111,18 +1116,32 @@ export async function createManualReservation(data: CreateReservationData) {
     deliveryOption: hasAnyDelivery ? 'delivery' : 'pickup',
     deliveryAddress: hasOutboundDelivery ? (outboundLeg.address ?? null) : null,
     deliveryCity: hasOutboundDelivery ? (outboundLeg.city ?? null) : null,
-    deliveryPostalCode: hasOutboundDelivery ? (outboundLeg.postalCode ?? null) : null,
+    deliveryPostalCode: hasOutboundDelivery
+      ? (outboundLeg.postalCode ?? null)
+      : null,
     deliveryCountry: hasOutboundDelivery ? (outboundLeg.country ?? null) : null,
-    deliveryLatitude: hasOutboundDelivery && outboundLeg.latitude ? outboundLeg.latitude.toString() : null,
-    deliveryLongitude: hasOutboundDelivery && outboundLeg.longitude ? outboundLeg.longitude.toString() : null,
+    deliveryLatitude:
+      hasOutboundDelivery && outboundLeg.latitude
+        ? outboundLeg.latitude.toString()
+        : null,
+    deliveryLongitude:
+      hasOutboundDelivery && outboundLeg.longitude
+        ? outboundLeg.longitude.toString()
+        : null,
     deliveryDistanceKm: deliveryDistanceKm?.toFixed(2) ?? null,
     deliveryFee: deliveryFeeAmount.toFixed(2),
     returnAddress: hasReturnDelivery ? (returnLeg.address ?? null) : null,
     returnCity: hasReturnDelivery ? (returnLeg.city ?? null) : null,
     returnPostalCode: hasReturnDelivery ? (returnLeg.postalCode ?? null) : null,
     returnCountry: hasReturnDelivery ? (returnLeg.country ?? null) : null,
-    returnLatitude: hasReturnDelivery && returnLeg.latitude != null ? returnLeg.latitude.toString() : null,
-    returnLongitude: hasReturnDelivery && returnLeg.longitude != null ? returnLeg.longitude.toString() : null,
+    returnLatitude:
+      hasReturnDelivery && returnLeg.latitude != null
+        ? returnLeg.latitude.toString()
+        : null,
+    returnLongitude:
+      hasReturnDelivery && returnLeg.longitude != null
+        ? returnLeg.longitude.toString()
+        : null,
     returnDistanceKm: returnDistanceKm?.toFixed(2) ?? null,
     pickupLocationId: pickupLocation?.locationId ?? null,
     returnLocationId: returnLocation?.locationId ?? null,
@@ -1173,11 +1192,10 @@ export async function createManualReservation(data: CreateReservationData) {
   }
 
   // Log activity for manual reservation creation
-  await logReservationActivity(
-    reservationId,
-    'created',
-    { source: 'manual', status: data.sendAsQuote ? 'quote' : 'confirmed' },
-  );
+  await logReservationActivity(reservationId, 'created', {
+    source: 'manual',
+    status: data.sendAsQuote ? 'quote' : 'confirmed',
+  });
 
   try {
     await createTulipContractForReservation({
@@ -1470,9 +1488,7 @@ export async function updateReservation(
     reservation.endDate.getTime() - reservation.startDate.getTime();
   const nextPeriodMs = newEndDate.getTime() - newStartDate.getTime();
   const isPeriodReduced = nextPeriodMs < previousPeriodMs;
-  const tulipMode = getDashboardTulipInsuranceMode(
-    store.settings as StoreSettings | null,
-  );
+  const tulipMode = await getDashboardTulipInsuranceMode(store.id);
   const nextTulipInsuranceOptIn = resolveTulipInsuranceOptIn({
     mode: tulipMode,
     requested: data.tulipInsuranceOptIn,
@@ -1494,7 +1510,8 @@ export async function updateReservation(
     key: string;
     params?: Record<string, string | number>;
   }> = [];
-  const insuranceQuoteItems: Array<{ productId: string; quantity: number }> = [];
+  const insuranceQuoteItems: Array<{ productId: string; quantity: number }> =
+    [];
   const legacyInsuranceItemIds = reservation.items
     .filter((item) =>
       isLegacyTulipInsuranceItem({
@@ -1509,7 +1526,9 @@ export async function updateReservation(
     items: reservation.items,
   });
   const previousTulipInsuranceAmount =
-    previousInsuranceSelection.amount > 0 ? previousInsuranceSelection.amount : null;
+    previousInsuranceSelection.amount > 0
+      ? previousInsuranceSelection.amount
+      : null;
 
   const INSURANCE_ITEM_NAME = 'Garantie casse/vol';
   const existingItemsById = new Map(
@@ -1886,7 +1905,6 @@ export async function updateReservation(
       try {
         const quote = await previewTulipQuoteForCheckout({
           storeId: store.id,
-          storeSettings: store.settings as StoreSettings | null,
           customer: {
             customerType: reservation.customer.customerType,
             companyName: reservation.customer.companyName,
@@ -1914,11 +1932,16 @@ export async function updateReservation(
           nextTulipInsuranceAmount = Math.round(quote.amount * 100) / 100;
         }
       } catch (error) {
-        console.error('[tulip] Failed to recalculate insurance quote after reservation edit:', {
-          reservationId,
-          error,
+        console.error(
+          '[tulip] Failed to recalculate insurance quote after reservation edit:',
+          {
+            reservationId,
+            error,
+          },
+        );
+        tulipWarnings.push({
+          key: getErrorKey(error, 'errors.tulipQuoteFailed'),
         });
-        tulipWarnings.push({ key: getErrorKey(error, 'errors.tulipQuoteFailed') });
         if (previousTulipInsuranceAmount) {
           nextTulipInsuranceAmount = previousTulipInsuranceAmount;
         }
@@ -2016,33 +2039,50 @@ export async function updateReservation(
   if (data.delivery) {
     const deliverySettings = (store.settings as Record<string, unknown> | null)
       ?.delivery as DeliverySettings | undefined;
-    const isMultiLocationEnabled = Boolean(deliverySettings?.multiLocationEnabled);
+    const isMultiLocationEnabled = Boolean(
+      deliverySettings?.multiLocationEnabled,
+    );
 
     const storeLat = store.latitude ? parseFloat(store.latitude) : null;
     const storeLon = store.longitude ? parseFloat(store.longitude) : null;
-    let pickupLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
-    let returnLocation: Awaited<ReturnType<typeof resolveReservationLocationSnapshot>> | null = null;
+    let pickupLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
+    let returnLocation: Awaited<
+      ReturnType<typeof resolveReservationLocationSnapshot>
+    > | null = null;
 
     // Outbound leg
     deliveryUpdateFields.outboundMethod = data.delivery.outbound.method;
     if (data.delivery.outbound.method === 'address') {
       deliveryUpdateFields.pickupLocationId = null;
       deliveryUpdateFields.pickupLocationSnapshot = null;
-      deliveryUpdateFields.deliveryAddress = data.delivery.outbound.address ?? null;
+      deliveryUpdateFields.deliveryAddress =
+        data.delivery.outbound.address ?? null;
       deliveryUpdateFields.deliveryCity = data.delivery.outbound.city ?? null;
-      deliveryUpdateFields.deliveryPostalCode = data.delivery.outbound.postalCode ?? null;
-      deliveryUpdateFields.deliveryCountry = data.delivery.outbound.country ?? null;
-      deliveryUpdateFields.deliveryLatitude = data.delivery.outbound.latitude?.toFixed(7) ?? null;
-      deliveryUpdateFields.deliveryLongitude = data.delivery.outbound.longitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.deliveryPostalCode =
+        data.delivery.outbound.postalCode ?? null;
+      deliveryUpdateFields.deliveryCountry =
+        data.delivery.outbound.country ?? null;
+      deliveryUpdateFields.deliveryLatitude =
+        data.delivery.outbound.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.deliveryLongitude =
+        data.delivery.outbound.longitude?.toFixed(7) ?? null;
 
-      if (storeLat && storeLon && data.delivery.outbound.latitude && data.delivery.outbound.longitude) {
+      if (
+        storeLat &&
+        storeLon &&
+        data.delivery.outbound.latitude &&
+        data.delivery.outbound.longitude
+      ) {
         const outboundDistance = await getRouteDistance({
           originLatitude: storeLat,
           originLongitude: storeLon,
           destinationLatitude: data.delivery.outbound.latitude,
           destinationLongitude: data.delivery.outbound.longitude,
         });
-        deliveryUpdateFields.deliveryDistanceKm = outboundDistance.distanceKm.toFixed(2);
+        deliveryUpdateFields.deliveryDistanceKm =
+          outboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.deliveryDistanceKm = null;
       }
@@ -2050,7 +2090,9 @@ export async function updateReservation(
       try {
         pickupLocation = await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? data.delivery.outbound.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (data.delivery.outbound.locationId ?? null)
+            : null,
         });
       } catch (error) {
         return { error: getActionErrorKey(error, 'errors.locationInvalid') };
@@ -2073,19 +2115,28 @@ export async function updateReservation(
       deliveryUpdateFields.returnLocationSnapshot = null;
       deliveryUpdateFields.returnAddress = data.delivery.return.address ?? null;
       deliveryUpdateFields.returnCity = data.delivery.return.city ?? null;
-      deliveryUpdateFields.returnPostalCode = data.delivery.return.postalCode ?? null;
+      deliveryUpdateFields.returnPostalCode =
+        data.delivery.return.postalCode ?? null;
       deliveryUpdateFields.returnCountry = data.delivery.return.country ?? null;
-      deliveryUpdateFields.returnLatitude = data.delivery.return.latitude?.toFixed(7) ?? null;
-      deliveryUpdateFields.returnLongitude = data.delivery.return.longitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.returnLatitude =
+        data.delivery.return.latitude?.toFixed(7) ?? null;
+      deliveryUpdateFields.returnLongitude =
+        data.delivery.return.longitude?.toFixed(7) ?? null;
 
-      if (storeLat && storeLon && data.delivery.return.latitude && data.delivery.return.longitude) {
+      if (
+        storeLat &&
+        storeLon &&
+        data.delivery.return.latitude &&
+        data.delivery.return.longitude
+      ) {
         const inboundDistance = await getRouteDistance({
           originLatitude: storeLat,
           originLongitude: storeLon,
           destinationLatitude: data.delivery.return.latitude,
           destinationLongitude: data.delivery.return.longitude,
         });
-        deliveryUpdateFields.returnDistanceKm = inboundDistance.distanceKm.toFixed(2);
+        deliveryUpdateFields.returnDistanceKm =
+          inboundDistance.distanceKm.toFixed(2);
       } else {
         deliveryUpdateFields.returnDistanceKm = null;
       }
@@ -2093,7 +2144,9 @@ export async function updateReservation(
       try {
         returnLocation = await resolveReservationLocationSnapshot({
           store,
-          locationId: isMultiLocationEnabled ? data.delivery.return.locationId ?? null : null,
+          locationId: isMultiLocationEnabled
+            ? (data.delivery.return.locationId ?? null)
+            : null,
         });
       } catch (error) {
         return { error: getActionErrorKey(error, 'errors.locationInvalid') };
@@ -2173,7 +2226,10 @@ export async function updateReservation(
         error,
       });
 
-      const tulipErrorKey = getErrorKey(error, 'errors.tulipContractUpdateFailed');
+      const tulipErrorKey = getErrorKey(
+        error,
+        'errors.tulipContractUpdateFailed',
+      );
       if (nextTulipInsuranceOptIn) {
         try {
           await db.transaction(async (tx) => {
@@ -2220,10 +2276,13 @@ export async function updateReservation(
             }
           });
         } catch (rollbackError) {
-          console.error('[tulip] Failed to rollback reservation after contract sync failure:', {
-            reservationId,
-            rollbackError,
-          });
+          console.error(
+            '[tulip] Failed to rollback reservation after contract sync failure:',
+            {
+              reservationId,
+              rollbackError,
+            },
+          );
           return { error: 'errors.generic' };
         }
 
@@ -2240,29 +2299,25 @@ export async function updateReservation(
   const difference = newTotalAmount - previousState.totalAmount;
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'modified',
-    {
-      previous: {
-        startDate: previousState.startDate,
-        endDate: previousState.endDate,
-        subtotalAmount: previousState.subtotalAmount,
-        depositAmount: previousState.depositAmount,
-      },
-      updated: {
-        startDate: newStartDate,
-        endDate: newEndDate,
-        subtotalAmount: newSubtotalAmount,
-        depositAmount: newDepositAmount,
-      },
-      difference,
-      ...(validationWarnings.length > 0 && {
-        validationWarnings,
-        validationWarningsCount: validationWarnings.length,
-      }),
+  await logReservationActivity(reservationId, 'modified', {
+    previous: {
+      startDate: previousState.startDate,
+      endDate: previousState.endDate,
+      subtotalAmount: previousState.subtotalAmount,
+      depositAmount: previousState.depositAmount,
     },
-  );
+    updated: {
+      startDate: newStartDate,
+      endDate: newEndDate,
+      subtotalAmount: newSubtotalAmount,
+      depositAmount: newDepositAmount,
+    },
+    difference,
+    ...(validationWarnings.length > 0 && {
+      validationWarnings,
+      validationWarningsCount: validationWarnings.length,
+    }),
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -2425,11 +2480,12 @@ export async function recordPayment(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    { paymentId, type: data.type, amount: data.amount, method: data.method },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: data.type,
+    amount: data.amount,
+    method: data.method,
+  });
 
   // Platform admin notification
   notifyPaymentReceived(
@@ -2470,16 +2526,12 @@ export async function deletePayment(paymentId: string) {
   await db.delete(payments).where(eq(payments.id, paymentId));
 
   // Log activity
-  await logReservationActivity(
-    payment.reservationId,
-    'payment_updated',
-    {
-      paymentId,
-      type: payment.type,
-      amount: payment.amount,
-      action: 'deleted',
-    },
-  );
+  await logReservationActivity(payment.reservationId, 'payment_updated', {
+    paymentId,
+    type: payment.type,
+    amount: payment.amount,
+    action: 'deleted',
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${payment.reservationId}`);
@@ -2548,16 +2600,12 @@ export async function returnDeposit(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    {
-      paymentId,
-      type: 'deposit_return',
-      amount: data.amount,
-      method: data.method,
-    },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: 'deposit_return',
+    amount: data.amount,
+    method: data.method,
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -2601,11 +2649,13 @@ export async function recordDamage(
   });
 
   // Log activity
-  await logReservationActivity(
-    reservationId,
-    'payment_added',
-    { paymentId, type: 'damage', amount: data.amount, method: data.method, notes: data.notes },
-  );
+  await logReservationActivity(reservationId, 'payment_added', {
+    paymentId,
+    type: 'damage',
+    amount: data.amount,
+    method: data.method,
+    notes: data.notes,
+  });
 
   revalidatePath('/dashboard/reservations');
   revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -3075,16 +3125,12 @@ export async function processStripeRefund(
     });
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'payment_updated',
-      {
-        paymentId,
-        refundId: refund.refundId,
-        amount: data.amount,
-        type: data.type,
-      },
-    );
+    await logReservationActivity(reservationId, 'payment_updated', {
+      paymentId,
+      refundId: refund.refundId,
+      amount: data.amount,
+      type: data.type,
+    });
 
     revalidatePath('/dashboard/reservations');
     revalidatePath(`/dashboard/reservations/${reservationId}`);
@@ -3171,29 +3217,21 @@ export async function sendReservationModificationEmail(
       locale: getLocaleFromCountry(store.settings?.country),
     });
 
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      {
-        templateId: 'reservation_modified',
-        to: customerData.email,
-        customerEmailNotification: 'sent',
-      },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: 'reservation_modified',
+      to: customerData.email,
+      customerEmailNotification: 'sent',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
   } catch (error) {
     console.error('Failed to send reservation modification email:', error);
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      {
-        templateId: 'reservation_modified',
-        to: customerData.email,
-        customerEmailNotification: 'failed',
-      },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: 'reservation_modified',
+      to: customerData.email,
+      customerEmailNotification: 'failed',
+    });
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { error: 'errors.emailSendFailed' };
   }
@@ -3356,11 +3394,10 @@ export async function sendReservationEmail(
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'note_updated',
-      { templateId: data.templateId, to: customerData.email },
-    );
+    await logReservationActivity(reservationId, 'note_updated', {
+      templateId: data.templateId,
+      to: customerData.email,
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3511,15 +3548,11 @@ export async function sendAccessLink(reservationId: string) {
     });
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'access_link_sent',
-      {
-        token: token.substring(0, 8) + '...',
-        expiresAt: expiresAt.toISOString(),
-        method: 'email',
-      },
-    );
+    await logReservationActivity(reservationId, 'access_link_sent', {
+      token: token.substring(0, 8) + '...',
+      expiresAt: expiresAt.toISOString(),
+      method: 'email',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3626,15 +3659,11 @@ export async function sendAccessLinkBySms(reservationId: string) {
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'access_link_sent',
-      {
-        token: token.substring(0, 8) + '...',
-        expiresAt: expiresAt.toISOString(),
-        method: 'sms',
-      },
-    );
+    await logReservationActivity(reservationId, 'access_link_sent', {
+      token: token.substring(0, 8) + '...',
+      expiresAt: expiresAt.toISOString(),
+      method: 'sms',
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
     return { success: true };
@@ -3904,19 +3933,15 @@ export async function requestPayment(
     }
 
     // Log activity
-    await logReservationActivity(
-      reservationId,
-      'payment_added',
-      {
-        type: data.type,
-        amount,
-        currency,
-        channels: data.channels,
-        notificationResults,
-        paymentUrl,
-        isPaymentRequest: true,
-      },
-    );
+    await logReservationActivity(reservationId, 'payment_added', {
+      type: data.type,
+      amount,
+      currency,
+      channels: data.channels,
+      notificationResults,
+      paymentUrl,
+      isPaymentRequest: true,
+    });
 
     revalidatePath(`/dashboard/reservations/${reservationId}`);
 
