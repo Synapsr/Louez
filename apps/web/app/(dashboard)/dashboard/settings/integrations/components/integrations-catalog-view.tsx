@@ -1,8 +1,11 @@
 'use client';
 
-import Link from 'next/link';
+import { useCallback, useRef } from 'react';
 
-import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ArrowRight, Braces, Code, Terminal } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
@@ -58,6 +61,8 @@ const LOUEZ_ITEMS: BuiltInItem[] = [
   },
 ];
 
+const TULIP_INTEGRATION_ID = 'tulip';
+
 function IntegrationItemCard({
   href,
   icon: Icon,
@@ -65,6 +70,7 @@ function IntegrationItemCard({
   name,
   description,
   badge,
+  onPrefetch,
 }: {
   href: string;
   icon?: React.ElementType;
@@ -75,9 +81,15 @@ function IntegrationItemCard({
     label: string;
     variant: 'default' | 'secondary' | 'outline' | 'success';
   };
+  onPrefetch?: () => void;
 }) {
   return (
-    <Link href={href}>
+    <Link
+      href={href}
+      onFocus={onPrefetch}
+      onMouseEnter={onPrefetch}
+      onTouchStart={onPrefetch}
+    >
       <Card className="group hover:border-primary/40 hover:bg-muted/30 h-full px-5 py-4 transition">
         <div className="flex items-start gap-4">
           {Icon ? (
@@ -118,6 +130,9 @@ function IntegrationItemCard({
 
 export function IntegrationsCatalogView() {
   const t = useTranslations();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const prefetchedIntegrationsRef = useRef<Set<string>>(new Set());
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
@@ -132,6 +147,41 @@ export function IntegrationsCatalogView() {
   const catalogQuery = useQuery({
     ...orpc.dashboard.integrations.listCatalog.queryOptions({ input: {} }),
   });
+
+  const prefetchRoute = useCallback(
+    (href: string) => {
+      router.prefetch(href);
+    },
+    [router],
+  );
+
+  const prefetchIntegration = useCallback(
+    (integrationId: string) => {
+      const href = `/dashboard/settings/integrations/${integrationId}`;
+      prefetchRoute(href);
+
+      if (prefetchedIntegrationsRef.current.has(integrationId)) {
+        return;
+      }
+
+      prefetchedIntegrationsRef.current.add(integrationId);
+
+      void queryClient.prefetchQuery(
+        orpc.dashboard.integrations.getDetail.queryOptions({
+          input: { integrationId },
+        }),
+      );
+
+      if (integrationId === TULIP_INTEGRATION_ID) {
+        void queryClient.prefetchQuery(
+          orpc.dashboard.integrations.getTulipState.queryOptions({
+            input: {},
+          }),
+        );
+      }
+    },
+    [prefetchRoute, queryClient],
+  );
 
   const catalogLoadError =
     catalogQuery.isError ||
@@ -167,6 +217,7 @@ export function IntegrationsCatalogView() {
               icon={item.icon}
               name={resolveMessage(item.nameKey, item.id)}
               description={resolveMessage(item.descriptionKey, '')}
+              onPrefetch={() => prefetchRoute(item.href)}
               badge={
                 item.badge
                   ? {
@@ -215,6 +266,7 @@ export function IntegrationsCatalogView() {
                   logo={item.logoPath}
                   name={resolveMessage(item.nameKey, item.id)}
                   description={resolveMessage(item.descriptionKey, '')}
+                  onPrefetch={() => prefetchIntegration(item.id)}
                   badge={
                     item.connected
                       ? {
@@ -263,6 +315,7 @@ export function IntegrationsCatalogView() {
                   logo={item.logoPath}
                   name={resolveMessage(item.nameKey, item.id)}
                   description={resolveMessage(item.descriptionKey, '')}
+                  onPrefetch={() => prefetchIntegration(item.id)}
                   badge={
                     item.enabled
                       ? {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Link from 'next/link';
 
@@ -33,12 +33,30 @@ type IntegrationDetailViewProps = {
 
 type IntegrationTab = 'features' | 'configuration' | 'about';
 
+const TULIP_INTEGRATION_ID = 'tulip';
+
 export function IntegrationDetailView({
   integrationId,
 }: IntegrationDetailViewProps) {
   const t = useTranslations();
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState<IntegrationTab | null>(null);
+
+  const prefetchTulipState = useCallback(() => {
+    if (integrationId !== TULIP_INTEGRATION_ID) {
+      return;
+    }
+
+    void queryClient.prefetchQuery(
+      orpc.dashboard.integrations.getTulipState.queryOptions({
+        input: {},
+      }),
+    );
+  }, [integrationId, queryClient]);
+
+  useEffect(() => {
+    prefetchTulipState();
+  }, [prefetchTulipState]);
 
   const resolveMessage = (key: string, fallback: string): string => {
     try {
@@ -235,6 +253,7 @@ export function IntegrationDetailView({
               disabled={setEnabledMutation.isPending}
               onClick={() => {
                 if (integration.enabled || usesConnectionAsEnabledState) {
+                  prefetchTulipState();
                   setSelectedTab('configuration');
                   return;
                 }
@@ -297,7 +316,12 @@ export function IntegrationDetailView({
                 'Features',
               )}
             </TabsTrigger>
-            <TabsTrigger value="configuration">
+            <TabsTrigger
+              value="configuration"
+              onFocus={prefetchTulipState}
+              onMouseEnter={prefetchTulipState}
+              onTouchStart={prefetchTulipState}
+            >
               {resolveMessage(
                 'dashboard.settings.integrationsHub.tabs.configuration',
                 'Configuration',
