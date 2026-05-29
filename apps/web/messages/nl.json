@@ -918,6 +918,7 @@
             "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
             "invalidMargin": "Voer een geldige marge in.",
             "marginTooltip": "Extra dagmarge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "marginLockedTooltip": "Deze marge wordt ingesteld bij het aanmaken van het Tulip product en kan daarna niet meer worden gewijzigd.",
             "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
             "fields": {
               "productTitle": "Productnaam (optioneel)",
@@ -3572,6 +3573,7 @@
             "invalidPurchasePrice": "Voer een geldige aankoopprijs in.",
             "invalidMargin": "Voer een geldige marge in.",
             "marginTooltip": "Extra dagmarge toegevoegd aan de aankoopprijs voor de verzekeringswaardebepaling.",
+            "marginLockedTooltip": "Deze marge wordt ingesteld bij het aanmaken van het Tulip product en kan daarna niet meer worden gewijzigd.",
             "invalidPurchasedDate": "Selecteer een geldige aankoopdatum.",
             "createButton": "Aanmaken in Tulip",
             "creatingButton": "Aanmaken...",

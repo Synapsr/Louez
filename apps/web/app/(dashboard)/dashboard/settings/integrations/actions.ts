@@ -1966,17 +1966,15 @@ export async function pushTulipProductUpdateAction(
 
     const brand = validated.brand?.trim();
     const model = validated.model?.trim();
-    const margin = validated.margin;
     const purchasedDate = validated.purchasedDate
       ? new Date(validated.purchasedDate).toISOString()
       : null;
 
-    if (resolvedSubtype || brand || model || margin != null) {
+    if (resolvedSubtype || brand || model) {
       payload.data = {
         ...(resolvedSubtype ? { product_subtype: resolvedSubtype } : {}),
         ...(brand ? { brand } : {}),
         ...(model ? { model } : {}),
-        ...(margin != null ? { margin } : {}),
       };
     }
     if (purchasedDate) {

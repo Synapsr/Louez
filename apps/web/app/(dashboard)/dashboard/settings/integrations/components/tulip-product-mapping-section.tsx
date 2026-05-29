@@ -215,7 +215,9 @@ export function TulipProductMappingSection({
 
   const handleSheetSave = async () => {
     if (!editingProduct || !sheetDraft) return;
-    const input = buildActionInput(editingProduct.id, sheetDraft);
+    const input = buildActionInput(editingProduct.id, sheetDraft, {
+      includeMargin: !editingProductHasValidMapping,
+    });
 
     if (editingProductHasValidMapping) {
       await onPushProduct(input);
@@ -514,6 +516,7 @@ export function TulipProductMappingSection({
                     }
                     disabled={disabled || isRefreshing}
                     supportsMargin={supportsMargin}
+                    disableMargin={editingProductHasValidMapping}
                     defaultPrice={editingProduct.price}
                     defaultTitle={editingDefaultTitle}
                     resolvedCatalog={resolvedCatalog}

@@ -918,6 +918,7 @@
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
             "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginLockedTooltip": "Ta marża jest ustawiana podczas tworzenia produktu Tulip i nie można jej później zmienić.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "fields": {
               "productTitle": "Nazwa produktu (opcjonalna)",
@@ -3572,6 +3573,7 @@
             "invalidPurchasePrice": "Wprowadź prawidłową cenę zakupu.",
             "invalidMargin": "Wprowadź prawidłową marżę.",
             "marginTooltip": "Dodatkowa dzienna marża doliczana do ceny zakupu na potrzeby wyceny ubezpieczenia.",
+            "marginLockedTooltip": "Ta marża jest ustawiana podczas tworzenia produktu Tulip i nie można jej później zmienić.",
             "invalidPurchasedDate": "Wybierz prawidłową datę zakupu.",
             "createButton": "Utwórz w Tulip",
             "creatingButton": "Tworzenie...",

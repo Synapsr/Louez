@@ -957,6 +957,7 @@
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
             "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginLockedTooltip": "Diese Marge wird beim Erstellen des Tulip-Produkts festgelegt und kann danach nicht mehr geändert werden.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "fields": {
               "productTitle": "Produktname (optional)",
@@ -3572,6 +3573,7 @@
             "invalidPurchasePrice": "Geben Sie einen gültigen Kaufpreis ein.",
             "invalidMargin": "Geben Sie eine gültige Marge ein.",
             "marginTooltip": "Zusätzliche Tagesmarge auf den Kaufpreis für die Versicherungsbewertung.",
+            "marginLockedTooltip": "Diese Marge wird beim Erstellen des Tulip-Produkts festgelegt und kann danach nicht mehr geändert werden.",
             "invalidPurchasedDate": "Wählen Sie ein gültiges Kaufdatum.",
             "createButton": "In Tulip erstellen",
             "creatingButton": "Wird erstellt...",

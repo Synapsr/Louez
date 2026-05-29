@@ -35,6 +35,7 @@ interface TulipProductFormFieldsProps {
   onDraftChange: (updater: (prev: TulipProductDraft) => TulipProductDraft) => void
   disabled: boolean
   supportsMargin: boolean
+  disableMargin?: boolean
   defaultPrice: number
   defaultTitle: string
   resolvedCatalog: TulipCatalogItem[]
@@ -68,6 +69,7 @@ interface TulipProductFormFieldsProps {
     (key: 'invalidPurchasePrice'): string
     (key: 'invalidMargin'): string
     (key: 'marginTooltip'): string
+    (key: 'marginLockedTooltip'): string
     (key: 'invalidPurchasedDate'): string
   }
   validation: {
@@ -87,6 +89,7 @@ export function TulipProductFormFields({
   onDraftChange,
   disabled,
   supportsMargin,
+  disableMargin = false,
   defaultPrice,
   defaultTitle,
   resolvedCatalog,
@@ -96,6 +99,7 @@ export function TulipProductFormFields({
 }: TulipProductFormFieldsProps) {
   const [brandInputValue, setBrandInputValue] = useState(draft.brand)
   const [modelInputValue, setModelInputValue] = useState(draft.model)
+  const isMarginDisabled = disabled || disableMargin
 
   const currentProductType = draft.productType ?? resolvedCatalog[0]?.type ?? 'event'
 
@@ -443,6 +447,11 @@ export function TulipProductFormFields({
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>{t('marginTooltip')}</p>
+                  {disableMargin && (
+                    <p className="text-muted-foreground mt-1">
+                      {t('marginLockedTooltip')}
+                    </p>
+                  )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -453,7 +462,7 @@ export function TulipProductFormFields({
             onChange={(event) =>
               onDraftChange((prev) => ({ ...prev, margin: event.target.value }))
             }
-            disabled={disabled}
+            disabled={isMarginDisabled}
           />
           {validation.hasInvalidMargin && (
             <p className="text-destructive text-xs">{t('invalidMargin')}</p>

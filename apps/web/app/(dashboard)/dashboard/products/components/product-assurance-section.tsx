@@ -3,6 +3,7 @@
 import { useState } from 'react';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, Pencil, Plus } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
 
 import {
@@ -19,6 +20,10 @@ import {
   ComboboxItem,
   ComboboxList,
   ComboboxPopup,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Label,
   toastManager,
 } from '@louez/ui';
@@ -27,6 +32,7 @@ import { orpc } from '@/lib/orpc/react';
 
 import {
   type ProductAssuranceActionInput,
+  type ProductAssuranceDialogMode,
   ProductAssuranceDialog,
 } from './product-assurance-dialog';
 
@@ -72,6 +78,8 @@ export const ProductAssuranceSection = ({
   const queryClient = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogMode, setDialogMode] =
+    useState<ProductAssuranceDialogMode>('create');
 
   const productStateQuery = useQuery(
     orpc.dashboard.integrations.getTulipProductState.queryOptions({
@@ -243,6 +251,11 @@ export const ProductAssuranceSection = ({
     return parts.join(' • ');
   };
 
+  const openProductDialog = (mode: ProductAssuranceDialogMode) => {
+    setDialogMode(mode);
+    setDialogOpen(true);
+  };
+
   return (
     <div id="section-assurance" className="scroll-mt-8">
       <Card>
@@ -320,16 +333,59 @@ export const ProductAssuranceSection = ({
                 </Combobox>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(true)}
-                disabled={isDialogBusy}
-              >
-                {hasValidMapping
-                  ? t('editMappedProductButton')
-                  : t('addNewProductButton')}
-              </Button>
+              {hasValidMapping ? (
+                <div className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-r-none"
+                    onClick={() => openProductDialog('update')}
+                    disabled={isDialogBusy}
+                  >
+                    <Pencil />
+                    {t('editMappedProductButton')}
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="rounded-l-none border-l-0 px-2.5"
+                          aria-label={t('editMappedProductButton')}
+                          disabled={isDialogBusy}
+                        />
+                      }
+                    >
+                      <ChevronDown />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56">
+                      <DropdownMenuItem
+                        onClick={() => openProductDialog('update')}
+                      >
+                        <Pencil />
+                        {t('editMappedProductButton')}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => openProductDialog('create')}
+                      >
+                        <Plus />
+                        {t('addNewProductButton')}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => openProductDialog('create')}
+                  disabled={isDialogBusy}
+                >
+                  <Plus />
+                  {t('addNewProductButton')}
+                </Button>
+              )}
             </div>
 
             {mappingMutation.isPending && (
@@ -344,6 +400,7 @@ export const ProductAssuranceSection = ({
       <ProductAssuranceDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
+        mode={dialogMode}
         disabled={isDialogBusy}
         supportsMargin={state.supportsMargin}
         product={state.product}

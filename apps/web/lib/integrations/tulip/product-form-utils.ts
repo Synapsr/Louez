@@ -184,12 +184,14 @@ export function toUniqueSortedOptions(
 export function buildActionInput(
   productId: string,
   draft: TulipProductDraft,
+  options: { includeMargin?: boolean } = {},
 ): TulipProductActionInput {
   const normalized = draft.valueExcl.trim().replace(',', '.')
   const parsed = normalized.length === 0 ? null : Number(normalized)
   const normalizedMarginInput = draft.margin.trim().replace(',', '.')
   const parsedMarginInput =
     normalizedMarginInput.length === 0 ? null : Number(normalizedMarginInput)
+  const includeMargin = options.includeMargin ?? true
 
   return {
     productId,
@@ -203,7 +205,9 @@ export function buildActionInput(
       : null,
     valueExcl: Number.isFinite(parsed) ? parsed : null,
     margin:
-      Number.isFinite(parsedMarginInput) && Number(parsedMarginInput) >= 0
+      includeMargin &&
+      Number.isFinite(parsedMarginInput) &&
+      Number(parsedMarginInput) >= 0
         ? Number(parsedMarginInput)
         : null,
   }
