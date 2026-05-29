@@ -173,6 +173,34 @@ export interface BaseContext {
       uninsuredProductCount: number;
       insuredProductIds: string[];
     }>;
+    previewManualTulipQuote?: (data: {
+      customerId?: string;
+      newCustomer?: {
+        email: string;
+        firstName: string;
+        lastName: string;
+        phone?: string;
+      };
+      startDate: Date;
+      endDate: Date;
+      tulipInsuranceOptIn?: boolean;
+      items: Array<{
+        productId: string;
+        quantity: number;
+      }>;
+    }) => Promise<{
+      mode: 'required' | 'optional' | 'no_public';
+      connected: boolean;
+      inclusionEnabled: boolean;
+      quoteUnavailable: boolean;
+      quoteError: string | null;
+      requestedOptIn: boolean;
+      appliedOptIn: boolean;
+      amount: number;
+      insuredProductCount: number;
+      uninsuredProductCount: number;
+      insuredProductIds: string[];
+    }>;
     createManualReservation?: (data: {
       customerId?: string;
       newCustomer?: {
@@ -218,7 +246,9 @@ export interface BaseContext {
         };
       };
       internalNotes?: string;
+      tulipInsuranceOptIn?: boolean;
       sendConfirmationEmail?: boolean;
+      sendAsQuote?: boolean;
     }) => Promise<{
       success?: boolean;
       reservationId?: string;
