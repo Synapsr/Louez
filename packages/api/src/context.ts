@@ -149,6 +149,30 @@ export interface BaseContext {
     ) => Promise<
       { success?: boolean; error?: string } & Record<string, unknown>
     >;
+    previewReservationTulipQuote?: (
+      reservationId: string,
+      data: {
+        startDate: Date;
+        endDate: Date;
+        tulipInsuranceOptIn?: boolean;
+        items: Array<{
+          productId?: string | null;
+          quantity: number;
+        }>;
+      },
+    ) => Promise<{
+      mode: 'required' | 'optional' | 'no_public';
+      connected: boolean;
+      inclusionEnabled: boolean;
+      quoteUnavailable: boolean;
+      quoteError: string | null;
+      requestedOptIn: boolean;
+      appliedOptIn: boolean;
+      amount: number;
+      insuredProductCount: number;
+      uninsuredProductCount: number;
+      insuredProductIds: string[];
+    }>;
     createManualReservation?: (data: {
       customerId?: string;
       newCustomer?: {

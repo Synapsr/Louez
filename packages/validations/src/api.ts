@@ -255,6 +255,23 @@ export const dashboardReservationUpdateReservationInputSchema = z.object({
   }),
 });
 
+export const dashboardReservationPreviewTulipQuoteInputSchema = z.object({
+  reservationId: z.string().length(21),
+  payload: z.object({
+    startDate: z.union([dateTimeOrDateSchema, z.date()]),
+    endDate: z.union([dateTimeOrDateSchema, z.date()]),
+    tulipInsuranceOptIn: z.boolean().optional(),
+    items: z
+      .array(
+        z.object({
+          productId: z.string().length(21).nullable().optional(),
+          quantity: z.number().int().min(1),
+        }),
+      )
+      .max(500),
+  }),
+});
+
 export const dashboardReservationCreateManualReservationInputSchema = z.object({
   payload: z.object({
     customerId: z.string().length(21).optional(),

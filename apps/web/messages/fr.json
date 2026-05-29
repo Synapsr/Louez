@@ -1277,6 +1277,7 @@
         "perHour": "h",
         "perDay": "j",
         "perWeek": "sem",
+        "pricingMode": "Unité de tarification",
         "available": "dispo",
         "outOfStock": "Rupture de stock",
         "add": "Ajouter",
@@ -1305,7 +1306,11 @@
           "optionalHelp": "Protégez le matériel contre la casse et le vol grâce à la garantie Tulip.",
           "insurableProduct": "Assurable",
           "assuredProduct": "Assuré",
-          "pastStartWarning": "La réservation démarre dans le passé : aucun contrat Tulip ne pourra être créé tant que cette période n'est pas future."
+          "pastStartWarning": "Cette période démarre dans le passé. Tulip ne permet pas de créer ou modifier une assurance sur ces dates, donc la protection est retirée de cette modification.",
+          "disabledPastStart": "Protection Tulip désactivée pour cette période passée.",
+          "calculating": "Calcul de la garantie...",
+          "estimatedAmount": "Garantie estimée : {amount}",
+          "previewUnavailable": "Le montant Tulip n'a pas pu être recalculé."
         },
         "duration": "Durée",
         "exact": "exact",
@@ -5228,6 +5233,7 @@
     "tulipContractUpdateFailed": "Réservation modifiée, mais la synchronisation du contrat Tulip a échoué.",
     "tulipContractCancellationFailed": "Réservation annulée, mais la résiliation du contrat Tulip a échoué.",
     "tulipQuoteFailed": "Impossible de calculer la garantie casse/vol pour cette réservation.",
+    "tulipInsuranceDisabledPastDate": "Réservation modifiée, mais la protection Tulip a été désactivée car les dates sont dans le passé.",
     "tulipContractPastDate": "Tulip a refusé la création du contrat : les dates ne peuvent pas être dans le passé.",
     "tulipContractDatesInvalid": "Tulip a refusé le contrat : les dates de début et de fin sont incohérentes pour ce type de contrat.",
     "tulipContractActionForbidden": "Tulip a refusé cette action pour la configuration actuelle du compte.",
