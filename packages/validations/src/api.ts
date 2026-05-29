@@ -272,6 +272,31 @@ export const dashboardReservationPreviewTulipQuoteInputSchema = z.object({
   }),
 });
 
+export const dashboardReservationPreviewManualTulipQuoteInputSchema = z.object({
+  payload: z.object({
+    customerId: z.string().length(21).optional(),
+    newCustomer: z
+      .object({
+        email: z.email().max(320),
+        firstName: z.string().trim().min(1).max(200),
+        lastName: z.string().trim().min(1).max(200),
+        phone: z.string().trim().max(50).optional(),
+      })
+      .optional(),
+    startDate: z.union([dateTimeOrDateSchema, z.date()]),
+    endDate: z.union([dateTimeOrDateSchema, z.date()]),
+    tulipInsuranceOptIn: z.boolean().optional(),
+    items: z
+      .array(
+        z.object({
+          productId: z.string().length(21),
+          quantity: z.number().int().min(1),
+        }),
+      )
+      .max(500),
+  }),
+});
+
 export const dashboardReservationCreateManualReservationInputSchema = z.object({
   payload: z.object({
     customerId: z.string().length(21).optional(),

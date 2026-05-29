@@ -13,6 +13,7 @@ import {
   dashboardReservationGetByIdInputSchema,
   dashboardReservationGetPaymentMethodInputSchema,
   dashboardReservationPollInputSchema,
+  dashboardReservationPreviewManualTulipQuoteInputSchema,
   dashboardReservationPreviewTulipQuoteInputSchema,
   dashboardReservationRecordDamageInputSchema,
   dashboardReservationRecordPaymentInputSchema,
@@ -216,6 +217,29 @@ const previewTulipQuote = requirePermission('write')
 
       const payload = input.payload;
       return await fn(input.reservationId, {
+        ...payload,
+        startDate: toDate(payload.startDate)!,
+        endDate: toDate(payload.endDate)!,
+      });
+    } catch (error) {
+      throw toORPCError(error);
+    }
+  });
+
+const previewManualTulipQuote = requirePermission('write')
+  .input(dashboardReservationPreviewManualTulipQuoteInputSchema)
+  .handler(async ({ context, input }) => {
+    try {
+      const fn = context.dashboardReservationActions?.previewManualTulipQuote;
+      if (!fn) {
+        throw new ORPCError('INTERNAL_SERVER_ERROR', {
+          message:
+            'dashboardReservationActions.previewManualTulipQuote not provided',
+        });
+      }
+
+      const payload = input.payload;
+      return await fn({
         ...payload,
         startDate: toDate(payload.startDate)!,
         endDate: toDate(payload.endDate)!,
@@ -598,6 +622,7 @@ export const dashboardReservationsRouter = {
   createManualReservation,
   updateReservation,
   previewTulipQuote,
+  previewManualTulipQuote,
   updateNotes,
   updateStatus,
   cancel,

@@ -206,6 +206,18 @@ function applyTulipProductMargins(params: {
   });
 }
 
+function getTulipMarginAmount(insuredItems: ResolvedTulipItemInput[]): number {
+  const marginAmount = insuredItems.reduce((total, item) => {
+    if (item.margin == null || item.margin <= 0) {
+      return total;
+    }
+
+    return total + item.margin * item.quantity;
+  }, 0);
+
+  return Math.round(marginAmount * 100) / 100;
+}
+
 async function assertTulipProductContractCompatibility(params: {
   productMetadataById: Map<string, TulipProductContractMetadata>;
   enabledProductTypes: Set<string> | null;
@@ -682,10 +694,13 @@ export async function previewTulipQuoteForCheckout(params: {
       preview: true,
       storeIdForLog: params.storeId,
     });
+    // Tulip echoes product data.margin but does not include it in contract.price.
+    const marginAmount = getTulipMarginAmount(insuredItemsWithMargins);
 
     return {
       shouldApply: true as const,
-      amount: Number(contract.price || 0),
+      amount:
+        Math.round((Number(contract.price || 0) + marginAmount) * 100) / 100,
       inclusionEnabled: renter?.options?.inclusion === true,
       insuredProductCount: coverage.insuredProductCount,
       uninsuredProductCount: coverage.uninsuredProductCount,

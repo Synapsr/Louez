@@ -1,12 +1,13 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react';
 
-import { format } from 'date-fns'
-import type { Locale } from 'date-fns'
-import { Check, MapPin, PenLine, Store, Truck, Shield } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { format } from 'date-fns';
+import type { Locale } from 'date-fns';
+import { Check, MapPin, PenLine, Shield, Store, Truck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
+import type { LegMethod } from '@louez/types';
 import {
   Badge,
   Button,
@@ -17,10 +18,8 @@ import {
   CardTitle,
   Input,
   Separator,
-} from '@louez/ui'
-import { cn, formatCurrency } from '@louez/utils'
-
-import type { LegMethod } from '@louez/types'
+} from '@louez/ui';
+import { cn, formatCurrency } from '@louez/utils';
 
 import type {
   CustomItem,
@@ -31,55 +30,59 @@ import type {
   Product,
   ProductPricingDetails,
   SelectedProduct,
-} from '../types'
+} from '../types';
 
 interface DetailedDuration {
-  days: number
-  hours: number
-  minutes: number
-  totalHours: number
-  totalMinutes: number
+  days: number;
+  hours: number;
+  minutes: number;
+  totalHours: number;
+  totalMinutes: number;
 }
 
 interface NewReservationStepReviewProps {
-  form: NewReservationFormComponentApi
-  customerType: NewReservationFormValues['customerType']
-  selectedCustomer: Customer | undefined
-  values: NewReservationFormValues
-  startDate: Date | undefined
-  endDate: Date | undefined
-  duration: number
-  detailedDuration: DetailedDuration | null
-  locale: string
-  dateLocale: Locale
-  selectedProducts: SelectedProduct[]
-  customItems: CustomItem[]
-  products: Product[]
-  tulipInsuranceMode: 'required' | 'optional' | 'no_public'
-  tulipInsuranceOptIn: boolean
-  subtotal: number
-  deposit: number
+  form: NewReservationFormComponentApi;
+  customerType: NewReservationFormValues['customerType'];
+  selectedCustomer: Customer | undefined;
+  values: NewReservationFormValues;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  duration: number;
+  detailedDuration: DetailedDuration | null;
+  locale: string;
+  dateLocale: Locale;
+  selectedProducts: SelectedProduct[];
+  customItems: CustomItem[];
+  products: Product[];
+  tulipInsuranceMode: 'required' | 'optional' | 'no_public';
+  tulipInsuranceOptIn: boolean;
+  isTulipInsuranceApplied: boolean;
+  tulipInsuranceAmount: number;
+  isTulipInsuranceQuoteLoading: boolean;
+  tulipInsuranceQuoteErrorMessage: string | null;
+  subtotal: number;
+  deposit: number;
   getProductPricingDetails: (
     product: Product,
-    selectedItem?: SelectedProduct
-  ) => ProductPricingDetails
-  getCustomItemTotal: (item: CustomItem) => number
+    selectedItem?: SelectedProduct,
+  ) => ProductPricingDetails;
+  getCustomItemTotal: (item: CustomItem) => number;
   onProductTotalChange: (
     lineId: string,
     totalPrice: number,
     pricing: ProductPricingDetails,
-  ) => void
-  onCustomItemTotalChange: (id: string, totalPrice: number) => void
-  hasDeliveryLegs?: boolean
-  deliveryFee?: number
-  isDeliveryIncluded?: boolean
-  outboundMethod?: LegMethod
-  outboundAddress?: DeliveryAddress
-  outboundDistance?: number | null
-  returnMethod?: LegMethod
-  returnAddress?: DeliveryAddress
-  returnDistance?: number | null
-  storeAddress?: string | null
+  ) => void;
+  onCustomItemTotalChange: (id: string, totalPrice: number) => void;
+  hasDeliveryLegs?: boolean;
+  deliveryFee?: number;
+  isDeliveryIncluded?: boolean;
+  outboundMethod?: LegMethod;
+  outboundAddress?: DeliveryAddress;
+  outboundDistance?: number | null;
+  returnMethod?: LegMethod;
+  returnAddress?: DeliveryAddress;
+  returnDistance?: number | null;
+  storeAddress?: string | null;
 }
 
 function TotalPriceEditor({
@@ -87,20 +90,20 @@ function TotalPriceEditor({
   ariaLabel,
   onChange,
 }: {
-  value: number
-  ariaLabel: string
-  onChange: (value: number) => void
+  value: number;
+  ariaLabel: string;
+  onChange: (value: number) => void;
 }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editStartValue, setEditStartValue] = useState(value)
-  const [localValue, setLocalValue] = useState(value.toFixed(2))
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editStartValue, setEditStartValue] = useState(value);
+  const [localValue, setLocalValue] = useState(value.toFixed(2));
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (document.activeElement !== inputRef.current) {
-      setLocalValue(value.toFixed(2))
+      setLocalValue(value.toFixed(2));
     }
-  }, [value])
+  }, [value]);
 
   if (!isEditing) {
     return (
@@ -115,15 +118,15 @@ function TotalPriceEditor({
           className="text-muted-foreground h-7 w-7 shrink-0"
           aria-label={ariaLabel}
           onClick={() => {
-            setEditStartValue(value)
-            setLocalValue(value.toFixed(2))
-            setIsEditing(true)
+            setEditStartValue(value);
+            setLocalValue(value.toFixed(2));
+            setIsEditing(true);
           }}
         >
           <PenLine className="h-3.5 w-3.5" />
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -134,38 +137,38 @@ function TotalPriceEditor({
         autoFocus
         value={localValue}
         onChange={(event) => {
-          const raw = event.target.value
+          const raw = event.target.value;
           if (raw === '' || /^\d*[.,]?\d{0,2}$/.test(raw)) {
-            setLocalValue(raw)
-            const parsed = parseFloat(raw.replace(',', '.'))
+            setLocalValue(raw);
+            const parsed = parseFloat(raw.replace(',', '.'));
             if (!Number.isNaN(parsed)) {
-              onChange(parsed)
+              onChange(parsed);
             }
           }
         }}
         onBlur={() => {
-          const parsed = parseFloat(localValue.replace(',', '.'))
-          const final = Number.isNaN(parsed) ? 0 : parsed
-          setLocalValue(final.toFixed(2))
-          onChange(final)
-          setIsEditing(false)
+          const parsed = parseFloat(localValue.replace(',', '.'));
+          const final = Number.isNaN(parsed) ? 0 : parsed;
+          setLocalValue(final.toFixed(2));
+          onChange(final);
+          setIsEditing(false);
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
-            event.preventDefault()
-            setLocalValue(editStartValue.toFixed(2))
-            onChange(editStartValue)
-            setIsEditing(false)
-            return
+            event.preventDefault();
+            setLocalValue(editStartValue.toFixed(2));
+            onChange(editStartValue);
+            setIsEditing(false);
+            return;
           }
 
           if (event.key === 'Enter') {
-            event.preventDefault()
-            const parsed = parseFloat(localValue.replace(',', '.'))
-            const final = Number.isNaN(parsed) ? 0 : parsed
-            setLocalValue(final.toFixed(2))
-            onChange(final)
-            setIsEditing(false)
+            event.preventDefault();
+            const parsed = parseFloat(localValue.replace(',', '.'));
+            const final = Number.isNaN(parsed) ? 0 : parsed;
+            setLocalValue(final.toFixed(2));
+            onChange(final);
+            setIsEditing(false);
           }
         }}
         aria-label={ariaLabel}
@@ -178,7 +181,7 @@ function TotalPriceEditor({
         €
       </span>
     </div>
-  )
+  );
 }
 
 export function NewReservationStepReview({
@@ -197,6 +200,10 @@ export function NewReservationStepReview({
   products,
   tulipInsuranceMode,
   tulipInsuranceOptIn,
+  isTulipInsuranceApplied,
+  tulipInsuranceAmount,
+  isTulipInsuranceQuoteLoading,
+  tulipInsuranceQuoteErrorMessage,
   subtotal,
   deposit,
   getProductPricingDetails,
@@ -214,13 +221,16 @@ export function NewReservationStepReview({
   returnDistance,
   storeAddress,
 }: NewReservationStepReviewProps) {
-  const t = useTranslations('dashboard.reservations.manualForm')
+  const t = useTranslations('dashboard.reservations.manualForm');
 
-  const showDeliverySection = hasDeliveryLegs === true
-  const total = subtotal + deliveryFee
+  const showDeliverySection = hasDeliveryLegs === true;
   const isTulipInsuranceEnabledForReservation =
     tulipInsuranceMode === 'required' ||
-    (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn)
+    (tulipInsuranceMode === 'optional' && tulipInsuranceOptIn);
+  const visibleTulipInsuranceAmount = isTulipInsuranceEnabledForReservation
+    ? tulipInsuranceAmount
+    : 0;
+  const total = subtotal + deliveryFee + visibleTulipInsuranceAmount;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -241,9 +251,13 @@ export function NewReservationStepReview({
                   <p className="font-medium">
                     {selectedCustomer.firstName} {selectedCustomer.lastName}
                   </p>
-                  <p className="text-sm text-muted-foreground">{selectedCustomer.email}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {selectedCustomer.email}
+                  </p>
                   {selectedCustomer.phone && (
-                    <p className="text-sm text-muted-foreground">{selectedCustomer.phone}</p>
+                    <p className="text-muted-foreground text-sm">
+                      {selectedCustomer.phone}
+                    </p>
                   )}
                 </div>
               ) : (
@@ -251,8 +265,14 @@ export function NewReservationStepReview({
                   <p className="font-medium">
                     {values.firstName} {values.lastName}
                   </p>
-                  <p className="text-sm text-muted-foreground">{values.email}</p>
-                  {values.phone && <p className="text-sm text-muted-foreground">{values.phone}</p>}
+                  <p className="text-muted-foreground text-sm">
+                    {values.email}
+                  </p>
+                  {values.phone && (
+                    <p className="text-muted-foreground text-sm">
+                      {values.phone}
+                    </p>
+                  )}
                   <Badge variant="secondary" className="mt-2">
                     {t('newCustomerBadge')}
                   </Badge>
@@ -268,18 +288,26 @@ export function NewReservationStepReview({
                 <span className="text-muted-foreground">{t('startDate')}</span>
                 <span>
                   {startDate &&
-                    format(startDate, locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm", {
-                      locale: dateLocale,
-                    })}
+                    format(
+                      startDate,
+                      locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm",
+                      {
+                        locale: dateLocale,
+                      },
+                    )}
                 </span>
               </div>
               <div className="mt-1 flex justify-between text-sm">
                 <span className="text-muted-foreground">{t('endDate')}</span>
                 <span>
                   {endDate &&
-                    format(endDate, locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm", {
-                      locale: dateLocale,
-                    })}
+                    format(
+                      endDate,
+                      locale === 'fr' ? "PPP 'à' HH:mm" : "PPP 'at' HH:mm",
+                      {
+                        locale: dateLocale,
+                      },
+                    )}
                 </span>
               </div>
               <Separator className="my-2" />
@@ -288,10 +316,17 @@ export function NewReservationStepReview({
                 <span>
                   {detailedDuration
                     ? [
-                        detailedDuration.days > 0 && t('durationDays', { count: detailedDuration.days }),
-                        detailedDuration.hours > 0 && t('durationHours', { count: detailedDuration.hours }),
-                        detailedDuration.days === 0 && detailedDuration.hours === 0 && detailedDuration.minutes > 0 && `${detailedDuration.minutes} min`,
-                      ].filter(Boolean).join(', ') || t('durationDays', { count: duration })
+                        detailedDuration.days > 0 &&
+                          t('durationDays', { count: detailedDuration.days }),
+                        detailedDuration.hours > 0 &&
+                          t('durationHours', { count: detailedDuration.hours }),
+                        detailedDuration.days === 0 &&
+                          detailedDuration.hours === 0 &&
+                          detailedDuration.minutes > 0 &&
+                          `${detailedDuration.minutes} min`,
+                      ]
+                        .filter(Boolean)
+                        .join(', ') || t('durationDays', { count: duration })
                     : t('durationDays', { count: duration })}
                 </span>
               </div>
@@ -305,55 +340,65 @@ export function NewReservationStepReview({
               <div className="divide-y rounded-lg border">
                 {/* Outbound leg */}
                 <div className="p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                  <p className="text-muted-foreground mb-1 text-xs font-medium">
                     {t('outboundLeg')}
                   </p>
                   <div className="flex items-center gap-2">
                     {outboundMethod === 'address' ? (
-                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <Truck className="text-muted-foreground h-4 w-4" />
                     ) : (
-                      <Store className="h-4 w-4 text-muted-foreground" />
+                      <Store className="text-muted-foreground h-4 w-4" />
                     )}
                     <span className="text-sm font-medium">
-                      {outboundMethod === 'address' ? t('deliveryYes') : t('deliveryNo')}
+                      {outboundMethod === 'address'
+                        ? t('deliveryYes')
+                        : t('deliveryNo')}
                     </span>
                   </div>
                   {outboundMethod === 'address' && outboundAddress?.address && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-6 flex items-center gap-1">
+                    <p className="text-muted-foreground mt-1 ml-6 flex items-center gap-1 text-xs">
                       <MapPin className="h-3 w-3 shrink-0" />
                       {outboundAddress.address}
-                      {outboundDistance != null && ` (${outboundDistance.toFixed(1)} km)`}
+                      {outboundDistance != null &&
+                        ` (${outboundDistance.toFixed(1)} km)`}
                     </p>
                   )}
                   {outboundMethod === 'store' && storeAddress && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-6">{storeAddress}</p>
+                    <p className="text-muted-foreground mt-1 ml-6 text-xs">
+                      {storeAddress}
+                    </p>
                   )}
                 </div>
 
                 {/* Return leg */}
                 <div className="p-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">
+                  <p className="text-muted-foreground mb-1 text-xs font-medium">
                     {t('returnLeg')}
                   </p>
                   <div className="flex items-center gap-2">
                     {returnMethod === 'address' ? (
-                      <Truck className="h-4 w-4 text-muted-foreground" />
+                      <Truck className="text-muted-foreground h-4 w-4" />
                     ) : (
-                      <Store className="h-4 w-4 text-muted-foreground" />
+                      <Store className="text-muted-foreground h-4 w-4" />
                     )}
                     <span className="text-sm font-medium">
-                      {returnMethod === 'address' ? t('deliveryYes') : t('deliveryNo')}
+                      {returnMethod === 'address'
+                        ? t('deliveryYes')
+                        : t('deliveryNo')}
                     </span>
                   </div>
                   {returnMethod === 'address' && returnAddress?.address && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-6 flex items-center gap-1">
+                    <p className="text-muted-foreground mt-1 ml-6 flex items-center gap-1 text-xs">
                       <MapPin className="h-3 w-3 shrink-0" />
                       {returnAddress.address}
-                      {returnDistance != null && ` (${returnDistance.toFixed(1)} km)`}
+                      {returnDistance != null &&
+                        ` (${returnDistance.toFixed(1)} km)`}
                     </p>
                   )}
                   {returnMethod === 'store' && storeAddress && (
-                    <p className="text-xs text-muted-foreground mt-1 ml-6">{storeAddress}</p>
+                    <p className="text-muted-foreground mt-1 ml-6 text-xs">
+                      {storeAddress}
+                    </p>
                   )}
                 </div>
               </div>
@@ -366,16 +411,18 @@ export function NewReservationStepReview({
             </h4>
             <div className="divide-y rounded-lg border">
               {selectedProducts.map((item) => {
-                const product = products.find((p) => p.id === item.productId)
-                if (!product) return null
+                const product = products.find((p) => p.id === item.productId);
+                if (!product) return null;
 
-                const pricing = getProductPricingDetails(product, item)
+                const pricing = getProductPricingDetails(product, item);
                 const isProductInsured =
-                  isTulipInsuranceEnabledForReservation &&
-                  product.tulipInsurable === true
+                  isTulipInsuranceApplied && product.tulipInsurable === true;
 
                 return (
-                  <div key={item.lineId} className="flex items-start justify-between gap-3 p-3 text-sm">
+                  <div
+                    key={item.lineId}
+                    className="flex items-start justify-between gap-3 p-3 text-sm"
+                  >
                     <div className="min-w-0 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{product.name}</span>
@@ -395,25 +442,32 @@ export function NewReservationStepReview({
                               'text-xs',
                               pricing.effectivePrice < pricing.calculatedPrice
                                 ? 'bg-green-100 text-green-700'
-                                : 'bg-orange-100 text-orange-700'
+                                : 'bg-orange-100 text-orange-700',
                             )}
                           >
                             {t('priceOverride.modified')}
                           </Badge>
                         )}
-                        <span className="text-muted-foreground">× {item.quantity}</span>
+                        <span className="text-muted-foreground">
+                          × {item.quantity}
+                        </span>
                       </div>
-                      {item.selectedAttributes && Object.keys(item.selectedAttributes).length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(item.selectedAttributes)
-                            .sort(([a], [b]) => a.localeCompare(b, 'en'))
-                            .map(([key, value]) => (
-                              <Badge key={`${item.lineId}-${key}`} variant="outline" className="text-xs">
-                                {key}: {value}
-                              </Badge>
-                            ))}
-                        </div>
-                      )}
+                      {item.selectedAttributes &&
+                        Object.keys(item.selectedAttributes).length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {Object.entries(item.selectedAttributes)
+                              .sort(([a], [b]) => a.localeCompare(b, 'en'))
+                              .map(([key, value]) => (
+                                <Badge
+                                  key={`${item.lineId}-${key}`}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {key}: {value}
+                                </Badge>
+                              ))}
+                          </div>
+                        )}
                     </div>
                     <TotalPriceEditor
                       value={pricing.lineSubtotal}
@@ -423,16 +477,21 @@ export function NewReservationStepReview({
                       }
                     />
                   </div>
-                )
+                );
               })}
               {customItems.map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-3 bg-muted/30 p-3 text-sm">
+                <div
+                  key={item.id}
+                  className="bg-muted/30 flex items-start justify-between gap-3 p-3 text-sm"
+                >
                   <div>
                     <span className="font-medium">{item.name}</span>
                     <Badge variant="secondary" className="ml-2 text-xs">
                       {t('customItem.badge')}
                     </Badge>
-                    <span className="ml-2 text-muted-foreground">× {item.quantity}</span>
+                    <span className="text-muted-foreground ml-2">
+                      × {item.quantity}
+                    </span>
                   </div>
                   <TotalPriceEditor
                     value={getCustomItemTotal(item)}
@@ -477,8 +536,16 @@ export function NewReservationStepReview({
             </div>
             {showDeliverySection && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">{t('deliveryFee')}</span>
-                <span className={isDeliveryIncluded || deliveryFee === 0 ? 'text-green-600' : ''}>
+                <span className="text-muted-foreground">
+                  {t('deliveryFee')}
+                </span>
+                <span
+                  className={
+                    isDeliveryIncluded || deliveryFee === 0
+                      ? 'text-green-600'
+                      : ''
+                  }
+                >
                   {isDeliveryIncluded
                     ? t('included')
                     : deliveryFee === 0
@@ -487,6 +554,27 @@ export function NewReservationStepReview({
                 </span>
               </div>
             )}
+            {isTulipInsuranceEnabledForReservation &&
+              (visibleTulipInsuranceAmount > 0 ||
+                isTulipInsuranceQuoteLoading) && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t('tulipInsurance.title')}
+                  </span>
+                  <span>
+                    {isTulipInsuranceQuoteLoading
+                      ? t('tulipInsurance.calculating')
+                      : formatCurrency(visibleTulipInsuranceAmount)}
+                  </span>
+                </div>
+              )}
+            {isTulipInsuranceEnabledForReservation &&
+              tulipInsuranceQuoteErrorMessage && (
+                <p className="text-xs text-amber-700">
+                  {t('tulipInsurance.previewUnavailable')}{' '}
+                  {tulipInsuranceQuoteErrorMessage}
+                </p>
+              )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">{t('deposit')}</span>
               <span>{formatCurrency(deposit)}</span>
@@ -500,5 +588,5 @@ export function NewReservationStepReview({
         </Card>
       </div>
     </div>
-  )
+  );
 }
