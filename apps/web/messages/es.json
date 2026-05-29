@@ -965,6 +965,7 @@
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
             "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginLockedTooltip": "Este margen se define al crear el producto Tulip y no puede modificarse despues.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "fields": {
               "productTitle": "Nombre del producto (opcional)",
@@ -3586,6 +3587,7 @@
             "invalidPurchasePrice": "Introduzca un precio de compra valido.",
             "invalidMargin": "Introduzca un margen valido.",
             "marginTooltip": "Margen diario adicional agregado al precio de compra para la valoracion del seguro.",
+            "marginLockedTooltip": "Este margen se define al crear el producto Tulip y no puede modificarse despues.",
             "invalidPurchasedDate": "Seleccione una fecha de compra valida.",
             "createButton": "Crear en Tulip",
             "creatingButton": "Creando...",

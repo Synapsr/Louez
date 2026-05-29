@@ -30,10 +30,12 @@ import {
 import { TulipProductFormFields } from './tulip-product-form-fields'
 
 export type { TulipProductActionInput as ProductAssuranceActionInput } from '@/lib/integrations/tulip/product-form-utils'
+export type ProductAssuranceDialogMode = 'create' | 'update'
 
 interface ProductAssuranceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  mode: ProductAssuranceDialogMode
   disabled: boolean
   supportsMargin: boolean
   product: {
@@ -64,6 +66,7 @@ interface ProductAssuranceDialogProps {
 export function ProductAssuranceDialog({
   open,
   onOpenChange,
+  mode,
   disabled,
   supportsMargin,
   product,
@@ -109,6 +112,8 @@ export function ProductAssuranceDialog({
       : null
 
   const validation = validateDraft(draft)
+  const saveMode: ProductAssuranceDialogMode =
+    mode === 'update' && hasValidMapping ? 'update' : 'create'
   const disableSaveButton =
     disabled ||
     !draft ||
@@ -123,11 +128,13 @@ export function ProductAssuranceDialog({
     isCreatePending ||
     isPushPending
 
-  const handleSave = async (mode: 'create' | 'update') => {
+  const handleSave = async () => {
     if (!draft) return
-    const input = buildActionInput(product.id, draft)
+    const input = buildActionInput(product.id, draft, {
+      includeMargin: saveMode === 'create',
+    })
 
-    if (mode === 'update') {
+    if (saveMode === 'update') {
       await onPushProduct(input)
     } else {
       await onCreateProduct(input)
@@ -170,6 +177,7 @@ export function ProductAssuranceDialog({
                 onDraftChange={(updater) => setDraft((prev) => (prev ? updater(prev) : prev))}
                 disabled={disabled}
                 supportsMargin={supportsMargin}
+                disableMargin={saveMode === 'update'}
                 defaultPrice={product.price}
                 defaultTitle={defaultTitle}
                 resolvedCatalog={resolvedCatalog}
@@ -184,22 +192,12 @@ export function ProductAssuranceDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             {t('cancel')}
           </Button>
-          {hasValidMapping && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void handleSave('create')}
-              disabled={disableSaveButton}
-            >
-              {isCreatePending ? t('creatingButton') : t('createButton')}
-            </Button>
-          )}
           <Button
             type="button"
-            onClick={() => void handleSave(hasValidMapping ? 'update' : 'create')}
+            onClick={() => void handleSave()}
             disabled={disableSaveButton}
           >
-            {hasValidMapping
+            {saveMode === 'update'
               ? isPushPending
                 ? t('updatingButton')
                 : t('updateButton')
