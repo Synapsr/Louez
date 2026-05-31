@@ -13,9 +13,14 @@ import {
 import { cn } from '@louez/utils';
 
 import {
-  COUNTRY_CODES,
-  type CountryPhoneData,
+  formatPhoneInput,
   getCountriesSortedForDisplay,
+  getCountryPhoneData,
+  getDefaultPhoneCountry,
+  getPhoneInputCountry,
+  getPhoneNationalNumber,
+  normalizePhoneNumber,
+  parsePhoneInput,
 } from '@/lib/sms/phone';
 
 export interface PhoneInputProps extends Omit<
@@ -28,74 +33,11 @@ export interface PhoneInputProps extends Omit<
 }
 
 /**
- * Parse a phone number to extract country and national number
- */
-function parsePhoneNumber(phone: string): {
-  country: string;
-  nationalNumber: string;
-} {
-  if (!phone) return { country: 'FR', nationalNumber: '' };
-
-  const cleaned = phone.replace(/\s/g, '');
-
-  // Already has + prefix - try to detect country
-  if (cleaned.startsWith('+')) {
-    const digits = cleaned.slice(1);
-    // Sort by code length descending to match longer codes first
-    const sortedCountries = Object.entries(COUNTRY_CODES).sort(
-      (a, b) => b[1].code.length - a[1].code.length,
-    );
-
-    for (const [iso, data] of sortedCountries) {
-      if (digits.startsWith(data.code)) {
-        return {
-          country: iso,
-          nationalNumber: digits.slice(data.code.length),
-        };
-      }
-    }
-    // Unknown country code, return as-is with default country
-    return { country: 'FR', nationalNumber: digits };
-  }
-
-  // Starts with 00 (international prefix)
-  if (cleaned.startsWith('00')) {
-    const digits = cleaned.slice(2);
-    const sortedCountries = Object.entries(COUNTRY_CODES).sort(
-      (a, b) => b[1].code.length - a[1].code.length,
-    );
-
-    for (const [iso, data] of sortedCountries) {
-      if (digits.startsWith(data.code)) {
-        return {
-          country: iso,
-          nationalNumber: digits.slice(data.code.length),
-        };
-      }
-    }
-  }
-
-  // National format - return without leading 0 if present
-  const nationalNumber = cleaned.startsWith('0') ? cleaned.slice(1) : cleaned;
-  return { country: 'FR', nationalNumber };
-}
-
-/**
- * Format national number for display (add spaces for readability)
- */
-function formatNationalNumber(number: string): string {
-  // Remove non-digits
-  const digits = number.replace(/\D/g, '');
-  // Add space every 2 digits for readability
-  return digits.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
-}
-
-/**
  * PhoneInput component with country selector
  *
  * Features:
- * - Country dropdown with flags
- * - Auto-formats national numbers
+ * - Country dropdown with flags for all libphonenumber-js supported countries
+ * - Auto-formats national and international numbers
  * - Outputs E.164 format (+33612345678)
  * - Handles various input formats (0612..., +33612..., 0033612...)
  */
@@ -112,59 +54,60 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
     ref,
   ) => {
     const countries = React.useMemo(() => getCountriesSortedForDisplay(), []);
-
-    // Parse initial value
-    const parsed = React.useMemo(() => parsePhoneNumber(value), [value]);
-    const [selectedCountry, setSelectedCountry] = React.useState(
-      parsed.country,
+    const initialParsed = React.useMemo(
+      () => parsePhoneInput(value, defaultCountry),
+      [defaultCountry, value],
     );
-    const [nationalNumber, setNationalNumber] = React.useState(
-      formatNationalNumber(parsed.nationalNumber),
+
+    const [selectedCountry, setSelectedCountry] = React.useState(
+      initialParsed.country,
+    );
+    const [inputValue, setInputValue] = React.useState(
+      initialParsed.displayValue,
     );
 
     // Update internal state when value changes externally
     React.useEffect(() => {
-      const newParsed = parsePhoneNumber(value);
-      setSelectedCountry(newParsed.country);
-      setNationalNumber(formatNationalNumber(newParsed.nationalNumber));
-    }, [value]);
+      const parsed = parsePhoneInput(value, defaultCountry);
+      setSelectedCountry(parsed.country);
+      setInputValue(parsed.displayValue);
+    }, [defaultCountry, value]);
 
-    const countryData = COUNTRY_CODES[selectedCountry] || COUNTRY_CODES.FR;
+    const countryData = getCountryPhoneData(selectedCountry);
 
     // Build E.164 formatted number and call onChange
     const emitChange = React.useCallback(
       (country: string, national: string) => {
-        const digits = national.replace(/\D/g, '');
-        if (!digits) {
+        const rawPhone = national.trim();
+        if (!rawPhone) {
           onChange?.('');
           return;
         }
-        const data = COUNTRY_CODES[country] || COUNTRY_CODES.FR;
-        onChange?.(`+${data.code}${digits}`);
+
+        onChange?.(normalizePhoneNumber(rawPhone, country) ?? rawPhone);
       },
       [onChange],
     );
 
     const handleCountryChange = (iso: string | null) => {
       if (iso === null) return;
-      setSelectedCountry(iso);
-      emitChange(iso, nationalNumber);
+      const country = getDefaultPhoneCountry(iso);
+      const nationalNumber = getPhoneNationalNumber(inputValue);
+      const nextInputValue = formatPhoneInput(nationalNumber, country);
+
+      setSelectedCountry(country);
+      setInputValue(nextInputValue);
+      emitChange(country, nextInputValue);
     };
 
     const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      let input = e.target.value;
+      const input = e.target.value;
+      const formatted = formatPhoneInput(input, selectedCountry);
+      const nextCountry = getPhoneInputCountry(input, selectedCountry);
 
-      // If user types leading 0, automatically remove it
-      if (input.startsWith('0') && input.length > 1) {
-        input = input.slice(1);
-      }
-
-      // Only allow digits and spaces
-      const cleaned = input.replace(/[^\d\s]/g, '');
-      const formatted = formatNationalNumber(cleaned.replace(/\s/g, ''));
-
-      setNationalNumber(formatted);
-      emitChange(selectedCountry, formatted);
+      setSelectedCountry(nextCountry);
+      setInputValue(formatted);
+      emitChange(nextCountry, input);
     };
 
     return (
@@ -207,8 +150,8 @@ const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
         <Input
           ref={ref}
           type="tel"
-          inputMode="numeric"
-          value={nationalNumber}
+          inputMode="tel"
+          value={inputValue}
           onChange={handleNumberChange}
           disabled={disabled}
           className="flex-1"

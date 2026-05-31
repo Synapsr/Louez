@@ -46,6 +46,7 @@ import {
 } from '@/lib/integrations/tulip/contracts'
 import { getTulipSettings } from '@/lib/integrations/tulip/settings'
 import { resolveReservationLocationSnapshot } from '@/lib/reservations/location-snapshots'
+import { normalizePhoneNumber } from '@/lib/sms/phone'
 import { env } from '@/env'
 
 interface ReservationItem {
@@ -420,6 +421,13 @@ export async function createReservation(input: CreateReservationInput) {
 
     if (!store) {
       return { error: 'errors.storeNotFound' }
+    }
+
+    const customerPhone = input.customer.phone
+      ? normalizePhoneNumber(input.customer.phone, store.settings?.country)
+      : null
+    if (input.customer.phone && !customerPhone) {
+      return { error: 'errors.invalidData' }
     }
 
     // Calculate the overall rental period from items
@@ -1192,7 +1200,7 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || 'individual',
             companyName: input.customer.companyName || null,
-            phone: input.customer.phone || null,
+            phone: customerPhone,
             address: input.customer.address || null,
             city: input.customer.city || null,
             postalCode: input.customer.postalCode || null,
@@ -1211,7 +1219,7 @@ export async function createReservation(input: CreateReservationInput) {
             lastName: input.customer.lastName,
             customerType: input.customer.customerType || customer.customerType,
             companyName: input.customer.companyName ?? customer.companyName,
-            phone: input.customer.phone || customer.phone,
+            phone: customerPhone || customer.phone,
             address: input.customer.address || customer.address,
             city: input.customer.city || customer.city,
             postalCode: input.customer.postalCode || customer.postalCode,
@@ -1489,7 +1497,7 @@ export async function createReservation(input: CreateReservationInput) {
           firstName: input.customer.firstName,
           lastName: input.customer.lastName,
           email: input.customer.email,
-          phone: input.customer.phone,
+          phone: customerPhone,
         },
         reservation: {
           id: reservationId,
@@ -1546,7 +1554,7 @@ export async function createReservation(input: CreateReservationInput) {
           firstName: input.customer.firstName,
           lastName: input.customer.lastName,
           email: input.customer.email,
-          phone: input.customer.phone,
+          phone: customerPhone,
         },
       }).catch((error) => {
         console.error('Failed to dispatch new reservation notification:', error)

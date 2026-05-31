@@ -1,11 +1,10 @@
 import { z } from 'zod';
 
+import { isPossiblePhoneNumberInput } from './phone';
+
 // Customer type enum
 export const customerTypeValues = ['individual', 'business'] as const;
 export type CustomerType = (typeof customerTypeValues)[number];
-
-// E.164 phone format regex (optional - empty string allowed)
-const phoneRegex = /^\+[1-9]\d{6,14}$/;
 
 // Base schema without refinement for form validation
 const baseCustomerFields = {
@@ -16,7 +15,7 @@ const baseCustomerFields = {
   companyName: z.string().max(255).optional(),
   phone: z
     .string()
-    .refine((val) => !val || phoneRegex.test(val), {
+    .refine((val) => !val || isPossiblePhoneNumberInput(val), {
       message: 'validation.invalidPhone',
     })
     .optional(),
@@ -40,7 +39,7 @@ export const createCustomerSchema = (
       companyName: z.string().max(255).optional(),
       phone: z
         .string()
-        .refine((val) => !val || phoneRegex.test(val), {
+        .refine((val) => !val || isPossiblePhoneNumberInput(val), {
           message: t('invalidPhone'),
         })
         .optional(),
