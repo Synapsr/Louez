@@ -83,6 +83,26 @@ function isStaticAsset(pathname: string): boolean {
   )
 }
 
+function isLoopbackHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '[::1]'
+  )
+}
+
+function createInternalRewriteUrl(request: NextRequest, pathname: string) {
+  const url = request.nextUrl.clone()
+  url.pathname = pathname
+
+  if (isLoopbackHost(url.hostname)) {
+    url.protocol = 'http:'
+  }
+
+  return url
+}
+
 export function proxy(request: NextRequest) {
   const host = request.headers.get('host') || ''
   const subdomain = getSubdomain(host)
@@ -103,8 +123,10 @@ export function proxy(request: NextRequest) {
   const isLocalhost = host.includes('localhost') || host.includes('127.0.0.1')
 
   if (isLocalhost && !subdomain && PREVIEW_STORE_SLUG && !isDashboardRoute(pathname)) {
-    const url = request.nextUrl.clone()
-    url.pathname = `/${PREVIEW_STORE_SLUG}${pathname}`
+    const url = createInternalRewriteUrl(
+      request,
+      `/${PREVIEW_STORE_SLUG}${pathname}`,
+    )
     const response = NextResponse.rewrite(url)
 
     // Set embed mode header for embed routes
@@ -131,8 +153,7 @@ export function proxy(request: NextRequest) {
   // {slug}.{APP_DOMAIN} → rewrite to /{slug}/* routes
   // Excludes "www" which should show the landing page
   if (subdomain && subdomain !== 'www') {
-    const url = request.nextUrl.clone()
-    url.pathname = `/${subdomain}${pathname}`
+    const url = createInternalRewriteUrl(request, `/${subdomain}${pathname}`)
     const response = NextResponse.rewrite(url)
 
     // Set embed mode header for embed routes (used by layout to skip chrome)
