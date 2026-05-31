@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isValidPhoneFormat } from '@/lib/sms/phone';
+
 type CheckoutTranslator = (
   key: string,
   values?: Record<string, string | number>,
@@ -25,7 +27,7 @@ export function createCheckoutSchemaWithOptions(
       phone: z
         .string()
         .min(1, t('errors.phoneRequired'))
-        .regex(/^\+[1-9]\d{6,14}$/, t('errors.invalidPhone')),
+        .refine((value) => isValidPhoneFormat(value), t('errors.invalidPhone')),
       isBusinessCustomer: z.boolean(),
       companyName: z.string(),
       address: z.string().trim(),

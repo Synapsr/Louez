@@ -60,6 +60,7 @@
     "framer-motion": "^12.24.12",
     "gleap": "^15.1.5",
     "input-otp": "^1.4.2",
+    "libphonenumber-js": "^1.13.3",
     "lucide-react": "^0.562.0",
     "mysql2": "^3.16.0",
     "nanoid": "^5.1.6",

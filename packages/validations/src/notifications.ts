@@ -1,5 +1,8 @@
 import { z } from 'zod'
+
 import { NOTIFICATION_EVENT_TYPES } from '@louez/types'
+
+import { isPossiblePhoneNumberInput } from './phone'
 
 export const notificationChannelConfigSchema = z.object({
   email: z.boolean(),
@@ -36,7 +39,9 @@ export type DiscordWebhookInput = z.infer<typeof discordWebhookSchema>
 export const ownerPhoneSchema = z.object({
   phone: z
     .string()
-    .regex(/^\+?[0-9\s-]{8,20}$/, 'Invalid phone number format')
+    .refine((value) => isPossiblePhoneNumberInput(value), {
+      message: 'Invalid phone number format',
+    })
     .nullable(),
 })
 

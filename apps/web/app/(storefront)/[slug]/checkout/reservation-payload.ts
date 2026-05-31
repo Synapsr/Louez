@@ -1,6 +1,7 @@
 import type { LegMethod } from '@louez/types';
 
 import type { CartItem } from '@/contexts/cart-context';
+import { normalizePhoneNumber } from '@/lib/sms/phone';
 import { calculateCartItemPrice } from '@/lib/utils/cart-pricing';
 
 import type { createReservation } from './actions';
@@ -70,7 +71,7 @@ export function buildReservationPayload({
       email: values.email,
       firstName: values.firstName,
       lastName: values.lastName,
-      phone: values.phone,
+      phone: normalizePhoneNumber(values.phone) ?? values.phone,
       customerType: values.isBusinessCustomer ? 'business' : 'individual',
       companyName: values.isBusinessCustomer
         ? values.companyName.trim()

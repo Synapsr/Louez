@@ -1,251 +1,276 @@
-/**
- * Phone Number Validation and Normalization
- *
- * Handles international phone number formats for SMS sending.
- * Supports various input formats and normalizes to E.164 format (+XXXXXXXXXXX)
- */
+import {
+  AsYouType,
+  type CountryCode,
+  type MetadataJson,
+  getCountries,
+  getCountryCallingCode,
+  parseIncompletePhoneNumber,
+  parsePhoneNumberFromString,
+} from 'libphonenumber-js/core';
+import metadata from 'libphonenumber-js/metadata.min.json';
 
-/**
- * Country phone data with calling codes, expected lengths, and display info
- */
+const phoneMetadata: MetadataJson = metadata;
+const DEFAULT_PHONE_COUNTRY: CountryCode = 'FR';
+const PRIORITY_COUNTRIES: CountryCode[] = [
+  'FR',
+  'BE',
+  'CH',
+  'LU',
+  'DE',
+  'ES',
+  'IT',
+  'PT',
+  'NL',
+  'NO',
+  'IS',
+  'GB',
+  'US',
+  'CA',
+  'PL',
+  'AT',
+  'IE',
+  'MC',
+];
+const COUNTRY_DISPLAY_NAMES = new Intl.DisplayNames(['en'], {
+  type: 'region',
+});
+const COUNTRY_FLAG_OFFSET = 127397;
+const PHONE_COUNTRIES = getCountries(phoneMetadata);
+
+export type PhoneCountryCode = CountryCode;
+
 export interface CountryPhoneData {
-  code: string
-  lengths: number[]
-  flag: string
-  name: string
+  code: string;
+  flag: string;
+  name: string;
 }
 
-/**
- * Common country codes and their national number lengths
- * Sorted by common usage in target markets (Europe-focused)
- */
-export const COUNTRY_CODES: Record<string, CountryPhoneData> = {
-  FR: { code: '33', lengths: [9], flag: '🇫🇷', name: 'France' },
-  BE: { code: '32', lengths: [8, 9], flag: '🇧🇪', name: 'Belgium' },
-  CH: { code: '41', lengths: [9], flag: '🇨🇭', name: 'Switzerland' },
-  LU: { code: '352', lengths: [8, 9], flag: '🇱🇺', name: 'Luxembourg' },
-  DE: { code: '49', lengths: [10, 11], flag: '🇩🇪', name: 'Germany' },
-  ES: { code: '34', lengths: [9], flag: '🇪🇸', name: 'Spain' },
-  IT: { code: '39', lengths: [9, 10], flag: '🇮🇹', name: 'Italy' },
-  PT: { code: '351', lengths: [9], flag: '🇵🇹', name: 'Portugal' },
-  NL: { code: '31', lengths: [9], flag: '🇳🇱', name: 'Netherlands' },
-  GB: { code: '44', lengths: [10], flag: '🇬🇧', name: 'United Kingdom' },
-  US: { code: '1', lengths: [10], flag: '🇺🇸', name: 'United States' },
-  CA: { code: '1', lengths: [10], flag: '🇨🇦', name: 'Canada' },
-  PL: { code: '48', lengths: [9], flag: '🇵🇱', name: 'Poland' },
-  AT: { code: '43', lengths: [10, 11], flag: '🇦🇹', name: 'Austria' },
-  IE: { code: '353', lengths: [9], flag: '🇮🇪', name: 'Ireland' },
-  MC: { code: '377', lengths: [8, 9], flag: '🇲🇨', name: 'Monaco' },
+export interface CountryPhoneOption extends CountryPhoneData {
+  iso: CountryCode;
 }
 
-/**
- * Get sorted list of countries for display (common ones first)
- */
-export function getCountriesSortedForDisplay(): Array<{ iso: string } & CountryPhoneData> {
-  const priorityOrder = ['FR', 'BE', 'CH', 'DE', 'ES', 'IT', 'GB', 'US']
-  const entries = Object.entries(COUNTRY_CODES)
-
-  return entries
-    .sort((a, b) => {
-      const aIndex = priorityOrder.indexOf(a[0])
-      const bIndex = priorityOrder.indexOf(b[0])
-      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
-      if (aIndex !== -1) return -1
-      if (bIndex !== -1) return 1
-      return a[1].name.localeCompare(b[1].name)
-    })
-    .map(([iso, data]) => ({ iso, ...data }))
-}
-
-/**
- * Result of phone number validation
- */
 export interface PhoneValidationResult {
-  valid: boolean
-  normalized: string | null
-  error?: string
-  detectedCountry?: string
+  valid: boolean;
+  normalized: string | null;
+  error?: string;
+  detectedCountry?: CountryCode;
+  possibleCountries?: CountryCode[];
 }
 
-/**
- * Clean a phone number by removing all non-digit characters except leading +
- */
-function cleanPhoneNumber(phone: string): string {
-  // Preserve leading + if present
-  const hasPlus = phone.trim().startsWith('+')
-  // Remove all non-digit characters
-  const digits = phone.replace(/\D/g, '')
-  return hasPlus ? `+${digits}` : digits
+export interface ParsedPhoneInput {
+  country: CountryCode;
+  displayValue: string;
+  nationalNumber: string;
+  normalized: string | null;
 }
 
-/**
- * Detect if a number starts with a known country code
- */
-function detectCountryCode(digits: string): { country: string; code: string; nationalNumber: string } | null {
-  // Sort by code length descending to match longer codes first (e.g., 352 before 32)
-  const sortedCountries = Object.entries(COUNTRY_CODES).sort(
-    (a, b) => b[1].code.length - a[1].code.length
-  )
+function getCountryFlag(country: CountryCode): string {
+  return Array.from(country)
+    .map((letter) =>
+      String.fromCodePoint(letter.charCodeAt(0) + COUNTRY_FLAG_OFFSET),
+    )
+    .join('');
+}
 
-  for (const [country, { code }] of sortedCountries) {
-    if (digits.startsWith(code)) {
-      return {
-        country,
-        code,
-        nationalNumber: digits.slice(code.length),
-      }
-    }
+function getCountryName(country: CountryCode): string {
+  return COUNTRY_DISPLAY_NAMES.of(country) ?? country;
+}
+
+function buildCountryCodes(): Partial<Record<CountryCode, CountryPhoneData>> {
+  const countryCodes: Partial<Record<CountryCode, CountryPhoneData>> = {};
+
+  for (const country of PHONE_COUNTRIES) {
+    countryCodes[country] = {
+      code: getCountryCallingCode(country, phoneMetadata),
+      flag: getCountryFlag(country),
+      name: getCountryName(country),
+    };
   }
-  return null
+
+  return countryCodes;
 }
 
-/**
- * Validate and normalize a phone number to E.164 format
- *
- * Supported input formats:
- * - International with +: +33612345678, +33 6 12 34 56 78
- * - International with 00: 0033612345678, 00 33 6 12 34 56 78
- * - National French: 0612345678, 06 12 34 56 78
- * - With various separators: 06-12-34-56-78, (06) 12.34.56.78
- *
- * @param phone - The phone number to validate
- * @param defaultCountryCode - Default country code if none detected (default: FR)
- * @returns Validation result with normalized number or error
- */
+export const COUNTRY_CODES = buildCountryCodes();
+
+export function getSupportedPhoneCountry(
+  country: string | null | undefined,
+): CountryCode | null {
+  const normalizedCountry = country?.trim().toUpperCase();
+  if (!normalizedCountry) return null;
+
+  return (
+    PHONE_COUNTRIES.find((supportedCountry) => {
+      return supportedCountry === normalizedCountry;
+    }) ?? null
+  );
+}
+
+export function getDefaultPhoneCountry(
+  country: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+): CountryCode {
+  return getSupportedPhoneCountry(country) ?? DEFAULT_PHONE_COUNTRY;
+}
+
+export function getCountryPhoneData(
+  country: string | null | undefined,
+): CountryPhoneData {
+  const supportedCountry = getDefaultPhoneCountry(country);
+
+  return {
+    code: getCountryCallingCode(supportedCountry, phoneMetadata),
+    flag: getCountryFlag(supportedCountry),
+    name: getCountryName(supportedCountry),
+  };
+}
+
+export function getCountriesSortedForDisplay(): CountryPhoneOption[] {
+  return PHONE_COUNTRIES.map((country) => ({
+    iso: country,
+    ...getCountryPhoneData(country),
+  })).sort((a, b) => {
+    const aIndex = PRIORITY_COUNTRIES.indexOf(a.iso);
+    const bIndex = PRIORITY_COUNTRIES.indexOf(b.iso);
+
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function parsePhoneNumberValue(
+  phone: string,
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+) {
+  const trimmedPhone = phone.trim();
+  if (!trimmedPhone) return undefined;
+
+  const defaultCountry = getDefaultPhoneCountry(defaultCountryCode);
+
+  return parsePhoneNumberFromString(
+    trimmedPhone,
+    defaultCountry,
+    phoneMetadata,
+  );
+}
+
+export function normalizePhoneNumber(
+  phone: string,
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+): string | null {
+  const phoneNumber = parsePhoneNumberValue(phone, defaultCountryCode);
+
+  if (!phoneNumber?.isPossible()) {
+    return null;
+  }
+
+  return phoneNumber.number;
+}
+
+export function parsePhoneInput(
+  phone: string,
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+): ParsedPhoneInput {
+  const defaultCountry = getDefaultPhoneCountry(defaultCountryCode);
+  const formatter = new AsYouType(defaultCountry, phoneMetadata);
+  const displayValue = formatter.input(phone);
+  const phoneNumber = parsePhoneNumberValue(phone, defaultCountry);
+
+  if (phoneNumber) {
+    return {
+      country: phoneNumber.country ?? formatter.getCountry() ?? defaultCountry,
+      displayValue: phoneNumber.isPossible()
+        ? phoneNumber.formatNational()
+        : displayValue,
+      nationalNumber: phoneNumber.nationalNumber,
+      normalized: phoneNumber.isPossible() ? phoneNumber.number : null,
+    };
+  }
+
+  return {
+    country: formatter.getCountry() ?? defaultCountry,
+    displayValue,
+    nationalNumber:
+      formatter.getNumber()?.nationalNumber ??
+      parseIncompletePhoneNumber(phone),
+    normalized: null,
+  };
+}
+
+export function formatPhoneInput(
+  phone: string,
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+): string {
+  const formatter = new AsYouType(
+    getDefaultPhoneCountry(defaultCountryCode),
+    phoneMetadata,
+  );
+
+  return formatter.input(phone);
+}
+
+export function getPhoneInputCountry(
+  phone: string,
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
+): CountryCode {
+  return parsePhoneInput(phone, defaultCountryCode).country;
+}
+
+export function getPhoneNationalNumber(phone: string): string {
+  return parseIncompletePhoneNumber(phone);
+}
+
 export function validateAndNormalizePhone(
   phone: string,
-  defaultCountryCode: keyof typeof COUNTRY_CODES = 'FR'
+  defaultCountryCode: string | null | undefined = DEFAULT_PHONE_COUNTRY,
 ): PhoneValidationResult {
   if (!phone || typeof phone !== 'string') {
     return {
       valid: false,
       normalized: null,
       error: 'Phone number is required',
-    }
+    };
   }
 
-  // Clean the input
-  const cleaned = cleanPhoneNumber(phone)
+  const phoneNumber = parsePhoneNumberValue(phone, defaultCountryCode);
 
-  // Handle empty after cleaning
-  if (!cleaned || cleaned === '+') {
+  if (!phoneNumber) {
     return {
       valid: false,
       normalized: null,
       error: 'Invalid phone number format',
-    }
+    };
   }
 
-  let digits: string
-  let detectedCountry: string | undefined
-
-  // Case 1: Already has + prefix (international format)
-  if (cleaned.startsWith('+')) {
-    digits = cleaned.slice(1)
-    const detection = detectCountryCode(digits)
-    if (detection) {
-      detectedCountry = detection.country
-      // Validate national number length
-      const countryInfo = COUNTRY_CODES[detection.country]
-      if (!countryInfo.lengths.includes(detection.nationalNumber.length)) {
-        // Allow some flexibility - just check minimum length
-        if (detection.nationalNumber.length < 7) {
-          return {
-            valid: false,
-            normalized: null,
-            error: `Invalid phone number length for ${detection.country}`,
-          }
-        }
-      }
-    }
-    // Return as-is if starts with +
+  if (!phoneNumber.isPossible()) {
     return {
-      valid: true,
-      normalized: `+${digits}`,
-      detectedCountry,
-    }
+      valid: false,
+      normalized: null,
+      error: 'Invalid phone number length',
+      detectedCountry: phoneNumber.country,
+      possibleCountries: phoneNumber.getPossibleCountries(),
+    };
   }
 
-  // Case 2: Starts with 00 (international prefix)
-  if (cleaned.startsWith('00')) {
-    digits = cleaned.slice(2)
-    const detection = detectCountryCode(digits)
-    if (detection) {
-      detectedCountry = detection.country
-    }
-    return {
-      valid: true,
-      normalized: `+${digits}`,
-      detectedCountry,
-    }
-  }
-
-  // Case 3: National format - needs country code
-  digits = cleaned
-
-  // For French numbers starting with 0, remove the leading 0
-  const defaultInfo = COUNTRY_CODES[defaultCountryCode]
-  if (digits.startsWith('0') && defaultCountryCode === 'FR') {
-    digits = digits.slice(1)
-  } else if (digits.startsWith('0')) {
-    // For other countries, also try removing leading 0 (common pattern)
-    digits = digits.slice(1)
-  }
-
-  // Validate length for default country
-  if (defaultInfo && !defaultInfo.lengths.includes(digits.length)) {
-    // Be flexible - just check minimum viable length
-    if (digits.length < 7) {
-      return {
-        valid: false,
-        normalized: null,
-        error: 'Phone number is too short',
-      }
-    }
-    if (digits.length > 15) {
-      return {
-        valid: false,
-        normalized: null,
-        error: 'Phone number is too long',
-      }
-    }
-  }
-
-  // Add default country code
   return {
     valid: true,
-    normalized: `+${defaultInfo.code}${digits}`,
-    detectedCountry: defaultCountryCode,
-  }
+    normalized: phoneNumber.number,
+    detectedCountry: phoneNumber.country,
+    possibleCountries: phoneNumber.getPossibleCountries(),
+  };
 }
 
-/**
- * Quick check if a phone number looks valid (basic format check)
- * Use validateAndNormalizePhone for full validation
- */
 export function isValidPhoneFormat(phone: string): boolean {
-  if (!phone) return false
-  const cleaned = cleanPhoneNumber(phone)
-  const digits = cleaned.replace('+', '')
-  // Basic check: should have 7-15 digits
-  return digits.length >= 7 && digits.length <= 15
+  return validateAndNormalizePhone(phone).valid;
 }
 
-/**
- * Format a phone number for display (adds spaces for readability)
- */
 export function formatPhoneForDisplay(phone: string): string {
-  const result = validateAndNormalizePhone(phone)
-  if (!result.valid || !result.normalized) {
-    return phone // Return original if can't normalize
+  const phoneNumber = parsePhoneNumberValue(phone);
+
+  if (!phoneNumber?.isPossible()) {
+    return phone;
   }
 
-  const normalized = result.normalized
-  // Format: +33 6 12 34 56 78
-  if (normalized.startsWith('+33') && normalized.length === 12) {
-    return `${normalized.slice(0, 3)} ${normalized.slice(3, 4)} ${normalized.slice(4, 6)} ${normalized.slice(6, 8)} ${normalized.slice(8, 10)} ${normalized.slice(10, 12)}`
-  }
-
-  // Generic formatting: +XX XXX XXX XXXX
-  return normalized.replace(/(\+\d{1,3})(\d{3})(\d{3})(\d+)/, '$1 $2 $3 $4')
+  return phoneNumber.formatInternational();
 }
