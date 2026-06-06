@@ -39,14 +39,13 @@ export function PaymentStatusBadge({
   const isRentalFullyPaid = rentalPaid >= rentalAmount
   const isDepositFullyCollected = depositCollected >= depositAmount
   const depositToReturn = depositCollected - depositReturned
-  const isDepositFullyReturned = depositToReturn <= 0 && depositCollected > 0
 
   // Calcul du statut global de paiement
   const getPaymentStatus = () => {
-    if (isRentalFullyPaid && (depositAmount === 0 || isDepositFullyCollected)) {
+    if (isRentalFullyPaid) {
       return 'paid'
     }
-    if (rentalPaid > 0 || depositCollected > 0) {
+    if (rentalPaid > 0) {
       return 'partial'
     }
     return 'unpaid'

@@ -61,9 +61,15 @@ export function getPaymentStatus(reservation: Reservation): {
   totalDue: number;
   totalPaid: number;
 } {
-  const rental = parseFloat(reservation.subtotalAmount);
-  const deposit = parseFloat(reservation.depositAmount);
-  const totalDue = rental + deposit;
+  const subtotal = parseFloat(reservation.subtotalAmount || '0');
+  const deposit = parseFloat(reservation.depositAmount || '0');
+  const total = parseFloat(reservation.totalAmount || '0');
+  const totalDue =
+    Number.isFinite(total) && total > 0
+      ? deposit > 0 && total - subtotal >= deposit - 0.01
+        ? Math.max(0, total - deposit)
+        : total
+      : subtotal;
 
   const rentalPaid = reservation.payments
     .filter((p) => p.type === 'rental' && p.status === 'completed')
@@ -73,7 +79,7 @@ export function getPaymentStatus(reservation: Reservation): {
     .filter((p) => p.type === 'deposit' && p.status === 'completed')
     .reduce((sum, p) => sum + parseFloat(p.amount), 0);
 
-  const totalPaid = rentalPaid + depositCollected;
+  const totalPaid = rentalPaid;
 
   let status: PaymentStatusType = 'unpaid';
   if (totalPaid >= totalDue) {
