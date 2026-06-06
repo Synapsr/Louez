@@ -1,42 +1,55 @@
-'use client'
+'use client';
 
+import { TrendingUp } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import {
-  AreaChart,
   Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts'
-import type { TooltipContentProps } from 'recharts'
-import type { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent'
-import { TrendingUp } from 'lucide-react'
-import { useTranslations } from 'next-intl'
-import { formatCurrency, getCurrencySymbol } from '@louez/utils'
+} from 'recharts';
+import type { TooltipContentProps } from 'recharts';
+import type {
+  NameType,
+  ValueType,
+} from 'recharts/types/component/DefaultTooltipContent';
+
+import { formatCurrency, getCurrencySymbol } from '@louez/utils';
 
 interface RevenueData {
-  month: string
-  revenue: number
-  reservations: number
+  month: string;
+  revenue: number;
+  payments: number;
 }
 
 interface RevenueChartProps {
-  data: RevenueData[]
-  currency?: string
+  data: RevenueData[];
+  currency?: string;
+  includeManualPayments?: boolean;
 }
 
-export function RevenueChart({ data, currency = 'EUR' }: RevenueChartProps) {
-  const t = useTranslations('dashboard.statistics')
-  const currencySymbol = getCurrencySymbol(currency)
+export function RevenueChart({
+  data,
+  currency = 'EUR',
+  includeManualPayments = false,
+}: RevenueChartProps) {
+  const t = useTranslations('dashboard.statistics');
+  const currencySymbol = getCurrencySymbol(currency);
 
   if (data.every((d) => d.revenue === 0)) {
     return (
-      <div className="flex h-[300px] flex-col items-center justify-center text-muted-foreground">
+      <div className="text-muted-foreground flex h-[300px] flex-col items-center justify-center">
         <TrendingUp className="mb-2 h-8 w-8" />
-        <p>{t('noRevenueData')}</p>
+        <p>
+          {t(
+            includeManualPayments ? 'noRevenueDataWithManual' : 'noRevenueData',
+          )}
+        </p>
       </div>
-    )
+    );
   }
 
   return (
@@ -68,24 +81,42 @@ export function RevenueChart({ data, currency = 'EUR' }: RevenueChartProps) {
             tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value: number) => `${(value / 1000).toFixed(0)}k${currencySymbol}`}
+            tickFormatter={(value: number) =>
+              `${(value / 1000).toFixed(0)}k${currencySymbol}`
+            }
           />
           <Tooltip
-            content={({ active, payload, label }: TooltipContentProps<ValueType, NameType>) => {
+            content={({
+              active,
+              payload,
+              label,
+            }: TooltipContentProps<ValueType, NameType>) => {
               if (active && payload && payload.length) {
                 return (
-                  <div className="rounded-lg border bg-background p-3 shadow-md">
+                  <div className="bg-background rounded-lg border p-3 shadow-md">
                     <p className="font-medium">{label}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {t('revenueAbbrev')}: {formatCurrency(payload[0].value as number, currency)}
+                    <p className="text-muted-foreground text-sm">
+                      {t(
+                        includeManualPayments
+                          ? 'revenueAbbrevWithManual'
+                          : 'revenueAbbrev',
+                      )}
+                      : {formatCurrency(payload[0].value as number, currency)}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {t('reservationsCount', { count: payload[0].payload.reservations })}
+                    <p className="text-muted-foreground text-sm">
+                      {t(
+                        includeManualPayments
+                          ? 'paymentsCountWithManual'
+                          : 'paymentsCount',
+                        {
+                          count: payload[0].payload.payments,
+                        },
+                      )}
                     </p>
                   </div>
-                )
+                );
               }
-              return null
+              return null;
             }}
           />
           <Area
@@ -99,5 +130,5 @@ export function RevenueChart({ data, currency = 'EUR' }: RevenueChartProps) {
         </AreaChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
