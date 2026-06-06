@@ -3,11 +3,17 @@
 import { forwardRef } from 'react';
 
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import { useTranslations } from 'next-intl';
 
 import { Tooltip, TooltipContent, TooltipTrigger } from '@louez/ui';
 import { cn, formatDateShort, formatTime } from '@louez/utils';
+
+import {
+  createDashboardReservationHref,
+  createDashboardReturnTo,
+} from '@/lib/dashboard/util.reservation-navigation';
 
 import type { Reservation, ReservationStatus } from './types';
 
@@ -146,7 +152,13 @@ export const ReservationBar = forwardRef<
   ref,
 ) {
   const t = useTranslations('dashboard.calendar');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const status = reservation.status || 'pending';
+  const reservationHref = createDashboardReservationHref({
+    reservationId: reservation.id,
+    returnTo: createDashboardReturnTo(pathname, searchParams),
+  });
 
   const customerName = `${reservation.customer.firstName} ${reservation.customer.lastName}`;
   const productNames = formatReservationItems(reservation.items);
@@ -159,7 +171,7 @@ export const ReservationBar = forwardRef<
           render={
             <Link
               ref={ref}
-              href={`/dashboard/reservations/${reservation.id}`}
+              href={reservationHref}
               className={cn(
                 'block h-2 w-2 rounded-full transition-transform hover:scale-125',
                 className,
@@ -187,7 +199,7 @@ export const ReservationBar = forwardRef<
         render={
           <Link
             ref={ref}
-            href={`/dashboard/reservations/${reservation.id}`}
+            href={reservationHref}
             className={cn(
               'group relative block overflow-hidden transition-all',
               'focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none',
