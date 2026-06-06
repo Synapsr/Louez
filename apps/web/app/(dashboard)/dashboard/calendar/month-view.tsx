@@ -3,12 +3,18 @@
 import { useMemo } from 'react';
 
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 
 import { useTranslations } from 'next-intl';
 
 import { Badge } from '@louez/ui';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@louez/ui';
 import { cn, formatCurrency } from '@louez/utils';
+
+import {
+  createDashboardReservationHref,
+  createDashboardReturnTo,
+} from '@/lib/dashboard/util.reservation-navigation';
 
 import {
   isSameDay,
@@ -214,6 +220,12 @@ function SpanningReservationBar({
     continuesAfter,
   } = weekReservation;
   const t = useTranslations('dashboard.calendar');
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const reservationHref = createDashboardReservationHref({
+    reservationId: reservation.id,
+    returnTo: createDashboardReturnTo(pathname, searchParams),
+  });
 
   // Calculate position and width
   const leftPercent = (startCol / 7) * 100;
@@ -232,7 +244,7 @@ function SpanningReservationBar({
       <TooltipTrigger
         render={
           <Link
-            href={`/dashboard/reservations/${reservation.id}`}
+            href={reservationHref}
             className={cn(
               'absolute flex items-center gap-1.5 px-2 text-xs font-medium transition-all',
               'hover:shadow-md hover:brightness-110',

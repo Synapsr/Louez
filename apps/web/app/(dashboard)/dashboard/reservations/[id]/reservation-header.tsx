@@ -16,7 +16,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { toastManager } from '@louez/ui'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 import { Button } from '@louez/ui'
 import { Badge } from '@louez/ui'
@@ -32,6 +32,7 @@ import { cn } from '@louez/utils'
 import { PaymentStatusBadge } from './payment-status-badge'
 import { SendEmailModal } from './send-email-modal'
 import { generateAccessUrl } from '@/app/(dashboard)/dashboard/reservations/actions'
+import { getDashboardReservationBackHref } from '@/lib/dashboard/util.reservation-navigation'
 
 type ReservationStatus = 'pending' | 'confirmed' | 'ongoing' | 'completed' | 'cancelled' | 'rejected' | 'quote' | 'declined'
 
@@ -96,6 +97,8 @@ export function ReservationHeader({
   const tCommon = useTranslations('common')
 
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const backHref = getDashboardReservationBackHref(searchParams.get('returnTo'))
 
   const [emailModalOpen, setEmailModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
@@ -147,7 +150,7 @@ export function ReservationHeader({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             <Button
-              render={<Link href="/dashboard/reservations" />}
+              render={<Link href={backHref} />}
               variant="ghost"
               size="icon"
               className="shrink-0 -ml-2 mt-0.5"
