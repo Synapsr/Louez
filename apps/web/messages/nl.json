@@ -2465,6 +2465,7 @@
         "title": "Meldingen",
         "description": "Configureer hoe u meldingen over winkelgebeurtenissen ontvangt",
         "saveError": "Fout bij opslaan",
+        "saved": "Instellingen opgeslagen",
         "phone": {
           "title": "Telefoonnummer",
           "description": "Om SMS-meldingen te ontvangen",
@@ -2526,6 +2527,18 @@
               "label": "Betaling mislukt",
               "description": "Wanneer een betaling mislukt"
             }
+          },
+          "reminder": {
+            "title": "Automatische herinneringen",
+            "description": "Word herinnerd vóór ophalingen en retouren",
+            "reservation_reminder_pickup": {
+              "label": "Ophaalherinnering",
+              "description": "Voordat een klant zijn huur ophaalt"
+            },
+            "reservation_reminder_return": {
+              "label": "Terugbrengherinnering",
+              "description": "Voordat een huur teruggebracht moet worden"
+            }
           }
         },
         "sms": {
@@ -2584,6 +2597,21 @@
           "pickupDescription": "Tijd voor aanvang verhuur",
           "returnDescription": "Tijd voor einde verhuur",
           "hours": "{count, plural, =1 {1 uur} other {# uur}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Ophaalherinnering voorlooptijd",
+          "returnLabel": "Terugbrengherinnering voorlooptijd",
+          "pickupDescription": "Tijd vóór een ophaling om u te waarschuwen",
+          "returnDescription": "Tijd vóór een retour om u te waarschuwen"
+        },
+        "adminReminderMode": {
+          "label": "Frequentie van herinneringen",
+          "per_reservation": "Eén herinnering per reservering",
+          "daily_digest": "Dagelijkse samenvatting",
+          "per_reservationDescription": "Ontvang een aparte herinnering vóór elke ophaling en retour.",
+          "daily_digestDescription": "Ontvang elke dag één samenvatting met alle ophalingen en retouren van die dag.",
+          "digestTimeLabel": "Dagelijkse samenvatting versturen om",
+          "digestTimeDescription": "Tijdstip van de dag (tijdzone van uw winkel) om de samenvatting te versturen."
         },
         "customerTemplates": {
           "title": "Sjabloon aanpassen",
@@ -4703,6 +4731,39 @@
       "scheduledReturn": "Gepland retour",
       "returnInfo": "Breng het materiaal alstublieft in goede staat terug. De borg wordt na verificatie geretourneerd.",
       "thanks": "Bedankt voor uw vertrouwen!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Aankomend ophalen: reservering #{number}",
+      "title": "Aankomend ophalen van materiaal",
+      "body": "Er komt een ophaling aan voor reservering #{number}. Hier zijn de details zodat u het materiaal klaar kunt maken.",
+      "scheduledPickup": "Gepland ophalen",
+      "customer": "Klant:",
+      "email": "E-mail:",
+      "phone": "Telefoon:",
+      "amount": "Bedrag:",
+      "viewReservation": "Reservering bekijken",
+      "connectToManage": "Log in op uw dashboard om deze reservering te beheren."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Aankomend retour: reservering #{number}",
+      "title": "Aankomend retour van materiaal",
+      "body": "Er komt een retour aan voor reservering #{number}. Hier zijn de details zodat u zich kunt voorbereiden op de ontvangst van het materiaal.",
+      "scheduledReturn": "Gepland retour",
+      "customer": "Klant:",
+      "email": "E-mail:",
+      "phone": "Telefoon:",
+      "amount": "Bedrag:",
+      "viewReservation": "Reservering bekijken",
+      "connectToManage": "Log in op uw dashboard om deze reservering te beheren."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Uw planning voor {date}",
+      "title": "Planning van vandaag",
+      "body": "Dit staat er vandaag op de planning bij {storeName}.",
+      "pickupsTitle": "Ophalingen ({count})",
+      "returnsTitle": "Retouren ({count})",
+      "viewCalendar": "Kalender bekijken",
+      "connectToManage": "Log in op uw dashboard om uw dag te beheren."
     },
     "thankYouReview": {
       "subject": "Bedankt voor uw huur!",

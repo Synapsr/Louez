@@ -14,14 +14,22 @@
 // eslint-disable-next-line no-restricted-imports
 import { format } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
-import { fr, enUS } from 'date-fns/locale'
+import { fr, enUS, de, es, it, nl, pl, ptBR } from 'date-fns/locale'
 import type { Locale } from 'date-fns'
 
 const DEFAULT_TIMEZONE = 'UTC'
 
+// Covers every locale the email/notification layer can resolve, so localized
+// dates (weekday/month names) match the surrounding translated content.
 const LOCALE_MAP: Record<string, Locale> = {
   fr,
   en: enUS,
+  de,
+  es,
+  it,
+  nl,
+  pl,
+  pt: ptBR,
 }
 
 /**

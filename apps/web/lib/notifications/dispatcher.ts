@@ -16,7 +16,7 @@ import { getSmsQuotaStatus, determineSmsSource, deductPrepaidSmsCredit } from '@
 import { sendSms, isSmsConfigured } from '@/lib/sms/client'
 import { validateAndNormalizePhone } from '@/lib/sms/phone'
 import { formatCurrencyForSms } from '@louez/utils'
-import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
+import { getLocaleFromCountry, getEmailTranslations, type EmailLocale } from '@/lib/email/i18n'
 import {
   sendNewReservationDiscord,
   sendReservationConfirmedDiscord,
@@ -24,9 +24,18 @@ import {
   sendReservationCancelledDiscord,
   sendReservationPickedUpDiscord,
   sendReservationCompletedDiscord,
+  sendReminderPickupAdminDiscord,
+  sendReminderReturnAdminDiscord,
+  sendReminderDigestAdminDiscord,
   sendPaymentReceivedDiscord,
   sendPaymentFailedDiscord,
 } from '@/lib/discord/notifications'
+import {
+  sendReminderPickupAdminEmail,
+  sendReminderReturnAdminEmail,
+  sendReminderDigestAdminEmail,
+} from '@/lib/email/send'
+import type { DigestEntry } from '@/lib/email/templates'
 import type { NotificationEventType, NotificationSettings } from '@louez/types'
 
 // ============================================================================
@@ -81,6 +90,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   reservation_cancelled: { email: true, sms: false, discord: false },
   reservation_picked_up: { email: false, sms: false, discord: false },
   reservation_completed: { email: false, sms: false, discord: false },
+  reservation_reminder_pickup: { email: false, sms: false, discord: false },
+  reservation_reminder_return: { email: false, sms: false, discord: false },
   payment_received: { email: true, sms: false, discord: false },
   payment_failed: { email: true, sms: false, discord: false },
 }
@@ -103,6 +114,8 @@ type AdminSmsTemplates = {
   reservation_cancelled: (vars: AdminSmsTemplateVars) => string
   reservation_picked_up: (vars: AdminSmsTemplateVars) => string
   reservation_completed: (vars: AdminSmsTemplateVars) => string
+  reservation_reminder_pickup: (vars: AdminSmsTemplateVars) => string
+  reservation_reminder_return: (vars: AdminSmsTemplateVars) => string
   payment_received: (vars: AdminSmsTemplateVars) => string
   payment_failed: (vars: AdminSmsTemplateVars) => string
 }
@@ -121,6 +134,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Équipement récupéré pour #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Réservation #${number} terminée. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Rappel retrait #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Rappel retour #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Paiement reçu #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -139,6 +156,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Equipment picked up for #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Reservation #${number} completed. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Pickup reminder #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Return reminder #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Payment received #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -157,6 +178,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Ausruestung abgeholt fuer #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Reservierung #${number} abgeschlossen. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Erinnerung Abholung #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Erinnerung Rueckgabe #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Zahlung erhalten #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -175,6 +200,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Equipo recogido para #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Reserva #${number} completada. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Recordatorio recogida #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Recordatorio devolucion #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pago recibido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -193,6 +222,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Attrezzatura ritirata per #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Prenotazione #${number} completata. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Promemoria ritiro #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Promemoria reso #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento ricevuto #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -211,6 +244,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Apparatuur opgehaald voor #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Reservering #${number} voltooid. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Herinnering ophalen #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Herinnering retour #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Betaling ontvangen #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -229,6 +266,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Sprzet odebrany dla #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Rezerwacja #${number} zakonczona. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Przypomnienie odbioru #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Przypomnienie zwrotu #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Platnosc otrzymana #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -247,6 +288,10 @@ const ADMIN_SMS_TEMPLATES: Record<EmailLocale, AdminSmsTemplates> = {
       `[${storeName}] Equipamento retirado para #${number}`,
     reservation_completed: ({ storeName, number, amount }) =>
       `[${storeName}] Reserva #${number} concluida. ${amount}`,
+    reservation_reminder_pickup: ({ storeName, number, customerName }) =>
+      `[${storeName}] Lembrete retirada #${number} - ${customerName}`,
+    reservation_reminder_return: ({ storeName, number, customerName }) =>
+      `[${storeName}] Lembrete devolucao #${number} - ${customerName}`,
     payment_received: ({ storeName, number, amount }) =>
       `[${storeName}] Pagamento recebido #${number}: ${amount}`,
     payment_failed: ({ storeName, number }) =>
@@ -291,7 +336,7 @@ function buildAdminSmsMessage(
 async function sendAdminSms(
   storeId: string,
   ownerPhone: string,
-  eventType: NotificationEventType,
+  eventType: string,
   message: string,
   reservationId?: string
 ): Promise<{ success: boolean; error?: string; limitReached?: boolean }> {
@@ -363,6 +408,10 @@ function getDiscordSender(eventType: NotificationEventType) {
       return sendReservationPickedUpDiscord
     case 'reservation_completed':
       return sendReservationCompletedDiscord
+    case 'reservation_reminder_pickup':
+      return sendReminderPickupAdminDiscord
+    case 'reservation_reminder_return':
+      return sendReminderReturnAdminDiscord
     case 'payment_received':
       return sendPaymentReceivedDiscord
     case 'payment_failed':
@@ -449,6 +498,294 @@ export async function dispatchNotification(
 
     try {
       const discordResult = await getDiscordSender(eventType)(discordCtx)
+      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
+    } catch (error) {
+      result.discord = {
+        sent: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  }
+
+  return result
+}
+
+// ============================================================================
+// Admin Reminder Dispatch
+// ============================================================================
+
+export type AdminReminderEventType =
+  | 'reservation_reminder_pickup'
+  | 'reservation_reminder_return'
+
+export interface AdminReminderContext {
+  store: {
+    id: string
+    name: string
+    email?: string | null
+    logoUrl?: string | null
+    darkLogoUrl?: string | null
+    address?: string | null
+    phone?: string | null
+    ownerPhone?: string | null
+    discordWebhookUrl?: string | null
+    theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
+    notificationSettings?: NotificationSettings | null
+    settings?: {
+      currency?: string
+      country?: string
+      timezone?: string
+    } | null
+  }
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    endDate: Date
+    totalAmount: number
+  }
+  customer: {
+    firstName: string
+    lastName: string
+    email: string
+    phone?: string | null
+  }
+  dashboardUrl: string
+}
+
+/**
+ * Dispatch an automatic admin reminder (upcoming pickup / return) to the store
+ * owner across all enabled channels.
+ *
+ * Unlike dispatchNotification (event-driven, where admin emails are sent by
+ * inline callers), reminders are cron-driven with no inline trigger, so this
+ * owns the email send too. SMS and Discord reuse the same infrastructure.
+ */
+export async function dispatchAdminReminder(
+  eventType: AdminReminderEventType,
+  ctx: AdminReminderContext
+): Promise<NotificationResult> {
+  const result: NotificationResult = {
+    email: { sent: false },
+    sms: { sent: false },
+    discord: { sent: false },
+  }
+
+  const settings = ctx.store.notificationSettings || DEFAULT_SETTINGS
+  const prefs = settings[eventType] || DEFAULT_SETTINGS[eventType]
+  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+
+  // Email to store owner
+  if (prefs.email && ctx.store.email) {
+    try {
+      const emailArgs = {
+        to: ctx.store.email,
+        store: ctx.store,
+        customer: ctx.customer,
+        dashboardUrl: ctx.dashboardUrl,
+        locale,
+      }
+      if (eventType === 'reservation_reminder_pickup') {
+        await sendReminderPickupAdminEmail({
+          ...emailArgs,
+          reservation: {
+            id: ctx.reservation.id,
+            number: ctx.reservation.number,
+            startDate: ctx.reservation.startDate,
+            totalAmount: ctx.reservation.totalAmount,
+          },
+        })
+      } else {
+        await sendReminderReturnAdminEmail({
+          ...emailArgs,
+          reservation: {
+            id: ctx.reservation.id,
+            number: ctx.reservation.number,
+            endDate: ctx.reservation.endDate,
+            totalAmount: ctx.reservation.totalAmount,
+          },
+        })
+      }
+      result.email.sent = true
+    } catch (error) {
+      result.email.error = error instanceof Error ? error.message : 'Unknown error'
+      console.error(`Failed to send admin reminder email for ${eventType}:`, error)
+    }
+  }
+
+  // SMS to store owner
+  if (prefs.sms && ctx.store.ownerPhone) {
+    const message = buildAdminSmsMessage(
+      eventType,
+      {
+        store: ctx.store,
+        reservation: ctx.reservation,
+        customer: ctx.customer,
+      },
+      locale
+    )
+    const smsResult = await sendAdminSms(
+      ctx.store.id,
+      ctx.store.ownerPhone,
+      eventType,
+      message,
+      ctx.reservation.id
+    )
+    result.sms = {
+      sent: smsResult.success,
+      error: smsResult.error,
+      limitReached: smsResult.limitReached,
+    }
+  }
+
+  // Discord
+  if (prefs.discord && ctx.store.discordWebhookUrl) {
+    const discordCtx = {
+      store: {
+        id: ctx.store.id,
+        name: ctx.store.name,
+        discordWebhookUrl: ctx.store.discordWebhookUrl,
+      },
+      reservation: {
+        ...ctx.reservation,
+        currency: ctx.store.settings?.currency,
+      },
+      customer: ctx.customer,
+    }
+
+    try {
+      const discordResult = await getDiscordSender(eventType)(discordCtx)
+      result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
+    } catch (error) {
+      result.discord = {
+        sent: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }
+    }
+  }
+
+  return result
+}
+
+// ============================================================================
+// Admin Daily Digest
+// ============================================================================
+
+// Short SMS summary of the day's pickups/returns (i18n, 8 languages). Kept
+// deliberately terse — the digest's job here is to nudge the owner to the
+// dashboard, where the full schedule lives.
+const ADMIN_DIGEST_SMS: Record<EmailLocale, (v: { storeName: string; pickups: number; returns: number; url: string }) => string> = {
+  fr: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Aujourd'hui : ${pickups} retrait(s), ${returns} retour(s). ${url}`,
+  en: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Today: ${pickups} pickup(s), ${returns} return(s). ${url}`,
+  de: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Heute: ${pickups} Abholung(en), ${returns} Rueckgabe(n). ${url}`,
+  es: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Hoy: ${pickups} recogida(s), ${returns} devolucion(es). ${url}`,
+  it: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Oggi: ${pickups} ritiro/i, ${returns} reso/i. ${url}`,
+  nl: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Vandaag: ${pickups} ophaling(en), ${returns} retour(en). ${url}`,
+  pl: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Dzisiaj: ${pickups} odbior(ow), ${returns} zwrot(ow). ${url}`,
+  pt: ({ storeName, pickups, returns, url }) =>
+    `[${storeName}] Hoje: ${pickups} retirada(s), ${returns} devolucao(oes). ${url}`,
+}
+
+export interface AdminDigestContext {
+  store: {
+    id: string
+    name: string
+    email?: string | null
+    logoUrl?: string | null
+    darkLogoUrl?: string | null
+    address?: string | null
+    phone?: string | null
+    ownerPhone?: string | null
+    discordWebhookUrl?: string | null
+    theme?: { mode?: 'light' | 'dark'; primaryColor?: string } | null
+    settings?: {
+      currency?: string
+      country?: string
+      timezone?: string
+    } | null
+  }
+  /** Localized full date, e.g. "Monday, 9 June 2026". */
+  dateLabel: string
+  pickups: DigestEntry[]
+  returns: DigestEntry[]
+  dashboardUrl: string
+  /** Channels to attempt — already filtered for enabled + not-yet-sent today. */
+  channels: { email: boolean; sms: boolean; discord: boolean }
+}
+
+/**
+ * Dispatch the once-a-day admin digest across the requested channels.
+ * Every channel receives the same content (the day's pickups + returns); the
+ * caller decides which channels to attempt.
+ */
+export async function dispatchAdminDigest(ctx: AdminDigestContext): Promise<NotificationResult> {
+  const result: NotificationResult = {
+    email: { sent: false },
+    sms: { sent: false },
+    discord: { sent: false },
+  }
+
+  const locale = getLocaleFromCountry(ctx.store.settings?.country)
+
+  // Email
+  if (ctx.channels.email && ctx.store.email) {
+    try {
+      await sendReminderDigestAdminEmail({
+        to: ctx.store.email,
+        store: ctx.store,
+        dateLabel: ctx.dateLabel,
+        pickups: ctx.pickups,
+        returns: ctx.returns,
+        dashboardUrl: ctx.dashboardUrl,
+        locale,
+      })
+      result.email.sent = true
+    } catch (error) {
+      result.email.error = error instanceof Error ? error.message : 'Unknown error'
+      console.error('Failed to send admin digest email:', error)
+    }
+  }
+
+  // SMS
+  if (ctx.channels.sms && ctx.store.ownerPhone) {
+    const build = ADMIN_DIGEST_SMS[locale] || ADMIN_DIGEST_SMS.en
+    const message = build({
+      storeName: ctx.store.name,
+      pickups: ctx.pickups.length,
+      returns: ctx.returns.length,
+      url: ctx.dashboardUrl,
+    })
+    const smsResult = await sendAdminSms(ctx.store.id, ctx.store.ownerPhone, 'digest', message)
+    result.sms = {
+      sent: smsResult.success,
+      error: smsResult.error,
+      limitReached: smsResult.limitReached,
+    }
+  }
+
+  // Discord
+  if (ctx.channels.discord && ctx.store.discordWebhookUrl) {
+    try {
+      const t = getEmailTranslations(locale)
+      const discordResult = await sendReminderDigestAdminDiscord({
+        store: {
+          id: ctx.store.id,
+          name: ctx.store.name,
+          discordWebhookUrl: ctx.store.discordWebhookUrl,
+        },
+        dateLabel: ctx.dateLabel,
+        pickupsLabel: t.reminderDigestAdmin.pickupsTitle.replace('{count}', String(ctx.pickups.length)),
+        returnsLabel: t.reminderDigestAdmin.returnsTitle.replace('{count}', String(ctx.returns.length)),
+        pickups: ctx.pickups,
+        returns: ctx.returns,
+      })
       result.discord = { sent: discordResult?.success ?? false, error: discordResult?.error }
     } catch (error) {
       result.discord = {

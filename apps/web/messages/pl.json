@@ -2465,6 +2465,7 @@
         "title": "Powiadomienia",
         "description": "Skonfiguruj sposob otrzymywania powiadomien o wydarzeniach w sklepie",
         "saveError": "Blad podczas zapisywania",
+        "saved": "Ustawienia zapisane",
         "phone": {
           "title": "Numer telefonu",
           "description": "Aby otrzymywac powiadomienia SMS",
@@ -2526,6 +2527,18 @@
               "label": "Platnosc nieudana",
               "description": "Gdy platnosc sie nie powiedzie"
             }
+          },
+          "reminder": {
+            "title": "Automatyczne przypomnienia",
+            "description": "Otrzymuj przypomnienia przed odbiorami i zwrotami",
+            "reservation_reminder_pickup": {
+              "label": "Przypomnienie o odbiorze",
+              "description": "Zanim klient odbierze swój wynajem"
+            },
+            "reservation_reminder_return": {
+              "label": "Przypomnienie o zwrocie",
+              "description": "Zanim wynajem ma zostać zwrócony"
+            }
           }
         },
         "sms": {
@@ -2584,6 +2597,21 @@
           "pickupDescription": "Czas przed poczatkiem wynajmu",
           "returnDescription": "Czas przed koncem wynajmu",
           "hours": "{count, plural, =1 {1 godzina} =2 {2 godziny} =3 {3 godziny} =4 {4 godziny} other {# godzin}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Wyprzedzenie przypomnienia o odbiorze",
+          "returnLabel": "Wyprzedzenie przypomnienia o zwrocie",
+          "pickupDescription": "Czas przed odbiorem, aby Cię powiadomić",
+          "returnDescription": "Czas przed zwrotem, aby Cię powiadomić"
+        },
+        "adminReminderMode": {
+          "label": "Częstotliwość przypomnień",
+          "per_reservation": "Jedno przypomnienie na rezerwację",
+          "daily_digest": "Codzienne podsumowanie",
+          "per_reservationDescription": "Otrzymuj osobne przypomnienie przed każdym odbiorem i zwrotem.",
+          "daily_digestDescription": "Otrzymuj codziennie jedno podsumowanie ze wszystkimi odbiorami i zwrotami danego dnia.",
+          "digestTimeLabel": "Wysyłaj codzienne podsumowanie o",
+          "digestTimeDescription": "Godzina wysyłki podsumowania (strefa czasowa Twojego sklepu)."
         },
         "customerTemplates": {
           "title": "Dostosuj szablon",
@@ -4694,6 +4722,39 @@
       "scheduledReturn": "Zaplanowany zwrot",
       "returnInfo": "Prosimy o zwrot sprzętu w dobrym stanie. Kaucja zostanie zwrócona po weryfikacji.",
       "thanks": "Dziękujemy za zaufanie!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Zbliżający się odbiór: rezerwacja #{number}",
+      "title": "Zbliżający się odbiór sprzętu",
+      "body": "Zbliża się odbiór dla rezerwacji #{number}. Oto szczegóły, abyś mógł przygotować sprzęt.",
+      "scheduledPickup": "Zaplanowany odbiór",
+      "customer": "Klient:",
+      "email": "Email:",
+      "phone": "Telefon:",
+      "amount": "Kwota:",
+      "viewReservation": "Zobacz rezerwację",
+      "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Zbliżający się zwrot: rezerwacja #{number}",
+      "title": "Zbliżający się zwrot sprzętu",
+      "body": "Zbliża się zwrot dla rezerwacji #{number}. Oto szczegóły, abyś mógł przygotować się na przyjęcie sprzętu.",
+      "scheduledReturn": "Zaplanowany zwrot",
+      "customer": "Klient:",
+      "email": "Email:",
+      "phone": "Telefon:",
+      "amount": "Kwota:",
+      "viewReservation": "Zobacz rezerwację",
+      "connectToManage": "Zaloguj się do panelu, aby zarządzać tą rezerwacją."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Twój harmonogram na {date}",
+      "title": "Harmonogram na dziś",
+      "body": "Oto, co dzieje się dziś w {storeName}.",
+      "pickupsTitle": "Odbiory ({count})",
+      "returnsTitle": "Zwroty ({count})",
+      "viewCalendar": "Zobacz kalendarz",
+      "connectToManage": "Zaloguj się do panelu, aby zarządzać swoim dniem."
     },
     "thankYouReview": {
       "subject": "Dziękujemy za wynajem!",

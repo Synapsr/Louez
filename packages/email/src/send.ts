@@ -16,10 +16,21 @@ function toPort(value: unknown): number {
 
 const smtpPort = toPort(env.SMTP_PORT);
 const smtpSecure = toBoolean(env.SMTP_SECURE);
-const allowedDevRecipientDomain = '@lumy.bzh';
+
+// Dev-only delivery guard: in development, email is only sent to recipients on
+// DEV_EMAIL_ALLOWLIST so real customers are never contacted from a dev machine.
+// Entries are comma-separated and may be full addresses (you@example.com) or
+// domain suffixes (@example.com). Empty/unset blocks all dev sends.
+const devRecipientAllowlist = (env.DEV_EMAIL_ALLOWLIST ?? '')
+  .split(',')
+  .map((entry) => entry.trim().toLowerCase())
+  .filter(Boolean);
 
 function isAllowedDevRecipient(email: string) {
-  return email.trim().toLowerCase().endsWith(allowedDevRecipientDomain);
+  const to = email.trim().toLowerCase();
+  return devRecipientAllowlist.some((entry) =>
+    entry.startsWith('@') ? to.endsWith(entry) : to === entry,
+  );
 }
 
 const transporter = nodemailer.createTransport({
@@ -54,9 +65,7 @@ export async function sendEmail({
     console.log('[DEV] Subject:', subject);
 
     if (!isAllowedDevRecipient(to)) {
-      console.log(
-        `[DEV] Email skipped: recipient must end with ${allowedDevRecipientDomain}`,
-      );
+      console.log('[DEV] Email skipped: recipient not in DEV_EMAIL_ALLOWLIST');
 
       return { messageId: `dev-skipped-${Date.now()}`, success: true };
     }

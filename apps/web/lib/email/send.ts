@@ -18,6 +18,10 @@ import {
   RequestRejectedEmail,
   ReminderPickupEmail,
   ReminderReturnEmail,
+  ReminderPickupAdminEmail,
+  ReminderReturnAdminEmail,
+  ReminderDigestAdminEmail,
+  type DigestEntry,
   NewRequestLandlordEmail,
   TeamInvitationEmail,
   InstantAccessEmail,
@@ -722,6 +726,213 @@ export async function sendReminderReturnEmail({
       to,
       subject,
       templateType: 'reminder_return',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Reminder Pickup Email (admin / store owner)
+export async function sendReminderPickupAdminEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: { firstName: string; lastName: string; email: string; phone?: string | null }
+  reservation: {
+    id: string
+    number: string
+    startDate: Date
+    totalAmount: number
+  }
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.reminderPickupAdmin.subject.replace('{number}', reservation.number)
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    ReminderPickupAdminEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
+      customerFirstName: customer.firstName,
+      customerLastName: customer.lastName,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      reservationNumber: reservation.number,
+      startDate: reservation.startDate,
+      total: reservation.totalAmount,
+      dashboardUrl,
+      currency: store.settings?.currency || 'EUR',
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reminder_pickup_admin',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reminder_pickup_admin',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Reminder Return Email (admin / store owner)
+export async function sendReminderReturnAdminEmail({
+  to,
+  store,
+  customer,
+  reservation,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  customer: { firstName: string; lastName: string; email: string; phone?: string | null }
+  reservation: {
+    id: string
+    number: string
+    endDate: Date
+    totalAmount: number
+  }
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.reminderReturnAdmin.subject.replace('{number}', reservation.number)
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    ReminderReturnAdminEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      storeTimezone: store.settings?.timezone,
+      storeCountry: store.settings?.country,
+      customerFirstName: customer.firstName,
+      customerLastName: customer.lastName,
+      customerEmail: customer.email,
+      customerPhone: customer.phone,
+      reservationNumber: reservation.number,
+      endDate: reservation.endDate,
+      total: reservation.totalAmount,
+      dashboardUrl,
+      currency: store.settings?.currency || 'EUR',
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reminder_return_admin',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      reservationId: reservation.id,
+      to,
+      subject,
+      templateType: 'reminder_return_admin',
+      status: 'failed',
+      error: String(error),
+    })
+    throw error
+  }
+}
+
+// Daily Reminder Digest (admin / store owner)
+export async function sendReminderDigestAdminEmail({
+  to,
+  store,
+  dateLabel,
+  pickups,
+  returns,
+  dashboardUrl,
+  locale = 'fr',
+}: {
+  to: string
+  store: Store
+  dateLabel: string
+  pickups: DigestEntry[]
+  returns: DigestEntry[]
+  dashboardUrl: string
+  locale?: EmailLocale
+}) {
+  const t = getEmailTranslations(locale)
+  const subject = t.reminderDigestAdmin.subject.replace('{date}', dateLabel)
+  const logo = await resolveEmailLogo(getLogoForLightBackground(store))
+  const html = await render(
+    ReminderDigestAdminEmail({
+      storeName: store.name,
+      logoUrl: logo.url,
+      primaryColor: store.theme?.primaryColor || '#0066FF',
+      storeAddress: store.address,
+      storeEmail: store.email,
+      storePhone: store.phone,
+      dateLabel,
+      pickups,
+      returns,
+      dashboardUrl,
+      locale,
+    })
+  )
+
+  try {
+    const result = await sendEmail({ to, subject, html, attachments: logo.attachments, fromName: store.name })
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'reminder_digest_admin',
+      status: 'sent',
+      messageId: result.messageId,
+    })
+    return { success: true }
+  } catch (error) {
+    await logEmail({
+      storeId: store.id,
+      to,
+      subject,
+      templateType: 'reminder_digest_admin',
       status: 'failed',
       error: String(error),
     })
