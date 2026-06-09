@@ -22,6 +22,7 @@ import {
   type CustomerNotificationSettings,
   type CustomerNotificationEventType,
   type CustomerNotificationTemplate,
+  type AdminReminderMode,
 } from '@louez/types'
 import { getLocaleFromCountry, type EmailLocale } from '@/lib/email/i18n'
 
@@ -37,6 +38,13 @@ const LANGUAGE_NAMES: Record<EmailLocale, string> = {
   pt: 'Portugues',
 }
 
+// Reminder lead time must be a whole number of hours between 1 and 168 (1 week).
+// Number.isInteger also rejects NaN and non-integer floats, which a plain
+// range comparison silently lets through.
+function isValidReminderHours(hours: number): boolean {
+  return Number.isInteger(hours) && hours >= 1 && hours <= 168
+}
+
 export async function getNotificationSettings() {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
@@ -48,8 +56,9 @@ export async function getNotificationSettings() {
   const languageName = LANGUAGE_NAMES[locale]
 
   return {
-    // Admin notification settings
-    settings: store.notificationSettings || DEFAULT_NOTIFICATION_SETTINGS,
+    // Admin notification settings — merge over defaults so stores saved before
+    // newer event types (e.g. admin reminders) still expose every key.
+    settings: { ...DEFAULT_NOTIFICATION_SETTINGS, ...(store.notificationSettings ?? {}) },
     discordWebhookUrl: store.discordWebhookUrl,
     ownerPhone: store.ownerPhone,
     smsQuota: {
@@ -79,9 +88,12 @@ export async function updateSinglePreference(data: {
 
   const { eventType, channel, enabled } = validated.data
 
-  // Get current settings or default
-  const currentSettings: NotificationSettings =
-    store.notificationSettings || DEFAULT_NOTIFICATION_SETTINGS
+  // Get current settings, merged over defaults so events added in newer versions
+  // (e.g. admin reminders) keep a full {email, sms, discord} config when toggled.
+  const currentSettings: NotificationSettings = {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(store.notificationSettings ?? {}),
+  }
 
   // Update the specific preference
   const updatedSettings: NotificationSettings = {
@@ -334,12 +346,9 @@ export async function updateReminderSettings(data: {
   const store = await getCurrentStore()
   if (!store) return { error: 'errors.unauthorized' }
 
-  // Validate hours (must be between 1 and 168 = 1 week)
+  // Validate hours (must be a whole number of hours between 1 and 168 = 1 week)
   const { pickupReminderHours, returnReminderHours } = data
-  if (pickupReminderHours < 1 || pickupReminderHours > 168) {
-    return { error: 'errors.invalidReminderHours' }
-  }
-  if (returnReminderHours < 1 || returnReminderHours > 168) {
+  if (!isValidReminderHours(pickupReminderHours) || !isValidReminderHours(returnReminderHours)) {
     return { error: 'errors.invalidReminderHours' }
   }
 
@@ -360,6 +369,67 @@ export async function updateReminderSettings(data: {
     .update(stores)
     .set({
       customerNotificationSettings: updatedSettings,
+      updatedAt: new Date(),
+    })
+    .where(eq(stores.id, store.id))
+
+  revalidatePath('/dashboard/settings/notifications')
+  return { success: true }
+}
+
+export async function updateAdminReminderSettings(data: {
+  pickupReminderHours: number
+  returnReminderHours: number
+  mode?: AdminReminderMode
+  digestHour?: number
+}) {
+  const store = await getCurrentStore()
+  if (!store) return { error: 'errors.unauthorized' }
+
+  // Validate hours (must be a whole number of hours between 1 and 168 = 1 week)
+  const { pickupReminderHours, returnReminderHours } = data
+  if (!isValidReminderHours(pickupReminderHours) || !isValidReminderHours(returnReminderHours)) {
+    return { error: 'errors.invalidReminderHours' }
+  }
+
+  // Merge over defaults so a store saved before the admin-reminder events still
+  // gets a full settings object (including the new event keys) when timing is saved.
+  const currentSettings: NotificationSettings = {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(store.notificationSettings ?? {}),
+  }
+  const currentTiming = currentSettings.reminderSettings ?? {
+    pickupReminderHours: 24,
+    returnReminderHours: 24,
+    mode: 'per_reservation' as AdminReminderMode,
+    digestHour: 8,
+  }
+
+  // Resolve mode + digest hour (fall back to current values when not provided).
+  const mode: AdminReminderMode =
+    data.mode === 'daily_digest' || data.mode === 'per_reservation'
+      ? data.mode
+      : currentTiming.mode ?? 'per_reservation'
+  const digestHour = data.digestHour ?? currentTiming.digestHour ?? 8
+  if (!Number.isInteger(digestHour) || digestHour < 0 || digestHour > 23) {
+    return { error: 'errors.invalidReminderHours' }
+  }
+
+  // Update the admin reminder timing + delivery mode
+  const updatedSettings: NotificationSettings = {
+    ...currentSettings,
+    reminderSettings: {
+      pickupReminderHours,
+      returnReminderHours,
+      mode,
+      digestHour,
+    },
+  }
+
+  await db
+    .update(stores)
+    .set({
+      notificationSettings: updatedSettings,
       updatedAt: new Date(),
     })
     .where(eq(stores.id, store.id))

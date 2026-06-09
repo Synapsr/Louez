@@ -2465,6 +2465,7 @@
         "title": "Notifiche",
         "description": "Configura come ricevi le notifiche degli eventi del negozio",
         "saveError": "Errore durante il salvataggio",
+        "saved": "Impostazioni salvate",
         "phone": {
           "title": "Numero di telefono",
           "description": "Per ricevere notifiche SMS",
@@ -2526,6 +2527,18 @@
               "label": "Pagamento fallito",
               "description": "Quando un pagamento fallisce"
             }
+          },
+          "reminder": {
+            "title": "Promemoria automatici",
+            "description": "Ricevi un promemoria prima dei ritiri e delle restituzioni",
+            "reservation_reminder_pickup": {
+              "label": "Promemoria ritiro",
+              "description": "Prima che un cliente ritiri il suo noleggio"
+            },
+            "reservation_reminder_return": {
+              "label": "Promemoria restituzione",
+              "description": "Prima che un noleggio debba essere restituito"
+            }
           }
         },
         "sms": {
@@ -2584,6 +2597,21 @@
           "pickupDescription": "Tempo prima dell'inizio del noleggio",
           "returnDescription": "Tempo prima della fine del noleggio",
           "hours": "{count, plural, =1 {1 ora} other {# ore}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Anticipo promemoria ritiro",
+          "returnLabel": "Anticipo promemoria restituzione",
+          "pickupDescription": "Tempo prima di un ritiro per avvisarti",
+          "returnDescription": "Tempo prima di una restituzione per avvisarti"
+        },
+        "adminReminderMode": {
+          "label": "Frequenza dei promemoria",
+          "per_reservation": "Un promemoria per prenotazione",
+          "daily_digest": "Riepilogo giornaliero",
+          "per_reservationDescription": "Ricevi un promemoria separato prima di ogni ritiro e restituzione.",
+          "daily_digestDescription": "Ricevi ogni giorno un riepilogo con tutti i ritiri e le restituzioni della giornata.",
+          "digestTimeLabel": "Invia il riepilogo giornaliero alle",
+          "digestTimeDescription": "Ora del giorno (fuso orario del tuo negozio) in cui inviare il riepilogo."
         },
         "customerTemplates": {
           "title": "Personalizza modello",
@@ -4694,6 +4722,39 @@
       "scheduledReturn": "Ritorno programmato",
       "returnInfo": "Restituisci l'attrezzatura in buone condizioni. Il deposito sara restituito dopo la verifica.",
       "thanks": "Grazie per la tua fiducia!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Ritiro in arrivo: prenotazione #{number}",
+      "title": "Ritiro attrezzatura in arrivo",
+      "body": "Si avvicina un ritiro per la prenotazione #{number}. Ecco i dettagli per preparare l'attrezzatura.",
+      "scheduledPickup": "Ritiro programmato",
+      "customer": "Cliente:",
+      "email": "E-mail:",
+      "phone": "Telefono:",
+      "amount": "Importo:",
+      "viewReservation": "Visualizza prenotazione",
+      "connectToManage": "Accedi alla tua dashboard per gestire questa prenotazione."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Ritorno in arrivo: prenotazione #{number}",
+      "title": "Ritorno attrezzatura in arrivo",
+      "body": "Si avvicina un ritorno per la prenotazione #{number}. Ecco i dettagli per prepararti a ricevere l'attrezzatura.",
+      "scheduledReturn": "Ritorno programmato",
+      "customer": "Cliente:",
+      "email": "E-mail:",
+      "phone": "Telefono:",
+      "amount": "Importo:",
+      "viewReservation": "Visualizza prenotazione",
+      "connectToManage": "Accedi alla tua dashboard per gestire questa prenotazione."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Il tuo programma del {date}",
+      "title": "Il programma di oggi",
+      "body": "Ecco cosa succede oggi presso {storeName}.",
+      "pickupsTitle": "Ritiri ({count})",
+      "returnsTitle": "Restituzioni ({count})",
+      "viewCalendar": "Visualizza calendario",
+      "connectToManage": "Accedi alla tua dashboard per gestire la tua giornata."
     },
     "thankYouReview": {
       "subject": "Grazie per il tuo noleggio!",

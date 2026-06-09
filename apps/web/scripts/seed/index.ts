@@ -196,8 +196,16 @@ function generateNotificationSettings(): NotificationSettings {
     reservation_cancelled: { email: true, sms: false, discord: false },
     reservation_picked_up: { email: false, sms: false, discord: false },
     reservation_completed: { email: false, sms: false, discord: false },
+    reservation_reminder_pickup: { email: false, sms: false, discord: false },
+    reservation_reminder_return: { email: false, sms: false, discord: false },
     payment_received: { email: true, sms: false, discord: false },
     payment_failed: { email: true, sms: false, discord: false },
+    reminderSettings: {
+      pickupReminderHours: 24,
+      returnReminderHours: 24,
+      mode: 'per_reservation',
+      digestHour: 8,
+    },
   }
 }
 

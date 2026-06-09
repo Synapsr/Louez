@@ -1032,7 +1032,9 @@ export const reviewRequestLogs = mysqlTable(
 // ============================================================================
 
 export const reminderType = mysqlEnum('reminder_type', ['pickup', 'return'])
-export const reminderChannel = mysqlEnum('reminder_channel', ['email', 'sms'])
+export const reminderChannel = mysqlEnum('reminder_channel', ['email', 'sms', 'discord'])
+// Who the reminder is for: the customer or the store admin/owner.
+export const reminderAudience = mysqlEnum('reminder_audience', ['customer', 'admin'])
 
 export const reminderLogs = mysqlTable(
   'reminder_logs',
@@ -1043,15 +1045,41 @@ export const reminderLogs = mysqlTable(
     customerId: varchar('customer_id', { length: 21 }).notNull(),
     type: reminderType.notNull(),
     channel: reminderChannel.notNull(),
+    // Partitions customer vs. admin reminders so they dedupe independently.
+    audience: reminderAudience.notNull().default('customer'),
     sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => ({
     reservationIdx: index('reminder_logs_reservation_idx').on(table.reservationId),
     storeIdx: index('reminder_logs_store_idx').on(table.storeId),
-    // Prevent duplicate reminders
+    // Prevent duplicate reminders (per audience, so an admin email and a
+    // customer email for the same reservation/type don't collide).
     uniqueReminder: unique('reminder_logs_unique').on(
       table.reservationId,
       table.type,
+      table.channel,
+      table.audience
+    ),
+  })
+)
+
+// Tracks the once-a-day admin reminder digest so it is sent at most once per
+// store per day per channel (the cron runs every minute).
+export const adminDigestLogs = mysqlTable(
+  'admin_digest_logs',
+  {
+    id: id(),
+    storeId: varchar('store_id', { length: 21 }).notNull(),
+    // Store-local calendar day the digest covers, as 'YYYY-MM-DD'.
+    digestDate: varchar('digest_date', { length: 10 }).notNull(),
+    channel: reminderChannel.notNull(),
+    sentAt: timestamp('sent_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => ({
+    storeIdx: index('admin_digest_logs_store_idx').on(table.storeId),
+    uniqueDigest: unique('admin_digest_logs_unique').on(
+      table.storeId,
+      table.digestDate,
       table.channel
     ),
   })

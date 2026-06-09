@@ -2712,6 +2712,7 @@
         "title": "Notifications",
         "description": "Configure how you receive store event notifications",
         "saveError": "Error saving settings",
+        "saved": "Settings saved",
         "phone": {
           "title": "Phone number",
           "description": "To receive SMS notifications",
@@ -2773,6 +2774,18 @@
               "label": "Payment failed",
               "description": "When a payment fails"
             }
+          },
+          "reminder": {
+            "title": "Automatic reminders",
+            "description": "Get reminded before pickups and returns",
+            "reservation_reminder_pickup": {
+              "label": "Pickup reminder",
+              "description": "Before a customer picks up their rental"
+            },
+            "reservation_reminder_return": {
+              "label": "Return reminder",
+              "description": "Before a rental is due back"
+            }
           }
         },
         "sms": {
@@ -2831,6 +2844,21 @@
           "pickupDescription": "Time before rental starts",
           "returnDescription": "Time before rental ends",
           "hours": "{count, plural, =1 {1 hour} other {# hours}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Pickup reminder delay",
+          "returnLabel": "Return reminder delay",
+          "pickupDescription": "Time before a pickup to alert you",
+          "returnDescription": "Time before a return to alert you"
+        },
+        "adminReminderMode": {
+          "label": "Reminder frequency",
+          "per_reservation": "One reminder per reservation",
+          "daily_digest": "Daily summary",
+          "per_reservationDescription": "Get a separate reminder ahead of each pickup and return.",
+          "daily_digestDescription": "Get one summary each day listing all of that day's pickups and returns.",
+          "digestTimeLabel": "Send daily summary at",
+          "digestTimeDescription": "Time of day (your store's timezone) to send the digest."
         },
         "customerTemplates": {
           "title": "Customize template",
@@ -4744,6 +4772,39 @@
       "scheduledReturn": "Scheduled return",
       "returnInfo": "Please return the equipment in good condition. The deposit will be returned after verification.",
       "thanks": "Thank you for your trust!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Upcoming pickup: reservation #{number}",
+      "title": "Upcoming equipment pickup",
+      "body": "A pickup is coming up for reservation #{number}. Here are the details so you can get the equipment ready.",
+      "scheduledPickup": "Scheduled pickup",
+      "customer": "Customer:",
+      "email": "Email:",
+      "phone": "Phone:",
+      "amount": "Amount:",
+      "viewReservation": "View reservation",
+      "connectToManage": "Log in to your dashboard to manage this reservation."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Upcoming return: reservation #{number}",
+      "title": "Upcoming equipment return",
+      "body": "A return is coming up for reservation #{number}. Here are the details so you can prepare to receive the equipment.",
+      "scheduledReturn": "Scheduled return",
+      "customer": "Customer:",
+      "email": "Email:",
+      "phone": "Phone:",
+      "amount": "Amount:",
+      "viewReservation": "View reservation",
+      "connectToManage": "Log in to your dashboard to manage this reservation."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Your schedule for {date}",
+      "title": "Today's schedule",
+      "body": "Here's what's happening at {storeName} today.",
+      "pickupsTitle": "Pickups ({count})",
+      "returnsTitle": "Returns ({count})",
+      "viewCalendar": "View calendar",
+      "connectToManage": "Log in to your dashboard to manage your day."
     },
     "thankYouReview": {
       "subject": "Thank you for your rental!",
