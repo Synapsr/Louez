@@ -226,6 +226,18 @@
       "copySuccess": "Telefonnummer kopiert",
       "copyError": "Telefonnummer konnte nicht kopiert werden"
     },
+    "emailContact": {
+      "default": "Mit Mail-App schreiben",
+      "defaultTooltip": "Öffnet die Standard-Mail-App.",
+      "gmail": "In Gmail öffnen",
+      "gmailTooltip": "Öffnet ein neues Gmail-Verfassen-Fenster in einem Tab.",
+      "outlook": "In Outlook öffnen",
+      "outlookTooltip": "Öffnet ein neues Outlook-Verfassen-Fenster in einem Tab.",
+      "copy": "E-Mail kopieren",
+      "copyTooltip": "Kopiert die E-Mail-Adresse in die Zwischenablage.",
+      "copySuccess": "E-Mail kopiert",
+      "copyError": "E-Mail konnte nicht kopiert werden"
+    },
     "sidebar": {
       "catalog": "Katalog",
       "analytics": "Analysen",

@@ -226,6 +226,18 @@
       "copySuccess": "Phone number copied",
       "copyError": "Could not copy the phone number"
     },
+    "emailContact": {
+      "default": "Write with mail app",
+      "defaultTooltip": "Opens the default mail app.",
+      "gmail": "Open in Gmail",
+      "gmailTooltip": "Opens a new Gmail compose window in a tab.",
+      "outlook": "Open in Outlook",
+      "outlookTooltip": "Opens a new Outlook compose window in a tab.",
+      "copy": "Copy email",
+      "copyTooltip": "Copies the email address to the clipboard.",
+      "copySuccess": "Email copied",
+      "copyError": "Could not copy the email"
+    },
     "sidebar": {
       "catalog": "Catalog",
       "analytics": "Analytics",

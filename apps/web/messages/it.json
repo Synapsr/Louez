@@ -226,6 +226,18 @@
       "copySuccess": "Numero copiato",
       "copyError": "Impossibile copiare il numero"
     },
+    "emailContact": {
+      "default": "Scrivi con l'app mail",
+      "defaultTooltip": "Apre l'app mail predefinita.",
+      "gmail": "Apri in Gmail",
+      "gmailTooltip": "Apre una nuova composizione Gmail in una scheda.",
+      "outlook": "Apri in Outlook",
+      "outlookTooltip": "Apre una nuova composizione Outlook in una scheda.",
+      "copy": "Copia email",
+      "copyTooltip": "Copia l'indirizzo email negli appunti.",
+      "copySuccess": "Email copiata",
+      "copyError": "Impossibile copiare l'email"
+    },
     "sidebar": {
       "catalog": "Catalogo",
       "analytics": "Analisi",

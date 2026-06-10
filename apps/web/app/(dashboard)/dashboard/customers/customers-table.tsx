@@ -36,6 +36,7 @@ import {
 import { Badge } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import { orpc } from '@/lib/orpc/react'
+import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { deleteCustomer } from './actions'
 
@@ -148,9 +149,7 @@ export function CustomersTable({ customers }: CustomersTableProps) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-1 text-sm">
                       <Mail className="h-3 w-3 text-muted-foreground" />
-                      <a href={`mailto:${customer.email}`} className="hover:underline">
-                        {customer.email}
-                      </a>
+                      <EmailContactPopover email={customer.email} className="text-foreground" />
                     </div>
                     {customer.phone && (
                       <div className="flex items-center gap-1 text-sm">
