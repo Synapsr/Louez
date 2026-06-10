@@ -36,6 +36,7 @@ import { formatStoreDate } from '@/lib/utils/store-date'
 import { orpc } from '@/lib/orpc/react'
 
 import { ActivityTimelineV2 } from './activity-timeline-v2'
+import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { ReservationHeader } from './reservation-header'
 import {
@@ -281,12 +282,10 @@ export function ReservationDetailClient({
 
                 {/* Contact (email + phone) */}
                 <div className="flex items-center gap-x-3 gap-y-1 flex-wrap min-w-0 text-sm text-muted-foreground">
-                  <a
-                    href={`mailto:${reservation.customer.email}`}
-                    className="hover:text-primary truncate min-w-0"
-                  >
-                    {reservation.customer.email}
-                  </a>
+                  <EmailContactPopover
+                    email={reservation.customer.email}
+                    className="min-w-0 truncate"
+                  />
                   {reservation.customer.phone && (
                     <PhoneContactPopover
                       phone={reservation.customer.phone}

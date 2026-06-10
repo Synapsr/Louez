@@ -226,6 +226,18 @@
       "copySuccess": "Telefoonnummer gekopieerd",
       "copyError": "Telefoonnummer kon niet worden gekopieerd"
     },
+    "emailContact": {
+      "default": "Schrijven met mail-app",
+      "defaultTooltip": "Opent de standaard mail-app.",
+      "gmail": "Openen in Gmail",
+      "gmailTooltip": "Opent een nieuw Gmail-opstelvenster in een tabblad.",
+      "outlook": "Openen in Outlook",
+      "outlookTooltip": "Opent een nieuw Outlook-opstelvenster in een tabblad.",
+      "copy": "Email kopiëren",
+      "copyTooltip": "Kopieert het emailadres naar het klembord.",
+      "copySuccess": "Email gekopieerd",
+      "copyError": "Email kon niet worden gekopieerd"
+    },
     "sidebar": {
       "catalog": "Catalogus",
       "analytics": "Analyses",

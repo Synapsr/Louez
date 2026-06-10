@@ -226,6 +226,18 @@
       "copySuccess": "Número de telefone copiado",
       "copyError": "Não foi possível copiar o número"
     },
+    "emailContact": {
+      "default": "Escrever com o app de email",
+      "defaultTooltip": "Abre o aplicativo de email padrão.",
+      "gmail": "Abrir no Gmail",
+      "gmailTooltip": "Abre uma nova composição do Gmail em uma aba.",
+      "outlook": "Abrir no Outlook",
+      "outlookTooltip": "Abre uma nova composição do Outlook em uma aba.",
+      "copy": "Copiar email",
+      "copyTooltip": "Copia o endereço de email para a área de transferência.",
+      "copySuccess": "Email copiado",
+      "copyError": "Não foi possível copiar o email"
+    },
     "sidebar": {
       "catalog": "Catalogo",
       "analytics": "Analises",

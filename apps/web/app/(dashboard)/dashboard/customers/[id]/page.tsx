@@ -31,6 +31,7 @@ import {
 } from '@louez/ui'
 import { formatCurrency } from '@louez/utils'
 import { DashboardBreadcrumbLabel } from '@/components/dashboard/dashboard-breadcrumbs-context'
+import { EmailContactPopover } from '@/components/dashboard/email-contact-popover'
 import { PhoneContactPopover } from '@/components/dashboard/phone-contact-popover'
 import { CustomerNotes } from './customer-notes'
 
@@ -205,9 +206,7 @@ export default async function CustomerPage({ params }: CustomerPageProps) {
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-muted-foreground" />
-              <a href={`mailto:${customer.email}`} className="hover:underline">
-                {customer.email}
-              </a>
+              <EmailContactPopover email={customer.email} className="text-foreground" />
             </div>
             {customer.phone && (
               <div className="flex items-center gap-3">
