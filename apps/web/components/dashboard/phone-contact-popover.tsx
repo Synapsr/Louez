@@ -1,6 +1,6 @@
 'use client'
 
-import { MessageCircle, MessageSquare, Phone } from 'lucide-react'
+import { Copy, MessageCircle, MessageSquare, Phone } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 
 import {
@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
+  toastManager,
 } from '@louez/ui'
 import { cn } from '@louez/utils'
 
@@ -19,13 +20,22 @@ interface PhoneContactPopoverProps {
   className?: string
 }
 
-function normalizeForWhatsApp(phone: string) {
+const normalizeForWhatsApp = (phone: string) => {
   return phone.replace(/[^\d]/g, '')
 }
 
-export function PhoneContactPopover({ phone, className }: PhoneContactPopoverProps) {
+export const PhoneContactPopover = ({ phone, className }: PhoneContactPopoverProps) => {
   const t = useTranslations('dashboard.phoneContact')
   const whatsappPhone = normalizeForWhatsApp(phone)
+
+  const handleCopyPhone = async () => {
+    try {
+      await navigator.clipboard.writeText(phone)
+      toastManager.add({ title: t('copySuccess'), type: 'success' })
+    } catch {
+      toastManager.add({ title: t('copyError'), type: 'error' })
+    }
+  }
 
   const actions = [
     {
@@ -65,7 +75,7 @@ export function PhoneContactPopover({ phone, className }: PhoneContactPopoverPro
       >
         {phone}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-56 p-1 *:p-0">
+      <PopoverContent align="start" className="w-64 p-1 *:p-0">
         <TooltipProvider>
           <div className="grid gap-1">
             {actions.map((action) => {
@@ -92,6 +102,18 @@ export function PhoneContactPopover({ phone, className }: PhoneContactPopoverPro
                 </Tooltip>
               )
             })}
+            <Tooltip>
+              <TooltipTrigger
+                className="flex h-9 w-full items-center gap-2 rounded-md px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent"
+                render={<button type="button" onClick={handleCopyPhone} />}
+              >
+                <Copy className="h-4 w-4 text-muted-foreground" />
+                <span>{t('copy')}</span>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-64">
+                {t('copyTooltip')}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </TooltipProvider>
       </PopoverContent>

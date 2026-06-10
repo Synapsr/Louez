@@ -214,6 +214,18 @@
       "dark": "Dunkel",
       "system": "System"
     },
+    "phoneContact": {
+      "call": "Anrufen",
+      "callTooltip": "Öffnet die Telefon-App, um diese Nummer anzurufen.",
+      "whatsapp": "WhatsApp",
+      "whatsappTooltip": "Öffnet eine WhatsApp-Unterhaltung mit dieser Nummer.",
+      "sms": "SMS",
+      "smsTooltip": "Öffnet die Nachrichten-App, um eine SMS zu senden.",
+      "copy": "Telefonnummer kopieren",
+      "copyTooltip": "Kopiert die Nummer in die Zwischenablage.",
+      "copySuccess": "Telefonnummer kopiert",
+      "copyError": "Telefonnummer konnte nicht kopiert werden"
+    },
     "sidebar": {
       "catalog": "Katalog",
       "analytics": "Analysen",
