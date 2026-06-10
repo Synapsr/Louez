@@ -2465,6 +2465,7 @@
         "title": "Notificacoes",
         "description": "Configure como voce recebe notificacoes de eventos da loja",
         "saveError": "Erro ao salvar",
+        "saved": "Configuracoes salvas",
         "phone": {
           "title": "Numero de telefone",
           "description": "Para receber notificacoes por SMS",
@@ -2526,6 +2527,18 @@
               "label": "Pagamento falhou",
               "description": "Quando um pagamento falha"
             }
+          },
+          "reminder": {
+            "title": "Lembretes automáticos",
+            "description": "Receba lembretes antes das retiradas e devolucoes",
+            "reservation_reminder_pickup": {
+              "label": "Lembrete de retirada",
+              "description": "Antes de um cliente retirar seu aluguel"
+            },
+            "reservation_reminder_return": {
+              "label": "Lembrete de devolucao",
+              "description": "Antes do prazo de devolucao de um aluguel"
+            }
           }
         },
         "sms": {
@@ -2584,6 +2597,21 @@
           "pickupDescription": "Tempo antes do inicio do aluguel",
           "returnDescription": "Tempo antes do fim do aluguel",
           "hours": "{count, plural, =1 {1 hora} other {# horas}}"
+        },
+        "adminReminderTiming": {
+          "pickupLabel": "Antecedencia lembrete retirada",
+          "returnLabel": "Antecedencia lembrete devolucao",
+          "pickupDescription": "Tempo antes de uma retirada para alerta-lo",
+          "returnDescription": "Tempo antes de uma devolucao para alerta-lo"
+        },
+        "adminReminderMode": {
+          "label": "Frequencia dos lembretes",
+          "per_reservation": "Um lembrete por reserva",
+          "daily_digest": "Resumo diario",
+          "per_reservationDescription": "Receba um lembrete separado antes de cada retirada e devolucao.",
+          "daily_digestDescription": "Receba a cada dia um resumo listando todas as retiradas e devolucoes do dia.",
+          "digestTimeLabel": "Enviar o resumo diario as",
+          "digestTimeDescription": "Hora do dia (fuso horario da sua loja) para enviar o resumo."
         },
         "customerTemplates": {
           "title": "Personalizar modelo",
@@ -4694,6 +4722,39 @@
       "scheduledReturn": "Devolucao agendada",
       "returnInfo": "Por favor, devolva o equipamento em boas condicoes. A caucao sera devolvida apos verificacao.",
       "thanks": "Obrigado pela sua confianca!"
+    },
+    "reminderPickupAdmin": {
+      "subject": "Retirada proxima: reserva #{number}",
+      "title": "Retirada de equipamento proxima",
+      "body": "Uma retirada esta proxima para a reserva #{number}. Aqui estao os detalhes para que voce possa preparar o equipamento.",
+      "scheduledPickup": "Retirada agendada",
+      "customer": "Cliente:",
+      "email": "Email:",
+      "phone": "Telefone:",
+      "amount": "Valor:",
+      "viewReservation": "Ver reserva",
+      "connectToManage": "Entre no seu painel para gerenciar esta reserva."
+    },
+    "reminderReturnAdmin": {
+      "subject": "Devolucao proxima: reserva #{number}",
+      "title": "Devolucao de equipamento proxima",
+      "body": "Uma devolucao esta proxima para a reserva #{number}. Aqui estao os detalhes para que voce possa se preparar para receber o equipamento.",
+      "scheduledReturn": "Devolucao agendada",
+      "customer": "Cliente:",
+      "email": "Email:",
+      "phone": "Telefone:",
+      "amount": "Valor:",
+      "viewReservation": "Ver reserva",
+      "connectToManage": "Entre no seu painel para gerenciar esta reserva."
+    },
+    "reminderDigestAdmin": {
+      "subject": "Sua agenda de {date}",
+      "title": "Agenda de hoje",
+      "body": "Veja o que esta acontecendo na {storeName} hoje.",
+      "pickupsTitle": "Retiradas ({count})",
+      "returnsTitle": "Devolucoes ({count})",
+      "viewCalendar": "Ver calendario",
+      "connectToManage": "Entre no seu painel para gerenciar o seu dia."
     },
     "thankYouReview": {
       "subject": "Obrigado pelo seu aluguel!",

@@ -251,6 +251,143 @@ export async function sendReservationCompletedDiscord(ctx: DiscordNotificationCo
   return sendAndLog(ctx, 'reservation_completed', embed)
 }
 
+export async function sendReminderPickupAdminDiscord(ctx: DiscordNotificationContext) {
+  if (!ctx.reservation || !ctx.customer) return
+
+  const embed: DiscordEmbed = {
+    title: `Rappel : retrait à venir #${ctx.reservation.number}`,
+    color: COLORS.info,
+    fields: [
+      {
+        name: 'Client',
+        value: `${ctx.customer.firstName} ${ctx.customer.lastName}`,
+        inline: true,
+      },
+      {
+        name: 'Retrait prévu',
+        value: formatDate(ctx.reservation.startDate),
+        inline: true,
+      },
+      {
+        name: 'Montant',
+        value: formatCurrency(ctx.reservation.totalAmount, ctx.reservation.currency),
+        inline: true,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: { text: ctx.store.name },
+  }
+
+  return sendAndLog(ctx, 'reservation_reminder_pickup', embed)
+}
+
+export async function sendReminderReturnAdminDiscord(ctx: DiscordNotificationContext) {
+  if (!ctx.reservation || !ctx.customer) return
+
+  const embed: DiscordEmbed = {
+    title: `Rappel : retour à venir #${ctx.reservation.number}`,
+    color: COLORS.warning,
+    fields: [
+      {
+        name: 'Client',
+        value: `${ctx.customer.firstName} ${ctx.customer.lastName}`,
+        inline: true,
+      },
+      {
+        name: 'Retour prévu',
+        value: formatDate(ctx.reservation.endDate),
+        inline: true,
+      },
+      {
+        name: 'Montant',
+        value: formatCurrency(ctx.reservation.totalAmount, ctx.reservation.currency),
+        inline: true,
+      },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: { text: ctx.store.name },
+  }
+
+  return sendAndLog(ctx, 'reservation_reminder_return', embed)
+}
+
+interface DigestLine {
+  number: string
+  customerName: string
+  timeLabel: string
+}
+
+function formatDigestLines(lines: DigestLine[]): string {
+  // Discord embed field values are capped at 1024 chars. Keep whole lines and
+  // append an overflow marker rather than slicing mid-line and silently dropping.
+  const rendered = lines.map((l) => `\`${l.timeLabel}\` #${l.number} — ${l.customerName}`)
+  const out: string[] = []
+  let length = 0
+  for (let i = 0; i < rendered.length; i++) {
+    const line = rendered[i]
+    const remaining = rendered.length - i
+    const marker = `… +${remaining} more`
+    // Stop if adding this line would leave no room for an overflow marker.
+    if (length + line.length + 1 > 1024 - (marker.length + 1) && remaining > 1) {
+      out.push(marker)
+      break
+    }
+    out.push(line)
+    length += line.length + 1
+  }
+  return out.join('\n').slice(0, 1024)
+}
+
+export async function sendReminderDigestAdminDiscord(ctx: {
+  store: { id: string; name: string; discordWebhookUrl: string | null }
+  dateLabel: string
+  pickupsLabel: string
+  returnsLabel: string
+  pickups: DigestLine[]
+  returns: DigestLine[]
+}): Promise<{ success: boolean; error?: string }> {
+  if (!ctx.store.discordWebhookUrl) return { success: false, error: 'No webhook configured' }
+
+  const fields: DiscordEmbed['fields'] = []
+  if (ctx.pickups.length > 0) {
+    fields.push({
+      name: ctx.pickupsLabel,
+      value: formatDigestLines(ctx.pickups),
+      inline: false,
+    })
+  }
+  if (ctx.returns.length > 0) {
+    fields.push({
+      name: ctx.returnsLabel,
+      value: formatDigestLines(ctx.returns),
+      inline: false,
+    })
+  }
+
+  const embed: DiscordEmbed = {
+    title: ctx.dateLabel,
+    color: COLORS.info,
+    fields,
+    timestamp: new Date().toISOString(),
+    footer: { text: ctx.store.name },
+  }
+
+  const result = await sendDiscordNotification(ctx.store.discordWebhookUrl, { embeds: [embed] })
+
+  try {
+    await db.insert(discordLogs).values({
+      storeId: ctx.store.id,
+      eventType: 'admin_digest',
+      status: result.success ? 'sent' : 'failed',
+      error: result.error,
+    })
+  } catch (e) {
+    console.error('Failed to log Discord digest notification:', e)
+  }
+
+  return result
+}
+
 export async function sendPaymentReceivedDiscord(ctx: DiscordNotificationContext) {
   if (!ctx.reservation || !ctx.payment) return
 
