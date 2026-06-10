@@ -214,6 +214,18 @@
       "dark": "Donker",
       "system": "Systeem"
     },
+    "phoneContact": {
+      "call": "Bellen",
+      "callTooltip": "Opent de telefoon-app om dit nummer te bellen.",
+      "whatsapp": "WhatsApp",
+      "whatsappTooltip": "Opent een WhatsApp-gesprek met dit nummer.",
+      "sms": "SMS",
+      "smsTooltip": "Opent de berichten-app om een sms te sturen.",
+      "copy": "Telefoonnummer kopiëren",
+      "copyTooltip": "Kopieert het nummer naar het klembord.",
+      "copySuccess": "Telefoonnummer gekopieerd",
+      "copyError": "Telefoonnummer kon niet worden gekopieerd"
+    },
     "sidebar": {
       "catalog": "Catalogus",
       "analytics": "Analyses",

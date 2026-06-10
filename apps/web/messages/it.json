@@ -214,6 +214,18 @@
       "dark": "Scuro",
       "system": "Sistema"
     },
+    "phoneContact": {
+      "call": "Chiama",
+      "callTooltip": "Apre l'app telefono per chiamare questo numero.",
+      "whatsapp": "WhatsApp",
+      "whatsappTooltip": "Apre una conversazione WhatsApp con questo numero.",
+      "sms": "SMS",
+      "smsTooltip": "Apre l'app messaggi per inviare un SMS.",
+      "copy": "Copia numero di telefono",
+      "copyTooltip": "Copia il numero negli appunti.",
+      "copySuccess": "Numero copiato",
+      "copyError": "Impossibile copiare il numero"
+    },
     "sidebar": {
       "catalog": "Catalogo",
       "analytics": "Analisi",

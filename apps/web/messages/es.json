@@ -220,7 +220,11 @@
       "whatsapp": "WhatsApp",
       "whatsappTooltip": "Abre una conversación de WhatsApp con este número.",
       "sms": "SMS",
-      "smsTooltip": "Abre la aplicación de mensajes para enviar un SMS."
+      "smsTooltip": "Abre la aplicación de mensajes para enviar un SMS.",
+      "copy": "Copiar número de teléfono",
+      "copyTooltip": "Copia el número al portapapeles.",
+      "copySuccess": "Número copiado",
+      "copyError": "No se pudo copiar el número"
     },
     "sidebar": {
       "catalog": "Catalogo",
